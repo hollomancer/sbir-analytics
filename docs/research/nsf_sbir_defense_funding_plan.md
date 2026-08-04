@@ -19,9 +19,16 @@ The fourth question is not answered by shared firm identity alone. It requires a
 product-, or capability-level evidence and must remain `not_established` when that evidence is
 absent.
 
-## Current baseline
+## Implementation status
 
-The repository now provides an initial, reproducible screen built from:
+Implemented in the NSF defense-lineage release. The repository now materializes direct NSF
+reconciliation, signed DoD prime and reported-subaward ledgers, CET review candidates, evidence
+guardrails, recurring validation, and the multi-partite analyst graph described below. FOCI remains
+outside this analysis, and DoD-14/NDIS-8 mapping remains deferred.
+
+## Baseline when proposed
+
+Before this plan, the repository provided an initial, reproducible screen built from:
 
 - the SBIR.gov bulk award registry for the SBIR/STTR awardee universe and award text;
 - DoD contract subaward records from USAspending for fiscal years 2021–2025;
@@ -29,9 +36,10 @@ The repository now provides an initial, reproducible screen built from:
 - the existing CET classifier and DoD critical-technology crosswalk; and
 - a static graph explorer for reviewing suppliers, primes, persistence, and NSF award candidates.
 
-This baseline does **not** yet ingest NSF's direct award records, materialize DoD prime funding,
-or prove that a specific NSF award supported a particular DoD procurement. Its graph edges are
-observed legal-entity funding relationships, not dependency claims.
+That baseline did **not** ingest NSF's direct award records or materialize DoD prime funding. The
+implemented release closes those two gaps; it still does not claim that a specific NSF award
+supported a particular DoD procurement. Its graph edges remain observed funding relationships and
+explicit candidate associations, not dependency claims.
 
 ## Scope and non-goals
 
@@ -58,10 +66,10 @@ observed legal-entity funding relationships, not dependency claims.
 | Question | Primary source | Use | Important boundary |
 | --- | --- | --- | --- |
 | SBIR/STTR universe | [SBIR.gov data resources](https://www.sbir.gov/data-resources) | Cross-agency baseline, phase, topic, award text | Reconcile rather than silently overwrite direct NSF data |
-| Direct NSF awards | [NSF Award Search and API](https://www.nsf.gov/awardsearch/download.jsp) plus NSF annual XML downloads | Award ID, title, abstract, dates, amount, program and organization metadata | NSF is authoritative for its own awards |
+| Direct NSF awards | [NSF Award Search and API](https://www.nsf.gov/awardsearch/download-awards) plus NSF annual JSON downloads | Award ID, title, abstract, dates, amount, program and organization metadata | NSF is authoritative for its own awards; NSF converted annual downloads from XML to JSON in January 2025 |
 | DoD prime contracts | USAspending contract transactions derived from FPDS | Signed transaction obligations by recipient, award, agency, date, and instrument | Preserve deobligations and transaction grain |
 | DoD prime assistance | USAspending assistance transactions derived from FABS | Grants and cooperative-agreement obligations | Keep separate from procurement |
-| DoD other transactions | Existing repository OT ingestion path | Prime OT obligations | Keep instrument identity and source provenance |
+| DoD other transactions | USAspending Contracts Full archive through the existing award-archive extractor | Prime OT obligations | Keep O/R instrument identity and source provenance; avoid overlap with API procurement |
 | DoD subawards | USAspending File F/FSRS subaward records | Reported first-tier subcontract and assistance-subaward obligations | Reporting coverage is incomplete and not equivalent to all tiers |
 | Solicitation context | [Grants.gov](https://www.grants.gov/) | Optional NOFO/solicitation text and program context | Never use to validate an award or payment |
 
@@ -104,6 +112,7 @@ designations unless an authoritative source changes them.
 | `nsf_awardee_dod_subaward_transactions.parquet` | One reported DoD subaward transaction | First-tier reported funding lineage |
 | `nsf_awardee_defense_funding_summary.parquet` | Awardee × fiscal year × funding mode | Analysis-ready totals without mixing instruments |
 | `nsf_award_defense_evidence.parquet` | NSF award × DoD award evidence assertion | Explicit evidence and `not_established` outcomes |
+| `nsf_sbir_critical_supply_chain_screen.parquet` | One direct NSF award | Versioned CET review screen and deferred-policy status |
 | `nsf_defense_lineage_quality.json` | One build | Coverage, reconciliation, provenance, and invariant results |
 
 Generated data remains outside version control. Code, schemas, small fixtures, quality thresholds,
@@ -117,6 +126,8 @@ and methodology stay in the repository.
   subawards as separate measures.
 - Preserve source award IDs, transaction IDs, action dates, awarding/subtier agencies, NAICS/PSC,
   and place of performance where available.
+- Clip award transaction histories to the requested action-date window; an award-level search hit
+  must not pull pre-window or future modifications into the release.
 - Compute timing relative to the NSF award start and end dates, but label it as temporal association
   rather than causation.
 - Do not add amounts from incompatible grains. Award-level totals and transaction-level flows must
@@ -164,14 +175,17 @@ excluded from verified totals.
 
 ### Phase 4 — Evidence and critical-supply-chain screening
 
-- Apply the versioned CET and defense crosswalk screens to reconciled NSF title/abstract/topic text.
+- Apply the versioned CET screen to reconciled NSF title/abstract/topic text;
+  record DoD-14/NDIS-8 mapping as deferred until an authoritative mapping is
+  materialized.
 - Add evidence records for solicitation, contract description, product/service code, capability, or
   other source material that may connect an NSF award to a DoD requirement.
 - Keep `critical_supply_chain_status=not_assessed` and
   `specific_award_usage_status=not_established` unless reviewable evidence changes those states.
 
-**Verify:** classifier and crosswalk versions are present on every screen result; evidence assertions
-cite their source and method; firm-level funding alone cannot promote either status.
+**Verify:** classifier and taxonomy versions are present on every screen result;
+the deferred policy-mapping status is explicit; evidence assertions cite their
+source and method; firm-level funding alone cannot promote either status.
 
 ### Phase 5 — Graph and analyst experience
 

@@ -189,20 +189,22 @@ perspective, see [F. Capital formation & entrepreneurial finance](#f-capital-for
   *Deps: ER, ID*
 
 - **Observed SBIR-to-prime supply network** (cap/vuln)
-  Which SBIR awardees are
-  reported as first-tier subcontractors to DoD primes, which prime families act
-  as integration hubs, and which supplier-to-prime relationships persist across
-  fiscal years? USAspending/SAM.gov first-tier subawards support exact-UEI/DUNS
-  edges and reported amounts; name-only matches remain candidates. In DIB tier
-  language the DoD prime is Tier 1 and the reported subcontractor is Tier 2.
-  The initial NSF lens resolves specific NSF SBIR awards to verified suppliers,
-  screens award text against the versioned CET classifier, and applies the cited
-  defense-supply-chain crosswalk to prioritize manual review. It does not infer
-  that the NSF-funded work was used on a subcontract or that the supplier is
-  critical or irreplaceable.
-  **Status:** Initial implementation — public-data lower bound; not a BoM or
-  dependency claim.
-  *Deps: ER, USAspending subawards*
+  Which current and former NSF SBIR/STTR awardees receive DoD funding as prime
+  recipients or reported first-tier subcontractors, by instrument and fiscal
+  year; which DoD award relationships persist; and which directly sourced NSF
+  award texts merit CET-based critical-supply-chain review? Direct NSF records
+  supply authoritative performance dates. USAspending FPDS/FABS transactions
+  supply signed prime procurement, assistance, and other-transaction flows;
+  SAM.gov/FSRS supplies reported subawards. UEI/DUNS edges enter verified totals
+  and name-only matches remain candidates. The graph keeps NSF awards, legal
+  entities, DoD awards, agencies, and CET areas distinct. It does not infer that
+  NSF-funded work was used on a DoD award or that a supplier is critical or
+  irreplaceable. DoD-14/NDIS-8 policy mapping remains deferred, and FOCI is not
+  in this analysis.
+  **Status:** Computable as a manifest-pinned public-data lower bound with
+  signed prime/subaward ledgers, evidence tables, quality gates, and an analyst
+  graph; not a BoM or dependency claim.
+  *Deps: ER, direct NSF awards, USAspending FPDS/FABS, USAspending subawards, CET · Spec: [nsf_sbir_defense_funding_plan.md](research/nsf_sbir_defense_funding_plan.md)*
 
 - **DIB integration** (cap)
   What is the Phase II→III transition rate per CET area via FPDS, and how do
@@ -450,10 +452,11 @@ areas with several DoD critical-technology areas (Hypersonics, Directed Energy,
 Advanced Gas Turbine Engine Technologies, Integrated Network
 Systems-of-Systems).
 
-*Crosswalk note:* for DoD-facing outputs, each CET area should also carry a
-**DoD-14** tag and an **NDIS-8** (National Defense Industrial Strategy
-supply-chain-priority) tag where a mapping exists, so results speak to both NSTC
-and DoD audiences.
+*Crosswalk note:* DoD-facing outputs would benefit from **DoD-14** and NDIS
+supply-chain-priority tags, but no authoritative mapping is materialized in the
+repository. Those tags and associated policy prose remain deferred; current
+outputs expose the source CET classification and the deferred-mapping status
+rather than inventing an **NDIS-8** framework.
 
 Two other, divergent CET taxonomies exist in code — a 10-area transition-system
 set and a 19-area reporting-analyzer set — and are not yet reconciled to the

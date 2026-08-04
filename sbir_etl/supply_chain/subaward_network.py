@@ -364,6 +364,8 @@ def _project_subawards(subawards: pd.DataFrame) -> pd.DataFrame:
                 errors="coerce",
                 utc=True,
             ),
+            "source_input_path": _first_column(subawards, ("source_input_path",)),
+            "source_input_sha256": _first_column(subawards, ("source_input_sha256",)),
         }
     )
 
@@ -494,6 +496,8 @@ def build_subaward_facts(
         "subaward_description",
         "source_url",
         "source_last_modified",
+        "source_input_path",
+        "source_input_sha256",
         "source_report_version_count",
         "source_system",
         "absence_is_negative_evidence",

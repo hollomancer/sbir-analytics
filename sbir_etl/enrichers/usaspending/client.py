@@ -379,6 +379,34 @@ class USAspendingAPIClient(BaseAsyncAPIClient):
             params=payload,
         )
 
+    async def get_award_transactions(
+        self,
+        generated_award_id: str,
+        *,
+        page: int = 1,
+        limit: int = 5000,
+        sort: str = "action_date",
+        order: str = "asc",
+    ) -> dict[str, Any]:
+        """Return one page of source-grain transactions for a generated award ID."""
+
+        return await self._make_request(
+            "POST",
+            "/transactions/",
+            params={
+                "award_id": generated_award_id,
+                "page": page,
+                "limit": limit,
+                "sort": sort,
+                "order": order,
+            },
+        )
+
+    async def get_toptier_agencies(self) -> dict[str, Any]:
+        """Return USAspending's authoritative top-tier agency reference list."""
+
+        return await self._make_request("GET", "/references/toptier_agencies/")
+
     async def search_recipients(
         self,
         keyword: str,

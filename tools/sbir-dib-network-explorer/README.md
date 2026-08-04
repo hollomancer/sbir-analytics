@@ -1,18 +1,20 @@
 # SBIR → DIB Network Explorer
 
-Static, dependency-free browser explorer for the identifier-verified SBIR
-awardee-to-DoD-prime-family network.
+Static, dependency-free browser explorer for direct NSF SBIR/STTR awards and
+observed DoD prime and reported-subaward funding.
 
 ## Build the browser payload
 
-Materialize the supply network first, then export its Parquet edges:
+Materialize the NSF lineage release first, then export its Parquet products:
 
 ```bash
 uv run python scripts/data/export_sbir_dib_network_web.py
 ```
 
-The generated `data/network.json` is intentionally ignored. It contains the
-full local analysis slice and can be regenerated from the source artifacts.
+The exporter writes ignored `data/network.json` plus downloadable CSV evidence
+tables. They contain the local analysis slice and can be regenerated from the
+pinned release manifest. Pass `--legacy-subaward-only` to export the original
+supplier-to-prime-family view.
 
 ## Run locally
 
@@ -27,17 +29,20 @@ do not permit `fetch()` of the generated JSON from a `file://` page.
 
 ## Interaction model
 
-- The overview ranks verified prime-family edges by persistence and reported
-  amount instead of rendering all relationships as an unreadable hairball.
-- Search can locate any supplier or prime in the full payload and open its ego
-  network.
-- Persistence, density, NSF SBIR-only, and CET supply-chain screening controls
-  change the visible network.
-- Selecting a node shows its observed relationships and supplier exposure
-  screen, including NSF SBIR award history when present. NSF matches are review
-  candidates; no visualization state establishes dependency or criticality.
+- Distinct nodes represent agencies, NSF awards, legal entities, DoD awards,
+  and CET areas.
+- Search can locate any node and open its one-hop evidence neighborhood.
+- Current/former status, persistence, funding instrument, match confidence,
+  density, and CET-review filters change only the visible graph—not totals in
+  the source tables.
+- Solid edges are direct or identifier-verified observations. Dashed edges are
+  name candidates, CET text classifications, or temporal associations.
+- Selecting a node exposes match confidence and source identifiers. The static
+  CSV links provide complete filter-independent evidence tables, and **Visible
+  relationships CSV** exports the relationships under the current filters.
 
-The CET supply-chain screen combines a specific NSF award's title/topic/abstract
-classification with the versioned defense-supply-chain crosswalk. It is an
-auditable prioritization aid, not evidence that the award's technology was used
-on the observed subcontract or that the supplier is irreplaceable.
+The CET screen combines directly sourced NSF award text with verified legal-
+entity DoD funding. It is an auditable prioritization aid, not evidence that an
+NSF-funded capability was used or that a supplier is critical or irreplaceable.
+DoD-14/NDIS-8 policy mapping remains deferred because no authoritative mapping
+is materialized in the repository.

@@ -61,6 +61,8 @@ def test_build_release_writes_phase_one_products(tmp_path) -> None:
     )
     assert manifest["analysis_date"] == "2026-08-03"
     assert manifest["products"]["direct_awards"]["row_count"] == 1
+    assert manifest["inputs"]["direct_nsf_sources"][0]["file_count"] == 1
+    assert len(manifest["inputs"]["direct_nsf_sources"][0]["tree_sha256"]) == 64
     assert (output / "nsf_sbir_awards_direct.parquet").is_file()
     assert (output / "nsf_sbir_award_reconciliation.parquet").is_file()
     quality = json.loads((output / "nsf_defense_lineage_quality.json").read_text())

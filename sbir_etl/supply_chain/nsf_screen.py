@@ -16,6 +16,137 @@ from sbir_etl.reporting.local_cet_classifier import (
 )
 
 
+def screen_direct_nsf_awards(
+    direct_awards: pd.DataFrame,
+    *,
+    funded_organization_ids: set[str] | None = None,
+    classifier: LocalCETRuleClassifier | None = None,
+) -> pd.DataFrame:
+    """Screen direct NSF award text with CET rules and observed DoD funding.
+
+    The screen intentionally does not emit DoD-14 or NDIS-8 policy mappings.  No
+    authoritative repository mapping exists for those frameworks, so the output
+    records that policy mapping as deferred and never promotes criticality beyond
+    a review candidate.
+    """
+
+    required = {
+        "nsf_award_id",
+        "nsf_organization_id",
+        "nsf_award_title",
+        "nsf_award_abstract",
+    }
+    if missing := sorted(required - set(direct_awards.columns)):
+        raise ValueError(f"direct NSF awards are missing screening columns: {missing}")
+    if direct_awards["nsf_award_id"].duplicated().any():
+        raise ValueError("direct NSF award IDs must be unique for screening")
+    local_classifier = classifier or load_local_cet_rule_classifier()
+    topic_parts = [
+        direct_awards[column].fillna("").astype(str)
+        for column in (
+            "nsf_fund_program_name",
+            "nsf_program_element_codes_json",
+            "nsf_program_reference_codes_json",
+        )
+        if column in direct_awards.columns
+    ]
+    topic = (
+        pd.concat(topic_parts, axis=1).agg(" ".join, axis=1).str.strip()
+        if topic_parts
+        else pd.Series("", index=direct_awards.index, dtype="object")
+    )
+    classifier_input = pd.DataFrame(
+        {
+            "award_id": direct_awards["nsf_award_id"].astype(str),
+            "title": direct_awards["nsf_award_title"],
+            "topic_code": topic,
+            "abstract": direct_awards["nsf_award_abstract"],
+        }
+    )
+    classifications = local_classifier.classify_frame(classifier_input)
+    if classifications.empty:
+        classifications = pd.DataFrame(
+            columns=[
+                "award_id",
+                "primary_cet",
+                "primary_score",
+                "supporting_cets",
+                "evidence",
+                "taxonomy_version",
+                "classifier_version",
+            ]
+        )
+    classifications["supporting_cets"] = classifications["supporting_cets"].map(
+        lambda value: json.dumps(value, separators=(",", ":"))
+    )
+    classifications["cet_evidence"] = classifications.pop("evidence").map(
+        lambda value: json.dumps(value, separators=(",", ":"))
+    )
+    classifications = classifications.rename(
+        columns={
+            "award_id": "nsf_award_id",
+            "primary_score": "primary_cet_score",
+            "taxonomy_version": "cet_taxonomy_version",
+            "classifier_version": "cet_classifier_version",
+        }
+    )
+    columns = [
+        "nsf_award_id",
+        "nsf_organization_id",
+        "nsf_program",
+        "nsf_phase",
+        "nsf_award_title",
+        "nsf_award_abstract",
+        "nsf_award_performance_status",
+        "analysis_date",
+        "source_url",
+        "source_path",
+        "source_record_sha256",
+    ]
+    awards = direct_awards.copy()
+    for column in columns:
+        if column not in awards.columns:
+            awards[column] = pd.NA
+    screened = awards[columns].merge(
+        classifications,
+        on="nsf_award_id",
+        how="left",
+        validate="one_to_one",
+    )
+    screened["cet_taxonomy_version"] = screened["cet_taxonomy_version"].fillna(
+        local_classifier.taxonomy_version
+    )
+    screened["cet_classifier_version"] = screened["cet_classifier_version"].fillna(
+        local_classifier.version
+    )
+    screened["supporting_cets"] = screened["supporting_cets"].fillna("[]")
+    screened["cet_evidence"] = screened["cet_evidence"].fillna("[]")
+    funded = funded_organization_ids or set()
+    screened["verified_dod_funding_observed"] = screened["nsf_organization_id"].isin(funded)
+    classified = screened["primary_cet"].notna()
+    screened["critical_supply_chain_review_candidate"] = (
+        classified & screened["verified_dod_funding_observed"]
+    )
+    screened["critical_supply_chain_screen_basis"] = "no_positive_screen"
+    screened.loc[classified, "critical_supply_chain_screen_basis"] = "cet_text_screen_only"
+    screened.loc[
+        screened["verified_dod_funding_observed"], "critical_supply_chain_screen_basis"
+    ] = "observed_dod_funding_only"
+    screened.loc[
+        screened["critical_supply_chain_review_candidate"],
+        "critical_supply_chain_screen_basis",
+    ] = "observed_dod_funding_plus_cet_text_screen"
+    screened["critical_supply_chain_status"] = "not_assessed"
+    screened["specific_award_usage_status"] = "not_established"
+    screened["defense_policy_mapping_status"] = "deferred_no_authoritative_dod14_or_ndis8_mapping"
+    screened["defense_policy_mapping_version"] = pd.NA
+    screened["screen_interpretation"] = (
+        "CET text and legal-entity funding support review only; criticality and use of the "
+        "specific NSF award are not established"
+    )
+    return screened.sort_values("nsf_award_id").reset_index(drop=True)
+
+
 def screen_nsf_sbir_award_candidates(
     candidates: pd.DataFrame,
     *,
@@ -161,4 +292,8 @@ def aggregate_nsf_supplier_screen(screened_awards: pd.DataFrame) -> pd.DataFrame
     )
 
 
-__all__ = ["aggregate_nsf_supplier_screen", "screen_nsf_sbir_award_candidates"]
+__all__ = [
+    "aggregate_nsf_supplier_screen",
+    "screen_direct_nsf_awards",
+    "screen_nsf_sbir_award_candidates",
+]

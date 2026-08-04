@@ -1,6 +1,9 @@
 import pandas as pd
 
-from sbir_etl.supply_chain.web_export import build_web_graph_payload
+from sbir_etl.supply_chain.web_export import (
+    build_nsf_defense_lineage_payload,
+    build_web_graph_payload,
+)
 
 
 def _edges() -> pd.DataFrame:
@@ -140,3 +143,170 @@ def test_web_export_rejects_incomplete_edge_schema() -> None:
         assert "prime_name" in str(exc)
     else:
         raise AssertionError("missing required edge columns should fail")
+
+
+def test_lineage_export_builds_distinct_traceable_node_and_edge_types() -> None:
+    direct = pd.DataFrame(
+        [
+            {
+                "nsf_award_id": "1234567",
+                "nsf_organization_id": "uei:SUPPLIER1",
+                "nsf_award_title": "Additive manufacturing sensor",
+                "nsf_award_abstract": "Advanced manufacturing",
+                "nsf_program": "SBIR",
+                "nsf_phase": "II",
+                "nsf_start_date": "2023-01-01",
+                "nsf_end_date": "2025-01-01",
+                "nsf_award_performance_status": "expired",
+                "nsf_estimated_total_amount": 900000,
+                "source_url": "https://api.nsf.gov/1234567",
+                "source_path": "snapshot/1234567.json",
+                "source_record_sha256": "nsfhash",
+            }
+        ]
+    )
+    awardees = pd.DataFrame(
+        [
+            {
+                "nsf_organization_id": "uei:SUPPLIER1",
+                "nsf_awardee_name": "Supplier One",
+                "nsf_awardee_legal_business_name": "Supplier One Inc",
+                "nsf_awardee_status": "former",
+                "organization_resolution_method": "direct_nsf_uei",
+                "organization_resolution_confidence": "verified_identifier",
+            }
+        ]
+    )
+    prime = pd.DataFrame(
+        [
+            {
+                "prime_transaction_id": "CONT_TX_1",
+                "nsf_organization_id": "uei:SUPPLIER1",
+                "dod_award_generated_id": "CONT_AWD_P1_9700",
+                "dod_award_id": "P1",
+                "funding_mode": "prime",
+                "instrument_group": "prime_procurement",
+                "signed_obligation_amount": 100,
+                "action_date": pd.Timestamp("2024-01-01", tz="UTC"),
+                "fiscal_year": 2024,
+                "recipient_match_method": "exact_uei",
+                "recipient_match_confidence": "verified_identifier",
+                "source_system": "USAspending API",
+                "source_transaction_path": "transactions/P1.json",
+                "source_transaction_sha256": "primehash",
+                "source_url": "https://www.usaspending.gov/award/P1",
+                "award_description": "sensor procurement",
+            },
+            {
+                "prime_transaction_id": "CONT_TX_2",
+                "nsf_organization_id": "uei:SUPPLIER1",
+                "dod_award_generated_id": "CONT_AWD_P1_9700",
+                "dod_award_id": "P1",
+                "funding_mode": "prime",
+                "instrument_group": "prime_procurement",
+                "signed_obligation_amount": -10,
+                "action_date": pd.Timestamp("2024-10-01", tz="UTC"),
+                "fiscal_year": 2025,
+                "recipient_match_method": "exact_uei",
+                "recipient_match_confidence": "verified_identifier",
+                "source_system": "USAspending API",
+                "source_transaction_path": "transactions/P1.json",
+                "source_transaction_sha256": "primehash",
+                "source_url": "https://www.usaspending.gov/award/P1",
+                "award_description": "sensor procurement",
+            },
+        ]
+    )
+    subawards = pd.DataFrame(
+        columns=[
+            "subaward_transaction_id",
+            "nsf_organization_id",
+            "dod_award_generated_id",
+            "funding_mode",
+            "instrument_group",
+            "signed_obligation_amount",
+            "action_date",
+            "fiscal_year",
+            "recipient_match_method",
+            "recipient_match_confidence",
+            "source_system",
+        ]
+    )
+    screen = pd.DataFrame(
+        [
+            {
+                "nsf_award_id": "1234567",
+                "nsf_organization_id": "uei:SUPPLIER1",
+                "primary_cet": "advanced_manufacturing",
+                "primary_cet_score": 0.8,
+                "cet_taxonomy_version": "NSTC-CET-2024",
+                "cet_classifier_version": "CET-RULES-2026Q3",
+                "critical_supply_chain_review_candidate": True,
+                "defense_policy_mapping_status": (
+                    "deferred_no_authoritative_dod14_or_ndis8_mapping"
+                ),
+            }
+        ]
+    )
+    evidence = pd.DataFrame(
+        [
+            {
+                "evidence_assertion_id": "evidence:1",
+                "nsf_award_id": "1234567",
+                "nsf_organization_id": "uei:SUPPLIER1",
+                "_dod_award_key": "CONT_AWD_P1_9700",
+                "dod_award_generated_id": "CONT_AWD_P1_9700",
+                "funding_mode": "prime",
+                "instrument_group": "prime_procurement",
+                "signed_obligation_total": 90,
+                "temporal_association": "overlaps_nsf_performance_period",
+                "source_transaction_ids": '["CONT_TX_1","CONT_TX_2"]',
+                "source_paths": '["transactions/P1.json"]',
+                "source_sha256s": '["primehash"]',
+            }
+        ]
+    )
+
+    payload = build_nsf_defense_lineage_payload(
+        direct,
+        awardees,
+        prime,
+        subawards,
+        screen,
+        evidence,
+        metadata={"analysis_date": "2026-08-03", "quality_gates_passed": True},
+        downloads={"evidence": "data/nsf_award_defense_evidence.csv"},
+    )
+
+    assert payload["schema_version"] == "2.0"
+    assert {node["kind"] for node in payload["nodes"]} == {
+        "agency",
+        "dod_award",
+        "legal_entity",
+        "nsf_award",
+        "technology",
+    }
+    assert payload["scope"]["verified_funding_edge_count"] == 1
+    assert payload["scope"]["candidate_edge_count"] == 2
+    entity = next(node for node in payload["nodes"] if node["kind"] == "legal_entity")
+    assert entity["nsf_awardee_status"] == "former"
+    assert entity["signed_dod_funding_total"] == 90
+    funding = next(
+        edge
+        for edge in payload["edges"]
+        if edge["relationship_type"] == "received_dod_prime_funding"
+    )
+    assert funding["signed_obligation_total"] == 90
+    assert funding["source_record_ids"] == ["CONT_TX_1", "CONT_TX_2"]
+    assert funding["match_method"] == "exact_uei"
+    association = next(
+        edge
+        for edge in payload["edges"]
+        if edge["relationship_type"] == "candidate_temporal_association"
+    )
+    assert association["specific_award_usage_status"] == "not_established"
+    assert association["temporal_association_is_causal_evidence"] is False
+    node_ids = {node["id"] for node in payload["nodes"]}
+    assert all(
+        edge["source"] in node_ids and edge["target"] in node_ids for edge in payload["edges"]
+    )

@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta
       name="description"
-      content="Explore identifier-verified SBIR awardee relationships to DoD prime families."
+      content="Explore direct NSF SBIR awards, legal entities, and observed DoD funding lineage."
     />
     <title>SBIR → DIB Network Explorer</title>
     <link rel="stylesheet" href="styles.css" />
@@ -13,20 +13,20 @@
   <body>
     <header class="app-header">
       <div>
-        <p class="eyebrow">Observed defense supply network</p>
-        <h1>SBIR <span aria-hidden="true">→</span><span class="sr-only">to</span> DIB Explorer</h1>
+        <p class="eyebrow">Evidence-gated funding lineage</p>
+        <h1>NSF SBIR <span aria-hidden="true">→</span><span class="sr-only">to</span> DIB Explorer</h1>
       </div>
       <div class="scope-badges" aria-label="Network scope">
-        <span>Verified identifiers</span>
-        <span>Tier 1 primes</span>
-        <span>Tier 2 awardees</span>
+        <span>Direct NSF awards</span>
+        <span>Signed DoD transactions</span>
+        <span>Evidence gated</span>
       </div>
     </header>
 
     <main>
       <section class="toolbar" aria-label="Graph controls">
         <form id="search-form" class="search-control" role="search">
-          <label for="node-search">Find a supplier or prime</label>
+          <label for="node-search">Find an entity, award, agency, or technology</label>
           <div class="search-row">
             <input
               id="node-search"
@@ -34,7 +34,7 @@
               type="search"
               list="node-options"
               autocomplete="off"
-              placeholder="Type an organization name"
+              placeholder="Type a name, award ID, or technology"
             />
             <datalist id="node-options"></datalist>
             <button type="submit">Find</button>
@@ -44,9 +44,9 @@
         <label class="select-control" for="minimum-years">
           Minimum persistence
           <select id="minimum-years">
-            <option value="1">1 fiscal year</option>
+            <option value="1" selected>1 fiscal year</option>
             <option value="2">2 fiscal years</option>
-            <option value="3" selected>3 fiscal years</option>
+            <option value="3">3 fiscal years</option>
             <option value="4">4 fiscal years</option>
             <option value="5">5 fiscal years</option>
           </select>
@@ -61,14 +61,34 @@
           </select>
         </label>
 
-        <div class="checkbox-group" aria-label="Supplier filters">
-          <label class="checkbox-control" for="nsf-only">
-            <input id="nsf-only" type="checkbox" />
-            NSF SBIR awardees only
+        <label class="select-control" for="nsf-status">
+          NSF awardee status
+          <select id="nsf-status">
+            <option value="all" selected>Current and former</option>
+            <option value="current">Current</option>
+            <option value="former">Former</option>
+            <option value="upcoming_only">Upcoming only</option>
+            <option value="indeterminate">Indeterminate</option>
+          </select>
+        </label>
+
+        <fieldset class="funding-filter-group">
+          <legend>Funding instruments</legend>
+          <label><input class="funding-filter" type="checkbox" value="prime_procurement" checked />Prime contracts</label>
+          <label><input class="funding-filter" type="checkbox" value="prime_assistance" checked />Prime assistance</label>
+          <label><input class="funding-filter" type="checkbox" value="prime_other_transaction" checked />Other transactions</label>
+          <label><input class="funding-filter" type="checkbox" value="contract_subaward" checked />Contract subawards</label>
+          <label><input class="funding-filter" type="checkbox" value="assistance_subaward" checked />Assistance subawards</label>
+        </fieldset>
+
+        <div class="checkbox-group" aria-label="Evidence filters">
+          <label class="checkbox-control" for="verified-only">
+            <input id="verified-only" type="checkbox" checked />
+            Verified relationships only
           </label>
           <label class="checkbox-control" for="critical-only">
             <input id="critical-only" type="checkbox" />
-            CET supply-chain screen only
+            CET review candidates only
           </label>
         </div>
 
@@ -78,20 +98,24 @@
       <section class="network-summary" aria-live="polite">
         <p id="visible-summary">Loading network…</p>
         <div class="legend" aria-label="Graph legend">
-          <span><i class="legend-node prime-node"></i>Tier 1 prime family</span>
-          <span><i class="legend-node supplier-node"></i>Tier 2 SBIR awardee</span>
-          <span><i class="legend-node nsf-node"></i>NSF SBIR awardee</span>
-          <span><i class="legend-node critical-node"></i>CET supply-chain review candidate</span>
-          <span><i class="legend-line"></i>Observed subcontract relationship</span>
+          <span><i class="legend-node entity-node"></i>Legal entity</span>
+          <span><i class="legend-node nsf-award-node"></i>NSF award</span>
+          <span><i class="legend-node dod-award-node"></i>DoD award</span>
+          <span><i class="legend-node agency-node"></i>Agency</span>
+          <span><i class="legend-node technology-node"></i>CET area</span>
+          <span><i class="legend-line"></i>Verified source relationship</span>
+          <span><i class="legend-line candidate-line"></i>Candidate association</span>
         </div>
       </section>
+
+      <nav id="download-links" class="download-links" aria-label="Download evidence tables"></nav>
 
       <section class="workspace">
         <div id="graph-shell" class="graph-shell">
           <canvas
             id="network-canvas"
             role="img"
-            aria-label="Interactive network graph of SBIR awardees and DoD prime families"
+            aria-label="Interactive graph of NSF awards, legal entities, and DoD funding"
           ></canvas>
           <div id="graph-tooltip" class="graph-tooltip" hidden></div>
           <div id="graph-message" class="graph-message" hidden></div>
@@ -103,8 +127,8 @@
             <p class="eyebrow">Relationship review</p>
             <h2>Select an organization</h2>
             <p>
-              Choose a node to inspect observed amounts, persistence, customer exposure,
-              NSF award history, and neighboring organizations.
+              Choose a node to inspect source identifiers, signed amounts, match confidence,
+              evidence limits, and neighboring records.
             </p>
           </div>
           <div id="selected-detail" hidden>
@@ -118,7 +142,7 @@
             <p id="detail-id" class="organization-id"></p>
             <dl id="detail-metrics" class="detail-metrics"></dl>
             <div id="screening-block" class="screening-block" hidden>
-              <h3>Supplier evidence screens</h3>
+              <h3>Evidence and interpretation</h3>
               <p id="screening-status"></p>
             </div>
             <h3>Observed relationships</h3>
@@ -130,7 +154,7 @@
       <section class="guardrail" aria-label="Interpretation guardrail">
         <strong>Interpretation boundary:</strong>
         <span id="guardrail-text">
-          A reported subcontract is an observed relationship, not proof of dependency.
+          Observed DoD funding is not proof that a specific NSF-funded capability was used.
         </span>
       </section>
     </main>

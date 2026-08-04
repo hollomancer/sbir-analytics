@@ -258,10 +258,10 @@ def fetch_nsf_award_snapshots(
     directory.mkdir(parents=True, exist_ok=True)
     manifest_path = directory / "manifest.json"
     if manifest_path.exists():
-        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
-        if manifest.get("requested_award_ids") != identifiers:
+        existing_manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        if existing_manifest.get("requested_award_ids") != identifiers:
             raise FileExistsError("NSF snapshot manifest exists for a different identifier set")
-        return manifest
+        return existing_manifest
 
     active_client = client or NSFAwardAPIClient()
     owned_client = client is None
@@ -458,7 +458,8 @@ def normalize_nsf_award_record(
     award_id = normalize_nsf_award_id(record.get("id") if api else record.get("awd_id"))
     if award_id is None:
         raise ValueError(f"direct NSF record has no usable award id: {source_path}")
-    institution = record.get("inst") if isinstance(record.get("inst"), dict) else {}
+    raw_institution = record.get("inst")
+    institution: dict[str, Any] = raw_institution if isinstance(raw_institution, dict) else {}
     title = _clean_text(record.get("title") if api else record.get("awd_titl_txt"))
     program, program_name = _program(record, title)
     return {

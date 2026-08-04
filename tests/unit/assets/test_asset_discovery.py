@@ -25,6 +25,7 @@ def test_iter_asset_modules_discovers_expected_packages():
     assert "sbir_analytics.assets.phase_iii_census.assets" in module_names
     assert "sbir_analytics.assets.uspto.extraction" in module_names
     assert "sbir_analytics.assets.transition.detections" in module_names
+    assert "sbir_analytics.assets.nsf_defense_lineage" in module_names
     # Jobs/sensors should be excluded
     assert "sbir_analytics.assets.jobs.transition_job" not in module_names
     assert all(not name.startswith("sbir_analytics.assets.sensors") for name in module_names)
@@ -42,6 +43,7 @@ def test_iter_job_modules_discovers_job_packages():
     module_names = {module.__name__ for module in modules}
     assert "sbir_analytics.assets.jobs.transition_job" in module_names
     assert "sbir_analytics.assets.jobs.fiscal_returns_job" in module_names
+    assert "sbir_analytics.assets.jobs.nsf_defense_lineage_job" in module_names
 
 
 def test_iter_job_modules_skips_heavy_jobs_when_disabled(monkeypatch):
@@ -68,6 +70,7 @@ def test_iter_public_jobs_returns_job_definitions():
     assert jobs, "Auto-discovery should return registered jobs"
     assert all(isinstance(job, JobDefinition | UnresolvedAssetJobDefinition) for job in jobs)
     assert any(job.name == "transition_full_job" for job in jobs)
+    assert any(job.name == "nsf_defense_lineage_refresh_job" for job in jobs)
 
 
 def test_iter_public_sensors_returns_sensor_definitions():
@@ -84,6 +87,16 @@ from dagster import Definitions
 import sbir_analytics.definitions as definitions
 
 Definitions.validate_loadable(definitions.defs)
+
+
+def test_nsf_defense_lineage_schedule_is_discovered_but_stopped_by_default():
+    schedule = next(
+        item
+        for item in definitions.schedules
+        if item.name == "monthly_nsf_defense_lineage_refresh"
+    )
+
+    assert schedule.default_status.value == "STOPPED"
 blocked = (
     "sbir_analytics.assets.cet",
     "sbir_analytics.assets.fiscal_assets",

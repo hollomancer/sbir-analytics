@@ -6,11 +6,17 @@
   --text: light-dark(#16202a, #edf3f7);
   --muted: light-dark(#5a6975, #9dabb6);
   --border: light-dark(#d9e0e5, #2b3945);
-  --prime: light-dark(#155e75, #38bdf8);
+  --agency: light-dark(#334155, #cbd5e1);
+  --nsf-award: light-dark(#6d28d9, #c4b5fd);
+  --technology: light-dark(#047857, #6ee7b7);
+  --entity: light-dark(#a14c12, #f59e0b);
+  --dod-award: light-dark(#155e75, #38bdf8);
+  --prime: var(--dod-award);
   --prime-soft: light-dark(#d9f0f4, #123746);
-  --supplier: light-dark(#a14c12, #f59e0b);
+  --supplier: var(--entity);
   --supplier-soft: light-dark(#fae8d5, #422a13);
   --edge: light-dark(#788994, #718493);
+  --candidate: light-dark(#b45309, #fbbf24);
   --accent: light-dark(#123f56, #d6efff);
   --accent-text: light-dark(#ffffff, #0a1c26);
   --focus: light-dark(#6d28d9, #c4b5fd);
@@ -139,7 +145,7 @@ main {
 
 .toolbar {
   display: grid;
-  grid-template-columns: minmax(260px, 1.8fr) minmax(150px, 0.8fr) minmax(150px, 0.8fr) auto auto;
+  grid-template-columns: minmax(250px, 1.6fr) repeat(3, minmax(145px, 0.7fr)) minmax(190px, 1fr) auto auto;
   align-items: end;
   gap: 0.8rem;
 }
@@ -162,6 +168,40 @@ main {
   font-size: 0.78rem;
   font-weight: 650;
   white-space: nowrap;
+}
+
+.funding-filter-group {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.25rem 0.65rem;
+  min-width: 190px;
+  margin: 0;
+  padding: 0.45rem 0.6rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.funding-filter-group legend {
+  padding: 0 0.2rem;
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 650;
+}
+
+.funding-filter-group label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  color: var(--muted);
+  font-size: 0.68rem;
+  white-space: nowrap;
+}
+
+.funding-filter-group input {
+  width: 0.9rem;
+  min-height: 0.9rem;
+  margin: 0;
+  accent-color: var(--dod-award);
 }
 
 .checkbox-group {
@@ -220,14 +260,30 @@ select {
   height: 11px;
 }
 
-.prime-node {
+.prime-node,
+.dod-award-node {
   border-radius: 3px;
-  background: var(--prime);
+  background: var(--dod-award);
 }
 
-.supplier-node {
+.supplier-node,
+.entity-node {
   border-radius: 50%;
-  background: var(--supplier);
+  background: var(--entity);
+}
+
+.nsf-award-node {
+  border-radius: 4px;
+  background: var(--nsf-award);
+}
+
+.agency-node {
+  background: var(--agency);
+}
+
+.technology-node {
+  background: var(--technology);
+  transform: rotate(45deg);
 }
 
 .nsf-node {
@@ -248,6 +304,39 @@ select {
   border-top: 2px solid var(--edge);
 }
 
+.candidate-line {
+  border-top-color: var(--candidate);
+  border-top-style: dashed;
+}
+
+.download-links {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.45rem 0.75rem;
+  margin: 0 0 0.65rem;
+  color: var(--muted);
+  font-size: 0.76rem;
+}
+
+.download-links strong {
+  color: var(--text);
+}
+
+.download-links a {
+  color: var(--accent);
+  text-underline-offset: 0.2em;
+}
+
+.download-filtered-button {
+  min-height: 30px;
+  padding: 0.3rem 0.55rem;
+  border-color: var(--border);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 0.75rem;
+}
+
 .workspace {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(280px, 340px);
@@ -265,8 +354,8 @@ select {
   min-height: 650px;
   overflow: hidden;
   background:
-    radial-gradient(circle at 20% 50%, var(--prime-soft), transparent 35%),
-    radial-gradient(circle at 80% 50%, var(--supplier-soft), transparent 35%),
+    radial-gradient(circle at 18% 50%, var(--prime-soft), transparent 32%),
+    radial-gradient(circle at 68% 50%, var(--supplier-soft), transparent 34%),
     var(--surface);
 }
 
@@ -420,6 +509,11 @@ select {
   color: var(--accent);
 }
 
+.relationship-button.candidate {
+  border-left: 3px dashed var(--candidate);
+  padding-left: 0.45rem;
+}
+
 .relationship-name {
   overflow: hidden;
   font-size: 0.8rem;
@@ -467,6 +561,10 @@ select {
   }
 
   .search-control {
+    grid-column: 1 / -1;
+  }
+
+  .funding-filter-group {
     grid-column: 1 / -1;
   }
 

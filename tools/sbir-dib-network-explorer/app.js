@@ -9,8 +9,10 @@
   const searchOptions = document.getElementById("node-options");
   const minimumYears = document.getElementById("minimum-years");
   const graphDensity = document.getElementById("graph-density");
-  const nsfOnly = document.getElementById("nsf-only");
+  const nsfStatus = document.getElementById("nsf-status");
+  const verifiedOnly = document.getElementById("verified-only");
   const criticalOnly = document.getElementById("critical-only");
+  const fundingFilters = [...document.querySelectorAll(".funding-filter")];
   const resetButton = document.getElementById("reset-view");
   const summary = document.getElementById("visible-summary");
   const tooltip = document.getElementById("graph-tooltip");
@@ -26,6 +28,7 @@
   const relationshipList = document.getElementById("relationship-list");
   const focusButton = document.getElementById("focus-node");
   const guardrailText = document.getElementById("guardrail-text");
+  const downloadLinks = document.getElementById("download-links");
 
   const state = {
     payload: null,
@@ -46,9 +49,19 @@
   };
 
   const densityLimits = {
-    overview: 320,
-    expanded: 1200,
+    overview: 500,
+    expanded: 1800,
     all: Number.POSITIVE_INFINITY,
+  };
+
+  const kindDefinitions = {
+    agency: { label: "Agency", column: 0.07, shape: "square", color: "agency" },
+    nsf_award: { label: "NSF award", column: 0.25, shape: "roundRect", color: "nsfAward" },
+    technology: { label: "CET area", column: 0.43, shape: "diamond", color: "technology" },
+    legal_entity: { label: "Legal entity", column: 0.61, shape: "circle", color: "entity" },
+    dod_award: { label: "DoD award", column: 0.86, shape: "roundRect", color: "dodAward" },
+    prime: { label: "Tier 1 prime family", column: 0.22, shape: "square", color: "dodAward" },
+    supplier: { label: "Tier 2 SBIR awardee", column: 0.78, shape: "circle", color: "entity" },
   };
 
   const numberFormatter = new Intl.NumberFormat("en-US");
@@ -71,13 +84,16 @@
 
   function colors() {
     return {
-      prime: resolveColor("--prime"),
-      supplier: resolveColor("--supplier"),
+      agency: resolveColor("--agency"),
+      nsfAward: resolveColor("--nsf-award"),
+      technology: resolveColor("--technology"),
+      entity: resolveColor("--entity"),
+      dodAward: resolveColor("--dod-award"),
       edge: resolveColor("--edge"),
+      candidate: resolveColor("--candidate"),
       text: resolveColor("--text"),
       surface: resolveColor("--surface"),
       focus: resolveColor("--focus"),
-      nsf: resolveColor("--nsf"),
       critical: resolveColor("--critical"),
     };
   }
@@ -88,35 +104,56 @@
     return moneyFormatter.format(Number(value || 0));
   }
 
-  function formatPercent(value) {
-    if (value === null || value === undefined || Number.isNaN(Number(value))) return "n/a";
-    return `${Math.round(Number(value) * 100)}%`;
+  function nodeKind(node) {
+    return kindDefinitions[node.kind] || {
+      label: String(node.kind || "Record").replaceAll("_", " "),
+      column: 0.5,
+      shape: "circle",
+      color: "entity",
+    };
   }
 
-  function screeningLabel(status) {
-    const labels = {
-      single_observed_prime: "Only one prime family is visible in this public-data slice.",
-      high_observed_customer_concentration:
-        "At least 75% of positive net observed amount is associated with one prime family.",
-      multiple_observed_primes: "Observed customer relationships are distributed across prime families.",
-      nonpositive_reported_total:
-        "No positive net edge remains after reported corrections in this slice.",
-      not_screened: "No supplier exposure screen is available.",
-    };
-    return labels[status] || String(status).replaceAll("_", " ");
+  function edgeAmount(edge) {
+    return Number(
+      edge.signed_obligation_total ??
+        edge.reported_subaward_amount ??
+        edge.award_amount ??
+        0,
+    );
+  }
+
+  function isCandidate(edge) {
+    return (
+      Boolean(edge.candidate) ||
+      String(edge.evidence_grade || "").includes("candidate") ||
+      edge.match_confidence === "candidate_name"
+    );
   }
 
   function edgeScore(edge) {
-    const amount = Math.max(0, Number(edge.reported_subaward_amount || 0));
-    return Number(edge.fiscal_years || 0) * 1_000_000 + Math.log10(amount + 1) * 10_000;
+    const relationshipWeights = {
+      received_dod_prime_funding: 7,
+      received_reported_dod_subaward: 7,
+      candidate_temporal_association: 5,
+      received_nsf_award: 4,
+      classified_as_cet: 3,
+      issued_nsf_award: 2,
+      dod_funding_authority: 1,
+    };
+    const relationshipWeight = relationshipWeights[edge.relationship_type] || 1;
+    const amount = Math.max(0, Math.abs(edgeAmount(edge)));
+    return (
+      relationshipWeight * 1_000_000_000 +
+      Number(edge.fiscal_years || 1) * 1_000_000 +
+      Math.log10(amount + 1) * 10_000
+    );
   }
 
   function buildIndexes(payload) {
     state.nodesById = new Map(payload.nodes.map((node) => [node.id, node]));
     state.adjacency = new Map(payload.nodes.map((node) => [node.id, []]));
     payload.edges.forEach((edge) => {
-      if (!state.adjacency.has(edge.source)) state.adjacency.set(edge.source, []);
-      if (!state.adjacency.has(edge.target)) state.adjacency.set(edge.target, []);
+      if (!state.nodesById.has(edge.source) || !state.nodesById.has(edge.target)) return;
       state.adjacency.get(edge.source).push(edge);
       state.adjacency.get(edge.target).push(edge);
     });
@@ -126,26 +163,48 @@
   function populateSearchOptions() {
     const fragment = document.createDocumentFragment();
     [...state.nodesById.values()]
-      .sort((a, b) => a.label.localeCompare(b.label))
+      .sort((a, b) => String(a.label).localeCompare(String(b.label)))
       .forEach((node) => {
         const option = document.createElement("option");
         option.value = node.label;
-        option.label = node.kind === "prime" ? "Tier 1 prime family" : "Tier 2 SBIR awardee";
+        option.label = nodeKind(node).label;
         fragment.appendChild(option);
       });
     searchOptions.replaceChildren(fragment);
   }
 
-  function filteredEdges() {
+  function selectedInstruments() {
+    return new Set(fundingFilters.filter((input) => input.checked).map((input) => input.value));
+  }
+
+  function edgePassesFilters(edge) {
     const threshold = Number(minimumYears.value);
-    const eligible = state.payload.edges.filter((edge) => {
+    if (Number(edge.fiscal_years || 1) < threshold) return false;
+    if (verifiedOnly.checked && isCandidate(edge)) return false;
+    const instruments = selectedInstruments();
+    if (edge.instrument_group && !instruments.has(edge.instrument_group)) return false;
+    if (
+      nsfStatus.value !== "all" &&
+      String(edge.nsf_awardee_status || "indeterminate") !== nsfStatus.value
+    ) {
+      return false;
+    }
+    if (criticalOnly.checked) {
       const source = state.nodesById.get(edge.source);
-      return (
-        Number(edge.fiscal_years) >= threshold &&
-        (!nsfOnly.checked || Boolean(source?.nsf_sbir_awardee)) &&
-        (!criticalOnly.checked || Boolean(source?.critical_supply_chain_review_candidate))
-      );
-    });
+      const target = state.nodesById.get(edge.target);
+      if (
+        !edge.critical_supply_chain_review_candidate &&
+        !source?.critical_supply_chain_review_candidate &&
+        !target?.critical_supply_chain_review_candidate
+      ) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  function filteredEdges() {
+    const eligible = state.payload.edges.filter(edgePassesFilters);
     if (state.focusedNodeId) {
       return eligible.filter(
         (edge) => edge.source === state.focusedNodeId || edge.target === state.focusedNodeId,
@@ -165,51 +224,45 @@
       ids.add(edge.source);
       ids.add(edge.target);
     });
-    if (state.focusedNodeId && state.nodesById.has(state.focusedNodeId)) ids.add(state.focusedNodeId);
+    if (state.focusedNodeId && state.nodesById.has(state.focusedNodeId)) {
+      ids.add(state.focusedNodeId);
+    }
     state.visibleNodes = [...ids].map((id) => state.nodesById.get(id)).filter(Boolean);
     layoutVisibleGraph();
     if (fit) fitGraph();
     updateSummary();
+    if (state.selectedNodeId) updateDetail(state.selectedNodeId);
     render();
   }
 
   function layoutVisibleGraph() {
-    const primes = state.visibleNodes.filter((node) => node.kind === "prime");
-    const suppliers = state.visibleNodes.filter((node) => node.kind === "supplier");
     const degree = new Map(state.visibleNodes.map((node) => [node.id, 0]));
     state.visibleEdges.forEach((edge) => {
       degree.set(edge.source, (degree.get(edge.source) || 0) + 1);
       degree.set(edge.target, (degree.get(edge.target) || 0) + 1);
     });
-    primes.sort(
-      (a, b) =>
-        (degree.get(b.id) || 0) - (degree.get(a.id) || 0) ||
-        Number(b.reported_subaward_amount || 0) - Number(a.reported_subaward_amount || 0),
-    );
-    const primeOrder = new Map(primes.map((node, index) => [node.id, index]));
-    const supplierPrimeOrders = new Map(suppliers.map((node) => [node.id, []]));
-    state.visibleEdges.forEach((edge) => {
-      const orders = supplierPrimeOrders.get(edge.source);
-      if (orders) orders.push(primeOrder.get(edge.target) || 0);
+    const groups = new Map();
+    state.visibleNodes.forEach((node) => {
+      if (!groups.has(node.kind)) groups.set(node.kind, []);
+      groups.get(node.kind).push(node);
     });
-    const barycenter = (node) => {
-      const orders = supplierPrimeOrders.get(node.id) || [];
-      if (!orders.length) return Number.MAX_SAFE_INTEGER;
-      return orders.reduce((total, order) => total + order, 0) / orders.length;
-    };
-    suppliers.sort((a, b) => {
-      return barycenter(a) - barycenter(b) || (degree.get(b.id) || 0) - (degree.get(a.id) || 0);
+    groups.forEach((nodes) => {
+      nodes.sort(
+        (a, b) =>
+          (degree.get(b.id) || 0) - (degree.get(a.id) || 0) ||
+          String(a.label).localeCompare(String(b.label)),
+      );
     });
-
-    const largestTier = Math.max(primes.length, suppliers.length, 1);
-    const spacing = largestTier > 800 ? 7 : largestTier > 300 ? 10 : largestTier > 100 ? 14 : 24;
-    state.worldWidth = Math.max(state.width, 960);
-    state.worldHeight = Math.max(state.height, Math.min(9200, 100 + largestTier * spacing));
-
-    const placeTier = (nodes, x) => {
-      const available = state.worldHeight - 90;
+    const largestColumn = Math.max(1, ...[...groups.values()].map((nodes) => nodes.length));
+    const spacing =
+      largestColumn > 800 ? 8 : largestColumn > 300 ? 11 : largestColumn > 100 ? 16 : 28;
+    state.worldWidth = Math.max(state.width, state.payload.schema_version === "2.0" ? 1480 : 980);
+    state.worldHeight = Math.max(state.height, Math.min(11000, 120 + largestColumn * spacing));
+    groups.forEach((nodes, kind) => {
+      const x = state.worldWidth * nodeKind({ kind }).column;
+      const available = state.worldHeight - 100;
       nodes.forEach((node, index) => {
-        const y = 45 + ((index + 0.5) / Math.max(nodes.length, 1)) * available;
+        const y = 50 + ((index + 0.5) / Math.max(nodes.length, 1)) * available;
         const previous = state.positions.get(node.id);
         state.positions.set(node.id, {
           x: previous?.pinned ? previous.x : x,
@@ -217,9 +270,7 @@
           pinned: previous?.pinned || false,
         });
       });
-    };
-    placeTier(primes, state.worldWidth * 0.22);
-    placeTier(suppliers, state.worldWidth * 0.78);
+    });
   }
 
   function fitGraph() {
@@ -229,7 +280,7 @@
     }
     const padding = 42;
     const scale = Math.min(
-      1.2,
+      1.15,
       (state.width - padding * 2) / state.worldWidth,
       (state.height - padding * 2) / state.worldHeight,
     );
@@ -237,13 +288,6 @@
       scale,
       x: (state.width - state.worldWidth * scale) / 2,
       y: (state.height - state.worldHeight * scale) / 2,
-    };
-  }
-
-  function worldToScreen(position) {
-    return {
-      x: position.x * state.transform.scale + state.transform.x,
-      y: position.y * state.transform.scale + state.transform.y,
     };
   }
 
@@ -256,7 +300,26 @@
 
   function nodeRadius(node) {
     const degree = state.adjacency.get(node.id)?.length || 1;
-    return (node.kind === "prime" ? 6.5 : 4.5) + Math.min(6, Math.log2(degree + 1));
+    const base = node.kind === "agency" ? 7 : node.kind.includes("award") ? 6 : 5;
+    return base + Math.min(6, Math.log2(degree + 1));
+  }
+
+  function drawNodeShape(node, position, radius) {
+    const definition = nodeKind(node);
+    context.beginPath();
+    if (definition.shape === "square") {
+      context.rect(position.x - radius, position.y - radius, radius * 2, radius * 2);
+    } else if (definition.shape === "roundRect") {
+      context.roundRect(position.x - radius * 1.2, position.y - radius, radius * 2.4, radius * 2, 3);
+    } else if (definition.shape === "diamond") {
+      context.moveTo(position.x, position.y - radius * 1.25);
+      context.lineTo(position.x + radius * 1.25, position.y);
+      context.lineTo(position.x, position.y + radius * 1.25);
+      context.lineTo(position.x - radius * 1.25, position.y);
+      context.closePath();
+    } else {
+      context.arc(position.x, position.y, radius, 0, Math.PI * 2);
+    }
   }
 
   function render() {
@@ -265,7 +328,6 @@
     context.save();
     context.translate(state.transform.x, state.transform.y);
     context.scale(state.transform.scale, state.transform.scale);
-
     const selectedNeighbors = new Set();
     if (state.selectedNodeId) {
       (state.adjacency.get(state.selectedNodeId) || []).forEach((edge) => {
@@ -273,25 +335,35 @@
         selectedNeighbors.add(edge.target);
       });
     }
-
     state.visibleEdges.forEach((edge) => {
       const source = state.positions.get(edge.source);
       const target = state.positions.get(edge.target);
       if (!source || !target) return;
       const highlighted =
-        !state.selectedNodeId || edge.source === state.selectedNodeId || edge.target === state.selectedNodeId;
+        !state.selectedNodeId ||
+        edge.source === state.selectedNodeId ||
+        edge.target === state.selectedNodeId;
+      const amount = Math.abs(edgeAmount(edge));
       context.beginPath();
       context.moveTo(source.x, source.y);
-      const bend = Math.min(90, Math.abs(target.y - source.y) * 0.18);
-      context.bezierCurveTo(source.x + 170, source.y + bend, target.x - 170, target.y - bend, target.x, target.y);
-      context.strokeStyle = palette.edge;
-      context.globalAlpha = highlighted ? 0.22 + Number(edge.fiscal_years) * 0.1 : 0.08;
-      context.lineWidth = Math.max(
-        0.7,
-        Math.min(4.5, 0.7 + Math.log10(Math.max(1, Number(edge.reported_subaward_amount))) / 3),
+      const horizontalDistance = target.x - source.x;
+      const controlOffset = Math.max(45, Math.abs(horizontalDistance) * 0.42);
+      const direction = Math.sign(horizontalDistance || 1);
+      context.bezierCurveTo(
+        source.x + controlOffset * direction,
+        source.y,
+        target.x - controlOffset * direction,
+        target.y,
+        target.x,
+        target.y,
       );
+      context.strokeStyle = isCandidate(edge) ? palette.candidate : palette.edge;
+      context.globalAlpha = highlighted ? 0.34 + Math.min(0.36, Number(edge.fiscal_years || 1) * 0.07) : 0.08;
+      context.lineWidth = Math.max(0.8, Math.min(5, 0.8 + Math.log10(amount + 1) / 3));
+      context.setLineDash(isCandidate(edge) ? [7, 5] : []);
       context.stroke();
     });
+    context.setLineDash([]);
     context.globalAlpha = 1;
 
     state.visibleNodes.forEach((node) => {
@@ -300,20 +372,14 @@
       const radius = nodeRadius(node);
       const selected = node.id === state.selectedNodeId;
       const related = !state.selectedNodeId || selected || selectedNeighbors.has(node.id);
+      const definition = nodeKind(node);
       context.globalAlpha = related ? 1 : 0.16;
-      context.beginPath();
-      if (node.kind === "prime") {
-        context.roundRect(position.x - radius, position.y - radius, radius * 2, radius * 2, 2.5);
-      } else {
-        context.arc(position.x, position.y, radius, 0, Math.PI * 2);
-      }
-      context.fillStyle = node.kind === "prime" ? palette.prime : palette.supplier;
+      drawNodeShape(node, position, radius);
+      context.fillStyle = palette[definition.color] || palette.entity;
       context.fill();
-      if (node.kind === "supplier" && node.nsf_sbir_awardee) {
-        context.strokeStyle = node.critical_supply_chain_review_candidate
-          ? palette.critical
-          : palette.nsf;
-        context.lineWidth = (node.critical_supply_chain_review_candidate ? 3 : 2) / state.transform.scale;
+      if (node.critical_supply_chain_review_candidate) {
+        context.strokeStyle = palette.critical;
+        context.lineWidth = 3 / state.transform.scale;
         context.stroke();
       }
       if (selected || node.id === state.hoveredNodeId) {
@@ -321,22 +387,23 @@
         context.lineWidth = 2.5 / state.transform.scale;
         context.stroke();
       }
-      if (
+      const labelEligible =
         selected ||
         node.id === state.hoveredNodeId ||
-        (node.kind === "prime" && state.visibleNodes.length < 130 && state.transform.scale > 0.5)
-      ) {
+        (state.visibleNodes.length < 150 && state.transform.scale > 0.42);
+      if (labelEligible) {
         context.globalAlpha = 1;
         context.fillStyle = palette.text;
         context.font = `${Math.max(10, 12 / state.transform.scale)}px Inter, system-ui, sans-serif`;
         context.textBaseline = "middle";
-        context.textAlign = node.kind === "prime" ? "right" : "left";
-        const offset = radius + 5 / state.transform.scale;
+        const placeLeft = definition.column > 0.72;
+        context.textAlign = placeLeft ? "right" : "left";
+        const offset = radius + 6 / state.transform.scale;
         context.fillText(
           node.label,
-          position.x + (node.kind === "prime" ? -offset : offset),
+          position.x + (placeLeft ? -offset : offset),
           position.y,
-          260 / state.transform.scale,
+          280 / state.transform.scale,
         );
       }
     });
@@ -352,7 +419,7 @@
       const position = state.positions.get(node.id);
       if (!position) return;
       const distance = Math.hypot(position.x - world.x, position.y - world.y);
-      const tolerance = nodeRadius(node) + 7 / state.transform.scale;
+      const tolerance = nodeRadius(node) * 1.4 + 7 / state.transform.scale;
       if (distance <= tolerance && distance < bestDistance) {
         match = node;
         bestDistance = distance;
@@ -362,16 +429,17 @@
   }
 
   function updateSummary() {
-    const primes = state.visibleNodes.filter((node) => node.kind === "prime").length;
-    const suppliers = state.visibleNodes.length - primes;
+    const counts = new Map();
+    state.visibleNodes.forEach((node) => counts.set(node.kind, (counts.get(node.kind) || 0) + 1));
+    const nodeSummary = [...counts.entries()]
+      .sort((a, b) => (kindDefinitions[a[0]]?.column || 0.5) - (kindDefinitions[b[0]]?.column || 0.5))
+      .map(([kind, count]) => `${numberFormatter.format(count)} ${nodeKind({ kind }).label.toLowerCase()}${count === 1 ? "" : "s"}`)
+      .join(" · ");
     const focus = state.focusedNodeId ? " · focused neighborhood" : "";
-    const nsf = nsfOnly.checked ? " · NSF SBIR awardees only" : "";
-    const critical = criticalOnly.checked ? " · CET supply-chain screen only" : "";
-    summary.textContent = `${numberFormatter.format(suppliers)} suppliers · ${numberFormatter.format(
-      primes,
-    )} prime families · ${numberFormatter.format(
+    const candidate = verifiedOnly.checked ? " · verified only" : " · candidates visible";
+    summary.textContent = `${nodeSummary || "0 nodes"} · ${numberFormatter.format(
       state.visibleEdges.length,
-    )} relationships${nsf}${critical}${focus}`;
+    )} relationships${candidate}${focus}`;
     if (!state.visibleEdges.length) {
       showMessage("No relationships meet the current filters.");
     } else {
@@ -398,6 +466,77 @@
     return wrapper;
   }
 
+  function detailValue(label, value) {
+    if (value === null || value === undefined || value === "") return "Unknown";
+    const normalizedLabel = label.toLocaleLowerCase();
+    if (
+      typeof value === "number" &&
+      ["amount", "funding", "obligation"].some((token) => normalizedLabel.includes(token))
+    ) {
+      return formatMoney(value);
+    }
+    if (typeof value === "number") return numberFormatter.format(value);
+    if (Array.isArray(value)) return value.join(", ");
+    return String(value).replaceAll("_", " ");
+  }
+
+  function updateDetail(nodeId) {
+    const node = state.nodesById.get(nodeId);
+    if (!node) return;
+    emptyDetail.hidden = true;
+    selectedDetail.hidden = false;
+    detailTier.textContent = nodeKind(node).label;
+    detailName.textContent = node.label;
+    detailId.textContent = node.record_id || node.organization_id || node.id;
+    const metrics = [metric("Visible relationships", numberFormatter.format(node.edge_count || 0))];
+    Object.entries(node.details || {}).forEach(([label, value]) => {
+      metrics.push(metric(label, detailValue(label, value)));
+    });
+    detailMetrics.replaceChildren(...metrics);
+
+    const interpretationParts = [];
+    if (node.match_method) interpretationParts.push(`Match method: ${node.match_method}.`);
+    if (node.match_confidence) interpretationParts.push(`Confidence: ${node.match_confidence}.`);
+    if (node.critical_supply_chain_review_candidate) {
+      interpretationParts.push("This record meets the CET review screen; criticality is not assessed.");
+    }
+    if (node.specific_award_usage_status === "not_established") {
+      interpretationParts.push("Use of a specific NSF-funded capability is not established.");
+    }
+    if (node.source_url) interpretationParts.push(`Direct source: ${node.source_url}`);
+    screeningBlock.hidden = interpretationParts.length === 0;
+    screeningStatus.textContent = interpretationParts.join(" ");
+
+    const visibleEdgeIds = new Set(state.visibleEdges.map((edge) => edge.id));
+    const relationships = (state.adjacency.get(nodeId) || [])
+      .filter((edge) => visibleEdgeIds.has(edge.id))
+      .slice(0, 20);
+    const fragment = document.createDocumentFragment();
+    relationships.forEach((edge) => {
+      const otherId = edge.source === nodeId ? edge.target : edge.source;
+      const other = state.nodesById.get(otherId);
+      if (!other) return;
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = `relationship-button${isCandidate(edge) ? " candidate" : ""}`;
+      button.addEventListener("click", () => selectNode(otherId, { ensureVisible: true }));
+      const name = document.createElement("span");
+      name.className = "relationship-name";
+      name.textContent = other.label;
+      const meta = document.createElement("span");
+      meta.className = "relationship-meta";
+      const amount = edgeAmount(edge);
+      const amountLabel = amount ? ` · ${formatMoney(amount)}` : "";
+      meta.textContent = `${edge.label || edge.relationship_type}${amountLabel}`;
+      const sourceIds = edge.source_record_ids || [];
+      if (sourceIds.length) button.title = `Source IDs: ${sourceIds.join(", ")}`;
+      button.append(name, meta);
+      fragment.appendChild(button);
+    });
+    relationshipList.replaceChildren(fragment);
+    focusButton.textContent = state.focusedNodeId === nodeId ? "Show overview" : "Focus neighborhood";
+  }
+
   function selectNode(nodeId, { ensureVisible = false } = {}) {
     const node = state.nodesById.get(nodeId);
     if (!node) return;
@@ -406,120 +545,30 @@
       rebuildVisibleGraph();
     }
     state.selectedNodeId = nodeId;
-    emptyDetail.hidden = true;
-    selectedDetail.hidden = false;
-    detailTier.textContent = node.kind === "prime" ? "Tier 1 prime family" : "Tier 2 SBIR awardee";
-    detailName.textContent = node.label;
-    detailId.textContent = node.organization_id;
-    const metrics = [
-      metric("Observed amount", formatMoney(node.reported_subaward_amount)),
-      metric("Relationships", numberFormatter.format(node.edge_count || 0)),
-      metric("Maximum persistence", `${node.max_fiscal_years || 0} FY`),
-      metric(
-        node.kind === "prime" ? "SBIR suppliers" : "Prime families",
-        numberFormatter.format(
-          node.kind === "prime" ? node.supplier_count || 0 : node.prime_family_count || 0,
-        ),
-      ),
-    ];
-    if (node.kind === "supplier" && node.nsf_sbir_awardee) {
-      metrics.push(
-        metric("NSF SBIR awards", numberFormatter.format(node.nsf_sbir_award_count || 0)),
-        metric("NSF SBIR funding", formatMoney(node.nsf_sbir_award_amount)),
-      );
-    }
-    if (node.kind === "supplier" && node.critical_supply_chain_review_candidate) {
-      metrics.push(
-        metric(
-          "CET-screened awards",
-          numberFormatter.format(node.critical_supply_chain_candidate_award_count || 0),
-        ),
-      );
-    }
-    detailMetrics.replaceChildren(...metrics);
-
-    if (node.kind === "supplier") {
-      screeningBlock.hidden = false;
-      const exposure = `${screeningLabel(node.screening_status)} HHI ${Number(
-        node.observed_customer_hhi || 0,
-      ).toFixed(2)}; top observed share ${formatPercent(node.top_observed_prime_share)}.`;
-      if (node.nsf_sbir_awardee) {
-        const topics = String(node.nsf_sbir_topic_codes || "")
-          .split("|")
-          .filter(Boolean)
-          .slice(0, 8)
-          .join(", ");
-        const firstYear = Number(node.nsf_sbir_first_award_year || 0);
-        const latestYear = Number(node.nsf_sbir_latest_award_year || 0);
-        const years = firstYear && latestYear ? ` (${firstYear}–${latestYear})` : "";
-        const topicText = topics ? ` Topics: ${topics}.` : "";
-        screeningStatus.textContent = `${exposure} NSF SBIR review candidate with ${numberFormatter.format(
-          node.nsf_sbir_award_count || 0,
-        )} award(s)${years}.${topicText} This does not establish supply-chain criticality.`;
-        if (node.critical_supply_chain_review_candidate) {
-          const cets = String(node.primary_cets || "").replaceAll("|", ", ");
-          const categories = String(node.dod_supply_chain_categories || "").replaceAll(
-            "|",
-            ", ",
-          );
-          screeningStatus.textContent += ` CET supply-chain screen: ${categories || "mapped"}; primary CET evidence: ${cets || "classified"}.`;
-        }
-      } else {
-        screeningStatus.textContent = exposure;
-      }
-    } else {
-      screeningBlock.hidden = true;
-    }
-
-    const relationships = (state.adjacency.get(nodeId) || [])
-      .filter((edge) => {
-        const source = state.nodesById.get(edge.source);
-        return (
-          (!nsfOnly.checked || Boolean(source?.nsf_sbir_awardee)) &&
-          (!criticalOnly.checked || Boolean(source?.critical_supply_chain_review_candidate))
-        );
-      })
-      .slice(0, 12);
-    const fragment = document.createDocumentFragment();
-    relationships.forEach((edge) => {
-      const otherId = edge.source === nodeId ? edge.target : edge.source;
-      const other = state.nodesById.get(otherId);
-      if (!other) return;
-      const button = document.createElement("button");
-      button.type = "button";
-      button.className = "relationship-button";
-      button.addEventListener("click", () => selectNode(otherId, { ensureVisible: true }));
-      const name = document.createElement("span");
-      name.className = "relationship-name";
-      name.textContent = other.label;
-      const meta = document.createElement("span");
-      meta.className = "relationship-meta";
-      meta.textContent = `${edge.fiscal_years} FY · ${formatMoney(edge.reported_subaward_amount)}`;
-      button.append(name, meta);
-      fragment.appendChild(button);
-    });
-    relationshipList.replaceChildren(fragment);
-    focusButton.textContent = state.focusedNodeId === nodeId ? "Show overview" : "Focus neighborhood";
+    updateDetail(nodeId);
     render();
   }
 
   function findNode(query) {
     const normalized = query.trim().toLocaleLowerCase();
     if (!normalized) return null;
-    const candidates = [...state.nodesById.values()]
-      .filter(
-        (node) =>
-          node.label.toLocaleLowerCase().includes(normalized) ||
-          node.organization_id.toLocaleLowerCase().includes(normalized),
-      )
-      .sort((a, b) => {
-        const aExact = a.label.toLocaleLowerCase() === normalized ? 1 : 0;
-        const bExact = b.label.toLocaleLowerCase() === normalized ? 1 : 0;
-        const aStarts = a.label.toLocaleLowerCase().startsWith(normalized) ? 1 : 0;
-        const bStarts = b.label.toLocaleLowerCase().startsWith(normalized) ? 1 : 0;
-        return bExact - aExact || bStarts - aStarts || (b.edge_count || 0) - (a.edge_count || 0);
-      });
-    return candidates[0] || null;
+    return (
+      [...state.nodesById.values()]
+        .filter((node) =>
+          [node.label, node.record_id, node.organization_id, node.id]
+            .filter(Boolean)
+            .some((value) => String(value).toLocaleLowerCase().includes(normalized)),
+        )
+        .sort((a, b) => {
+          const aLabel = String(a.label).toLocaleLowerCase();
+          const bLabel = String(b.label).toLocaleLowerCase();
+          const aExact = aLabel === normalized ? 1 : 0;
+          const bExact = bLabel === normalized ? 1 : 0;
+          const aStarts = aLabel.startsWith(normalized) ? 1 : 0;
+          const bStarts = bLabel.startsWith(normalized) ? 1 : 0;
+          return bExact - aExact || bStarts - aStarts || (b.edge_count || 0) - (a.edge_count || 0);
+        })[0] || null
+    );
   }
 
   function resetExplorer() {
@@ -530,7 +579,79 @@
     emptyDetail.hidden = false;
     selectedDetail.hidden = true;
     searchInput.value = "";
+    minimumYears.value = "1";
+    graphDensity.value = "overview";
+    nsfStatus.value = "all";
+    verifiedOnly.checked = true;
+    criticalOnly.checked = false;
+    fundingFilters.forEach((input) => {
+      input.checked = true;
+    });
     rebuildVisibleGraph();
+  }
+
+  function csvCell(value) {
+    const rendered =
+      value !== null && typeof value === "object" ? JSON.stringify(value) : String(value ?? "");
+    return `"${rendered.replaceAll('"', '""')}"`;
+  }
+
+  function downloadVisibleRelationships() {
+    const priority = [
+      "id",
+      "relationship_type",
+      "label",
+      "source",
+      "target",
+      "funding_mode",
+      "instrument_group",
+      "signed_obligation_total",
+      "fiscal_years",
+      "match_method",
+      "match_confidence",
+      "specific_award_usage_status",
+      "critical_supply_chain_status",
+      "source_record_ids",
+      "source_paths",
+      "source_sha256s",
+      "source_urls",
+    ];
+    const available = new Set(state.visibleEdges.flatMap((edge) => Object.keys(edge)));
+    const fields = [
+      ...priority.filter((field) => available.has(field)),
+      ...[...available].filter((field) => !priority.includes(field)).sort(),
+    ];
+    const rows = [fields.map(csvCell).join(",")];
+    state.visibleEdges.forEach((edge) => {
+      rows.push(fields.map((field) => csvCell(edge[field])).join(","));
+    });
+    const blob = new Blob([`${rows.join("\r\n")}\r\n`], { type: "text/csv;charset=utf-8" });
+    const href = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = href;
+    link.download = `nsf-dod-visible-relationships-${state.payload.analysis_date || "undated"}.csv`;
+    link.click();
+    window.setTimeout(() => URL.revokeObjectURL(href), 0);
+  }
+
+  function populateDownloads(downloads) {
+    const entries = Object.entries(downloads || {});
+    const label = document.createElement("strong");
+    label.textContent = "Download evidence:";
+    const links = entries.map(([name, href]) => {
+      const link = document.createElement("a");
+      link.href = href;
+      link.download = "";
+      link.textContent = name;
+      return link;
+    });
+    const filteredDownload = document.createElement("button");
+    filteredDownload.type = "button";
+    filteredDownload.className = "download-filtered-button";
+    filteredDownload.textContent = "Visible relationships CSV";
+    filteredDownload.addEventListener("click", downloadVisibleRelationships);
+    downloadLinks.replaceChildren(label, filteredDownload, ...links);
+    downloadLinks.hidden = false;
   }
 
   function pointerCoordinates(event) {
@@ -559,7 +680,8 @@
     if (state.pointer?.id === event.pointerId) {
       const dx = point.x - state.pointer.lastX;
       const dy = point.y - state.pointer.lastY;
-      state.pointer.moved ||= Math.hypot(point.x - state.pointer.startX, point.y - state.pointer.startY) > 3;
+      state.pointer.moved ||=
+        Math.hypot(point.x - state.pointer.startX, point.y - state.pointer.startY) > 3;
       if (state.pointer.nodeId) {
         const position = state.positions.get(state.pointer.nodeId);
         if (position) {
@@ -577,11 +699,10 @@
       render();
       return;
     }
-
     const node = nodeAt(point.x, point.y);
     state.hoveredNodeId = node?.id || null;
     if (node) {
-      tooltip.textContent = `${node.label} · ${node.kind === "prime" ? "Tier 1 prime" : "Tier 2 supplier"}`;
+      tooltip.textContent = `${node.label} · ${nodeKind(node).label}`;
       tooltip.style.left = `${Math.min(state.width - 270, Math.max(8, point.x + 12))}px`;
       tooltip.style.top = `${Math.max(8, point.y - 18)}px`;
       tooltip.hidden = false;
@@ -609,7 +730,6 @@
       render();
     }
   });
-
   canvas.addEventListener(
     "wheel",
     (event) => {
@@ -629,23 +749,22 @@
     event.preventDefault();
     const node = findNode(searchInput.value);
     if (!node) {
-      showMessage(`No supplier or prime matched “${searchInput.value.trim()}”.`);
+      showMessage(`No graph record matched “${searchInput.value.trim()}”.`);
       return;
     }
     hideMessage();
-    if (node.kind === "supplier" && !node.nsf_sbir_awardee) nsfOnly.checked = false;
-    if (node.kind === "supplier" && !node.critical_supply_chain_review_candidate) {
-      criticalOnly.checked = false;
+    if (node.kind === "legal_entity" && nsfStatus.value !== "all") {
+      nsfStatus.value = node.nsf_awardee_status;
     }
+    if (!node.critical_supply_chain_review_candidate) criticalOnly.checked = false;
     state.focusedNodeId = node.id;
     rebuildVisibleGraph();
     selectNode(node.id);
   });
 
-  minimumYears.addEventListener("change", () => rebuildVisibleGraph());
-  graphDensity.addEventListener("change", () => rebuildVisibleGraph());
-  nsfOnly.addEventListener("change", () => rebuildVisibleGraph());
-  criticalOnly.addEventListener("change", () => rebuildVisibleGraph());
+  [minimumYears, graphDensity, nsfStatus, verifiedOnly, criticalOnly, ...fundingFilters].forEach(
+    (control) => control.addEventListener("change", () => rebuildVisibleGraph()),
+  );
   resetButton.addEventListener("click", resetExplorer);
   focusButton.addEventListener("click", () => {
     if (!state.selectedNodeId) return;
@@ -678,6 +797,7 @@
       state.payload = payload;
       buildIndexes(payload);
       populateSearchOptions();
+      populateDownloads(payload.downloads);
       guardrailText.textContent = payload.guardrails?.[0] || guardrailText.textContent;
       rebuildVisibleGraph();
     } catch (error) {

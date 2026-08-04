@@ -241,8 +241,8 @@ def classify_nsf_award_status(
     """Classify one direct award from performance dates, never award year."""
 
     analysis = _analysis_timestamp(analysis_date)
-    start = pd.to_datetime(start_date, errors="coerce", utc=True)
-    end = pd.to_datetime(end_date, errors="coerce", utc=True)
+    start = pd.to_datetime(str(start_date), errors="coerce", utc=True)
+    end = pd.to_datetime(str(end_date), errors="coerce", utc=True)
     if pd.notna(start) and start > analysis:
         return NSFAwardPerformanceStatus.UPCOMING.value
     if pd.notna(end) and end < analysis:
@@ -324,7 +324,7 @@ def _organization(row: pd.Series) -> pd.Series:
 
 
 def _date_value(value: object) -> str | None:
-    parsed = pd.to_datetime(value, errors="coerce", utc=True)
+    parsed = pd.to_datetime(str(value), errors="coerce", utc=True)
     return None if pd.isna(parsed) else parsed.date().isoformat()
 
 
@@ -569,7 +569,7 @@ def reconcile_nsf_sbir_awards(
     matched_ids = set(reconciliation.loc[matched, "nsf_award_id"].dropna().astype(str))
     direct_only = direct.loc[~direct["nsf_award_id"].isin(matched_ids)].copy()
     if not direct_only.empty:
-        empty_baseline = pd.DataFrame(pd.NA, index=direct_only.index, columns=baseline.columns)
+        empty_baseline = pd.DataFrame(index=direct_only.index, columns=baseline.columns)
         rows = pd.concat(
             [empty_baseline.reset_index(drop=True), direct_only.reset_index(drop=True)], axis=1
         )
