@@ -37,9 +37,13 @@ permitted_claims:
     materialized from provenance-verified inputs, and the blocking one-factor check passed.
   - Within the exact-match common-support subset, the frozen criteria produce different
     full-set clearing proportions but substantially overlapping firm distributions.
+  - Under the frozen fixed-seed cross-firm completion-date placebo, the actual frame
+    exceeds the placebo frame on every complete-filter metric and in all six sensitivity
+    cells; this is descriptive falsification evidence, not labeled validation.
 limitations:
-  - Placebo and labeled-validation evidence is unresolved; no headline census cell,
-    undercount claim, or statutory Phase III interpretation is authorized.
+  - The materialized placebo is one non-uniform cyclic derangement, not an inferential
+    permutation distribution; labeled validation remains unresolved, so no headline
+    census cell, undercount claim, or statutory Phase III interpretation is authorized.
   - Negative-control inference is restricted to the frozen exact-match common-support
     subset and does not generalize to unmatched Phase II firms.
   - Exact UEI matching misses acquisitions, successors, and UEI changes.
