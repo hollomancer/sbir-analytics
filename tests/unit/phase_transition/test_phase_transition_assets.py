@@ -194,6 +194,21 @@ def test_prepare_phase_iii_rows_excludes_assistance_and_other_phases():
     assert df["action_date"].notna().all()
 
 
+@pytest.mark.parametrize(
+    ("research", "expected"),
+    [
+        ("SMALL BUSINESS INNOVATION RESEARCH PROGRAM PHASE II ACTION", "II"),
+        ("SMALL BUSINESS INNOVATION RESEARCH PROGRAM PHASE III ACTION", "III"),
+        ("SMALL TECHNOLOGY TRANSFER RESEARCH PROGRAM PHASE II", "II"),
+        ("SMALL TECHNOLOGY TRANSFER RESEARCH PROGRAM PHASE III", "III"),
+    ],
+)
+def test_classify_contract_phase_accepts_award_archive_descriptions(research, expected):
+    from sbir_analytics.assets.phase_transition.phase_ii import _classify_contract_phase
+
+    assert _classify_contract_phase(pd.Series({"research": research})) == expected
+
+
 def test_is_assistance_row_recognizes_usaspending_type_and_award_type_code():
     """`type` is 'C'/'D' for assistance; `award_type_code` carries the numeric codes."""
 

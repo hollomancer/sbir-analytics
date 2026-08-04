@@ -64,6 +64,13 @@ def test_dagster_execution_memory_belongs_to_code_server():
     assert "memory: 768M" in daemon
 
 
+def test_weekly_awards_report_schedule_gate_reaches_container():
+    compose = SERVER_COMPOSE.read_text()
+    variable = "SBIR_ETL__DAGSTER__SCHEDULES__WEEKLY_AWARDS_REPORT_ENABLED"
+
+    assert f"{variable}: ${{{variable}:-false}}" in compose
+
+
 def test_server_validate_config_does_not_expand_failure_path(tmp_path):
     env_file = tmp_path / ".env.server"
     env_file.write_text("# validation fixture\n")

@@ -31,6 +31,7 @@ def _check_data_freshness(source: DataSource, max_award_date: str | None, days: 
 
 def fetch_weekly_awards(
     days: int = 7,
+    as_of: datetime | None = None,
 ) -> tuple[list[dict], list[str], DataSource, SbirDuckDBExtractor, str]:
     """Load SBIR CSV and filter for awards in the past N days.
 
@@ -42,7 +43,9 @@ def fetch_weekly_awards(
     re-downloading and re-importing the ~376 MB CSV.
     """
     source = _resolve_csv_path()
-    cutoff_str = (datetime.now(UTC) - timedelta(days=days)).strftime("%Y-%m-%d")
+    as_of = as_of or datetime.now(UTC)
+    end_str = as_of.strftime("%Y-%m-%d")
+    cutoff_str = (as_of - timedelta(days=days)).strftime("%Y-%m-%d")
 
     extractor = SbirDuckDBExtractor(
         csv_path=source.path,
@@ -54,12 +57,16 @@ def fetch_weekly_awards(
     query = (
         f"SELECT * FROM {table} "
         f"WHERE \"Proposal Award Date\" >= '{cutoff_str}' "
+        f"AND \"Proposal Award Date\" <= '{end_str}' "
         f'ORDER BY "Proposal Award Date" DESC, '
         f'TRY_CAST("Award Amount" AS DOUBLE) DESC'
     )
 
     df = extractor.duckdb_client.execute_query_df(query)
-    print(f"Found {len(df)} awards since {cutoff_str} (DuckDB)", file=sys.stderr)
+    print(
+        f"Found {len(df)} awards from {cutoff_str} through {end_str} (DuckDB)",
+        file=sys.stderr,
+    )
     awards = df.fillna("").to_dict("records")
 
     # Get max date across the full dataset for freshness check
