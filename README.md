@@ -146,6 +146,13 @@ brings one up along with the supporting services. See
 > designed to run locally, but full end-to-end reproduction requires source-data
 > downloads, API credentials, and local services such as Neo4j.
 
+## Versioning
+
+The repository follows [Semantic Versioning 2.0.0](https://semver.org/) with synchronized
+versions for the root ETL project and the three packages under `packages/`. Git release tags use
+the form `vMAJOR.MINOR.PATCH`. See the [versioning and release policy](docs/steering/versioning.md)
+for compatibility boundaries, increment rules, and the release checklist.
+
 ## Limitations
 
 - **Entity resolution is probabilistic.** Cross-dataset matches use fuzzy logic

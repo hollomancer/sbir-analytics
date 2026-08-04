@@ -39,6 +39,7 @@ Use these before quoting a result or starting a feature from an old spec.
 | Developer navigation | [Development index](development/README.md) |
 | Containers | [Docker development](development/docker.md) |
 | Tests and CI | [Testing index](testing/index.md) |
+| Versioning and releases | [Versioning policy](steering/versioning.md) |
 | Performance measurement | [Performance runbook](performance.md) |
 | Deployment navigation | [Deployment index](deployment/README.md) |
 | Live Mac mini operations | [Mac mini runbook](deployment/mac-mini-server.md) |
