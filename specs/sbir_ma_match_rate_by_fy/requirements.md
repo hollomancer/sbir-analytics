@@ -1,6 +1,6 @@
 # Requirements: SBIR M&A Match Rate by Fiscal Year
 
-**Target epistemic tier:** `evidence`
+**Target epistemic tier:** `pipelines`
 
 > **Status:** Gated backlog — analysis-only spec, not yet implemented. Start
 > only when FY match-rate reporting is requested.

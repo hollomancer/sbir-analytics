@@ -1,6 +1,6 @@
 # Phase III Undercount Extension — Requirements
 
-**Target epistemic tier:** `evidence`
+**Target epistemic tier:** `pipelines`
 
 > **Status:** Draft spec. Builds on existing undercount work (M0a + 3-source
 > capture-recapture) and the coverage-expansion sources (#485). Answers the north-star

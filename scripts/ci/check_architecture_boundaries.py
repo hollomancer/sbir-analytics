@@ -123,30 +123,87 @@ def _is_subprocess_call(node: ast.Call) -> bool:
     )
 
 
-def _path_literal_parts(node: ast.AST) -> list[str]:
+def _literal_assignments(tree: ast.AST) -> dict[str, ast.AST]:
+    """Map single-target assigned names to their value expressions.
+
+    Callers routinely build the command in a local before spawning it
+    (``cmd = [sys.executable, str(script)]``; ``subprocess.run(cmd)``), so
+    inspecting only the call arguments would miss the path. A name assigned
+    more than once is dropped rather than guessed at.
+    """
+
+    assignments: dict[str, ast.AST] = {}
+    shadowed: set[str] = set()
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Assign) or len(node.targets) != 1:
+            continue
+        target = node.targets[0]
+        if not isinstance(target, ast.Name):
+            continue
+        if target.id in assignments:
+            shadowed.add(target.id)
+            continue
+        assignments[target.id] = node.value
+    for name in shadowed:
+        del assignments[name]
+    return assignments
+
+
+def _path_literal_parts(
+    node: ast.AST,
+    assignments: dict[str, ast.AST] | None = None,
+    _seen: frozenset[str] = frozenset(),
+) -> list[str]:
     """Return literal pieces of a ``Path`` division or command argument."""
+
+    def recurse(child: ast.AST, seen: frozenset[str] = _seen) -> list[str]:
+        return _path_literal_parts(child, assignments, seen)
 
     if isinstance(node, ast.Constant) and isinstance(node.value, str):
         return [node.value]
+    if isinstance(node, ast.Name) and assignments is not None:
+        if node.id in _seen or node.id not in assignments:
+            return []
+        return _path_literal_parts(assignments[node.id], assignments, _seen | {node.id})
     if isinstance(node, ast.BinOp) and isinstance(node.op, ast.Div):
-        return _path_literal_parts(node.left) + _path_literal_parts(node.right)
+        return recurse(node.left) + recurse(node.right)
     if isinstance(node, (ast.List, ast.Tuple)):
         parts: list[str] = []
         for element in node.elts:
-            parts.extend(_path_literal_parts(element))
+            parts.extend(recurse(element))
         return parts
     if isinstance(node, ast.Call):
         parts: list[str] = []
         for argument in node.args:
-            parts.extend(_path_literal_parts(argument))
+            parts.extend(recurse(argument))
         return parts
     return []
 
 
-def _script_target(node: ast.AST) -> str | None:
+def _argv_elements(node: ast.AST, assignments: dict[str, ast.AST]) -> list[ast.AST]:
+    """Split a command argument into the expressions worth testing on their own.
+
+    An argv list is one argument but many paths. Flattening it would join the
+    script with the flags that follow it (``scripts/x.py/--area/q``), so each
+    element is tested separately; a bare string command is tested whole.
+    """
+
+    resolved = node
+    seen: set[str] = set()
+    while isinstance(resolved, ast.Name) and resolved.id in assignments:
+        if resolved.id in seen:
+            break
+        seen.add(resolved.id)
+        resolved = assignments[resolved.id]
+    if isinstance(resolved, (ast.List, ast.Tuple)):
+        return list(resolved.elts)
+    return [resolved]
+
+
+def _script_target(node: ast.AST, assignments: dict[str, ast.AST] | None = None) -> str | None:
     """Normalize a literal path expression to a repository ``scripts/*.py`` target."""
 
-    pieces = _path_literal_parts(node)
+    pieces = _path_literal_parts(node, assignments)
     for piece in pieces:
         normalized = piece.replace("\\", "/").strip()
         marker = normalized.find("scripts/")
@@ -162,16 +219,26 @@ def _script_target(node: ast.AST) -> str | None:
 
 
 def executed_script_paths(path: Path) -> list[tuple[str, int]]:
-    """Extract literal repository Python scripts invoked through ``subprocess``."""
+    """Extract literal repository Python scripts invoked through ``subprocess``.
+
+    Only the arguments of a ``subprocess`` call are inspected, resolved through
+    single-assignment locals. Detection stays literal: a path assembled with
+    ``os.path.join``, rebound more than once, or returned from a helper is not
+    visible to static analysis. This accepted limit mirrors the import guard;
+    document any such pattern in the transitional allowlist so it is not
+    mistaken for a gap in the check.
+    """
 
     tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
-    if not any(isinstance(node, ast.Call) and _is_subprocess_call(node) for node in ast.walk(tree)):
-        return []
-
+    assignments = _literal_assignments(tree)
     targets: dict[str, int] = {}
     for node in ast.walk(tree):
-        if target := _script_target(node):
-            targets.setdefault(target, node.lineno)
+        if not (isinstance(node, ast.Call) and _is_subprocess_call(node)):
+            continue
+        for argument in (*node.args, *(keyword.value for keyword in node.keywords)):
+            for element in _argv_elements(argument, assignments):
+                if target := _script_target(element, assignments):
+                    targets.setdefault(target, node.lineno)
     return sorted(targets.items(), key=lambda item: (item[1], item[0]))
 
 
