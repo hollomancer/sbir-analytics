@@ -1,5 +1,7 @@
 # Requirements — State & Local Tax Rate Reference Data
 
+**Target epistemic tier:** `pipelines`
+
 > **Status:** Requirements 1–3 implemented across PRs #402, #400, and the follow-up
 > refresh CLI PR. The CSV reference file, CSV-backed `StateRateProvider`, BEA NIPA
 > parquet cache, and `uv run refresh-state-rates` are in place. Remaining fiscal-tax

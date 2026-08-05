@@ -1,7 +1,7 @@
 """Tests for the source-download jobs that replace data-refresh.yml.
 
 Verifies the jobs are discoverable, that their schedules inherit the crons the
-workflow used, and that they default to STOPPED per the Mac mini runbook.
+workflow used, and that they default to STOPPED per the self-hosted server runbook.
 """
 
 import pytest

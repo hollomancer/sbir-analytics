@@ -3,10 +3,10 @@
 Automation keeps the canonical SBIR.gov awards CSV current on the server's data
 root, which downstream pipelines consume.
 
-This runs on the Mac mini, not GitHub Actions. Actions runners cannot reach the
+This runs on the self-hosted server, not GitHub Actions. Actions runners cannot reach the
 tailnet-only host, so the machine that stores the data is the machine that
 fetches it. See the
-[Mac mini runbook](../deployment/mac-mini-server.md#source-data-downloads).
+[self-hosted server runbook](../deployment/self-hosted-server.md#source-data-downloads).
 
 ## Job summary
 
@@ -33,7 +33,7 @@ fetches it. See the
 ```
 
 `<data_root>` comes from `SBIR_ETL__PATHS__DATA_ROOT`, which the server profile
-points at the SSD.
+points at persistent server storage.
 
 The `history/` series matters: SBIR.gov serves only the current snapshot, so a
 past vintage exists nowhere else once upstream overwrites it. Do not prune it.
@@ -55,7 +55,7 @@ uv run dagster job execute -m sbir_analytics.definitions -j sbir_awards_download
 
 # Or invoke the script directly
 uv run python scripts/data/download_sbir.py \
-  --dest /Volumes/SSDmini/sbir-analytics/data/raw/sbir
+  --dest "$SERVER_DATA_DIR/raw/sbir"
 ```
 
 ### Run validation locally (optional)
@@ -95,7 +95,7 @@ been reviewed.
 
 ## Related
 
-- [Mac mini runbook](../deployment/mac-mini-server.md#source-data-downloads) —
+- [self-hosted server runbook](../deployment/self-hosted-server.md#source-data-downloads) —
   all four source-download schedules and their prerequisites
 - [AWS decommission plan](../deployment/aws-decommission-plan.md) — why this
   moved off GitHub Actions and S3

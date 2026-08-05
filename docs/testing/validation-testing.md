@@ -77,7 +77,7 @@ option list.
 
 `--load-neo4j` is write-producing and requires a reachable Neo4j instance and valid credentials.
 Do not point an exploratory validation run at the live database. Before any live operation, use the
-[Mac mini runbook](../deployment/mac-mini-server.md#live-instance-on-this-mac-mini).
+[self-hosted server runbook](../deployment/self-hosted-server.md#live-instance-on-the-server-host).
 
 ## Automated coverage
 

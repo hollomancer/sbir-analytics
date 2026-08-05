@@ -49,7 +49,7 @@ you intend to use strategy 2 or 3. SAM.gov keys expire periodically, commonly ar
 authentication failures on those fallbacks should prompt key rotation rather than blind retries.
 
 The live key belongs in `.env.server`, never committed YAML. Before running the live download, read
-the [Mac mini runbook](../deployment/mac-mini-server.md#source-data-downloads).
+the [self-hosted server runbook](../deployment/self-hosted-server.md#source-data-downloads).
 
 ## Dagster job and schedule
 

@@ -1,5 +1,7 @@
 # Requirements: SBIR M&A Match Rate by Fiscal Year
 
+**Target epistemic tier:** `evidence`
+
 > **Status:** Gated backlog — analysis-only spec, not yet implemented. Start
 > only when FY match-rate reporting is requested.
 > Supports inventory question **F2** (M&A exit rate by vintage) in [docs/research-questions.md](../../docs/research-questions.md).

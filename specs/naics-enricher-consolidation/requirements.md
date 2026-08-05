@@ -1,5 +1,7 @@
 # Requirements — NAICS Enricher Consolidation
 
+**Target epistemic tier:** `pipelines`
+
 > **Status:** Largely complete. Shim deletion, canonical mapper consolidation,
 > strategy registration, and Ruff/mypy verification are done. Remaining work is
 > documentation cleanup and deciding whether obsolete audit/golden-file tasks

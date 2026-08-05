@@ -11,8 +11,8 @@ No SBIR/STTR award data is committed to this repository. Full reproduction requi
 the public source datasets, supplying API credentials where required, and provisioning local disk
 and services such as Neo4j.
 
-The live data plane runs on the Mac mini. Source-download jobs write to the local data root on the
-attached SSD; GitHub Actions is CI only. All source schedules default to stopped until a manual run
+The live data plane runs on the self-hosted server. Source-download jobs write to
+the local data root on persistent storage; GitHub Actions is CI only. All source schedules default to stopped until a manual run
 succeeds on that host.
 
 ## Primary sources
@@ -26,12 +26,13 @@ succeeds on that host.
 
 Schedule times are defaults from `sbir_analytics/definitions.py` and can be overridden with the
 corresponding `SBIR_ETL__DAGSTER__SCHEDULES__...` variables. Follow the
-[Mac mini runbook](../deployment/mac-mini-server.md#source-data-downloads) before enabling or
+[self-hosted server runbook](../deployment/self-hosted-server.md#source-data-downloads) before enabling or
 triggering any live download.
 
 ## Storage layout
 
-The root comes from `SBIR_ETL__PATHS__DATA_ROOT`; the live profile maps it to the SSD.
+The root comes from `SBIR_ETL__PATHS__DATA_ROOT`; the live profile maps it to
+persistent host storage.
 
 ```text
 <data_root>/

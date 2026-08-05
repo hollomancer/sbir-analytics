@@ -1,5 +1,7 @@
 # Phase III match benchmark: requirements
 
+**Target epistemic tier:** `evidence`
+
 Status: **research protocol / draft implementation**. Parent issue: #448.
 Foundation: PR #449 and issue #447. Production source lifecycle: issue #442.
 

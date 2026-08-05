@@ -99,13 +99,14 @@ compute it.
 
 ## Deployment boundary
 
-The only live data plane is the Mac mini checkout at
-`/Users/conradhollomon/projects/sbir-analytics-server`. Docker Compose runs Dagster and Neo4j;
-persistent data lives under `/Volumes/SSDmini/sbir-analytics`; ingress is Tailscale Serve only.
-GitHub Actions performs CI and never materializes live data.
+The only live data plane is the dedicated checkout on the self-hosted server.
+Docker Compose runs Dagster and Neo4j; persistent data lives under the host
+paths configured in `.env.server`; ingress is Tailscale Serve only. GitHub
+Actions performs CI and never materializes live data. The ignored
+`docs/deployment/server-status.local.md` records current host paths and state.
 
 Before any live operation, read the
-[Mac mini runbook](../deployment/mac-mini-server.md#live-instance-on-this-mac-mini). AWS Batch,
+[self-hosted server runbook](../deployment/self-hosted-server.md#live-instance-on-the-server-host). AWS Batch,
 Lambda, Step Functions, and S3 are not part of the current architecture.
 
 ## Sources of truth
@@ -117,7 +118,7 @@ Lambda, Step Functions, and S3 are not part of the current architecture.
 | Configuration keys and load order | [Configuration reference](../configuration.md) |
 | Local commands and containers | [Getting started](../getting-started/README.md), [Docker](../development/docker.md) |
 | CI and tests | [Testing index](../testing/index.md) |
-| Live operations | [Mac mini runbook](../deployment/mac-mini-server.md) |
+| Live operations | [self-hosted server runbook](../deployment/self-hosted-server.md) |
 | Graph model | [Neo4j schema](../schemas/neo4j.md) and [migrations](../migrations.md) |
 | Evidence and citability | [Epistemic tiers](../steering/epistemic-tiers.md), [study contracts](../../studies/README.md) |
 

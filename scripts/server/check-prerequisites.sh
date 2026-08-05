@@ -1,7 +1,7 @@
 #!/usr/bin/env sh
 # sbir-analytics/scripts/server/check-prerequisites.sh
 #
-# Preflight checks for the Tailscale-only Mac mini server profile.
+# Preflight checks for the Tailscale-only self-hosted server profile.
 #
 # Validates, before `make server-up`:
 #   * .env.server present and required secrets set (not placeholders)

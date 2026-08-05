@@ -1,7 +1,7 @@
 ---
 Type: Overview
 Owner: docs@project
-Last-Reviewed: 2026-08-03
+Last-Reviewed: 2026-08-04
 Status: active
 ---
 
@@ -19,15 +19,15 @@ implying a production-grade service.
 |------|-----|
 | Run the pipeline locally, iterate on code | [Docker guide](../development/docker.md) — `make docker-up-dev` |
 | Run a one-off job without Docker | [Getting started](../getting-started/README.md) — `make dev` + Dagster UI |
-| Private always-on server on a Mac mini (tailnet-only) | [Mac mini server](mac-mini-server.md) — `make server-up` |
-| Scheduled runs or live-state operations | [Mac mini runbook](mac-mini-server.md) |
-| Heavy ML or fiscal jobs | [Heavy assets](mac-mini-server.md#heavy-assets); run manually and measure first |
+| Private always-on server (tailnet-only) | [Self-hosted server](self-hosted-server.md) — `make server-up` |
+| Scheduled runs or live-state operations | [Self-hosted server runbook](self-hosted-server.md) |
+| Heavy ML or fiscal jobs | [Heavy assets](self-hosted-server.md#heavy-assets); run manually and measure first |
 
 ## Current boundary
 
-Everything runs on one always-on Mac mini; GitHub Actions is CI only.
+Everything runs on one always-on self-hosted server; GitHub Actions is CI only.
 
-1. **Mac mini (Dagster)** — source downloads, ETL pipelines, and Neo4j
+1. **Self-hosted server (Dagster)** — source downloads, ETL pipelines, and Neo4j
 2. **GitHub Actions** — lint, typecheck, tests. No data plane, no scheduled work, no image publishing.
 3. **Docker (development)** — local development and testing
 
@@ -45,14 +45,14 @@ moved off GitHub Actions. The remaining account-level teardown checklist is trac
 └─────────────────────────────────────────────────────────────┘
 
 ┌─────────────────────────────────────────────────────────────┐
-│              Mac mini — tailnet-only, always on              │
+│          Self-hosted server — tailnet-only, always on        │
 │  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐       │
 │  │  downloads   │─▶│  pipelines   │─▶│    Neo4j     │       │
 │  │ (schedules)  │  │  (sensors)   │  │              │       │
 │  └──────────────┘  └──────────────┘  └──────┬───────┘       │
 │         │                                                   │
 │         ▼                                                   │
-│  /Volumes/SSDmini/sbir-analytics                            │
+│       persistent application data                            │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -60,15 +60,15 @@ moved off GitHub Actions. The remaining account-level teardown checklist is trac
 
 | Guide | Description |
 |-------|-------------|
-| [Mac mini runbook](mac-mini-server.md) | Live checkout, services, schedules, backups, and recovery |
+| [Self-hosted server runbook](self-hosted-server.md) | Live checkout, services, schedules, backups, and recovery |
 | [Docker development](../development/docker.md) | Local Compose profiles and troubleshooting |
 | [Neo4j migrations](../migrations.md) | Versioned graph schema and data migrations |
 | [AWS decommission plan](aws-decommission-plan.md) | Remaining external teardown only |
 
 ## Live credentials
 
-Server credentials live in `.env.server` on the mini (see
-[Mac mini server](mac-mini-server.md)), not in GitHub secrets:
+Server credentials live in `.env.server` on the server host (see the
+[self-hosted server runbook](self-hosted-server.md)), not in GitHub secrets:
 
 | Variable | Description |
 |----------|-------------|

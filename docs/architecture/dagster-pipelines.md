@@ -24,7 +24,7 @@ uv run dagster job execute -m sbir_analytics.definitions_ml -j fiscal_returns_mv
 ### Heavy-asset gating
 
 `DAGSTER_LOAD_HEAVY_ASSETS` (default `"true"`) controls whether memory-hungry
-modules load. When it is `false` (the Mac-mini/server profile), the four heavy
+modules load. When it is `false` (the self-hosted server profile), the four heavy
 jobs — `cet_full_pipeline_job`, `fiscal_returns_*`, `modernbert_job`,
 `uspto_ai_extraction_job` — and their assets are skipped in the primary location;
 run them from `definitions_ml` instead. If an upstream asset module fails to

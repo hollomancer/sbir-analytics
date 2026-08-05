@@ -1,5 +1,7 @@
 # Tech-Area Transition Report — Requirements
 
+**Target epistemic tier:** `evidence`
+
 > **Status:** In progress (v1 cohort parameterization)
 > Anchors inventory questions **B** (commercialization / Phase II→III pathways) and
 > **C1** (cross-agency CET portfolio) in [docs/research-questions.md](../../docs/research-questions.md).

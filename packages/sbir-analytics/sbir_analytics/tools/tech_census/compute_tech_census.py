@@ -21,6 +21,10 @@ _REQUIRED_COLUMNS = (
 )
 _OPTIONAL_AWARD_COLUMNS = (
     "program",
+    "city",
+    "state",
+    "uei",
+    "duns",
     "agency_tracking_number",
     "contract",
     "source_row",
@@ -62,7 +66,7 @@ class ComputeTechCensusTool(BaseTool):
     """Classify awards into a versioned technology profile and aggregate them."""
 
     name = "compute_tech_census"
-    version = "2.0.0"
+    version = "2.1.0"
 
     def execute(
         self,
@@ -72,29 +76,38 @@ class ComputeTechCensusTool(BaseTool):
         area_id: str = "drone_manufacturing",
         programs: list[str] | tuple[str, ...] | None = None,
         fiscal_years: list[int] | tuple[int, ...] | None = None,
+        states: list[str] | tuple[str, ...] | None = None,
         source_path: str | None = None,
         source_sha256: str | None = None,
         source_timestamp: str | None = None,
         data_vintage: str | None = None,
         **kwargs: Any,
     ) -> ToolResult:
-        """Run one profile, optionally narrowing its program and fiscal-year scope."""
+        """Run one profile, optionally narrowing its program, year, and state scope."""
 
         from sbir_etl.utils.tech_census import (
             CensusAward,
             CompiledCensus,
             load_census_config,
+            normalize_state_code,
+            normalize_state_codes,
             run_census,
         )
 
         selected_fys = (
             sorted({int(year) for year in fiscal_years}) if fiscal_years is not None else []
         )
+        try:
+            selected_states = normalize_state_codes(states or [])
+        except ValueError as exc:
+            metadata.warnings.append(str(exc))
+            return ToolResult(data=self._empty_result(area_id), metadata=metadata)
         metadata.parameters_used.update(
             {
                 "area_id": area_id,
                 "programs": list(programs) if programs is not None else None,
                 "fiscal_years": selected_fys or None,
+                "states": list(selected_states) or None,
                 "data_vintage": data_vintage,
             }
         )
@@ -113,6 +126,8 @@ class ComputeTechCensusTool(BaseTool):
         required_columns = list(_REQUIRED_COLUMNS)
         if effective_programs:
             required_columns.append("program")
+        if selected_states:
+            required_columns.append("state")
         missing = [column for column in required_columns if column not in awards_df.columns]
         if missing:
             metadata.warnings.append(f"awards_df missing required columns: {missing}")
@@ -128,6 +143,9 @@ class ComputeTechCensusTool(BaseTool):
         if selected_fys:
             numeric_years = pd.to_numeric(reporting_df["award_year"], errors="coerce")
             reporting_df = reporting_df[numeric_years.isin(selected_fys)]
+        if selected_states:
+            state_codes = reporting_df["state"].map(normalize_state_code)
+            reporting_df = reporting_df[state_codes.isin(selected_states)]
 
         columns = list(_REQUIRED_COLUMNS) + [
             column for column in _OPTIONAL_AWARD_COLUMNS if column in reporting_df.columns
@@ -141,6 +159,10 @@ class ComputeTechCensusTool(BaseTool):
                     "title": _as_text(raw.get("title")),
                     "abstract": _as_text(raw.get("abstract")),
                     "company": _as_text(raw.get("company")),
+                    "city": _as_text(raw.get("city")),
+                    "state": _as_text(raw.get("state")),
+                    "uei": _as_text(raw.get("uei")),
+                    "duns": _as_text(raw.get("duns")),
                     "agency": _as_text(raw.get("agency")),
                     "program": _as_text(raw.get("program")),
                     "phase": _as_text(raw.get("phase")),
@@ -177,6 +199,7 @@ class ComputeTechCensusTool(BaseTool):
             "rejection_counts": result["rejection_counts"],
             "reporting_window": {
                 "fiscal_years": selected_fys or None,
+                "states": list(selected_states) or None,
                 "programs": result["programs"],
             },
             "provenance": {
@@ -227,7 +250,7 @@ class ComputeTechCensusTool(BaseTool):
                 "adjacent_counts": {},
                 "program_exclusion_counts": {},
                 "rejection_counts": {},
-                "reporting_window": {"fiscal_years": None, "programs": []},
+                "reporting_window": {"fiscal_years": None, "states": None, "programs": []},
                 "provenance": {},
             },
         }
