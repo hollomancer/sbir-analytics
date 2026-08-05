@@ -32,6 +32,7 @@ from sbir_etl.identity import (  # noqa: E402
     CompanyNameProfile,
     company_name_similarity,
     normalize_company_name,
+    normalize_us_jurisdiction,
 )
 
 from sbir_etl.ucc._common import data_path
@@ -188,72 +189,9 @@ def address_city_state(address: str | None) -> tuple[str, str]:
     return (city, state)
 
 
-# SBIR awards data carries full state names ("Massachusetts"); CA UCC API
-# returns 2-letter postal codes ("MA"). Normalize both before comparison.
-_STATE_TO_POSTAL = {
-    "ALABAMA": "AL",
-    "ALASKA": "AK",
-    "ARIZONA": "AZ",
-    "ARKANSAS": "AR",
-    "CALIFORNIA": "CA",
-    "COLORADO": "CO",
-    "CONNECTICUT": "CT",
-    "DELAWARE": "DE",
-    "FLORIDA": "FL",
-    "GEORGIA": "GA",
-    "HAWAII": "HI",
-    "IDAHO": "ID",
-    "ILLINOIS": "IL",
-    "INDIANA": "IN",
-    "IOWA": "IA",
-    "KANSAS": "KS",
-    "KENTUCKY": "KY",
-    "LOUISIANA": "LA",
-    "MAINE": "ME",
-    "MARYLAND": "MD",
-    "MASSACHUSETTS": "MA",
-    "MICHIGAN": "MI",
-    "MINNESOTA": "MN",
-    "MISSISSIPPI": "MS",
-    "MISSOURI": "MO",
-    "MONTANA": "MT",
-    "NEBRASKA": "NE",
-    "NEVADA": "NV",
-    "NEW HAMPSHIRE": "NH",
-    "NEW JERSEY": "NJ",
-    "NEW MEXICO": "NM",
-    "NEW YORK": "NY",
-    "NORTH CAROLINA": "NC",
-    "NORTH DAKOTA": "ND",
-    "OHIO": "OH",
-    "OKLAHOMA": "OK",
-    "OREGON": "OR",
-    "PENNSYLVANIA": "PA",
-    "RHODE ISLAND": "RI",
-    "SOUTH CAROLINA": "SC",
-    "SOUTH DAKOTA": "SD",
-    "TENNESSEE": "TN",
-    "TEXAS": "TX",
-    "UTAH": "UT",
-    "VERMONT": "VT",
-    "VIRGINIA": "VA",
-    "WASHINGTON": "WA",
-    "WEST VIRGINIA": "WV",
-    "WISCONSIN": "WI",
-    "WYOMING": "WY",
-    "DISTRICT OF COLUMBIA": "DC",
-    "PUERTO RICO": "PR",
-}
-
-
 def to_postal(state: str | None) -> str:
     """Return the 2-letter postal abbreviation for any state input form."""
-    if not state:
-        return ""
-    s = state.strip().upper()
-    if len(s) == 2:
-        return s
-    return _STATE_TO_POSTAL.get(s, s[:2])
+    return normalize_us_jurisdiction(state) or ""
 
 
 def address_overlap_score(

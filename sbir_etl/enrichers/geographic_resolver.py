@@ -16,6 +16,11 @@ import pandas as pd
 from loguru import logger
 
 from ..config.loader import get_config
+from ..identity.geography import (
+    US_JURISDICTION_NAMES_V1,
+    US_JURISDICTION_VARIATIONS_V1,
+    VALID_US_JURISDICTION_CODES_V1,
+)
 
 
 @dataclass
@@ -50,112 +55,14 @@ class GeographicResolver:
             self.config = config_obj
         self.quality_thresholds = self.config.quality_thresholds
 
-        # US state mappings (code -> name and name -> code)
-        self.state_mappings = {
-            "AL": "Alabama",
-            "AK": "Alaska",
-            "AZ": "Arizona",
-            "AR": "Arkansas",
-            "CA": "California",
-            "CO": "Colorado",
-            "CT": "Connecticut",
-            "DE": "Delaware",
-            "FL": "Florida",
-            "GA": "Georgia",
-            "HI": "Hawaii",
-            "ID": "Idaho",
-            "IL": "Illinois",
-            "IN": "Indiana",
-            "IA": "Iowa",
-            "KS": "Kansas",
-            "KY": "Kentucky",
-            "LA": "Louisiana",
-            "ME": "Maine",
-            "MD": "Maryland",
-            "MA": "Massachusetts",
-            "MI": "Michigan",
-            "MN": "Minnesota",
-            "MS": "Mississippi",
-            "MO": "Missouri",
-            "MT": "Montana",
-            "NE": "Nebraska",
-            "NV": "Nevada",
-            "NH": "New Hampshire",
-            "NJ": "New Jersey",
-            "NM": "New Mexico",
-            "NY": "New York",
-            "NC": "North Carolina",
-            "ND": "North Dakota",
-            "OH": "Ohio",
-            "OK": "Oklahoma",
-            "OR": "Oregon",
-            "PA": "Pennsylvania",
-            "RI": "Rhode Island",
-            "SC": "South Carolina",
-            "SD": "South Dakota",
-            "TN": "Tennessee",
-            "TX": "Texas",
-            "UT": "Utah",
-            "VT": "Vermont",
-            "VA": "Virginia",
-            "WA": "Washington",
-            "WV": "West Virginia",
-            "WI": "Wisconsin",
-            "WY": "Wyoming",
-            "DC": "District of Columbia",
-            "PR": "Puerto Rico",
-            "VI": "Virgin Islands",
-            "GU": "Guam",
-            "AS": "American Samoa",
-            "MP": "Northern Mariana Islands",
-        }
-
-        # Reverse mapping (name -> code)
+        # Compatibility attributes derived from the one versioned primitive.
+        self.state_mappings = dict(US_JURISDICTION_NAMES_V1)
         self.name_to_code = {name.upper(): code for code, name in self.state_mappings.items()}
-
-        # Common state abbreviations and variations
-        self.state_variations = {
-            "CALIF": "CA",
-            "CALIFORNIA": "CA",
-            "FLA": "FL",
-            "FLORIDA": "FL",
-            "MASS": "MA",
-            "MASSACHUSETTS": "MA",
-            "MICH": "MI",
-            "MICHIGAN": "MI",
-            "PENN": "PA",
-            "PENNSYLVANIA": "PA",
-            "TEXAS": "TX",
-            "TEX": "TX",
-            "WASH": "WA",
-            "WASHINGTON": "WA",
-            "N.Y.": "NY",
-            "NEW YORK": "NY",
-            "N.J.": "NJ",
-            "NEW JERSEY": "NJ",
-            "N.C.": "NC",
-            "NORTH CAROLINA": "NC",
-            "S.C.": "SC",
-            "SOUTH CAROLINA": "SC",
-            "N.D.": "ND",
-            "NORTH DAKOTA": "ND",
-            "S.D.": "SD",
-            "SOUTH DAKOTA": "SD",
-            "W.V.": "WV",
-            "WEST VIRGINIA": "WV",
-            "N.H.": "NH",
-            "NEW HAMPSHIRE": "NH",
-            "N.M.": "NM",
-            "NEW MEXICO": "NM",
-            "R.I.": "RI",
-            "RHODE ISLAND": "RI",
-        }
-
-        # Combine all mappings
+        self.state_variations = dict(US_JURISDICTION_VARIATIONS_V1)
+        # Canonical names remain aliases for compatibility with existing logic.
+        self.state_variations.update(self.name_to_code)
         self.all_state_mappings = {**self.name_to_code, **self.state_variations}
-
-        # Valid state codes set for quick lookup
-        self.valid_state_codes = set(self.state_mappings.keys())
+        self.valid_state_codes = set(VALID_US_JURISDICTION_CODES_V1)
 
         # ZIP prefix (first 3 digits) → state code mapping
         # Based on USPS ZIP code allocation by state

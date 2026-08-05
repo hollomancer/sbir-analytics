@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Prevent unreviewed company-name scoring outside ``sbir_etl.identity``."""
+"""Prevent duplicate identity implementations outside ``sbir_etl.identity``."""
 
 import ast
 import subprocess
@@ -20,6 +20,18 @@ REVIEWED_DIRECT_SCORER_FILES = frozenset(
         "scripts/data/find_same_work_awards.py",
         # Contract tests compare shared adapters with the upstream scorer implementation.
         "tests/unit/identity/test_company_names.py",
+    }
+)
+CANONICAL_JURISDICTION_FILE = "sbir_etl/identity/geography.py"
+JURISDICTION_PAIR_MARKERS = frozenset(
+    {
+        ("ALABAMA", "AL"),
+        ("CALIFORNIA", "CA"),
+        ("MASSACHUSETTS", "MA"),
+        ("NEW YORK", "NY"),
+        ("TEXAS", "TX"),
+        ("DISTRICT OF COLUMBIA", "DC"),
+        ("PUERTO RICO", "PR"),
     }
 )
 
@@ -50,29 +62,63 @@ def _uses_direct_rapidfuzz_scorer(node: ast.AST) -> bool:
     )
 
 
+def _jurisdiction_mapping_pairs(node: ast.AST) -> int:
+    """Count recognizable name/code pairs in a literal mapping."""
+
+    if not isinstance(node, ast.Dict):
+        return 0
+    pairs = 0
+    for key, value in zip(node.keys, node.values, strict=True):
+        if not (
+            isinstance(key, ast.Constant)
+            and isinstance(key.value, str)
+            and isinstance(value, ast.Constant)
+            and isinstance(value.value, str)
+        ):
+            continue
+        literal_pair = (key.value.strip().upper(), value.value.strip().upper())
+        if (
+            literal_pair in JURISDICTION_PAIR_MARKERS
+            or literal_pair[::-1] in JURISDICTION_PAIR_MARKERS
+        ):
+            pairs += 1
+    return pairs
+
+
 def scan_file(
     path: Path, *, repository_root: Path = REPOSITORY_ROOT
 ) -> list[IdentityBoundaryViolation]:
     """Find direct scorer imports in one unreviewed Python file."""
 
     relative = path.resolve().relative_to(repository_root.resolve()).as_posix()
-    if relative in REVIEWED_DIRECT_SCORER_FILES or relative.startswith(
-        ("scripts/archive/", "tests/unit/scripts/archive/")
-    ):
+    if relative.startswith(("scripts/archive/", "tests/unit/scripts/archive/")):
         return []
     tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
-    return [
-        IdentityBoundaryViolation(
-            path=relative,
-            line_number=node.lineno,
-            message=(
-                "direct RapidFuzz scorer bypasses sbir_etl.identity; use the shared "
-                "similarity contract or document a reviewed non-company exception"
-            ),
-        )
-        for node in ast.walk(tree)
-        if _uses_direct_rapidfuzz_scorer(node)
-    ]
+    violations: list[IdentityBoundaryViolation] = []
+    for node in ast.walk(tree):
+        if relative not in REVIEWED_DIRECT_SCORER_FILES and _uses_direct_rapidfuzz_scorer(node):
+            violations.append(
+                IdentityBoundaryViolation(
+                    path=relative,
+                    line_number=getattr(node, "lineno", 0),
+                    message=(
+                        "direct RapidFuzz scorer bypasses sbir_etl.identity; use the shared "
+                        "similarity contract or document a reviewed non-company exception"
+                    ),
+                )
+            )
+        if relative != CANONICAL_JURISDICTION_FILE and _jurisdiction_mapping_pairs(node) >= 5:
+            violations.append(
+                IdentityBoundaryViolation(
+                    path=relative,
+                    line_number=getattr(node, "lineno", 0),
+                    message=(
+                        "U.S. jurisdiction map bypasses sbir_etl.identity.geography; "
+                        "use a named normalization profile"
+                    ),
+                )
+            )
+    return violations
 
 
 def tracked_python_files(*, repository_root: Path = REPOSITORY_ROOT) -> list[Path]:

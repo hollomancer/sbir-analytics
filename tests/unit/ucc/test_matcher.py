@@ -8,7 +8,14 @@ from sbir_etl.ucc.matcher import (
     looks_like_person_name,
     match_extraction,
     normalize_name,
+    to_postal,
 )
+
+
+def test_to_postal_uses_strict_jurisdiction_identity() -> None:
+    assert to_postal("Massachusetts") == "MA"
+    assert to_postal("MA") == "MA"
+    assert to_postal("Mystery") == ""
 
 
 # ---- 20-pair test set: 10 matches, 10 non-matches (per plan) ----

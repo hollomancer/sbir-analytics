@@ -86,6 +86,10 @@ docs/
 Company-name normalization and similarity belong in `sbir_etl/identity`; callers select
 an explicit versioned profile. See [company-identity.md](company-identity.md).
 
+U.S. state, district, and territory normalization belongs in
+`sbir_etl.identity.geography`. Callers use the strict profile unless they explicitly need
+the named permissive compatibility behavior; no caller carries its own jurisdiction map.
+
 ### Study Evidence Contracts
 
 Externally citable studies declare a versioned contract in `studies/<study-id>/study.yaml`.
