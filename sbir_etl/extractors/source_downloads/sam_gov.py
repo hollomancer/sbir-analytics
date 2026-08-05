@@ -730,9 +730,17 @@ def _write_local(df: pd.DataFrame, dest: Path, *, name: str = PARQUET_NAME) -> P
     return path
 
 
-# ---------------------------------------------------------------------------
-# Entry point
-# ---------------------------------------------------------------------------
+def download_sam_public_extract(dest_dir: Path) -> Path:
+    """Download the latest SAM.gov Public V2 extract and write parquet.
+
+    Combines fetch, validation, and write into a single public entry point
+    so consumers do not import underscore-private names.
+    """
+
+    df = _download_bulk_extract()
+    if df is None or df.empty:
+        raise ValueError("SAM.gov Public V2 bulk download returned no validated entity records")
+    return _write_local(df, dest_dir, name=PARQUET_NAME)
 
 
 def main() -> None:

@@ -1,5 +1,8 @@
 # SBIR Weekly Awards Report
 
+> **Exploratory / non-citable.** This operational readout has not earned an
+> evidence-tier study contract and must not be cited as a validated finding.
+
 **Period:** <PERIOD>
 **Total new awards:** 3
 

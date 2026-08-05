@@ -18,6 +18,7 @@ import argparse
 import asyncio
 import hashlib
 import sys
+import tempfile
 from pathlib import Path
 from typing import TypedDict
 
@@ -200,7 +201,7 @@ def main():
     parser.add_argument(
         "--output-dir",
         type=Path,
-        default=Path("/tmp/uspto_downloads"),
+        default=Path(tempfile.gettempdir()) / "uspto_downloads",
         help="Output directory for downloads",
     )
 

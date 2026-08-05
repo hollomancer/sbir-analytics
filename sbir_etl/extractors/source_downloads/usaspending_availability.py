@@ -22,6 +22,8 @@ import os
 import sys
 from datetime import datetime, UTC
 from typing import NotRequired, TypedDict
+from urllib.error import URLError
+from urllib.parse import urlparse
 from urllib.request import Request, urlopen
 
 # USAspending database download base URL
@@ -32,6 +34,17 @@ USASPENDING_DOWNLOADS = {
     "test": "{base}/usaspending-db-subset_{date}.zip",
 }
 EPISTEMIC_TIER = "pipelines"
+
+
+def _validate_https_url(url: str) -> str:
+    """Validate that a URL uses the https scheme.
+
+    Raises ValueError for file:// or other non-https schemes.
+    """
+    scheme = urlparse(url).scheme
+    if scheme != "https":
+        raise ValueError(f"only https URLs are allowed, got scheme {scheme!r}")
+    return url
 
 
 class AvailabilityResult(TypedDict):
@@ -72,6 +85,7 @@ def check_file_availability(source_url: str) -> AvailabilityResult:
     }
 
     # Make HEAD request to check file availability
+    _validate_https_url(source_url)
     try:
         req = Request(source_url, method="HEAD")
         req.add_header("User-Agent", "SBIR-Analytics-Checker/1.0")
@@ -159,6 +173,7 @@ def find_latest_available_file(
         source_url = url_template.format(base=USASPENDING_DB_BASE_URL, date=test_date_str)
 
         # Quick check if file exists
+        _validate_https_url(source_url)
         try:
             req = Request(source_url, method="HEAD")
             req.add_header("User-Agent", "SBIR-Analytics-Checker/1.0")

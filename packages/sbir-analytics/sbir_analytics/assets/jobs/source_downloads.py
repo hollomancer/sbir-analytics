@@ -1,14 +1,14 @@
 """Source-data download jobs that run on the always-on server.
 
 These replace the GitHub Actions `data-refresh.yml` workflow. Actions runners
-cannot reach the Mac mini (tailnet-only, no self-hosted runner), so the host
+cannot reach the self-hosted server (tailnet-only, no self-hosted runner), so the host
 that stores the data is the host that fetches it.
 
 Each op calls the corresponding package pipeline, which writes to the local
 data root by default. Destinations come from the config paths so the server
 profile's SSD bind mounts are honoured without hardcoding them here.
 
-Schedules for these jobs default to STOPPED. Per the Mac mini runbook, an
+Schedules for these jobs default to STOPPED. Per the self-hosted server runbook, an
 operator confirms a manual run succeeds on this host before enabling one.
 """
 
@@ -50,21 +50,13 @@ def download_sam_gov_op(context: OpExecutionContext) -> dict:
 
     from sbir_etl.extractors.source_downloads.sam_gov import (
         PARQUET_NAME,
-        _download_bulk_extract,
-        _write_local,
+        download_sam_public_extract,
     )
 
-    df: pd.DataFrame | None = _download_bulk_extract()
-    if df is None or df.empty:
-        raise ValueError("SAM.gov Public V2 bulk download returned no validated entity records")
-
-    path = _write_local(
-        df,
-        _data_root() / "raw" / "sam_gov",
-        name=PARQUET_NAME,
-    )
-    context.add_output_metadata({"rows": len(df), "path": str(path), "partial": False})
-    return {"rows": len(df), "path": str(path), "partial": False}
+    path = download_sam_public_extract(_data_root() / "raw" / "sam_gov")
+    row_count = len(pd.read_parquet(path))
+    context.add_output_metadata({"rows": row_count, "path": str(path), "partial": False})
+    return {"rows": row_count, "path": str(path), "partial": False}
 
 
 @op
