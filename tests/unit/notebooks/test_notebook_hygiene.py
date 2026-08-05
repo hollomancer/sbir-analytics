@@ -2,6 +2,7 @@
 
 import json
 import re
+import subprocess
 from pathlib import Path
 
 import pytest
@@ -9,7 +10,16 @@ import pytest
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 NOTEBOOK_ROOT = REPO_ROOT / "notebooks"
-NOTEBOOKS = sorted(NOTEBOOK_ROOT.rglob("*.ipynb"))
+
+# Only enumerate notebooks tracked in the git index (not untracked/ignored
+# *_executed.ipynb outputs that would be produced by the documented workflow).
+_TRACKED_NOTEBOOKS = subprocess.run(
+    ["git", "ls-files", str(NOTEBOOK_ROOT)],
+    capture_output=True,
+    text=True,
+    cwd=REPO_ROOT,
+).stdout.strip().splitlines()
+NOTEBOOKS = sorted(REPO_ROOT / line for line in _TRACKED_NOTEBOOKS if line.endswith(".ipynb"))
 SECRET_ASSIGNMENT = re.compile(
     r"(?:HF_TOKEN|AWS_ACCESS_KEY_ID|AWS_SECRET_ACCESS_KEY|SAM_GOV_API_KEY)\s*=\s*['\"][^'\"]+"
 )
