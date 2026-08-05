@@ -16,7 +16,9 @@ config/cet/taxonomy.yaml          # cet_id, keywords, negative_keywords
 config/transition_reports/<id>.yaml   # optional keyword_pack, cpc, metadata
         │
         ▼
-scripts/data/build_tech_area_cohort.py
+sbir_etl.reporting.tech_area_cohort   # exploratory named-profile API
+        ▲
+scripts/data/build_tech_area_cohort.py  # thin CLI entry point
         │
         ├─ Method A: keyword_pack OR taxonomy keywords (+ negatives)
         ├─ Method B: taxonomy keywords for same cet_id (triangulation)
@@ -35,6 +37,7 @@ data/reports/<cet_id>/
 
 ```yaml
 area_id: quantum_information_science  # path slug under data/reports/
+cohort_profile: tech-area-cohort-v1   # named, contestable admission behavior
 display_name: Quantum Information Science
 audience: null                        # optional report header
 
@@ -70,7 +73,7 @@ is the documented exception (`area_id: nanotechnology`, `cet_id: null`).
 a *richer or stricter* pack than taxonomy (nanotech, quantum contamination control,
 hypersonics dropping bare `supersonic`).
 
-## Keyword matching rules
+## Keyword matching rules (`tech-area-cohort-v1`)
 
 1. Positives: title + abstract; case-insensitive.
 2. Negatives: if *any* negative pattern matches and *no* positive remains after

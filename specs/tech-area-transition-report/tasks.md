@@ -5,7 +5,8 @@
 - [x] T1 Write `requirements.md`, `design.md`, `tasks.md`
 - [x] T2 Add `config/transition_reports/` YAMLs for
       `nanotechnology`, `quantum_information_science`, `hypersonics`
-- [x] T3 Implement `scripts/data/build_tech_area_cohort.py`
+- [x] T3 Implement `sbir_etl.reporting.tech_area_cohort` with
+      `scripts/data/build_tech_area_cohort.py` retained as a thin CLI
 - [x] T4 Run quantum + hypersonics; record sizes / Jaccard / spot-check in `validation.md`
 - [x] T5 Nanotech smoke: Method A size exact match to 2,849 with ported keyword pack
 - [x] T10 Quantum pack precision pass (`soft_patterns` + `title_or_multi`); hypersonics
@@ -87,14 +88,15 @@
       - Unit-tested (CPC prefix predicate for B82 subclass vs G06N10 group;
         Method-C assignee matching + absent-extract). Note: can't run the
         extractor end-to-end here (needs the ~60M-row PatentsView CPC dump).
-- [x] T9 Dagster asset wrapper (CLI now stable across the 3 areas + cutover done)
+- [x] T9 Dagster asset wrapper (named package API stable across the 3 areas + cutover done)
       — `packages/sbir-analytics/sbir_analytics/assets/transition_report.py`: one
       `tech_area_cohort_<area>` asset + non-empty check per area (group
       `transition_reports`), auto-discovered by `load_assets_from_modules`. Each
-      asset shells out to `build_tech_area_cohort.py` (the bit-exact-verified
-      builder, left untouched) and surfaces cohort metrics from
+      asset calls `materialize_tech_area_cohort` directly (the bit-exact-verified
+      behavior is named `tech-area-cohort-v1`) and surfaces cohort metrics from
       `overlap_summary.json` + `composition.json` as Dagster metadata. Pure
-      `_cohort_metrics` helper unit-tested; module carries a Dagster import shim.
+      `_cohort_metrics` helper unit-tested; outputs are exploratory/non-citable;
+      module carries a Dagster import shim.
 - [ ] T19 When digest / Form D / M&A exist: extend Q/H policy-brief headline tables with
       channel rows (`Measure | Result | How to use it`) + Policy interpretation blocks;
       hypersonics prioritizes WS1 + WS5a over Form D; quantum keeps small-N caveats

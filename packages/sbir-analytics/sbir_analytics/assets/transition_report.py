@@ -1,13 +1,9 @@
 """Dagster assets for the tech-area transition-report cohorts (spec T9).
 
-Thin orchestration wrapper around ``scripts/data/build_tech_area_cohort.py``.
-That CLI is the single, bit-exact-verified source of truth for how a Phase II
-tech-area cohort is built (Method A keyword + Method B taxonomy, deficiency-class
-enrichment, external-reference reconciliation). Rather than duplicate or refactor
-that 800-line builder — and risk perturbing the parity the nanotech cutover
-verified — each asset here shells out to it (``sys.executable`` on the same repo)
-and then reads back the emitted ``overlap_summary.json`` + ``composition.json`` to
-surface cohort metrics as Dagster metadata.
+The asset calls the named package cohort API directly and reads back the emitted
+``overlap_summary.json`` + ``composition.json`` to surface cohort metrics as
+Dagster metadata. Cohort admission remains an exploratory, contestable policy;
+these assets and outputs are explicitly non-citable.
 
 One asset + one non-empty asset-check per area, grouped under
 ``transition_reports``. Areas are the three defined in
@@ -22,11 +18,10 @@ emit metadata + checks rather than returning IO-managed frames.
 from __future__ import annotations
 
 import json
-import shlex
-import subprocess
-import sys
 from pathlib import Path
 from typing import Any
+
+from sbir_etl.reporting.tech_area_cohort import materialize_tech_area_cohort
 
 # ---------------------------------------------------------------------------
 # Dagster import shim (mirrors assets/cet/utils.py): keep the module importable
@@ -84,14 +79,15 @@ TECH_AREAS = (
     "quantum_information_science",
     "hypersonics",
 )
+EPISTEMIC_TIER = "exploratory"
 
 
 def _repo_root() -> Path:
-    """Locate the repo root by walking up to the cohort builder script."""
+    """Locate the repo root by walking up to the declared area profiles."""
     for parent in Path(__file__).resolve().parents:
-        if (parent / "scripts" / "data" / "build_tech_area_cohort.py").exists():
+        if (parent / "config" / "transition_reports").is_dir():
             return parent
-    raise RuntimeError("could not locate repo root (build_tech_area_cohort.py not found)")
+    raise RuntimeError("could not locate repo root (transition report configs not found)")
 
 
 def _read_json(path: Path) -> dict:
@@ -107,6 +103,9 @@ def _cohort_metrics(summary: dict, composition: dict) -> dict[str, Any]:
     totals = composition.get("totals") or {}
     return {
         "area_id": summary.get("area_id"),
+        "cohort_profile": summary.get("cohort_profile"),
+        "epistemic_tier": (summary.get("_epistemic") or {}).get("tier"),
+        "citable": (summary.get("_epistemic") or {}).get("citable"),
         "phase2_universe": summary.get("phase2_universe"),
         "method_a_awards": composition.get("n_unique_awards"),
         "method_b_awards": overlap.get("method_b_n"),
@@ -123,23 +122,12 @@ def _cohort_metrics(summary: dict, composition: dict) -> dict[str, Any]:
 
 
 def _run_cohort_build(area_id: str, log: Any) -> Path:
-    """Run build_tech_area_cohort.py for one area; return its report dir."""
-    repo = _repo_root()
-    script = repo / "scripts" / "data" / "build_tech_area_cohort.py"
-    cmd = [sys.executable, str(script), "--area", area_id]
-    log.info(f"[tech_area_cohort] {shlex.join(cmd)}")
-    proc = subprocess.run(cmd, cwd=str(repo), capture_output=True, text=True)
-    if proc.stdout:
-        log.info(f"[tech_area_cohort:{area_id}] stdout tail:\n{proc.stdout[-4000:]}")
-    if proc.stderr:
-        log.info(f"[tech_area_cohort:{area_id}] stderr tail:\n{proc.stderr[-4000:]}")
-    if proc.returncode != 0:
-        raise RuntimeError(
-            f"build_tech_area_cohort.py failed for area={area_id} (exit {proc.returncode}).\n"
-            f"stdout tail:\n{proc.stdout[-2000:]}\n"
-            f"stderr tail:\n{proc.stderr[-2000:]}"
-        )
-    return repo / "data" / "reports" / area_id
+    """Materialize one named cohort profile and return its report directory."""
+
+    log.info(f"[tech_area_cohort] materializing area={area_id}")
+    report_dir = materialize_tech_area_cohort(area_id)
+    log.info(f"[tech_area_cohort:{area_id}] wrote {report_dir}")
+    return report_dir
 
 
 def _make_cohort_asset(area_id: str) -> Any:
@@ -148,9 +136,9 @@ def _make_cohort_asset(area_id: str) -> Any:
         group_name="transition_reports",
         compute_kind="python",
         description=(
-            f"Phase II tech-area cohort for {area_id}: runs "
-            "build_tech_area_cohort.py and writes cohort/composition/overlap "
-            "artifacts under data/reports/<area>/."
+            f"Exploratory Phase II tech-area cohort for {area_id}: invokes a named "
+            "profile and writes non-citable cohort/composition/overlap artifacts "
+            "under data/reports/<area>/."
         ),
     )
     # NOTE: `context` is intentionally left unannotated — Dagster rejects an
