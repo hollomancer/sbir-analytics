@@ -1,6 +1,6 @@
 # Patent Cost and Spillover Analysis — Requirements
 
-**Target epistemic tier:** `evidence`
+**Target epistemic tier:** `pipelines`
 
 > **Status:** Gated backlog — zero cost/citation/spillover analytical-layer
 > implementation as of July 2026.

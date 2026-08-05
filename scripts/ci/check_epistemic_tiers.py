@@ -10,7 +10,7 @@ REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
 SPECS_ROOT = REPOSITORY_ROOT / "specs"
 VALID_TIERS = frozenset({"primitives", "pipelines", "evidence", "exploratory"})
 TIER_DECLARATION = re.compile(
-    r"^\*\*Target epistemic tier:\*\*\s*`?([a-z]+)`?\s*$",
+    r"^\*\*Target epistemic tier:\*\*\s*`?([A-Za-z]+)`?\s*$",
     flags=re.MULTILINE,
 )
 EXCLUDED_SPEC_DIRECTORIES = frozenset({"archive"})

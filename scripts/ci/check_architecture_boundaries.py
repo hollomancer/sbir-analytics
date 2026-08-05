@@ -162,16 +162,25 @@ def _script_target(node: ast.AST) -> str | None:
 
 
 def executed_script_paths(path: Path) -> list[tuple[str, int]]:
-    """Extract literal repository Python scripts invoked through ``subprocess``."""
+    """Extract literal repository Python scripts invoked through ``subprocess``.
+
+    Detection is literal-only: a script path held in a variable or assembled
+    with ``os.path.join`` is not visible to static analysis. This accepted limit
+    mirrors the import guard; document any such pattern in the transitional
+    allowlist so it is not mistaken for a gap in the check.
+    """
 
     tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
-    if not any(isinstance(node, ast.Call) and _is_subprocess_call(node) for node in ast.walk(tree)):
-        return []
-
     targets: dict[str, int] = {}
     for node in ast.walk(tree):
-        if target := _script_target(node):
-            targets.setdefault(target, node.lineno)
+        if not (isinstance(node, ast.Call) and _is_subprocess_call(node)):
+            continue
+        for arg in node.args:
+            if target := _script_target(arg):
+                targets.setdefault(target, node.lineno)
+        for keyword in node.keywords:
+            if target := _script_target(keyword.value):
+                targets.setdefault(target, node.lineno)
     return sorted(targets.items(), key=lambda item: (item[1], item[0]))
 
 

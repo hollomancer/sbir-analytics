@@ -1,6 +1,6 @@
 # Data Imputation — Requirements
 
-**Target epistemic tier:** `evidence`
+**Target epistemic tier:** `pipelines`
 
 > **Status:** Gated backlog — spec merged via PR #277; implementation not yet
 > started as of July 2026.
