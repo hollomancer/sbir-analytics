@@ -44,25 +44,12 @@ def download_sbir_awards_op(context: OpExecutionContext) -> dict:
 @op
 def download_sam_gov_op(context: OpExecutionContext) -> dict:
     """Fetch the keyless, structurally validated SAM Public V2 snapshot."""
-    import pandas as pd
+    from sbir_etl.extractors.source_downloads.sam_gov import download_sam_public_extract
 
-    from scripts.data.download_sam_gov import (
-        PARQUET_NAME,
-        _download_bulk_extract,
-        _write_local,
-    )
-
-    df: pd.DataFrame | None = _download_bulk_extract()
-    if df is None or df.empty:
-        raise ValueError("SAM.gov Public V2 bulk download returned no validated entity records")
-
-    path = _write_local(
-        df,
-        _data_root() / "raw" / "sam_gov",
-        name=PARQUET_NAME,
-    )
-    context.add_output_metadata({"rows": len(df), "path": str(path), "partial": False})
-    return {"rows": len(df), "path": str(path), "partial": False}
+    result = download_sam_public_extract(_data_root() / "raw" / "sam_gov")
+    context.log.info(f"SAM.gov: rows={result['rows']} path={result['path']}")
+    context.add_output_metadata({"rows": result["rows"], "path": result["path"], "partial": False})
+    return result
 
 
 @op
