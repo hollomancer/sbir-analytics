@@ -1,7 +1,9 @@
 import pandas as pd
 import pytest
 
-from sbir_analytics.assets.phase_iii_negative_controls.identity import (
+from sbir_etl.identity.exact_awards import (
+    EXACT_AWARD_IDENTITY_VERSION,
+    ExactAwardIdentityProfile,
     IdentityRecoveryError,
     RecoveryStatus,
     reconcile_award_identity_attempts,
@@ -52,6 +54,7 @@ def test_exact_award_key_resolves_one_authoritative_identity_with_provenance() -
     )
 
     row = result.iloc[0]
+    assert row["identity_profile"] == EXACT_AWARD_IDENTITY_VERSION
     assert row["recovery_status"] == RecoveryStatus.RESOLVED_AUTHORITATIVE
     assert row["resolved_ueis"] == ("UEI000000001",)
     assert row["resolved_duns"] == ("123456789",)
@@ -204,6 +207,7 @@ def test_reconciliation_keeps_one_resolution_and_records_all_attempts() -> None:
 
     result = reconcile_award_identity_attempts(attempts)
 
+    assert result.loc[0, "identity_profile"] == EXACT_AWARD_IDENTITY_VERSION
     assert result.loc[0, "recovery_status"] == RecoveryStatus.RESOLVED_AUTHORITATIVE
     assert result.loc[0, "resolved_ueis"] == ("UEI000000001",)
     assert result.loc[0, "attempted_adapters"] == (
@@ -211,6 +215,36 @@ def test_reconciliation_keeps_one_resolution_and_records_all_attempts() -> None:
         "usaspending_piid",
         "usaspending_uri",
     )
+
+
+def test_unknown_profile_is_rejected() -> None:
+    with pytest.raises(IdentityRecoveryError, match="unsupported exact award identity profile"):
+        resolve_award_identities(
+            pd.DataFrame([_sbir_row()]),
+            pd.DataFrame([_official_row("OFFICIAL-1")]),
+            profile="unknown",  # type: ignore[arg-type]
+        )
+
+
+def test_reconciliation_rejects_mixed_profile_audits() -> None:
+    attempts = pd.DataFrame(
+        [
+            {
+                **_attempt_audit(
+                    "usaspending_piid",
+                    RecoveryStatus.RESOLVED_AUTHORITATIVE,
+                    ueis=("UEI000000001",),
+                ),
+                "identity_profile": "other-profile",
+            }
+        ]
+    )
+
+    with pytest.raises(IdentityRecoveryError, match="do not match"):
+        reconcile_award_identity_attempts(
+            attempts,
+            profile=ExactAwardIdentityProfile.EXACT_AWARD_KEY_V1,
+        )
 
 
 def test_reconciliation_accepts_connected_exact_matches() -> None:

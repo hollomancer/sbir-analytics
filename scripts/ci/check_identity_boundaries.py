@@ -23,6 +23,10 @@ REVIEWED_DIRECT_SCORER_FILES = frozenset(
     }
 )
 CANONICAL_JURISDICTION_FILE = "sbir_etl/identity/geography.py"
+CANONICAL_EXACT_AWARD_IDENTITY_FILE = "sbir_etl/identity/exact_awards.py"
+EXACT_AWARD_IDENTITY_SYMBOLS = frozenset(
+    {"resolve_award_identities", "reconcile_award_identity_attempts"}
+)
 JURISDICTION_PAIR_MARKERS = frozenset(
     {
         ("ALABAMA", "AL"),
@@ -115,6 +119,21 @@ def scan_file(
                     message=(
                         "U.S. jurisdiction map bypasses sbir_etl.identity.geography; "
                         "use a named normalization profile"
+                    ),
+                )
+            )
+        if (
+            relative != CANONICAL_EXACT_AWARD_IDENTITY_FILE
+            and isinstance(node, (ast.AsyncFunctionDef, ast.FunctionDef))
+            and node.name in EXACT_AWARD_IDENTITY_SYMBOLS
+        ):
+            violations.append(
+                IdentityBoundaryViolation(
+                    path=relative,
+                    line_number=node.lineno,
+                    message=(
+                        "exact award-key resolver bypasses sbir_etl.identity.exact_awards; "
+                        "use the versioned primitive"
                     ),
                 )
             )
