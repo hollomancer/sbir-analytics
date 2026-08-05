@@ -30,6 +30,13 @@ class PhaseIIICandidate(BaseModel):
     prior_award_id: str = Field(
         ..., description="Upstream Phase I/II award id the candidate is scored against."
     )
+    prior_award_key: str | None = Field(
+        None,
+        description=(
+            "Award-grain identity used for joins and deduplication. Legacy rows may omit it "
+            "only when prior_award_id is unambiguous."
+        ),
+    )
     target_type: TargetType = Field(
         ..., description="Corpus the target came from: FPDS contract or SAM.gov opportunity."
     )
@@ -54,6 +61,7 @@ class PhaseIIICandidate(BaseModel):
     cet_alignment_score: float = Field(0.0, ge=0.0, le=1.0)
     text_similarity_score: float = Field(0.0, ge=0.0, le=1.0)
     lineage_language_score: float = Field(0.0, ge=0.0, le=1.0)
+    id_xref_score: float = Field(0.0, ge=0.0, le=1.0)
 
     generated_at: datetime = Field(
         default_factory=lambda: datetime.now(UTC), description="When the row was produced."

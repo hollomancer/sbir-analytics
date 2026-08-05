@@ -19,6 +19,7 @@ import httpx
 from loguru import logger
 from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_exponential
 
+from ... import __version__
 from ...config.loader import get_config
 from ...exceptions import APIError
 from ..base_client import BaseAsyncAPIClient
@@ -153,7 +154,7 @@ class EdgarAPIClient(BaseAsyncAPIClient):
         """Build headers with SEC-required User-Agent."""
         headers = super()._build_headers()
         if self.contact_email:
-            headers["User-Agent"] = f"SBIR-Analytics/0.1.0 ({self.contact_email})"
+            headers["User-Agent"] = f"SBIR-Analytics/{__version__} ({self.contact_email})"
         return headers
 
     async def _get_json(self, url: str) -> httpx.Response:

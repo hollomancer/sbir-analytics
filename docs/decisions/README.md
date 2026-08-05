@@ -1,7 +1,7 @@
 ---
 Type: Overview
 Owner: docs@project
-Last-Reviewed: 2025-01-XX
+Last-Reviewed: 2026-07-16
 Status: active
 
 ---
@@ -41,7 +41,13 @@ Each ADR follows this structure:
 
 - [ADR-001: Allow Negative Obligation Amounts in Federal Contracts](./ADR-001-negative-obligations.md) - Accepted (2025-10-28)
 - [ADR-002: Extract a Standalone ETL Library](./ADR-002-etl-library-extraction.md) - Accepted
-- [ADR-003: Establish APIs Before MCP Adapters](./ADR-003-api-before-mcp.md) - Accepted (2026-07-12)
+- [ADR-003: Establish APIs Before MCP Adapters](./ADR-003-api-before-mcp.md) - Superseded
+- [ADR-004: Retire the Private Analytics API](./ADR-004-retire-private-analytics-api.md) - Accepted (2026-08-04)
+
+## Technology Evaluations
+
+- [Evaluation: DSPy for Weekly Award Narratives](./dspy-evaluation.md) - Prototype recommended; production adoption deferred (2026-07-16)
+- [Evaluation: Amazon S3 Files for SBIR Analytics](./s3-files-evaluation.md) - Not recommended at this time (2026-04-11)
 
 ## Resources
 

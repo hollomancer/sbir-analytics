@@ -13,15 +13,14 @@ mid-test on).
 """
 
 import pytest
-from tests.conftest import neo4j_running as neo4j_available
 
 from sbir_graph.loaders.neo4j.client import LoadMetrics, Neo4jClient
 
 pytestmark = [
     pytest.mark.integration,
-    pytest.mark.skipif(
-        not neo4j_available(), reason="Neo4j not running - see INTEGRATION_TEST_ANALYSIS.md"
-    ),
+    # Resolve Neo4j when a test executes, not while pytest imports this module.
+    # Import-time availability checks started a testcontainer during collection.
+    pytest.mark.usefixtures("neo4j_driver"),
     pytest.mark.xdist_group("neo4j_integration"),
 ]
 

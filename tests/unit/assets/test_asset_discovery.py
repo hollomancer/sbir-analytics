@@ -1,5 +1,8 @@
 """Tests for automatic asset/job/sensor discovery helpers."""
 
+import os
+import subprocess
+import sys
 import types
 
 import pytest
@@ -19,8 +22,10 @@ def test_iter_asset_modules_discovers_expected_packages():
 
     module_names = {module.__name__ for module in modules}
     assert "sbir_analytics.assets.sbir_ingestion" in module_names
+    assert "sbir_analytics.assets.phase_iii_census.assets" in module_names
     assert "sbir_analytics.assets.uspto.extraction" in module_names
     assert "sbir_analytics.assets.transition.detections" in module_names
+    assert "sbir_analytics.assets.nsf_defense_lineage" in module_names
     # Jobs/sensors should be excluded
     assert "sbir_analytics.assets.jobs.transition_job" not in module_names
     assert all(not name.startswith("sbir_analytics.assets.sensors") for name in module_names)
@@ -38,6 +43,21 @@ def test_iter_job_modules_discovers_job_packages():
     module_names = {module.__name__ for module in modules}
     assert "sbir_analytics.assets.jobs.transition_job" in module_names
     assert "sbir_analytics.assets.jobs.fiscal_returns_job" in module_names
+    assert "sbir_analytics.assets.jobs.nsf_defense_lineage_job" in module_names
+
+
+def test_iter_job_modules_skips_heavy_jobs_when_disabled(monkeypatch):
+    """Server discovery must not register jobs whose assets were gated out."""
+
+    monkeypatch.setenv("DAGSTER_LOAD_HEAVY_ASSETS", "false")
+
+    module_names = {module.__name__ for module in assets_pkg.iter_job_modules()}
+
+    assert "sbir_analytics.assets.jobs.transition_job" in module_names
+    assert "sbir_analytics.assets.jobs.fiscal_returns_job" not in module_names
+    assert "sbir_analytics.assets.jobs.cet_pipeline_job" not in module_names
+    assert "sbir_analytics.assets.jobs.modernbert_job" not in module_names
+    assert "sbir_analytics.assets.jobs.uspto_ai_job" not in module_names
 
 
 def test_iter_public_jobs_returns_job_definitions():
@@ -50,6 +70,7 @@ def test_iter_public_jobs_returns_job_definitions():
     assert jobs, "Auto-discovery should return registered jobs"
     assert all(isinstance(job, JobDefinition | UnresolvedAssetJobDefinition) for job in jobs)
     assert any(job.name == "transition_full_job" for job in jobs)
+    assert any(job.name == "nsf_defense_lineage_refresh_job" for job in jobs)
 
 
 def test_iter_public_sensors_returns_sensor_definitions():
@@ -57,3 +78,47 @@ def test_iter_public_sensors_returns_sensor_definitions():
 
     sensors = assets_pkg.iter_public_sensors()
     assert all(isinstance(sensor, SensorDefinition) for sensor in sensors)
+
+
+def test_light_mode_does_not_import_heavy_asset_families():
+    code = """
+import sys
+from dagster import Definitions
+import sbir_analytics.definitions as definitions
+
+Definitions.validate_loadable(definitions.defs)
+
+
+def test_nsf_defense_lineage_schedule_is_discovered_but_stopped_by_default():
+    schedule = next(
+        item
+        for item in definitions.schedules
+        if item.name == "monthly_nsf_defense_lineage_refresh"
+    )
+
+    assert schedule.default_status.value == "STOPPED"
+blocked = (
+    "sbir_analytics.assets.cet",
+    "sbir_analytics.assets.fiscal_assets",
+    "sbir_analytics.assets.sbir_fiscal_impacts",
+    "sbir_analytics.assets.modernbert",
+    "sbir_analytics.assets.uspto.ai_extraction",
+)
+leaked = sorted(
+    name
+    for name in sys.modules
+    if any(name == prefix or name.startswith(prefix + ".") for prefix in blocked)
+)
+assert not leaked, leaked
+"""
+    env = os.environ.copy()
+    env["DAGSTER_LOAD_HEAVY_ASSETS"] = "false"
+
+    result = subprocess.run(
+        [sys.executable, "-c", code],
+        env=env,
+        capture_output=True,
+        text=True,
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr

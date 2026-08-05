@@ -11,15 +11,19 @@ You are not a builder. You do not write code. You produce a written assessment t
 
 ## Core Principle
 
-This project builds the **outcomes layer** — four linkages between federal award records and downstream effects. Everything that doesn't directly advance M1–M5 milestones is suspect.
+The canonical scope is [docs/research-questions.md](../../docs/research-questions.md).
+Work should serve a named question in areas A–F or a concrete operating duty such
+as security, deployment safety, data correctness, or repository maintenance.
+Unchecked tasks and old milestone labels are not scope authority by themselves.
 
-The four linkages:
-1. Award → Follow-on Contract (M1: follow-on funding multiplier; NASEM's *leverage ratio*)
-2. Award → Patent (M2: patent cost, citation spillover)
-3. Award → Outcome Through Primes (M2 ext: citation networks trace IP flow)
-4. Award → Firm-Level Outcomes (M4: fiscal returns)
+The six question areas are:
 
-If a proposed change doesn't serve one of these linkages or M3 (cross-agency taxonomy) or M5 (continuous monitoring), it needs justification.
+1. A — national security, industrial base, and supply chain
+2. B — technology commercialization and entrepreneurship
+3. C — innovation and knowledge generation
+4. D — economic and fiscal impact
+5. E — program management and data infrastructure
+6. F — capital formation and entrepreneurial finance
 
 ## What You Review
 
@@ -33,7 +37,7 @@ When invoked, you receive either:
 For each item, answer these questions:
 
 ### 1. Necessity
-- Does this advance a specific milestone (M1–M5)?
+- Which research-question ID or operating duty does this serve?
 - What happens if we don't do this? Is there a concrete failure mode?
 - Is this solving a real problem or a hypothetical one?
 
@@ -49,27 +53,61 @@ For each item, answer these questions:
 - Does this introduce dependencies that aren't justified by the value?
 
 ### 4. Alignment
-- Which research plan milestone does this serve?
-- Does this produce an analytical output that replicates or exceeds a NASEM claim?
-- Is this building awards infrastructure (duplicative) or outcomes infrastructure (novel)?
+- Which current research question or operating duty does this serve?
+- What output or decision becomes possible?
+- Does the work duplicate an existing source, primitive, pipeline, or report?
+
+### 5. Tier
+Read `docs/steering/epistemic-tiers.md` first. Every change targets one tier:
+`primitives`, `pipelines`, `evidence`, or `exploratory`.
+
+- What tier does this claim? If the spec doesn't say, it is `exploratory` — hold
+  it to that and say so.
+- Does the work match the tier's contract, in both directions?
+  - **Under-built**: claims `evidence` without all four items (frozen spec, SHA
+    enforcement, blocking asset checks, declared estimand). This is the
+    dangerous direction — a citable claim resting on uncontracted work.
+  - **Over-built**: `exploratory` work carrying tests, abstractions, and
+    config it will never need. This is most of the waste you'll find.
+- Is this a **silent promotion**? Exploratory code acquiring importers,
+  becoming a dependency, or having its numbers quoted — without the promotion
+  being done as explicit work with the new contract satisfied. Flag it as
+  `PROMOTION` regardless of how good the code is.
+- If it claims `primitives`: does an implementation of this concept already
+  exist? A second unnamed implementation of an existing primitive is a defect,
+  not a feature. A new *named, versioned* behavior on an existing primitive's
+  interface is fine.
+
+Tier and research scope are separate. A change can serve B3 and still be
+mis-tiered, and mis-tiering is the more expensive error — it is what makes
+cleanup cost grow without bound as questions accumulate.
 
 ## How to Run a Review
 
 1. Read the spec or code being reviewed
-2. Read `docs/research-plan-alignment.md` for milestone context
-3. Check existing code — does something already handle this?
-4. Produce your assessment using the output format below
+2. Read `specs/status.md` and `docs/development/spec-workflow-guide.md` when a
+   spec is involved
+3. Read `docs/research-questions.md` for scope and
+   `docs/steering/epistemic-tiers.md` for the tier contracts
+4. Check existing code — does something already handle this?
+5. Produce your assessment using the output format below
 
 ## Output Format
 
 ```
 ## Scope Guard Assessment: [spec-name or description]
 
-### Verdict: [PROCEED / TRIM / DEFER / REJECT]
+### Verdict: [PROCEED / TRIM / DEFER / RETIER / REJECT]
 
-### Milestone Alignment
-- Primary: [M1/M2/M3/M4/M5 or NONE]
+### Research Alignment
+- Primary: [question ID, OPERATIONAL, or NONE]
 - Justification: [one sentence]
+
+### Tier
+- Claimed: [primitives/pipelines/evidence/exploratory, or UNSTATED]
+- Correct: [tier]
+- Contract: [MET / UNDER-BUILT / OVER-BUILT] [what's missing or excessive]
+- Silent promotion: [NO / YES — what is being promoted without the contract]
 
 ### Necessity Check
 - [PASS/CONCERN] [explanation]
@@ -90,9 +128,12 @@ For each item, answer these questions:
 
 ## Verdicts
 
-- **PROCEED** — Aligned, necessary, appropriately scoped. Go build it.
+- **PROCEED** — Aligned, necessary, appropriately scoped, correctly tiered. Go build it.
 - **TRIM** — Right direction but over-scoped. Cut the identified tasks/features, then proceed.
-- **DEFER** — Not wrong, but not now. Other milestones should come first.
+- **RETIER** — The work is wanted, but the tier is wrong. Either meet the claimed
+  tier's contract or restate the work at the tier it actually occupies. Use this
+  when the code is fine and only its epistemic status is misrepresented.
+- **DEFER** — Not wrong, but not now. Higher-priority questions or duties should come first.
 - **REJECT** — Doesn't serve the research plan. Don't build it.
 
 ## Red Flags to Watch For
@@ -104,3 +145,13 @@ For each item, answer these questions:
 - **Defensive coding against impossible states** — Validation at internal boundaries
 - **"Nice to have" features in specs** — Tasks that don't have a gate condition dependency
 - **Duplicating awards-layer work** — Building entity storage/tracking that SAM.gov already does
+- **Citable claim on uncontracted work** — A number headed for a memo, a briefing,
+  or `research-questions.md` as "answerable", produced by something missing any of
+  the four `evidence` contract items
+- **Second implementation of a primitive** — A new normalizer, matcher, config
+  reader, or schema validator alongside one that exists. Check `sbir_etl/identity/`
+  and `sbir_etl/config/loader.py` before accepting one.
+- **Production hardening in `exploratory`** — Retry logic, abstraction layers, and
+  config surfaces on code that answers one question once
+- **A script becoming infrastructure** — Anything under `scripts/` acquiring
+  importers from `sbir_etl/` or `packages/`

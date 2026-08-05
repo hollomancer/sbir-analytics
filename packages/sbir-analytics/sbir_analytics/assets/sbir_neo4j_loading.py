@@ -372,6 +372,29 @@ def _transaction_props(award: Award) -> dict[str, Any]:
     return props
 
 
+def _ensure_unique_award_transaction_ids(nodes: list[dict[str, Any]]) -> None:
+    """Fail before graph mutation when source rows collapse onto one Neo4j key."""
+    transaction_ids = [str(node.get("transaction_id") or "") for node in nodes]
+    unique_ids = set(transaction_ids)
+    if len(unique_ids) == len(transaction_ids):
+        return
+
+    seen: set[str] = set()
+    duplicates: set[str] = set()
+    for transaction_id in transaction_ids:
+        if transaction_id in seen:
+            duplicates.add(transaction_id)
+        seen.add(transaction_id)
+
+    collision_rows = len(transaction_ids) - len(unique_ids)
+    examples = ", ".join(sorted(duplicates)[:5])
+    raise ValueError(
+        "SBIR award transaction identity is not unique: "
+        f"{len(transaction_ids)} rows map to {len(unique_ids)} transaction IDs "
+        f"({collision_rows} collisions). Examples: {examples}"
+    )
+
+
 def _company_node_props(
     award: Award, *, company_id: str, id_type: str, normalized_name: str
 ) -> dict[str, Any]:
@@ -690,6 +713,10 @@ def neo4j_sbir_awards(
                         logger.warning(f"Failed to process award row: {e}")
                     validation_errors += 1
                 metrics.errors += 1
+
+        # Fail before the first graph mutation. SBIR.gov can reuse award_id across
+        # phases, while Neo4j currently keys awards as txn_award_<award_id>.
+        _ensure_unique_award_transaction_ids(award_nodes)
 
         # Companies use a multi-key MERGE (UEI ∪ DUNS) so they cross-walk correctly.
         if company_nodes_map:

@@ -63,6 +63,7 @@ ARTIFACT_STEMS = {
     "overlap_summary": "overlap_summary.json",
     "composition": "composition.json",
     "methodology_stub": "methodology_stub.md",
+    "policy_brief_stub": "policy_brief_stub.md",
 }
 
 # Legacy PR #428 filenames under data/ (nanotech only)

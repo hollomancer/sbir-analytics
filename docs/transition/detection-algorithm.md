@@ -1,5 +1,8 @@
 # Transition Detection Algorithm
 
+> **Scope:** This guide describes the `sbir_ml.transition` library design. The current Dagster
+> scoring asset uses a smaller rule-based path; see the [current overview](overview.md).
+
 ## Overview
 
 The Transition Detection Algorithm is a multi-signal scoring system that identifies likely commercialization pathways from SBIR awards to federal contracts. It combines evidence from six independent signals to produce a composite likelihood score and confidence classification.
@@ -91,10 +94,13 @@ The Transition Detection Algorithm is a multi-signal scoring system that identif
    - 9-digit unique business identifier
    - Legacy system, less common in modern data
 
-4. **Fuzzy Name Matching** - Fallback, variable confidence (0.65-0.85)
-   - RapidFuzz token_set_ratio algorithm
+4. **Fuzzy Name Matching** - Fallback, variable confidence (0.80-0.90)
+   - RapidFuzz `token_sort_ratio` algorithm (`difflib` fallback if RapidFuzz absent)
    - Normalized company names (uppercase, special char removal)
-   - Configurable thresholds for primary (0.85) and secondary (0.70) matches
+   - Configurable thresholds — library defaults: primary 0.90, secondary 0.80
+     (the Dagster `enriched_vendor_resolution` asset overrides the primary to
+     0.85 via `SBIR_ETL__TRANSITION__FUZZY__THRESHOLD`). See
+     [vendor-matching.md](vendor-matching.md) for the authoritative algorithm.
 
 **Confidence Tracking**: Each resolved vendor match includes a confidence score reflecting the match method quality.
 

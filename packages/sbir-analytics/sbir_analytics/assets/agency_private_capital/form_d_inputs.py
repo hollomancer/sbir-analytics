@@ -20,6 +20,7 @@ from typing import Any
 import pandas as pd
 
 from sbir_etl.enrichers.sec_edgar.form_d_scoring import EXCLUDED_INDUSTRY_GROUPS
+from sbir_etl.identity import CompanyNameProfile, normalize_company_name
 
 
 DEFAULT_FORM_D_MATCHES_PATH = Path("data/form_d_details.jsonl")
@@ -27,11 +28,9 @@ DEFAULT_FORM_D_CONTROL_UNIVERSE_PATH = Path("data/form_d_control_universe.jsonl"
 
 
 def normalize_name(value: object) -> str:
-    """Return the normalized join key used by the existing Form D analyses."""
+    """Compatibility shim for the versioned Form D join-key policy."""
 
-    if value is None or (isinstance(value, float) and pd.isna(value)):
-        return ""
-    return " ".join(str(value).strip().upper().split())
+    return normalize_company_name(value, profile=CompanyNameProfile.FORM_D_JOIN_V1)
 
 
 def read_jsonl(path: Path) -> list[dict[str, Any]]:

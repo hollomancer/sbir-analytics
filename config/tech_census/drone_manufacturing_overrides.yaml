@@ -1,0 +1,4 @@
+# Reviewed exceptions to the deterministic drone-manufacturing rules.
+# Match on stable source identifiers; never on title text alone.
+version: "2026-07-14"
+overrides: []

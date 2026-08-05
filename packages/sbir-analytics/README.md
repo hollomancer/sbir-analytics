@@ -3,17 +3,26 @@
 Full SBIR analytics pipeline including Dagster orchestration, ML, and Neo4j.
 
 Installs [`sbir-etl`](../../) with all extras plus the `sbir_analytics` Python
-package containing deployment and infrastructure modules (AWS Lambda handlers,
-developer automation) that don't belong in the reusable ETL library.
+package containing Dagster orchestration and application tools that don't
+belong in the reusable ETL library.
 
 ## Installation
 
+From a package index:
+
 ```bash
-# Full pipeline (Dagster + S3 + ML + Neo4j)
+# Full pipeline (Dagster + ML + Neo4j)
 pip install sbir-analytics
 
 # ETL library only (no Dagster, ML, or Neo4j)
 pip install sbir-etl
+```
+
+From a repository checkout with development tools:
+
+```bash
+make install       # full workspace; uv sync --extra stack-dev
+make install-core  # reusable sbir-etl library only; uv sync
 ```
 
 ## What's Included
@@ -21,8 +30,7 @@ pip install sbir-etl
 | Package | What You Get |
 |---------|-------------|
 | `sbir-etl` | ETL library — extractors, enrichers, transformers, models, config |
-| `sbir-etl[pipeline]` | + Dagster orchestration (assets, jobs, sensors) |
-| `sbir-etl[cloud]` | + AWS S3 storage (boto3, cloudpathlib) |
-| `sbir-etl[ml]` | + ML/NLP (scikit-learn, spacy, huggingface) |
-| `sbir-etl[neo4j]` | + Neo4j graph database loader |
-| **`sbir-analytics`** | **All of the above** + `sbir_analytics.lambda` |
+| `sbir-etl[cloud,uspto,monitoring]` | ETL integrations used by the pipeline |
+| `sbir-ml[nlp]` | ML/NLP models and enrichment |
+| `sbir-graph` | Neo4j loaders, queries, and packaged migrations |
+| **`sbir-analytics`** | **All of the above** + orchestration and analysis tools |

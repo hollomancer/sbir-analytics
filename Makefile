@@ -42,7 +42,7 @@ GRAY   := \033[90m
 info = if [ "$(QUIET)" != "1" ]; then printf "$(BLUE)➤$(RESET) %s\n" "$(1)"; fi
 success = if [ "$(QUIET)" != "1" ]; then printf "$(GREEN)✔$(RESET) %s\n" "$(1)"; fi
 warn = if [ "$(QUIET)" != "1" ]; then printf "$(YELLOW)⚠$(RESET) %s\n" "$(1)"; fi
-error = if [ "$(QUIET)" != "1" ]; then printf "$(RED)✖$(RESET) %s\n" "$(1)"; fi
+failure = if [ "$(QUIET)" != "1" ]; then printf "$(RED)✖$(RESET) %s\n" "$(1)"; fi
 print-cmd = if [ "$(QUIET)" != "1" ]; then printf "$(GRAY)$$ %s$(RESET)\n" "$(strip $(1))"; fi
 
 define run
@@ -119,7 +119,7 @@ docker-verify: env-check ## Verify Docker setup is working correctly
 	    cypher-shell -u $${NEO4J_USER:-neo4j} -p $${NEO4J_PASSWORD:-test} 'RETURN 1' >/dev/null 2>&1; then \
 	   $(call success,Neo4j is accessible at bolt://localhost:7687); \
 	 else \
-	   $(call error,Neo4j is not accessible); \
+	   $(call failure,Neo4j is not accessible); \
 	   $(call warn,Check logs with: make docker-logs SERVICE=neo4j); \
 	   exit 1; \
 	 fi; \
@@ -127,7 +127,7 @@ docker-verify: env-check ## Verify Docker setup is working correctly
 	 if curl -fsS --max-time 3 http://localhost:3000/server_info >/dev/null 2>&1; then \
 	   $(call success,Dagster UI is accessible at http://localhost:3000); \
 	 else \
-	   $(call error,Dagster UI is not accessible); \
+	   $(call failure,Dagster UI is not accessible); \
 	   $(call warn,Check logs with: make docker-logs SERVICE=dagster-webserver); \
 	   exit 1; \
 	 fi; \
@@ -150,9 +150,27 @@ docker-verify: env-check ## Verify Docker setup is working correctly
 # -----------------------------------------------------------------------------
 
 .PHONY: install
-install: ## Install dependencies with uv
-	@$(call info,Installing dependencies)
+install: ## Install the full local development stack with uv
+	@$(call info,Installing the full local development stack)
+	$(call run,uv sync --extra stack-dev)
+
+.PHONY: install-core
+install-core: ## Install only the reusable sbir-etl library dependencies
+	@$(call info,Installing core sbir-etl dependencies)
 	$(call run,uv sync)
+
+.PHONY: doctor
+doctor: ## Verify the local Python development environment
+	@$(call info,Checking local development environment)
+	@command -v uv >/dev/null 2>&1 || { \
+	  printf "$(RED)✖$(RESET) uv is not installed\n"; \
+	  exit 1; \
+	}
+	$(call run,uv run --no-sync python -c 'import sys; assert sys.version_info.major == 3 and 11 <= sys.version_info.minor < 13')
+	$(call run,uv run --no-sync python -c 'import dagster; import pytest; import sbir_analytics; import sbir_etl; import sbir_graph; import sbir_ml')
+	$(call run,uv run --no-sync ruff --version)
+	$(call run,uv run --no-sync mypy --version)
+	@$(call success,Development environment is ready)
 
 .PHONY: test
 test: ## Run all tests
@@ -163,6 +181,11 @@ test: ## Run all tests
 test-unit: ## Run unit tests only
 	@$(call info,Running unit tests)
 	$(call run,uv run pytest tests/unit/ -v)
+
+.PHONY: test-smoke
+test-smoke: ## Run a fast, data-free onboarding smoke test
+	@$(call info,Running onboarding smoke tests)
+	$(call run,uv run pytest -n 0 tests/unit/test_models.py tests/unit/assets/test_asset_discovery.py -v)
 
 .PHONY: test-integration
 test-integration: ## Run integration tests only
@@ -194,16 +217,23 @@ test-modernbert: ## Test ModernBert pipeline
 	@$(call info,Testing ModernBert pipeline)
 	$(call run,uv run pytest tests/functional/test_pipelines.py::TestModernBertPipeline -v)
 
-.PHONY: test-s3
-test-s3: ## Test S3 integration (requires AWS credentials)
-	@$(call info,Testing S3 integration)
-	$(call run,uv run pytest tests/integration/test_s3_operations.py -v -m s3)
-
 .PHONY: lint
 lint: ## Run linting and type checking
 	@$(call info,Running linting and type checking)
 	$(call run,uv run ruff check .)
 	$(call run,uv run mypy sbir_etl/)
+
+.PHONY: lint-boundaries
+lint-boundaries: ## Enforce package and archive dependency boundaries
+	@$(call info,Checking architecture boundaries)
+	$(call run,uv run python scripts/ci/check_architecture_boundaries.py)
+	$(call run,uv run python scripts/ci/check_removed_src_references.py)
+	$(call run,uv run python scripts/ci/validate_study_manifests.py)
+
+.PHONY: docs-check
+docs-check: ## Check docs, agent files, spec registry, stale commands, and old code references
+	@$(call info,Running repository hygiene checks)
+	$(call run,uv run python scripts/ci/check_removed_src_references.py)
 
 .PHONY: format
 format: ## Format code
@@ -237,19 +267,9 @@ notebook: install-ml ## Start Jupyter Lab for ML analysis (Cloud-Native)
 	$(call run,uv run --group notebooks jupyter lab --notebook-dir=notebooks)
 
 .PHONY: setup-ml
-setup-ml: env-check ## Configure environment for ML (Cloud + HF)
+setup-ml: env-check ## Configure environment for ML (HuggingFace)
 	@$(call info,Configuring ML environment)
-	@$(call info,This will enable S3 usage and prompt for HuggingFace Token.)
-	@if ! grep -q "SBIR_ETL__EXTRACTION__SBIR__USE_S3_FIRST" .env; then \
-		echo "SBIR_ETL__EXTRACTION__SBIR__USE_S3_FIRST=true" >> .env; \
-		echo "SBIR_ETL__EXTRACTION__SAM_GOV__USE_S3_FIRST=true" >> .env; \
-		$(call success,Added cloud configuration to .env); \
-	else \
-		sed -e 's/SBIR_ETL__EXTRACTION__SBIR__USE_S3_FIRST=false/SBIR_ETL__EXTRACTION__SBIR__USE_S3_FIRST=true/' \
-			-e 's/SBIR_ETL__EXTRACTION__SAM_GOV__USE_S3_FIRST=false/SBIR_ETL__EXTRACTION__SAM_GOV__USE_S3_FIRST=true/' \
-			.env > .env.tmp && mv .env.tmp .env; \
-		$(call success,Updated .env to use S3); \
-	fi
+	@$(call info,This will prompt for a HuggingFace Token.)
 	@if ! grep -q "HF_TOKEN" .env; then \
 		echo "HF_TOKEN=" >> .env; \
 		$(call warn,Added HF_TOKEN to .env. Please edit it to add your HuggingFace token.); \
@@ -263,31 +283,9 @@ sample-data: ## Generate sample data for local development
 	$(call run,uv run python scripts/dev/generate_sample_data.py)
 
 .PHONY: setup-local
-setup-local: env-check ## Configure environment for local development (no cloud)
+setup-local: env-check ## Configure environment for local development
 	@$(call info,Configuring local environment)
-	@if ! grep -q "SBIR_ETL__EXTRACTION__SBIR__USE_S3_FIRST" .env; then \
-		echo "SBIR_ETL__EXTRACTION__SBIR__USE_S3_FIRST=false" >> .env; \
-		echo "SBIR_ETL__EXTRACTION__SAM_GOV__USE_S3_FIRST=false" >> .env; \
-		$(call success,Added local configuration to .env); \
-	else \
-		$(call warn,Local configuration already present in .env); \
-	fi
 	@$(call info,You can now generate sample data with: make sample-data)
-
-.PHONY: setup-cloud
-setup-cloud: env-check ## Configure environment for cloud development
-	@$(call info,Configuring cloud environment)
-	@$(call info,This will enable S3 usage. Ensure you have AWS credentials configured.)
-	@if ! grep -q "SBIR_ETL__EXTRACTION__SBIR__USE_S3_FIRST" .env; then \
-		echo "SBIR_ETL__EXTRACTION__SBIR__USE_S3_FIRST=true" >> .env; \
-		echo "SBIR_ETL__EXTRACTION__SAM_GOV__USE_S3_FIRST=true" >> .env; \
-		$(call success,Added cloud configuration to .env); \
-	else \
-		sed -e 's/SBIR_ETL__EXTRACTION__SBIR__USE_S3_FIRST=false/SBIR_ETL__EXTRACTION__SBIR__USE_S3_FIRST=true/' \
-			-e 's/SBIR_ETL__EXTRACTION__SAM_GOV__USE_S3_FIRST=false/SBIR_ETL__EXTRACTION__SAM_GOV__USE_S3_FIRST=true/' \
-			.env > .env.tmp && mv .env.tmp .env; \
-		$(call success,Updated .env to use S3); \
-	fi
 
 # -----------------------------------------------------------------------------
 # Build + publish
@@ -386,7 +384,7 @@ docker-test: env-check ## Run containerised CI tests (profile=ci)
 	 if [ $$STATUS -eq 0 ]; then \
 	   $(call success,Tests passed); \
 	 else \
-	   $(call error,Tests failed (exit $$STATUS)); \
+	   $(call failure,Tests failed (exit $$STATUS)); \
 	   $(call warn,View logs with: make docker-logs SERVICE=app); \
 	 fi; \
 	 exit $$STATUS
@@ -400,7 +398,7 @@ docker-e2e: env-check ## Run full end-to-end test suite (profile=ci)
 	 if ! $(COMPOSE) --profile ci up --build --abort-on-container-exit neo4j app 2>&1; then STATUS=$$?; fi; \
 	 if [ "$(QUIET)" != "1" ]; then printf "$(BLUE)➤$(RESET) E2E tests completed with exit code %s\n" "$$STATUS"; fi; \
 	 if [ $$STATUS -ne 0 ]; then \
-	   $(call error,E2E tests failed with exit code $$STATUS); \
+	   $(call failure,E2E tests failed with exit code $$STATUS); \
 	   $(call info,Showing recent logs from failed containers...); \
 	   $(COMPOSE) --profile ci logs --tail=50 app 2>&1 || true; \
 	   $(COMPOSE) --profile ci logs --tail=20 neo4j 2>&1 || true; \
@@ -479,7 +477,7 @@ neo4j-check: env-check ## Run the Neo4j health check
 	    cypher-shell -u $${NEO4J_USER:-neo4j} -p $${NEO4J_PASSWORD:-password} 'RETURN 1' >/dev/null 2>&1; then \
 	   $(call success,Neo4j responded successfully); \
 	 else \
-	   $(call error,Neo4j health check failed); \
+	   $(call failure,Neo4j health check failed); \
 	  exit 1; \
 	 fi
 
@@ -542,12 +540,11 @@ ps: ## Show running containers
 	$(call run,$(COMPOSE) ps)
 
 .PHONY: clean-all
-clean-all: ## Clean all artifacts, containers, and volumes
-	@$(call info,Cleaning all Docker artifacts)
+clean-all: ## Remove this project's containers and Compose volumes
+	@$(call info,Cleaning project Docker resources)
 	@set -euo pipefail; \
 	 $(call run,$(COMPOSE) down --remove-orphans --volumes); \
-	 $(call run,docker system prune -f --volumes || true); \
-	 $(call success,All artifacts cleaned)
+	 $(call success,Project containers and Compose volumes cleaned)
 
 .PHONY: shell
 shell: env-check ## Drop into a shell in the app container
@@ -566,7 +563,7 @@ validate-config: ## Validate docker-compose.yml and .env files
 	@$(call info,Validating docker-compose.yml)
 	@set -euo pipefail; \
 	 if ! $(COMPOSE) config >/dev/null 2>&1; then \
-	   $(call error,docker-compose.yml validation failed); \
+	   $(call failure,docker-compose.yml validation failed); \
 	   $(COMPOSE) config; \
 	   exit 1; \
 	 fi; \
@@ -586,6 +583,113 @@ validate-config: ## Validate docker-compose.yml and .env files
 validate: lint test ## Run linting, type checking, and tests
 	@$(call success,All validation checks passed)
 
+# -----------------------------------------------------------------------------
+# Tailscale-only self-hosted server profile
+# -----------------------------------------------------------------------------
+
+SERVER_COMPOSE_FILE ?= docker-compose.server.yml
+SERVER_ENV_FILE     ?= .env.server
+SERVER_COMPOSE       = $(DOCKER_COMPOSE) -f $(SERVER_COMPOSE_FILE) --env-file $(SERVER_ENV_FILE)
+SERVER_PYTHON_BASE_IMAGE ?= ghcr.io/hollomancer/sbir-analytics-python-base:latest
+
+.PHONY: server-env-check
+server-env-check: ## Ensure .env.server exists
+	@set -euo pipefail; \
+	 if [ ! -f $(SERVER_ENV_FILE) ]; then \
+	   printf "$(RED)✖$(RESET) $(SERVER_ENV_FILE) not found. Copy .env.server.example → $(SERVER_ENV_FILE).\n"; \
+	   exit 1; \
+	 else \
+	   printf "$(GREEN)✔$(RESET) $(SERVER_ENV_FILE) found\n"; \
+	 fi
+
+.PHONY: server-check
+server-check: ## Validate server prerequisites (Docker, storage, ports, Tailscale, bindings)
+	@$(call info,Checking Tailscale-only server prerequisites)
+	$(call run,SERVER_ENV_FILE=$(SERVER_ENV_FILE) ./scripts/server/check-prerequisites.sh)
+
+.PHONY: server-base-image
+server-base-image: server-check ## Build the native Python base image from source
+	@$(call info,Building the native Python base image)
+	# Built locally rather than pulled. This used to try `docker pull` first and
+	# only build when the pull failed, which meant "missing manifest for this
+	# architecture" was the sole trigger. Since build-images.yml was retired
+	# nothing republishes ghcr.io/.../sbir-analytics-python-base:latest, so the
+	# pull always succeeded and pinned this host to a base image that will never
+	# be refreshed again. Building from Dockerfile.python-base keeps the base in
+	# step with the repository; Docker's layer cache makes repeat builds cheap,
+	# so only a real change to the base's inputs costs the full build.
+	$(call run,docker build -f Dockerfile.python-base -t $(SERVER_PYTHON_BASE_IMAGE) .)
+	@$(call success,Native Python base image is ready)
+
+.PHONY: server-rebuild
+server-rebuild: server-env-check ## Rebuild base + app images from source and restart the stack
+	@$(call warn,This recreates containers: any in-flight Dagster run will be killed)
+	@$(call info,Rebuilding the native Python base image (pulling its upstream base))
+	# --pull refreshes the upstream image Dockerfile.python-base builds FROM, so
+	# a scheduled rebuild picks up base-OS and interpreter security updates
+	# rather than rebuilding on top of an increasingly old cached layer.
+	$(call run,docker build --pull -f Dockerfile.python-base -t $(SERVER_PYTHON_BASE_IMAGE) .)
+	@$(call info,Rebuilding the application images)
+	$(call run,$(SERVER_COMPOSE) --profile server build --pull)
+	@$(call info,Restarting the stack on the new images)
+	$(call run,$(SERVER_COMPOSE) --profile server up -d --wait --wait-timeout 300)
+	$(call run,$(SERVER_COMPOSE) --profile server ps)
+	@$(call success,Server stack rebuilt. Run 'docker image prune' to reclaim superseded layers)
+
+.PHONY: server-up
+server-up: server-base-image ## Preflight and start the always-on server stack (profile=server)
+	@$(call info,Starting server stack (profile: server))
+	$(call run,$(SERVER_COMPOSE) --profile server up -d --build --wait --wait-timeout 300)
+	$(call run,$(SERVER_COMPOSE) --profile server ps)
+	@$(call success,Server stack ready (localhost-only; expose via 'make server-tailscale-up'))
+
+.PHONY: server-down
+server-down: server-env-check ## Stop the server stack (PRESERVES volumes/data)
+	@$(call info,Stopping server stack (data volumes preserved))
+	$(call run,$(SERVER_COMPOSE) --profile server down --remove-orphans)
+	@$(call success,Server stack stopped; volumes and bind-mounted data preserved)
+
+.PHONY: server-status
+server-status: server-env-check ## Show server stack status
+	@$(call info,Server stack status)
+	$(call run,$(SERVER_COMPOSE) --profile server ps)
+
+.PHONY: server-logs
+server-logs: server-env-check ## Tail server logs for SERVICE (default dagster-webserver)
+	@$(call info,Tailing server logs for service: $(SERVICE))
+	@$(SERVER_COMPOSE) --profile server logs -f --tail=200 $(SERVICE)
+
+.PHONY: server-backup
+server-backup: server-env-check ## Dump Neo4j to $(SERVER_BACKUP_DIR) (default ./backups)
+	@$(call info,Backing up Neo4j)
+	$(call run,SERVER_ENV_FILE=$(SERVER_ENV_FILE) COMPOSE_FILE=$(SERVER_COMPOSE_FILE) ./scripts/server/backup.sh)
+
+.PHONY: server-tailscale-up
+server-tailscale-up: server-env-check ## Configure persistent Tailscale Serve routes
+	@$(call info,Configuring Tailscale Serve routes)
+	$(call run,SERVER_ENV_FILE=$(SERVER_ENV_FILE) ./scripts/server/tailscale-serve.sh up)
+
+.PHONY: server-tailscale-status
+server-tailscale-status: ## Show Tailscale Serve configuration
+	@$(call info,Tailscale Serve status)
+	$(call run,./scripts/server/tailscale-serve.sh status)
+
+.PHONY: server-tailscale-down
+server-tailscale-down: server-env-check ## Remove ONLY the managed SBIR Tailscale Serve routes
+	@$(call info,Removing SBIR Tailscale Serve routes)
+	$(call run,SERVER_ENV_FILE=$(SERVER_ENV_FILE) ./scripts/server/tailscale-serve.sh down)
+
+.PHONY: server-validate-config
+server-validate-config: server-env-check ## Validate docker-compose.server.yml
+	@$(call info,Validating $(SERVER_COMPOSE_FILE))
+	@set -euo pipefail; \
+	 if ! $(SERVER_COMPOSE) --profile server config >/dev/null 2>&1; then \
+	   $(call failure,$(SERVER_COMPOSE_FILE) validation failed); \
+	   $(SERVER_COMPOSE) --profile server config; \
+	   exit 1; \
+	 fi; \
+	 $(call success,$(SERVER_COMPOSE_FILE) is valid)
+
 .PHONY: ci-local
 ci-local: ## Run CI checks locally (mimics GitHub Actions)
 	@$(call info,Running CI checks locally)
@@ -595,7 +699,7 @@ ci-local: ## Run CI checks locally (mimics GitHub Actions)
 	 if command -v python3 >/dev/null 2>&1; then \
 	   python3 scripts/ci/scan_secrets.py || exit_code=$$?; \
 	   if [ "$${exit_code:-0}" != "0" ]; then \
-	     $(call error,Secret scan failed); \
+	     $(call failure,Secret scan failed); \
 	     exit $$exit_code; \
 	   fi; \
 	 else \

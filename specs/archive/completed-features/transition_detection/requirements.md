@@ -1,7 +1,7 @@
 # Requirements — SBIR Transition Detection (Archive)
 
-> **Status:** Implemented and merged (October 30, 2025). Current live spec stub:
-> [`specs/transition-detection/requirements.md`](../../../transition-detection/requirements.md).
+> **Status:** Implemented and merged (October 30, 2025). See the current
+> [transition documentation](../../../../docs/transition/README.md).
 > Supports inventory questions **B2** and **B3** in
 > [docs/research-questions.md](../../../../docs/research-questions.md).
 

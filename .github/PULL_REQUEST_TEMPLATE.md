@@ -11,6 +11,16 @@ Fixes # (issue)
 - [ ] Breaking change (fix or feature that would cause existing functionality to not work as expected)
 - [ ] Documentation update
 
+## Versioning Impact
+
+- [ ] No release impact (internal or unreleased work)
+- [ ] PATCH: backward-compatible fix or documentation correction
+- [ ] MINOR: new capability, deprecation, or breaking change during `0.x`
+- [ ] MAJOR: incompatible public change after `1.0.0`
+
+See [the versioning policy](../docs/steering/versioning.md). The release PR applies the selected
+increment across all four packages.
+
 ## Testing
 
 Please describe the tests that you ran to verify your changes. Provide instructions so we can reproduce.

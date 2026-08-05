@@ -1,6 +1,6 @@
-# API Reference
+# Code Reference
 
-Code documentation for the SBIR ETL pipeline.
+Use this page to find the main parts of the SBIR data pipeline.
 
 ## Module Structure
 
@@ -47,12 +47,11 @@ packages/sbir-ml/sbir_ml/
 - `sbir_etl.transformers` - Business logic transformations
 - `sbir_graph.loaders` - Neo4j graph loading
 
-## Generating Docs
+## Generated documentation
 
-```bash
-# Generate API documentation
-uv run pdoc sbir_etl/ -o docs/api/generated/
-```
+We do not publish generated API documentation. Use this page as a map, then read
+the source code and tests for details. If we add generated documentation later,
+its tool and Make command should be part of the repository first.
 
 ## Related
 

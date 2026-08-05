@@ -1,5 +1,7 @@
 # Requirements — OT Consortium Sub-Award Attribution (FFATA/FSRS)
 
+**Target epistemic tier:** `evidence`
+
 > **Status:** Gated backlog — not implemented. Run the T0 coverage probe before
 > promoting beyond the OT consortium verification-tiering follow-up.
 > Supports inventory question **A2** (OT consortium attribution) in [docs/research-questions.md](../../docs/research-questions.md).

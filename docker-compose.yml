@@ -19,25 +19,30 @@
 
 x-common-environment: &common-environment
   ENVIRONMENT: ${ENVIRONMENT:-dev}
+  SBIR_ETL__PIPELINE__ENVIRONMENT: ${ENVIRONMENT:-dev}
   PYTHONPATH: /app
   PYTHONUNBUFFERED: 1
   SERVICE_STARTUP_TIMEOUT: ${SERVICE_STARTUP_TIMEOUT:-120}
   # Neo4j connection settings
-  SBIR_ETL__NEO4J__HOST: ${SBIR_ETL__NEO4J__HOST:-neo4j}
-  SBIR_ETL__NEO4J__PORT: ${SBIR_ETL__NEO4J__PORT:-7687}
-  NEO4J_URI: ${NEO4J_URI:-bolt://neo4j:7687}
+  # Container processes always use the Compose service hostname. `.env.example`
+  # uses localhost for Python processes running directly on the host.
+  SBIR_ETL__NEO4J__HOST: neo4j
+  SBIR_ETL__NEO4J__PORT: 7687
+  NEO4J_URI: bolt://neo4j:7687
   NEO4J_USER: ${NEO4J_USER:-neo4j}
   NEO4J_PASSWORD: ${NEO4J_PASSWORD:-password}
 
 x-dev-environment: &dev-environment
   <<: *common-environment
   ENVIRONMENT: "dev"
+  SBIR_ETL__PIPELINE__ENVIRONMENT: "dev"
   NEO4J_USER: "${NEO4J_USER:-neo4j}"
   NEO4J_PASSWORD: "${NEO4J_PASSWORD:-test}"
 
 x-ci-environment: &ci-environment
   <<: *common-environment
   ENVIRONMENT: "test"
+  SBIR_ETL__PIPELINE__ENVIRONMENT: "test"
   NEO4J_USER: "${NEO4J_USER}"
   NEO4J_PASSWORD: "${NEO4J_PASSWORD}"
 
@@ -117,43 +122,6 @@ services:
     healthcheck: *healthcheck-neo4j
     restart: ${NEO4J_RESTART_POLICY:-unless-stopped}
     <<: *resource-limits
-
-  # =============================================================================
-  # Private Read-Only Analytics API
-  # =============================================================================
-  analytics-api:
-    build:
-      context: .
-      dockerfile: Dockerfile
-      target: runtime
-    image: ${IMAGE_NAME:-sbir-analytics}:${IMAGE_TAG:-local}
-    profiles:
-      - dev
-    environment:
-      <<: *common-environment
-      NEO4J_READ_USER: ${NEO4J_READ_USER:-neo4j}
-      NEO4J_READ_PASSWORD: ${NEO4J_READ_PASSWORD:-password}
-      # Default empty rather than :? so an unset token cannot break compose
-      # interpolation for other profiles (e.g. the ci `app` service). The API
-      # itself refuses to serve (503) until a non-empty token is provided.
-      SBIR_ANALYTICS_API_TOKEN: ${SBIR_ANALYTICS_API_TOKEN:-}
-      SBIR_ANALYTICS_SNAPSHOT_DIR: /app/reports/analytics_snapshots
-    command: ["python", "-m", "sbir_analytics.api"]
-    volumes:
-      - ./reports:/app/reports:ro
-    ports:
-      - "${SBIR_ANALYTICS_API_PORT:-8000}:8000"
-    depends_on:
-      neo4j:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:8000/health/ready || exit 1"]
-      interval: 15s
-      timeout: 3s
-      retries: 5
-    networks:
-      - sbir-network
-    restart: ${ANALYTICS_API_RESTART_POLICY:-unless-stopped}
 
   # =============================================================================
   # Dagster Webserver Service
@@ -271,6 +239,7 @@ services:
       - .env
     environment:
       - ENVIRONMENT=test
+      - SBIR_ETL__PIPELINE__ENVIRONMENT=test
       - PYTHONPATH=/app
       - NEO4J_URI=bolt://neo4j:7687
       - NEO4J_USERNAME=${NEO4J_USER}
@@ -327,6 +296,13 @@ services:
       # in the ci profile command (above) finds tests/. Without this, pytest
       # exits with code 5 ("no tests collected") and breaks Container Build.
       - ./tests:/app/tests:ro
+      # Repo-root server contract exercised by fast unit tests.
+      - ./.env.server.example:/app/.env.server.example:ro
+      - ./Dockerfile:/app/Dockerfile:ro
+      - ./Makefile:/app/Makefile:ro
+      - ./docker-compose.server.yml:/app/docker-compose.server.yml:ro
+      - ./docker-compose.yml:/app/docker-compose.yml:ro
+      - ./workspace.server.yaml:/app/workspace.server.yaml:ro
       - ./config:/app/config:ro
       - ./scripts:/app/scripts:ro
     restart: "no"
@@ -342,6 +318,7 @@ services:
       - dev
     environment:
       ENVIRONMENT: ${ENVIRONMENT:-dev}
+      SBIR_ETL__PIPELINE__ENVIRONMENT: ${ENVIRONMENT:-dev}
       PYTHONUNBUFFERED: 1
     volumes:
       # Bind mounts work for both dev (live editing) and CI (ephemeral runner filesystem)

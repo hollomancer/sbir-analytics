@@ -27,12 +27,38 @@ IdentifierBasis = Literal["uei", "duns_crosswalk", "name_fallback"]
 class PhaseIIAward(BaseModel):
     """A single Phase II award unified across contracts, grants, and SBIR.gov."""
 
-    award_id: str = Field(..., description="Stable award identifier from source system.")
+    award_id: str = Field(
+        ...,
+        description=(
+            "Normalized USAspending generated award identifier for federal rows; "
+            "original SBIR.gov source identifier when unique within phase, otherwise a "
+            "full deterministic SBIRGOV source-row surrogate."
+        ),
+    )
+    source_award_id: str | None = Field(
+        None,
+        description="Source PIID, contract, or tracking identifier retained for exact audit reconciliation.",
+    )
+    source_row_sha256: str | None = Field(
+        None,
+        description=("Full deterministic SBIR.gov source-row fingerprint; null for federal rows."),
+    )
+    representative_transaction_id: str | None = Field(
+        None,
+        description="Stable federal transaction selected as the deterministic award-state snapshot.",
+    )
+    source_transaction_count: int | None = Field(
+        None,
+        ge=1,
+        description="Number of distinct Phase II-coded federal transactions collapsed into the award.",
+    )
     recipient_uei: str | None = Field(None, description="12-char UEI, if known.")
     recipient_duns: str | None = Field(None, description="9-digit DUNS, if known.")
     recipient_name: str | None = Field(None, description="Firm name at time of award.")
     agency: str | None = Field(None, description="Awarding agency (top-tier).")
     sub_agency: str | None = Field(None, description="Awarding sub-agency / branch.")
+    naics_code: str | None = Field(None, description="Source-reported NAICS code, if known.")
+    psc_code: str | None = Field(None, description="Source-reported PSC code, if known.")
     award_amount: float | None = Field(None, description="Obligated amount in USD.")
     award_date: date | None = Field(None, description="Award action date.")
     period_of_performance_start: date | None = Field(
@@ -52,7 +78,8 @@ class PhaseIIAward(BaseModel):
         False,
         description=(
             "True if federal-system phase coding was missing and we recovered "
-            "'Phase II' by joining against SBIR.gov on award_id / agency_tracking."
+            "'Phase II' from an unmatched SBIR.gov source row. Exact source-ID "
+            "matches retain the federal row and its false value."
         ),
     )
 

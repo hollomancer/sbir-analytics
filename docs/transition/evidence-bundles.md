@@ -1,5 +1,9 @@
 # Evidence Bundle Structure & Interpretation Guide
 
+> **Scope:** This is the library evidence model, not proof that every field is populated by the
+> current Dagster path. Confirm materialized fields against the
+> [transition dictionary](../data/dictionaries/transition-fields-dictionary.md).
+
 ## Overview
 
 An **evidence bundle** is a comprehensive audit trail that documents how and why a particular award-contract pair was identified as a transition. It contains:
@@ -823,7 +827,7 @@ Evidence bundles are persisted as newline-delimited JSON:
 Evidence bundles are stored as JSON on relationship properties:
 
 ```cypher
-MATCH (a:Award)-[t:TRANSITIONED_TO]->(c:Contract)
+MATCH (a:FinancialTransaction {transaction_type: "AWARD"})-[t:TRANSITIONED_TO]->(trans:Transition)
 WHERE t.transition_id = "trans_a1b2c3d4e5f6"
 RETURN t.evidence_bundle
 ```

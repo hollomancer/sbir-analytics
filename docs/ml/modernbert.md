@@ -48,7 +48,7 @@ This guide covers the integration of ModernBERT-Embed into the SBIR analytics pi
 
 2. **`modernbert_embeddings_patents`**
    - Generates embeddings for USPTO patents
-   - Input: `transformed_patents` metadata (loads from JSONL or S3)
+   - Input: `transformed_patents` metadata (loads from JSONL or the local PatentsView archive)
    - Output: DataFrame with `patent_id`, `embedding`, metadata
    - Text fields: title, abstract
 
@@ -127,14 +127,12 @@ export HF_TOKEN="your_huggingface_token"
 ### Running via CLI
 
 ```bash
-# Materialize all embedding assets
-dagster asset materialize -m sbir_analytics.definitions --select "modernbert*"
+# Run the complete embedding job through the canonical target
+make modernbert-run
 
-# Materialize specific asset
-dagster asset materialize -m sbir_analytics.definitions --select modernbert_embeddings_awards
-
-# Run the complete embedding job
-dagster job execute -m sbir_analytics.definitions -j modernbert_job
+# Or materialize one asset from the heavy-asset definitions module
+uv run dagster asset materialize -m sbir_analytics.definitions_ml \
+  --select modernbert_embeddings_awards
 ```
 
 ### Programmatic Usage

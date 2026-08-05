@@ -30,17 +30,7 @@ from pydantic import BaseModel, Field, field_validator
 # ---- Utilities ----
 # Use centralized date parsing utility
 from sbir_etl.utils.date_utils import parse_date as _parse_date
-
-
-def _normalize_identifier(val: str | None) -> str | None:
-    if val is None:
-        return None
-    v = str(val).strip()
-    if v == "":
-        return None
-    # Remove common punctuation and whitespace collapse
-    v = re.sub(r"[^\w\-]", "", v).upper()
-    return v
+from sbir_etl.utils.identifiers import normalize_uspto_identifier
 
 
 def _normalize_name(name: str | None) -> str | None:
@@ -83,17 +73,17 @@ class PatentDocument(BaseModel):
     @field_validator("application_number", mode="before")
     @classmethod
     def _norm_application_number(cls, v):
-        return _normalize_identifier(v)
+        return normalize_uspto_identifier(v)
 
     @field_validator("publication_number", mode="before")
     @classmethod
     def _norm_publication_number(cls, v):
-        return _normalize_identifier(v)
+        return normalize_uspto_identifier(v)
 
     @field_validator("grant_number", mode="before")
     @classmethod
     def _norm_grant_number(cls, v):
-        return _normalize_identifier(v)
+        return normalize_uspto_identifier(v)
 
     @field_validator("filing_date", "publication_date", "grant_date", mode="before")
     @classmethod
@@ -139,7 +129,7 @@ class PatentAssignee(BaseModel):
     @field_validator("uei", "cage", "duns", mode="before")
     @classmethod
     def _normalize_ids(cls, v):
-        return _normalize_identifier(v)
+        return normalize_uspto_identifier(v)
 
 
 class PatentAssignor(BaseModel):

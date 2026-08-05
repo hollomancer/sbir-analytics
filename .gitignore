@@ -112,6 +112,7 @@ celerybeat.pid
 .env.*
 !.env.example
 !.env.example.*
+!.env.server.example
 .venv
 .venv311
 env/
@@ -173,6 +174,7 @@ artifacts/
 
 # Additional data formats
 *.parquet
+!tests/fixtures/naics_index_fixture.parquet
 *.feather
 *.duckdb.wal
 
@@ -195,6 +197,9 @@ dagster_home/
 docker/*.local.*
 docker-compose.override.yml
 
+# Host-specific server deployment state (procedures stay in the runbook)
+/docs/deployment/*-status.local.md
+
 # Poetry backups
 poetry.lock.bak
 
@@ -209,14 +214,7 @@ reports/
 !reports/.gitkeep
 report.md
 
-# AWS CDK / Infrastructure build artifacts
-**/cdk.out/
-*.template.json
-*.assets.json
-# CDK context cache (per-developer AWS lookup snapshots; CI generates a stub
-# inline in the workflow rather than committing a shared file).
-**/cdk.context.json
-infrastructure/**/.venv/
+# Default output from standalone validation CLIs
 results.csv
 
 # Git worktrees (project-local, ignored to keep git status clean)
@@ -229,4 +227,3 @@ results.csv
 
 # Playwright MCP browser-automation traces (local debugging only)
 .playwright-mcp/
-

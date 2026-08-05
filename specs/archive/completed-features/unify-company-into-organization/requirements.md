@@ -1,7 +1,7 @@
 # Requirements — Unify :Company onto :Organization (Phase 2)
 
 > **Status:** Not yet started. Stacks on Phase 1 (PR #379).
-> Phase 2 of graph label unification. Supports inventory question **E2** (graph schema correctness) in [docs/research-questions.md](../../docs/research-questions.md).
+> Phase 2 of graph label unification. Supports inventory question **E2** (graph schema correctness) in [docs/research-questions.md](../../../../docs/research-questions.md).
 
 **Research question anchor:** E2 — graph label unification (Phase 2: :Company → :Organization)
 **Answers for:** pipeline engineers

@@ -68,6 +68,10 @@ method_b_terms:
 cpc_prefixes:
   - B82Y
   - B82B
+# Method C CPC patent extract (build via:
+#   python scripts/data/extract_b82_patents.py
+# — B82 subclass is the default). Matched to Phase II firms by assignee name.
+cpc_patents_csv: data/processed/uspto/b82_patents.csv
 
 # WS5c sector go-to-market registries applicable to this area (gates
 # nano_ws5c_sector_registries.py). Nanotech has a biomedical/HHS-funded slice,

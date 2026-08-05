@@ -4,6 +4,22 @@ import pandas as pd
 import pytest
 
 
+@pytest.fixture(autouse=True)
+def disable_production_retry_waits(monkeypatch):
+    """Keep unit tests from paying real API retry backoff delays.
+
+    Tests that assert a sleep call replace these stubs with their own mocks.
+    Integration tests retain the production waits because this fixture is
+    scoped to ``tests/unit/enrichers``.
+    """
+
+    async def no_async_sleep(_seconds):
+        return None
+
+    monkeypatch.setattr("sbir_etl.enrichers.base_client.asyncio.sleep", no_async_sleep)
+    monkeypatch.setattr("sbir_etl.enrichers.openai_client.time.sleep", lambda _seconds: None)
+
+
 @pytest.fixture
 def enricher_sbir_df():
     """Sample SBIR DataFrame for enricher tests.

@@ -3,8 +3,8 @@
 
 Thin CLI over :mod:`sbir_etl.reporting.weekly` (see
 specs/archive & specs/weekly-awards-report-refactor for the extraction
-history). Downloads the SBIR bulk CSV (from S3 if available, else direct
-from SBIR.gov), filters for awards whose Proposal Award Date falls within
+history). Uses the newest local SBIR bulk CSV when available, otherwise downloads
+it directly from SBIR.gov, then filters awards whose Proposal Award Date falls within
 the past N days, and renders a markdown summary with links to SBIR.gov,
 solicitations, and USAspending.
 

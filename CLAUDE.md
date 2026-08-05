@@ -7,10 +7,63 @@ Graph-based ETL: SBIR awards → Neo4j. Dagster orchestration, DuckDB processing
 **Intent / north star:** [docs/research-questions.md](docs/research-questions.md) is the canonical inventory of what this repo exists to answer. Use it to judge whether a proposed change serves a real question vs. adds incidental scope.
 
 Architectural patterns and technical docs live in `docs/steering/`. Feature specs live in `specs/`.
+Before implementing a spec, check `specs/status.md` and follow
+`docs/development/spec-workflow-guide.md`; a directory can be gated, deferred, or
+an archive candidate even when it still has unchecked tasks.
+
+## Epistemic tiers
+
+Every artifact sits in one tier, which fixes what it costs to maintain and how
+much weight it can carry. Full contracts:
+[docs/steering/epistemic-tiers.md](docs/steering/epistemic-tiers.md).
+
+| Tier | Contract | Where today |
+|------|----------|-------------|
+| `primitives` | One implementation per concept, versioned behavior, comprehensive tests | `sbir_etl/identity/`, `sbir_etl/config/`, `sbir_etl/models/` |
+| `pipelines` | Deterministic, reproducible from a declared data cut, no inference | `sbir_etl/`, `packages/` |
+| `evidence` | Frozen spec + SHA enforcement + blocking asset checks + declared estimand — all four | Phase III census |
+| `exploratory` | Labeled non-citable. Nothing else required. | most of `scripts/` |
+
+Three rules:
+
+- **Declare the tier.** Specs state their target tier in `requirements.md`; new
+  assets and modules state theirs. Unstated means `exploratory`.
+- **Build to the tier, not above it.** Exploratory code getting tests and
+  abstractions is the most common form of waste here. Untended `scripts/` is the
+  design working, not a backlog.
+- **Promotion is explicit work.** Nothing moves up by being useful, by gaining
+  importers, or by having its numbers quoted. A number cannot be cited, or a
+  research question marked answerable, on exploratory-tier work.
+
+Reuse primitives rather than forking them: company-name normalization and
+similarity go through `sbir_etl.identity` (add a named profile if you need new
+behavior); config goes through `sbir_etl/config/loader.py`.
+
+## Live deployment
+
+Before any deployment, server operation, or live Dagster materialization, read the
+[self-hosted server runbook](docs/deployment/self-hosted-server.md#live-instance-on-the-server-host).
+On the live host, also read the ignored
+`docs/deployment/server-status.local.md` file when it exists; host-specific
+checkout and storage paths as well as current
+materialization state belongs there, not in tracked documentation.
+Operate the live stack only from the dedicated deployment checkout recorded in
+that local file, never from a development checkout. Preserve `.env.server`, the
+configured persistent application data, and the Docker `dagster_home` volume.
+Ingress must remain Tailscale Serve over tailnet-only HTTPS or explicitly enabled
+TLS-terminated TCP; never enable Funnel and never expose server ports to the LAN
+or public internet.
+
+Treat materialization as a live-data mutation: confirm persistent storage is
+mounted, the deployment checkout is clean, and the stack is healthy before
+running one. Keep schedules disabled until their jobs have completed successfully
+by hand with the inputs available on this host.
 
 ## Agents
 
-Custom agents in `.claude/agents/`:
+Full role instructions live in `.claude/agents/`. The `.Codex/agents/` files
+route Codex agents to the same instructions so the two runtimes do not maintain
+separate copies.
 
 | Agent | When to Use | Model |
 |-------|-------------|-------|
@@ -22,7 +75,15 @@ Custom agents in `.claude/agents/`:
 For **spec work**: scope-guard → spec-implementer → test-fixer → quality-sweep.
 For **bug fixes**: skip to test-fixer or quality-sweep directly.
 
+Each agent reads the tier from the spec and holds to it: `scope-guard` checks the
+declared tier against the contract and can return `RETIER`, `spec-implementer`
+builds to the tier and refuses silent promotion, `test-fixer` and `quality-sweep`
+scale coverage and cleanup effort by tier rather than uniformly.
+
 ## Skills
+
+Shared skill instructions live under both `.claude/skills/` and `.agents/skills/`
+for runtime discovery. `make docs-check` requires the copies to match.
 
 | Skill | Use Case |
 |-------|----------|
@@ -37,24 +98,41 @@ packages/
   sbir-graph/             # Neo4j loaders
   sbir-ml/                # ML models (CET, transition detection)
 config/base.yaml          # Thresholds, paths, performance settings
+studies/                  # Versioned contracts for reproducible and citable research
 ```
 
 ## Common Patterns
 
 - **Monitoring:** Use `sbir_etl.utils` decorators and `AlertCollector`
 - **CI:** Edit `.github/workflows/*.yml`, upload artifacts to `reports/`
-- **Tests:** Place in `tests/unit|integration|e2e/`, run `pytest -v --cov=sbir_etl`
+- **Tests:** Place in `tests/unit|integration|e2e/`; use the Make targets or `uv run pytest`
 - **Neo4j:** Modify `packages/sbir-graph/sbir_graph/loaders/`, use MERGE operations
 
 ## Testing
 
 ```bash
-pytest tests/unit/           # Fast unit tests
-pytest -m integration        # Integration tests
-pytest -n auto               # Parallel execution
+make test-unit                         # Unit tests
+uv run pytest -m integration           # Integration tests
+uv run pytest -n auto                  # Parallel execution
+make lint-boundaries                   # Architecture, identity, and study guards
+make docs-check                        # Links, stale commands, and repository hygiene
 ```
 
 Transition scoring changes must maintain ≥85% precision benchmark.
+
+## Releases and versioning
+
+- Follow [Semantic Versioning 2.0.0](https://semver.org/) and the repository policy in
+  [docs/steering/versioning.md](docs/steering/versioning.md).
+- Treat the root project and all packages under `packages/` as one synchronized release.
+- Release tags must be annotated and named `vMAJOR.MINOR.PATCH`; the version stored in every
+  `pyproject.toml`, `uv.lock`, `sbir_etl.__version__`, and `config/base.yaml`'s pipeline metadata
+  must match the tag without the `v` prefix.
+- Do not move, replace, or reuse a published tag or version. Release corrections require a new
+  version.
+- Before proposing or preparing a release, classify user-visible changes since the latest release,
+  select the required version increment, update all version metadata, run `uv lock`, and run
+  `uv run python scripts/ci/check_versioning.py --tag vMAJOR.MINOR.PATCH`.
 
 ## Code Standards
 
@@ -63,7 +141,11 @@ Transition scoring changes must maintain ≥85% precision benchmark.
 - Ruff rules: E, W, F, I, B, C4, UP
 - Use `StrEnum` not `str, Enum`
 - Use `datetime.UTC` not `timezone.utc`
-- Do NOT use `from __future__ import annotations` in Dagster asset files — it breaks runtime context type validation
+- Do not postpone annotations on a Dagster-decorated function whose context type
+  Dagster must inspect at runtime. Follow the local pattern in
+  `phase_iii_census/assets.py`, `phase_iii_candidates/assets.py`, and
+  `agency_private_capital/asset.py`. Other asset helpers may use
+  `from __future__ import annotations`.
 
 ## Principles
 

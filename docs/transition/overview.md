@@ -1,244 +1,79 @@
-# Transition Detection System - Complete Overview
-
-## Two related but distinct analyses
-
-This repo contains two systems that both involve SBIR awards and follow-on contracts. They answer different questions and should not be confused:
-
-| Aspect | Transition Detection (this doc) | [Phase-Transition Latency](../phase-transition-latency.md) |
-|--------|--|--|
-| **Question** | Did this award lead to *any* federal contract? | How long did it take to reach a *Phase III* contract? |
-| **Method** | 6-signal probabilistic scoring (ML) | Survival analysis on explicitly-coded Phase III records |
-| **Contract scope** | Any USAspending federal contract | FPDS rows flagged `SR3`/`ST3` (Phase III only) |
-| **Output** | Likelihood score + confidence band per award-contract pair | Latency percentiles, KM curves, cohort rates |
-| **Use for** | Identifying which companies commercialized | Measuring how fast the program converts to Phase III |
-
+---
+Type: Subsystem Overview
+Owner: engineering@project
+Last-Reviewed: 2026-08-03
+Status: active
 ---
 
-## What is Transition Detection?
+# Transition Detection Overview
 
-The **Transition Detection System** identifies which SBIR-funded companies likely transitioned their research into federal procurement contracts. It combines six independent signals to estimate the probability that an SBIR award led to a subsequent federal contract (commercialization).
+Transition detection asks whether an SBIR-funded firm appears to receive related follow-on federal
+procurement. It is a proxy built from public records, not proof of statutory Phase III,
+commercialization, causation, or private-market success.
 
-**Key Question**: *Did this SBIR-funded research result in a federal contract?*
+## Do not confuse these analyses
 
-**Answer**: A composite likelihood score (0.0–1.0) with confidence classification (HIGH/LIKELY/POSSIBLE) supported by detailed evidence.
+| Analysis | Question | Current method |
+| --- | --- | --- |
+| Transition asset pipeline | Which award/contract pairs are plausible follow-on candidates? | Vendor resolution plus bounded rule-based scoring |
+| `sbir_ml.transition` library | How could multiple evidence signals score a candidate? | Configurable scorer, feature extractors, detector, evidence generator |
+| [Phase III census](../../studies/phase-iii-census/study.yaml) | How many uncoded follow-on candidates pass frozen criteria? | Reproducible, non-citable study contract |
+| [Phase-transition latency](../phase-transition-latency.md) | How long to an explicitly coded Phase III contract? | Survival analysis on coded records |
 
-## How It Works
+## Materialized Dagster path
 
-The system uses a multi-signal scoring approach:
+`transition_mvp_job` and `transition_full_job` are defined in
+`packages/sbir-analytics/sbir_analytics/assets/jobs/transition_job.py`:
 
-1. **Vendor Resolution** - Match SBIR recipients to federal contractors (UEI, CAGE, DUNS, fuzzy name)
-2. **Signal Extraction** - Extract 6 independent evidence signals:
-   - 🏛️ **Agency Continuity** - Same federal agency indicates ongoing relationship
-   - ⏱️ **Timing Proximity** - Contracts within 0–24 months of award completion
-   - 🎯 **Competition Type** - Sole source/limited competition indicates vendor targeting
-   - 📜 **Patent Signal** - Patents filed indicate technology maturity
-   - 🔬 **CET Alignment** - Same critical technology area shows focus consistency
-   - 🤝 **Vendor Match** - UEI/CAGE/DUNS exact match confirms same company
-3. **Composite Scoring** - Weighted combination of all signals (0.0–1.0)
-4. **Confidence Classification** - HIGH (≥0.85), LIKELY (0.65–0.84), POSSIBLE (<0.65)
-5. **Evidence Generation** - Detailed justification for every detection
-6. **Neo4j Loading** - Graph database storage for complex analysis
+```text
+validated contract sample
+        │
+        ▼
+vendor resolution ──▶ rule-based candidate scores ──▶ evidence and detections
+                                                        │
+                                                        ├──▶ analytics
+                                                        └──▶ Neo4j loading
+```
 
-## Key Capabilities
+The current `transformed_transition_scores` asset starts from the vendor match method and applies
+bounded temporal, agency, amount, and identifier-link boosts where fields are available. Its
+settings are read by the asset implementation and environment overrides. It does not currently
+invoke the full `TransitionDetector` or all six feature extractors described by the library guides.
 
-- **Comprehensive Analysis**: 6 independent signals + configurable weights
-- **Transparent Decisions**: Full evidence bundles justify every detection
-- **Flexible Configuration**: Presets for high-precision, balanced, broad-discovery, and CET-focused analysis
-- **Neo4j Integration**: Award→Transition→Contract pathways, patent backing, technology area clustering
-- **Analytics**: Dual-perspective metrics (award-level + company-level transition rates)
-- **Validation**: Precision/recall evaluation, confusion matrix, false positive analysis
-
-## Performance Metrics
-
-- **Throughput**: 15,000–20,000 detections/minute (target: ≥10K)
-- **Coverage**: ~80% of SBIR awards resolve to contracts
-- **Precision (HIGH)**: ≥85% (manual validation)
-- **Recall**: ≥70% (vs. ground truth)
-- **Scalability**: Tested on 252K awards + 6.7M contracts
-
-## Data Assets
-
-After running the transition detection pipeline, you get:
-
-- **transitions.parquet** - Detected transitions with scores and signals
-- **transitions_evidence.ndjson** - Complete evidence bundles (JSON per line)
-- **vendor_resolution.parquet** - Award recipient → contractor cross-walk
-- **transition_analytics.json** - Aggregated KPIs (award-level, company-level, by-agency, by-CET)
-- **transition_analytics_executive_summary.md** - Markdown report with key findings
-- **Neo4j Transition nodes** - Queryable in graph database
-- **Neo4j relationships** - TRANSITIONED_TO, RESULTED_IN, ENABLED_BY, INVOLVES_TECHNOLOGY
-
-## Quick Start
-
-### Running Transition Detection
+Run locally after preparing the declared inputs:
 
 ```bash
-# Run full transition detection pipeline
-uv run python -m dagster job execute -m sbir_analytics.definitions -j transition_full_job
-
-# Or: Run from Dagster UI
-uv run dagster dev
-# Then select and materialize "transition_full_job"
+uv run dagster job execute -m sbir_analytics.definitions -j transition_mvp_job
 ```
 
-**Expected Output**: ~40,000–80,000 detected transitions with ≥85% precision (HIGH confidence)
+Use `transition_full_job` only when Neo4j and the downstream assets are configured. These heavy
+jobs are not scheduled on the live self-hosted server by default.
 
-### Configuration
+## Library path
 
-#### Quick Setup - Use Presets
+`packages/sbir-ml/sbir_ml/transition/` contains reusable entity-resolution, feature, scoring,
+detection, evaluation, and evidence components. They are tested components, but their presence
+does not establish that the current Dagster path uses every signal or meets the performance and
+precision figures in historical design material.
 
-```bash
-# Use balanced preset (default)
-export SBIR_ETL__TRANSITION__DETECTION__PRESET=balanced
+The detailed [scoring](scoring-guide.md), [detection](detection-algorithm.md), and
+[evidence](evidence-bundles.md) guides document this library path. Verify defaults against code and
+`config/transition/detection.yaml` before changing weights or thresholds.
 
-# Or: Use high-precision preset
-export SBIR_ETL__TRANSITION__DETECTION__PRESET=high_precision
+## Identity and interpretation
 
-# Or: Use broad-discovery preset
-export SBIR_ETL__TRANSITION__DETECTION__PRESET=broad_discovery
-```
+Company identity uses the canonical profiles in `sbir_etl/identity/`. A successful name or
+identifier match establishes a candidate relationship, not topical equivalence. Evidence bundles
+must retain the match method, score inputs, source identifiers, and limitations.
 
-#### Fine-Tuning
+Transition-scoring changes must maintain the repository's ≥85% precision benchmark. A benchmark
+result is citable only when a study manifest names the data cut, validation design, and permitted
+claim.
 
-```bash
-# Override confidence thresholds
-export SBIR_ETL__TRANSITION__DETECTION__HIGH_CONFIDENCE_THRESHOLD=0.88
-export SBIR_ETL__TRANSITION__DETECTION__LIKELY_CONFIDENCE_THRESHOLD=0.70
+## Canonical references
 
-# Override timing window (days)
-export SBIR_ETL__TRANSITION__DETECTION__MAX_DAYS=365  # 12 months instead of 24
-
-# Override signal weights (must sum to 1.0)
-export SBIR_ETL__TRANSITION__DETECTION__AGENCY_WEIGHT=0.30
-export SBIR_ETL__TRANSITION__DETECTION__TIMING_WEIGHT=0.20
-export SBIR_ETL__TRANSITION__DETECTION__COMPETITION_WEIGHT=0.20
-export SBIR_ETL__TRANSITION__DETECTION__PATENT_WEIGHT=0.15
-export SBIR_ETL__TRANSITION__DETECTION__CET_WEIGHT=0.15
-```
-
-## Documentation
-
-**Comprehensive Guides** (6,126 lines total):
-
-- 📖 [Detection Algorithm](detection-algorithm.md) - How the system works end-to-end
-- 📖 [Scoring Guide](scoring-guide.md) - Detailed scoring breakdown + tuning
-- 📖 [Vendor Matching](vendor-matching.md) - Vendor resolution methods + validation
-- 📖 [Evidence Bundles](evidence-bundles.md) - Evidence structure + interpretation
-- 📖 [Neo4j Schema](../schemas/neo4j.md) - Graph model + queries
-- 📖 [CET Integration](cet-integration.md) - Technology area alignment
-- 📖 [Data Dictionary](../data/dictionaries/transition-fields-dictionary.md) - Field reference
-
-**Quick Reference**:
-
-- 📋 [MVP Guide](../archive/transition/mvp.md) - Minimal viable product
-- 📋 [Configuration Guide](../../config/README.md) - YAML configuration guide
-
-## Neo4j Queries
-
-### Find All Transitions for an Award
-
-```cypher
-MATCH (a:Award {award_id: "SBIR-2020-PHASE-II-001"})
-  -[:TRANSITIONED_TO]->(t:Transition)
-  -[:RESULTED_IN]->(c:Contract)
-RETURN a.award_id, c.contract_id, t.likelihood_score, t.confidence
-ORDER BY t.likelihood_score DESC
-```
-
-### Find Patent-Backed Transitions
-
-```cypher
-MATCH (t:Transition)-[:ENABLED_BY]->(p:Patent)
-  -[:RESULTED_IN]->(c:Contract)
-WHERE t.confidence IN ["HIGH", "LIKELY"]
-RETURN t.transition_id, p.title, c.piid, t.likelihood_score
-```
-
-### Transition Effectiveness by CET Area
-
-```cypher
-MATCH (a:Award)-[:INVOLVES_TECHNOLOGY]->(cet:CETArea)
-  <-[:INVOLVES_TECHNOLOGY]-(t:Transition)
-WITH cet.name as cet_area,
-     count(DISTINCT a) as total_awards,
-     count(DISTINCT t) as transitions
-RETURN cet_area, total_awards, transitions,
-       round(100.0 * transitions / total_awards) as effectiveness_percent
-ORDER BY effectiveness_percent DESC
-```
-
-## Testing
-
-```bash
-# Run all transition detection tests
-uv run pytest tests/unit/test_transition*.py -v
-uv run pytest tests/integration/test_transition_integration.py -v
-uv run pytest tests/e2e/test_transition_e2e.py -v
-
-# Run with coverage
-uv run pytest tests/unit/test_transition*.py --cov=sbir_etl --cov-report=html
-
-# Run specific signal tests
-uv run pytest tests/unit/test_transition_scorer.py -v  # 32 tests, 93% coverage
-uv run pytest tests/unit/test_cet_signal_extractor.py -v  # 37 tests, 96% coverage
-```
-
-## Key Files
-
-### Implementation
-
-- `sbir_etl/transformers/` - Transformation logic (scoring, evidence)
-- `packages/sbir-ml/sbir_ml/transition/` - ML-based transition detection
-- `packages/sbir-analytics/sbir_analytics/assets/transition/` - Dagster asset definitions
-- `packages/sbir-graph/sbir_graph/loaders/` - Neo4j loading
-
-### Configuration
-
-- `config/transition/detection.yaml` - Scoring weights, thresholds
-- `config/README.md` - Configuration guide
-
-### Data
-
-- `data/processed/transitions.parquet` - Detected transitions
-- `data/processed/transitions_evidence.ndjson` - Evidence bundles (JSON per line)
-- `data/processed/vendor_resolution.parquet` - Award→contractor cross-walk
-- `data/processed/transition_analytics.json` - KPIs
-- `reports/validation/transition_mvp.json` - MVP validation summary
-
-## Algorithms
-
-### Vendor Resolution (4-step cascade)
-
-1. **UEI exact match** (confidence: 0.99)
-2. **CAGE code exact match** (confidence: 0.95)
-3. **DUNS number exact match** (confidence: 0.90)
-4. **Fuzzy name matching** with RapidFuzz (confidence: 0.65–0.85)
-
-### Transition Scoring (6 independent signals)
-
-1. **Agency continuity** (weight: 0.25) - Same agency contracts
-2. **Timing proximity** (weight: 0.20) - 0–24 months after award
-3. **Competition type** (weight: 0.20) - Sole source/limited competition
-4. **Patent signal** (weight: 0.15) - Patents filed; topic match
-5. **CET alignment** (weight: 0.10) - Same technology area
-6. **Vendor match** (weight: 0.10) - UEI/CAGE/DUNS confidence
-
-### Confidence Bands
-
-- **HIGH**: score ≥ 0.85 (high precision, ~85%)
-- **LIKELY**: score 0.65–0.84 (balanced, ~75% precision)
-- **POSSIBLE**: score <0.65 (high recall, ~40% precision)
-
-## Implementation Status
-
-**Transition Detection**: ✅ **FULLY COMPLETED** (October 30, 2025)
-
-- All 169 specification tasks implemented and validated
-- Performance metrics achieved: ≥10K detections/min, ≥85% precision, ≥70% recall
-- Complete documentation suite delivered (8 guides, 6,126 lines)
-- Neo4j graph schema implemented with full relationship modeling
-- Archived in `specs/archive/completed-features/transition_detection/`
-
----
-
-For additional details, see the comprehensive guides listed above or consult the [main README](../../README.md).
+- Configuration: `config/transition/detection.yaml` and the implementing asset/module
+- Fields: [transition dictionary](../data/dictionaries/transition-fields-dictionary.md)
+- Queries: [transition queries](../queries/transition-queries.md)
+- Graph: [Neo4j schema](../schemas/neo4j.md)
+- Evidence maturity: [epistemic tiers](../steering/epistemic-tiers.md)

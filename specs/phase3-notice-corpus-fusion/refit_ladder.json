@@ -1,0 +1,73 @@
+[
+  {
+    "stage": "text",
+    "features": [
+      "tfidf_word"
+    ],
+    "firms": 101,
+    "auc": 0.802,
+    "ci_low": 0.735,
+    "ci_high": 0.864,
+    "top1": 0.659,
+    "top3": 0.775
+  },
+  {
+    "stage": "+char",
+    "features": [
+      "tfidf_word",
+      "tfidf_char"
+    ],
+    "firms": 101,
+    "auc": 0.835,
+    "ci_low": 0.775,
+    "ci_high": 0.888,
+    "top1": 0.652,
+    "top3": 0.804
+  },
+  {
+    "stage": "+temporal",
+    "features": [
+      "tfidf_word",
+      "tfidf_char",
+      "after_first"
+    ],
+    "firms": 101,
+    "auc": 0.835,
+    "ci_low": 0.775,
+    "ci_high": 0.888,
+    "top1": 0.652,
+    "top3": 0.804
+  },
+  {
+    "stage": "+id_xref",
+    "features": [
+      "tfidf_word",
+      "tfidf_char",
+      "after_first",
+      "id_cited"
+    ],
+    "firms": 101,
+    "auc": 0.835,
+    "ci_low": 0.775,
+    "ci_high": 0.888,
+    "top1": 0.652,
+    "top3": 0.804
+  },
+  {
+    "stage": "+naics_ntype",
+    "features": [
+      "tfidf_word",
+      "tfidf_char",
+      "after_first",
+      "id_cited",
+      "naics_len",
+      "notice_type"
+    ],
+    "firms": 101,
+    "auc": 0.847,
+    "ci_low": 0.792,
+    "ci_high": 0.898,
+    "top1": 0.674,
+    "top3": 0.848
+  }
+]

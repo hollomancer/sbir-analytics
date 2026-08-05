@@ -7,6 +7,7 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from ... import __version__
 from .data import (
     CLIConfig,
     CompanyCategorizationConfig,
@@ -36,7 +37,7 @@ class PipelineMetadata(BaseModel, Mapping[str, Any]):
     """Metadata for the configured pipeline with dual dict/attribute access."""
 
     name: str = Field(default="sbir-analytics", description="Pipeline identifier")
-    version: str = Field(default="0.1.0", description="Semantic version of the pipeline")
+    version: str = Field(default=__version__, description="Semantic version of the pipeline")
     environment: str = Field(default="development", description="Active environment name")
 
     model_config = ConfigDict(extra="allow")

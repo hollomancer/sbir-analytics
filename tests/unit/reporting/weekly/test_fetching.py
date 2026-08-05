@@ -1,6 +1,11 @@
 """Unit tests for sbir_etl.reporting.weekly.fetching (spec T1.2)."""
 
+from datetime import UTC, datetime
+from pathlib import Path
+
+from sbir_etl.reporting.weekly import fetching
 from sbir_etl.reporting.weekly.fetching import _company_key, clean_and_dedup_awards
+from sbir_etl.utils.cloud_storage import SbirAwardsSource
 
 
 VALID_AWARD = {
@@ -53,3 +58,27 @@ class TestCleanAndDedupAwards:
         cleaned, stats = clean_and_dedup_awards([])
         assert cleaned == []
         assert stats["input"] == stats["output"] == 0
+
+
+def test_fetch_weekly_awards_excludes_future_dates(monkeypatch, tmp_path):
+    csv_path = tmp_path / "awards.csv"
+    template_path = (
+        Path(__file__).parents[3] / "fixtures" / "weekly_awards_report" / "awards_template.csv"
+    )
+    template = template_path.read_text(encoding="utf-8")
+    template = template.replace("{{AWARD_DATE_1}}", "2026-08-01")
+    template = template.replace("{{AWARD_DATE_2}}", "2026-08-10")
+    template = template.replace("{{AWARD_DATE_3}}", "2026-07-20")
+    template = template.replace("{{END_DATE}}", "2026-12-31")
+    template = template.replace("{{AWARD_YEAR}}", "2026")
+    csv_path.write_text(template, encoding="utf-8")
+    source = SbirAwardsSource(path=csv_path, origin="local")
+    monkeypatch.setattr(fetching, "_resolve_csv_path", lambda: source)
+    monkeypatch.setattr(fetching, "_check_data_freshness", lambda *_args: [])
+
+    awards, _warnings, _source, _extractor, _table = fetching.fetch_weekly_awards(
+        days=7,
+        as_of=datetime(2026, 8, 3, tzinfo=UTC),
+    )
+
+    assert [str(award["Proposal Award Date"])[:10] for award in awards] == ["2026-08-01"]

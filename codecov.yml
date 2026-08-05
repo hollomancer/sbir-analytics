@@ -16,14 +16,14 @@ coverage:
       default:
         informational: true
 
-# The CI test job uploads three coverage reports per commit (unit-fast,
-# unit-slow, integration flags in .github/workflows/ci.yml). Wait for all
-# three before computing status or commenting, so partial uploads don't
+# The CI test job uploads five coverage reports per commit (four unit shards
+# and one integration suite in .github/workflows/ci.yml). Wait for all five
+# before computing status or commenting, so partial uploads don't
 # produce false coverage-drop failures.
 codecov:
   notify:
-    after_n_builds: 3
+    after_n_builds: 5
 
 comment:
-  after_n_builds: 3
+  after_n_builds: 5
   require_changes: true

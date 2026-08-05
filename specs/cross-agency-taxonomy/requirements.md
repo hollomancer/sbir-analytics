@@ -1,5 +1,7 @@
 # Cross-Agency Technology Taxonomy — Requirements
 
+**Target epistemic tier:** `evidence`
+
 > **Status:** Partially implemented as of June 2026 — analytical tools in
 > `packages/sbir-analytics/sbir_analytics/tools/mission_a/` already compute HHI per CET
 > area, cross-agency company count, geographic concentration, semantic clustering, gap

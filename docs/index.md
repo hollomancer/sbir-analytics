@@ -1,60 +1,98 @@
 ---
-
 Type: Overview
 Owner: docs@project
-Last-Reviewed: 2025-11-21
+Last-Reviewed: 2026-08-03
 Status: active
-
 ---
 
-# SBIR ETL Documentation
+# SBIR Analytics Documentation
 
-Welcome. This site collects the current documentation for the SBIR/STTR commercialization analytics research project. Like the README notes, this is a personal side project rather than production software, so the docs should be read as the current documented approach and working notes rather than polished, authoritative product documentation.
+SBIR Analytics is a personal research project for connecting public SBIR/STTR awards to
+procurement, patents, strategic technologies, economic effects, and capital formation. No
+operational award data is committed to the repository, and a working analysis is not automatically
+validated or citable.
 
-- **specifications** (`specs/`) capture design notes, tasks, and requirements as they evolved.
-- User and developer documentation lives under `docs/` (this site).
-- Steering documents live in `docs/steering/` (architectural patterns and guidance).
+## Start here
 
-## What is this project?
+| Need | Canonical document |
+| --- | --- |
+| Project context and local setup | [Repository README](../README.md) |
+| What the repository exists to answer | [Research questions](research-questions.md) |
+| Components and package boundaries | [Architecture overview](architecture/detailed-overview.md) |
+| First local run | [Getting started](getting-started/README.md) |
+| Configuration keys and load order | [Configuration](configuration.md) |
 
-See [README](../README.md) for project context, research questions, and setup. The docs here are the detailed reference: architecture, methodology, guides, and schemas.
+## Research governance
 
-## Quick links
+- [Epistemic tiers](steering/epistemic-tiers.md) - what weight an artifact may carry
+- [Study contracts](../studies/README.md) - reproducibility, validation, and permitted claims
+- [Specification status](../specs/status.md) - active, gated, deferred, and archive-candidate work
+- [Specification workflow](development/spec-workflow-guide.md) - scope, tier, design, and lifecycle
+- [Product scope](steering/product.md) - question-first inclusion and exclusion rules
 
-### Getting Started
+Use these before quoting a result or starting a feature from an old spec.
 
-- Getting started: [`README.md`](../README.md)
-- Architecture overview: [`architecture/detailed-overview.md`](architecture/detailed-overview.md)
-- Shared tech stack: [`architecture/shared-tech-stack.md`](architecture/shared-tech-stack.md)
+## Develop and operate
 
-### Deployment (Optional Cloud Setup)
+| Area | Owner |
+| --- | --- |
+| Developer navigation | [Development index](development/README.md) |
+| Containers | [Docker development](development/docker.md) |
+| Tests and CI | [Testing index](testing/index.md) |
+| Versioning and releases | [Versioning policy](steering/versioning.md) |
+| Performance measurement | [Performance runbook](performance.md) |
+| Deployment navigation | [Deployment index](deployment/README.md) |
+| Live self-hosted server operations | [self-hosted server runbook](deployment/self-hosted-server.md) |
+| Neo4j migrations | [Migration guide](migrations.md) |
+| Decisions | [Architecture decision records](decisions/README.md) |
 
-- **[Experimental deployment path](deployment/README.md)** - GitHub Actions orchestration notes
-- **[AWS Infrastructure](deployment/aws-deployment.md)** - Optional Lambda + S3 + Step Functions setup
-- [Docker guide](development/docker.md) - Containers for local development, CI, and testing
+## Data and subsystems
 
-### Development Guides
+- [Data sources](data/index.md)
+- [Dagster pipelines](architecture/dagster-pipelines.md)
+- [Asset naming](architecture/asset-naming-standards.md)
+- [DuckDB CET analysis](architecture/duckdb-cet-analysis.md)
+- [Transition detection](transition/README.md)
+- [Machine learning](ml/README.md)
+- [Fiscal pipeline](fiscal/sbir-fiscal-pipeline-guide.md)
+- [Neo4j schema](schemas/neo4j.md)
+- [Other Transaction consortium tiers](ot-consortium/tiers.md)
+- [Statistical reporting utility](guides/statistical-reporting.md)
+- [API](api/README.md)
 
-- **Docker Setup:**
-  - [Docker Development](development/docker.md) - Setup, configuration, and troubleshooting
-- [Exception Handling](development/exception-handling.md)
-- [Logging Standards](development/logging-standards.md)
-- [Spec Workflow](development/spec-workflow-guide.md)
+## Durable engineering contracts
 
-### Reference
+- [Company identity](steering/company-identity.md)
+- [Data quality](steering/data-quality.md)
+- [Enrichment patterns](steering/enrichment-patterns.md)
+- [Pipeline orchestration](steering/pipeline-orchestration.md)
+- [Neo4j patterns](steering/neo4j-patterns.md)
+- [Repository structure](steering/structure.md) and [technology choices](steering/tech.md)
+- [Glossary](steering/glossary.md)
+- [ML methodology review](steering/ml-methodology-review.md)
 
-- Statistical reporting guide: [`guides/statistical-reporting.md`](guides/statistical-reporting.md)
-- Neo4j schema reference: [`schemas/neo4j.md`](schemas/neo4j.md)
-- Data dictionaries: [`data/dictionaries/`](data/dictionaries/)
-- Configuration: [`configuration.md`](configuration.md)
-- Decisions (ADRs): [`decisions/`](decisions/)
-- Specification System: [`specifications/README.md`](specifications/README.md)
+## Research outputs
 
-## Conventions
+Use the [research-output index](research/README.md) to map analyses to research questions,
+evidence posture, and data cuts. Technology-area briefs pair an audience-facing summary with
+technical findings:
 
-All docs use Diátaxis types: Tutorials, How-to guides, Explanations, References. Each file includes front-matter with Type, Owner, Last-Reviewed, and Status.
+- [Nanotechnology brief](nanotech_sbir_policy_brief.md) and
+  [technical findings](nanotech_sbir_transition_findings.md)
+- [Hypersonics brief](hypersonics_sbir_policy_brief.md) and
+  [technical findings](hypersonics_sbir_transition_findings.md)
+- [Quantum information science brief](quantum_information_science_sbir_policy_brief.md) and
+  [technical findings](quantum_information_science_sbir_transition_findings.md)
 
-## Governance
+These pairs intentionally remain separate for different audiences. “Provisional” is not a
+substitute for a citable study manifest; check evidence status before external use.
 
-- Code changes that affect architecture, data contracts, or performance must update relevant docs/specs in the same PR.
-- Each doc declares an owner and should be reviewed at least quarterly.
+## Documentation rules
+
+- One document owns each command, threshold, architecture fact, or status; other pages link to it.
+- Current guidance stays under `docs/`; completed plans and superseded narratives move to
+  `docs/archive/` with a historical banner.
+- Dated research reports retain their original data cut and conclusions rather than being rewritten
+  to match new architecture.
+- New maintained documents use `docs/_template.md` metadata and link to their owning research
+  question or operational obligation.

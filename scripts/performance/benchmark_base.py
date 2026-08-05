@@ -7,7 +7,6 @@ helpers used by both benchmark_enrichment.py and detect_performance_regression.p
 from __future__ import annotations
 
 import json
-import sys
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -27,7 +26,7 @@ from sbir_etl.utils.monitoring import performance_monitor
 
 
 def load_sample_data(sample_size: int | None = None) -> tuple[pd.DataFrame, int]:
-    """Load SBIR awards via SbirDuckDBExtractor (S3-first, local fallback).
+    """Load local SBIR awards via SbirDuckDBExtractor.
 
     Args:
         sample_size: Maximum records to return (None = all).
@@ -38,14 +37,13 @@ def load_sample_data(sample_size: int | None = None) -> tuple[pd.DataFrame, int]
     config = get_config()
     sbir_config = config.extraction.sbir
 
-    logger.info("Loading SBIR sample data (S3-first, local fallback)")
+    logger.info("Loading SBIR sample data from the configured local CSV")
 
     with performance_monitor.monitor_block("data_load"):
         extractor = SbirDuckDBExtractor(
             csv_path=sbir_config.csv_path,
             duckdb_path=":memory:",
             table_name="sbir_awards",
-            use_s3_first=sbir_config.use_s3_first,
         )
         import_metadata = extractor.import_csv()
         total_records = import_metadata["row_count"]

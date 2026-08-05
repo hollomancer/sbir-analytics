@@ -1,7 +1,11 @@
 # Evaluation: Amazon S3 Files for SBIR Analytics
 
 **Date:** 2026-04-11
-**Status:** Evaluation / Not Recommended (at this time)
+**Status:** Superseded / Not Recommended
+
+> Historical evaluation. The S3/AWS data plane described below was retired;
+> the current architecture uses local storage on the self-hosted server. This document
+> preserves the decision context and is not an operational reference.
 
 ## What Is S3 Files?
 
@@ -35,7 +39,7 @@ mount an S3 bucket as a POSIX-compatible NFS share.
 | Pricing (cache layer) | $0.30/GB-month high-perf storage, $0.03/GB reads, $0.06/GB writes |
 | Pricing (large reads) | No S3 Files charge; standard S3 pricing applies |
 
-## Current SBIR Analytics S3 Architecture
+## Architecture at the time of evaluation
 
 Our codebase already has mature S3 integration:
 

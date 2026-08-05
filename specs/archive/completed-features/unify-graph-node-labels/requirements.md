@@ -1,7 +1,7 @@
 # Requirements — Unify :Award onto :FinancialTransaction (Phase 1)
 
 > **Status:** Implemented — PR #379 merged.
-> Phase 1 of graph label unification. Supports inventory question **E2** (graph schema correctness) in [docs/research-questions.md](../../docs/research-questions.md).
+> Phase 1 of graph label unification. Supports inventory question **E2** (graph schema correctness) in [docs/research-questions.md](../../../../docs/research-questions.md).
 
 **Research question anchor:** E2 — graph label unification (Phase 1: :Award → :FinancialTransaction)
 **Answers for:** pipeline engineers

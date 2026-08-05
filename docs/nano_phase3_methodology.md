@@ -2,8 +2,6 @@
 
 **Status:** Provisional — all figures subject to revision
 **Audience:** S&T policy leaders, methodology review
-**Repo branch:** `claude/tech-report-merge-status-2610d6`
-**Generated:** (see git log for date)
 **Confidence tags:** [HIGH] reproducible from data; [MED] depends on third-party data; [LOW] approximate/estimated; [UNVERIFIED] requires manual check against source document
 
 ---

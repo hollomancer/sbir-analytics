@@ -1,219 +1,700 @@
-"""Tests for the streaming (remote-zip) contract extraction path.
-
-Validates the transport-agnostic parser and the remote-zip member streaming
-offline — a fake ``remotezip`` module is injected so no network or real
-USAspending endpoint is touched.
-"""
+"""Offline tests for schema-verified remote contract streaming."""
 
 import gzip
+import hashlib
 import io
+import json
 import sys
 import types
+from collections.abc import Mapping, Sequence
+from pathlib import Path
+from typing import Literal
 from unittest.mock import patch
 
 import pytest
 
-from sbir_etl.extractors.contract_extractor import ContractExtractor
+from sbir_etl.extractors.contract_extractor import (
+    ArchiveSchemaError,
+    ContractExtractor,
+    SourceDataError,
+    TransactionSource,
+)
 
 
-def _row_text(*rows: list[str]) -> str:
-    """Join 103-column rows into tab-delimited, newline-separated text."""
-    return "\n".join("\t".join(r) for r in rows)
+pytestmark = pytest.mark.fast
+
+_TOC_BYTES = b"archive-owned-toc"
 
 
-def _fake_remotezip_module(member_gzip: bytes) -> types.ModuleType:
-    """A stand-in ``remotezip`` whose RemoteZip.open() yields gzip member bytes."""
-    mod = types.ModuleType("remotezip")
-
-    class _FakeRemoteZip:
-        def __init__(self, url):
-            self.url = url
-
-        def __enter__(self):
-            return self
-
-        def __exit__(self, *exc):
-            return False
-
-        def open(self, member_name):  # used as a context manager
-            return io.BytesIO(member_gzip)
-
-    mod.RemoteZip = _FakeRemoteZip  # type: ignore[attr-defined]
-    return mod
+def _row_text(
+    rows: Sequence[Mapping[str, str | None]],
+    columns: Sequence[str],
+) -> str:
+    return "\n".join(
+        "\t".join(r"\N" if row.get(column) is None else str(row[column]) for column in columns)
+        for row in rows
+    )
 
 
-def _fake_remotezip_module_multi(
-    members: dict[str, bytes],
-    sizes: dict[str, int] | None = None,
-) -> types.ModuleType:
-    """Multi-member fake ``remotezip`` for auto-detection tests.
-
-    ``members`` maps ``filename → gzip-compressed bytes`` used by ``open()``.
-    ``sizes`` optionally overrides each entry's reported ``file_size`` — useful
-    for exercising ``find_transaction_member``'s largest-first probe ordering
-    without bloating the actual gzip payloads. Defaults to the blob length.
-    """
-    mod = types.ModuleType("remotezip")
+def _fake_remotezip_module(members: Mapping[str, bytes]) -> types.ModuleType:
+    """Return a stand-in remotezip module backed by named in-memory members."""
+    module = types.ModuleType("remotezip")
 
     class _Info:
-        def __init__(self, filename, file_size):
+        def __init__(self, filename: str) -> None:
             self.filename = filename
-            self.file_size = file_size
+            self.file_size = len(members[filename])
 
     class _FakeRemoteZip:
-        def __init__(self, url):
+        def __init__(self, url: str) -> None:
             self.url = url
 
         def __enter__(self):
             return self
 
-        def __exit__(self, *exc):
+        def __exit__(self, *exc) -> Literal[False]:
             return False
 
-        def infolist(self):
-            return [
-                _Info(name, (sizes or {}).get(name, len(blob))) for name, blob in members.items()
-            ]
+        def infolist(self) -> list[_Info]:
+            return [_Info(name) for name in members]
 
-        def open(self, member_name):
-            return io.BytesIO(members[member_name])
+        def open(self, member_name: str | _Info) -> io.BytesIO:
+            name = member_name if isinstance(member_name, str) else member_name.filename
+            return io.BytesIO(members[name])
 
-    mod.RemoteZip = _FakeRemoteZip  # type: ignore[attr-defined]
-    return mod
-
-
-def test_parse_lines_filters_and_parses(
-    sample_vendor_filters, sample_contract_row_full, sample_grant_row
-):
-    """The shared parser keeps vendor-matching contracts and drops grants."""
-    extractor = ContractExtractor(vendor_filter_file=sample_vendor_filters)
-    lines = [
-        "\t".join(sample_contract_row_full),  # matches (UEI ABC123456789, contract)
-        "\t".join(sample_grant_row),  # grant → filtered out
-    ]
-
-    contracts = list(extractor._parse_lines(lines, "test"))
-
-    assert len(contracts) == 1
-    assert contracts[0].contract_id == "SPE4A924D0001"
-    assert contracts[0].vendor_uei == "ABC123456789"  # pragma: allowlist secret
+    module.RemoteZip = _FakeRemoteZip  # type: ignore[attr-defined]
+    return module
 
 
-def test_stream_remote_zip_member_streams_and_parses(
-    sample_vendor_filters, sample_contract_row_full, sample_grant_row
-):
-    """stream_remote_zip_member: RemoteZip → open member → gunzip → parse."""
-    extractor = ContractExtractor(vendor_filter_file=sample_vendor_filters)
-    member_gzip = gzip.compress(
-        _row_text(sample_contract_row_full, sample_grant_row).encode("utf-8")
+def _toc() -> str:
+    return "9247; 0 999 TABLE DATA rpt transaction_search_fpds usaspending\n"
+
+
+def _schema(columns: Sequence[str]) -> str:
+    definitions = ",\n".join(f"    {column} text" for column in columns)
+    return (
+        f"CREATE TABLE rpt.transaction_search (\n{definitions}\n) PARTITION BY LIST (is_fpds);\n"
+        "CREATE TABLE rpt.transaction_search_fpds PARTITION OF rpt.transaction_search "
+        "FOR VALUES IN (true);\n"
     )
-    fake_mod = _fake_remotezip_module(member_gzip)
 
-    with patch.dict(sys.modules, {"remotezip": fake_mod}):
+
+def _copy(columns: Sequence[str]) -> str:
+    return f"COPY rpt.transaction_search_fpds ({', '.join(columns)}) FROM stdin;\n\\.\n"
+
+
+def _source(columns: Sequence[str]) -> TransactionSource:
+    return TransactionSource(
+        member_name="archive/9247.dat.gz",
+        columns=tuple(columns),
+        relation="rpt.transaction_search_fpds",
+        fpds_only=True,
+        toc_sha256=hashlib.sha256(_TOC_BYTES).hexdigest(),
+    )
+
+
+def test_parse_lines_filters_non_fpds_and_unmatched_vendors(
+    sample_vendor_filters,
+    sample_contract_row_full,
+    sample_grant_row,
+    contract_copy_columns,
+    serialize_contract_row,
+) -> None:
+    unmatched = dict(sample_contract_row_full)
+    unmatched.update(
+        {
+            "transaction_unique_id": "TX-UNMATCHED",
+            "recipient_uei": "NOPE00000001",
+            "recipient_unique_id": "000000000",
+            "recipient_name": "UNMATCHED COMPANY",
+        }
+    )
+    lines = [
+        serialize_contract_row(sample_contract_row_full, contract_copy_columns),
+        serialize_contract_row(unmatched, contract_copy_columns),
+        serialize_contract_row(sample_grant_row, contract_copy_columns),
+    ]
+    extractor = ContractExtractor(vendor_filter_file=sample_vendor_filters)
+
+    contracts = list(
+        extractor._parse_lines(
+            lines,
+            "parent.dat.gz",
+            contract_copy_columns,
+            fpds_only=False,
+        )
+    )
+
+    assert [contract.contract_id for contract in contracts] == ["SPE4A924D0001"]
+    assert extractor.stats == {
+        "records_scanned": 3,
+        "contracts_found": 2,
+        "vendor_matches": 1,
+        "records_extracted": 1,
+        "invalid_performance_periods": 0,
+        "parent_relationships": 0,
+        "child_relationships": 0,
+        "idv_parents": 0,
+        "unique_parent_ids": 0,
+        "unique_idv_parents": 0,
+    }
+
+
+def test_stream_remote_zip_member_streams_verified_named_rows(
+    sample_vendor_filters,
+    sample_contract_row_full,
+    contract_copy_columns,
+) -> None:
+    member_name = "archive/9247.dat.gz"
+    payload = _row_text([sample_contract_row_full], contract_copy_columns).encode()
+    compressed_payload = gzip.compress(payload)
+    extractor = ContractExtractor(vendor_filter_file=sample_vendor_filters)
+
+    with patch.dict(
+        sys.modules,
+        {"remotezip": _fake_remotezip_module({member_name: compressed_payload})},
+    ):
         contracts = list(
             extractor.stream_remote_zip_member(
-                "https://files.usaspending.gov/database_download/usaspending-db-subset_20240101.zip",
-                "5530.dat.gz",
+                "https://files.usaspending.gov/database_download/archive.zip",
+                member_name,
+                contract_copy_columns,
+                fpds_only=True,
+            )
+        )
+
+    assert [contract.contract_id for contract in contracts] == ["SPE4A924D0001"]
+    assert contracts[0].vendor_uei == "ABC123456789"  # pragma: allowlist secret
+    assert (
+        extractor.source_provenance["member_sha256"]
+        == hashlib.sha256(compressed_payload).hexdigest()
+    )
+
+
+def test_remote_awk_prefilter_preserves_full_scan_statistics(
+    sample_vendor_filters,
+    sample_contract_row_full,
+    sample_grant_row,
+    contract_copy_columns,
+) -> None:
+    member_name = "archive/9247.dat.gz"
+    legacy_match = dict(sample_contract_row_full)
+    legacy_match.update(
+        {
+            "recipient_uei": "NOPE00000002",
+            "recipient_name": "LEGACY ID MATCH ONLY",
+        }
+    )
+    unmatched = dict(sample_contract_row_full)
+    unmatched.update(
+        {
+            "transaction_unique_id": "TX-UNMATCHED",
+            "generated_unique_award_id": "CONT_AWD_UNMATCHED",
+            "piid": "UNMATCHED",
+            "recipient_uei": "NOPE00000001",
+            "recipient_unique_id": "000000000",
+            "recipient_name": "UNMATCHED COMPANY",
+        }
+    )
+    payload = _row_text(
+        [legacy_match, unmatched, sample_grant_row],
+        contract_copy_columns,
+    ).encode()
+    extractor = ContractExtractor(vendor_filter_file=sample_vendor_filters)
+
+    with patch.dict(
+        sys.modules,
+        {"remotezip": _fake_remotezip_module({member_name: gzip.compress(payload)})},
+    ):
+        contracts = list(
+            extractor.stream_remote_zip_member(
+                "https://example.test/archive.zip",
+                member_name,
+                contract_copy_columns,
+                fpds_only=False,
+            )
+        )
+
+    assert [contract.contract_id for contract in contracts] == ["SPE4A924D0001"]
+    assert extractor.stats["records_scanned"] == 3
+    assert extractor.stats["contracts_found"] == 2
+    assert extractor.stats["vendor_matches"] == 1
+    assert extractor.stats["records_extracted"] == 1
+
+
+def test_remote_awk_prefilter_decodes_copy_escaped_vendor_name(
+    tmp_path,
+    sample_contract_row_full,
+    contract_copy_columns,
+) -> None:
+    filter_file = tmp_path / "escaped-name-filters.json"
+    filter_file.write_text(
+        json.dumps(
+            {
+                "uei": [],
+                "duns": [],
+                "company_names": [r"ACME\LAB"],
+            }
+        )
+    )
+    row = dict(sample_contract_row_full)
+    row.update(
+        {
+            "recipient_uei": "NOPE00000001",
+            "recipient_unique_id": "000000000",
+            "recipient_name": r"\tAcme\\Lab\t",
+        }
+    )
+    member_name = "archive/9247.dat.gz"
+    payload = _row_text([row], contract_copy_columns).encode()
+    extractor = ContractExtractor(vendor_filter_file=filter_file)
+
+    with patch.dict(
+        sys.modules,
+        {"remotezip": _fake_remotezip_module({member_name: gzip.compress(payload)})},
+    ):
+        contracts = list(
+            extractor.stream_remote_zip_member(
+                "https://example.test/archive.zip",
+                member_name,
+                contract_copy_columns,
+                fpds_only=True,
             )
         )
 
     assert len(contracts) == 1
-    assert contracts[0].contract_id == "SPE4A924D0001"
+    assert contracts[0].vendor_name == "\tAcme\\Lab\t"
 
 
-def test_extract_from_remote_zip_writes_parquet(
-    tmp_path, sample_vendor_filters, sample_contract_row_full, sample_grant_row
-):
-    """extract_from_remote_zip streams, filters, and writes the Parquet output."""
+def test_remote_awk_prefilter_fails_closed_on_malformed_row(
+    sample_vendor_filters,
+    sample_contract_row_full,
+    contract_copy_columns,
+) -> None:
+    member_name = "archive/9247.dat.gz"
+    valid = _row_text([sample_contract_row_full], contract_copy_columns)
+    payload = f"{valid}\nbad\tdata\n".encode()
     extractor = ContractExtractor(vendor_filter_file=sample_vendor_filters)
-    member_gzip = gzip.compress(
-        _row_text(sample_contract_row_full, sample_grant_row).encode("utf-8")
-    )
-    out = tmp_path / "contracts.parquet"
 
-    with patch.dict(sys.modules, {"remotezip": _fake_remotezip_module(member_gzip)}):
+    with (
+        patch.dict(
+            sys.modules,
+            {"remotezip": _fake_remotezip_module({member_name: gzip.compress(payload)})},
+        ),
+        pytest.raises(SourceDataError, match=r"row 2 has 2 fields; COPY declares"),
+    ):
+        list(
+            extractor.stream_remote_zip_member(
+                "https://example.test/archive.zip",
+                member_name,
+                contract_copy_columns,
+                fpds_only=False,
+            )
+        )
+
+    assert extractor.stats["records_scanned"] == 2
+    assert extractor.stats["contracts_found"] == 1
+
+
+def test_remote_awk_prefilter_accepts_exact_copy_trailer_without_counting_it(
+    sample_vendor_filters,
+    sample_contract_row_full,
+    contract_copy_columns,
+) -> None:
+    member_name = "archive/9247.dat.gz"
+    row = _row_text([sample_contract_row_full], contract_copy_columns)
+    payload = f"{row}\n\\.\n\n\n".encode()
+    extractor = ContractExtractor(vendor_filter_file=sample_vendor_filters)
+
+    with patch.dict(
+        sys.modules,
+        {"remotezip": _fake_remotezip_module({member_name: gzip.compress(payload)})},
+    ):
+        contracts = list(
+            extractor.stream_remote_zip_member(
+                "https://example.test/archive.zip",
+                member_name,
+                contract_copy_columns,
+                fpds_only=True,
+            )
+        )
+
+    assert len(contracts) == 1
+    assert extractor.stats["records_scanned"] == 1
+
+
+def test_remote_awk_prefilter_rejects_nonempty_data_after_copy_terminator(
+    sample_vendor_filters,
+    sample_contract_row_full,
+    contract_copy_columns,
+) -> None:
+    member_name = "archive/9247.dat.gz"
+    row = _row_text([sample_contract_row_full], contract_copy_columns)
+    payload = f"{row}\n\\.\n{row}\n".encode()
+    extractor = ContractExtractor(vendor_filter_file=sample_vendor_filters)
+
+    with (
+        patch.dict(
+            sys.modules,
+            {"remotezip": _fake_remotezip_module({member_name: gzip.compress(payload)})},
+        ),
+        pytest.raises(SourceDataError, match="non-empty data after COPY terminator"),
+    ):
+        list(
+            extractor.stream_remote_zip_member(
+                "https://example.test/archive.zip",
+                member_name,
+                contract_copy_columns,
+                fpds_only=True,
+            )
+        )
+
+    assert extractor.stats["records_scanned"] == 1
+
+
+def test_remote_awk_prefilter_fails_closed_on_non_fpds_partition_row(
+    sample_vendor_filters,
+    sample_grant_row,
+    contract_copy_columns,
+) -> None:
+    member_name = "archive/9247.dat.gz"
+    payload = _row_text([sample_grant_row], contract_copy_columns).encode()
+    extractor = ContractExtractor(vendor_filter_file=sample_vendor_filters)
+
+    with (
+        patch.dict(
+            sys.modules,
+            {"remotezip": _fake_remotezip_module({member_name: gzip.compress(payload)})},
+        ),
+        pytest.raises(SourceDataError, match="non-FPDS in the FPDS partition"),
+    ):
+        list(
+            extractor.stream_remote_zip_member(
+                "https://example.test/archive.zip",
+                member_name,
+                contract_copy_columns,
+                fpds_only=True,
+            )
+        )
+
+    assert extractor.stats["records_scanned"] == 1
+    assert extractor.stats["contracts_found"] == 0
+
+
+def test_remote_awk_prefilter_fails_closed_on_invalid_fpds_value(
+    sample_vendor_filters,
+    sample_contract_row_full,
+    contract_copy_columns,
+) -> None:
+    member_name = "archive/9247.dat.gz"
+    row = dict(sample_contract_row_full, is_fpds=r"\N")
+    payload = _row_text([row], contract_copy_columns).encode()
+    extractor = ContractExtractor(vendor_filter_file=sample_vendor_filters)
+
+    with (
+        patch.dict(
+            sys.modules,
+            {"remotezip": _fake_remotezip_module({member_name: gzip.compress(payload)})},
+        ),
+        pytest.raises(SourceDataError, match="invalid or NULL is_fpds"),
+    ):
+        list(
+            extractor.stream_remote_zip_member(
+                "https://example.test/archive.zip",
+                member_name,
+                contract_copy_columns,
+                fpds_only=False,
+            )
+        )
+
+    assert extractor.stats["records_scanned"] == 1
+    assert extractor.stats["contracts_found"] == 0
+
+
+def test_remote_stream_falls_back_to_python_when_awk_is_unavailable(
+    sample_vendor_filters,
+    sample_contract_row_full,
+    contract_copy_columns,
+) -> None:
+    member_name = "archive/9247.dat.gz"
+    payload = _row_text([sample_contract_row_full], contract_copy_columns).encode()
+    extractor = ContractExtractor(vendor_filter_file=sample_vendor_filters)
+
+    with (
+        patch.dict(
+            sys.modules,
+            {"remotezip": _fake_remotezip_module({member_name: gzip.compress(payload)})},
+        ),
+        patch("sbir_etl.extractors.contract_extractor.shutil.which", return_value=None),
+        patch.object(
+            extractor,
+            "_awk_prefilter_lines",
+            side_effect=AssertionError("awk prefilter must not run"),
+        ),
+    ):
+        contracts = list(
+            extractor.stream_remote_zip_member(
+                "https://example.test/archive.zip",
+                member_name,
+                contract_copy_columns,
+                fpds_only=True,
+            )
+        )
+
+    assert [contract.contract_id for contract in contracts] == ["SPE4A924D0001"]
+
+
+def test_extract_from_remote_zip_resolves_then_writes(
+    tmp_path,
+    monkeypatch,
+    sample_vendor_filters,
+    sample_contract_row_full,
+    contract_copy_columns,
+) -> None:
+    from sbir_etl.utils.data import file_io
+
+    source = _source(contract_copy_columns)
+    payload = _row_text([sample_contract_row_full], contract_copy_columns).encode()
+    output = tmp_path / "contracts.parquet"
+
+    monkeypatch.setattr(
+        ContractExtractor,
+        "_resolve_remote_source",
+        classmethod(lambda cls, url: source),
+    )
+    monkeypatch.setattr(
+        file_io,
+        "save_dataframe_parquet",
+        lambda frame, path, **kwargs: path.write_bytes(b"verified-parquet"),
+    )
+    extractor = ContractExtractor(vendor_filter_file=sample_vendor_filters)
+
+    with patch.dict(
+        sys.modules,
+        {"remotezip": _fake_remotezip_module({source.member_name: gzip.compress(payload)})},
+    ):
         count = extractor.extract_from_remote_zip(
-            "https://files.usaspending.gov/x.zip", "5530.dat.gz", out
+            "https://files.usaspending.gov/archive.zip",
+            member_name=None,
+            output_file=output,
         )
 
     assert count == 1
-    assert out.exists()
-    assert out.stat().st_size > 0
+    assert output.read_bytes() == b"verified-parquet"
+    assert extractor.source_provenance["physical_table"] == source.relation
+    assert extractor.source_provenance["member"] == source.member_name
+    assert extractor.source_provenance["toc_sha256"] == source.toc_sha256
 
 
-def test_stream_remote_zip_member_missing_dependency_raises(sample_vendor_filters):
-    """A clear ImportError is raised when remotezip is not installed."""
+def test_parallel_prefetch_failure_cannot_replace_existing_output(
+    tmp_path,
+    monkeypatch,
+    sample_vendor_filters,
+    sample_contract_row_full,
+    contract_copy_columns,
+) -> None:
+    from sbir_etl.extractors import parallel_range_reader
+    from sbir_etl.extractors.parallel_range_reader import ParallelRangeValidationError
+
+    source = _source(contract_copy_columns)
+    output = tmp_path / "contracts.parquet"
+    output.write_bytes(b"existing-parquet")
     extractor = ContractExtractor(vendor_filter_file=sample_vendor_filters)
-    # Force the lazy `from remotezip import RemoteZip` to fail.
+    contract = extractor._parse_contract_row(sample_contract_row_full)
+
+    class _RangeFile:
+        canonical_url = "https://canonical.example.test/archive.zip"
+        replica_urls = ("https://replica.example.test/archive.zip",)
+        chunk_size = 8
+        workers = 2
+
+        def validate_pending(self) -> None:
+            raise ParallelRangeValidationError("invalid unused lookahead")
+
+    class _Info:
+        filename = source.member_name
+        CRC = 0x12345678
+        compress_size = 20
+        file_size = 20
+
+    class _RemoteZip:
+        range_file = _RangeFile()
+        identity = types.SimpleNamespace(etag='"etag"', total_bytes=100)
+
+        def __init__(self, canonical_url, replica_urls) -> None:
+            pass
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *exc) -> Literal[False]:
+            return False
+
+        def infolist(self):
+            return [_Info()]
+
+        def enable_parallel_prefetch(self) -> None:
+            pass
+
+    monkeypatch.setattr(parallel_range_reader, "ValidatedParallelRemoteZip", _RemoteZip)
+    monkeypatch.setattr(
+        ContractExtractor,
+        "_resolve_remote_source_from_archive",
+        classmethod(lambda cls, archive: source),
+    )
+    monkeypatch.setattr(
+        extractor,
+        "_stream_remote_archive_member",
+        lambda *args, **kwargs: iter([contract]),
+    )
+
+    with pytest.raises(ParallelRangeValidationError, match="unused lookahead"):
+        extractor.extract_from_remote_zip(
+            "https://canonical.example.test/archive.zip",
+            member_name=None,
+            output_file=output,
+            parallel_range=True,
+            replica_urls=["https://replica.example.test/archive.zip"],
+        )
+
+    assert output.read_bytes() == b"existing-parquet"
+    assert not output.with_suffix(".checks.json").exists()
+
+
+def test_remote_resolution_uses_toc_selected_member_not_file_size(
+    monkeypatch,
+    contract_copy_columns,
+) -> None:
+    members = {
+        "archive/toc.dat": _TOC_BYTES,
+        "archive/9247.dat.gz": gzip.compress(b""),
+        # Deliberately larger: selection must come from metadata, never size/sniffing.
+        "archive/9999.dat.gz": b"x" * 10000,
+    }
+    observed_calls: list[tuple[str, ...]] = []
+
+    def fake_pg_restore(dump_dir: Path, *arguments: str) -> str:
+        observed_calls.append(arguments)
+        assert (dump_dir / "toc.dat").is_file()
+        if "--list" in arguments:
+            return _toc()
+        if "--schema-only" in arguments:
+            return _schema(contract_copy_columns)
+        if "--data-only" in arguments:
+            return _copy(contract_copy_columns)
+        raise AssertionError(f"Unexpected pg_restore arguments: {arguments!r}")
+
+    monkeypatch.setattr(
+        ContractExtractor,
+        "_run_pg_restore",
+        staticmethod(fake_pg_restore),
+    )
+
+    with patch.dict(sys.modules, {"remotezip": _fake_remotezip_module(members)}):
+        source = ContractExtractor._resolve_remote_source("https://example.test/archive.zip")
+
+    assert source == _source(contract_copy_columns)
+    assert any("--list" in arguments for arguments in observed_calls)
+    assert any("--schema-only" in arguments for arguments in observed_calls)
+    assert any("--data-only" in arguments for arguments in observed_calls)
+
+
+def test_remote_resolution_requires_exactly_one_toc() -> None:
+    members = {
+        "first/toc.dat": b"one",
+        "second/toc.dat": b"two",
+        "first/9247.dat.gz": gzip.compress(b""),
+    }
+
+    with patch.dict(sys.modules, {"remotezip": _fake_remotezip_module(members)}):
+        with pytest.raises(ArchiveSchemaError, match="exactly one toc.dat"):
+            ContractExtractor._resolve_remote_source("https://example.test/archive.zip")
+
+
+def test_remote_resolution_requires_exactly_one_toc_selected_member(
+    monkeypatch,
+    contract_copy_columns,
+) -> None:
+    class _Info:
+        def __init__(self, filename: str) -> None:
+            self.filename = filename
+
+    class _Archive:
+        def infolist(self):
+            return [
+                _Info("archive/toc.dat"),
+                _Info("archive/9247.dat.gz"),
+                _Info("archive/9247.dat.gz"),
+            ]
+
+        def open(self, info):
+            assert info.filename == "archive/toc.dat"
+            return io.BytesIO(_TOC_BYTES)
+
+    def fake_pg_restore(dump_dir: Path, *arguments: str) -> str:
+        if "--list" in arguments:
+            return _toc()
+        if "--schema-only" in arguments:
+            return _schema(contract_copy_columns)
+        if "--data-only" in arguments:
+            return _copy(contract_copy_columns)
+        raise AssertionError(f"Unexpected pg_restore arguments: {arguments!r}")
+
+    monkeypatch.setattr(ContractExtractor, "_run_pg_restore", staticmethod(fake_pg_restore))
+
+    with pytest.raises(ArchiveSchemaError, match="expected exactly one archive/9247.dat.gz"):
+        ContractExtractor._resolve_remote_source_from_archive(_Archive())
+
+
+def test_configured_remote_member_must_match_verified_metadata(
+    tmp_path,
+    monkeypatch,
+    contract_copy_columns,
+) -> None:
+    source = _source(contract_copy_columns)
+    monkeypatch.setattr(
+        ContractExtractor,
+        "_resolve_remote_source",
+        classmethod(lambda cls, url: source),
+    )
+
+    with pytest.raises(ArchiveSchemaError, match="does not match TOC-selected"):
+        ContractExtractor().extract_from_remote_zip(
+            "https://example.test/archive.zip",
+            member_name="archive/largest-file.dat.gz",
+            output_file=tmp_path / "contracts.parquet",
+        )
+
+
+def test_find_transaction_member_returns_metadata_selection(
+    monkeypatch,
+    contract_copy_columns,
+) -> None:
+    source = _source(contract_copy_columns)
+    monkeypatch.setattr(
+        ContractExtractor,
+        "_resolve_remote_source",
+        classmethod(lambda cls, url: source),
+    )
+
+    assert ContractExtractor.find_transaction_member("https://example.test/archive.zip") == (
+        "archive/9247.dat.gz"
+    )
+
+
+def test_stream_remote_zip_member_missing_dependency_raises(
+    sample_vendor_filters,
+    contract_copy_columns,
+) -> None:
+    extractor = ContractExtractor(vendor_filter_file=sample_vendor_filters)
+
     with patch.dict(sys.modules, {"remotezip": None}):
-        # The message points users at the optional 'streaming' extra.
         with pytest.raises(ImportError, match="streaming"):
-            list(extractor.stream_remote_zip_member("https://x/y.zip", "m.dat.gz"))
-
-
-def test_find_transaction_member_skips_wrong_layout(
-    sample_vendor_filters, sample_contract_row_full
-):
-    """find_transaction_member skips short/wrong-shape members and picks the match.
-
-    The decoys are declared *larger* than the real match via the ``sizes`` override
-    so the largest-first probe ordering inside ``find_transaction_member`` is
-    actually exercised: decoys get probed first and skipped, then the match wins.
-    """
-    decoy_short = gzip.compress(b"\t".join([b"x"] * 20) + b"\n")
-    decoy_no_date = gzip.compress(
-        ("\t".join(["123", "id1", "NOT_A_DATE", "A"] + ["x"] * 99)).encode("utf-8") + b"\n"
-    )
-    txn_blob = gzip.compress(("\t".join(sample_contract_row_full) + "\n").encode("utf-8"))
-    members = {
-        "pruned_data_store_api_dump/9999.dat.gz": decoy_short,
-        "pruned_data_store_api_dump/9998.dat.gz": decoy_no_date,
-        "pruned_data_store_api_dump/5183.dat.gz": txn_blob,
-    }
-    # Force decoys to appear larger so largest-first ordering probes them first.
-    sizes = {
-        "pruned_data_store_api_dump/9999.dat.gz": len(txn_blob) + 200,
-        "pruned_data_store_api_dump/9998.dat.gz": len(txn_blob) + 100,
-        "pruned_data_store_api_dump/5183.dat.gz": len(txn_blob),
-    }
-
-    fake = _fake_remotezip_module_multi(members, sizes=sizes)
-    with patch.dict(sys.modules, {"remotezip": fake}):
-        picked = ContractExtractor.find_transaction_member("https://x/y.zip")
-
-    assert picked == "pruned_data_store_api_dump/5183.dat.gz"
-
-
-def test_find_transaction_member_raises_when_none_match(sample_vendor_filters):
-    """find_transaction_member raises RuntimeError when no member has the signature."""
-    members = {
-        "a.dat.gz": gzip.compress(b"\t".join([b"x"] * 5) + b"\n"),
-        "b.dat.gz": gzip.compress(b"\t".join([b"y"] * 10) + b"\n"),
-    }
-    fake = _fake_remotezip_module_multi(members)
-    with patch.dict(sys.modules, {"remotezip": fake}):
-        with pytest.raises(RuntimeError, match="transaction_normalized signature"):
-            ContractExtractor.find_transaction_member("https://x/y.zip")
-
-
-def test_extract_from_remote_zip_auto_detects_member(
-    tmp_path, sample_vendor_filters, sample_contract_row_full
-):
-    """extract_from_remote_zip(member_name=None) sniffs the zip and streams the match."""
-    extractor = ContractExtractor(vendor_filter_file=sample_vendor_filters)
-    decoy = gzip.compress(b"\t".join([b"x"] * 8) + b"\n")
-    txn_blob = gzip.compress(("\t".join(sample_contract_row_full) + "\n").encode("utf-8"))
-    members = {
-        "pruned_data_store_api_dump/9999.dat.gz": decoy,
-        "pruned_data_store_api_dump/5183.dat.gz": txn_blob,
-    }
-    out = tmp_path / "contracts.parquet"
-    fake = _fake_remotezip_module_multi(members)
-
-    with patch.dict(sys.modules, {"remotezip": fake}):
-        count = extractor.extract_from_remote_zip(
-            "https://x/y.zip", member_name=None, output_file=out
-        )
-
-    assert count == 1
-    assert out.exists()
+            list(
+                extractor.stream_remote_zip_member(
+                    "https://example.test/archive.zip",
+                    "archive/9247.dat.gz",
+                    contract_copy_columns,
+                    fpds_only=True,
+                )
+            )

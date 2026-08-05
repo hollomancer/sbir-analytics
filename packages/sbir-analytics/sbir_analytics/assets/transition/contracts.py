@@ -7,17 +7,21 @@ This module contains:
 
 from __future__ import annotations
 
+import hashlib
+import json
 import os
+from collections.abc import Iterable, Mapping
 from pathlib import Path
 from typing import Any
 
 import pandas as pd
 
 from sbir_etl.exceptions import FileSystemError
-from sbir_etl.utils.cloud_storage import (
-    resolve_data_path,
-    sync_s3_prefix_to_dir,
-    upload_file_to_s3,
+from sbir_etl.extractors.usaspending_award_archive import (
+    AWARD_ARCHIVE_PROVENANCE_VERSION,
+    AWARD_ARCHIVE_SOURCE_KIND,
+    AwardArchiveContractExtractor,
+    find_latest_local_contract_archive,
 )
 
 from .utils import (
@@ -32,6 +36,197 @@ from .utils import (
     now_utc_iso,
     write_json,
 )
+
+
+# These are source-provenance fields, not optional conveniences.  A cached parquet
+# created by the former positional extractor cannot support the label-free census
+# unless all required fields are present as top-level columns. Null values are valid source
+# values; column absence is what invalidates the cache.
+RAW_CONTRACT_PROVENANCE_COLUMNS = frozenset(
+    {
+        "piid",
+        "transaction_unique_id",
+        "generated_unique_award_id",
+        "research",
+        "naics_code",
+        "product_or_service_code",
+    }
+)
+SOURCE_PROVENANCE_VERSION = 1
+SOURCE_PROVENANCE_KEYS = frozenset(
+    {
+        "canonical_table",
+        "physical_table",
+        "member",
+        "ordered_columns_sha256",
+        "column_count",
+        "toc_sha256",
+        "vendor_filter_sha256",
+        "output_sha256",
+        "provenance_version",
+    }
+)
+AWARD_ARCHIVE_PROVENANCE_KEYS = frozenset(
+    {
+        "source_kind",
+        "canonical_table",
+        "physical_table",
+        "archive_file",
+        "archive_sha256",
+        "archive_size_bytes",
+        "member_count",
+        "member_manifest_sha256",
+        "ordered_columns_sha256",
+        "column_count",
+        "vendor_filter_sha256",
+        "output_sha256",
+        "provenance_version",
+    }
+)
+
+
+def contract_provenance_status(columns: Iterable[str]) -> dict[str, object]:
+    """Describe whether a contract schema preserves the required raw source fields."""
+
+    available = set(columns)
+    present = sorted(RAW_CONTRACT_PROVENANCE_COLUMNS.intersection(available))
+    missing = sorted(RAW_CONTRACT_PROVENANCE_COLUMNS - available)
+    return {
+        "required_columns": sorted(RAW_CONTRACT_PROVENANCE_COLUMNS),
+        "present_columns": present,
+        "missing_columns": missing,
+        "complete": not missing,
+        "authoritative_research_column": "research",
+        "supplemental_sbir_phase_present": "sbir_phase" in available,
+    }
+
+
+def _parquet_columns(path: Path) -> list[str]:
+    """Read only parquet schema metadata so stale caches can be rejected cheaply."""
+
+    import pyarrow.parquet as pq
+
+    return list(pq.read_schema(path).names)
+
+
+def _file_sha256(path: Path) -> str | None:
+    """Hash one local input without loading it into memory; missing files stay explicit."""
+
+    if not path.is_file():
+        return None
+    digest = hashlib.sha256()
+    with path.open("rb") as file:
+        for chunk in iter(lambda: file.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def _read_cached_source_provenance(checks_path: Path) -> dict[str, object]:
+    if not checks_path.is_file():
+        return {}
+    try:
+        payload = json.loads(checks_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return {}
+    provenance = payload.get("source_provenance")
+    return dict(provenance) if isinstance(provenance, Mapping) else {}
+
+
+def source_provenance_status(
+    provenance: Mapping[str, object],
+    *,
+    toc_sha256: str | None = None,
+    archive_sha256: str | None = None,
+    archive_file: Path | None = None,
+    vendor_filter_sha256: str | None,
+    output_sha256: str | None,
+    table_files: list[str] | None = None,
+) -> dict[str, object]:
+    """Validate cache provenance against the currently configured source inputs."""
+
+    source_kind = provenance.get("source_kind", "database_dump")
+    if source_kind == AWARD_ARCHIVE_SOURCE_KIND:
+        required_keys = AWARD_ARCHIVE_PROVENANCE_KEYS
+        missing = sorted(required_keys - set(provenance))
+        archive_mismatches: list[str] = []
+        expected_archive_values = {
+            "archive_sha256": archive_sha256,
+            "vendor_filter_sha256": vendor_filter_sha256,
+            "output_sha256": output_sha256,
+            "provenance_version": AWARD_ARCHIVE_PROVENANCE_VERSION,
+        }
+        for key, expected_value in expected_archive_values.items():
+            if expected_value is None or provenance.get(key) != expected_value:
+                archive_mismatches.append(key)
+        if provenance.get("canonical_table") != "award_data_archive.contracts_full":
+            archive_mismatches.append("canonical_table")
+        if provenance.get("physical_table") != "award_data_archive.contracts_full":
+            archive_mismatches.append("physical_table")
+        if archive_file is None or provenance.get("archive_file") != archive_file.name:
+            archive_mismatches.append("archive_file")
+        for key in ("archive_size_bytes", "member_count", "column_count"):
+            numeric_value = provenance.get(key)
+            if (
+                not isinstance(numeric_value, int)
+                or isinstance(numeric_value, bool)
+                or numeric_value <= 0
+            ):
+                archive_mismatches.append(key)
+        for key in ("member_manifest_sha256", "ordered_columns_sha256"):
+            hash_value = provenance.get(key)
+            if not isinstance(hash_value, str) or len(hash_value) != 64:
+                archive_mismatches.append(key)
+        return {
+            "source_kind": source_kind,
+            "required_keys": sorted(required_keys),
+            "missing_keys": missing,
+            "mismatches": sorted(set(archive_mismatches)),
+            "complete": not missing and not archive_mismatches,
+        }
+
+    required_keys = SOURCE_PROVENANCE_KEYS
+    missing = sorted(required_keys - set(provenance))
+    database_mismatches: list[str] = []
+    expected = {
+        "toc_sha256": toc_sha256,
+        "vendor_filter_sha256": vendor_filter_sha256,
+        "output_sha256": output_sha256,
+        "provenance_version": SOURCE_PROVENANCE_VERSION,
+    }
+    for key, value in expected.items():
+        if value is None or provenance.get(key) != value:
+            database_mismatches.append(key)
+
+    if provenance.get("canonical_table") != "rpt.transaction_search":
+        database_mismatches.append("canonical_table")
+    if provenance.get("physical_table") not in {
+        "rpt.transaction_search",
+        "rpt.transaction_search_fpds",
+    }:
+        database_mismatches.append("physical_table")
+
+    member = provenance.get("member")
+    if not isinstance(member, str) or not member.endswith(".dat.gz"):
+        database_mismatches.append("member")
+    if table_files is not None and isinstance(member, str):
+        configured = [Path(value).name for value in table_files]
+        if configured != [Path(member).name]:
+            database_mismatches.append("table_files")
+
+    fingerprint = provenance.get("ordered_columns_sha256")
+    if not isinstance(fingerprint, str) or len(fingerprint) != 64:
+        database_mismatches.append("ordered_columns_sha256")
+    column_count = provenance.get("column_count")
+    if not isinstance(column_count, int) or isinstance(column_count, bool) or column_count <= 0:
+        database_mismatches.append("column_count")
+
+    return {
+        "source_kind": "database_dump",
+        "required_keys": sorted(required_keys),
+        "missing_keys": missing,
+        "mismatches": sorted(set(database_mismatches)),
+        "complete": not missing and not database_mismatches,
+    }
 
 
 @asset(
@@ -49,6 +244,11 @@ def raw_contracts(context) -> Output[pd.DataFrame]:
 
     # Get paths from configuration (with environment variable override support)
     output_path = config.paths.resolve_path("transition_contracts_output")
+    award_archive_dir = config.paths.resolve_path("transition_award_archive_dir")
+    use_award_archive = _env_bool("SBIR_ETL__TRANSITION__CONTRACTS__USE_AWARD_ARCHIVE", False)
+    award_archive_file = (
+        find_latest_local_contract_archive(award_archive_dir) if use_award_archive else None
+    )
     dump_dir = config.paths.resolve_path("transition_dump_dir")
     vendor_filter_path = config.paths.resolve_path("transition_vendor_filters")
 
@@ -61,44 +261,12 @@ def raw_contracts(context) -> Output[pd.DataFrame]:
     batch_size = _env_int("SBIR_ETL__TRANSITION__CONTRACTS__BATCH_SIZE", 10000)
     force_refresh = _env_bool("SBIR_ETL__TRANSITION__CONTRACTS__FORCE_REFRESH", False)
 
-    # Optionally sync the dump from an S3 prefix into the local dump_dir. Selective:
-    # when table_files is set we pull only those + toc.dat (avoids fetching the full
-    # ~17GB dump); otherwise the whole prefix. Lets the asset run in a fresh/ephemeral
-    # env (e.g. AWS Batch). Empty config = local only (unchanged behavior).
-    dump_s3_prefix = config.paths.transition_dump_s3_prefix
-    if dump_s3_prefix:
-        include = ["toc.dat", *table_files] if table_files else None
-        if include is None:
-            context.log.warning(
-                "transition_dump_s3_prefix is set without TABLE_FILES; syncing the "
-                "entire dump prefix (potentially very large). Set "
-                "SBIR_ETL__TRANSITION__CONTRACTS__TABLE_FILES to sync selectively."
-            )
-        try:
-            sync_s3_prefix_to_dir(dump_s3_prefix, dump_dir, include=include)
-            context.log.info(f"Synced dump from {dump_s3_prefix} -> {dump_dir} (include={include})")
-        except Exception as e:
-            context.log.warning(f"S3 dump sync failed ({e}); using local {dump_dir}")
-
-    # Optionally source the vendor-filter JSON from S3 (S3-first, local fallback).
-    vendor_filters_s3 = config.paths.transition_vendor_filters_s3_path
-    if vendor_filters_s3:
-        try:
-            vendor_filter_path = resolve_data_path(
-                vendor_filters_s3, local_fallback=vendor_filter_path
-            )
-            context.log.info(
-                f"Resolved vendor filters: {vendor_filters_s3} -> {vendor_filter_path}"
-            )
-        except Exception as e:
-            context.log.warning(
-                f"S3 vendor-filter resolution failed ({e}); using local {vendor_filter_path}"
-            )
-
     context.log.info(
         "Starting contracts_ingestion",
         extra={
             "output_path": str(output_path),
+            "use_award_archive": use_award_archive,
+            "award_archive_file": str(award_archive_file) if award_archive_file else None,
             "dump_dir": str(dump_dir),
             "vendor_filter_path": str(vendor_filter_path),
             "force_refresh": force_refresh,
@@ -107,10 +275,18 @@ def raw_contracts(context) -> Output[pd.DataFrame]:
     )
 
     stats_snapshot: dict[str, Any] | None = None
+    source_provenance: dict[str, object] = {}
 
-    if not dump_dir.exists():
+    if use_award_archive and award_archive_file is None:
         raise FileSystemError(
-            f"USAspending dump directory not found: {dump_dir}",
+            f"Award archive mode is enabled but no Contracts_Full ZIP exists: {award_archive_dir}",
+            file_path=str(award_archive_dir),
+            operation="contracts_sample",
+            component="assets.transition",
+        )
+    if not use_award_archive and not dump_dir.exists():
+        raise FileSystemError(
+            f"USAspending database dump directory not found: {dump_dir}",
             file_path=str(dump_dir),
             operation="contracts_sample",
             component="assets.transition",
@@ -123,23 +299,95 @@ def raw_contracts(context) -> Output[pd.DataFrame]:
             component="assets.transition",
         )
 
-    needs_extract = force_refresh or not output_path.exists()
+    checks_path = output_path.with_suffix(".checks.json")
+    toc_sha256 = _file_sha256(dump_dir / "toc.dat") if award_archive_file is None else None
+    archive_sha256 = (
+        _file_sha256(award_archive_file)
+        if award_archive_file and output_path.exists() and not force_refresh
+        else None
+    )
+    vendor_filter_sha256 = _file_sha256(vendor_filter_path)
+    cached_provenance: dict[str, object] | None = None
+    cached_source_status: dict[str, object] | None = None
+    cache_schema_error: str | None = None
+    if output_path.exists() and not force_refresh:
+        try:
+            cached_provenance = contract_provenance_status(_parquet_columns(output_path))
+            source_provenance = _read_cached_source_provenance(checks_path)
+            cached_source_status = source_provenance_status(
+                source_provenance,
+                toc_sha256=toc_sha256,
+                archive_sha256=archive_sha256,
+                archive_file=award_archive_file,
+                vendor_filter_sha256=vendor_filter_sha256,
+                output_sha256=_file_sha256(output_path),
+                table_files=table_files,
+            )
+        except Exception as exc:
+            # An unreadable schema is not a reusable cache. The extraction below will
+            # either replace it or fail explicitly against the configured dump.
+            cache_schema_error = str(exc)
+            context.log.warning(
+                "Could not validate cached contracts provenance; forcing re-extraction",
+                extra={"output_path": str(output_path), "error": cache_schema_error},
+            )
+
+    cache_is_complete = bool(
+        cached_provenance
+        and cached_provenance["complete"]
+        and cached_source_status
+        and cached_source_status["complete"]
+    )
+    needs_extract = force_refresh or not output_path.exists() or not cache_is_complete
+    if output_path.exists() and not force_refresh and cached_provenance and not cache_is_complete:
+        context.log.warning(
+            "Cached contracts dataset does not match the verified source provenance; "
+            "forcing re-extraction",
+            extra={
+                "output_path": str(output_path),
+                "missing_columns": cached_provenance["missing_columns"],
+                "source_status": cached_source_status,
+            },
+        )
     if needs_extract:
         _ensure_parent_dir(output_path)
-        extractor = ContractExtractor(
-            vendor_filter_file=vendor_filter_path,
-            batch_size=batch_size,
-        )
-        extracted_count = extractor.extract_from_dump(
-            dump_dir=dump_dir,
-            output_file=output_path,
-            table_files=table_files,
-        )
+        extractor: ContractExtractor
+        if award_archive_file is not None:
+            extractor = AwardArchiveContractExtractor(
+                vendor_filter_file=vendor_filter_path,
+                batch_size=batch_size,
+            )
+            extracted_count = extractor.extract_from_archive(
+                archive_file=award_archive_file,
+                output_file=output_path,
+            )
+        else:
+            extractor = ContractExtractor(
+                vendor_filter_file=vendor_filter_path,
+                batch_size=batch_size,
+            )
+            extracted_count = extractor.extract_from_dump(
+                dump_dir=dump_dir,
+                output_file=output_path,
+                table_files=table_files,
+            )
         context.log.info(
             "Contracts extraction complete",
             extra={"rows_written": extracted_count, "output_path": str(output_path)},
         )
         stats_snapshot = dict(extractor.stats)
+        source_provenance = dict(extractor.source_provenance)
+        source_provenance["vendor_filter_sha256"] = vendor_filter_sha256
+        if award_archive_file is not None:
+            archive_sha256_value = source_provenance.get("archive_sha256")
+            archive_sha256 = archive_sha256_value if isinstance(archive_sha256_value, str) else None
+        if award_archive_file is None:
+            source_provenance.update(
+                {
+                    "toc_sha256": toc_sha256,
+                    "provenance_version": SOURCE_PROVENANCE_VERSION,
+                }
+            )
     else:
         context.log.info(
             "Reusing existing contracts dataset", extra={"output_path": str(output_path)}
@@ -155,6 +403,37 @@ def raw_contracts(context) -> Output[pd.DataFrame]:
 
     df = pd.read_parquet(output_path)
     total_rows = len(df)
+    output_sha256 = _file_sha256(output_path)
+    if needs_extract:
+        source_provenance["output_sha256"] = output_sha256
+    provenance = contract_provenance_status(df.columns)
+    if not provenance["complete"]:
+        raise FileSystemError(
+            "Contracts output is missing required raw USAspending provenance columns: "
+            f"{provenance['missing_columns']}",
+            file_path=str(output_path),
+            operation="contracts_ingestion",
+            component="assets.transition",
+            details={"provenance": provenance, "cache_schema_error": cache_schema_error},
+        )
+    current_source_status = source_provenance_status(
+        source_provenance,
+        toc_sha256=toc_sha256,
+        archive_sha256=archive_sha256,
+        archive_file=award_archive_file,
+        vendor_filter_sha256=vendor_filter_sha256,
+        output_sha256=output_sha256,
+        table_files=table_files,
+    )
+    if not current_source_status["complete"]:
+        raise FileSystemError(
+            "Contracts output is not bound to the configured USAspending dump and "
+            f"vendor frame: {current_source_status}",
+            file_path=str(output_path),
+            operation="contracts_ingestion",
+            component="assets.transition",
+            details={"source_provenance": source_provenance},
+        )
 
     def _coverage(column: str) -> float:
         if column not in df.columns or total_rows == 0:
@@ -171,6 +450,11 @@ def raw_contracts(context) -> Output[pd.DataFrame]:
         "vendor_duns": round(_coverage("vendor_duns"), 4),
         "vendor_cage": round(_coverage("vendor_cage"), 4),
         "contract_id": round(_coverage("contract_id"), 4),
+        "transaction_unique_id": round(_coverage("transaction_unique_id"), 4),
+        "generated_unique_award_id": round(_coverage("generated_unique_award_id"), 4),
+        "research": round(_coverage("research"), 4),
+        "naics_code": round(_coverage("naics_code"), 4),
+        "product_or_service_code": round(_coverage("product_or_service_code"), 4),
     }
 
     checks = {
@@ -178,34 +462,25 @@ def raw_contracts(context) -> Output[pd.DataFrame]:
         "generated_at": now_utc_iso(),
         "total_rows": total_rows,
         "coverage": coverage,
+        "provenance": provenance,
+        "source_provenance": source_provenance,
         "source": {
-            "dump_dir": str(dump_dir),
+            "award_archive_file": str(award_archive_file) if award_archive_file else None,
+            "dump_dir": str(dump_dir) if award_archive_file is None else None,
             "vendor_filter_path": str(vendor_filter_path),
             "table_files": table_files,
         },
     }
 
-    checks_path = output_path.with_suffix(".checks.json")
     write_json(checks_path, checks)
-
-    # Optionally persist the extracted parquet back to S3 for cross-run reuse
-    # (e.g. so a later/remote run can read it without re-extracting from the dump).
-    # Empty config = local only (unchanged behavior).
-    output_s3 = config.paths.transition_contracts_output_s3_path
-    if output_s3:
-        try:
-            upload_file_to_s3(output_path, output_s3)
-            context.log.info(f"Uploaded contracts output -> {output_s3}")
-        except Exception as e:
-            context.log.warning(
-                f"S3 output upload failed ({e}); output remains local at {output_path}"
-            )
 
     metadata = {
         "rows": total_rows,
         "output_path": str(output_path),
         "checks_path": str(checks_path),
         "coverage": MetadataValue.json(coverage),
+        "provenance": MetadataValue.json(provenance),
+        "source_provenance": MetadataValue.json(source_provenance),
     }
     if stats_snapshot:
         metadata["extraction_stats"] = MetadataValue.json(stats_snapshot)

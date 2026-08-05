@@ -1,198 +1,48 @@
-# Technology Stack & Build System
-
-## Core Technologies
-
-### Language & Runtime
-
-- **Python 3.11+**
-- **uv** for dependency management and packaging
-
-### Key Frameworks & Libraries
-
-- **Dagster 1.7+**: Asset-based pipeline orchestration and observability
-- **Pydantic 2.8+**: Type-safe configuration and data validation
-- **DuckDB 1.0+**: High-performance analytical database for CSV/PostgreSQL processing
-- **Neo4j 5.x**: Graph database for storing relationships and entities
-- **Pandas 3.0+**: Data manipulation and analysis
-- **RapidFuzz 3.0+**: Fast fuzzy string matching for entity resolution
-
-### Development Tools
-
-- **Ruff**: Code formatting and linting (line length 100, Python 3.11 target)
-- **MyPy**: Static type checking with strict configuration
-- **Bandit**: Security vulnerability scanning
-- **Pytest**: Testing framework with coverage reporting
-
-### Infrastructure
-
-- **Docker & Docker Compose**: Containerized development and deployment (optional)
-- **Neo4j 5.x**: Graph database (Docker locally/CI, EC2 in production)
-
-## Common Commands
-
-### Development Setup
-
-```bash
-
-## Install dependencies
-
-uv sync
-
-## Run commands (uv manages virtual environment automatically)
-
-uv run dagster dev
-
-## Start local Neo4j
-
-make neo4j-up
-
-## or use profile-based configuration
-
-docker-compose --profile dev up -d neo4j
-```
-
-### Code Quality
-
-```bash
-
-## Format code
-
-ruff format .
-
-## Lint code
-
-ruff check . --fix
-
-## Type checking
-
-mypy sbir_etl/
-
-## Security scan
-
-bandit -r sbir_etl packages/sbir-analytics/sbir_analytics packages/sbir-ml/sbir_ml packages/sbir-graph/sbir_graph
-
-## Run all quality checks
-
-make lint  # if available, or run individually
-```
-
-### Testing
-
-```bash
-
-## Run all tests
-
-pytest
-
-## Run with coverage
-
-pytest --cov=sbir_etl --cov-report=html
-
-## Run specific test categories
-
-pytest tests/unit/
-pytest tests/integration/
-pytest -m "not slow"  # Skip slow tests
-```
-
-### Pipeline Execution
-
-```bash
-
-## Start Dagster UI
-
-uv run dagster dev
-
-## Open http://localhost:3000
-
-## Run specific jobs via CLI
-
-dagster job execute -m sbir_analytics.definitions -j sbir_weekly_refresh_job
-dagster job execute -m sbir_analytics.definitions -j cet_full_pipeline_job
-dagster job execute -m sbir_analytics.definitions -j fiscal_returns_mvp_job
-dagster job execute -m sbir_analytics.definitions -j fiscal_returns_full_job
-
-## Container-based development
-
-make docker-up-dev
-make cet-run  # Run CET pipeline in container
-```
-
-### Container Operations
-
-```bash
-
-## Build and start development stack
-
-make docker-build
-make docker-up-dev
-
-## Run tests in container
-
-make docker-test
-
-## View logs
-
-make docker-logs SERVICE=app
-
-## Execute commands in container
-
-make docker-exec SERVICE=app CMD="uv run pytest"
-```
-
-### Data Pipeline Commands
-
-```bash
-
-## Transition Detection MVP (local)
-
-make transition-run
-make transition-mvp-clean
-
-## Neo4j operations
-
-make neo4j-up
-make neo4j-down
-make neo4j-reset  # Fresh Neo4j instance
-```
-
-## Configuration System
-
-### Three-layer Configuration
-
-- `config/base.yaml`: Default settings (version controlled)
-- `config/dev.yaml`: Development overrides
-- `config/prod.yaml`: Production settings
-
-### Environment Variable Overrides
-
-```bash
-
-## Format: SBIR_ETL__SECTION__KEY=value
-
-export SBIR_ETL__NEO4J__URI="bolt://localhost:7687"
-export SBIR_ETL__ENRICHMENT__MATCH_RATE_THRESHOLD=0.75
-```
-
-## Build & Deployment
-
-### Docker Multi-stage Build
-
-- Development profile: Bind mounts for live code editing
-- Production profile: Optimized image without dev dependencies
-- Test profile: Isolated testing environment
-
-### CI/CD Workflows
-
-- **Standard CI**: Lint, test, security scan on push/PR
-- **Container CI**: Docker build and test (8-12 min runtime)
-- **Performance Regression**: Benchmark comparison on enrichment changes
-- **Neo4j Integration**: Database connectivity and schema validation
-
-## Related Documents
-
-- **[product.md](product.md)** - Project overview and key features
-- **[structure.md](structure.md)** - Project organization and code structure
-- **[configuration.md](../configuration.md)** - Environment variable configuration examples
-- **[pipeline-orchestration.md](pipeline-orchestration.md)** - Dagster orchestration and development workflow
-- **[quick-reference.md](quick-reference.md)** - Common commands quick reference
+---
+Type: Steering
+Owner: engineering@project
+Last-Reviewed: 2026-08-03
+Status: active
+---
+
+# Technology Decisions
+
+This document records durable technology choices. It intentionally does not duplicate setup,
+testing, configuration, or deployment commands; use the linked operational references for those.
+
+## Supported stack
+
+- Python 3.11 or 3.12, managed as a uv workspace.
+- pandas, DuckDB, and PyArrow for tabular processing and interchange.
+- Pydantic plus YAML for typed configuration.
+- Dagster for assets, jobs, schedules, sensors, and run metadata.
+- Neo4j 5 for the linked analytical graph.
+- scikit-learn and, only where justified, PyTorch/Transformers for ML.
+- Docker Compose for local development, tests, and the self-hosted server data plane.
+- pytest, Ruff, and MyPy for verification.
+
+The [architecture overview](../architecture/detailed-overview.md) owns component placement and
+dependency direction. Version constraints live in `pyproject.toml`, `uv.lock`, Compose files, and
+CI—not in prose.
+
+## Selection rules
+
+1. Start from an active [research question](../research-questions.md) or a demonstrated operational
+   need.
+2. Prefer an existing dependency and package boundary over a parallel framework.
+3. Put reusable logic in `sbir_etl`; keep orchestration, graph, and ML adapters in their workspace
+   packages.
+4. Require a current consumer before adding an abstraction, service, or persistence layer.
+5. Record consequential or difficult-to-reverse choices as an [ADR](../decisions/README.md).
+
+Managed cloud services are not part of the current runtime. A proposal for one must identify its
+owner, credentials, cost boundary, durable rebuild source, failure behavior, and runbook before it
+can be described as architecture.
+
+## Operational references
+
+- Installation and first run: [Getting started](../getting-started/README.md)
+- Configuration: [Configuration reference](../configuration.md)
+- Local containers: [Docker development](../development/docker.md)
+- Testing and CI: [Testing index](../testing/index.md)
+- Live deployment: [self-hosted server runbook](../deployment/self-hosted-server.md)

@@ -3,9 +3,11 @@
 
 from __future__ import annotations
 
+from collections import Counter
 from dataclasses import dataclass
 import re
 import subprocess
+import unicodedata
 from pathlib import Path
 from urllib.parse import unquote
 
@@ -13,8 +15,11 @@ from urllib.parse import unquote
 REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
 AUTOMATION_PREFIXES = (".github/", "scripts/", "sbir_etl/", "packages/", "tests/")
 SCANNED_FILES = {"Makefile", ".pre-commit-config.yaml"}
+AGENT_DOCUMENTATION_FILES = {"AGENTS.md", "CLAUDE.md"}
+AGENT_DOCUMENTATION_PREFIXES = (".claude/", ".agents/")
 EXCLUDED_HISTORICAL_DOCUMENTS = {"docs/decisions/ADR-002-etl-library-extraction.md"}
 EXCLUDED_SCAN_FILES = {
+    "scripts/ci/check_identity_boundaries.py",
     "tests/unit/scripts/test_repository_hygiene.py",
 }
 REMOVED_SRC_PATTERNS = (
@@ -22,7 +27,6 @@ REMOVED_SRC_PATTERNS = (
     re.compile(r"\bsrc\.definitions(?:_ml)?\b"),
     re.compile(r"(?:^|[\s'\"(=:/])src/[A-Za-z0-9_.*?/-]+"),
 )
-LIVE_DOC_DIR_PREFIXES = ("docs/steering/", "docs/development/", "docs/testing/")
 LIVE_DOC_STALE_PATTERNS = (
     (
         re.compile(r"--cov=src(?:\b|/)"),
@@ -41,9 +45,7 @@ LIVE_DOC_STALE_PATTERNS = (
         "Poetry command in live docs",
     ),
     (
-        re.compile(
-            r"(?:^|[\s'\"(=:/])(?:python\s+-m\s+)?black\s+(?:--|[A-Za-z0-9_.-]+)"
-        ),
+        re.compile(r"(?:^|[\s'\"(=:/])(?:python\s+-m\s+)?black\s+(?:--|[A-Za-z0-9_.-]+)"),
         "Black command in live docs",
     ),
 )
@@ -52,6 +54,14 @@ ARCHIVE_REFERENCE_PATTERNS = (
     re.compile(r"scripts\.archive(?:\.|\b)"),
 )
 MARKDOWN_LINK_RE = re.compile(r"!?\[[^\]]+\]\(([^)]+)\)")
+MARKDOWN_REFERENCE_LINK_RE = re.compile(r"^\s*\[[^\]]+\]:\s*(\S+)")
+MARKDOWN_HEADING_RE = re.compile(r"^ {0,3}#{1,6}\s+(.+?)\s*#*\s*$")
+MARKDOWN_EXPLICIT_ANCHOR_RE = re.compile(r'<a\s+(?:[^>]*?\s)?(?:id|name)=["\']([^"\']+)["\']', re.I)
+SPEC_STATUS_ENTRY_RE = re.compile(r"^- \*\*`([^`]+)`\s+—", re.MULTILINE)
+CODEX_AGENT_NAME_RE = re.compile(r'^name\s*=\s*"([^"]+)"\s*$', re.MULTILINE)
+CODEX_AGENT_INSTRUCTIONS_RE = re.compile(
+    r'^developer_instructions\s*=\s*"""(.*?)"""\s*$', re.MULTILINE | re.DOTALL
+)
 
 
 @dataclass(frozen=True)
@@ -82,7 +92,8 @@ def tracked_files() -> list[Path]:
         capture_output=True,
         text=True,
     )
-    return [REPOSITORY_ROOT / relative for relative in result.stdout.splitlines()]
+    paths = [REPOSITORY_ROOT / relative for relative in result.stdout.splitlines()]
+    return [path for path in paths if path.exists()]
 
 
 def __file_relative__() -> str:
@@ -106,11 +117,19 @@ def _is_live_doc_file(relative: str) -> bool:
         return False
     if relative.startswith(("docs/archive/", "specs/archive/")):
         return False
-    if relative.startswith(LIVE_DOC_DIR_PREFIXES):
+    if relative in AGENT_DOCUMENTATION_FILES:
         return True
-    if relative.startswith("docs/") and relative.count("/") == 1:
+    if relative.startswith((*AGENT_DOCUMENTATION_PREFIXES, "docs/")):
         return True
     return relative.startswith("specs/")
+
+
+def _is_documentation_file(relative: str) -> bool:
+    """Return whether a tracked Markdown file belongs to project documentation."""
+    return relative in {*AGENT_DOCUMENTATION_FILES, "README.md"} or (
+        relative.endswith(".md")
+        and relative.startswith((*AGENT_DOCUMENTATION_PREFIXES, "docs/", "specs/"))
+    )
 
 
 def _is_archive_guard_file(relative: str) -> bool:
@@ -118,7 +137,9 @@ def _is_archive_guard_file(relative: str) -> bool:
         return False
     if relative.startswith(("scripts/archive/", "tests/unit/scripts/archive/")):
         return False
-    return relative in SCANNED_FILES or relative.startswith(AUTOMATION_PREFIXES)
+    return relative in SCANNED_FILES or relative.startswith(
+        (*AUTOMATION_PREFIXES, "docs/deployment/")
+    )
 
 
 def _read_text_lines(path: Path) -> list[str] | None:
@@ -170,7 +191,7 @@ def scan_live_doc_stale_content(
 
 
 def scan_archive_references(paths: list[Path], *, root: Path = REPOSITORY_ROOT) -> list[Violation]:
-    """Find live-code references to archived scripts."""
+    """Find operational references to archived scripts."""
     guard_files = [
         path for path in paths if _is_archive_guard_file(_relative_to_repository(path, root))
     ]
@@ -178,7 +199,7 @@ def scan_archive_references(paths: list[Path], *, root: Path = REPOSITORY_ROOT) 
         guard_files,
         root=root,
         patterns=tuple(
-            (pattern, "live code references scripts/archive")
+            (pattern, "operational file references scripts/archive")
             for pattern in ARCHIVE_REFERENCE_PATTERNS
         ),
     )
@@ -191,39 +212,74 @@ def _extract_markdown_link_target(raw_target: str) -> str:
     return target.split(maxsplit=1)[0]
 
 
-def _is_external_or_anchor_link(target: str) -> bool:
+def _is_external_link(target: str) -> bool:
     lower = target.lower()
-    return (
-        not target
-        or target.startswith("#")
-        or lower.startswith(("http://", "https://", "mailto:", "tel:", "app://"))
-    )
+    return not target or lower.startswith(("http://", "https://", "mailto:", "tel:", "app://"))
 
 
 def _resolve_markdown_target(source_path: Path, target: str, root: Path) -> Path | None:
     normalized = unquote(target).split("#", 1)[0].split("?", 1)[0]
     if not normalized:
-        return None
+        return source_path
     if normalized.startswith("/"):
         return root / normalized.lstrip("/")
     return source_path.parent / normalized
 
 
-def scan_missing_live_doc_links(
-    paths: list[Path], *, root: Path = REPOSITORY_ROOT
-) -> list[Violation]:
-    """Find local Markdown links in live docs/specs that point nowhere."""
+def _github_heading_slug(heading: str) -> str:
+    """Return the stable subset of GitHub's heading-slug behavior used by repository docs."""
+    text = re.sub(r"<[^>]+>", "", heading)
+    text = re.sub(r"!?\[([^\]]+)\]\([^)]+\)", r"\1", text)
+    text = text.replace("`", "").replace("*", "").replace("~", "")
+    characters: list[str] = []
+    for character in text.strip().lower():
+        category = unicodedata.category(character)
+        if character in {"-", "_"} or character.isspace() or category[0] in {"L", "N"}:
+            characters.append(character)
+    # GitHub replaces each whitespace character rather than collapsing a run;
+    # punctuation between two spaces therefore produces a double hyphen.
+    return re.sub(r"\s", "-", "".join(characters))
+
+
+def _markdown_anchors(path: Path) -> set[str]:
+    """Collect generated heading anchors and explicit HTML anchors from one Markdown file."""
+    lines = _read_text_lines(path)
+    if lines is None:
+        return set()
+    anchors: set[str] = set()
+    slug_counts: dict[str, int] = {}
+    for line in lines:
+        for explicit in MARKDOWN_EXPLICIT_ANCHOR_RE.findall(line):
+            anchors.add(unquote(explicit))
+        heading_match = MARKDOWN_HEADING_RE.match(line)
+        if heading_match is None:
+            continue
+        base_slug = _github_heading_slug(heading_match.group(1))
+        if not base_slug:
+            continue
+        duplicate_index = slug_counts.get(base_slug, 0)
+        slug_counts[base_slug] = duplicate_index + 1
+        anchors.add(base_slug if duplicate_index == 0 else f"{base_slug}-{duplicate_index}")
+    return anchors
+
+
+def scan_missing_doc_links(paths: list[Path], *, root: Path = REPOSITORY_ROOT) -> list[Violation]:
+    """Find local Markdown links or fragments in project docs that point nowhere."""
     violations: list[Violation] = []
-    live_docs = [path for path in paths if _is_live_doc_file(_relative_to_repository(path, root))]
-    for path in live_docs:
+    anchors_by_path: dict[Path, set[str]] = {}
+    docs = [path for path in paths if _is_documentation_file(_relative_to_repository(path, root))]
+    for path in docs:
         lines = _read_text_lines(path)
         if lines is None:
             continue
         relative = _relative_to_repository(path, root)
         for line_number, line in enumerate(lines, 1):
-            for match in MARKDOWN_LINK_RE.finditer(line):
-                target = _extract_markdown_link_target(match.group(1))
-                if _is_external_or_anchor_link(target):
+            raw_targets = [match.group(1) for match in MARKDOWN_LINK_RE.finditer(line)]
+            if reference_match := MARKDOWN_REFERENCE_LINK_RE.match(line):
+                raw_targets.append(reference_match.group(1))
+            for raw_target in raw_targets:
+                target = _extract_markdown_link_target(raw_target)
+                if _is_external_link(target):
                     continue
                 resolved = _resolve_markdown_target(path, target, root)
                 if resolved is not None and not resolved.exists():
@@ -232,6 +288,163 @@ def scan_missing_live_doc_links(
                             relative, line_number, f"missing local Markdown link {target}", line
                         )
                     )
+                    continue
+                fragment = (
+                    unquote(target.split("#", 1)[1].split("?", 1)[0]) if "#" in target else ""
+                )
+                if not fragment or resolved is None or resolved.suffix.lower() != ".md":
+                    continue
+                resolved_path = resolved.resolve()
+                anchors = anchors_by_path.setdefault(
+                    resolved_path, _markdown_anchors(resolved_path)
+                )
+                if fragment not in anchors:
+                    violations.append(
+                        Violation(
+                            relative,
+                            line_number,
+                            f"missing Markdown anchor #{fragment} in {target.split('#', 1)[0] or relative}",
+                            line,
+                        )
+                    )
+    return violations
+
+
+def scan_spec_registry(*, root: Path = REPOSITORY_ROOT) -> list[Violation]:
+    """Require every top-level feature spec to appear exactly once in the status registry."""
+    specs_root = root / "specs"
+    registry_path = specs_root / "status.md"
+    if not registry_path.exists():
+        return [Violation("specs/status.md", 1, "missing specification status registry", "")]
+
+    tracked_specs = {
+        path.name
+        for path in specs_root.iterdir()
+        if (path.is_dir() and path.name != "archive")
+        or (
+            path.is_file()
+            and path.suffix == ".md"
+            and path.name not in {"REQUIREMENTS_TEMPLATE.md", "status.md"}
+        )
+    }
+    registry_text = registry_path.read_text(encoding="utf-8")
+    registered_entries = SPEC_STATUS_ENTRY_RE.findall(registry_text)
+    registered_specs = set(registered_entries)
+
+    violations: list[Violation] = []
+    for name in sorted(tracked_specs - registered_specs):
+        violations.append(
+            Violation(
+                "specs/status.md",
+                1,
+                f"top-level spec is missing from status registry: {name}",
+                name,
+            )
+        )
+    for name in sorted(registered_specs - tracked_specs):
+        violations.append(
+            Violation(
+                "specs/status.md",
+                1,
+                f"status registry references a missing top-level spec: {name}",
+                name,
+            )
+        )
+    for name, count in sorted(Counter(registered_entries).items()):
+        if count > 1:
+            violations.append(
+                Violation(
+                    "specs/status.md",
+                    1,
+                    f"status registry contains duplicate entries for: {name}",
+                    name,
+                )
+            )
+    return violations
+
+
+def scan_agent_definition_routes(*, root: Path = REPOSITORY_ROOT) -> list[Violation]:
+    """Keep Codex wrappers and shared agent/skill instructions synchronized."""
+    claude_agents = root / ".claude" / "agents"
+    codex_agents = root / ".Codex" / "agents"
+    markdown_names = {path.stem for path in claude_agents.glob("*.md")}
+    toml_names = {path.stem for path in codex_agents.glob("*.toml")}
+    violations: list[Violation] = []
+
+    for name in sorted(markdown_names - toml_names):
+        violations.append(
+            Violation(
+                f".Codex/agents/{name}.toml",
+                1,
+                f"missing Codex wrapper for shared agent role: {name}",
+                name,
+            )
+        )
+    for name in sorted(toml_names - markdown_names):
+        violations.append(
+            Violation(
+                f".Codex/agents/{name}.toml",
+                1,
+                f"Codex wrapper has no shared agent role: {name}",
+                name,
+            )
+        )
+
+    for name in sorted(markdown_names & toml_names):
+        wrapper_path = codex_agents / f"{name}.toml"
+        try:
+            wrapper_text = wrapper_path.read_text(encoding="utf-8")
+        except OSError as error:
+            violations.append(
+                Violation(
+                    _relative_to_repository(wrapper_path, root),
+                    1,
+                    f"invalid Codex agent wrapper: {error}",
+                    name,
+                )
+            )
+            continue
+        name_match = CODEX_AGENT_NAME_RE.search(wrapper_text)
+        instructions_match = CODEX_AGENT_INSTRUCTIONS_RE.search(wrapper_text)
+        instructions = instructions_match.group(1) if instructions_match else ""
+        expected_role = f".claude/agents/{name}.md"
+        if name_match is None or name_match.group(1) != name or expected_role not in instructions:
+            violations.append(
+                Violation(
+                    _relative_to_repository(wrapper_path, root),
+                    1,
+                    f"Codex wrapper must route {name} to {expected_role}",
+                    instructions,
+                )
+            )
+
+    claude_skills = root / ".claude" / "skills"
+    shared_skills = root / ".agents" / "skills"
+    skill_names = {path.parent.name for path in claude_skills.glob("*/SKILL.md")} | {
+        path.parent.name for path in shared_skills.glob("*/SKILL.md")
+    }
+    for name in sorted(skill_names):
+        claude_skill = claude_skills / name / "SKILL.md"
+        shared_skill = shared_skills / name / "SKILL.md"
+        if not claude_skill.exists() or not shared_skill.exists():
+            missing = shared_skill if not shared_skill.exists() else claude_skill
+            violations.append(
+                Violation(
+                    _relative_to_repository(missing, root),
+                    1,
+                    f"missing mirrored agent skill: {name}",
+                    name,
+                )
+            )
+        elif claude_skill.read_text(encoding="utf-8") != shared_skill.read_text(encoding="utf-8"):
+            violations.append(
+                Violation(
+                    _relative_to_repository(shared_skill, root),
+                    1,
+                    f"agent skill differs from .claude copy: {name}",
+                    name,
+                )
+            )
     return violations
 
 
@@ -257,11 +470,19 @@ def main() -> int:
             scan_live_doc_stale_content(paths),
         ),
         (
-            "Missing local Markdown links were found in live docs/specs:",
-            scan_missing_live_doc_links(paths),
+            "Missing local Markdown links were found in project documentation:",
+            scan_missing_doc_links(paths),
         ),
         (
-            "Live code references archived scripts:",
+            "The specification status registry is incomplete:",
+            scan_spec_registry(),
+        ),
+        (
+            "Agent definitions or skill copies are out of sync:",
+            scan_agent_definition_routes(),
+        ),
+        (
+            "Operational files reference archived scripts:",
             scan_archive_references(paths),
         ),
     ]

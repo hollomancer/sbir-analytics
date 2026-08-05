@@ -1,0 +1,164 @@
+area_id: uas_relevance
+version: "1.0.0"
+display_name: UAS Technology Relevance
+description: >-
+  Broad SBIR/STTR relevance to aerial uncrewed systems, including physical
+  hardware, autonomy/software, operations, and services. This preserves the
+  original PR 439 question separately from the strict physical-manufacturing
+  profile.
+programs: [SBIR, STTR]
+
+gate:
+  min_abstract_only_occurrences: 3
+  terms:
+    - '\bdrone[s]?\b'
+    - '\bUAV[s]?\b'
+    - '\bUAS\b'
+    - '\bsUAS\b'
+    - '\bunmanned aerial vehicle[s]?\b'
+    - '\bunmanned aerial system[s]?\b'
+    - '\bunmanned aircraft\b'
+    - '\bunmanned aerial\b'
+    - '\buncrewed (?:aircraft|aerial vehicle|aerial system)s?\b'
+    - '\bremotely piloted aircraft\b'
+    - '\bquadcopter[s]?\b'
+    - '\bquadrotor[s]?\b'
+    - '\bhexacopter[s]?\b'
+    - '\bmulti-?rotor[s]?\b'
+    - '\bmicro air vehicle[s]?\b'
+    - '\bfixed-wing (?:UAS|UAV|drone)s?\b'
+    - '\b(?:VTOL|vertical take-?off and landing) (?:UAS|UAV|drone)s?\b'
+    - '\bloitering munition[s]?\b'
+    - '\bone-way attack (?:aircraft|drone)s?\b'
+    - '\btarget drone[s]?\b'
+    - '\bloyal wingm[ae]n\b'
+    - '\bcollaborative combat aircraft\b'
+    - '\bCCA(?:s)?\b(?=[\s\S]{0,80}\b(?:aircraft|airframe|aerial|air vehicle|wing|flight|propulsion|avionics|autonom\w*|munition|air dominance)\b)'
+    - '\b(?:aircraft|airframe|aerial|air vehicle|wing|flight|propulsion|avionics|autonom\w*|munition|air dominance)\b[\s\S]{0,80}\bCCA(?:s)?\b'
+    - '\bautonomous collaborative platform[s]?\b'
+    - '\bACP\b(?=[\s\S]{0,80}\b(?:aircraft|airframe|aerial|air vehicle|wing|flight|propulsion|avionics|drone|UAS|UAV)\b)'
+    - '\b(?:aircraft|airframe|aerial|air vehicle|wing|flight|propulsion|avionics|drone|UAS|UAV)\b[\s\S]{0,80}\bACP\b'
+    - '\battritable (?:aircraft|airframe|platform)s?\b'
+    - '\bair-launched effect[s]?\b'
+    - '\bhigh[- ]altitude pseudo-?satellite[s]?\b'
+    - '\bhigh[- ]altitude platform (?:system|station)s?\b'
+    - '\bHAPS\b(?=[\s\S]{0,80}\b(?:high[- ]altitude|stratospher\w*|aircraft|aerial|flight|propulsion|payload|imaging|demonstrator)\b)'
+    - '\b(?:high[- ]altitude|stratospher\w*|aircraft|aerial|flight|propulsion|payload|imaging|demonstrator)\b[\s\S]{0,80}\bHAPS\b'
+    - '\bUCAV[s]?\b'
+    - '\bVTUAV[s]?\b'
+    - '\bTUAV[s]?\b'
+
+exclusions:
+  - name: counter_uas
+    display_name: Counter-UAS Detection or Defeat
+    reason: Detect/track/jam/defeat work is not technology for the UAS itself.
+    terms:
+      - '\bcounter[- ]?(?:UAS|sUAS|UAV|drone)s?\b'
+      - '\bc[- ]?UAS\b'
+      - '\banti[- ]drone\b'
+    unless_terms:
+      - '\binterceptor (?:UAS|UAV|drone|aircraft)s?\b'
+      - '\b(?:UAS|UAV|drone) interceptor[s]?\b'
+  - name: non_aerial_title
+    display_name: Non-Aerial Unmanned Systems
+    reason: The funded primary platform is ground, surface, or underwater.
+    title_only: true
+    terms:
+      - '\b(?:UGV|UUV|USV|AUV)s?\b'
+      - '\bunmanned (?:ground|underwater|surface) vehicle[s]?\b'
+      - '\bautonomous underwater vehicle[s]?\b'
+
+adjacent_nonaerial:
+  - name: ugv
+    display_name: Unmanned Ground Vehicles
+    terms:
+      - '\bUGV[s]?\b'
+      - '\bunmanned ground vehicle[s]?\b'
+  - name: uuv
+    display_name: Unmanned Underwater Vehicles
+    terms:
+      - '\b(?:UUV|AUV)[s]?\b'
+      - '\b(?:unmanned|autonomous) underwater vehicle[s]?\b'
+  - name: usv
+    display_name: Unmanned Surface Vehicles
+    terms:
+      - '\bUSV[s]?\b'
+      - '\bunmanned surface vehicle[s]?\b'
+
+subsets:
+  - name: Manufacturing Processes & Materials
+    terms:
+      - '\badditive manufactur\w*\b'
+      - '\b3D[- ]print\w*\b'
+      - '\brapid prototyp\w*\b'
+      - '\bcomposite (?:airframe|structure)s?\b'
+      - '\blow-?cost manufactur\w*\b'
+  - name: Propulsion & Power Systems
+    terms:
+      - '\bpropulsion\b'
+      - '\bhybrid-electric\b'
+      - '\bpropeller[s]?\b'
+      - '\bbatter(?:y|ies)\b'
+      - '\bmotor controller[s]?\b'
+      - '\bsmall (?:gas turbine|engine)[s]?\b'
+      - '\belectric motor[s]?\b'
+  - name: Autonomy, Guidance & Flight Control
+    terms:
+      - '\bautopilot\b'
+      - '\bautonomous flight\b'
+      - '\bswarm(?:ing)?\b'
+      - '\bsense[- ]and[- ]avoid\b'
+      - '\bobstacle avoidance\b'
+      - '\bBVLOS\b'
+      - '\bbeyond visual line of sight\b'
+      - '\bguidance,? navigation,? and control\b'
+      - '\bGNC\b'
+      - '\bmission planning\b'
+      - '\bcomputer vision\b'
+  - name: Sensors & Mission Payloads
+    terms:
+      - '\bgimbal[s]?\b'
+      - '\bpayload[s]?\b'
+      - '\bEO/?IR\b'
+      - '\bISR payload[s]?\b'
+      - '\bLiDAR\b'
+  - name: Communications & Data Links
+    terms:
+      - '\bdata ?link[s]?\b'
+      - '\bcommand and control link[s]?\b'
+      - '\bground control station[s]?\b'
+      - '\banti-jam\b'
+
+fallback_subset: Unclassified UAS Relevance
+
+scope_classes:
+  - name: Physical Hardware & Manufacturing
+    terms:
+      - '\bmanufactur\w*\b'
+      - '\bfabricat\w*\b'
+      - '\bairframe[s]?\b'
+      - '\bfuselage[s]?\b'
+      - '\bpropulsion\b'
+      - '\bengine[s]?\b'
+      - '\bmotor[s]?\b'
+      - '\bbatter(?:y|ies)\b'
+      - '\bavionics\b'
+      - '\bgimbal[s]?\b'
+  - name: Software, Autonomy & Analytics
+    terms:
+      - '\bsoftware\b'
+      - '\balgorithm[s]?\b'
+      - '\bautonom\w*\b'
+      - '\bcomputer vision\b'
+      - '\bmachine learning\b'
+      - '\banalytic[s]?\b'
+      - '\bmission planning\b'
+  - name: Operations & Services
+    terms:
+      - '\boperation[s]?\b'
+      - '\bservice[s]?\b'
+      - '\btraining\b'
+      - '\bmaintenance\b'
+      - '\binspection\b'
+
+fallback_scope_class: General UAS Relevance

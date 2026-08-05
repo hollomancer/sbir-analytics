@@ -16,6 +16,7 @@ import httpx
 from loguru import logger
 from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_exponential
 
+from .. import __version__
 from ..exceptions import APIError, ConfigurationError, RateLimitError
 from .rate_limiting import RateLimiter
 
@@ -78,7 +79,7 @@ class BaseAsyncAPIClient:
         """Build default request headers. Override to add auth headers."""
         return {
             "Accept": "application/json",
-            "User-Agent": "SBIR-Analytics/0.1.0",
+            "User-Agent": f"SBIR-Analytics/{__version__}",
         }
 
     async def _request_raw(

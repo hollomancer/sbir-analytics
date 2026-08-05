@@ -40,7 +40,6 @@ class ExtractSAMEntitiesTool(BaseTool):
         metadata: ToolMetadata,
         *,
         parquet_path: str | Path | None = None,
-        use_s3_first: bool | None = None,
         filter_active: bool = False,
         filter_naics: list[str] | None = None,
         filter_states: list[str] | None = None,
@@ -51,7 +50,6 @@ class ExtractSAMEntitiesTool(BaseTool):
         Args:
             metadata: Pre-initialized metadata to populate
             parquet_path: Override path to SAM.gov parquet file
-            use_s3_first: Whether to try S3 before local. None = use config
             filter_active: If True, return only active registrations
             filter_naics: Filter to entities with these NAICS codes (prefix match)
             filter_states: Filter to entities in these states
@@ -66,7 +64,6 @@ class ExtractSAMEntitiesTool(BaseTool):
         # Load the parquet data
         df = extractor.load_parquet(
             parquet_path=Path(parquet_path) if parquet_path else None,
-            use_s3_first=use_s3_first,
         )
 
         initial_count = len(df)

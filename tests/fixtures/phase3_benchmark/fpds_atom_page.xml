@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom"
+      xmlns:opensearch="http://a9.com/-/spec/opensearch/1.1/"
+      xmlns:fpds="https://www.fpds.gov/FPDS">
+  <opensearch:totalResults>1</opensearch:totalResults>
+  <entry>
+    <content>
+      <fpds:award>
+        <fpds:PIID>0001</fpds:PIID>
+        <fpds:UEI>UEI000000001</fpds:UEI>
+        <fpds:vendorName>Example Robotics</fpds:vendorName>
+        <fpds:descriptionOfContractRequirement>Autonomous navigation transition</fpds:descriptionOfContractRequirement>
+        <fpds:signedDate>2024-04-15</fpds:signedDate>
+        <fpds:research>SR3</fpds:research>
+        <fpds:agencyID name="Department of Defense">2100</fpds:agencyID>
+        <fpds:contractingOfficeID>NAVAIR</fpds:contractingOfficeID>
+        <fpds:referencedIDVID>
+          <fpds:agencyID>1700</fpds:agencyID>
+          <fpds:PIID>N00019-20-D-0001</fpds:PIID>
+        </fpds:referencedIDVID>
+      </fpds:award>
+    </content>
+  </entry>
+</feed>

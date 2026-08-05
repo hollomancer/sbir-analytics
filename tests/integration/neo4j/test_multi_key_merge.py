@@ -17,12 +17,12 @@ style failures from leftover state.
 """
 
 import pytest
-from tests.conftest import neo4j_running as neo4j_available
 
 pytestmark = [
-    pytest.mark.skipif(
-        not neo4j_available(), reason="Neo4j not running - see INTEGRATION_TEST_ANALYSIS.md"
-    ),
+    pytest.mark.integration,
+    # Resolve Neo4j lazily at execution time so collection and deselection do
+    # not start a Docker container.
+    pytest.mark.usefixtures("neo4j_driver"),
     pytest.mark.xdist_group("neo4j_integration"),
 ]
 

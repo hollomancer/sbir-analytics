@@ -1,7 +1,7 @@
 # Requirements: Make `RESULTED_IN` resolve (CONTRACT FinancialTransaction nodes)
 
 > **Status:** Not yet started.
-> Supports inventory question **A3** (SBIR → follow-on contract linkage) in [docs/research-questions.md](../../docs/research-questions.md).
+> Supports inventory question **A3** (SBIR → follow-on contract linkage) in [docs/research-questions.md](../../../../docs/research-questions.md).
 
 **Research question anchor:** A3 — SBIR award → follow-on federal contract linkage
 **Answers for:** defense industrial base analysts, pipeline engineers

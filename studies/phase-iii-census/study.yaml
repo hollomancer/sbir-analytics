@@ -1,0 +1,50 @@
+schema_version: 1
+study_id: phase-iii-census
+title: Label-free Phase III census and negative controls
+evidence_status: reproducible
+research_questions:
+  - B2
+  - B3
+  - E1
+estimand: >-
+  Among exact-UEI Phase II award and federal prime contract action pairs in the
+  retrospective source universe, estimate uncoded post-completion follow-on procurement
+  proxies under every preregistered time-window and agency-continuity cell.
+frozen_artifacts:
+  - path: specs/phase-iii-census/design.md
+    sha256: 05d1850df6c33ead6d15a34137a4aa202273820a3191b83da0fca007324fe752
+  - path: specs/phase-iii-census/amendments.md
+    sha256: 6ea0768468de67703a4ada3aebd428d44e04e0d0cf9057d8698f9bbb0ee1b313
+implementation:
+  - path: packages/sbir-analytics/sbir_analytics/assets/phase_iii_census/assets.py
+    symbol: phase_iii_census
+  - path: scripts/data/build_phase_iii_control_matches.py
+    symbol: run
+  - path: scripts/data/build_phase_iii_control_outcomes.py
+    symbol: run
+  - path: scripts/data/build_phase_iii_placebo.py
+    symbol: run
+identity_policy:
+  strategy: exact normalized UEI only; no name or DUNS fallback
+  version: phase-0-r15
+  negative_evidence_allowed: false
+materialization:
+  allowed: true
+  blockers: []
+permitted_claims:
+  - The estimand, criteria, and implementation are frozen and fixture-verified.
+  - The complete February cumulative ladder and all six sensitivity cells were
+    materialized from provenance-verified inputs, and the blocking one-factor check passed.
+  - Within the exact-match common-support subset, the frozen criteria produce different
+    full-set clearing proportions but substantially overlapping firm distributions.
+  - Under the frozen fixed-seed cross-firm completion-date placebo, the actual frame
+    exceeds the placebo frame on every complete-filter metric and in all six sensitivity
+    cells; this is descriptive falsification evidence, not labeled validation.
+limitations:
+  - The materialized placebo is one non-uniform cyclic derangement, not an inferential
+    permutation distribution; labeled validation remains unresolved, so no headline
+    census cell, undercount claim, or statutory Phase III interpretation is authorized.
+  - Negative-control inference is restricted to the frozen exact-match common-support
+    subset and does not generalize to unmatched Phase II firms.
+  - Exact UEI matching misses acquisitions, successors, and UEI changes.
+  - An uncoded lineage proxy is not proof of a statutory Phase III award.

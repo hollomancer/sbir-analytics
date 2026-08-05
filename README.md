@@ -13,7 +13,7 @@ understand what happens after a small business wins an SBIR award.
   academic literature, and what data could plausibly answer them.
 - This is built with substantial help from AI agents. Much of the
   implementation was generated and iterated with Claude and Codex. I
-  directed the design and validated the analysis, but this code defintely
+  directed the design and validated the analysis, but this code definitely
   isn't professional-grade engineering. This is a **personal side project,
   not production software.** PRs welcome!
 - Recommend newcomers read **[docs/research-questions.md](docs/research-questions.md)**, 
@@ -76,7 +76,7 @@ BEA input-output tables  ┘      (orchestrated by Dagster)
   expressible as queries.
 - **A couple of ML/heuristic components** live in `packages/sbir-ml/`: a CET
   technology classifier and a Phase II→III transition detector. These are
-  approximate — see limitations.
+  still being actively worked on.
 
 ## Repository structure
 
@@ -93,12 +93,11 @@ specs/                 Per-feature design notes
 examples/              Standalone demo scripts
 notebooks/             Notebook-first research workbench and reusable examples
 scripts/               One-off analysis and operational scripts
-infrastructure/        AWS CDK deployment (my personal cloud setup; optional)
+studies/                Reproducible analytical studies and evidence artifacts
 ```
 
-Directories such as `.github/`, `infrastructure/`, deployment docs, and E2E
-testing docs reflect experiments in making the project more runnable and
-maintainable - we're definitely a long way from production-grade infrastructure.
+The live deployment runs Docker Compose behind Tailscale.
+See the [deployment overview](docs/deployment/README.md) for the current model.
 
 ## Suggested reading path
 
@@ -127,11 +126,13 @@ need a flat list, run `uv export`.)
 ```bash
 git clone https://github.com/hollomancer/sbir-analytics
 cd sbir-analytics
-make install        # install dependencies with uv
+make install        # install the full local stack with uv
 make dev            # start the Dagster UI at http://localhost:3000
 ```
 
-`make help` lists every available target. Most data sources need an API key or a
+`make install-core` installs only the reusable `sbir_etl` library dependencies;
+it does not install Dagster or the application packages. `make help` lists every
+available target. Most data sources need an API key or a
 local bulk download; copy `.env.example` to `.env` and fill in what you have.
 A local Neo4j instance is required to materialize the graph — `docker compose --profile dev up`
 brings one up along with the supporting services. See
@@ -143,6 +144,13 @@ brings one up along with the supporting services. See
 > credentials, which is a non-trivial amount of setup. Core components are
 > designed to run locally, but full end-to-end reproduction requires source-data
 > downloads, API credentials, and local services such as Neo4j.
+
+## Versioning
+
+The repository follows [Semantic Versioning 2.0.0](https://semver.org/) with synchronized
+versions for the root ETL project and the three packages under `packages/`. Git release tags use
+the form `vMAJOR.MINOR.PATCH`. See the [versioning and release policy](docs/steering/versioning.md)
+for compatibility boundaries, increment rules, and the release checklist.
 
 ## Limitations
 

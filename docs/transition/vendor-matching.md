@@ -522,7 +522,7 @@ export SBIR_ETL__VENDOR_RESOLUTION__CACHE_ENABLED=true
 ### VendorResolver Class
 
 ```python
-from sbir_etl.transition.features.vendor_resolver import VendorResolver
+from sbir_ml.transition.features.vendor_resolver import VendorResolver
 
 ## Initialize
 
@@ -858,7 +858,7 @@ Solution: Add acquisition record
 
 - **Implementation**: `packages/sbir-ml/sbir_ml/transition/features/vendor_resolver.py`
 - **Cross-Walk**: `packages/sbir-ml/sbir_ml/transition/features/vendor_crosswalk.py`
-- **Tests**: `tests/unit/test_vendor_resolver.py`
+- **Tests**: `tests/unit/transition/features/test_vendor_resolver.py`
 - **SAM.gov**: <https://sam.gov/>
 - **RapidFuzz**: <https://maxbachmann.github.io/RapidFuzz/>
 - **DUNS**: <https://www.dnb.com/> (DUNS numbers are legacy identifiers being phased out in favor of UEI)

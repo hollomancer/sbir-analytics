@@ -3,6 +3,8 @@
 from pathlib import Path
 
 import pytest
+
+from sbir_etl import __version__
 from pydantic import ValidationError
 
 from sbir_etl.config.schemas import (
@@ -709,9 +711,6 @@ class TestPathsConfig:
         assert config.usaspending_dump_dir == "data/usaspending"
         assert config.transition_contracts_output == "data/transition/contracts_ingestion.parquet"
         # S3 sourcing is opt-in: empty by default (local only).
-        assert config.transition_vendor_filters_s3_path == ""
-        assert config.transition_dump_s3_prefix == ""
-        assert config.transition_contracts_output_s3_path == ""
 
     def test_custom_paths(self):
         """Test PathsConfig with custom paths."""
@@ -721,6 +720,11 @@ class TestPathsConfig:
         )
         assert config.data_root == "/custom/data"
         assert config.raw_data == "/custom/data/raw"
+
+    def test_unknown_path_keys_are_rejected(self):
+        """Misspelled or legacy path keys must not be silently ignored."""
+        with pytest.raises(ValidationError, match="Extra inputs are not permitted"):
+            PathsConfig(processed_dir="data/processed")
 
     def test_resolve_path_with_default_project_root(self):
         """Test resolve_path with default project root."""
@@ -771,7 +775,7 @@ class TestPipelineConfig:
         config = PipelineConfig()
         assert isinstance(config.pipeline, PipelineMetadata)
         assert config.pipeline["name"] == "sbir-analytics"
-        assert config.pipeline["version"] == "0.1.0"
+        assert config.pipeline["version"] == __version__
         assert config.pipeline["environment"] == "development"
         assert isinstance(config.paths, PathsConfig)
         assert isinstance(config.data_quality, DataQualityConfig)

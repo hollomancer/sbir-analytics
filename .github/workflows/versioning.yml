@@ -1,0 +1,30 @@
+name: Version Policy
+
+on:
+  pull_request:
+  push:
+    branches: [main, develop]
+    tags: ["*"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate-version:
+    name: Validate synchronized SemVer
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+      - name: Validate project versions and release tag
+        shell: bash
+        run: |
+          args=()
+          if [[ "${GITHUB_REF_TYPE}" == "tag" ]]; then
+            args+=(--tag "${GITHUB_REF_NAME}")
+          fi
+          python scripts/ci/check_versioning.py "${args[@]}"

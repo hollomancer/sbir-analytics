@@ -3,11 +3,14 @@
 Type: Decision
 Owner: data@project
 Last-Reviewed: 2026-07-12
-Status: accepted
+Status: superseded
 
 ---
 
 # ADR-003: Establish APIs Before MCP Adapters
+
+Superseded by [ADR-004](ADR-004-retire-private-analytics-api.md). This record is retained as
+historical context for the retired interface.
 
 ## Context
 
@@ -51,5 +54,5 @@ domain and analytics code → transport-neutral service → private/versioned AP
 
 ## Links
 
-- [Private analytics API](../architecture/private-analytics-api.md)
+- [ADR-004: Retire the Private Analytics API](ADR-004-retire-private-analytics-api.md)
 - Superseded design: `specs/archive/superseded/mcp_interface/`

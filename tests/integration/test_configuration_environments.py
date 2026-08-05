@@ -9,6 +9,8 @@ from pathlib import Path
 
 import pytest
 
+from sbir_etl import __version__
+
 
 pytestmark = pytest.mark.integration
 
@@ -17,8 +19,10 @@ from sbir_etl.config.schemas import PipelineConfig
 
 
 @pytest.fixture(autouse=True)
-def clear_config_cache():
+def clear_config_cache(monkeypatch):
     """Clear configuration cache before each test."""
+    monkeypatch.delenv("SBIR_ETL__PIPELINE__ENVIRONMENT", raising=False)
+    monkeypatch.delenv("SBIR_ETL_ENV", raising=False)
     reload_config()
     yield
     reload_config()
@@ -33,8 +37,8 @@ def config_dir():
 class TestConfigurationEnvironments:
     """Test configuration loading across different environments."""
 
-    def test_load_base_config(self, config_dir):
-        """Test loading base configuration without environment."""
+    def test_default_loads_development_environment(self, config_dir):
+        """The default selector loads dev.yaml rather than base-only configuration."""
         # Clear any environment override
         if "ENVIRONMENT" in os.environ:
             del os.environ["ENVIRONMENT"]
@@ -44,7 +48,9 @@ class TestConfigurationEnvironments:
 
         assert isinstance(config, PipelineConfig)
         assert config.pipeline["name"] == "sbir-analytics"
-        assert "environment" in config.pipeline
+        assert config.pipeline.environment == "development"
+        assert config.logging.level == "DEBUG"
+        assert config.duckdb.memory_limit_gb == 2
 
     def test_load_dev_environment(self, config_dir):
         """Test loading development environment configuration."""
@@ -57,6 +63,18 @@ class TestConfigurationEnvironments:
         # Dev environment should have specific settings
         assert config.neo4j.uri in ("bolt://localhost:7687", "bolt://neo4j:7687")
         assert config.neo4j.username == "neo4j"
+        assert config.logging.level == "DEBUG"
+        assert config.duckdb.memory_limit_gb == 2
+
+    def test_load_development_alias(self, config_dir):
+        """The long development name loads dev.yaml rather than base-only config."""
+        config = get_config(
+            environment="development", config_dir=config_dir, apply_env_overrides_flag=False
+        )
+
+        assert config.pipeline.environment == "development"
+        assert config.logging.level == "DEBUG"
+        assert config.duckdb.memory_limit_gb == 2
 
     def test_load_prod_environment(self, config_dir):
         """Test loading production environment configuration."""
@@ -68,6 +86,66 @@ class TestConfigurationEnvironments:
         assert isinstance(config, PipelineConfig)
         # Prod environment should have specific settings
         assert config.neo4j.uri.startswith("bolt://")
+        assert config.pipeline.environment == "production"
+        assert config.pipeline.version == __version__
+        assert config.duckdb.memory_limit_gb == 8
+
+    def test_load_production_alias(self, config_dir, monkeypatch):
+        """The long production name loads prod.yaml and resolves runtime database config."""
+        monkeypatch.setenv("NEO4J_DATABASE", "analytics")
+        reload_config()
+
+        config = get_config(
+            environment="production", config_dir=config_dir, apply_env_overrides_flag=False
+        )
+
+        assert config.pipeline.environment == "production"
+        assert config.pipeline.version == __version__
+        assert config.duckdb.memory_limit_gb == 8
+        assert config.neo4j.database == "analytics"
+
+    def test_canonical_environment_variable_selects_profile(self, config_dir, monkeypatch):
+        """The canonical environment variable controls profile selection."""
+        monkeypatch.setenv("SBIR_ETL__PIPELINE__ENVIRONMENT", "production")
+        reload_config()
+
+        config = get_config(environment=None, config_dir=config_dir, apply_env_overrides_flag=True)
+
+        assert config.pipeline.environment == "production"
+        assert config.duckdb.memory_limit_gb == 8
+
+    def test_explicit_environment_precedes_conflicting_selector(self, config_dir, monkeypatch):
+        """An explicit selection controls both loaded values and canonical metadata."""
+        monkeypatch.setenv("SBIR_ETL__PIPELINE__ENVIRONMENT", "production")
+        reload_config()
+
+        config = get_config(
+            environment="development", config_dir=config_dir, apply_env_overrides_flag=True
+        )
+
+        assert config.pipeline.environment == "development"
+        assert config.logging.level == "DEBUG"
+        assert config.duckdb.memory_limit_gb == 2
+
+    def test_short_selector_uses_canonical_metadata(self, config_dir, monkeypatch):
+        """Short aliases do not leak into runtime metadata."""
+        monkeypatch.setenv("SBIR_ETL__PIPELINE__ENVIRONMENT", "prod")
+        reload_config()
+
+        config = get_config(environment=None, config_dir=config_dir)
+
+        assert config.pipeline.environment == "production"
+        assert config.duckdb.memory_limit_gb == 8
+
+    def test_load_test_environment(self, config_dir):
+        """The test selector loads the CI profile."""
+        config = get_config(
+            environment="test", config_dir=config_dir, apply_env_overrides_flag=False
+        )
+
+        assert config.pipeline.environment == "test"
+        assert config.duckdb.database_path == ":memory:"
+        assert config.neo4j.batch_size == 500
 
     def test_environment_variable_override(self, config_dir):
         """Test environment variable overrides configuration."""

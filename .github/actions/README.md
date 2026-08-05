@@ -2,6 +2,11 @@
 
 This directory contains reusable composite actions for GitHub workflows. These actions standardize common patterns and reduce duplication across workflows.
 
+`ci.yml` is the only workflow in the repository — it runs lint, type checks, and
+tests. Everything else (data extraction, enrichment, reporting, image
+publishing) runs on the self-hosted server as Dagster schedules or cron, so actions that
+existed to serve those workflows have been removed along with them.
+
 ## Available Actions
 
 ### `setup-python-uv`
@@ -16,57 +21,20 @@ Sets up Python with UV package manager and installs dependencies.
   with:
     python-version: "3.11"          # Optional, default: "3.11"
     install-dev-deps: "true"        # Optional, default: "true"
-    cache-venv: "true"              # Optional, default: "true"
-    cache-pytest: "false"           # Optional, default: "false"
-    install-pyreadstat: "false"     # Optional, default: "false"
+    cache-mypy: "false"             # Optional, default: "false"
 ```
 
 **Features:**
 
 - Installs UV package manager
-- Caches virtual environment and pytest cache
-- Optionally installs pyreadstat for Stata file support
+- Caches the UV package cache (`~/.cache/uv`), from which `uv sync` hardlinks
+  the virtual environment in about 0.2s
+- Optionally caches `.mypy_cache` for the job that runs mypy
 
----
-
-### `setup-aws-credentials`
-
-Configures AWS credentials using OIDC role assumption.
-
-**Usage:**
-
-```yaml
-- name: Configure AWS credentials
-  uses: ./.github/actions/setup-aws-credentials
-  with:
-    role-arn: ${{ secrets.AWS_ROLE_ARN }}    # Required
-    aws-region: "us-east-2"                  # Optional, default: "us-east-2"
-```
-
-**Features:**
-
-- Uses OIDC for secure credential management
-- No long-lived AWS keys needed
-
----
-
-### `setup-docker-buildx`
-
-Sets up Docker Buildx for multi-platform builds and caching.
-
-**Usage:**
-
-```yaml
-- name: Set up Docker Buildx
-  uses: ./.github/actions/setup-docker-buildx
-  with:
-    setup-qemu: "true"              # Optional, default: "false"
-```
-
-**Features:**
-
-- Optional QEMU setup for multi-arch builds (ARM64, etc.)
-- Enables Docker Buildx caching
+**Not cached, deliberately:** `.venv` itself. Restoring a ~300 MB venv tarball
+costs far more than the 0.2s rebuild, and `uv sync` had to run afterwards
+regardless. There is also no separate pyreadstat install — `uv sync --extra
+stack-dev` already resolves it through the `uspto` extra.
 
 ---
 
@@ -94,7 +62,7 @@ Starts a Neo4j Docker container and waits for it to be ready.
 **Features:**
 
 - Starts Neo4j container with specified credentials
-- Waits for Neo4j to be ready using TCP health check
+- Waits for Neo4j to be ready using TCP health check (via `wait-for-neo4j`)
 - Sets NEO4J_URI, NEO4J_USER, NEO4J_PASSWORD environment variables
 
 **Note:** Use `stop-neo4j` action for cleanup (see below).
@@ -117,35 +85,10 @@ Stops and removes a Neo4j Docker container.
 
 ---
 
-### `setup-neo4j-service`
-
-Sets up Neo4j environment variables for service containers.
-
-**Usage:**
-
-```yaml
-- name: Setup Neo4j environment
-  uses: ./.github/actions/setup-neo4j-service
-  with:
-    username: "neo4j"               # Optional, default: "neo4j"
-    password: "password"            # Optional, default: "password"  # pragma: allowlist secret
-    auth-mode: "password"           # Optional, default: "password"
-    uri: "bolt://localhost:7687"    # Optional, default: "bolt://localhost:7687"
-```
-
-**Outputs:**
-
-- `neo4j-uri`: Neo4j connection URI
-- `neo4j-username`: Neo4j username
-- `neo4j-password`: Neo4j password
-
-**Note:** Service containers must be defined at the job level. See `wait-for-neo4j` for health checks.
-
----
-
 ### `wait-for-neo4j`
 
-Waits for Neo4j service container to be ready.
+Waits for a Neo4j container to be ready. Called by `start-neo4j`; use it
+directly only when starting Neo4j some other way.
 
 **Usage:**
 
@@ -165,133 +108,6 @@ Waits for Neo4j service container to be ready.
 - Supports HTTP and TCP health checks
 - Automatic retry with configurable timeout
 - Installs netcat for TCP checks if needed
-
----
-
-### `prepare-env-file`
-
-Prepares `.env` file from `.env.example` with optional secret injection.
-
-**Usage:**
-
-```yaml
-- name: Prepare .env file
-  uses: ./.github/actions/prepare-env-file
-  with:
-    neo4j-user: ${{ secrets.NEO4J_USER }}           # Optional
-    neo4j-password: ${{ secrets.NEO4J_PASSWORD }}   # Optional
-    source-file: ".env.example"                    # Optional, default: ".env.example"
-```
-
-**Features:**
-
-- Copies from `.env.example` or creates empty file
-- Injects Neo4j credentials if provided
-- Sets `NEO4J_AUTH` automatically
-
----
-
-### `setup-test-environment`
-
-Consolidated setup for test environments including Neo4j service configuration,
-environment variables, and common test settings.
-
-**Usage:**
-
-```yaml
-- name: Setup test environment
-  uses: ./.github/actions/setup-test-environment
-  with:
-    python-version: "3.11"          # Optional, default: "3.11"
-    neo4j-image: "neo4j:5"          # Optional, default: "neo4j:5"
-    neo4j-username: "neo4j"         # Optional, default: "neo4j"
-    neo4j-password: "password"      # Optional, default: "password"  # pragma: allowlist secret
-    default-timeout: "30"           # Optional, default: "30"
-    performance-sample-size: "500"  # Optional, default: "500"
-    aws-region: "us-east-2"         # Optional, default: "us-east-2"
-    neo4j-health-retries: "12"      # Optional, default: "12"
-```
-
-**Outputs:**
-
-- `neo4j-uri`: Neo4j connection URI
-- `neo4j-username`: Neo4j username
-- `neo4j-password`: Neo4j password
-
-**Features:**
-
-- Sets standardized environment variables for testing
-- Reduces duplication across workflows
-- Single source of truth for test configuration
-
----
-
-### `detect-changes`
-
-Detects which parts of the codebase changed using path filters.
-
-**Usage:**
-
-```yaml
-- uses: actions/checkout@v4
-- name: Detect changes
-  uses: dorny/paths-filter@v2
-  id: filter
-  with:
-    filters: |
-      code-changed:
-        - 'sbir_etl/**'
-        - 'packages/sbir-analytics/sbir_analytics/**'
-        - 'packages/sbir-ml/sbir_ml/**'
-        - 'packages/sbir-graph/sbir_graph/**'
-        - 'tests/**'
-      docs-only:
-        - '**/*.md'
-        - 'docs/**'
-        - '!**/*.py'
-```
-
-**Outputs:**
-
-- All filter outputs are available via `steps.filter.outputs.<filter-name>`
-- Example: `steps.filter.outputs.code-changed`, `steps.filter.outputs.docs-only`
-
-**Note:** This action is a convenience wrapper that includes checkout. For direct control, use `dorny/paths-filter@v2` directly. See [dorny/paths-filter](https://github.com/dorny/paths-filter) for filter syntax.
-
----
-
-### `upload-artifacts`
-
-Uploads workflow artifacts with common patterns.
-
-**Usage:**
-
-```yaml
-# Upload on success
-- name: Upload artifacts
-  uses: ./.github/actions/upload-artifacts
-  with:
-    name: "test-results"            # Required
-    path: |                         # Required (supports multi-line)
-      reports/
-      logs/
-    retention-days: "7"             # Optional, default: "7"
-    if-no-files-found: "warn"       # Optional, default: "warn"
-
-# Upload on failure
-- name: Upload artifacts on failure
-  if: failure()
-  uses: ./.github/actions/upload-artifacts
-  with:
-    name: "error-logs"
-    path: logs/
-```
-
-**Features:**
-
-- Supports multi-line path patterns
-- Configurable retention and error handling
-- Use `if: always()`, `if: success()`, or `if: failure()` for conditional uploads
 
 ---
 
@@ -328,8 +144,5 @@ Uploads workflow artifacts with common patterns.
 
 ## Examples
 
-See the workflow files in `.github/workflows/` for examples of how these actions are used:
-
-- `ci.yml` - Uses `setup-python-uv`, `setup-docker-buildx`, `prepare-env-file`
-- `lambda-deploy.yml` - Uses `setup-aws-credentials`, `setup-docker-buildx`
-- `weekly.yml` - Uses `setup-python-uv`, `setup-neo4j-service`, `wait-for-neo4j`, `prepare-env-file`
+`ci.yml` uses `setup-python-uv` in every job, and `start-neo4j` / `stop-neo4j`
+around the full test run on `main`.

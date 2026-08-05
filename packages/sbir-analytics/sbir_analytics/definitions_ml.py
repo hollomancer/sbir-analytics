@@ -1,4 +1,4 @@
-"""Dagster definitions for ML and fiscal analysis pipeline (GitHub Actions deployment).
+"""Dagster definitions for the heavy ML and fiscal analysis code location.
 
 This module contains only heavy ML and fiscal assets that require:
 - scikit-learn (CET training, inference, drift detection)
@@ -6,8 +6,8 @@ This module contains only heavy ML and fiscal assets that require:
 - sentence-transformers (ModernBert embeddings)
 - R packages (fiscal impact analysis)
 
-These run on GitHub Actions runners to avoid serverless timeouts.
-See .github/workflows/etl-pipeline.yml (workflow_dispatch job options) for execution details.
+Run these jobs only on a host with the required memory, models, and optional R
+dependencies. They are not part of the test-only GitHub Actions workflow.
 """
 
 import os

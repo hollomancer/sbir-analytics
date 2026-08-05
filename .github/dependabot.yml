@@ -1,6 +1,14 @@
 version: 2
+
+# No `reviewers:` keys here. They listed "conradhollomon", which is not a
+# collaborator on this repository (only "hollomancer" is), so every request
+# silently no-opped. GitHub has also deprecated `reviewers` in Dependabot
+# config in favour of CODEOWNERS. On a single-maintainer repository the owner
+# is notified of these PRs regardless.
 updates:
-  # Python dependencies via pip
+  # Python dependencies. Declared as "pip"; Dependabot routes this through its
+  # uv updater because the project has a uv.lock, which is why the PR branches
+  # are named dependabot/uv/*.
   - package-ecosystem: "pip"
     directory: "/"
     schedule:
@@ -8,8 +16,6 @@ updates:
       day: "monday"
       time: "09:00"
     open-pull-requests-limit: 10
-    reviewers:
-      - "conradhollomon"
     commit-message:
       prefix: "chore(deps)"
       include: "scope"
@@ -30,8 +36,6 @@ updates:
       day: "monday"
       time: "09:00"
     open-pull-requests-limit: 5
-    reviewers:
-      - "conradhollomon"
     commit-message:
       prefix: "chore(deps)"
       include: "scope"
@@ -44,8 +48,6 @@ updates:
       day: "monday"
       time: "09:00"
     open-pull-requests-limit: 5
-    reviewers:
-      - "conradhollomon"
     commit-message:
       prefix: "chore(deps)"
       include: "scope"

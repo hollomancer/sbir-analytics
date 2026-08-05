@@ -12,11 +12,16 @@
 #
 from __future__ import annotations
 
+import os
 import sys
 from pathlib import Path
 
 import pytest
 from loguru import logger
+
+# Keep local pytest runs on the same profile selected by CI. Tests that exercise
+# profile selection override or remove this value with ``monkeypatch``.
+os.environ["SBIR_ETL__PIPELINE__ENVIRONMENT"] = "test"
 
 
 def _find_repo_root(start: Path | None = None) -> Path:
@@ -368,22 +373,6 @@ def _check_import(module_name: str) -> bool:
     return importlib.util.find_spec(module_name) is not None
 
 
-def neo4j_running() -> bool:
-    """Check if Neo4j is available and running for testing.
-
-    This is a helper function (not a fixture) for use with pytest.mark.skipif.
-
-    Resolution order:
-    1. Connect to an existing Neo4j (env vars / localhost).
-    2. Start a disposable Neo4j via testcontainers.
-    3. If REQUIRE_NEO4J is set (CI) and neither works, raise so the suite
-       errors out instead of silently skipping.
-    """
-    from tests.neo4j_service import get_neo4j_service
-
-    return get_neo4j_service() is not None
-
-
 @pytest.fixture
 def neo4j_available():
     """Fixture that skips if neo4j driver not available."""
@@ -423,24 +412,6 @@ def hf_token():
     if not token:
         pytest.skip("HF_TOKEN environment variable required")
     return token
-
-
-# AWS Fixtures
-# ============
-
-
-@pytest.fixture
-def aws_credentials():
-    """Fixture that skips if AWS credentials not available."""
-    import os
-
-    if not os.getenv("AWS_ACCESS_KEY_ID"):
-        pytest.skip("AWS credentials required (set AWS_ACCESS_KEY_ID)")
-    return {
-        "access_key": os.getenv("AWS_ACCESS_KEY_ID"),
-        "secret_key": os.getenv("AWS_SECRET_ACCESS_KEY"),
-        "region": os.getenv("AWS_DEFAULT_REGION", "us-east-2"),
-    }
 
 
 # Data Generator Fixtures
