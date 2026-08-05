@@ -61,7 +61,7 @@ make neo4j-check
 This instance uses the credentials in `.env` and persists its development volume. The Compose
 `ci` profile used by the Docker E2E targets is isolated and disposable. GitHub Actions starts its
 own authenticated Neo4j service for the full post-merge suite; pull-request unit shards do not
-start Neo4j. None of these test environments use the live Mac mini graph.
+start Neo4j. None of these test environments use the live self-hosted server graph.
 
 Supported scenarios are:
 

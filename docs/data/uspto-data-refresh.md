@@ -7,12 +7,12 @@ Status: active
 
 # USPTO Data Refresh
 
-The USPTO refresh runs on the Mac mini and writes to local storage. The Dagster
+The USPTO refresh runs on the self-hosted server and writes to local storage. The Dagster
 `uspto_download_job` replaces the retired GitHub Actions/S3 handoff and downloads the three patent
 datasets consumed by the pipeline.
 
 Before operating the live job, read the
-[Mac mini runbook](../deployment/mac-mini-server.md#source-data-downloads).
+[self-hosted server runbook](../deployment/self-hosted-server.md#source-data-downloads).
 
 ## Datasets
 
@@ -87,6 +87,6 @@ CSV files in place.
 | Presigned URL expired | Download did not start promptly | Re-run once; avoid wasting the annual mint allowance |
 | Assignment job returns partial files | Browser download failure | Inspect each reported error and rerun after fixing browser/session access |
 | Downstream assets find no assignments | ZIPs were not extracted | Run the Dagster job or extract into `raw/uspto/assignments/` |
-| Disk-space failure | Archives plus extracted data exceed available space | Check the SSD before retrying; do not redirect live data into the checkout |
+| Disk-space failure | Archives plus extracted data exceed available space | Check persistent storage before retrying; do not redirect live data into the checkout |
 
 For source fields and graph mappings, see [USPTO Patents](../schemas/uspto-patents.md).

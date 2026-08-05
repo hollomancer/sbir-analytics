@@ -58,5 +58,5 @@ press-wire feeds) improve diligence but degrade gracefully — see the
 - **Output:** a single Markdown document written to `--output` (or stdout).
 
 Live reports are written under `<data_root>/reports/weekly_awards/<report-date>/`. See the
-[Mac mini runbook](../deployment/mac-mini-server.md#weekly-awards-report) before
+[self-hosted server runbook](../deployment/self-hosted-server.md#weekly-awards-report) before
 operating the live job.

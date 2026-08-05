@@ -23,7 +23,14 @@ class AwardRow(Protocol):
 
 
 class SbirAwardKeyProfile(StrEnum):
-    """Named, immutable SBIR award-key behaviors."""
+    """Named, immutable SBIR award-key behaviors.
+
+    Profiles are frozen once persisted keys exist. A behavior change requires
+    a new profile member (e.g., sbir-source-v3), never editing an existing one.
+    Existing keys are accepted only when their version exactly matches the
+    requested profile, preventing a normalized snapshot from silently crossing
+    an identity migration.
+    """
 
     SBIR_SOURCE_V2 = "sbir-source-v2"
 

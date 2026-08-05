@@ -1,5 +1,7 @@
 # Phase III Notice Corpus & Fusion Ranker — Requirements
 
+**Target epistemic tier:** `evidence`
+
 > **Status:** Implemented (T1–T7 done — see `tasks.md`). This branch ships a production
 > scoring path: coefficients are frozen at
 > `packages/sbir-ml/sbir_ml/transition/detection/fusion_coefficients.json` and the monthly

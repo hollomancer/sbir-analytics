@@ -68,3 +68,35 @@ def test_script_import_exception_is_exact(tmp_path: Path) -> None:
     violations = boundaries.scan_package("sbir_analytics", source_root, repository_root=tmp_path)
 
     assert [violation.imported_module for violation in violations] == ["scripts.data.unapproved"]
+
+
+def test_packages_cannot_execute_repository_scripts(tmp_path: Path) -> None:
+    package = tmp_path / "packages" / "sbir-analytics" / "sbir_analytics"
+    _write(
+        tmp_path,
+        "packages/sbir-analytics/sbir_analytics/example.py",
+        "import subprocess\n"
+        "import sys\n"
+        "from pathlib import Path\n"
+        "script = Path('scripts') / 'data' / 'unapproved.py'\n"
+        "subprocess.run([sys.executable, str(script)])\n",
+    )
+
+    violations = boundaries.scan_package("sbir_analytics", package, repository_root=tmp_path)
+
+    assert len(violations) == 1
+    assert violations[0].dependency_kind == "execute"
+    assert violations[0].imported_module == "scripts/data/unapproved.py"
+
+
+def test_script_execution_exception_is_exact(tmp_path: Path) -> None:
+    source_root = tmp_path / "packages" / "sbir-analytics" / "sbir_analytics"
+    _write(
+        tmp_path,
+        "packages/sbir-analytics/sbir_analytics/assets/jobs/weekly_awards_report.py",
+        "import subprocess\nsubprocess.run(['python', 'scripts/data/unapproved.py'])\n",
+    )
+
+    violations = boundaries.scan_package("sbir_analytics", source_root, repository_root=tmp_path)
+
+    assert [violation.imported_module for violation in violations] == ["scripts/data/unapproved.py"]

@@ -1,5 +1,7 @@
 # Transition Coverage & Self-Labeling Expansion — Requirements
 
+**Target epistemic tier:** `evidence`
+
 > **Status:** Draft spec. No implementation beyond the exploratory spikes recorded below.
 > Follow-on to #481 (validation) and #484 (enrichment). Supports **B2 / E1** in
 > [docs/research-questions.md](../../docs/research-questions.md).

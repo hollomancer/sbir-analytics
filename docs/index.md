@@ -42,7 +42,7 @@ Use these before quoting a result or starting a feature from an old spec.
 | Versioning and releases | [Versioning policy](steering/versioning.md) |
 | Performance measurement | [Performance runbook](performance.md) |
 | Deployment navigation | [Deployment index](deployment/README.md) |
-| Live Mac mini operations | [Mac mini runbook](deployment/mac-mini-server.md) |
+| Live self-hosted server operations | [self-hosted server runbook](deployment/self-hosted-server.md) |
 | Neo4j migrations | [Migration guide](migrations.md) |
 | Decisions | [Architecture decision records](decisions/README.md) |
 

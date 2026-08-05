@@ -4,7 +4,7 @@ This directory contains reusable composite actions for GitHub workflows. These a
 
 `ci.yml` is the only workflow in the repository — it runs lint, type checks, and
 tests. Everything else (data extraction, enrichment, reporting, image
-publishing) runs on the Mac mini as Dagster schedules or cron, so actions that
+publishing) runs on the self-hosted server as Dagster schedules or cron, so actions that
 existed to serve those workflows have been removed along with them.
 
 ## Available Actions

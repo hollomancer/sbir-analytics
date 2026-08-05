@@ -1,5 +1,7 @@
 # Patent Cost and Spillover Analysis — Requirements
 
+**Target epistemic tier:** `evidence`
+
 > **Status:** Gated backlog — zero cost/citation/spillover analytical-layer
 > implementation as of July 2026.
 > Anchors inventory questions **C3a–c** in [docs/research-questions.md](../../docs/research-questions.md).

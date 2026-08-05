@@ -1,14 +1,14 @@
 """Source-data download jobs that run on the always-on server.
 
 These replace the GitHub Actions `data-refresh.yml` workflow. Actions runners
-cannot reach the Mac mini (tailnet-only, no self-hosted runner), so the host
+cannot reach the self-hosted server (tailnet-only, no self-hosted runner), so the host
 that stores the data is the host that fetches it.
 
 Each op wraps the corresponding `scripts/` downloader, which writes to the
 local data root by default. Destinations come from the config paths so the
-server profile's SSD bind mounts are honoured without hardcoding them here.
+server profile's persistent bind mounts are honoured without hardcoding them here.
 
-Schedules for these jobs default to STOPPED. Per the Mac mini runbook, an
+Schedules for these jobs default to STOPPED. Per the self-hosted server runbook, an
 operator confirms a manual run succeeds on this host before enabling one.
 """
 

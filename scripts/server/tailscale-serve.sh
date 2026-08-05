@@ -1,5 +1,5 @@
 #!/usr/bin/env sh
-# Manage the tailnet-only routes for the Mac mini server profile.
+# Manage the tailnet-only routes for the self-hosted server profile.
 
 set -eu
 

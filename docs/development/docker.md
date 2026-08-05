@@ -6,12 +6,12 @@
 
 **Last-Reviewed**: 2026-08-03
 
-Docker Compose is the standard local service environment and the live Mac mini deployment
+Docker Compose is the standard local service environment and the live self-hosted server deployment
 mechanism. GitHub Actions builds an image only as a conditional CI smoke test; it does not deploy
 or run the data plane.
 
 This guide covers the root `docker-compose.yml` development and test profiles. For the separate
-live compose file and server-only targets, use the [Mac mini runbook](../deployment/mac-mini-server.md).
+live compose file and server-only targets, use the [self-hosted server runbook](../deployment/self-hosted-server.md).
 
 ## Quick start
 
@@ -138,15 +138,16 @@ make docker-build
 docker build -f Dockerfile.full -t sbir-analytics-full:latest .
 ```
 
-The Mac mini builds native arm64 images locally. It may use the published Python base when a
-matching manifest exists and otherwise builds `Dockerfile.python-base` from source. GitHub Actions
+The self-hosted server builds images for its container runtime's native
+architecture. It may use the published Python base when a matching manifest
+exists and otherwise builds `Dockerfile.python-base` from source. GitHub Actions
 does not publish application images.
 
 ## Data and volumes
 
 Local development uses named volumes and bind mounts declared in `docker-compose.yml`. The live
-server uses bind mounts under `/Volumes/SSDmini/sbir-analytics` plus the Docker `dagster_home`
-volume. Never point a development compose command at those live paths.
+server uses the bind mounts configured by `SERVER_*_DIR` plus the Docker
+`dagster_home` volume. Never point a development compose command at those live paths.
 
 Back up data before intentionally resetting a local graph. `make neo4j-reset` is destructive to the
 local Neo4j volume.
@@ -173,5 +174,5 @@ published port in `.env`. If a bind mount is empty, verify the host path and Doc
 sharing permissions.
 
 For live failures, stop here and switch to the
-[server runbook](../deployment/mac-mini-server.md#live-instance-on-this-mac-mini); do not improvise
+[server runbook](../deployment/self-hosted-server.md#live-instance-on-the-server-host); do not improvise
 against the development checkout.

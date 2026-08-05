@@ -1,5 +1,7 @@
 # Requirements — ModernBert Analysis Layer
 
+**Target epistemic tier:** `evidence`
+
 > **Status:** Partially implemented. Core ModernBert client, embedding assets,
 > similarity output, config, and client-level tests exist. Neo4j `SIMILAR_TO`
 > loading, quality/cohesion metrics, fuller asset checks, and Dagster integration

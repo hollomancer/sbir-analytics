@@ -1,5 +1,7 @@
 # DSPy Weekly Award Narratives Prototype — Requirements
 
+**Target epistemic tier:** `exploratory`
+
 > **Status:** Gated backlog; implementation is not authorized until the
 > activation gates below are satisfied. Production adoption remains separately
 > gated on the offline and shadow criteria below. Anchors inventory question **E6** in

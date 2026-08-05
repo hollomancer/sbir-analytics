@@ -1,0 +1,21 @@
+{
+  "version": "48.0.0",
+  "files": {
+    "ac21b4bfbfc2476aede31384822879b02124e7ee586e65bad657b3aa5c9eff83": {
+      "displayName": "sbir-analytics-foundation Template",
+      "source": {
+        "path": "sbir-analytics-foundation.template.json",
+        "packaging": "file"
+      },
+      "destinations": {
+        "161066624831-us-east-2-938d497d": {
+          "bucketName": "cdk-hnb659fds-assets-161066624831-us-east-2",
+          "objectKey": "ac21b4bfbfc2476aede31384822879b02124e7ee586e65bad657b3aa5c9eff83.json",
+          "region": "us-east-2",
+          "assumeRoleArn": "arn:${AWS::Partition}:iam::161066624831:role/cdk-hnb659fds-file-publishing-role-161066624831-us-east-2"
+        }
+      }
+    }
+  },
+  "dockerImages": {}
+}

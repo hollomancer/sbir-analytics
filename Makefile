@@ -584,7 +584,7 @@ validate: lint test ## Run linting, type checking, and tests
 	@$(call success,All validation checks passed)
 
 # -----------------------------------------------------------------------------
-# Tailscale-only Mac mini server profile
+# Tailscale-only self-hosted server profile
 # -----------------------------------------------------------------------------
 
 SERVER_COMPOSE_FILE ?= docker-compose.server.yml

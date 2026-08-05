@@ -44,6 +44,23 @@ TRANSITIONAL_SCRIPT_IMPORTS = {
     )
 }
 
+# Package code also reached three scripts by spawning a Python subprocess. An
+# import-only guard cannot see those dependency edges, so keep the temporary
+# execution bridges just as exact as the import bridge above. Each entry is
+# removed when its script implementation is exposed through a package API and
+# the package caller invokes that API directly.
+TRANSITIONAL_SCRIPT_EXECUTIONS = {
+    "packages/sbir-analytics/sbir_analytics/assets/transition_report.py": frozenset(
+        {"scripts/data/build_tech_area_cohort.py"}
+    ),
+    "packages/sbir-analytics/sbir_analytics/assets/jobs/weekly_awards_report.py": frozenset(
+        {"scripts/data/weekly_awards_report.py"}
+    ),
+    "packages/sbir-analytics/sbir_analytics/assets/jobs/phase_transition_archive.py": (
+        frozenset({"scripts/phase_transition_analysis.py"})
+    ),
+}
+
 
 @dataclass(frozen=True)
 class BoundaryViolation:
@@ -53,10 +70,12 @@ class BoundaryViolation:
     line_number: int
     source_package: str
     imported_module: str
+    dependency_kind: str = "import"
 
     def format(self) -> str:
+        action = "import" if self.dependency_kind == "import" else "execute"
         return (
-            f"{self.path}:{self.line_number}: {self.source_package} may not import "
+            f"{self.path}:{self.line_number}: {self.source_package} may not {action} "
             f"{self.imported_module}"
         )
 
@@ -95,6 +114,67 @@ def imported_modules(path: Path) -> list[tuple[str, int]]:
     return imports
 
 
+def _is_subprocess_call(node: ast.Call) -> bool:
+    return (
+        isinstance(node.func, ast.Attribute)
+        and isinstance(node.func.value, ast.Name)
+        and node.func.value.id == "subprocess"
+        and node.func.attr in {"call", "check_call", "check_output", "Popen", "run"}
+    )
+
+
+def _path_literal_parts(node: ast.AST) -> list[str]:
+    """Return literal pieces of a ``Path`` division or command argument."""
+
+    if isinstance(node, ast.Constant) and isinstance(node.value, str):
+        return [node.value]
+    if isinstance(node, ast.BinOp) and isinstance(node.op, ast.Div):
+        return _path_literal_parts(node.left) + _path_literal_parts(node.right)
+    if isinstance(node, (ast.List, ast.Tuple)):
+        parts: list[str] = []
+        for element in node.elts:
+            parts.extend(_path_literal_parts(element))
+        return parts
+    if isinstance(node, ast.Call):
+        parts: list[str] = []
+        for argument in node.args:
+            parts.extend(_path_literal_parts(argument))
+        return parts
+    return []
+
+
+def _script_target(node: ast.AST) -> str | None:
+    """Normalize a literal path expression to a repository ``scripts/*.py`` target."""
+
+    pieces = _path_literal_parts(node)
+    for piece in pieces:
+        normalized = piece.replace("\\", "/").strip()
+        marker = normalized.find("scripts/")
+        if marker >= 0 and normalized[marker:].endswith(".py"):
+            return normalized[marker:]
+
+    normalized_parts = [piece.strip("/\\") for piece in pieces if piece.strip("/\\")]
+    if "scripts" not in normalized_parts:
+        return None
+    scripts_index = normalized_parts.index("scripts")
+    candidate = "/".join(normalized_parts[scripts_index:])
+    return candidate if candidate.endswith(".py") else None
+
+
+def executed_script_paths(path: Path) -> list[tuple[str, int]]:
+    """Extract literal repository Python scripts invoked through ``subprocess``."""
+
+    tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+    if not any(isinstance(node, ast.Call) and _is_subprocess_call(node) for node in ast.walk(tree)):
+        return []
+
+    targets: dict[str, int] = {}
+    for node in ast.walk(tree):
+        if target := _script_target(node):
+            targets.setdefault(target, node.lineno)
+    return sorted(targets.items(), key=lambda item: (item[1], item[0]))
+
+
 def scan_package(
     source_package: str,
     source_root: Path,
@@ -125,6 +205,18 @@ def scan_package(
                 violations.append(
                     BoundaryViolation(relative, line_number, source_package, imported_module)
                 )
+        for script_target, line_number in executed_script_paths(path):
+            if script_target in TRANSITIONAL_SCRIPT_EXECUTIONS.get(relative, ()):
+                continue
+            violations.append(
+                BoundaryViolation(
+                    relative,
+                    line_number,
+                    source_package,
+                    script_target,
+                    dependency_kind="execute",
+                )
+            )
     return violations
 
 

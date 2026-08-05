@@ -1,5 +1,7 @@
 # Requirements — BEA NIPA Tax Rate Hardening
 
+**Target epistemic tier:** `pipelines`
+
 > **Status:** Partially implemented. `sbir_etl/transformers/fiscal/nipa_rates.py`
 > (`NIPARateProvider`) already fetches BEA NIPA Tables 3.2, 3.3, and 1.5 via the
 > existing BEA API client and produces the eight derived federal + state/local

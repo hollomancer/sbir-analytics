@@ -12,6 +12,7 @@ fiscal year." All phases in the profile's configured program scope are included.
 Usage:
   python scripts/data/build_tech_census.py --area drone_manufacturing
   python scripts/data/build_tech_census.py --area drone_manufacturing --recent-fys 3
+  python scripts/data/build_tech_census.py --area unmanned_systems_manufacturing --state MA
 """
 
 from __future__ import annotations
@@ -32,6 +33,8 @@ from sbir_etl.utils.tech_census import (  # noqa: E402
     CompiledCensus,
     load_award_data_csv,
     load_census_config,
+    normalize_state_code,
+    normalize_state_codes,
     run_census,
 )
 
@@ -77,6 +80,12 @@ def main() -> int:
         help="Limit the report to a fiscal year; repeat for multiple years",
     )
     parser.add_argument(
+        "--state",
+        dest="states",
+        action="append",
+        help="Limit by awardee state name or USPS code; repeat for multiple states",
+    )
+    parser.add_argument(
         "--data-vintage",
         help="Optional source-data release/download vintage (not inferred from local file mtime)",
     )
@@ -96,11 +105,21 @@ def main() -> int:
     print(f"  {len(awards):,} total awards")
 
     selected_fys = sorted(set(args.fiscal_years or []))
-    reporting_awards = (
-        [award for award in awards if award.get("award_year") in selected_fys]
-        if selected_fys
-        else awards
-    )
+    try:
+        selected_states = normalize_state_codes(args.states or [])
+    except ValueError as exc:
+        parser.error(str(exc))
+    reporting_awards = awards
+    if selected_fys:
+        reporting_awards = [
+            award for award in reporting_awards if award.get("award_year") in selected_fys
+        ]
+    if selected_states:
+        reporting_awards = [
+            award
+            for award in reporting_awards
+            if normalize_state_code(award.get("state")) in selected_states
+        ]
     result = run_census(reporting_awards, compiled, programs=args.programs)
     grand = result["grand_total"]
     print(f"\nIn-scope awards: {grand['n']:,}  (${grand['usd'] / 1e6:,.1f}M)")
@@ -169,6 +188,10 @@ def main() -> int:
     rows = result["classified_awards"]
     preferred_columns = [
         "company",
+        "city",
+        "state",
+        "uei",
+        "duns",
         "title",
         "agency",
         "program",
@@ -213,6 +236,7 @@ def main() -> int:
         "scope_totals": result["scope_totals"],
         "reporting_window": {
             "fiscal_years": selected_fys or None,
+            "states": list(selected_states) or None,
             "programs": result["programs"],
         },
         "provenance": {

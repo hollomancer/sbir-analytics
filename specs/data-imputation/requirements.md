@@ -1,5 +1,7 @@
 # Data Imputation — Requirements
 
+**Target epistemic tier:** `evidence`
+
 > **Status:** Gated backlog — spec merged via PR #277; implementation not yet
 > started as of July 2026.
 > Anchors inventory question **E4** in [docs/research-questions.md](../../docs/research-questions.md).

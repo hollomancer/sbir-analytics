@@ -1,40 +1,49 @@
-# Tailscale-Only Mac mini Server
+# Tailscale-Only Self-Hosted Server
 
-A private, always-on deployment of SBIR Analytics on a single Apple-silicon
-Mac mini. The stack is ARM64-native and reachable **only** over your Tailscale
-tailnet — there is no public DNS, no port forwarding, and no LAN exposure.
+A private, always-on deployment of SBIR Analytics on a single server host. The
+stack runs in containers and is reachable **only** over your Tailscale tailnet
+— there is no public DNS, no port forwarding, and no LAN exposure. The host's
+hardware, operating system, container runtime, checkout path, and storage mount
+are deployment details supplied locally; they are not part of this contract.
 
-## Live instance on this Mac mini
+## Live instance on the server host
 
-This machine hosts the live SBIR Analytics deployment.
+The designated server host runs the live SBIR Analytics deployment. Before any
+operation, read `docs/deployment/server-status.local.md` on that host when it
+exists. It records the actual checkout and storage paths for that installation.
+Create it from `server-status.example.md` during first-time setup and keep it
+untracked. On an upgraded installation, migrate any differently named
+`*-status.local.md` file to this standard name before the next operation.
 
-- **Deployment checkout:** `/Users/conradhollomon/projects/sbir-analytics-server`
-- **Development checkout:** `/Users/conradhollomon/projects/sbir-analytics` —
-  never operate the live stack from here.
-- **Installed version:** record it in `mac-mini-status.local.md`. Always verify
+- **Deployment checkout:** use the path recorded in `server-status.local.md`.
+  It must be a dedicated clean checkout, separate from development worktrees.
+- **Development checkout:** never operate the live stack from a development
+  checkout or worktree.
+- **Installed version:** record it in `server-status.local.md`. Always verify
   the deployment checkout with `git status --short` and
   `git describe --tags --always --dirty`; do not infer the live version from
   another checkout or from the image tag.
-- **Persistent application data:** `/Volumes/SSDmini/sbir-analytics`
+- **Persistent application data:** use the durable root configured by the
+  `SERVER_*_DIR` values in `.env.server`; record the host path locally.
 - **Local secrets:** `.env.server` in the deployment checkout. It is ignored,
   mode `0600`, and must never be printed, committed, or replaced.
 - **Dagster metadata:** the Docker `dagster_home` named volume. Preserve it
-  alongside SSD data; never use `docker compose down -v`.
+  alongside persistent application data; never use `docker compose down -v`.
 - **Ingress:** Tailscale Serve over tailnet-only HTTPS/TLS. Tailscale Funnel,
   public port exposure, and LAN exposure are prohibited.
 - **Current host state:** record data vintages, materialized subsets, Dagster
   run IDs, and temporary blockers in
-  `docs/deployment/mac-mini-status.local.md`. That file is intentionally
+  `docs/deployment/server-status.local.md`. That file is intentionally
   ignored; tracked documentation describes the operating contract, not a
-  point-in-time snapshot of this machine.
+  point-in-time snapshot of a particular host.
 
 Run every `make server-*` command and shell-driven live materialization from
 the clean deployment checkout. Use the documented Make targets; do not run
 `git clean`, destructive resets, or hand-written Compose teardown commands
-there. Treat materialization as a live-data mutation: confirm the SSD is
-mounted and the stack is healthy first. Keep schedules disabled until their
-jobs have completed successfully by hand with the inputs available on this
-host.
+there. Treat materialization as a live-data mutation: confirm persistent
+storage is mounted and the stack is healthy first. Keep schedules disabled
+until their jobs have completed successfully by hand with the inputs available
+on this host.
 
 ## What runs here
 
@@ -74,32 +83,36 @@ caveat and [Workload placement](#workload-placement).
 
 ## One-time device setup
 
-### 1. External SSD
+### 1. Persistent storage
 
-Prepare a directory tree on the external SSD and point the storage variables at
-it in `.env.server`:
+Prepare a directory tree on persistent storage and point the storage variables
+at it in `.env.server`. Replace `/path/to/persistent-storage` with an absolute
+host path; do not copy this placeholder literally:
 
 ```bash
-mkdir -p /Volumes/SSDmini/sbir-analytics/{data,reports,logs,artifacts,neo4j,backups}
+mkdir -p /path/to/persistent-storage/sbir-analytics/{data,reports,logs,artifacts,neo4j,backups}
 ```
 
 ```dotenv
-SERVER_DATA_DIR=/Volumes/SSDmini/sbir-analytics/data
-SERVER_REPORTS_DIR=/Volumes/SSDmini/sbir-analytics/reports
-SERVER_LOGS_DIR=/Volumes/SSDmini/sbir-analytics/logs
-SERVER_ARTIFACTS_DIR=/Volumes/SSDmini/sbir-analytics/artifacts
-SERVER_NEO4J_DIR=/Volumes/SSDmini/sbir-analytics/neo4j
-SERVER_BACKUP_DIR=/Volumes/SSDmini/sbir-analytics/backups
+SERVER_DATA_DIR=/path/to/persistent-storage/sbir-analytics/data
+SERVER_REPORTS_DIR=/path/to/persistent-storage/sbir-analytics/reports
+SERVER_LOGS_DIR=/path/to/persistent-storage/sbir-analytics/logs
+SERVER_ARTIFACTS_DIR=/path/to/persistent-storage/sbir-analytics/artifacts
+SERVER_NEO4J_DIR=/path/to/persistent-storage/sbir-analytics/neo4j
+SERVER_BACKUP_DIR=/path/to/persistent-storage/sbir-analytics/backups
 ```
 
-> The external SSD is **not a backup by itself.** Run `make server-backup`
-> regularly and copy the dump to a second location.
+> Persistent storage is **not a backup by itself.** Run `make server-backup`
+> regularly and copy the dump to a second failure domain.
 
-### 2. Start-at-login
+### 2. Start at boot
 
-- **OrbStack** (recommended Docker runtime on macOS): enable *Start at login*.
-- **Tailscale**: enable *Run at login* / *Start on boot* so the tailnet and
-  Serve routes come back after a reboot.
+- Configure the host's Docker-compatible runtime to start automatically.
+- Configure Tailscale to start automatically so the tailnet and Serve routes
+  come back after a reboot.
+
+On macOS, OrbStack's *Start at login* and Tailscale's *Run at login* settings
+satisfy these requirements. On other hosts, use the native service manager.
 
 ### 3. One-time Tailscale HTTPS consent
 
@@ -164,7 +177,7 @@ prefer a quiet window.
 
 ## Tailscale grant (least privilege)
 
-Restrict who can reach the server. Tag the Mac mini `tag:sbir-server`, grant
+Restrict who can reach the server. Tag the server node `tag:sbir-server`, grant
 analysts access to the Dagster UI, and grant Neo4j separately to trusted
 operators. Grants are the recommended current policy mechanism
 ([docs](https://tailscale.com/docs/reference/syntax/grants)). Apply this from
@@ -282,8 +295,8 @@ variables are lists and use the container's colon (`:`) path separator:
 - `SUBAWARD_SOURCES`
 
 Use the full `SBIR_ETL__NSF_DEFENSE_LINEAGE__` prefix for each name. Do not use
-commas, macOS `/Volumes/...` paths, or paths outside a mounted container
-directory. For example, two subaward inputs are configured as:
+commas, host-side paths, or paths outside a mounted container directory. For
+example, two subaward inputs are configured as:
 
 ```dotenv
 SBIR_ETL__NSF_DEFENSE_LINEAGE__SUBAWARD_SOURCES=/app/data/raw/usaspending/fy2025.zip:/app/data/raw/usaspending/fy2026.zip
@@ -340,7 +353,7 @@ That aggregate result requires all of these gates:
 Also confirm that the dated `network.json` and its sibling CSV downloads exist
 under `SERVER_ARTIFACTS_DIR`. Record the Dagster run ID, analysis date, input
 vintages and checksums, output paths, row counts, and gate result in
-`mac-mini-status.local.md`. If any gate or output check fails, retain the dated
+`server-status.local.md`. If any gate or output check fails, retain the dated
 canary files for diagnosis and keep the monthly schedule stopped. Only after a
 clean canary should an operator restore the persistent production destinations,
 recreate the containers, and run the job manually once more. Keep the monthly
@@ -353,7 +366,7 @@ Pinned canary inputs must never become a recurring schedule configuration.
 Treat Dagster completion as an execution signal, not proof that an output is
 research-ready. Before enabling any schedule or sensor, record the run ID,
 input vintage, output path, row grain, cardinality, and semantic checks in
-`mac-mini-status.local.md`. In particular:
+`server-status.local.md`. In particular:
 
 - Compare source rows at their declared grain with the corresponding Neo4j
   nodes. The SBIR award grain is `award_id` plus phase; duplicate
@@ -380,7 +393,7 @@ but expand to several CSV members, so they must be streamed and filtered rather
 than loaded into Pandas as a whole.
 
 Run these commands from the deployment checkout. They write only below the
-SSD-backed `/app/data` mount:
+persistent `/app/data` mount:
 
 ```bash
 # Build the complete vendor frame from the current SBIR.gov source in bounded chunks.
@@ -435,14 +448,14 @@ Before enabling, note:
 - **USAspending** is the long pole. The dump is large and the job may run for
   hours. It checks free space before downloading and resumes from a sidecar
   checkpoint next to the partial file, so an interrupted run is re-runnable
-  rather than restarted. Confirm SSD headroom first.
+  rather than restarted. Confirm storage headroom first.
 - **USPTO** needs `USPTO_ODP_API_KEY` and a working Playwright/Chromium install.
   Anonymous downloads from data.uspto.gov ended 2026-06-18 and now return an
   HTML shell with HTTP 200, so the job fetches PatentsView and AI patents
   through the ODP mint flow and assignments through browser automation. A
   size/HTML guard fails the run rather than saving an error page as data.
 - Downloads land under `SBIR_ETL__PATHS__DATA_ROOT`, which the server profile
-  points at the SSD.
+  points at persistent host storage.
 
 ### Pipeline chaining
 
@@ -508,14 +521,15 @@ to `false` if the code server starts hitting its limit.
 
 ## Recovery
 
-- **After reboot:** OrbStack and Tailscale start at login; containers use
-  `restart: unless-stopped` and Serve routes persist (`--bg`). Verify with
-  `make server-status` and `make server-tailscale-status`.
+- **After reboot:** the container runtime and Tailscale start automatically;
+  containers use `restart: unless-stopped` and Serve routes persist (`--bg`).
+  Verify with `make server-status` and `make server-tailscale-status`.
 - **After Tailscale reconnect:** routes resume automatically. If missing,
   re-run `make server-tailscale-up`.
-- **After container restart:** Neo4j and Dagster metadata persist on the SSD /
-  `dagster_home` volume; no data loss.
-- **After external-drive failure:** re-mount the SSD, then `make server-up`.
+- **After container restart:** Neo4j and Dagster metadata persist on host
+  storage and the `dagster_home` volume; no data loss.
+- **After storage failure:** restore or re-mount the configured storage, then
+  `make server-up`.
   Restore Neo4j from the latest `server-backup` dump if the store is damaged.
 
 ## Verifying isolation
@@ -524,7 +538,7 @@ From a **non-Tailscale** device on the same LAN, the services must be
 unreachable (connection refused/timeout):
 
 ```bash
-curl -m 5 http://<mac-lan-ip>:3000/        # fails
+curl -m 5 http://<server-lan-ip>:3000/        # fails
 ```
 
 From a Tailscale analyst device, Dagster succeeds on 443 while Neo4j remains
@@ -544,5 +558,5 @@ connections to 7474/7687 remain unreachable.
   Proposed external services are not part of the current architecture until
   code, credentials, durable rebuild inputs, and an owning runbook exist.
 
-The Mac mini is the only data plane. Do not route work through retired AWS
-Batch, Fargate, Lambda, Step Functions, or S3 components.
+The self-hosted server is the only data plane. Do not route work through
+retired AWS Batch, Fargate, Lambda, Step Functions, or S3 components.

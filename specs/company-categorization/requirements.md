@@ -1,5 +1,7 @@
 # Company Categorization — Requirements
 
+**Target epistemic tier:** `evidence`
+
 > **Status:** 77% complete.
 > Anchors inventory question **B1** in [docs/research-questions.md](../../docs/research-questions.md).
 

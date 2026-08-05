@@ -13,6 +13,8 @@ from sbir_etl.utils.tech_census import (
     load_census_config,
     matched_adjacent,
     matched_exclusion,
+    normalize_state_code,
+    normalize_state_codes,
     passes_gate,
     run_census,
 )
@@ -23,6 +25,10 @@ def _award(
     abstract: str = "",
     *,
     company: str = "Acme",
+    city: str = "Boston",
+    state: str = "MA",
+    uei: str = "UEI-1",
+    duns: str = "DUNS-1",
     agency: str = "Department of Defense",
     program: str = "SBIR",
     phase: str = "Phase II",
@@ -36,6 +42,10 @@ def _award(
         "title": title,
         "abstract": abstract,
         "company": company,
+        "city": city,
+        "state": state,
+        "uei": uei,
+        "duns": duns,
         "agency": agency,
         "program": program,
         "phase": phase,
@@ -80,11 +90,34 @@ def _compiled() -> CompiledCensus:
 def test_profiles_keep_broad_relevance_separate_from_strict_manufacturing() -> None:
     strict = load_census_config("drone_manufacturing")
     broad = load_census_config("uas_relevance")
+    all_domain = load_census_config("unmanned_systems_manufacturing")
     assert strict["programs"] == ["SBIR"]
     assert broad["programs"] == ["SBIR", "STTR"]
+    assert all_domain["programs"] == ["SBIR", "STTR"]
     assert strict["physical_gate"]["terms"]
+    assert all_domain["physical_gate"]["terms"]
     assert "physical_gate" not in broad
     assert strict["version"] == "2.0.0"
+
+
+@pytest.mark.parametrize(
+    ("value", "expected"),
+    [
+        ("MA", "MA"),
+        ("ma", "MA"),
+        ("Massachusetts", "MA"),
+        ("  District   of Columbia ", "DC"),
+        (None, ""),
+    ],
+)
+def test_normalize_state_code(value: object, expected: str) -> None:
+    assert normalize_state_code(value) == expected
+
+
+def test_normalize_state_codes_deduplicates_and_rejects_unknown_values() -> None:
+    assert normalize_state_codes(["Massachusetts", "MA", "California"]) == ("CA", "MA")
+    with pytest.raises(ValueError, match="unknown US state or territory"):
+        normalize_state_codes(["Not a state"])
 
 
 def test_load_missing_config_raises() -> None:
@@ -181,6 +214,51 @@ def test_broad_profile_includes_software_that_strict_profile_rejects() -> None:
     assert broad["classified_awards"][0]["scope_class"] == "Software, Autonomy & Analytics"
     assert strict["grand_total"]["n"] == 0
     assert strict["exclusion_counts"] == {"nonphysical_primary": 1}
+
+
+@pytest.mark.parametrize(
+    ("title", "program", "expected_subset"),
+    [
+        (
+            "STTR Autonomous Underwater Vehicle Thruster Prototype",
+            "STTR",
+            "Propulsion, Mobility & Actuation",
+        ),
+        (
+            "Unmanned Ground Vehicle Chassis",
+            "SBIR",
+            "Structures, Materials & Manufacturing",
+        ),
+        (
+            "USV Marine Vehicle Propulsion Prototype",
+            "SBIR",
+            "Propulsion, Mobility & Actuation",
+        ),
+    ],
+)
+def test_all_domain_profile_includes_sttr_and_nonaerial_hardware(
+    title: str, program: str, expected_subset: str
+) -> None:
+    result = run_census(
+        [_award(title=title, program=program)],
+        CompiledCensus.from_area("unmanned_systems_manufacturing"),
+    )
+    assert result["grand_total"]["n"] == 1
+    assert result["classified_awards"][0]["subset"] == expected_subset
+
+
+def test_all_domain_profile_rejects_software_only_and_ambiguous_usv_acronym() -> None:
+    compiled = CompiledCensus.from_area("unmanned_systems_manufacturing")
+    result = run_census(
+        [
+            _award(title="UUV Underwater Vehicle Navigation Software", tracking="T-1"),
+            _award(title="Rodent Ultrasonic Vocalizations (USVs)", tracking="T-2"),
+        ],
+        compiled,
+    )
+    assert result["grand_total"]["n"] == 0
+    assert result["exclusion_counts"] == {"nonphysical_primary": 1}
+    assert result["rejection_counts"] == {"relevance_gate": 1}
 
 
 def test_nonphysical_title_is_excluded_even_with_incidental_hardware_evidence() -> None:
@@ -323,6 +401,10 @@ def test_classified_rows_preserve_audit_evidence_and_source_ids() -> None:
     assert row["agency_tracking_number"] == "TRACK"
     assert row["contract"] == "CONTRACT"
     assert row["source_row"] == 42
+    assert row["city"] == "Boston"
+    assert row["state"] == "MA"
+    assert row["uei"] == "UEI-1"
+    assert row["duns"] == "DUNS-1"
     assert row["gate_evidence"] and row["physical_evidence"]
     assert "subset_evidence" in row and "scope_evidence" in row
     assert row["classification_source"] == "rules"
@@ -371,9 +453,10 @@ def test_versioned_override_ledger_can_include_and_exclude(tmp_path: Path) -> No
 def test_csv_loader_preserves_program_identifiers_and_source_row(tmp_path: Path) -> None:
     path = tmp_path / "awards.csv"
     path.write_text(
-        "Award Title,Abstract,Company,Agency,Program,Phase,Award Year,Award Amount,"
-        "Agency Tracking Number,Contract\n"
-        'Drone Airframe,"Build it",Acme,DOD,SBIR,Phase II,2024,"$1,250",TRACK,CONTRACT\n',
+        "Award Title,Abstract,Company,City,State,UEI,Duns,Agency,Program,Phase,Award Year,"
+        "Award Amount,Agency Tracking Number,Contract\n"
+        'Drone Airframe,"Build it",Acme,Boston,MA,UEI-1,DUNS-1,DOD,SBIR,Phase II,2024,'
+        '"$1,250",TRACK,CONTRACT\n',
         encoding="utf-8",
     )
     award = load_award_data_csv(path)[0]

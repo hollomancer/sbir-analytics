@@ -1,5 +1,7 @@
 # Independent Phase III Transition Ground-Truth Set — Requirements
 
+**Target epistemic tier:** `evidence`
+
 > **Status:** Draft spec. No implementation. Validation deliverable for the
 > merged award-grain fusion ranker (#467).
 > Supports inventory questions **B2 / E1** in [docs/research-questions.md](../../docs/research-questions.md).
