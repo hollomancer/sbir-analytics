@@ -1,6 +1,8 @@
 # Neo4j Epistemic Assertions: Minimum Viable Migration Plan
 
-**Status:** Revised proposal; no production implementation has started
+**Status:** Revised proposal; no production implementation has started. Review comments addressed
+(2026-08-05): ADR renumbered to ADR-005, §3.6 marked contingent-and-deferred under ADR-004, §4.2
+harmonized with spec-declaration guard.
 
 **Repository baseline audited:** `origin/main` at `8500c0c6` on 2026-08-04
 
@@ -565,7 +567,15 @@ family and it equals the receipt.
 
 ### 3.6 API and visualization boundary
 
-The minimum claim-aware API is:
+**Status: contingent and deferred.** The private analytics API targeted by this section was
+retired in ADR-004 (*Retire the Private Analytics API*, accepted 2026-08-04), which requires any
+future interface to start from a demonstrated consumer. The endpoint shapes below are preserved as
+design intent but must not be implemented until a real consumer is identified and the architecture
+decision in ADR-004 is satisfied. In the interim, PocketGraph and direct Cypher users consume the
+assertion topology through the file-artifact surface (content-addressed Parquet snapshots) that
+the explorer stack already consumes.
+
+The minimum claim-aware API, once a consumer exists, is:
 
 - `GET /v1/awards/{award_record_key}/transition-assertions`
 - `GET /v1/assertions/{assertion_revision_id}`
@@ -657,7 +667,9 @@ non-citable.
 
 The snapshot manifest should say `producer_epistemic_tier: exploratory`. It may validate that value
 against a small canonical vocabulary, but this project must not add general tier enforcement to all
-repository artifacts.
+repository artifacts beyond the spec-declaration guard already established in CI. Note: when this
+plan's implementation directory is created under `specs/`, it will require a `requirements.md`
+with a tier declaration from day one, per that guard.
 
 ### 4.3 Required documentation amendment
 
@@ -1101,7 +1113,7 @@ unification, or a general case-management API without a named consumer.
 
 Likely files:
 
-- `docs/decisions/ADR-004-transition-candidates-as-assertions.md`
+- `docs/decisions/ADR-005-transition-candidates-as-assertions.md`
 - `docs/steering/data-quality.md`
 - `docs/steering/epistemic-tiers.md`
 - `sbir_etl/utils/award_identity.py`
@@ -1321,7 +1333,7 @@ frozen census artifact.
 
 ### 2. Recommended ADR title and outline
 
-**ADR-004: Represent Transition Candidates as Typed Assertions Before Neo4j Projection**
+**ADR-005: Represent Transition Candidates as Typed Assertions Before Neo4j Projection**
 
 1. Context: incompatible publication contracts and causal overstatement.
 2. Decision boundary: one candidate award-contract assertion family.
