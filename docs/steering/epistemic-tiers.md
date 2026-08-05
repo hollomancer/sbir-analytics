@@ -167,15 +167,17 @@ What already holds:
 
 What does not:
 
-- The identity boundary checker is enforced by the CI quality job, but no
-  tier-declaration check exists yet.
+- The identity boundary checker is enforced by the CI quality job.
+- Active specs declare a target tier in `requirements.md`; CI rejects missing,
+  duplicate, and invalid declarations.
 - Nine direct `yaml.safe_load` call sites remain outside the configuration
   loader and the shared strict-mapping reader; several intentionally use
   permissive empty-file behavior.
 - `scripts/` carries analytical weight from `phase3_groundtruth/` and
   `validation/` with no contract at all.
-- No existing specs, assets, or modules declare one of these four tiers, so the
-  declaration rule is not yet observable or mechanically enforced.
+- Existing modules are not yet universally declared. An undeclared module is
+  therefore still exploratory until an explicit promotion satisfies its target
+  contract.
 
 The first useful step is labeling, not moving directories. Directory
 reorganization is the last step, and optional.

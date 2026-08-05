@@ -1,5 +1,7 @@
 # Phase III Candidate-Text Enrichment — Requirements
 
+**Target epistemic tier:** `evidence`
+
 > **Status:** Draft spec. No implementation. Follow-on to the ground-truth validation
 > (#481), which measured *why* the fusion ranker underperforms.
 > Supports inventory questions **B2 / E1** in [docs/research-questions.md](../../docs/research-questions.md).

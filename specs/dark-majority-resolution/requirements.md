@@ -1,5 +1,7 @@
 # Dark-Majority Resolution
 
+**Target epistemic tier:** `evidence`
+
 **Problem:** 82.6% of the nanotech Phase II cohort (2,352 of 2,849 awards) has indeterminate
 commercialization status. The findings report (`docs/nanotech_sbir_transition_findings.md`,
 Finding 3) shows this "dark majority" is measurement failure more than proven failure — but

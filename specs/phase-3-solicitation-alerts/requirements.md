@@ -1,5 +1,7 @@
 # Phase III Solicitation & Award Candidate Alerts — Requirements
 
+**Target epistemic tier:** `evidence`
+
 > **Status:** Partially implemented. S1 retrospective reclassification shipped
 > in PRs #394, #410, and #412; S2/S3 SAM.gov Opportunities candidate paths and
 > final documentation/sign-off remain backlog.

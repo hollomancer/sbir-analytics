@@ -98,11 +98,15 @@ the manifest schema, frozen-artifact hashes, and implementation references.
 ### Transitional Script Dependencies
 
 First-party packages may not add dependencies on `scripts/`. The architecture guard carries
-one exact, temporary exception for the server source-download jobs, which wrap five existing
-download CLIs. This is a migration bridge, not a fifth epistemic tier or an implicit
-promotion of those scripts: it is limited to compatibility wrappers, must not be used by an
-evidence-tier artifact, and is removed when the implementations move behind a package API.
-The CLI modules can then remain as compatibility entry points.
+four exact temporary bridges: one import bridge from the server source-download jobs to five
+existing download CLIs, plus execution bridges from the tech-area, weekly-awards, and
+phase-transition report jobs to their script entry points. These are migration bridges, not a
+fifth epistemic tier or an implicit promotion of those scripts. They are limited to named
+compatibility wrappers, must not be used by an evidence-tier artifact, and are removed when
+the implementations move behind package APIs. The CLI modules can then remain as entry points.
+
+The guard inspects both imports and literal Python-script targets passed to `subprocess`.
+Hiding a package-to-script dependency behind process execution does not change its direction.
 
 ### Separation of Concerns
 
