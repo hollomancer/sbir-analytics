@@ -15,10 +15,20 @@ EPISTEMIC_TIER = "primitives"
 
 
 class USJurisdictionProfile(StrEnum):
-    """Named U.S. jurisdiction normalization behaviors."""
+    """Named U.S. jurisdiction normalization behaviors.
+
+    Profiles are frozen once behavior is relied upon; a change requires a
+    new profile version, never editing an existing member.
+    """
 
     STRICT_V1 = "us-jurisdiction-strict-v1"
     PERMISSIVE_PREFIX_V1 = "us-jurisdiction-permissive-prefix-v1"
+
+    # Note: PERMISSIVE_PREFIX_V1 is a documented bridge preserving the patent
+    # transformer's legacy behavior (arbitrary two-letter pass-through + prefix
+    # matching). It is not a permanent contract. Exit condition: migrate the
+    # patent transformer to STRICT_V1 once its pipeline tolerates rejection of
+    # non-canonical two-letter values.
 
 
 US_JURISDICTION_NAMES_V1: Mapping[str, str] = MappingProxyType(
