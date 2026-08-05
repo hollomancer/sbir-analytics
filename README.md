@@ -91,7 +91,7 @@ config/                Thresholds, paths, performance settings (base.yaml)
 docs/                  research-questions.md (start here), architecture, methodology
 specs/                 Per-feature design notes
 examples/              Standalone demo scripts
-notebooks/             Exploratory Jupyter notebooks
+notebooks/             Notebook-first research workbench and reusable examples
 scripts/               One-off analysis and operational scripts
 infrastructure/        AWS CDK deployment (my personal cloud setup; optional)
 ```
