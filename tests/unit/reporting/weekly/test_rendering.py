@@ -95,6 +95,7 @@ class TestGenerateMarkdown:
         report = generate_markdown([], days=7)
         assert "No new awards found for this period." in report
         assert "**Total new awards:** 0" in report
+        assert "Exploratory / non-citable" in report
 
     def test_report_contains_award_and_summary(self):
         report = generate_markdown([self.AWARD], days=7)

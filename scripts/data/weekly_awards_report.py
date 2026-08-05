@@ -32,6 +32,8 @@ import sys
 from sbir_etl.reporting.weekly.debug import set_debug
 from sbir_etl.reporting.weekly.orchestrator import WeeklyAwardsReportBuilder
 
+EPISTEMIC_TIER = "exploratory"
+
 
 def main():
     parser = argparse.ArgumentParser(description="Generate weekly SBIR awards report")

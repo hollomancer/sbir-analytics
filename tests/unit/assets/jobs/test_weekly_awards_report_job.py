@@ -37,31 +37,24 @@ def test_empty_report_fails_rather_than_passing_silently(tmp_path, monkeypatch):
 
     monkeypatch.setenv(mod.DATA_ROOT_ENV, str(tmp_path))
 
-    class _Result:
-        returncode = 0
-        stderr = ""
-        stdout = ""
-
-    monkeypatch.setattr(mod.subprocess, "run", lambda *a, **k: _Result())
+    monkeypatch.setattr(mod.WeeklyAwardsReportBuilder, "run", lambda _builder: "")
 
     with pytest.raises(FileNotFoundError, match="wrote no report"):
         mod.generate_weekly_awards_report_op(build_op_context())
 
 
-def test_nonzero_exit_raises(tmp_path, monkeypatch):
-    """A failing script must surface as a job failure, not a quiet no-op."""
+def test_builder_failure_surfaces(tmp_path, monkeypatch):
+    """A package-pipeline failure must surface as a job failure."""
     from dagster import build_op_context
 
     from sbir_analytics.assets.jobs import weekly_awards_report as mod
 
     monkeypatch.setenv(mod.DATA_ROOT_ENV, str(tmp_path))
 
-    class _Result:
-        returncode = 2
-        stderr = "boom"
-        stdout = ""
+    def _fail(_builder):
+        raise RuntimeError("boom")
 
-    monkeypatch.setattr(mod.subprocess, "run", lambda *a, **k: _Result())
+    monkeypatch.setattr(mod.WeeklyAwardsReportBuilder, "run", _fail)
 
-    with pytest.raises(RuntimeError, match="exit code 2"):
+    with pytest.raises(RuntimeError, match="boom"):
         mod.generate_weekly_awards_report_op(build_op_context())

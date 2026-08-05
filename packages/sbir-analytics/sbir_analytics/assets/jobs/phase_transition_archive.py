@@ -9,16 +9,17 @@ then writes the same file set under the data root.
 
 import os
 import shutil
-import subprocess
-import sys
 import time
 from datetime import UTC, datetime
 from pathlib import Path
 
 from dagster import OpExecutionContext, job, op
 
+from sbir_etl.reporting.phase_transition_analysis import generate_phase_transition_report
+
 DATA_ROOT_ENV = "SBIR_ETL__PATHS__DATA_ROOT"
 DEFAULT_DATA_ROOT = "data"
+EPISTEMIC_TIER = "exploratory"
 
 # Same file set the S3 publish step carried, relative to the repo root.
 ARCHIVED_OUTPUTS = (
@@ -49,18 +50,15 @@ def generate_phase_transition_report_op(context: OpExecutionContext) -> float:
     newer than it.
     """
     started = time.time()
-    result = subprocess.run(  # noqa: S603
-        [sys.executable, "scripts/phase_transition_analysis.py"],
-        capture_output=True,
-        text=True,
-        check=False,
+    generate_phase_transition_report(
+        Path("data/processed/phase_ii_awards.parquet"),
+        Path("data/processed/phase_iii_contracts.parquet"),
+        Path("data/processed/phase_ii_iii_pairs.parquet"),
+        Path("data/processed/phase_transition_survival.parquet"),
+        Path("reports/phase_transition"),
     )
-    if result.returncode != 0:
-        context.log.error(result.stderr[-4000:])
-        raise RuntimeError(
-            f"phase_transition_analysis.py failed with exit code {result.returncode}"
-        )
-    context.log.info("Generated phase-transition report")
+    context.log.info("Generated exploratory, non-citable phase-transition report")
+    context.add_output_metadata({"epistemic_tier": EPISTEMIC_TIER, "citable": False})
     return started
 
 
@@ -105,8 +103,20 @@ def archive_phase_transition_outputs_op(context: OpExecutionContext, started: fl
         )
 
     context.log.info(f"Archived {len(copied)} file(s) to {archive_dir}")
-    context.add_output_metadata({"archive_dir": str(archive_dir), "copied": len(copied)})
-    return {"archive_dir": str(archive_dir), "copied": copied}
+    context.add_output_metadata(
+        {
+            "archive_dir": str(archive_dir),
+            "copied": len(copied),
+            "epistemic_tier": EPISTEMIC_TIER,
+            "citable": False,
+        }
+    )
+    return {
+        "archive_dir": str(archive_dir),
+        "copied": copied,
+        "epistemic_tier": EPISTEMIC_TIER,
+        "citable": False,
+    }
 
 
 @job(

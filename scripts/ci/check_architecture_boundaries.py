@@ -38,13 +38,7 @@ TRANSITIONAL_SCRIPT_IMPORTS: dict[str, frozenset[str]] = {}
 TRANSITIONAL_SCRIPT_EXECUTIONS = {
     "packages/sbir-analytics/sbir_analytics/assets/transition_report.py": frozenset(
         {"scripts/data/build_tech_area_cohort.py"}
-    ),
-    "packages/sbir-analytics/sbir_analytics/assets/jobs/weekly_awards_report.py": frozenset(
-        {"scripts/data/weekly_awards_report.py"}
-    ),
-    "packages/sbir-analytics/sbir_analytics/assets/jobs/phase_transition_archive.py": (
-        frozenset({"scripts/phase_transition_analysis.py"})
-    ),
+    )
 }
 
 
