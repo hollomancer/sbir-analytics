@@ -77,7 +77,7 @@ class TestSamGovOp:
         import pandas as pd
         from dagster import build_op_context
 
-        from scripts.data import download_sam_gov as download_module
+        from sbir_etl.extractors.source_downloads import sam_gov as download_module
         from sbir_analytics.assets.jobs.source_downloads import (
             DATA_ROOT_ENV,
             download_sam_gov_op,

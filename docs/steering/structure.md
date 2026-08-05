@@ -98,8 +98,7 @@ the manifest schema, frozen-artifact hashes, and implementation references.
 ### Transitional Script Dependencies
 
 First-party packages may not add dependencies on `scripts/`. The architecture guard carries
-four exact temporary bridges: one import bridge from the server source-download jobs to five
-existing download CLIs, plus execution bridges from the tech-area, weekly-awards, and
+three exact temporary execution bridges from the tech-area, weekly-awards, and
 phase-transition report jobs to their script entry points. These are migration bridges, not a
 fifth epistemic tier or an implicit promotion of those scripts. They are limited to named
 compatibility wrappers, must not be used by an evidence-tier artifact, and are removed when

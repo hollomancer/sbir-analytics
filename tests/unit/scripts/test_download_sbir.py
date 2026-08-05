@@ -10,7 +10,7 @@ from unittest.mock import patch
 
 import pytest
 
-from scripts.data.download_sbir import (
+from sbir_etl.extractors.source_downloads.sbir import (
     CSV_NAME,
     META_NAME,
     download_sbir_awards,
@@ -24,7 +24,7 @@ CSV_B = b"award_id,company\n1,Acme\n2,Globex\n"
 @pytest.fixture
 def fake_fetch():
     """Patch the network fetch, returning whatever payload the test sets."""
-    with patch("scripts.data.download_sbir._fetch") as m:
+    with patch("sbir_etl.extractors.source_downloads.sbir._fetch") as m:
         yield m
 
 
@@ -89,7 +89,7 @@ class TestChangeDetection:
 
         _set(fake_fetch, CSV_B)
         # Force a distinct vintage date so the two do not collide.
-        with patch("scripts.data.download_sbir.datetime") as dt:
+        with patch("sbir_etl.extractors.source_downloads.sbir.datetime") as dt:
             dt.now.return_value.strftime.return_value = "2026-01-02"
             dt.now.return_value.isoformat.return_value = "2026-01-02T00:00:00+00:00"
             result = download_sbir_awards(tmp_path)

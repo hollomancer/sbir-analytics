@@ -12,7 +12,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from scripts.usaspending.download_database import (
+from sbir_etl.extractors.source_downloads.usaspending import (
     USASPENDING_DB_BASE_URL,
     check_free_space,
     clear_local_checkpoint,
@@ -48,14 +48,14 @@ class TestResolveSourceUrl:
 
     def test_discovers_latest_when_no_date(self):
         with patch(
-            "scripts.usaspending.download_database.find_latest_available_file",
+            "sbir_etl.extractors.source_downloads.usaspending.find_latest_available_file",
             return_value={"source_url": URL},
         ):
             assert resolve_source_url(database_type="full") == URL
 
     def test_raises_when_discovery_finds_nothing(self):
         with patch(
-            "scripts.usaspending.download_database.find_latest_available_file",
+            "sbir_etl.extractors.source_downloads.usaspending.find_latest_available_file",
             return_value=None,
         ):
             with pytest.raises(FileNotFoundError, match="No available full database"):
@@ -126,7 +126,7 @@ class TestDownloadLocal:
     @pytest.fixture
     def availability(self):
         with patch(
-            "scripts.usaspending.download_database.check_file_availability",
+            "sbir_etl.extractors.source_downloads.usaspending.check_file_availability",
             return_value={"available": True, "content_length": len(BODY)},
         ) as m:
             yield m
@@ -160,7 +160,7 @@ class TestDownloadLocal:
 
     def test_unavailable_source_raises(self, tmp_path):
         with patch(
-            "scripts.usaspending.download_database.check_file_availability",
+            "sbir_etl.extractors.source_downloads.usaspending.check_file_availability",
             return_value={"available": False, "content_length": None},
         ):
             with pytest.raises(FileNotFoundError, match="not available"):
@@ -300,12 +300,17 @@ class TestDiscoverySignature:
     def test_no_date_path_calls_current_signature(self):
         from unittest.mock import create_autospec
 
-        import scripts.usaspending.check_new_file as check_new_file
+        from sbir_etl.extractors.source_downloads import (
+            usaspending_availability as check_new_file,
+        )
 
         autospec = create_autospec(check_new_file.find_latest_available_file)
         autospec.return_value = {"source_url": URL}
 
-        with patch("scripts.usaspending.download_database.find_latest_available_file", autospec):
+        with patch(
+            "sbir_etl.extractors.source_downloads.usaspending.find_latest_available_file",
+            autospec,
+        ):
             assert resolve_source_url(database_type="full") == URL
 
         # An autospec mock raises TypeError on an argument the real function
@@ -317,14 +322,14 @@ class TestPartialIsNotDiscoverable:
     """An in-progress download must not be selectable as a finished dump."""
 
     def test_incomplete_download_leaves_no_final_name(self, tmp_path):
-        from scripts.usaspending.download_database import download_local
+        from sbir_etl.extractors.source_downloads.usaspending import download_local
 
         session = MagicMock()
         session.get.return_value = _mock_response(BODY[:100])
 
         with (
             patch(
-                "scripts.usaspending.download_database.check_file_availability",
+                "sbir_etl.extractors.source_downloads.usaspending.check_file_availability",
                 return_value={"available": True, "content_length": len(BODY)},
             ),
             patch("requests.Session", return_value=session),

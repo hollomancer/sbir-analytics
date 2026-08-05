@@ -28,21 +28,7 @@ ALLOWED_FIRST_PARTY_IMPORTS = {
     "sbir_analytics": frozenset({"sbir_etl", "sbir_ml", "sbir_graph"}),
 }
 
-# The server download jobs landed while this guard was in review. They wrap
-# pre-existing CLI implementations that have not yet been promoted into a
-# package. Keep the exceptions exact so the guard prevents any additional
-# package-to-scripts dependencies while that migration is completed.
-TRANSITIONAL_SCRIPT_IMPORTS = {
-    "packages/sbir-analytics/sbir_analytics/assets/jobs/source_downloads.py": frozenset(
-        {
-            "scripts.data.download_sam_gov",
-            "scripts.data.download_sbir",
-            "scripts.data.download_uspto",
-            "scripts.data.download_uspto_browser",
-            "scripts.usaspending.download_database",
-        }
-    )
-}
+TRANSITIONAL_SCRIPT_IMPORTS: dict[str, frozenset[str]] = {}
 
 # Package code also reached three scripts by spawning a Python subprocess. An
 # import-only guard cannot see those dependency edges, so keep the temporary
