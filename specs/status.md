@@ -54,6 +54,12 @@ bypassing lifecycle review; the status and rationale still require human judgmen
   test are accepted; and weekly-report refactor T2.3 plus the injected,
   typed-return work in T3.2 are complete. Offline, full-context, and shadow
   gates still precede any production integration.
+- **`epistemic-tier-enforcement` — Active.** Enforcement follow-on to the 2026-08
+  module-labeling sweep (PRs #550–#552). T1 adds a blocking tier-aware import
+  guard seeded with the three known pipelines→exploratory edges; T2/T3 burn that
+  allowlist down via a versioned identity canonical-merge policy and NSF-screen
+  dependency inversion; T4 documents the workbench/operated split. Implementation
+  starts after the labeling PRs merge. No fifth tier and no directory moves.
 - **`fiscal-tax-impact-v2.md` — Gated backlog.** Valid D2 methodology upgrade.
   Leave inactive until fiscal-model refresh is selected.
 - **`follow-on-multiplier-validation` — Active.** Design-only follow-up to the
