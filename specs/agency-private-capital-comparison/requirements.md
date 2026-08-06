@@ -1,6 +1,6 @@
 # SBIR vs. Private-Capital Comparison — Requirements (agency-parameterized; NSF as initial target)
 
-**Target epistemic tier:** `evidence`
+**Target epistemic tier:** `pipelines`
 
 > **Status:** Phase 1 implemented; Phase 2 is a gated backlog item now that the
 > Form D / M&A infrastructure from PR #286 is available. Do not start Phase 2
