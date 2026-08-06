@@ -81,7 +81,7 @@ def test_pipe_in_title_keeps_tables_intact(awards):
     assert "Pipe" in md and "Widget" in md
 
 
-def test_empty_awards_keeps_banner(awards):
+def test_empty_awards_keeps_banner():
     md = generate_markdown([], days=7)
 
     assert "**Exploratory / non-citable.**" in md

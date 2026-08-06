@@ -55,6 +55,9 @@ def _orgs(count: int = 6) -> list[dict]:
 
 
 def _node_count(client, label: str) -> int:
+    # Cypher cannot parameterize labels; constrain interpolation to this
+    # module's dedicated test labels.
+    assert label in {AWARD_LABEL, ORG_LABEL}
     with client.session() as session:
         return session.run(f"MATCH (n:{label}) RETURN count(n) AS c").single()["c"]
 
