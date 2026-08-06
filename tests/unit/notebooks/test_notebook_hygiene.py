@@ -13,12 +13,19 @@ NOTEBOOK_ROOT = REPO_ROOT / "notebooks"
 
 # Only enumerate notebooks tracked in the git index (not untracked/ignored
 # *_executed.ipynb outputs that would be produced by the documented workflow).
-_TRACKED_NOTEBOOKS = subprocess.run(
-    ["git", "ls-files", str(NOTEBOOK_ROOT)],
-    capture_output=True,
-    text=True,
-    cwd=REPO_ROOT,
-).stdout.strip().splitlines()
+# check=True so a missing git or a non-repository checkout fails loudly: an
+# empty list would parametrize every policy check over nothing and pass.
+_TRACKED_NOTEBOOKS = (
+    subprocess.run(
+        ["git", "ls-files", str(NOTEBOOK_ROOT)],
+        capture_output=True,
+        text=True,
+        cwd=REPO_ROOT,
+        check=True,
+    )
+    .stdout.strip()
+    .splitlines()
+)
 NOTEBOOKS = sorted(REPO_ROOT / line for line in _TRACKED_NOTEBOOKS if line.endswith(".ipynb"))
 SECRET_ASSIGNMENT = re.compile(
     r"(?:HF_TOKEN|AWS_ACCESS_KEY_ID|AWS_SECRET_ACCESS_KEY|SAM_GOV_API_KEY)\s*=\s*['\"][^'\"]+"
