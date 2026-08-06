@@ -1,4 +1,9 @@
-"""Canonical domain identifier normalizers."""
+"""Canonical domain identifier normalizers.
+
+Epistemic tier: primitives. Identity primitives depend on these UEI/DUNS/CAGE
+normalizers, so output-changing behavior requires a versioned change under the
+primitives contract, not the utils package default.
+"""
 
 from __future__ import annotations
 
@@ -6,6 +11,9 @@ import re
 from typing import Any
 
 from sbir_etl.utils.coercion import _blank
+
+
+EPISTEMIC_TIER = "primitives"
 
 
 def normalize_uspto_identifier(value: Any) -> str | None:

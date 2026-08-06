@@ -3,6 +3,9 @@
 This module implements the company categorization system that classifies SBIR
 companies as Product, Service, or Mixed based on their federal contract portfolios
 from USAspending.
+
+Epistemic tier: exploratory. These assets materialize the Product/Service/Mixed
+heuristic classification — a contestable inference — so results are non-citable.
 """
 
 import pandas as pd
@@ -21,6 +24,9 @@ from sbir_etl.config.loader import get_config
 from sbir_etl.enrichers.company_categorization import retrieve_company_contracts
 from sbir_etl.extractors.usaspending import DuckDBUSAspendingExtractor
 from sbir_etl.transformers.company_categorization import aggregate_company_classification
+
+
+EPISTEMIC_TIER = "exploratory"
 
 
 @asset(

@@ -2,6 +2,9 @@
 
 Calculates tax revenue and job creation impacts from SBIR awards using
 BEA I-O economic models.
+
+Epistemic tier: exploratory. Tax and job impacts are model estimates a reader
+could mistake for findings, so outputs are non-citable.
 """
 
 import pandas as pd
@@ -17,6 +20,9 @@ from dagster import (
 from sbir_etl.config.loader import get_config
 from sbir_etl.transformers.sbir_fiscal_pipeline import SBIRFiscalImpactCalculator
 from sbir_etl.utils.monitoring import performance_monitor
+
+
+EPISTEMIC_TIER = "exploratory"
 
 
 @asset(

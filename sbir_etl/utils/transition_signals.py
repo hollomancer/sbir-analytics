@@ -6,6 +6,10 @@ FPDS / M&A / Form D channels and ``deficiency_class`` without importing the
 nanotech script (which pulls in matplotlib).
 
 Dark-majority WS1/WS2/liveness **require** ``deficiency_class`` on the cohort.
+
+Epistemic tier: exploratory. Channel enrichment and deficiency classification
+encode contestable analytical policy for exploratory cohort studies, so
+outputs are non-citable.
 """
 
 from __future__ import annotations
@@ -14,6 +18,9 @@ import csv
 import json
 from datetime import date
 from pathlib import Path
+
+
+EPISTEMIC_TIER = "exploratory"
 
 # Awards younger than this are censored observations, not transition failures.
 INSUFFICIENT_TIME_YEAR = date.today().year - 3

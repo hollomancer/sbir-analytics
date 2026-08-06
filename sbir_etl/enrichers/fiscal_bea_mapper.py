@@ -3,6 +3,10 @@ NAICS-to-BEA Sector Mapper for fiscal returns analysis.
 
 This module implements the core mapping logic to convert NAICS codes to BEA Input-Output
 sectors using official crosswalks and hierarchical fallback strategies.
+
+Epistemic tier: exploratory. Fallback selection and allocation weights are
+modeling choices that shape fiscal impact estimates, so mapped sectors are
+non-citable analysis inputs.
 """
 
 from __future__ import annotations
@@ -18,6 +22,9 @@ import yaml
 from loguru import logger
 
 from ..config.loader import get_config
+
+
+EPISTEMIC_TIER = "exploratory"
 
 
 @dataclass

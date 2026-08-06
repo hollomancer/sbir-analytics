@@ -6,6 +6,10 @@ BEA I-O economic models.
 Pipeline flow:
     SBIR Awards (with NAICS) → Map to BEA Sectors → Aggregate → BEA I-O
     → Tax & Wage Impacts → Employment Calculation → Final Results
+
+Epistemic tier: exploratory. Tax and employment impacts are BEA I-O model
+estimates a reader could mistake for findings, so pipeline outputs are
+non-citable.
 """
 
 from __future__ import annotations
@@ -22,6 +26,9 @@ from .bea_io_adapter import BEAIOAdapter
 
 if TYPE_CHECKING:
     from ..config import Config  # type: ignore[attr-defined]
+
+
+EPISTEMIC_TIER = "exploratory"
 
 
 class SBIRFiscalImpactCalculator:
