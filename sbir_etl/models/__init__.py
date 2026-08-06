@@ -1,7 +1,15 @@
-"""Data models for the SBIR ETL pipeline — lazily imported to avoid heavy optional-dependency load at package import time."""
+"""Data models for the SBIR ETL pipeline — lazily imported to avoid heavy optional-dependency load at package import time.
+
+Epistemic tier: primitives. Every downstream package depends on these
+schemas; a change that alters field shape or validation is a new versioned
+behavior, never an edit in place.
+"""
 
 from importlib import import_module
 from typing import Any
+
+
+EPISTEMIC_TIER = "primitives"
 
 
 _LAZY_BY_MODULE: dict[str, tuple[str, ...]] = {
