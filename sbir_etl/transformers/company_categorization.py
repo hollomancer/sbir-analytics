@@ -12,11 +12,18 @@ The classification system operates at two levels:
 Key Functions:
     - classify_contract: Classify a single contract/award
     - aggregate_company_classification: Aggregate contract classifications to company level
+
+Epistemic tier: exploratory. Keyword and contract-type heuristics classify
+firms as Product/Service/Mixed — a contestable inference a reader could
+mistake for a finding — so classifications are non-citable.
 """
 
 from loguru import logger
 
 from sbir_etl.models.categorization import CompanyClassification, ContractClassification
+
+
+EPISTEMIC_TIER = "exploratory"
 
 
 def classify_contract(contract: dict) -> ContractClassification:

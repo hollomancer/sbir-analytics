@@ -1,5 +1,9 @@
 """Data loading modules.
 
+Epistemic tier: pipelines. Loaders move validated records into Neo4j with
+deterministic MERGE semantics; correctness is faithfulness to the input
+records, and no loader performs inference or scoring.
+
 Neo4j loaders are available when the ``neo4j`` extra is installed::
 
     pip install sbir-graph
@@ -9,6 +13,8 @@ from __future__ import annotations
 
 from typing import Any
 
+
+EPISTEMIC_TIER = "pipelines"
 
 __all__ = ["Neo4jClient", "Neo4jConfig", "LoadMetrics", "PatentLoader", "PatentLoaderConfig"]
 

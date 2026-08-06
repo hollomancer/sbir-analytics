@@ -17,6 +17,10 @@ Phase 2 outputs:
     - ``agency_vs_form_d_matched_pairs.parquet``
     - ``agency_vs_form_d_comparison.md``
     - ``threats_to_validity.json``
+
+Epistemic tier: exploratory. Cohort matching and outcome comparisons against
+published external baselines are contestable analysis, so comparison
+artifacts are non-citable.
 """
 
 from .asset import AgencyPrivateCapitalConfig, agency_private_capital_baseline_comparison
@@ -36,6 +40,9 @@ from .outcomes import OutcomeMetricsCalculator, wilson_interval
 from .phase2_outcomes import MatchedCohortOutcomes
 from .reconcile import ReconciliationNarrative, ReconciliationRecord
 from .threats import ThreatsToValidity
+
+
+EPISTEMIC_TIER = "exploratory"
 
 
 __all__ = [

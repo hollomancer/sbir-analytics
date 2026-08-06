@@ -54,6 +54,12 @@ bypassing lifecycle review; the status and rationale still require human judgmen
   test are accepted; and weekly-report refactor T2.3 plus the injected,
   typed-return work in T3.2 are complete. Offline, full-context, and shadow
   gates still precede any production integration.
+- **`epistemic-tier-enforcement` — Active.** Enforcement follow-on to the 2026-08
+  module-labeling sweep (PRs #550–#552). T1 adds a blocking tier-aware import
+  guard seeded with the three known pipelines→exploratory edges; T2/T3 burn that
+  allowlist down via a versioned identity canonical-merge policy and NSF-screen
+  dependency inversion; T4 documents the workbench/operated split. Implementation
+  starts after the labeling PRs merge. No fifth tier and no directory moves.
 - **`fiscal-tax-impact-v2.md` — Gated backlog.** Valid D2 methodology upgrade.
   Leave inactive until fiscal-model refresh is selected.
 - **`follow-on-multiplier-validation` — Active.** Design-only follow-up to the
@@ -81,9 +87,12 @@ bypassing lifecycle review; the status and rationale still require human judgmen
 - **`phase-3-solicitation-alerts` — Maintenance.** Retrospective S1 work is
   implemented. SAM.gov Opportunities S2/S3 paths remain backlog.
 - **`phase-iii-census` — Active.** Phase 1 is implemented and materialized under
-  a reproducible study contract, and the control-identity eligibility gate passed.
-  Control construction/matching, placebo tests, and labeled validation remain
-  required before any undercount or statutory Phase III claim.
+  a reproducible study contract; the control-identity eligibility gate, the
+  exact-matching balance gate, and the preregistered fixed-seed placebo
+  falsification have all passed (2026-08-03 audits). Matched negative-control
+  outcomes are descriptive only — a 2.10x clearing ratio with 0.853 overlap, so
+  the frozen criteria do not cleanly discriminate. Hand-labeled validation
+  remains required before any undercount or statutory Phase III claim.
 - **`phase-iii-source-materialization` — Maintenance.** The schema-verified
   USAspending and SBIR.gov source layer is implemented. Keep it aligned with the
   census and other transition consumers rather than extending it with scoring policy.

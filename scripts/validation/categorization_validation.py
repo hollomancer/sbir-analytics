@@ -31,6 +31,9 @@ Usage:
 
     # Load to Neo4j after categorization
     uv run python scripts/validation/categorization_validation.py --load-neo4j
+
+Epistemic tier: exploratory. This validates the heuristic categorization
+against a hand-assembled dataset; its results are diagnostics and non-citable.
 """
 
 import argparse
@@ -58,6 +61,9 @@ from sbir_etl.transformers.company_categorization import (
     is_cost_based_contract,
     is_service_based_contract,
 )
+
+
+EPISTEMIC_TIER = "exploratory"
 
 
 def _extract_year_from_date(date_str: str | None) -> int | None:

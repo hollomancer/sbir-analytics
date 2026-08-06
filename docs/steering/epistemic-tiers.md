@@ -161,23 +161,29 @@ What already holds:
 - `sbir_etl/` is a clean foundation layer — 141 imports inbound from
   `packages/`, zero outbound.
 - `sbir_etl/identity/` meets the `primitives` contract, with a boundary checker
-  at `scripts/ci/check_identity_boundaries.py`.
+  at `scripts/ci/check_identity_boundaries.py` enforced by the CI quality job.
+- Active specs declare a target tier in `requirements.md`;
+  `scripts/ci/check_epistemic_tiers.py` rejects missing, duplicate, and
+  invalid declarations in CI.
 - The Phase III census implements the evidence-tier mechanisms: frozen
   artifacts, SHA enforcement, a declared estimand, and a blocking asset check.
 
 What does not:
 
-- The identity boundary checker is enforced by the CI quality job.
-- Active specs declare a target tier in `requirements.md`; CI rejects missing,
-  duplicate, and invalid declarations.
-- Nine direct `yaml.safe_load` call sites remain outside the configuration
+- Seven direct `yaml.safe_load` call sites remain outside the configuration
   loader and the shared strict-mapping reader; several intentionally use
   permissive empty-file behavior.
-- `scripts/` carries analytical weight from `phase3_groundtruth/` and
-  `validation/` with no contract at all.
-- Existing modules are not yet universally declared. An undeclared module is
-  therefore still exploratory until an explicit promotion satisfies its target
-  contract.
+- `scripts/phase3_groundtruth/` and `scripts/validation/` now carry explicit
+  `exploratory` labels, but their analytical weight — T6/T7 groundtruth
+  results feeding the evidence-target `phase3-transition-groundtruth` spec —
+  still exceeds their tier. The remaining issue is that tension, not missing
+  labels.
+- Module-level declaration is now the standard — subpackages carry package
+  defaults and divergent modules carry per-file `EPISTEMIC_TIER` constants —
+  but coverage is not yet universal. The remaining gaps are whatever
+  `rg --files-without-match '^EPISTEMIC_TIER'` reports, not a fixed list, and
+  an undeclared module is still exploratory until an explicit promotion
+  satisfies its target contract.
 
 The first useful step is labeling, not moving directories. Directory
 reorganization is the last step, and optional.

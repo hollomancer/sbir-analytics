@@ -4,6 +4,10 @@ Profiles answer two separate questions: broad technology relevance and a
 stricter physical-product/manufacturing census.  The engine keeps the
 classification rules in versioned YAML and emits enough evidence and source
 identifiers to audit every included award.
+
+Epistemic tier: exploratory. The engine is deterministic, but profile-driven
+award admission is a contestable analytical policy, so census outputs are
+non-citable.
 """
 
 from __future__ import annotations
@@ -19,6 +23,9 @@ import yaml
 
 from sbir_etl.extractors.sbir_public_awards import load_sbir_awards_csv
 from sbir_etl.identity.geography import normalize_us_jurisdiction
+
+
+EPISTEMIC_TIER = "exploratory"
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 CONFIG_DIR = REPO_ROOT / "config" / "tech_census"

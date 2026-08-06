@@ -1,9 +1,17 @@
 """Phase III candidate-surfacing assets.
 
+Epistemic tier: exploratory. Candidate surfacing ranks pairs with
+hand-weighted similarity and thresholds (an experimental lift per
+``specs/phase3-candidate-enrichment``, not production), so candidates are
+non-citable; deterministic pair construction in ``pairing`` declares
+pipelines per-file.
+
 See ``specs/phase-3-solicitation-alerts/`` for the surfacing pipeline that
 emits ``data/processed/phase_iii_candidates.parquet``. v1 ships the
 RETROSPECTIVE, DIRECTED, and competitive FOLLOWON signal classes.
 """
+
+EPISTEMIC_TIER = "exploratory"
 
 __all__ = [
     "CANDIDATES_OUTPUT_PATH",

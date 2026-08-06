@@ -31,6 +31,10 @@ Notes:
 - The module is intentionally dependency-light besides pandas + rapidfuzz.
 - Keep audit fields (score and method) so downstream logic can decide how to
   treat lower-confidence matches.
+
+Epistemic tier: exploratory. Threshold-based fuzzy match acceptance is
+contestable identity inference, not deterministic data movement, so its match
+decisions are non-citable.
 """
 
 from __future__ import annotations
@@ -44,6 +48,9 @@ import pandas as pd
 from ..exceptions import ValidationError
 from ..utils.text_normalization import normalize_name
 from sbir_etl.identity import rapidfuzz_jaro_winkler_100, rapidfuzz_token_set_100
+
+
+EPISTEMIC_TIER = "exploratory"
 
 
 def _set_award_match(
