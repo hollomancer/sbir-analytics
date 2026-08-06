@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import hashlib
 import html
 import json
 import logging
@@ -18,6 +17,8 @@ from urllib.parse import quote, urlsplit
 import pandas as pd
 from markdown_it import MarkdownIt
 
+from sbir_etl.extractors.sbir_public_awards import normalize_sbir_awards
+from sbir_etl.identity.sbir_awards import SBIR_AWARD_KEY_VERSION
 from sbir_etl.reporting.procurement_transition.ai import MAX_SUMMARY_CHARS
 from sbir_etl.reporting.procurement_transition.cet_vocabulary import cet_agreement_fact
 from sbir_etl.utils.procurement_text import (
@@ -33,21 +34,12 @@ from sbir_etl.utils.procurement_text import (
 logger = logging.getLogger(__name__)
 FusionScorer = Callable[..., list[float]]
 
-_AWARD_KEY_VERSION = "sbir-source-v2"
-
 _ANNOTATION_FIELDS = (
     ("interest_alignment", "Mission-interest alignment"),
     ("technology_ecosystem", "Technology ecosystem"),
     ("potential_transition_lane", "Potential acquisition transition lane"),
     ("alignment_rationale", "Alignment rationale"),
 )
-
-
-def _pick(df: pd.DataFrame, *names: str) -> pd.Series:
-    for name in names:
-        if name in df.columns:
-            return df[name]
-    return pd.Series([None] * len(df), index=df.index)
 
 
 def _coalesce(df: pd.DataFrame, *names: str) -> pd.Series:
@@ -58,202 +50,10 @@ def _coalesce(df: pd.DataFrame, *names: str) -> pd.Series:
     return result
 
 
-# Stable source fields used to identify one award. Mutable report content such
-# as title, abstract, amount, and recorded end date deliberately stays out of
-# this key; changes to those fields belong in ``row_hash``.
-_AWARD_KEY_FIELDS = (
-    ("Agency Tracking Number", "agency_tracking_number"),
-    ("Contract", "contract_number"),
-    ("Agency", "agency"),
-    ("Branch", "branch", "sub_agency"),
-    ("Phase", "phase"),
-    ("Program", "program"),
-    ("Proposal Award Date", "award_date"),
-    ("Solicitation Number", "solicitation_number"),
-)
-
-
-def _row_value(row: pd.Series, *names: str) -> str | None:
-    for name in names:
-        if (value := _display(row.get(name))) is not None:
-            return value
-    return None
-
-
-def _identity_component(value: Any) -> str:
-    return re.sub(r"\s+", " ", _display(value) or "").strip().upper()
-
-
-def _award_key_field_value(row: pd.Series, names: tuple[str, ...]) -> str | None:
-    value = _row_value(row, *names)
-    if names[0] != "Proposal Award Date" or value is None:
-        return value
-    text = value.strip()
-    match = re.match(r"^(\d{4})[-/](\d{1,2})[-/](\d{1,2})(?:\D|$)", text)
-    parts: tuple[str, str, str] | None
-    if match is None:
-        match = re.match(r"^(\d{1,2})/(\d{1,2})/(\d{4})(?:\D|$)", text)
-        parts = (match.group(3), match.group(1), match.group(2)) if match else None
-    else:
-        parts = (match.group(1), match.group(2), match.group(3))
-    if parts is None:
-        return value
-    try:
-        year, month, day = (int(part) for part in parts)
-        return date(year, month, day).isoformat()
-    except ValueError:
-        return value
-
-
-def _natural_award_id(row: pd.Series) -> str | None:
-    # Preserve the report's existing public lineage identifier for readable
-    # output and legacy candidate files. It is never used as award grain: the
-    # separate ``award_key`` owns joins, deduplication, and candidate identity.
-    return _row_value(
-        row,
-        "Agency Tracking Number",
-        "agency_tracking_number",
-        "Contract",
-        "contract_number",
-        "award_id",
-    )
-
-
-def _stable_award_id(row: pd.Series) -> str:
-    natural = _natural_award_id(row)
-    if natural is not None:
-        return natural
-    return "sbir-" + _award_grain_key(row)[:20]
-
-
-def _award_grain_key(row: pd.Series) -> str:
-    """Identity of one *award*, not one firm/topic.
-
-    ``award_id`` stays the natural identifier for readable lineage. It is not
-    award-grain on its own, so joins, deduplication, and snapshot comparison use
-    this separate stable source compound.
-    """
-
-    if existing := _row_value(row, "award_key"):
-        if _row_value(row, "award_key_version") != _AWARD_KEY_VERSION:
-            raise ValueError(
-                "pre-migration award_key cannot be reused; regenerate identity from raw awards"
-            )
-        return existing
-
-    recipient = (
-        _row_value(row, "UEI", "uei", "recipient_uei")
-        or _row_value(row, "Duns", "duns", "recipient_duns")
-        or _row_value(row, "Company", "company", "recipient_name")
-    )
-    components = (
-        "sbir",
-        recipient,
-        *(_award_key_field_value(row, names) for names in _AWARD_KEY_FIELDS),
-    )
-    material = "|".join(_identity_component(value) for value in components)
-    return hashlib.sha256(material.encode()).hexdigest()[:24]
-
-
 def normalize_awards(raw: pd.DataFrame) -> pd.DataFrame:
-    """Normalize the public SBIR.gov CSV while preserving every phase label."""
+    """Compatibility entry point for the canonical SBIR award materializer."""
 
-    if raw.empty:
-        return pd.DataFrame(
-            columns=[
-                "award_id",
-                "award_key",
-                "award_key_version",
-                "agency_tracking_number",
-                "contract_number",
-                "company",
-                "title",
-                "agency",
-                "branch",
-                "phase",
-                "program",
-                "award_date",
-                "recorded_end_date",
-                "uei",
-                "amount",
-                "abstract",
-                "row_hash",
-                "source_edition_count",
-                "source_edition_variants",
-                "public_id_award_count",
-                "naics_code",
-                "psc_code",
-                "office",
-                "cet",
-                "source_url",
-                "solicitation_number",
-                "topic_code",
-            ]
-        )
-    out = pd.DataFrame(index=raw.index)
-    out["award_id"] = raw.apply(_stable_award_id, axis=1)
-    out["award_key"] = raw.apply(_award_grain_key, axis=1)
-    out["award_key_version"] = _AWARD_KEY_VERSION
-    out["agency_tracking_number"] = _pick(raw, "Agency Tracking Number", "agency_tracking_number")
-    out["contract_number"] = _pick(raw, "Contract", "contract_number")
-    out["company"] = _pick(raw, "Company", "company", "recipient_name")
-    out["title"] = _pick(raw, "Award Title", "title")
-    out["agency"] = _pick(raw, "Agency", "agency")
-    out["branch"] = _pick(raw, "Branch", "branch", "sub_agency")
-    out["phase"] = _pick(raw, "Phase", "phase")
-    out["program"] = _pick(raw, "Program", "program")
-    out["award_date"] = pd.to_datetime(
-        _pick(raw, "Proposal Award Date", "award_date"), errors="coerce"
-    ).dt.date
-    out["recorded_end_date"] = pd.to_datetime(
-        _pick(raw, "Contract End Date", "period_of_performance_end", "recorded_end_date"),
-        errors="coerce",
-    ).dt.date
-    out["uei"] = _pick(raw, "UEI", "uei", "recipient_uei")
-    out["amount"] = pd.to_numeric(
-        _pick(raw, "Award Amount", "amount").astype(str).str.replace(r"[$,]", "", regex=True),
-        errors="coerce",
-    )
-    out["abstract"] = _pick(raw, "Abstract", "abstract")
-    out["naics_code"] = _pick(raw, "NAICS", "naics_code")
-    out["psc_code"] = _pick(raw, "PSC", "psc_code", "product_or_service_code")
-    out["office"] = _pick(raw, "Office", "office", "awarding_office_name")
-    out["cet"] = _pick(raw, "CET", "cet")
-    out["source_url"] = _pick(raw, "source_url", "SBIR URL")
-    out["solicitation_number"] = _pick(raw, "Solicitation Number", "solicitation_number")
-    out["topic_code"] = _pick(raw, "Topic Code", "topic_code")
-    material = out.astype("string").fillna("").agg("|".join, axis=1)
-    out["row_hash"] = material.map(lambda value: hashlib.sha256(value.encode()).hexdigest())
-
-    # SBIR.gov sometimes publishes several editions of the same stable award
-    # (typically revised amount/end-date records). Treat them as revisions, not
-    # distinct awards, and retain the most current-looking public edition.
-    edition_counts = out.groupby("award_key")["award_key"].transform("size")
-    edition_variants = out.groupby("award_key")["row_hash"].transform("nunique")
-    out["source_edition_count"] = edition_counts
-    out["source_edition_variants"] = edition_variants
-    duplicate_editions = edition_counts.gt(1)
-    if duplicate_editions.any():
-        logger.warning(
-            "Collapsing %d SBIR source rows across %d stable award keys",
-            int(duplicate_editions.sum()),
-            int(out.loc[duplicate_editions, "award_key"].nunique()),
-        )
-        out = (
-            out.assign(
-                _end_sort=pd.to_datetime(out["recorded_end_date"], errors="coerce"),
-                _amount_sort=pd.to_numeric(out["amount"], errors="coerce"),
-            )
-            .sort_values(
-                ["award_key", "_end_sort", "_amount_sort", "row_hash"],
-                kind="stable",
-                na_position="first",
-            )
-            .drop_duplicates("award_key", keep="last")
-            .drop(columns=["_end_sort", "_amount_sort"])
-        )
-    out["public_id_award_count"] = out.groupby("award_id")["award_key"].transform("nunique")
-    return out.reset_index(drop=True)
+    return normalize_sbir_awards(raw)
 
 
 def _month_bounds(report_month: str) -> tuple[date, date]:
@@ -275,7 +75,7 @@ def build_award_cohorts(
         if "row_hash" not in frame.columns:
             return normalize_awards(frame)
         versions = frame.get("award_key_version", pd.Series(pd.NA, index=frame.index))
-        if not versions.eq(_AWARD_KEY_VERSION).all():
+        if not versions.eq(SBIR_AWARD_KEY_VERSION).all():
             raise ValueError(
                 f"{label} uses a pre-migration award key; regenerate it from raw awards"
             )

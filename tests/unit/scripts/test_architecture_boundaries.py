@@ -100,3 +100,76 @@ def test_script_execution_exception_is_exact(tmp_path: Path) -> None:
     violations = boundaries.scan_package("sbir_analytics", source_root, repository_root=tmp_path)
 
     assert [violation.imported_module for violation in violations] == ["scripts/data/unapproved.py"]
+
+
+def test_execution_guard_ignores_script_paths_outside_the_subprocess_call(
+    tmp_path: Path,
+) -> None:
+    """A `scripts/` literal is only a bridge when it is what gets spawned.
+
+    The scan used to gate on "this file calls subprocess anywhere", then take
+    any `scripts/*.py` literal in the module as the target — so an unrelated
+    reference in a file that shells out for some other reason was reported.
+    """
+
+    source_root = tmp_path / "packages" / "sbir-analytics" / "sbir_analytics"
+    _write(
+        tmp_path,
+        "packages/sbir-analytics/sbir_analytics/example.py",
+        "import subprocess\n"
+        "from pathlib import Path\n"
+        "DOCS_REFERENCE = Path('scripts') / 'data' / 'unrelated.py'\n"
+        "subprocess.run(['echo', 'hello'])\n",
+    )
+
+    assert boundaries.scan_package("sbir_analytics", source_root, repository_root=tmp_path) == []
+
+
+def test_execution_guard_resolves_a_command_built_in_a_local(tmp_path: Path) -> None:
+    """Building argv in a local before spawning it is still a bridge."""
+
+    source_root = tmp_path / "packages" / "sbir-analytics" / "sbir_analytics"
+    _write(
+        tmp_path,
+        "packages/sbir-analytics/sbir_analytics/example.py",
+        "import subprocess\n"
+        "import sys\n"
+        "from pathlib import Path\n"
+        "repo = Path('/repo')\n"
+        "script = repo / 'scripts' / 'data' / 'unapproved.py'\n"
+        "cmd = [sys.executable, str(script), '--area', 'quantum']\n"
+        "subprocess.run(cmd, cwd=str(repo))\n",
+    )
+
+    violations = boundaries.scan_package("sbir_analytics", source_root, repository_root=tmp_path)
+
+    assert [violation.imported_module for violation in violations] == ["scripts/data/unapproved.py"]
+
+
+def test_execution_guard_does_not_guess_at_a_rebound_command(tmp_path: Path) -> None:
+    """Two assignments to one name means static analysis cannot say which ran."""
+
+    source_root = tmp_path / "packages" / "sbir-analytics" / "sbir_analytics"
+    _write(
+        tmp_path,
+        "packages/sbir-analytics/sbir_analytics/example.py",
+        "import subprocess\n"
+        "cmd = ['python', 'scripts/data/first.py']\n"
+        "cmd = ['python', 'scripts/data/second.py']\n"
+        "subprocess.run(cmd)\n",
+    )
+
+    assert boundaries.scan_package("sbir_analytics", source_root, repository_root=tmp_path) == []
+
+
+def test_execution_guard_terminates_on_a_self_referential_name(tmp_path: Path) -> None:
+    """Name resolution must not loop on `a = a` or a mutual cycle."""
+
+    source_root = tmp_path / "packages" / "sbir-analytics" / "sbir_analytics"
+    _write(
+        tmp_path,
+        "packages/sbir-analytics/sbir_analytics/example.py",
+        "import subprocess\nfirst = second\nsecond = first\nsubprocess.run(first)\n",
+    )
+
+    assert boundaries.scan_package("sbir_analytics", source_root, repository_root=tmp_path) == []

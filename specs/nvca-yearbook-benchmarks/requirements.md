@@ -1,6 +1,6 @@
 # Requirements — NVCA Yearbook Benchmark Reference Data
 
-**Target epistemic tier:** `evidence`
+**Target epistemic tier:** `pipelines`
 
 > **Status:** **Partially implemented; spec was mis-framed on first pass.** A
 > 2026-06-29 audit (paralleling #400 and #402) found that

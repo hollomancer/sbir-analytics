@@ -87,6 +87,9 @@ bypassing lifecycle review; the status and rationale still require human judgmen
 - **`phase-iii-source-materialization` — Maintenance.** The schema-verified
   USAspending and SBIR.gov source layer is implemented. Keep it aligned with the
   census and other transition consumers rather than extending it with scoring policy.
+- **`phase-iii-hand-label-validation` — Gated backlog.** Design and estimand
+  are written but the spec is not yet frozen. Do not implement until the design
+  is approved and frozen per the evidence-tier contract.
 - **`phase3-candidate-enrichment` — Active.** The source-coverage gate stopped
   the text assembler, while the firm-ranking/lineage experiment found a useful
   but hand-weighted lift. Learned weights and a larger independent validation set

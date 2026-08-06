@@ -65,3 +65,24 @@ def test_all_valid_tiers_are_accepted(tmp_path: Path) -> None:
 
 def test_current_repository_spec_declarations_are_valid() -> None:
     assert tiers.scan_specs() == []
+
+
+def test_capitalized_tier_is_reported_as_invalid_not_missing(tmp_path: Path) -> None:
+    """A capitalization typo should name the real problem.
+
+    The declaration pattern used to match lowercase only, so `Evidence` fell
+    through to "missing declaration" and sent the author looking for a line
+    that was already there.
+    """
+
+    spec = tmp_path / "specs" / "example"
+    _write(
+        tmp_path,
+        "specs/example/requirements.md",
+        "# Example\n\n**Target epistemic tier:** Evidence\n",
+    )
+
+    violations = tiers.validate_spec_directory(spec, repository_root=tmp_path)
+
+    assert len(violations) == 1
+    assert "invalid target tier 'Evidence'" in violations[0].message

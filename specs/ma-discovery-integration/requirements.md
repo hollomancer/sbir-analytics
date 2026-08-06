@@ -1,6 +1,6 @@
 # M&A Discovery Integration — Requirements
 
-**Target epistemic tier:** `evidence`
+**Target epistemic tier:** `pipelines`
 
 The target contract is the confidence-bounded discovery and collision policy
 in [design.md](design.md). Candidate discovery remains non-citable until the

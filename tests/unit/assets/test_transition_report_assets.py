@@ -34,7 +34,9 @@ def mod():
 
 def test_cohort_metrics_flattens_summary_and_composition(mod):
     summary = {
+        "_epistemic": {"tier": "exploratory", "citable": False},
         "area_id": "quantum_information_science",
+        "cohort_profile": "tech-area-cohort-v1",
         "phase2_universe": 40000,
         "method_a_source": "keyword_pack",
         "method_b_source": "taxonomy",
@@ -49,6 +51,9 @@ def test_cohort_metrics_flattens_summary_and_composition(mod):
     }
     m = mod._cohort_metrics(summary, composition)
     assert m["area_id"] == "quantum_information_science"
+    assert m["cohort_profile"] == "tech-area-cohort-v1"
+    assert m["epistemic_tier"] == "exploratory"
+    assert m["citable"] is False
     assert m["method_a_awards"] == 640
     assert m["method_b_awards"] == 512
     assert m["intersection"] == 88
@@ -72,9 +77,24 @@ def test_cohort_metrics_tolerates_missing_blocks(mod):
     assert m["has_deficiency_class"] is False
 
 
-def test_repo_root_resolves_to_the_builder(mod):
+def test_repo_root_resolves_to_declared_profiles(mod):
     root = mod._repo_root()
-    assert (root / "scripts" / "data" / "build_tech_area_cohort.py").exists()
+    assert (root / "config" / "transition_reports" / "hypersonics.yaml").exists()
+
+
+def test_cohort_build_calls_package_api_directly(mod, monkeypatch, tmp_path):
+    calls = []
+
+    class _Log:
+        def info(self, message):
+            calls.append(message)
+
+    monkeypatch.setattr(mod, "materialize_tech_area_cohort", lambda area_id: tmp_path / area_id)
+
+    result = mod._run_cohort_build("hypersonics", _Log())
+
+    assert result == tmp_path / "hypersonics"
+    assert any("materializing area=hypersonics" in message for message in calls)
 
 
 def test_factory_wired_all_three_areas(mod):
