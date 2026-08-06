@@ -31,20 +31,13 @@ among 813 rows (813 unique awards unchanged). See `dedupe_by_award_key` in
 
 import argparse
 import csv
-import importlib.util
 import sys
 from pathlib import Path
 
-REPO = Path(__file__).resolve().parents[2]
-sys.path.insert(0, str(REPO))
-csv.field_size_limit(min(sys.maxsize, 2**31 - 1))
+from sbir_etl.reporting.tech_area_cohort import aggregate_composition
 
-_spec = importlib.util.spec_from_file_location(
-    "build_tech_area_cohort", REPO / "scripts" / "data" / "build_tech_area_cohort.py"
-)
-_btac = importlib.util.module_from_spec(_spec)
-_spec.loader.exec_module(_btac)
-aggregate_composition = _btac.aggregate_composition
+REPO = Path(__file__).resolve().parents[2]
+csv.field_size_limit(min(sys.maxsize, 2**31 - 1))
 
 
 # Transcribed from docs/<area>_sbir_transition_findings.md (2026-07-13).

@@ -1,4 +1,4 @@
-"""Unit tests for the tech-area cohort matcher (scripts/data/build_tech_area_cohort.py).
+"""Unit tests for the exploratory tech-area cohort package API.
 
 The matching engine is what specs/tech-area-transition-report exists to validate,
 so it gets direct coverage here: Method-A resolution, soft-pattern gating in both
@@ -6,24 +6,11 @@ modes, the negative veto on soft-only admits, overlap stats, and the negation
 diagnostic.
 """
 
-import importlib.util
 import re
-from pathlib import Path
 
 import pytest
 
-REPO_ROOT = Path(__file__).resolve().parents[3]
-SCRIPT_PATH = REPO_ROOT / "scripts" / "data" / "build_tech_area_cohort.py"
-
-
-def _load_script():
-    spec = importlib.util.spec_from_file_location("build_tech_area_cohort", SCRIPT_PATH)
-    mod = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(mod)
-    return mod
-
-
-mod = _load_script()
+from sbir_etl.reporting import tech_area_cohort as mod
 
 
 # Minimal QIS-shaped taxonomy: one keyword + one negative.
@@ -77,6 +64,12 @@ def test_resolve_method_a_keyword_pack_pulls_taxonomy_negatives():
     # pack negative kept AND taxonomy negative merged in
     assert any("handwave" in p for p in neg_patterns)
     assert any("quantum\\ dot" in p or "quantum dot" in p for p in neg_patterns)
+
+
+def test_repository_area_profiles_select_named_v1_policy():
+    cfg = mod.load_area_config("hypersonics")
+    assert cfg["cohort_profile"] == mod.COHORT_PROFILE_V1
+    assert mod.EPISTEMIC_TIER == "exploratory"
 
 
 def test_resolve_method_a_taxonomy_fallback():
@@ -366,6 +359,11 @@ def test_dedupe_keeps_same_award_id_different_award():
 
 def test_aggregate_composition_full():
     comp = mod.aggregate_composition(_fixture_cohort())
+    assert comp["_epistemic"] == {
+        "tier": "exploratory",
+        "citable": False,
+        "cohort_profile": "tech-area-cohort-v1",
+    }
     assert comp["n_unique_awards"] == 5
     assert comp["duplicate_award_key_rows"] == 1
 
@@ -396,7 +394,12 @@ def test_aggregate_composition_agency_sorted_desc():
 
 # --- T20: policy_brief_stub emitter --------------------------------------------
 
-_CFG = {"area_id": "hypersonics", "display_name": "Hypersonics", "audience": "NSC staff"}
+_CFG = {
+    "area_id": "hypersonics",
+    "cohort_profile": "tech-area-cohort-v1",
+    "display_name": "Hypersonics",
+    "audience": "NSC staff",
+}
 
 
 def _summary(signals_absent):

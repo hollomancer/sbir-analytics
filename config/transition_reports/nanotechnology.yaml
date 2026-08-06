@@ -1,4 +1,5 @@
 area_id: nanotechnology
+cohort_profile: tech-area-cohort-v1
 display_name: Nanotechnology
 cet_id: null  # spans multiple CET areas; Method B uses method_b_terms below
 

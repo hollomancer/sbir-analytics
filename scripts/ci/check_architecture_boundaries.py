@@ -50,9 +50,6 @@ TRANSITIONAL_SCRIPT_IMPORTS = {
 # removed when its script implementation is exposed through a package API and
 # the package caller invokes that API directly.
 TRANSITIONAL_SCRIPT_EXECUTIONS = {
-    "packages/sbir-analytics/sbir_analytics/assets/transition_report.py": frozenset(
-        {"scripts/data/build_tech_area_cohort.py"}
-    ),
     "packages/sbir-analytics/sbir_analytics/assets/jobs/weekly_awards_report.py": frozenset(
         {"scripts/data/weekly_awards_report.py"}
     ),

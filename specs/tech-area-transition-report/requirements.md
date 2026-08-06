@@ -7,6 +7,8 @@
 > **C1** (cross-agency CET portfolio) in [docs/research-questions.md](../../docs/research-questions.md).
 > Coordinates with [dark-majority-resolution](../dark-majority-resolution/requirements.md)
 > (that spec owns deficiency *treatments*; this one owns parameterized *cohort → signal → report skeleton*).
+> Current implementation status: **exploratory / non-citable**. The named v1
+> admission profile has not yet earned this spec's evidence contract.
 
 **Research question anchor:** B — technology-area Phase II→III commercialization pathways;
 C1 — CET-area portfolio composition
@@ -67,6 +69,8 @@ keyed by `cet_id`, so that adding a new area does not require editing pipeline s
    are absent, THE System SHALL proceed with those methods empty — not error.
 4. WHEN `area_id` equals a taxonomy `cet_id`, Method B SHALL default to that area's taxonomy
    keywords. Nanotechnology is the documented exception (`cet_id: null` + `method_b_terms`).
+5. EACH area config SHALL select a named `cohort_profile`; outputs SHALL stamp that profile and
+   their exploratory/non-citable status so contestable admission rules cannot drift invisibly.
 
 ### Requirement 2 — Parameterized cohort build
 

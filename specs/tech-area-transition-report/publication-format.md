@@ -88,6 +88,9 @@ When digest / Form D / M&A artifacts are missing, the policy brief **must**:
 | Quantum (small N) | Instrument-dependent counts; small-N warning on any future rate |
 | Hypersonics | Procurement-first; subaward channel priority over Form D |
 
-## Generator hooks (future)
+## Generator hooks
 
-`build_tech_area_cohort.py` could emit a `policy_brief_stub.md` alongside `methodology_stub.md` using `overlap_summary.json` + agency aggregates. Not implemented in v1 — hand-authored briefs follow this spec.
+The named package cohort API emits `policy_brief_stub.md` alongside
+`methodology_stub.md` using `overlap_summary.json` + agency aggregates. Both
+generated artifacts are labeled exploratory/non-citable; hand-authored briefs
+must still satisfy this publication contract before release.
