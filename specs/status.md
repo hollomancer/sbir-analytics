@@ -106,6 +106,13 @@ bypassing lifecycle review; the status and rationale still require human judgmen
 - **`phase3-undercount-extension` — Gated backlog.** Valid B3 follow-up, but it
   depends on reusable resolution/self-label components and must keep contract
   undercount separate from provisional non-contract vehicle counts.
+- **`production-asset-checks` — Active.** Moves the retired nightly/weekly
+  suites' "does the system work on real data" function into the pipeline
+  itself: blocking freshness, row-floor, row-delta, and completeness asset
+  checks on the ingestion assets and `enriched_sbir_awards`, with thresholds
+  in `config/base.yaml`. No schedules are added or changed; checks ride
+  whatever materializations run. USPTO checks and AlertCollector wiring are
+  named second-tranche work.
 - **`procurement-transition-p1-remediation` — Active.** Award identity and path
   attribution landed. Cold-start bounds, source-normalization provenance, and
   ranking/auditability phases remain.
