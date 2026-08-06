@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Legacy local validation helper for an SBIR awards refresh.
-# The live download is now sbir_awards_download_job on the Mac mini; this script
+# The live download is now sbir_awards_download_job on the self-hosted server; this script
 # remains useful for an explicit download-and-validation rehearsal in a dev checkout.
 
 set -euo pipefail

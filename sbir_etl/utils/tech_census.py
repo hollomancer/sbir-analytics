@@ -16,6 +16,10 @@ from typing import Any, TypedDict
 
 import yaml
 
+from sbir_etl.identity.geography import (
+    normalize_us_jurisdiction,
+)
+
 REPO_ROOT = Path(__file__).resolve().parents[2]
 CONFIG_DIR = REPO_ROOT / "config" / "tech_census"
 
@@ -26,6 +30,10 @@ class CensusAward(TypedDict, total=False):
     title: str
     abstract: str
     company: str
+    city: str
+    state: str
+    uei: str
+    duns: str
     agency: str
     program: str
     phase: str
@@ -34,6 +42,24 @@ class CensusAward(TypedDict, total=False):
     agency_tracking_number: str
     contract: str
     source_row: int
+
+
+def normalize_state_code(value: Any) -> str:
+    """Normalize a USPS state/territory code or full name for report filtering."""
+
+    return normalize_us_jurisdiction(value) or ""
+
+
+def normalize_state_codes(values: Iterable[str]) -> tuple[str, ...]:
+    """Return unique normalized codes, rejecting unknown filter values."""
+
+    codes = []
+    for value in values:
+        code = normalize_state_code(value)
+        if not code:
+            raise ValueError(f"unknown US state or territory: {value!r}")
+        codes.append(code)
+    return tuple(sorted(set(codes)))
 
 
 def load_census_config(area_id: str, config_dir: Path | None = None) -> dict[str, Any]:
@@ -336,6 +362,10 @@ def _audit_identity(award: CensusAward) -> dict[str, Any]:
     return {
         "title": award.get("title", ""),
         "company": award.get("company", ""),
+        "city": award.get("city", ""),
+        "state": award.get("state", ""),
+        "uei": award.get("uei", ""),
+        "duns": award.get("duns", ""),
         "program": award.get("program", ""),
         "agency_tracking_number": award.get("agency_tracking_number", ""),
         "contract": award.get("contract", ""),
@@ -545,6 +575,10 @@ def load_award_data_csv(path: Path) -> list[CensusAward]:
                     "title": row.get("Award Title", "") or "",
                     "abstract": row.get("Abstract", "") or "",
                     "company": row.get("Company", "") or "",
+                    "city": row.get("City", "") or "",
+                    "state": row.get("State", "") or "",
+                    "uei": row.get("UEI", "") or "",
+                    "duns": row.get("Duns", "") or "",
                     "agency": row.get("Agency", "") or "",
                     "program": row.get("Program", "") or "",
                     "phase": row.get("Phase", "") or "",

@@ -63,8 +63,8 @@ script's default path as an official baseline.
 
 ## Live-server boundary
 
-Heavy assets on the Mac mini are manual and capacity-gated. Check current container limits and
-follow [Heavy assets](deployment/mac-mini-server.md#heavy-assets) before profiling there. Never run
+Heavy assets on the self-hosted server are manual and capacity-gated. Check current container limits and
+follow [Heavy assets](deployment/self-hosted-server.md#heavy-assets) before profiling there. Never run
 a benchmark from the development checkout against the live graph or overwrite live source data.
 
 ## Reporting results

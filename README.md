@@ -76,7 +76,7 @@ BEA input-output tables  ┘      (orchestrated by Dagster)
   expressible as queries.
 - **A couple of ML/heuristic components** live in `packages/sbir-ml/`: a CET
   technology classifier and a Phase II→III transition detector. These are
-  approximate — see limitations.
+  still being actively worked on.
 
 ## Repository structure
 
@@ -96,8 +96,7 @@ scripts/               One-off analysis and operational scripts
 studies/                Reproducible analytical studies and evidence artifacts
 ```
 
-The live deployment is an always-on Mac mini running Docker Compose behind
-Tailscale. GitHub Actions is CI-only; the former AWS data plane has been retired.
+The live deployment runs Docker Compose behind Tailscale.
 See the [deployment overview](docs/deployment/README.md) for the current model.
 
 ## Suggested reading path

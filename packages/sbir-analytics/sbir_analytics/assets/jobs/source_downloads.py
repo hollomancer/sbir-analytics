@@ -6,7 +6,7 @@ that stores the data is the host that fetches it.
 
 Each op calls the corresponding package pipeline, which writes to the local
 data root by default. Destinations come from the config paths so the server
-profile's SSD bind mounts are honoured without hardcoding them here.
+profile's persistent bind mounts are honoured without hardcoding them here.
 
 Schedules for these jobs default to STOPPED. Per the self-hosted server runbook, an
 operator confirms a manual run succeeds on this host before enabling one.
