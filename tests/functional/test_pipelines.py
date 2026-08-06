@@ -61,7 +61,8 @@ class TestFiscalPipeline:
         from dagster import materialize
         from sbir_analytics.assets.fiscal_assets import sensitivity_scenarios
 
-        # Only materialize the asset without upstream dependencies
+        # sensitivity_scenarios has no upstream dependencies, so it can be
+        # materialized on its own.
         result = materialize([sensitivity_scenarios])
 
         assert result.success

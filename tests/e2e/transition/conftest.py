@@ -83,6 +83,9 @@ def transition_detection_dataframe(
             award=award.to_dict(),
             candidate_contracts=contracts,
         )
+        # Column names are TransitionAnalytics.summarize's documented
+        # transitions_df contract (award_id/score/contract_id), mapped here
+        # from the Transition model's attributes.
         detections.extend(
             {
                 "award_id": r.award_id,
