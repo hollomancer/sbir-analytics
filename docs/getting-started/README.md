@@ -87,7 +87,7 @@ make format        # apply Ruff formatting and safe lint fixes
 ```
 
 The complete testing strategy, markers, and Docker workflows are documented in
-the [testing index](../testing/index.md). Contribution expectations are in
+the [testing index](../testing/README.md). Contribution expectations are in
 [CONTRIBUTING.md](../../CONTRIBUTING.md).
 
 ## Optional Credentials and Real Data
@@ -98,7 +98,7 @@ supported variables and must remain safe to commit; never commit `.env`.
 
 For real SBIR award ingestion, place the source CSV at the configured path or
 override `extraction.sbir.csv_path`. See the [configuration reference](../configuration.md)
-and [data documentation](../data/index.md) before running larger materializations.
+and [data documentation](../data/README.md) before running larger materializations.
 
 ## Common Problems
 
@@ -119,6 +119,6 @@ and [data documentation](../data/index.md) before running larger materialization
 - [Research questions](../research-questions.md) — why the repository exists
 - [Architecture overview](../architecture/detailed-overview.md) — package and data flow
 - [Development guides](../development/README.md) — code standards and workflows
-- [Testing index](../testing/index.md) — local and CI validation
+- [Testing index](../testing/README.md) — local and CI validation
 - [Configuration reference](../configuration.md) — YAML and environment overrides
 - [Deployment guide](../deployment/README.md) — self-hosted server and local deployment

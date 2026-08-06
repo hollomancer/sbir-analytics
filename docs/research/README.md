@@ -64,9 +64,9 @@ explain how firms were selected and what the results cannot show.
 
 | Area | Questions | Evidence status | Data covered |
 | --- | --- | --- | --- |
-| Nanotechnology: [brief](../nanotech_sbir_policy_brief.md), [findings](../nanotech_sbir_transition_findings.md), [method](../nano_phase3_methodology.md) | A1, A2, B2, B3, C1 | Early estimates with stated bounds; not final program rates | SBIR.gov FY2025; USAspending FY2024; PatentsView March 2026 |
-| Hypersonics: [brief](../hypersonics_sbir_policy_brief.md), [findings](../hypersonics_sbir_transition_findings.md) | A1, A2, B2, B3, C1 | Early firm group built from several signals; outcome rates are unavailable | SBIR.gov through FY2025 |
-| Quantum information science: [brief](../quantum_information_science_sbir_policy_brief.md), [findings](../quantum_information_science_sbir_transition_findings.md) | A1, A2, B2, B3, C1 | Early firm group built from several signals; outcome rates are unavailable | SBIR.gov through FY2025 |
+| Nanotechnology: [brief](nanotech_sbir_policy_brief.md), [findings](nanotech_sbir_transition_findings.md), [method](../nano_phase3_methodology.md) | A1, A2, B2, B3, C1 | Early estimates with stated bounds; not final program rates | SBIR.gov FY2025; USAspending FY2024; PatentsView March 2026 |
+| Hypersonics: [brief](hypersonics_sbir_policy_brief.md), [findings](hypersonics_sbir_transition_findings.md) | A1, A2, B2, B3, C1 | Early firm group built from several signals; outcome rates are unavailable | SBIR.gov through FY2025 |
+| Quantum information science: [brief](quantum_information_science_sbir_policy_brief.md), [findings](quantum_information_science_sbir_transition_findings.md) | A1, A2, B2, B3, C1 | Early firm group built from several signals; outcome rates are unavailable | SBIR.gov through FY2025 |
 
 ## Research planning and communication
 

@@ -90,5 +90,5 @@ reach at least 85% precision before its main packet section is distributed.
 
 Related implemented design records:
 
-- [Awardee-first packet design](superpowers/specs/2026-07-29-awardee-first-procurement-packet-design.md)
-- [Anchored “why it connects” design](superpowers/specs/2026-07-30-why-it-connects-explanation-design.md)
+- [Awardee-first packet design](archive/design/2026-07-29-awardee-first-procurement-packet-design.md)
+- [Anchored “why it connects” design](archive/design/2026-07-30-why-it-connects-explanation-design.md)
