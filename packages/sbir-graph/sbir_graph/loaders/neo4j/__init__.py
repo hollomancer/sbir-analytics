@@ -1,6 +1,10 @@
 """
 Neo4j loaders package for SBIR graph database operations.
 
+Epistemic tier: pipelines. Every loader writes upstream records with
+deterministic MERGE semantics; correctness is faithfulness to the input
+records, and no loader performs inference or scoring.
+
 This package requires the ``neo4j`` optional dependency.  Install it with::
 
     pip install sbir-graph
@@ -13,6 +17,8 @@ from __future__ import annotations
 
 from typing import Any
 
+
+EPISTEMIC_TIER = "pipelines"
 
 __all__ = [
     # Base
