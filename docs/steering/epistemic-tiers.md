@@ -115,6 +115,33 @@ and an `evidence` artifact may not depend on one. See
 [structure.md](structure.md#transitional-script-dependencies) for the current
 bridge.
 
+#### Two populations: workbench and operated
+
+The exploratory tier deliberately holds two different kinds of artifact, and
+only one of them gets the tier's full permissions.
+
+**Workbench** work — `notebooks/`, one-off analyses in `scripts/`, cohort
+builders run once — carries the whole contract and every permission that comes
+with it: no tests, no interface stability, allowed to rot.
+
+**Operated** work is exploratory code reachable from a Dagster job or schedule:
+the recurring reports, fiscal estimation, CET classification, transition
+scoring. Operated status is derived from job wiring, never declared, and it is
+not a fifth tier. An operated artifact keeps the tier's non-citability — and
+must emit `citable: false` metadata on anything that leaves the repository —
+but loses rot tolerance: code that runs on a schedule has to keep working, so
+tests and upkeep on operated exploratory code are maintenance, not
+overbuilding. The rest of the contract stands unchanged: nothing above
+exploratory may import it, and its numbers stay non-citable no matter how well
+tested it is.
+
+The promotion runway for operated inference is a study contract, not more
+tests: a `studies/<id>/study.yaml` entering at `exploratory` or `reproducible`,
+created only when a research question needs the number to carry citable
+weight. Transition scoring — already precision-benchmarked, with frozen
+coefficients from `phase3-notice-corpus-fusion` — is the named first
+candidate; fiscal estimation waits on the `fiscal-tax-impact-v2` gate.
+
 ## Classifying an artifact
 
 Work the questions in order and stop at the first yes:
@@ -165,6 +192,10 @@ What already holds:
 - Active specs declare a target tier in `requirements.md`;
   `scripts/ci/check_epistemic_tiers.py` rejects missing, duplicate, and
   invalid declarations in CI.
+- The tier dependency lattice is executable: `scripts/ci/check_tier_boundaries.py`
+  (in `make lint-boundaries` and CI) resolves each module's effective tier and
+  blocks imports below it, with a stale-failing allowlist of named edges that
+  each carry a removal condition (`specs/epistemic-tier-enforcement/`).
 - The Phase III census implements the evidence-tier mechanisms: frozen
   artifacts, SHA enforcement, a declared estimand, and a blocking asset check.
 

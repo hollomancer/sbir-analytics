@@ -6,21 +6,38 @@
 
 ## T1 — Tier-aware import guard
 
-- [ ] 1.1 Implement `scripts/ci/check_tier_boundaries.py` (tier resolution with package
+- [x] 1.1 Implement `scripts/ci/check_tier_boundaries.py` (tier resolution with package
       inheritance, relative-import resolution, policy map, allowlist with stale-entry
       failure) plus `tests/unit/scripts/test_tier_boundaries.py` on tmp-tree fixtures.
   - Verify: new unit tests pass; `uv run python scripts/ci/check_tier_boundaries.py`
     runs against the real tree and prints every hit.
   - Requirements: 1.1, 1.2, 1.3, 1.4, 1.6
 
-- [ ] 1.2 Triage the full-repository run: fix label mistakes (one-line justification
+- [x] 1.2 Triage the full-repository run: fix label mistakes (one-line justification
       each), allowlist genuine edges with reason + removal condition. Expected seeds:
       `sbir_neo4j_loading.py`, `defense_release.py`, `supply_chain/__init__.py`.
   - Verify: guard exits 0; allowlist entries each name a removal condition; diff of
     label corrections reviewed against the tier doc's classification questions.
   - Requirements: 1.3, 1.4
+  - Done 2026-08-06. First run found 56 hits. Label fixes (9 files): never-labeled
+    `sbir_etl/exceptions.py`, `sbir_etl/__init__.py`, and `sbir_etl/utils/date_utils.py`
+    → `primitives` (exception taxonomy and date parsing are imported by primitives
+    modules and depend on nothing repo-internal; root init is version metadata only);
+    `cet_pipeline_job.py`, `fiscal_returns_job.py`, `modernbert_job.py` and
+    `tools/{mission_a,mission_c,tech_census}` → `exploratory` (job wrappers and tool
+    surfaces for exploratory analytics, matching the weekly/phase-transition job
+    precedent). Allowlist landed at six edges: the three seeds, plus
+    `pairing.py → phase_iii_candidates.similarity` (lazy scorer import on the
+    non-census path; removal: split the scoring entry point into its own exploratory
+    module) and two NAICS registration edges
+    (`strategies/__init__.py`, `strategy_registry.py` → `text_inference`; removal:
+    register that strategy from an exploratory composition point or validate and
+    relabel it). Dagster's dynamic asset loading (`importlib` with computed names in
+    `assets/__init__.py`) is invisible to the guard by design — the same literal-only
+    limit as the architecture guard; operated-asset composition is governed by the
+    workbench/operated doctrine, not import edges.
 
-- [ ] 1.3 Wire into `make lint-boundaries` and the CI job running
+- [x] 1.3 Wire into `make lint-boundaries` and the CI job running
       `check_epistemic_tiers.py`; mention the guard in the tiers doc's enforcement list.
   - Verify: `make lint-boundaries` runs it; CI quality job shows it; docs-check passes.
   - Requirements: 1.5, 4.3
@@ -64,7 +81,7 @@
 
 ## T4 — Doctrine
 
-- [ ] 4.1 Add the "two populations" section to
+- [x] 4.1 Add the "two populations" section to
       `docs/steering/epistemic-tiers.md`: workbench vs operated exploratory, operated
       status derived from job/schedule wiring, `citable: false` metadata obligation,
       and the studies/-based promotion runway naming transition scoring first.
