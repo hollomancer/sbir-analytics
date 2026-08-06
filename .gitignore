@@ -226,3 +226,6 @@ results.csv
 
 # Playwright MCP browser-automation traces (local debugging only)
 .playwright-mcp/
+
+# CDK synth output (reproducible build artifact)
+infrastructure/cdk/cdk.out/

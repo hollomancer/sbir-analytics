@@ -17,12 +17,15 @@ from __future__ import annotations
 import argparse
 import csv
 import json
+import math
 import re
 import sys
 from collections import Counter
 from pathlib import Path
 
 import yaml
+
+from sbir_etl.extractors.sbir_public_awards import load_sbir_awards_csv
 
 REPO = Path(__file__).resolve().parents[2]
 DATA = REPO / "data"
@@ -51,45 +54,53 @@ def load_area_config(area_id: str) -> dict:
     return cfg
 
 
-def _safe_float(v: str) -> float:
+def _safe_float(v: object) -> float:
+    text = str(v).strip()
     try:
-        return float(v.replace("$", "").replace(",", "")) if v else 0.0
+        number = float(text.replace("$", "").replace(",", "")) if text else 0.0
     except ValueError:
         return 0.0
+    return number if math.isfinite(number) else 0.0
 
 
-def _safe_int(v: str) -> int:
+def _safe_int(v: object) -> int:
+    text = str(v).strip()
     try:
-        return int(float(v.replace("$", "").replace(",", ""))) if v else 0
+        return int(float(text.replace("$", "").replace(",", ""))) if text else 0
     except ValueError:
         return 0
 
 
 def load_phase2_awards(awards_csv: Path) -> list[dict]:
-    rows = []
-    with open(awards_csv, newline="", encoding="utf-8-sig") as f:
-        for row in csv.DictReader(f):
-            if row.get("Phase", "").strip() != "Phase II":
-                continue
-            rows.append(
-                {
-                    "award_id": row.get("Contract", "").strip()
-                    or row.get("Agency Tracking Number", "").strip(),
-                    "agency": row.get("Agency", "").strip(),
-                    "branch": row.get("Branch", "").strip(),
-                    "program": row.get("Program", "").strip(),
-                    "company": row.get("Company", "").strip(),
-                    "uei": row.get("UEI", "").strip(),
-                    "duns": row.get("Duns", "").strip(),
-                    "award_year": _safe_int(row.get("Award Year", "")),
-                    "award_amount": _safe_float(row.get("Award Amount", "")),
-                    "title": row.get("Award Title", "").strip(),
-                    "abstract": row.get("Abstract", "").strip(),
-                    "proposal_award_date": row.get("Proposal Award Date", "").strip(),
-                    "contract_end_date": row.get("Contract End Date", "").strip(),
-                    "solicitation_year": _safe_int(row.get("Solicitation Year", "")),
-                }
-            )
+    rows: list[dict] = []
+    for row in load_sbir_awards_csv(awards_csv).to_dict(orient="records"):
+        if str(row.get("phase") or "").strip() != "Phase II":
+            continue
+        award_date = str(row.get("award_date") or "")
+        recorded_end_date = str(row.get("recorded_end_date") or "")
+        rows.append(
+            {
+                "award_id": str(
+                    row.get("contract_number") or row.get("agency_tracking_number") or ""
+                ),
+                "award_key": str(row["award_key"]),
+                "award_key_version": str(row["award_key_version"]),
+                "agency": str(row.get("agency") or ""),
+                "branch": str(row.get("branch") or ""),
+                "program": str(row.get("program") or ""),
+                "company": str(row.get("company") or ""),
+                "uei": str(row.get("uei") or ""),
+                "duns": str(row.get("duns") or ""),
+                "award_year": _safe_int(row.get("award_year")),
+                "award_amount": _safe_float(row.get("amount")),
+                "title": str(row.get("title") or ""),
+                "abstract": str(row.get("abstract") or ""),
+                "proposal_award_date": "" if award_date == "NaT" else award_date,
+                "contract_end_date": ("" if recorded_end_date == "NaT" else recorded_end_date),
+                "solicitation_year": _safe_int(row.get("solicitation_year")),
+                "source_row": _safe_int(row.get("source_row")),
+            }
+        )
     return rows
 
 
@@ -146,20 +157,14 @@ def resolve_method_a(
     return core, soft, negatives, source
 
 
-def resolve_method_b(
-    cfg: dict, taxonomy: dict[str, dict]
-) -> tuple[dict[re.Pattern, str], str]:
+def resolve_method_b(cfg: dict, taxonomy: dict[str, dict]) -> tuple[dict[re.Pattern, str], str]:
     if cfg.get("method_b_terms"):
-        compiled = {
-            _phrase_to_pattern(k): v for k, v in dict(cfg["method_b_terms"]).items()
-        }
+        compiled = {_phrase_to_pattern(k): v for k, v in dict(cfg["method_b_terms"]).items()}
         return compiled, "method_b_terms"
     cet_id = cfg.get("cet_id")
     if cet_id and cet_id in taxonomy:
         name = taxonomy[cet_id].get("name") or cet_id
-        compiled = {
-            _phrase_to_pattern(k): name for k in taxonomy[cet_id].get("keywords") or []
-        }
+        compiled = {_phrase_to_pattern(k): name for k in taxonomy[cet_id].get("keywords") or []}
         return compiled, "taxonomy"
     return {}, "absent"
 
@@ -275,8 +280,13 @@ def load_cpc_assignees(path: Path) -> dict[str, dict]:
                 continue
             rec = by_norm.setdefault(
                 norm,
-                {"orgs": set(), "patent_ids": set(), "grant_dates": [],
-                 "filing_dates": [], "subclasses": set()},
+                {
+                    "orgs": set(),
+                    "patent_ids": set(),
+                    "grant_dates": [],
+                    "filing_dates": [],
+                    "subclasses": set(),
+                },
             )
             rec["orgs"].add(row["assignee_organization"])
             rec["patent_ids"].add(row["patent_id"])
@@ -395,33 +405,18 @@ def _norm_firm(company: str) -> str:
         return (company or "").strip().upper()
 
 
-def dedupe_by_award_id(cohort: list[dict]) -> list[dict]:
-    """Drop true duplicate rows (keep first); rows with no award_id are kept.
+def dedupe_by_award_key(cohort: list[dict]) -> list[dict]:
+    """Keep one row per canonical, versioned SBIR award key."""
 
-    ``award_id`` alone is not a unique key: SBIR.gov reuses the same base ID
-    across genuinely different awards — DOE Phase II continuations/renewals in
-    a later year, and cases where a different company (successor/awardee
-    change) carries the same contract number. Deduping on bare ``award_id``
-    silently drops real, distinct awards (verified against real data: 2 of 3
-    QIS "duplicates" and all 3 of 3 hypersonics "duplicates" were genuinely
-    different awards with different company/year/dollar values, not repeats).
-
-    Key on (award_id, company, award_year, award_amount) instead — a row is a
-    true duplicate only if all four agree. Overlap stats already dedupe on
-    unique award_id sets for Jaccard/containment (a different, coarser
-    question — "how many distinct IDs are in each method" — where the
-    same-ID-different-award cases don't matter); composition tables need this
-    finer key so dollar sums and agency counts don't drop real award dollars.
-    """
-    seen: set[tuple[str, str, str, str]] = set()
-    out = []
+    seen: set[str] = set()
+    out: list[dict] = []
     for r in cohort:
-        aid = r.get("award_id") or ""
-        key = (aid, r.get("company") or "", r.get("award_year") or "", r.get("award_amount") or "")
-        if aid and key in seen:
+        key = str(r.get("award_key") or "").strip()
+        if not key:
+            raise ValueError("technology cohort row is missing canonical award_key")
+        if key in seen:
             continue
-        if aid:
-            seen.add(key)
+        seen.add(key)
         out.append(r)
     return out
 
@@ -429,20 +424,18 @@ def dedupe_by_award_id(cohort: list[dict]) -> list[dict]:
 def aggregate_composition(cohort: list[dict], censor_year: int = 2023) -> dict:
     """Recompute the Finding 1 / Finding 2 composition tables from the cohort.
 
-    Operates on award_id-deduplicated rows so agency counts, dollar sums, and firm
+    Operates on award-key-deduplicated rows so agency counts, dollar sums, and firm
     counts are unique-based (not row-based). Emits the agency mix, program split,
     decade distribution, recency censoring, firm concentration, and no-UEI share —
     the load-bearing numbers hand-authored into the findings reports today.
     """
-    rows = dedupe_by_award_id(cohort)
+    rows = dedupe_by_award_key(cohort)
     n = len(rows)
 
     by_agency: dict[str, dict] = {}
     for r in rows:
         a = r.get("agency", "") or "(unknown)"
-        bucket = by_agency.setdefault(
-            a, {"awards": 0, "phase2_dollars": 0.0, "_firms": set()}
-        )
+        bucket = by_agency.setdefault(a, {"awards": 0, "phase2_dollars": 0.0, "_firms": set()})
         bucket["awards"] += 1
         bucket["phase2_dollars"] += float(r.get("award_amount") or 0.0)
         bucket["_firms"].add(_norm_firm(r.get("company", "")))
@@ -479,7 +472,7 @@ def aggregate_composition(cohort: list[dict], censor_year: int = 2023) -> dict:
     return {
         "n_unique_awards": n,
         "n_rows_pre_dedupe": len(cohort),
-        "duplicate_award_id_rows": len(cohort) - n,
+        "duplicate_award_key_rows": len(cohort) - n,
         "totals": {
             "awards": n,
             "phase2_dollars_m": round(
@@ -543,7 +536,7 @@ def write_methodology_stub(
         "",
         f"**area_id:** `{cfg['area_id']}`  ",
         f"**cet_id:** `{cfg.get('cet_id')}`  ",
-        f"**Generated by:** `scripts/data/build_tech_area_cohort.py`",
+        "**Generated by:** `scripts/data/build_tech_area_cohort.py`",
         "",
         "## Cohort sizes",
         "",
@@ -642,6 +635,7 @@ def render_policy_brief_stub(cfg: dict, summary: dict, composition: dict) -> str
     dollars_s = "n/a" if dollars is None else f"${dollars:,}M"
     jaccard = overlap.get("jaccard")
     jaccard_s = "n/a" if jaccard is None else f"{jaccard:.3f}"
+
     # by_agency values are {"awards": n, ...} dicts already sorted desc by awards
     # (aggregate_composition); tolerate a plain-int shape too.
     def _awards(v: object) -> object:
@@ -771,9 +765,7 @@ def contamination_spotcheck(
     pure_neg_admitted = 0
     for r in kw_cohort:
         text = " ".join([r["title"], r["abstract"]])
-        if any(p.search(text) for p in negatives) and not any(
-            p.search(text) for p in positives
-        ):
+        if any(p.search(text) for p in negatives) and not any(p.search(text) for p in positives):
             pure_neg_admitted += 1
     by = Counter(r.get("admitted_by", "") for r in kw_cohort)
     return {
@@ -860,9 +852,7 @@ def quantum_dot_only_false_positives(
     n = 0
     for aw in awards:
         text = " ".join([aw["title"], aw["abstract"]])
-        if any(p.search(text) for p in neg_only) and not any(
-            p.search(text) for p in positives
-        ):
+        if any(p.search(text) for p in neg_only) and not any(p.search(text) for p in positives):
             n += 1
     return n
 
@@ -939,11 +929,11 @@ def main() -> int:
             f"{len(cfg['external_reference']['agency_map'])} agencies): computed for Method A + Method B"
         )
 
-    a_ids = {r["award_id"] for r in kw_cohort if r.get("award_id")}
-    b_ids = {r["award_id"] for r in cet_cohort if r.get("award_id")}
+    a_ids = {r["award_key"] for r in kw_cohort}
+    b_ids = {r["award_key"] for r in cet_cohort}
     stats = overlap_stats(a_ids, b_ids)
 
-    c_ids = {r["award_id"] for r in cpc_cohort if r.get("award_id")}
+    c_ids = {r["award_key"] for r in cpc_cohort}
     method_c = None
     if cpc_csv_cfg:
         method_c = {
@@ -973,9 +963,7 @@ def main() -> int:
         for k, v in channel_summary.items():
             print(f"  {k}: {v}")
 
-    spot = contamination_spotcheck(
-        enriched, core, soft, negatives, args.sample_negatives
-    )
+    spot = contamination_spotcheck(enriched, core, soft, negatives, args.sample_negatives)
     print(
         f"Negative co-occurrence in Method A: {spot['method_a_with_negative_cooccurrence']:,} "
         f"(pure-negative admissions={spot['pure_negative_admissions']})"
@@ -1008,10 +996,10 @@ def main() -> int:
     paths.artifact("composition").write_text(
         json.dumps(composition, indent=2) + "\n", encoding="utf-8"
     )
-    if composition["duplicate_award_id_rows"]:
+    if composition["duplicate_award_key_rows"]:
         print(
             f"Composition: {composition['n_unique_awards']:,} unique awards "
-            f"({composition['duplicate_award_id_rows']} duplicate award_id rows dropped)"
+            f"({composition['duplicate_award_key_rows']} duplicate award-key rows dropped)"
         )
     else:
         print(f"Composition: {composition['n_unique_awards']:,} unique awards")
@@ -1029,8 +1017,7 @@ def main() -> int:
         "spotcheck": spot,
         "negation_spotcheck": negation,
         "quantum_dot_well_excluded_count": qdot_excluded,
-        "has_deficiency_class": bool(enriched)
-        and "deficiency_class" in enriched[0],
+        "has_deficiency_class": bool(enriched) and "deficiency_class" in enriched[0],
         "external_reference": (
             {"method_a": ext_ref_a, "method_b": ext_ref_b} if ext_ref_a else None
         ),
@@ -1039,7 +1026,11 @@ def main() -> int:
         json.dumps(summary, indent=2) + "\n", encoding="utf-8"
     )
     write_methodology_stub(
-        cfg, paths.artifact("methodology_stub"), stats, absent, channel_summary,
+        cfg,
+        paths.artifact("methodology_stub"),
+        stats,
+        absent,
+        channel_summary,
         external_reference=summary["external_reference"],
     )
     paths.artifact("policy_brief_stub").write_text(

@@ -465,7 +465,5 @@ def test_csv_loader_preserves_program_identifiers_and_source_row(tmp_path: Path)
     assert award["contract"] == "CONTRACT"
     assert award["source_row"] == 2
     assert award["award_amount"] == 1_250.0
-    assert award["city"] == "Boston"
-    assert award["state"] == "MA"
-    assert award["uei"] == "UEI-1"
-    assert award["duns"] == "DUNS-1"
+    assert len(award["award_key"]) == 24
+    assert award["award_key_version"] == "sbir-source-v2"
