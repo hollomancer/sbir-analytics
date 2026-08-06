@@ -16,6 +16,9 @@ Notes:
 - Execution order is captured by the asset dependencies defined in their modules.
 - This job simply composes the assets into a single materialization target.
 - Provide runtime configuration via Dagster run config for paths, batch sizes, etc.
+
+Epistemic tier: exploratory. This job wires the exploratory CET
+classification assets; outputs are non-citable.
 """
 
 from dagster import AssetSelection, define_asset_job
@@ -52,6 +55,9 @@ except Exception:  # pragma: no cover - defensive import for repository load-tim
     neo4j_company_cet_enrichment = None  # type: ignore
     neo4j_award_cet_relationships = None  # type: ignore
     neo4j_company_cet_relationships = None  # type: ignore
+
+
+EPISTEMIC_TIER = "exploratory"
 
 
 # Compose the CET end-to-end job if all assets are importable; otherwise expose a placeholder job

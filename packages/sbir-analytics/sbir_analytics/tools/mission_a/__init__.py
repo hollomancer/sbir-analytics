@@ -10,12 +10,18 @@ New tools (4):
 - cluster_topics: Semantic topic clustering for overlap detection
 - detect_gaps: CET coverage gap analysis
 - compute_portfolio_metrics: HHI, overlap, concentration, trends
+
+Epistemic tier: exploratory. These tools wrap exploratory topic and CET
+analytics for interactive use; outputs are non-citable.
 """
 
 from .cluster_topics import ClusterTopicsTool
 from .compute_portfolio_metrics import ComputePortfolioMetricsTool
 from .detect_gaps import DetectGapsTool
 from .extract_topics import ExtractTopicsTool
+
+
+EPISTEMIC_TIER = "exploratory"
 
 __all__ = [
     "ExtractTopicsTool",

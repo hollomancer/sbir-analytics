@@ -16,12 +16,19 @@ Hierarchy:
     ├── FileSystemError
     └── DependencyError
         └── RFunctionError
+
+Epistemic tier: primitives. The exception taxonomy is imported by every
+tier and depends on nothing in the repository; renaming or removing a
+member is a breaking, versioned change.
 """
 
 from __future__ import annotations
 
 from enum import IntEnum
 from typing import Any
+
+
+EPISTEMIC_TIER = "primitives"
 
 
 class ErrorCode(IntEnum):
