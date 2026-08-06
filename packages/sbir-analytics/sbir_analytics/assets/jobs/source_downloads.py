@@ -48,10 +48,7 @@ def download_sam_gov_op(context: OpExecutionContext) -> dict:
     """Fetch the keyless, structurally validated SAM Public V2 snapshot."""
     import pandas as pd
 
-    from sbir_etl.extractors.source_downloads.sam_gov import (
-        PARQUET_NAME,
-        download_sam_public_extract,
-    )
+    from sbir_etl.extractors.source_downloads.sam_gov import download_sam_public_extract
 
     path = download_sam_public_extract(_data_root() / "raw" / "sam_gov")
     row_count = len(pd.read_parquet(path))

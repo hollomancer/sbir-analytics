@@ -22,7 +22,6 @@ import os
 import sys
 from datetime import datetime, UTC
 from typing import NotRequired, TypedDict
-from urllib.error import URLError
 from urllib.parse import urlparse
 from urllib.request import Request, urlopen
 
@@ -91,7 +90,7 @@ def check_file_availability(source_url: str) -> AvailabilityResult:
         req.add_header("User-Agent", "SBIR-Analytics-Checker/1.0")
         req.add_header("Accept", "*/*")
 
-        with urlopen(req, timeout=30) as response:
+        with urlopen(req, timeout=30) as response:  # nosec B310 - https enforced above
             if response.getcode() == 200:
                 result["available"] = True
 
@@ -179,7 +178,7 @@ def find_latest_available_file(
             req.add_header("User-Agent", "SBIR-Analytics-Checker/1.0")
             req.add_header("Accept", "*/*")
 
-            with urlopen(req, timeout=10) as response:
+            with urlopen(req, timeout=10) as response:  # nosec B310 - https enforced above
                 if response.getcode() == 200:
                     # Found an available file
                     return {
