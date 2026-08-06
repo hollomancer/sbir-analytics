@@ -8,10 +8,9 @@ call. The op compensates with its own check (see
 `tests/unit/assets/jobs/test_source_download_execution.py`); this file is the
 other half of that pair.
 
-Playwright is not installed in the test environment — and, as
-`test_download_assignments_requires_playwright` records, is not declared as a
-dependency anywhere in the repository. These tests inject a stub module so the
-orchestration logic is exercised without a browser.
+Playwright is an optional extra (`uspto-browser`) that a dev or CI install
+does not carry, so these tests inject a stub module and exercise the
+orchestration without a browser.
 """
 
 import asyncio
@@ -180,17 +179,18 @@ def test_every_declared_assignment_file_has_a_uspto_url_and_size():
 
 
 def test_download_assignments_requires_playwright(tmp_path):
-    """Playwright is imported at call time and is declared nowhere in the repo.
+    """Playwright is imported at call time and is not part of a dev install.
 
-    `grep -r playwright pyproject.toml packages/*/pyproject.toml` returns
-    nothing, and no Makefile target or setup script installs it, yet
-    `download_uspto_op` reaches this function on every run. On a host without a
-    manual install the job fails with a bare ModuleNotFoundError from inside a
-    Dagster op.
+    It is declared as the optional `uspto-browser` extra and installed in the
+    server image, so `uspto_download_job` works where it actually runs. It is
+    deliberately absent from `stack-dev`: the wheel is large and the browser is
+    a separate `playwright install chromium` step that CI has no use for.
 
-    This test pins the current behaviour rather than asserting it is correct.
-    If the dependency is declared — or the failure is turned into an actionable
-    message naming the install step — update this test along with it.
+    So the module must stay importable without it — the import sits inside
+    `download_assignments` rather than at module scope, and every other test in
+    this file injects a stub. This one pins the remaining consequence: calling
+    the function without the extra raises at the import, not somewhere later
+    with a half-built browser session.
     """
     real_playwright = sys.modules.get("playwright")
     if real_playwright is not None:  # pragma: no cover - environment dependent
