@@ -6,7 +6,7 @@ Recomputes every load-bearing composition figure — agency mix, dollar totals,
 unique-firm counts, program split, decade distribution, recency censoring, firm
 concentration, no-UEI share — fresh from the cohort CSV that
 ``build_tech_area_cohort.py`` writes, and diffs it against the numbers
-hand-authored into ``docs/<area>_sbir_transition_findings.md``.
+hand-authored into ``docs/research/<area>_sbir_transition_findings.md``.
 
 This is the generalized analogue of ``nano_verify_report_figures.py``. It needs a
 data-bearing run (the cohort CSV under ``data/reports/<area>/``, gitignored), so it
@@ -40,7 +40,7 @@ REPO = Path(__file__).resolve().parents[2]
 csv.field_size_limit(min(sys.maxsize, 2**31 - 1))
 
 
-# Transcribed from docs/<area>_sbir_transition_findings.md (2026-07-13).
+# Transcribed from docs/research/<area>_sbir_transition_findings.md (2026-07-13).
 # Agency keys use the canonical award_data.csv agency strings; reconcile on the
 # first data-bearing run if a key comes back "missing".
 EXPECTED: dict[str, dict] = {

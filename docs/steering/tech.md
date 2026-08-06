@@ -44,5 +44,5 @@ can be described as architecture.
 - Installation and first run: [Getting started](../getting-started/README.md)
 - Configuration: [Configuration reference](../configuration.md)
 - Local containers: [Docker development](../development/docker.md)
-- Testing and CI: [Testing index](../testing/index.md)
+- Testing and CI: [Testing index](../testing/README.md)
 - Live deployment: [self-hosted server runbook](../deployment/self-hosted-server.md)

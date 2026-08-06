@@ -76,7 +76,7 @@ delete the live bucket, which persists until Phase 6.
   output in `.github/actions/detect-changes/action.yml`.
 - `docs/deployment/aws-deployment.md`, `aws-batch-analysis-jobs.md`,
   `usaspending-ec2-automation.md`, and the index entries pointing at them in
-  `docs/deployment/README.md` and `docs/index.md`.
+  `docs/deployment/README.md` and `docs/README.md`.
 
 `.github/actions/setup-aws-credentials/` is **not** deleted here — it is still
 consumed by `ci.yml:618` and four steps in `data-refresh.yml`. It goes in Phase 4

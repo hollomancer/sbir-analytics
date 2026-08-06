@@ -38,7 +38,7 @@ Use these before quoting a result or starting a feature from an old spec.
 | --- | --- |
 | Developer navigation | [Development index](development/README.md) |
 | Containers | [Docker development](development/docker.md) |
-| Tests and CI | [Testing index](testing/index.md) |
+| Tests and CI | [Testing index](testing/README.md) |
 | Versioning and releases | [Versioning policy](steering/versioning.md) |
 | Performance measurement | [Performance runbook](performance.md) |
 | Deployment navigation | [Deployment index](deployment/README.md) |
@@ -48,7 +48,7 @@ Use these before quoting a result or starting a feature from an old spec.
 
 ## Data and subsystems
 
-- [Data sources](data/index.md)
+- [Data sources](data/README.md)
 - [Dagster pipelines](architecture/dagster-pipelines.md)
 - [Asset naming](architecture/asset-naming-standards.md)
 - [DuckDB CET analysis](architecture/duckdb-cet-analysis.md)
@@ -58,7 +58,11 @@ Use these before quoting a result or starting a feature from an old spec.
 - [Neo4j schema](schemas/neo4j.md)
 - [Other Transaction consortium tiers](ot-consortium/tiers.md)
 - [Statistical reporting utility](guides/statistical-reporting.md)
-- [API](api/README.md)
+- [Enrichment](enrichment/README.md) — enricher catalogue and per-source integrations
+- [Transition Cypher queries](queries/transition-queries.md)
+
+There is no generated API reference. The package map and dependency rules live in the
+[architecture overview](architecture/detailed-overview.md).
 
 ## Durable engineering contracts
 
@@ -77,12 +81,12 @@ Use the [research-output index](research/README.md) to map analyses to research 
 evidence posture, and data cuts. Technology-area briefs pair an audience-facing summary with
 technical findings:
 
-- [Nanotechnology brief](nanotech_sbir_policy_brief.md) and
-  [technical findings](nanotech_sbir_transition_findings.md)
-- [Hypersonics brief](hypersonics_sbir_policy_brief.md) and
-  [technical findings](hypersonics_sbir_transition_findings.md)
-- [Quantum information science brief](quantum_information_science_sbir_policy_brief.md) and
-  [technical findings](quantum_information_science_sbir_transition_findings.md)
+- [Nanotechnology brief](research/nanotech_sbir_policy_brief.md) and
+  [technical findings](research/nanotech_sbir_transition_findings.md)
+- [Hypersonics brief](research/hypersonics_sbir_policy_brief.md) and
+  [technical findings](research/hypersonics_sbir_transition_findings.md)
+- [Quantum information science brief](research/quantum_information_science_sbir_policy_brief.md) and
+  [technical findings](research/quantum_information_science_sbir_transition_findings.md)
 
 These pairs intentionally remain separate for different audiences. “Provisional” is not a
 substitute for a citable study manifest; check evidence status before external use.

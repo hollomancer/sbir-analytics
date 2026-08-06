@@ -28,6 +28,11 @@ Dependencies point inward toward `sbir_etl`. Workspace packages may consume shar
 `sbir_etl` must not import workspace packages, and the graph and ML packages must not depend on one
 another. `scripts/ci/check_architecture_boundaries.py` enforces these rules.
 
+There is no generated API reference. Use this map to find the right package, then read the source
+and its tests. A hand-maintained module index drifts silently — the one that used to live at
+`docs/api/` listed a `cli/` package that no longer existed. If generated documentation is added
+later, its tool and Make target belong in the repository first.
+
 ## Runtime stack
 
 | Concern | Technology | Canonical location |
@@ -62,7 +67,7 @@ extract and snapshot ──▶ validate and normalize ──▶ enrich and class
 Operational source pipelines currently cover SBIR.gov, USAspending, SAM.gov, and USPTO data.
 Research workflows also use SEC EDGAR/Form D, UCC filings, capital-event evidence, subawards, and
 other bounded sources. A source appearing in a study does not imply a scheduled production
-pipeline; [data documentation](../data/index.md) records that distinction.
+pipeline; [data documentation](../data/README.md) records that distinction.
 
 Company identity is a shared contract. Normalization and matching live in `sbir_etl/identity/` and
 must be reused by source-specific enrichers, graph loading, and studies. See the
@@ -117,7 +122,7 @@ Lambda, Step Functions, and S3 are not part of the current architecture.
 | Package and dependency rules | This overview and architecture guards |
 | Configuration keys and load order | [Configuration reference](../configuration.md) |
 | Local commands and containers | [Getting started](../getting-started/README.md), [Docker](../development/docker.md) |
-| CI and tests | [Testing index](../testing/index.md) |
+| CI and tests | [Testing index](../testing/README.md) |
 | Live operations | [self-hosted server runbook](../deployment/self-hosted-server.md) |
 | Graph model | [Neo4j schema](../schemas/neo4j.md) and [migrations](../migrations.md) |
 | Evidence and citability | [Epistemic tiers](../steering/epistemic-tiers.md), [study contracts](../../studies/README.md) |

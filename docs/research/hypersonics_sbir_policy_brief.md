@@ -4,7 +4,7 @@
 **Status:** Provisional — **cohort and triangulation only**; evidence-channel rates not yet computed  
 **Data through:** FY2025 SBIR.gov Phase II universe  
 **Technical appendix:** [`hypersonics_sbir_transition_findings.md`](hypersonics_sbir_transition_findings.md)  
-**Publication standard:** [`specs/tech-area-transition-report/publication-format.md`](../specs/tech-area-transition-report/publication-format.md)
+**Publication standard:** [`specs/tech-area-transition-report/publication-format.md`](../../specs/tech-area-transition-report/publication-format.md)
 
 ---
 

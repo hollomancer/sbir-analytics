@@ -4,7 +4,7 @@
 **Policy brief (start here):** [`nanotech_sbir_policy_brief.md`](nanotech_sbir_policy_brief.md)  
 **Status:** Provisional — figures are bounded estimates, not rates  
 **Data through:** FY2025 (SBIR.gov); FY2024 (USAspending); SEC EDGAR (ongoing); USPTO PatentsView (March 2026 release)  
-**Publication format:** [`specs/tech-area-transition-report/publication-format.md`](../specs/tech-area-transition-report/publication-format.md)
+**Publication format:** [`specs/tech-area-transition-report/publication-format.md`](../../specs/tech-area-transition-report/publication-format.md)
 
 ---
 

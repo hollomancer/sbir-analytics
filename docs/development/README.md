@@ -15,7 +15,7 @@ be explained in one place so the instructions do not drift apart.
 - [Contributing](../../CONTRIBUTING.md) - Scope, setup, verification, and pull requests
 - [Getting started](../getting-started/README.md) - Installation and first local run
 - [Docker development](docker.md) - Compose profiles, data, and troubleshooting
-- [Testing index](../testing/index.md) - Local, Docker, E2E, and CI verification
+- [Testing index](../testing/README.md) - Local, Docker, E2E, and CI verification
 - [Configuration reference](../configuration.md) - Load order and environment overrides
 
 ## Engineering conventions
@@ -37,4 +37,4 @@ be explained in one place so the instructions do not drift apart.
 ---
 
 For deployment guides, see [Deployment Documentation](../deployment/README.md).
-For testing guides, see the [Testing Index](../testing/index.md).
+For testing guides, see the [Testing Index](../testing/README.md).
