@@ -72,12 +72,12 @@ def archive_phase_transition_outputs_op(context: OpExecutionContext, started: fl
     Every expected output must exist and have been written by this run. A
     missing or stale file fails the op rather than producing an archive that
     silently mixes fresh parquet with an old report.
-    """
-    date_str = datetime.now(UTC).strftime("%Y-%m-%d")
-    archive_dir = _data_root() / "processed" / "phase_transition" / "history" / date_str
-    archive_dir.mkdir(parents=True, exist_ok=True)
 
-    copied: list[str] = []
+    The whole set is validated before anything is copied. Validating while
+    copying still failed the run, but only after leaving the files it had
+    already reached in the dated directory — a partial snapshot that a later
+    reader cannot distinguish from a complete one.
+    """
     missing: list[str] = []
     stale: list[str] = []
     # Filesystem timestamps can round down relative to time.time(); allow a
@@ -88,12 +88,8 @@ def archive_phase_transition_outputs_op(context: OpExecutionContext, started: fl
         src = Path(rel)
         if not src.is_file():
             missing.append(rel)
-            continue
-        if src.stat().st_mtime < cutoff:
+        elif src.stat().st_mtime < cutoff:
             stale.append(rel)
-            continue
-        shutil.copy2(src, archive_dir / src.name)
-        copied.append(src.name)
 
     if missing or stale:
         raise FileNotFoundError(
@@ -101,6 +97,16 @@ def archive_phase_transition_outputs_op(context: OpExecutionContext, started: fl
             f"Missing: {', '.join(missing) or 'none'}. "
             f"Not written by this run: {', '.join(stale) or 'none'}."
         )
+
+    date_str = datetime.now(UTC).strftime("%Y-%m-%d")
+    archive_dir = _data_root() / "processed" / "phase_transition" / "history" / date_str
+    archive_dir.mkdir(parents=True, exist_ok=True)
+
+    copied: list[str] = []
+    for rel in ARCHIVED_OUTPUTS:
+        src = Path(rel)
+        shutil.copy2(src, archive_dir / src.name)
+        copied.append(src.name)
 
     context.log.info(f"Archived {len(copied)} file(s) to {archive_dir}")
     context.add_output_metadata(
