@@ -1,5 +1,9 @@
 """Versioned company-name policies with a single 0..1 similarity contract.
 
+Epistemic tier: primitives. Profiles are frozen policies; normalization or
+similarity behavior that changes output requires a new named profile
+version, never an edit in place.
+
 The profiles preserve current analytical behavior while making differences
 explicit and reviewable. They are compatibility policies, not a claim that all
 name-matching use cases should have identical recall. New consumers must select
@@ -21,6 +25,9 @@ try:
 except ImportError:  # pragma: no cover - supported dependency-light fallback
     fuzz = None  # type: ignore[assignment]
     JaroWinkler = None  # type: ignore[assignment, misc]
+
+
+EPISTEMIC_TIER = "primitives"
 
 
 class CompanyNameProfile(StrEnum):
