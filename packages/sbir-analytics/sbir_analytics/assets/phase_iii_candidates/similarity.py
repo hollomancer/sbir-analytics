@@ -5,7 +5,7 @@ The text component is corpus-fitted word (1,2)-gram TF-IDF cosine
 the frozen Phase III benchmark's rich-text subset (AUC 0.710 vs 0.644-0.651)
 while sitting on the same score scale (pos p90 = 0.028 for both), so the HIGH
 thresholds are unchanged. See
-docs/superpowers/specs/2026-07-30-why-it-connects-explanation-design.md.
+docs/archive/design/2026-07-30-why-it-connects-explanation-design.md.
 """
 
 from __future__ import annotations

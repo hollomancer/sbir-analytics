@@ -6,7 +6,7 @@
 **Data through:** FY2025 SBIR.gov Phase II universe  
 **CLI:** `python scripts/data/build_tech_area_cohort.py --area hypersonics`  
 **Config:** `config/transition_reports/hypersonics.yaml`  
-**Publication format:** [`specs/tech-area-transition-report/publication-format.md`](../specs/tech-area-transition-report/publication-format.md)
+**Publication format:** [`specs/tech-area-transition-report/publication-format.md`](../../specs/tech-area-transition-report/publication-format.md)
 
 ---
 

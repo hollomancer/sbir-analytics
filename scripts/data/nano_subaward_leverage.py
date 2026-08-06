@@ -48,7 +48,7 @@ from sbir_etl.utils.transition_report_paths import (  # noqa: E402
     resolve_area_paths,
 )
 
-# Firms confirmed acquired in Finding 2 (docs/nanotech_sbir_transition_findings.md).
+# Firms confirmed acquired in Finding 2 (docs/research/nanotech_sbir_transition_findings.md).
 # Subaward evidence for these enriches an already-known outcome, not a new one.
 FINDING2_KNOWN_ACQUISITIONS = {
     normalize_name(n, remove_suffixes=True)
