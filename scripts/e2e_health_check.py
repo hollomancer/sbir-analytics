@@ -126,15 +126,35 @@ def check_resource_constraints() -> tuple[bool, str]:
     return True, f"Resource constraints OK (Memory: {memory_limit_gb}GB, CPU: {cpu_limit})"
 
 
-def run_health_checks() -> dict[str, tuple[bool, str]]:
-    """Run all health checks and return results."""
-    checks = {
+# The server profile drops the two e2e-container-specific checks: test-data
+# fixtures do not exist on the live stack, and the MacBook Air resource guard
+# fails precisely when a host has more resources than a laptop.
+CHECK_PROFILES = {
+    "e2e": [
+        "Environment Variables",
+        "Python Dependencies",
+        "Test Data",
+        "Resource Constraints",
+        "Neo4j Connection",
+    ],
+    "server": [
+        "Environment Variables",
+        "Python Dependencies",
+        "Neo4j Connection",
+    ],
+}
+
+
+def run_health_checks(profile: str = "e2e") -> dict[str, tuple[bool, str]]:
+    """Run the profile's health checks and return results."""
+    all_checks = {
         "Environment Variables": check_environment_variables,
         "Python Dependencies": check_python_dependencies,
         "Test Data": check_test_data_availability,
         "Resource Constraints": check_resource_constraints,
         "Neo4j Connection": check_neo4j_connection,
     }
+    checks = {name: all_checks[name] for name in CHECK_PROFILES[profile]}
 
     results = {}
     for check_name, check_func in checks.items():
@@ -157,10 +177,22 @@ def run_health_checks() -> dict[str, tuple[bool, str]]:
 
 def main():
     """Main entry point for health check."""
-    print("🏥 E2E Environment Health Check")
+    import argparse
+
+    parser = argparse.ArgumentParser(description="Environment health check")
+    parser.add_argument(
+        "--profile",
+        choices=sorted(CHECK_PROFILES),
+        default="e2e",
+        help="Which check set to run: 'e2e' for the test containers, "
+        "'server' for the live stack (default: e2e)",
+    )
+    args = parser.parse_args()
+
+    print(f"🏥 Environment Health Check ({args.profile} profile)")
     print("=" * 50)
 
-    results = run_health_checks()
+    results = run_health_checks(args.profile)
 
     print("\n" + "=" * 50)
     print("📋 Health Check Summary")

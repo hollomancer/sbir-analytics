@@ -655,6 +655,12 @@ server-status: server-env-check ## Show server stack status
 	@$(call info,Server stack status)
 	$(call run,$(SERVER_COMPOSE) --profile server ps)
 
+.PHONY: server-health
+server-health: server-env-check ## Run health checks (env, deps, Neo4j) inside the running stack
+	@$(call info,Checking server stack health)
+	$(call run,$(SERVER_COMPOSE) --profile server ps)
+	$(call run,$(SERVER_COMPOSE) --profile server exec -T dagster-code-server python /app/scripts/e2e_health_check.py --profile server)
+
 .PHONY: server-logs
 server-logs: server-env-check ## Tail server logs for SERVICE (default dagster-webserver)
 	@$(call info,Tailing server logs for service: $(SERVICE))
