@@ -12,8 +12,8 @@ import zipfile
 import pandas as pd
 import pytest
 
-from scripts.data import download_sam_gov as download_module
-from scripts.data.download_sam_gov import (
+from sbir_etl.extractors.source_downloads import sam_gov as download_module
+from sbir_etl.extractors.source_downloads.sam_gov import (
     META_NAME,
     PARQUET_NAME,
     PARQUET_NAME_PARTIAL,

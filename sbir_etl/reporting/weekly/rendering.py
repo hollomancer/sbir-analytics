@@ -111,6 +111,9 @@ def generate_markdown(
     lines = []
     lines.append("# SBIR Weekly Awards Report")
     lines.append("")
+    lines.append("> **Exploratory / non-citable.** This operational readout has not earned an")
+    lines.append("> evidence-tier study contract and must not be cited as a validated finding.")
+    lines.append("")
     lines.append(f"**Period:** {cutoff.strftime('%B %d, %Y')} - {now.strftime('%B %d, %Y')}")
     lines.append(f"**Total new awards:** {len(awards)}")
     lines.append("")

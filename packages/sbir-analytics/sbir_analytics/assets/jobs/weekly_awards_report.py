@@ -3,21 +3,23 @@
 The retired ``weekly.yml`` workflow ran ``scripts/data/weekly_awards_report.py``
 every Monday at 12:00 UTC, posted the markdown to the job summary and kept it as
 a 30-day artifact. Artifacts expire, so the weekly series was never durable.
-This runs the same script and writes each report to a dated directory under the
-data root instead, matching what ``phase_transition_archive`` does for the
-monthly analysis.
+This calls the existing package API and writes each report to a dated directory
+under the data root, matching what ``phase_transition_archive`` does for the
+monthly analysis. The report is exploratory and rendered with a non-citable
+notice.
 """
 
 import os
-import subprocess
-import sys
 from datetime import UTC, datetime
 from pathlib import Path
 
 from dagster import OpExecutionContext, job, op
 
+from sbir_etl.reporting.weekly.orchestrator import WeeklyAwardsReportBuilder
+
 DATA_ROOT_ENV = "SBIR_ETL__PATHS__DATA_ROOT"
 DEFAULT_DATA_ROOT = "data"
+EPISTEMIC_TIER = "exploratory"
 
 # The workflow's `days` input, which defaulted to 7 and was only ever overridden
 # for a manual backfill.
@@ -31,40 +33,42 @@ def _data_root() -> Path:
 
 @op
 def generate_weekly_awards_report_op(context: OpExecutionContext) -> dict:
-    """Run the report script and store its markdown under a dated directory."""
-    days = os.getenv(LOOKBACK_DAYS_ENV, DEFAULT_LOOKBACK_DAYS)
+    """Build the report through its package API and store dated markdown."""
+    days = int(os.getenv(LOOKBACK_DAYS_ENV, DEFAULT_LOOKBACK_DAYS))
     report_date = datetime.now(UTC).strftime("%Y-%m-%d")
     output_dir = _data_root() / "reports" / "weekly_awards" / report_date
     output_dir.mkdir(parents=True, exist_ok=True)
     output_path = output_dir / "weekly-awards.md"
 
-    result = subprocess.run(  # noqa: S603
-        [
-            sys.executable,
-            "scripts/data/weekly_awards_report.py",
-            "--days",
-            days,
-            "--output",
-            str(output_path),
-        ],
-        capture_output=True,
-        text=True,
-        check=False,
-    )
-    if result.returncode != 0:
-        context.log.error(result.stderr[-4000:])
-        raise RuntimeError(f"weekly_awards_report.py failed with exit code {result.returncode}")
-
-    # The script exits 0 even when it writes nothing useful, so require output
-    # rather than trusting the exit code — an empty report is a silent failure
-    # of exactly the kind that let the retired workflow rot unnoticed.
+    report = WeeklyAwardsReportBuilder(
+        days=days,
+        skip_sbir_api=os.getenv("SKIP_SBIR_API", "").lower() in {"1", "true", "yes"},
+        timeout=int(os.getenv("REPORT_TIMEOUT", "720")),
+        api_key=os.getenv("OPENAI_API_KEY", ""),
+    ).run()
+    output_path.write_text(report)
+    # Require output because an empty report is a silent failure of exactly the
+    # kind that let the retired workflow rot unnoticed.
     if not output_path.exists() or output_path.stat().st_size == 0:
         raise FileNotFoundError(f"Report script wrote no report to {output_path}")
 
     size = output_path.stat().st_size
     context.log.info(f"Wrote {size} bytes to {output_path}")
-    context.add_output_metadata({"report_path": str(output_path), "bytes": size, "days": days})
-    return {"report_path": str(output_path), "bytes": size}
+    context.add_output_metadata(
+        {
+            "report_path": str(output_path),
+            "bytes": size,
+            "days": days,
+            "epistemic_tier": EPISTEMIC_TIER,
+            "citable": False,
+        }
+    )
+    return {
+        "report_path": str(output_path),
+        "bytes": size,
+        "epistemic_tier": EPISTEMIC_TIER,
+        "citable": False,
+    }
 
 
 @job(

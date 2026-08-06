@@ -28,35 +28,14 @@ ALLOWED_FIRST_PARTY_IMPORTS = {
     "sbir_analytics": frozenset({"sbir_etl", "sbir_ml", "sbir_graph"}),
 }
 
-# The server download jobs landed while this guard was in review. They wrap
-# pre-existing CLI implementations that have not yet been promoted into a
-# package. Keep the exceptions exact so the guard prevents any additional
-# package-to-scripts dependencies while that migration is completed.
-TRANSITIONAL_SCRIPT_IMPORTS = {
-    "packages/sbir-analytics/sbir_analytics/assets/jobs/source_downloads.py": frozenset(
-        {
-            "scripts.data.download_sam_gov",
-            "scripts.data.download_sbir",
-            "scripts.data.download_uspto",
-            "scripts.data.download_uspto_browser",
-            "scripts.usaspending.download_database",
-        }
-    )
-}
+TRANSITIONAL_SCRIPT_IMPORTS: dict[str, frozenset[str]] = {}
 
 # Package code also reached three scripts by spawning a Python subprocess. An
-# import-only guard cannot see those dependency edges, so keep the temporary
-# execution bridges just as exact as the import bridge above. Each entry is
-# removed when its script implementation is exposed through a package API and
-# the package caller invokes that API directly.
-TRANSITIONAL_SCRIPT_EXECUTIONS = {
-    "packages/sbir-analytics/sbir_analytics/assets/jobs/weekly_awards_report.py": frozenset(
-        {"scripts/data/weekly_awards_report.py"}
-    ),
-    "packages/sbir-analytics/sbir_analytics/assets/jobs/phase_transition_archive.py": (
-        frozenset({"scripts/phase_transition_analysis.py"})
-    ),
-}
+# import-only guard cannot see those dependency edges, so each execution bridge
+# needed an exception as exact as the import bridge above. All three are retired:
+# every one of those scripts is now exposed through a package API that the
+# package caller invokes directly.
+TRANSITIONAL_SCRIPT_EXECUTIONS: dict[str, frozenset[str]] = {}
 
 
 @dataclass(frozen=True)

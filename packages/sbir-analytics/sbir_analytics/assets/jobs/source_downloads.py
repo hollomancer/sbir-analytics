@@ -4,9 +4,9 @@ These replace the GitHub Actions `data-refresh.yml` workflow. Actions runners
 cannot reach the self-hosted server (tailnet-only, no self-hosted runner), so the host
 that stores the data is the host that fetches it.
 
-Each op wraps the corresponding `scripts/` downloader, which writes to the
-local data root by default. Destinations come from the config paths so the
-server profile's persistent bind mounts are honoured without hardcoding them here.
+Each op calls the corresponding package pipeline, which writes to the local
+data root by default. Destinations come from the config paths so the server
+profile's persistent bind mounts are honoured without hardcoding them here.
 
 Schedules for these jobs default to STOPPED. Per the self-hosted server runbook, an
 operator confirms a manual run succeeds on this host before enabling one.
@@ -17,8 +17,12 @@ from pathlib import Path
 
 from dagster import OpExecutionContext, job, op
 
+from sbir_etl.extractors.source_downloads.sbir import download_sbir_awards
+from sbir_etl.extractors.source_downloads.usaspending import download_local
+
 DATA_ROOT_ENV = "SBIR_ETL__PATHS__DATA_ROOT"
 DEFAULT_DATA_ROOT = "data"
+EPISTEMIC_TIER = "pipelines"
 
 
 def _data_root() -> Path:
@@ -28,8 +32,6 @@ def _data_root() -> Path:
 @op
 def download_sbir_awards_op(context: OpExecutionContext) -> dict:
     """Fetch the SBIR.gov awards CSV, keeping a dated vintage."""
-    from scripts.data.download_sbir import download_sbir_awards
-
     result = download_sbir_awards(_data_root() / "raw" / "sbir")
     context.log.info(
         f"SBIR awards: changed={result['changed']} path={result['path']} "
@@ -46,23 +48,12 @@ def download_sam_gov_op(context: OpExecutionContext) -> dict:
     """Fetch the keyless, structurally validated SAM Public V2 snapshot."""
     import pandas as pd
 
-    from scripts.data.download_sam_gov import (
-        PARQUET_NAME,
-        _download_bulk_extract,
-        _write_local,
-    )
+    from sbir_etl.extractors.source_downloads.sam_gov import download_sam_public_extract
 
-    df: pd.DataFrame | None = _download_bulk_extract()
-    if df is None or df.empty:
-        raise ValueError("SAM.gov Public V2 bulk download returned no validated entity records")
-
-    path = _write_local(
-        df,
-        _data_root() / "raw" / "sam_gov",
-        name=PARQUET_NAME,
-    )
-    context.add_output_metadata({"rows": len(df), "path": str(path), "partial": False})
-    return {"rows": len(df), "path": str(path), "partial": False}
+    path = download_sam_public_extract(_data_root() / "raw" / "sam_gov")
+    row_count = len(pd.read_parquet(path))
+    context.add_output_metadata({"rows": row_count, "path": str(path), "partial": False})
+    return {"rows": row_count, "path": str(path), "partial": False}
 
 
 @op
@@ -73,8 +64,6 @@ def download_usaspending_op(context: OpExecutionContext) -> dict:
     resumes from a sidecar checkpoint if interrupted. It checks free space
     before downloading rather than failing late on a full volume.
     """
-    from scripts.usaspending.download_database import download_local
-
     result = download_local(_data_root() / "usaspending")
     context.log.info(f"USAspending: status={result['status']} path={result['path']}")
     context.add_output_metadata(
@@ -144,7 +133,7 @@ def download_uspto_op(context: OpExecutionContext) -> dict:
     """
     import asyncio
 
-    from scripts.data.download_uspto import (
+    from sbir_etl.extractors.source_downloads.uspto import (
         PATENTSVIEW_PRODUCT,
         PATENTSVIEW_TABLES,
         USPTO_AI_PATENT_URL,
@@ -183,7 +172,7 @@ def download_uspto_op(context: OpExecutionContext) -> dict:
     results["ai_patents"]["path"] = str(ai_dest)
 
     # 3: assignments, which need a real browser session.
-    from scripts.data.download_uspto_browser import download_assignments
+    from sbir_etl.extractors.source_downloads.uspto_browser import download_assignments
 
     context.log.info("Downloading patent assignments via browser automation")
     assignment_dir = dest_dir / "assignments"
