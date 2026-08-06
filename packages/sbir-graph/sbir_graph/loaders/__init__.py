@@ -16,7 +16,14 @@ from typing import Any
 
 EPISTEMIC_TIER = "pipelines"
 
-__all__ = ["Neo4jClient", "Neo4jConfig", "LoadMetrics", "PatentLoader", "PatentLoaderConfig"]
+__all__ = [
+    "EPISTEMIC_TIER",
+    "Neo4jClient",
+    "Neo4jConfig",
+    "LoadMetrics",
+    "PatentLoader",
+    "PatentLoaderConfig",
+]
 
 _NEO4J_NAMES = {
     "LoadMetrics",
