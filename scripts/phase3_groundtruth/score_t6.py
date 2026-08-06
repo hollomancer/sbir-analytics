@@ -14,6 +14,9 @@ Two paths (design: ``specs/phase3-transition-groundtruth/T6_DESIGN.md``):
 
 The A<->B gap is the contract->notice transfer caveat, measured. Neither path
 validates forward / open-solicitation use — both score a *retrospective* ranking.
+
+Epistemic tier: exploratory. T6 scoring results are non-citable until promoted
+through the evidence-tier contract of specs/phase3-transition-groundtruth.
 """
 
 import argparse
@@ -45,6 +48,9 @@ from sbir_ml.transition.detection.fusion_model import (  # noqa: E402
 from sbir_ml.transition.detection.fusion_scoring import (  # noqa: E402
     score_pairs_with_fusion,
 )
+
+
+EPISTEMIC_TIER = "exploratory"
 
 REPO_MAIN = Path("/Users/hollomancer/projects/sbir-analytics")
 DEFAULT_AWARD_DATA = REPO_MAIN / "data" / "raw" / "sbir" / "award_data.csv"

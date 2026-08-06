@@ -1,4 +1,9 @@
-"""Company canonicalization utilities for pre-loading deduplication."""
+"""Company canonicalization utilities for pre-loading deduplication.
+
+Epistemic tier: exploratory. Canonical-company grouping rides on threshold
+fuzzy matching — contestable identity inference — so its groupings are
+non-citable.
+"""
 
 from __future__ import annotations
 
@@ -9,6 +14,9 @@ import pandas as pd
 
 from ..enrichers.company_fuzzy_matcher import enrich_awards_with_companies
 from ..utils.text_normalization import normalize_company_name
+
+
+EPISTEMIC_TIER = "exploratory"
 
 
 def canonicalize_companies_from_awards(

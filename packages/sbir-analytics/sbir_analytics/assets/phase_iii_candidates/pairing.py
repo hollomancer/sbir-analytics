@@ -1,4 +1,9 @@
-"""Shared UEI pair construction and Phase III candidate filters."""
+"""Shared UEI pair construction and Phase III candidate filters.
+
+Epistemic tier: pipelines. Pair construction and coded-status filters are
+deterministic data movement with no scoring — the evidence-tier census
+imports this boundary, so it must never gain inference.
+"""
 
 from __future__ import annotations
 
@@ -8,6 +13,9 @@ import pandas as pd
 
 from sbir_etl.utils.award_identity import award_key_series
 from sbir_etl.utils.procurement_text import DIRECTED_LINEAGE_TERMS
+
+
+EPISTEMIC_TIER = "pipelines"
 
 # FPDS Element 10Q codes that mark a contract as already-coded Phase III.
 # Duplicated intentionally — avoids cross-package import for a five-element set.

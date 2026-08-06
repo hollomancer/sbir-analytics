@@ -14,6 +14,10 @@ Key behaviors:
 
 The implementation is defensive about optional dependencies: if `pandas` is not available,
 the class will raise an informative ImportError when used.
+
+Epistemic tier: exploratory. Dominant-CET selection and specialization scoring
+aggregate unvalidated ML classifications, so company CET profiles are
+non-citable.
 """
 
 from __future__ import annotations
@@ -29,6 +33,9 @@ try:
 except Exception:  # pragma: no cover - defensive import
     pd = None  # type: ignore[assignment]
     np = None  # type: ignore[assignment]
+
+
+EPISTEMIC_TIER = "exploratory"
 
 __all__ = ["CompanyCETAggregator"]
 

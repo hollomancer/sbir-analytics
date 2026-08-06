@@ -1,4 +1,8 @@
-"""Dagster assets for fiscal analysis pipeline."""
+"""Dagster assets for fiscal analysis pipeline.
+
+Epistemic tier: exploratory. Fiscal materializations are BEA I-O model
+estimates with contestable modeling choices, so outputs are non-citable.
+"""
 
 from decimal import Decimal
 from typing import Any
@@ -29,6 +33,9 @@ from sbir_etl.transformers.fiscal import (
     FiscalUncertaintyQuantifier,
 )
 from sbir_etl.utils.monitoring import performance_monitor
+
+
+EPISTEMIC_TIER = "exploratory"
 
 
 # ---------------------------------------------------------------------------

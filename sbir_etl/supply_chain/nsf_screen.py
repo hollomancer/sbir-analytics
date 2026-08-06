@@ -1,4 +1,8 @@
-"""Screen NSF SBIR supplier candidates against existing CET policy mappings."""
+"""Screen NSF SBIR supplier candidates against existing CET policy mappings.
+
+Epistemic tier: exploratory. Rule-based CET screening decides contestable
+technology relevance, so emitted review candidates are non-citable.
+"""
 
 from __future__ import annotations
 
@@ -14,6 +18,9 @@ from sbir_etl.reporting.local_cet_classifier import (
     LocalCETRuleClassifier,
     load_local_cet_rule_classifier,
 )
+
+
+EPISTEMIC_TIER = "exploratory"
 
 
 def screen_direct_nsf_awards(
