@@ -10,7 +10,7 @@ from .covariates import (
     build_treated_firm_frame,
     summarize_covariate_coverage,
 )
-from .identity import (
+from sbir_etl.identity.exact_awards import (
     IdentityRecoveryError,
     RecoveryStatus,
     reconcile_award_identity_attempts,

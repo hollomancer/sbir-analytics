@@ -32,6 +32,7 @@ from typing import Any
 
 from loguru import logger
 
+from sbir_etl.identity.geography import USJurisdictionProfile, normalize_us_jurisdiction
 from sbir_etl.utils.identifiers import normalize_uspto_identifier
 
 
@@ -546,80 +547,10 @@ class PatentAssignmentTransformer:
         Returns:
             2-letter state code (uppercase) or None if not recognized
         """
-        if not state:
-            return None
-
-        state_str = str(state).strip().upper()
-
-        # US state mapping
-        state_map = {
-            "ALABAMA": "AL",
-            "ALASKA": "AK",
-            "ARIZONA": "AZ",
-            "ARKANSAS": "AR",
-            "CALIFORNIA": "CA",
-            "COLORADO": "CO",
-            "CONNECTICUT": "CT",
-            "DELAWARE": "DE",
-            "FLORIDA": "FL",
-            "GEORGIA": "GA",
-            "HAWAII": "HI",
-            "IDAHO": "ID",
-            "ILLINOIS": "IL",
-            "INDIANA": "IN",
-            "IOWA": "IA",
-            "KANSAS": "KS",
-            "KENTUCKY": "KY",
-            "LOUISIANA": "LA",
-            "MAINE": "ME",
-            "MARYLAND": "MD",
-            "MASSACHUSETTS": "MA",
-            "MICHIGAN": "MI",
-            "MINNESOTA": "MN",
-            "MISSISSIPPI": "MS",
-            "MISSOURI": "MO",
-            "MONTANA": "MT",
-            "NEBRASKA": "NE",
-            "NEVADA": "NV",
-            "NEW HAMPSHIRE": "NH",
-            "NEW JERSEY": "NJ",
-            "NEW MEXICO": "NM",
-            "NEW YORK": "NY",
-            "NORTH CAROLINA": "NC",
-            "NORTH DAKOTA": "ND",
-            "OHIO": "OH",
-            "OKLAHOMA": "OK",
-            "OREGON": "OR",
-            "PENNSYLVANIA": "PA",
-            "RHODE ISLAND": "RI",
-            "SOUTH CAROLINA": "SC",
-            "SOUTH DAKOTA": "SD",
-            "TENNESSEE": "TN",
-            "TEXAS": "TX",
-            "UTAH": "UT",
-            "VERMONT": "VT",
-            "VIRGINIA": "VA",
-            "WASHINGTON": "WA",
-            "WEST VIRGINIA": "WV",
-            "WISCONSIN": "WI",
-            "WYOMING": "WY",
-            "DISTRICT OF COLUMBIA": "DC",
-        }
-
-        # Check if already a 2-letter code
-        if len(state_str) == 2 and state_str.isalpha():
-            return state_str
-
-        # Try to map full name to abbreviation
-        if state_str in state_map:
-            return state_map[state_str]
-
-        # Try partial matches
-        for full_name, abbrev in state_map.items():
-            if full_name.startswith(state_str):
-                return abbrev
-
-        return None
+        return normalize_us_jurisdiction(
+            state,
+            profile=USJurisdictionProfile.PERMISSIVE_PREFIX_V1,
+        )
 
     @staticmethod
     def _standardize_country_code(country: str | None) -> str | None:

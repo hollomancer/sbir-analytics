@@ -19,6 +19,7 @@ from dagster import (
 from loguru import logger
 
 from sbir_etl.config.loader import get_config
+from sbir_etl.identity.geography import normalize_us_jurisdiction
 from sbir_etl.models.award import Award
 from sbir_etl.utils.company_canonicalizer import canonicalize_companies_from_awards
 from sbir_etl.utils.text_normalization import normalize_name
@@ -36,66 +37,6 @@ except ImportError:
 # ---------------------------------------------------------------------------
 # Constants
 # ---------------------------------------------------------------------------
-
-STATE_NAME_TO_CODE = {
-    "alabama": "AL",
-    "alaska": "AK",
-    "arizona": "AZ",
-    "arkansas": "AR",
-    "california": "CA",
-    "colorado": "CO",
-    "connecticut": "CT",
-    "delaware": "DE",
-    "florida": "FL",
-    "georgia": "GA",
-    "hawaii": "HI",
-    "idaho": "ID",
-    "illinois": "IL",
-    "indiana": "IN",
-    "iowa": "IA",
-    "kansas": "KS",
-    "kentucky": "KY",
-    "louisiana": "LA",
-    "maine": "ME",
-    "maryland": "MD",
-    "massachusetts": "MA",
-    "michigan": "MI",
-    "minnesota": "MN",
-    "mississippi": "MS",
-    "missouri": "MO",
-    "montana": "MT",
-    "nebraska": "NE",
-    "nevada": "NV",
-    "new hampshire": "NH",
-    "new jersey": "NJ",
-    "new mexico": "NM",
-    "new york": "NY",
-    "north carolina": "NC",
-    "north dakota": "ND",
-    "ohio": "OH",
-    "oklahoma": "OK",
-    "oregon": "OR",
-    "pennsylvania": "PA",
-    "rhode island": "RI",
-    "south carolina": "SC",
-    "south dakota": "SD",
-    "tennessee": "TN",
-    "texas": "TX",
-    "utah": "UT",
-    "vermont": "VT",
-    "virginia": "VA",
-    "washington": "WA",
-    "west virginia": "WV",
-    "wisconsin": "WI",
-    "wyoming": "WY",
-    "district of columbia": "DC",
-    "puerto rico": "PR",
-    "guam": "GU",
-    "virgin islands": "VI",
-    "american samoa": "AS",
-    "northern mariana islands": "MP",
-}
-
 
 _PHASE_NEXT = {"I": "II", "II": "III"}
 
@@ -266,7 +207,7 @@ def _normalize_row(row: pd.Series) -> dict[str, Any]:
             out[nk] = None
             continue
         if nk == "state" and isinstance(value, str):
-            out[nk] = STATE_NAME_TO_CODE.get(value.strip().lower(), value)
+            out[nk] = normalize_us_jurisdiction(value) or value
         elif nk == "number_employees" and isinstance(value, float) and value.is_integer():
             out[nk] = int(value)
         elif nk == "zip" and isinstance(value, str) and value.strip() == "-":
