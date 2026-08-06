@@ -11,7 +11,7 @@ import pandas as pd
 
 from sbir_etl.utils.identifiers import normalize_uei
 
-from .identity import IdentityRecoveryError
+from sbir_etl.identity.exact_awards import IdentityRecoveryError
 from .sam_eligibility import EligibilityStatus, require_reliable_sam_eligibility
 
 

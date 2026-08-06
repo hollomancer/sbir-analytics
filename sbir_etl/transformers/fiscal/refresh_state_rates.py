@@ -19,6 +19,8 @@ from typing import Any
 import httpx
 from loguru import logger
 
+from sbir_etl.identity.geography import normalize_us_jurisdiction
+
 from .state_rates import DEFAULT_CSV_PATH
 
 CSV_COLUMNS = [
@@ -35,63 +37,6 @@ CSV_COLUMNS = [
     "property_source",
 ]
 
-# Full state names as they appear on Tax Foundation pages (before parenthetical notes).
-_STATE_NAME_TO_ABBR: dict[str, str] = {
-    "alabama": "AL",
-    "alaska": "AK",
-    "arizona": "AZ",
-    "arkansas": "AR",
-    "california": "CA",
-    "colorado": "CO",
-    "connecticut": "CT",
-    "delaware": "DE",
-    "district of columbia": "DC",
-    "washington dc": "DC",
-    "d.c.": "DC",
-    "florida": "FL",
-    "georgia": "GA",
-    "hawaii": "HI",
-    "idaho": "ID",
-    "illinois": "IL",
-    "indiana": "IN",
-    "iowa": "IA",
-    "kansas": "KS",
-    "kentucky": "KY",
-    "louisiana": "LA",
-    "maine": "ME",
-    "maryland": "MD",
-    "massachusetts": "MA",
-    "michigan": "MI",
-    "minnesota": "MN",
-    "mississippi": "MS",
-    "missouri": "MO",
-    "montana": "MT",
-    "nebraska": "NE",
-    "nevada": "NV",
-    "new hampshire": "NH",
-    "new jersey": "NJ",
-    "new mexico": "NM",
-    "new york": "NY",
-    "north carolina": "NC",
-    "north dakota": "ND",
-    "ohio": "OH",
-    "oklahoma": "OK",
-    "oregon": "OR",
-    "pennsylvania": "PA",
-    "rhode island": "RI",
-    "south carolina": "SC",
-    "south dakota": "SD",
-    "tennessee": "TN",
-    "texas": "TX",
-    "utah": "UT",
-    "vermont": "VT",
-    "virginia": "VA",
-    "washington": "WA",
-    "west virginia": "WV",
-    "wisconsin": "WI",
-    "wyoming": "WY",
-}
-
 _PERCENT_RE = re.compile(r"(\d+(?:\.\d+)?)\s*%")
 _INCOME_ROW_RE = re.compile(r"^\|\s*(.+?)\s*\|\s*([^|]+)\|")
 
@@ -107,7 +52,7 @@ def _normalize_state_name(raw: str) -> str:
 def state_abbr_from_name(raw: str) -> str | None:
     """Map a Tax Foundation state label to a two-letter abbreviation."""
     key = _normalize_state_name(raw)
-    return _STATE_NAME_TO_ABBR.get(key)
+    return normalize_us_jurisdiction(key)
 
 
 def _parse_percentages(cell: str) -> list[float]:

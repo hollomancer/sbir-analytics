@@ -11,7 +11,7 @@ import pandas as pd
 
 from sbir_etl.utils.identifiers import normalize_cage, normalize_duns, normalize_uei
 
-from .identity import IdentityRecoveryError, RecoveryStatus
+from sbir_etl.identity.exact_awards import IdentityRecoveryError, RecoveryStatus
 from .quarantine import (
     normalize_quarantine_component,
     normalize_zip5,

@@ -18,6 +18,7 @@ from typing import Any, TypedDict
 import yaml
 
 from sbir_etl.extractors.sbir_public_awards import load_sbir_awards_csv
+from sbir_etl.identity.geography import normalize_us_jurisdiction
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 CONFIG_DIR = REPO_ROOT / "config" / "tech_census"
@@ -45,74 +46,10 @@ class CensusAward(TypedDict, total=False):
     source_row: int
 
 
-_US_STATE_NAMES = {
-    "ALABAMA": "AL",
-    "ALASKA": "AK",
-    "ARIZONA": "AZ",
-    "ARKANSAS": "AR",
-    "CALIFORNIA": "CA",
-    "COLORADO": "CO",
-    "CONNECTICUT": "CT",
-    "DELAWARE": "DE",
-    "DISTRICT OF COLUMBIA": "DC",
-    "FLORIDA": "FL",
-    "GEORGIA": "GA",
-    "HAWAII": "HI",
-    "IDAHO": "ID",
-    "ILLINOIS": "IL",
-    "INDIANA": "IN",
-    "IOWA": "IA",
-    "KANSAS": "KS",
-    "KENTUCKY": "KY",
-    "LOUISIANA": "LA",
-    "MAINE": "ME",
-    "MARYLAND": "MD",
-    "MASSACHUSETTS": "MA",
-    "MICHIGAN": "MI",
-    "MINNESOTA": "MN",
-    "MISSISSIPPI": "MS",
-    "MISSOURI": "MO",
-    "MONTANA": "MT",
-    "NEBRASKA": "NE",
-    "NEVADA": "NV",
-    "NEW HAMPSHIRE": "NH",
-    "NEW JERSEY": "NJ",
-    "NEW MEXICO": "NM",
-    "NEW YORK": "NY",
-    "NORTH CAROLINA": "NC",
-    "NORTH DAKOTA": "ND",
-    "OHIO": "OH",
-    "OKLAHOMA": "OK",
-    "OREGON": "OR",
-    "PENNSYLVANIA": "PA",
-    "RHODE ISLAND": "RI",
-    "SOUTH CAROLINA": "SC",
-    "SOUTH DAKOTA": "SD",
-    "TENNESSEE": "TN",
-    "TEXAS": "TX",
-    "UTAH": "UT",
-    "VERMONT": "VT",
-    "VIRGINIA": "VA",
-    "WASHINGTON": "WA",
-    "WEST VIRGINIA": "WV",
-    "WISCONSIN": "WI",
-    "WYOMING": "WY",
-    "AMERICAN SAMOA": "AS",
-    "GUAM": "GU",
-    "NORTHERN MARIANA ISLANDS": "MP",
-    "PUERTO RICO": "PR",
-    "VIRGIN ISLANDS": "VI",
-}
-_US_STATE_CODES = frozenset(_US_STATE_NAMES.values())
-
-
 def normalize_state_code(value: Any) -> str:
     """Normalize a USPS state/territory code or full name for report filtering."""
 
-    normalized = re.sub(r"\s+", " ", str(value or "").strip().upper())
-    if normalized in _US_STATE_CODES:
-        return normalized
-    return _US_STATE_NAMES.get(normalized, "")
+    return normalize_us_jurisdiction(value) or ""
 
 
 def normalize_state_codes(values: Iterable[str]) -> tuple[str, ...]:

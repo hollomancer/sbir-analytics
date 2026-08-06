@@ -63,6 +63,7 @@ DATA = REPO / "data"
 RAW = DATA / "raw/uspto/patentsview"
 
 sys.path.insert(0, str(REPO))
+from sbir_etl.identity.geography import normalize_us_jurisdiction  # noqa: E402
 from sbir_etl.utils.text_normalization import normalize_name  # noqa: E402
 from sbir_etl.utils.transition_report_paths import (  # noqa: E402
     add_area_args,
@@ -82,28 +83,9 @@ GENERIC_TOKENS = frozenset(
 )
 
 
-# SBIR.gov stores full state names; USPTO tables store USPS codes. Normalize to codes.
-STATE_TO_CODE = {
-    "ALABAMA": "AL", "ALASKA": "AK", "ARIZONA": "AZ", "ARKANSAS": "AR", "CALIFORNIA": "CA",
-    "COLORADO": "CO", "CONNECTICUT": "CT", "DELAWARE": "DE", "FLORIDA": "FL", "GEORGIA": "GA",
-    "HAWAII": "HI", "IDAHO": "ID", "ILLINOIS": "IL", "INDIANA": "IN", "IOWA": "IA",
-    "KANSAS": "KS", "KENTUCKY": "KY", "LOUISIANA": "LA", "MAINE": "ME", "MARYLAND": "MD",
-    "MASSACHUSETTS": "MA", "MICHIGAN": "MI", "MINNESOTA": "MN", "MISSISSIPPI": "MS",
-    "MISSOURI": "MO", "MONTANA": "MT", "NEBRASKA": "NE", "NEVADA": "NV",
-    "NEW HAMPSHIRE": "NH", "NEW JERSEY": "NJ", "NEW MEXICO": "NM", "NEW YORK": "NY",
-    "NORTH CAROLINA": "NC", "NORTH DAKOTA": "ND", "OHIO": "OH", "OKLAHOMA": "OK",
-    "OREGON": "OR", "PENNSYLVANIA": "PA", "RHODE ISLAND": "RI", "SOUTH CAROLINA": "SC",
-    "SOUTH DAKOTA": "SD", "TENNESSEE": "TN", "TEXAS": "TX", "UTAH": "UT", "VERMONT": "VT",
-    "VIRGINIA": "VA", "WASHINGTON": "WA", "WEST VIRGINIA": "WV", "WISCONSIN": "WI",
-    "WYOMING": "WY", "DISTRICT OF COLUMBIA": "DC", "PUERTO RICO": "PR", "GUAM": "GU",
-    "VIRGIN ISLANDS": "VI", "AMERICAN SAMOA": "AS", "NORTHERN MARIANA ISLANDS": "MP",
-}
-
-
 def state_code(raw: str) -> str:
     """Normalize an SBIR.gov state value (full name or code) to a USPS code."""
-    s = (raw or "").strip().upper()
-    return STATE_TO_CODE.get(s, s if len(s) == 2 else "")
+    return normalize_us_jurisdiction(raw) or ""
 
 
 def pi_last_name(raw: str) -> str:
@@ -233,7 +215,12 @@ def main(argv: list[str] | None = None) -> int:
             if st:
                 loc_state[lid] = st
     firm_assignee_states = {
-        f: {loc_state[l] for l in locs if l in loc_state} for f, locs in firm_loc_ids.items()
+        firm: {
+            loc_state[location_id]
+            for location_id in location_ids
+            if location_id in loc_state
+        }
+        for firm, location_ids in firm_loc_ids.items()
     }
 
     print("Joining filing years for matched patents...")
@@ -332,9 +319,11 @@ def main(argv: list[str] | None = None) -> int:
             if any(d and int(d[:4]) > sub[f]["first_award_year"] for d in b82_by_firm.get(f, []))
         )
         any_hold = sum(1 for f in sub if firm_patents.get(f))
-        def _post(f: str) -> bool:
-            return any(pat_year.get(p, 0) > sub[f]["first_award_year"]
-                       for p in firm_patents.get(f, set()))
+        def _post(f: str, subset: dict = sub) -> bool:
+            return any(
+                pat_year.get(p, 0) > subset[f]["first_award_year"]
+                for p in firm_patents.get(f, set())
+            )
         any_post = sum(1 for f in sub if _post(f))
         print(f"{bucket}: {n} firms")
         print(f"  B82 patents (floor):      hold {b82_hold} ({100*b82_hold/n:.0f}%)   filed post-award {b82_post} ({100*b82_post/n:.0f}%)")
