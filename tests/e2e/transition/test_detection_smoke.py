@@ -38,8 +38,8 @@ def test_transition_detector_smoke(
     if detections:
         detection = detections[0]
         assert hasattr(detection, "award_id")
-        assert hasattr(detection, "contract_id")
-        assert hasattr(detection, "score")
+        assert hasattr(detection, "primary_contract")
+        assert hasattr(detection, "likelihood_score")
 
 
 def test_transition_pipeline_summary(

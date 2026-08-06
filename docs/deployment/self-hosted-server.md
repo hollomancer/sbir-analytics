@@ -41,7 +41,10 @@ Run every `make server-*` command and shell-driven live materialization from
 the clean deployment checkout. Use the documented Make targets; do not run
 `git clean`, destructive resets, or hand-written Compose teardown commands
 there. Treat materialization as a live-data mutation: confirm persistent
-storage is mounted and the stack is healthy first. Keep schedules disabled
+storage is mounted and the stack is healthy first — `make server-health` is
+the concrete check (compose status plus environment, dependency, and Neo4j
+connectivity checks run inside the code-server container). Run it before any
+live materialization and before enabling any schedule. Keep schedules disabled
 until their jobs have completed successfully by hand with the inputs available
 on this host.
 

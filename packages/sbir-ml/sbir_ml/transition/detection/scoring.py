@@ -16,6 +16,7 @@ to produce a composite likelihood score (0.0-1.0) and confidence classification.
 from __future__ import annotations
 
 import re
+from datetime import datetime
 from typing import Any
 
 from loguru import logger
@@ -198,6 +199,14 @@ class TransitionScorer:
 
         if not award_completion_date or not contract_date:
             return TimingSignal(timing_score=0.0)
+
+        # DataFrame-sourced values arrive as pandas Timestamps (datetime
+        # subclasses), which plain date cannot mix with in arithmetic; the
+        # signal is day-granular either way, so subtract as dates.
+        if isinstance(award_completion_date, datetime):
+            award_completion_date = award_completion_date.date()
+        if isinstance(contract_date, datetime):
+            contract_date = contract_date.date()
 
         # Calculate days between
         days_between = (contract_date - award_completion_date).days

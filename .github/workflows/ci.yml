@@ -203,17 +203,8 @@ jobs:
       # back to sample data, and the bulk corpora live on persistent server storage
       # where no runner can reach them.
       #
-      # Two exclusions, both for tests that no CI job has ever executed and
-      # that are broken today. They are pre-existing rot, not regressions, and
-      # deselecting them by name keeps that visible rather than hiding it
-      # behind a marker filter:
-      #   - requires_api needs live external APIs and credentials; it does not
-      #     belong in CI at all.
-      #   - test_detection_smoke.py raises "Cannot compare Timestamp with
-      #     datetime.date" (slow-marked, so tests/e2e never ran it).
-      #   - TestFiscalPipeline imports fiscal_returns_core, a name that no
-      #     longer exists in sbir_analytics.assets.fiscal_assets.
-      # Fix those and delete the matching line.
+      # One exclusion: requires_api needs live external APIs and credentials;
+      # it does not belong in CI at all.
       - name: Run full test suite
         env:
           NEO4J_URI: "bolt://localhost:7687"
@@ -223,8 +214,6 @@ jobs:
         run: |
           uv run pytest tests/ \
             -m "not requires_api" \
-            --deselect tests/e2e/transition/test_detection_smoke.py \
-            --deselect tests/functional/test_pipelines.py::TestFiscalPipeline::test_fiscal_run_produces_outputs \
             --cov=sbir_etl \
             --cov=packages/sbir-analytics/sbir_analytics \
             --cov=packages/sbir-ml/sbir_ml \

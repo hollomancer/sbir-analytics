@@ -83,7 +83,14 @@ def transition_detection_dataframe(
             award=award.to_dict(),
             candidate_contracts=contracts,
         )
-        detections.extend([r.to_dict() for r in records])
+        detections.extend(
+            {
+                "award_id": r.award_id,
+                "contract_id": r.primary_contract.contract_id if r.primary_contract else None,
+                "score": r.likelihood_score,
+            }
+            for r in records
+        )
 
     return pd.DataFrame(detections or [{"award_id": None, "contract_id": None, "score": 0.0}])
 
