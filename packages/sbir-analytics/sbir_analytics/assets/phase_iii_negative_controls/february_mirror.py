@@ -19,7 +19,7 @@ import pandas as pd
 
 from sbir_etl.extractors.contract_extractor import ArchiveSchemaError, SourceDataError
 
-from .identity import IdentityRecoveryError
+from sbir_etl.identity.exact_awards import IdentityRecoveryError
 from .source_keys import (
     USA_FAIN_ADAPTER,
     USA_PIID_ADAPTER,

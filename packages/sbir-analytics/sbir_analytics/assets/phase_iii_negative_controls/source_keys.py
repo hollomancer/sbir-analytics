@@ -8,7 +8,7 @@ from typing import Any
 
 import pandas as pd
 
-from .identity import IdentityRecoveryError
+from sbir_etl.identity.exact_awards import IdentityRecoveryError
 
 
 USA_PIID_ADAPTER = "usaspending_piid"
