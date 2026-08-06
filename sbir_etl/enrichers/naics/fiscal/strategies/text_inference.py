@@ -1,4 +1,9 @@
-"""Strategy for NAICS enrichment from text inference."""
+"""Strategy for NAICS enrichment from text inference.
+
+Epistemic tier: exploratory. Keyword-based NAICS imputation from award text
+is contestable classification, not extraction, so inferred codes are
+non-citable.
+"""
 
 from __future__ import annotations
 
@@ -8,6 +13,9 @@ import pandas as pd
 
 from ..utils import normalize_naics_code
 from .base import EnrichmentStrategy, NAICSEnrichmentResult
+
+
+EPISTEMIC_TIER = "exploratory"
 
 
 class TextInferenceStrategy(EnrichmentStrategy):

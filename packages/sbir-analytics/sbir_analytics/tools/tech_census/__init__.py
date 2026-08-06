@@ -9,8 +9,14 @@ year. First area: drone manufacturing.
 Tools (1):
 - compute_tech_census: classify + aggregate SBIR awards against a
   config/tech_census/<area>.yaml
+
+Epistemic tier: exploratory. Census admission profiles are contestable
+cohort policy (see sbir_etl.utils.tech_census); outputs are non-citable.
 """
 
 from .compute_tech_census import ComputeTechCensusTool
+
+
+EPISTEMIC_TIER = "exploratory"
 
 __all__ = ["ComputeTechCensusTool"]

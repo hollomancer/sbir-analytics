@@ -70,5 +70,5 @@ Promotion beyond exploratory use follows the [epistemic tiers](epistemic-tiers.m
 
 - [Configuration](../configuration.md)
 - [Pipeline orchestration](pipeline-orchestration.md)
-- [Testing index](../testing/index.md)
+- [Testing index](../testing/README.md)
 - [Study contracts](../../studies/README.md)

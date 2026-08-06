@@ -36,6 +36,14 @@ refresh-state-rates = "sbir_etl.transformers.fiscal.refresh_state_rates:main"
 ucc1-pilot = ["curl_cffi>=0.7.0,<1.0.0"]
 # USPTO SPSS/SAS file extraction
 uspto = ["pyreadstat>=1.1.4,<2.0.0"]
+# USPTO patent-assignment downloads. data.uspto.gov stopped serving assignments
+# to plain HTTP clients on 2026-06-18, so uspto_download_job drives a real
+# browser (sbir_etl/extractors/source_downloads/uspto_browser.py). Kept out of
+# stack-dev: the wheel is large and needs a separate `playwright install
+# chromium` for the browser itself, which CI has no use for. The server image
+# pins the same constraint in the Dockerfile, which installs packages directly
+# rather than installing this project.
+uspto-browser = ["playwright>=1.47.0,<2.0.0"]
 # AWS S3 cloud storage (for extractors that pull from S3)
 cloud = [
 ]

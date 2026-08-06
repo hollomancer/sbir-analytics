@@ -2,6 +2,10 @@
 
 This module provides centralized date parsing and formatting functions that
 consolidate duplicate date handling logic across the codebase.
+
+Epistemic tier: primitives. Deterministic parse/format helpers imported by
+primitives-tier models; output-changing behavior is a versioned change,
+never an edit in place.
 """
 
 from __future__ import annotations
@@ -16,6 +20,9 @@ try:
     import pandas as pd
 except ImportError:
     pd = None  # type: ignore[assignment, unused-ignore]
+
+
+EPISTEMIC_TIER = "primitives"
 
 # Common date formats in order of preference
 COMMON_DATE_FORMATS = [

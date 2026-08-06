@@ -11,6 +11,10 @@ defeat that opacity — it measures it. T2/T3/T4 are first-class results, not
 failures, and their union is reported as a first-class "unverifiable share".
 
 See ``docs/ot-consortium/tiers.md`` for the full tier logic and assumptions.
+
+Epistemic tier: pipelines. Verification-tier assignment is a deterministic,
+auditable function of federal-record fields — name similarity is never
+sufficient — so it measures record opacity rather than inferring transitions.
 """
 
 from __future__ import annotations
@@ -28,6 +32,9 @@ from .models import (
     VerificationTier,
 )
 from .registry import CMFRecord, CMFRegistry
+
+
+EPISTEMIC_TIER = "pipelines"
 
 __all__ = [
     "UNVERIFIABLE_TIERS",

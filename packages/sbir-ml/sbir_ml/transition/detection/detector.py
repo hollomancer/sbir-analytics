@@ -140,6 +140,11 @@ class TransitionDetector:
         Returns:
             List of contracts within timing window
         """
+        # DataFrame-sourced awards and contracts carry pandas Timestamps
+        # (datetime subclasses), which plain date cannot compare against;
+        # the window is day-granular either way, so compare as dates.
+        if isinstance(award_completion_date, datetime):
+            award_completion_date = award_completion_date.date()
         min_date = award_completion_date + timedelta(days=self.min_days_after)
         max_date = award_completion_date + timedelta(days=self.max_days_after)
 
@@ -150,6 +155,9 @@ class TransitionDetector:
             contract_date = contract.action_date or contract.start_date
             if not contract_date:
                 continue
+
+            if isinstance(contract_date, datetime):
+                contract_date = contract_date.date()
 
             if min_date <= contract_date <= max_date:
                 filtered.append(contract)

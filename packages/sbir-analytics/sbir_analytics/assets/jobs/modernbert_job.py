@@ -9,6 +9,9 @@ Usage:
   - Import the job into your Dagster repository
   - Run the job with dagster CLI or from the Dagster UI
   - Requires validated_sbir_awards and transformed_patents assets to be materialized first
+
+Epistemic tier: exploratory. This job wires the exploratory embedding and
+similarity assets; outputs are non-citable.
 """
 
 from dagster import AssetSelection, define_asset_job
@@ -24,6 +27,9 @@ except Exception:  # pragma: no cover
     modernbert_embeddings_awards = None  # type: ignore
     modernbert_embeddings_patents = None  # type: ignore
     modernbert_award_patent_similarity = None  # type: ignore
+
+
+EPISTEMIC_TIER = "exploratory"
 
 
 if all(

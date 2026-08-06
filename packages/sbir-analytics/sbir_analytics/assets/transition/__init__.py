@@ -1,5 +1,9 @@
 """Transition Detection assets package.
 
+Epistemic tier: exploratory. Vendor resolution and transition scoring rest on
+fuzzy matching and model-weighted similarity, so detections are non-citable
+without evidence-tier validation.
+
 This package contains modularized Dagster assets for the Transition Detection MVP,
 which identifies SBIR award recipients who transition to federal contracts.
 
@@ -88,6 +92,9 @@ from .utils import (
 
 # Vendor resolution module
 from .vendor_resolution import enriched_vendor_resolution
+
+
+EPISTEMIC_TIER = "exploratory"
 
 
 __all__ = [

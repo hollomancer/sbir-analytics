@@ -11,6 +11,10 @@ Matching is exact-on-normalized-name first, then token-set fuzzy (rapidfuzz)
 above a threshold, so "Acme Photonics" resolves to "ACME PHOTONICS INC" without
 also grabbing "Acme Robotics". Every match reports its score and method so a
 human can spot-check the fuzzy ones.
+
+Epistemic tier: exploratory. Fuzzy firm-name resolution for groundtruth
+assembly is non-citable; its results reach the evidence-target
+phase3-transition-groundtruth spec only through that spec's own contract.
 """
 
 from __future__ import annotations
@@ -28,6 +32,9 @@ from sbir_etl.identity import (
     normalize_company_name,
     rapidfuzz_token_set_100,
 )
+
+
+EPISTEMIC_TIER = "exploratory"
 
 FUZZY_THRESHOLD = 88.0
 

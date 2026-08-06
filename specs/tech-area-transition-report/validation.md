@@ -171,9 +171,9 @@ Method A/B overlap statistics (which compare bare `award_id` **sets**, 135 disti
 
 Cohort + triangulation + agency composition (no pathway rates — signal artifacts absent):
 
-- [`docs/nanotech_sbir_policy_brief.md`](../../docs/nanotech_sbir_policy_brief.md) — full channel headline table (nanotech)
-- [`docs/quantum_information_science_sbir_policy_brief.md`](../../docs/quantum_information_science_sbir_policy_brief.md) — Method A **138**, provisional cohort brief
-- [`docs/hypersonics_sbir_policy_brief.md`](../../docs/hypersonics_sbir_policy_brief.md) — Method A **813**, provisional cohort brief
+- [`docs/research/nanotech_sbir_policy_brief.md`](../../docs/research/nanotech_sbir_policy_brief.md) — full channel headline table (nanotech)
+- [`docs/research/quantum_information_science_sbir_policy_brief.md`](../../docs/research/quantum_information_science_sbir_policy_brief.md) — Method A **138**, provisional cohort brief
+- [`docs/research/hypersonics_sbir_policy_brief.md`](../../docs/research/hypersonics_sbir_policy_brief.md) — Method A **813**, provisional cohort brief
 
 Technical appendices: `docs/*_sbir_transition_findings.md`. Format spec: `specs/tech-area-transition-report/publication-format.md`.
 

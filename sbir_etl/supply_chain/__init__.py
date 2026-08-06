@@ -1,4 +1,9 @@
-"""Observable supply-network relationships involving SBIR awardees."""
+"""Observable supply-network relationships involving SBIR awardees.
+
+Epistemic tier: pipelines. Modules normalize observed funding relationships
+and build reproducible releases without asserting criticality; the CET
+screen declares exploratory per-file.
+"""
 
 from sbir_etl.supply_chain.defense_funding import (
     build_defense_funding_summary,
@@ -30,6 +35,9 @@ from sbir_etl.supply_chain.subaward_network import (
     build_supplier_customer_exposure,
     build_subaward_facts,
 )
+
+
+EPISTEMIC_TIER = "pipelines"
 
 __all__ = [
     "NSFReconciliationResult",

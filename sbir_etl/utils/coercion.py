@@ -1,10 +1,18 @@
-"""Generic type-coercion helpers shared across ETL modules."""
+"""Generic type-coercion helpers shared across ETL modules.
+
+Epistemic tier: primitives. Identity primitives depend on these coercion
+helpers, so output-changing edits move identity results and carry the
+primitives contract, not the utils package default.
+"""
 
 from __future__ import annotations
 
 from typing import Any
 
 import pandas as pd
+
+
+EPISTEMIC_TIER = "primitives"
 
 # Explicit pandas NA singleton types — avoids pd.isna() on arrays/lists
 # which returns an ambiguous boolean array and triggers DeprecationWarning.

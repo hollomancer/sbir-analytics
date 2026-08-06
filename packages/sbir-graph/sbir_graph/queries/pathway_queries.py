@@ -7,12 +7,18 @@ Implements sophisticated queries to traverse transition detection pathways:
 - Award → CET → Transition (technology-focused)
 - Company → Transition Metrics (company success)
 - Aggregations by CET area and confidence levels
+
+Epistemic tier: pipelines. Queries traverse persisted graph relationships
+deterministically and report stored scores without producing new inference.
 """
 
 from dataclasses import dataclass
 from typing import Any
 
 from neo4j import Driver  # type: ignore[attr-defined]
+
+
+EPISTEMIC_TIER = "pipelines"
 
 
 @dataclass

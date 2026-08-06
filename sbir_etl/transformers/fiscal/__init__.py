@@ -28,6 +28,10 @@ Exported Classes:
 
 Exported Functions:
 - calculate_fiscal_year: Convert award date to government fiscal year
+
+Epistemic tier: exploratory. Tax estimation, ROI, and sensitivity analysis
+are model-based estimation with no evidence-tier contract, so outputs are
+non-citable.
 """
 
 from __future__ import annotations
@@ -52,6 +56,9 @@ from .shocks import FiscalShockAggregator, ShockAggregationStats, calculate_fisc
 
 # Taxes module
 from .taxes import FiscalTaxEstimator, TaxEstimationStats
+
+
+EPISTEMIC_TIER = "exploratory"
 
 
 __all__ = [

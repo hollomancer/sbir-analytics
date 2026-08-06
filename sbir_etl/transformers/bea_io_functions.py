@@ -1,5 +1,9 @@
 """BEA I-O table functions for economic impact computation.
 
+Epistemic tier: exploratory. Leontief input-output analysis produces modeled
+economic impact estimates a reader could mistake for findings, so outputs are
+non-citable.
+
 Fetches national Use tables and Value-Added data from the BEA API, then
 performs Leontief input-output analysis in NumPy/Pandas.
 """
@@ -11,6 +15,9 @@ import pandas as pd
 from loguru import logger
 
 from .bea_api_client import BEAApiClient
+
+
+EPISTEMIC_TIER = "exploratory"
 
 
 # ---------------------------------------------------------------------------

@@ -140,8 +140,8 @@ Policy-leader and technical layers are split per `publication-format.md`:
 
 | Layer | Nanotech | Quantum | Hypersonics |
 |-------|----------|---------|-------------|
-| Policy brief | `docs/nanotech_sbir_policy_brief.md` | `docs/quantum_information_science_sbir_policy_brief.md` | `docs/hypersonics_sbir_policy_brief.md` |
-| Technical findings | `docs/nanotech_sbir_transition_findings.md` | `docs/quantum_information_science_sbir_transition_findings.md` | `docs/hypersonics_sbir_transition_findings.md` |
+| Policy brief | `docs/research/nanotech_sbir_policy_brief.md` | `docs/research/quantum_information_science_sbir_policy_brief.md` | `docs/research/hypersonics_sbir_policy_brief.md` |
+| Technical findings | `docs/research/nanotech_sbir_transition_findings.md` | `docs/research/quantum_information_science_sbir_transition_findings.md` | `docs/research/hypersonics_sbir_transition_findings.md` |
 
 Provisional area briefs use the same headline-table + language-guardrails structure but
 omit channel rows until digest / Form D / M&A artifacts exist.

@@ -41,7 +41,10 @@ Run every `make server-*` command and shell-driven live materialization from
 the clean deployment checkout. Use the documented Make targets; do not run
 `git clean`, destructive resets, or hand-written Compose teardown commands
 there. Treat materialization as a live-data mutation: confirm persistent
-storage is mounted and the stack is healthy first. Keep schedules disabled
+storage is mounted and the stack is healthy first — `make server-health` is
+the concrete check (compose status plus environment, dependency, and Neo4j
+connectivity checks run inside the code-server container). Run it before any
+live materialization and before enabling any schedule. Keep schedules disabled
 until their jobs have completed successfully by hand with the inputs available
 on this host.
 
@@ -454,6 +457,18 @@ Before enabling, note:
   HTML shell with HTTP 200, so the job fetches PatentsView and AI patents
   through the ODP mint flow and assignments through browser automation. A
   size/HTML guard fails the run rather than saving an error page as data.
+  The container image already carries both. Running the job outside the image
+  needs the `uspto-browser` extra plus the browser itself, which pip does not
+  install:
+
+  ```bash
+  uv sync --extra uspto-browser
+  uv run playwright install chromium
+  ```
+
+  Without them `download_assignments` raises `ModuleNotFoundError: playwright`
+  from inside the op. The extra is deliberately absent from `stack-dev`, so a
+  normal dev or CI environment does not carry it.
 - Downloads land under `SBIR_ETL__PATHS__DATA_ROOT`, which the server profile
   points at persistent host storage.
 

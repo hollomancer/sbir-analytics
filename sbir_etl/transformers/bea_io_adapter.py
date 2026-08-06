@@ -1,5 +1,8 @@
 """BEA I-O adapter for economic impact computation.
 
+Epistemic tier: exploratory. Multiplier impacts computed from spending shocks
+are model estimates, not observed data, so computed impacts are non-citable.
+
 Fetches national Input-Output tables from the BEA REST API and computes
 Leontief-based economic multiplier impacts from SBIR spending shocks.
 """
@@ -30,6 +33,9 @@ from .bea_io_functions import (
     fetch_value_added,
 )
 from .economic_model_interface import validate_shocks_input
+
+
+EPISTEMIC_TIER = "exploratory"
 
 
 class BEAIOAdapter:

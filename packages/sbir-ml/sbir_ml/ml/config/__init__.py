@@ -1,8 +1,15 @@
-"""Configuration loaders for CET taxonomy, hyperparameters, and ModernBert client."""
+"""Configuration loaders for CET taxonomy, hyperparameters, and ModernBert client.
+
+Epistemic tier: pipelines. Taxonomy and client configuration loading is
+deterministic, validated data movement; it decides nothing contestable.
+"""
 
 from pydantic import BaseModel, Field
 
 from .taxonomy_loader import ClassificationConfig, TaxonomyConfig, TaxonomyLoader
+
+
+EPISTEMIC_TIER = "pipelines"
 
 
 class ModernBertClientConfig(BaseModel):

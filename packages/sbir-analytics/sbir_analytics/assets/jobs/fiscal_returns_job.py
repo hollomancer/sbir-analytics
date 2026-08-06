@@ -1,4 +1,8 @@
-"""Fiscal returns analysis job definitions for Dagster."""
+"""Fiscal returns analysis job definitions for Dagster.
+
+Epistemic tier: exploratory. This job wires the exploratory fiscal
+estimation assets; outputs are non-citable.
+"""
 
 from .job_registry import JobSpec, build_job_from_spec, build_placeholder_job
 
@@ -9,6 +13,9 @@ try:
     fiscal_assets_available = True
 except Exception:  # pragma: no cover - handles optional dependencies
     fiscal_assets_available = False
+
+
+EPISTEMIC_TIER = "exploratory"
 
 
 if fiscal_assets_available:

@@ -57,7 +57,7 @@ make lint
 
 Run broader integration or end-to-end suites when the change crosses service or
 pipeline boundaries. Those suites may require Docker, credentials, or local
-datasets; the [testing index](docs/testing/index.md) documents the requirements.
+datasets; the [testing index](docs/testing/README.md) documents the requirements.
 
 The project uses Ruff for formatting and linting and MyPy for type checking.
 Install the optional local hooks with:

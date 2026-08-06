@@ -123,4 +123,4 @@ that material as active requirements.
 - [Research questions](../research-questions.md)
 - [Epistemic tiers](../steering/epistemic-tiers.md)
 - [Architecture overview](../architecture/detailed-overview.md)
-- [Testing index](../testing/index.md)
+- [Testing index](../testing/README.md)

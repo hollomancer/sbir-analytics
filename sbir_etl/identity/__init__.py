@@ -1,4 +1,9 @@
-"""Shared company-identity normalization and similarity contracts."""
+"""Shared company-identity normalization and similarity contracts.
+
+Epistemic tier: primitives. Every member module is a versioned identity
+contract; output-changing behavior requires a new named profile version,
+never an edit in place.
+"""
 
 from .company_names import (
     ENHANCED_ABBREVIATIONS,
@@ -36,6 +41,9 @@ from .sbir_awards import (
     sbir_award_public_id,
     stable_sbir_award_id,
 )
+
+
+EPISTEMIC_TIER = "primitives"
 
 
 __all__ = [

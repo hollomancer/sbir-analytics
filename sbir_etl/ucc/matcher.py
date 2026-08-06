@@ -19,6 +19,10 @@ most of these because the spurious matches are in different cities than
 the cohort firm.
 
 Reuses sbir_etl.enrichers.matching for name normalization + similarity.
+
+Epistemic tier: exploratory. Debtor matching combines name-similarity
+thresholds with address heuristics — contestable identity inference — so
+match sets are non-citable.
 """
 
 import argparse
@@ -36,6 +40,9 @@ from sbir_etl.identity import (  # noqa: E402
 )
 
 from sbir_etl.ucc._common import data_path
+
+
+EPISTEMIC_TIER = "exploratory"
 
 # Name-tier thresholds (Jaro-Winkler 0..1)
 TIER_MEDIUM_THRESHOLD = 0.92

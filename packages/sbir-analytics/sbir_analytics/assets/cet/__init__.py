@@ -1,5 +1,9 @@
 """CET (Critical & Emerging Technologies) assets package.
 
+Epistemic tier: exploratory. Award and patent CET classification and
+classifier training are unvalidated model inference, so technology labels
+are non-citable.
+
 This package contains modularized Dagster assets for CET taxonomy processing,
 classification, training, analytics, validation, company profiling, and Neo4j loading.
 
@@ -83,6 +87,8 @@ from .validation import (
     validated_cet_iaa_report,
 )
 
+
+EPISTEMIC_TIER = "exploratory"
 
 # Backward compatibility aliases
 neo4j_cetarea_nodes = loaded_cet_areas

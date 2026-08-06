@@ -3,7 +3,7 @@
 **Target epistemic tier:** `evidence`
 
 **Problem:** 82.6% of the nanotech Phase II cohort (2,352 of 2,849 awards) has indeterminate
-commercialization status. The findings report (`docs/nanotech_sbir_transition_findings.md`,
+commercialization status. The findings report (`docs/research/nanotech_sbir_transition_findings.md`,
 Finding 3) shows this "dark majority" is measurement failure more than proven failure — but
 "indeterminate" is not one problem. The deficiency taxonomy splits it into four populations
 that need four different treatments. This spec defines the treatments.
