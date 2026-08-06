@@ -22,6 +22,11 @@ RUN pip install \
 # USPTO patent assignments are only reachable through browser automation since
 # data.uspto.gov stopped serving them to plain HTTP clients (2026-06-18), so
 # uspto_download_job needs a real Chromium on the server image.
+#
+# The playwright pin above duplicates the `uspto-browser` extra in pyproject.toml,
+# which is the source of truth. This image installs packages directly rather than
+# installing this project (it copies source and sets PYTHONPATH), so it cannot
+# resolve the extra; keep the two constraints in step by hand.
 ENV PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers
 RUN playwright install --with-deps chromium && \
     chmod -R a+rX /opt/pw-browsers

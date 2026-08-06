@@ -454,6 +454,18 @@ Before enabling, note:
   HTML shell with HTTP 200, so the job fetches PatentsView and AI patents
   through the ODP mint flow and assignments through browser automation. A
   size/HTML guard fails the run rather than saving an error page as data.
+  The container image already carries both. Running the job outside the image
+  needs the `uspto-browser` extra plus the browser itself, which pip does not
+  install:
+
+  ```bash
+  uv sync --extra uspto-browser
+  uv run playwright install chromium
+  ```
+
+  Without them `download_assignments` raises `ModuleNotFoundError: playwright`
+  from inside the op. The extra is deliberately absent from `stack-dev`, so a
+  normal dev or CI environment does not carry it.
 - Downloads land under `SBIR_ETL__PATHS__DATA_ROOT`, which the server profile
   points at persistent host storage.
 
