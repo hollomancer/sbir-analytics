@@ -71,7 +71,8 @@ limitations:
     repository (specs/phase3-match-benchmark/provisional-results.json).
   - Exact-identifier vendor matching misses acquisitions, successors, and UEI
     changes; fuzzy fallback introduces unadjudicated match error.
-  - This study is exploratory; its scores and counts are non-citable, any output
-    leaving the repository must carry citable false metadata, and no research
-    question may be marked answerable on these numbers until the study reaches
-    validated status.
+  - >-
+    This study is exploratory; its scores and counts are non-citable, anything
+    that leaves the repository must emit `citable: false` metadata, and no
+    research question may be marked answerable on these numbers until the study
+    reaches validated status.
