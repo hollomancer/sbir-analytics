@@ -21,6 +21,7 @@ from typing import Any
 EPISTEMIC_TIER = "pipelines"
 
 __all__ = [
+    "EPISTEMIC_TIER",
     # Base
     "BaseLoaderConfig",
     "BaseNeo4jLoader",
