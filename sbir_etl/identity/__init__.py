@@ -5,6 +5,10 @@ contract; output-changing behavior requires a new named profile version,
 never an edit in place.
 """
 
+from .canonical_merge import (
+    CanonicalMergePolicy,
+    build_canonical_company_map,
+)
 from .company_names import (
     ENHANCED_ABBREVIATIONS,
     SUFFIX_TOKENS,
@@ -56,12 +60,14 @@ __all__ = [
     "US_JURISDICTION_VARIATIONS_V1",
     "USJurisdictionProfile",
     "VALID_US_JURISDICTION_CODES_V1",
+    "CanonicalMergePolicy",
     "CompanyNameMetric",
     "CompanyNameProfile",
     "ExactAwardIdentityProfile",
     "IdentityRecoveryError",
     "RecoveryStatus",
     "SbirAwardKeyProfile",
+    "build_canonical_company_map",
     "company_name_similarity",
     "normalize_company_name",
     "normalize_us_jurisdiction",

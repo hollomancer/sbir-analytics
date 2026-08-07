@@ -40,12 +40,6 @@ ALLOWED_TIER_IMPORTS = {
 # tolerated. Every entry needs a reason and a removal condition; an entry that
 # stops suppressing a violation fails the run so it cannot linger.
 TIER_IMPORT_ALLOWLIST: dict[str, frozenset[str]] = {
-    # Fuzzy pre-load company deduplication inside the Neo4j loading asset.
-    # Removed by spec R2/T2: canonical merge moves behind a versioned
-    # sbir_etl.identity policy and the loader imports only identity.
-    "packages/sbir-analytics/sbir_analytics/assets/sbir_neo4j_loading.py": frozenset(
-        {"sbir_etl.utils.company_canonicalizer"}
-    ),
     # Contestable CET-relevance screening called inline from a pipelines
     # module. Removed by spec R3/T3.1: the exploratory asset layer calls the
     # screen and passes screened data in as a parameter.
