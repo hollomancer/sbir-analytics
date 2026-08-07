@@ -1,0 +1,77 @@
+schema_version: 1
+study_id: transition-scoring
+title: SBIR award-to-contract transition likelihood scoring
+evidence_status: exploratory
+research_questions:
+  - B2
+  - B3
+estimand: >-
+  For each SBIR award and candidate federal prime contract attributed to the same
+  resolved vendor inside the configured post-completion timing window, estimate a
+  composite likelihood score in [0, 1] that ranks how plausibly the contract is
+  follow-on work derived from the award, combining agency continuity, timing
+  proximity, competition type, patent signals, and CET-area alignment under the
+  hand-set weights in config/transition/detection.yaml. The score orders candidate
+  pairs; it does not estimate a validated transition probability, prevalence, or
+  count.
+frozen_artifacts:
+  - path: packages/sbir-ml/sbir_ml/transition/detection/fusion_coefficients.json
+    sha256: 8bf641ba8877a77192d935911f0eb8d61386580550bc5ad4770cc0c079d1bd7d
+  - path: specs/phase3-notice-corpus-fusion/corpus.manifest.json
+    sha256: 68a16361852af8a9ea262b5beddff9acfc7da956a1fc5cd6499ec0551c32ac2b
+  - path: specs/phase3-notice-corpus-fusion/refit_ladder.json
+    sha256: a525b4e7a8d662e85d0f27609ae2d8fe05d08c589e72beac58e8dcdb1bdde5c0
+implementation:
+  - path: packages/sbir-ml/sbir_ml/transition/detection/scoring.py
+    symbol: TransitionScorer
+  - path: packages/sbir-ml/sbir_ml/transition/detection/detector.py
+    symbol: TransitionDetector
+  - path: packages/sbir-ml/sbir_ml/transition/detection/fusion_model.py
+    symbol: load_fusion_coefficients
+  - path: packages/sbir-ml/sbir_ml/transition/evaluation/evaluator.py
+    symbol: TransitionEvaluator
+  - path: packages/sbir-analytics/sbir_analytics/assets/transition/detections.py
+    symbol: transformed_transition_detections
+identity_policy:
+  strategy: >-
+    exact vendor identifiers first (UEI, then CAGE, then DUNS), with fuzzy company-name
+    fallback gated by the thresholds in config/transition/detection.yaml
+  version: config/transition/detection.yaml fuzzy_threshold 0.90 / secondary 0.80
+  negative_evidence_allowed: false
+materialization:
+  allowed: true
+  blockers: []
+permitted_claims:
+  - Given a fixed detection configuration and the frozen, hash-validated fusion
+    coefficients, transition scoring is deterministic for a fixed input data cut.
+  - Transition-scoring changes are required to maintain the repository's >=85%
+    precision benchmark; this is an enforced change-gate, not a measured result
+    recorded by this study.
+  - The notice-corpus fusion refit reproduced the published award-grain linkage
+    result on its frozen corpus (828 rows, 138 positives, 101 firms; frame hash
+    4c4064f0...) with leakage-scrubbed AUC 0.847 [0.792, 0.898], inside the
+    published CI [0.800, 0.886]; the held-out precision@1 analogue is the
+    refit ladder's out-of-fold top1 = 0.674 (GroupKFold by firm).
+limitations:
+  - No stored benchmark report ties the >=85% precision target to a declared data
+    cut or ground-truth label set; when it was last measured, against what labels,
+    remains an open question in docs/steering/ml-methodology-review.md.
+  - Recall is unknown; no estimate of missed transitions exists at any tier.
+  - Composite scoring weights are hand-set expert judgment in
+    config/transition/detection.yaml, not learned or validated coefficients, and
+    that live configuration is deliberately tunable, so it is not pinned here.
+  - The frozen fusion coefficients apply to notice-to-award ranking, a different
+    subsystem from the composite TransitionScorer; the 0.674 held-out top-1 figure
+    does not transfer to composite scores, and the fusion label set is small
+    (138 award-grain positives across 101 firms).
+  - The fusion corpus parquet is local-only and gitignored; it is regenerable from
+    committed scripts and pinned manifests but its bytes are not SHA-enforced here.
+  - phase3-match-benchmark results remain provisional portfolio-linkage evidence,
+    with empirical reruns blocked on required inputs that are absent from this
+    repository (specs/phase3-match-benchmark/provisional-results.json).
+  - Exact-identifier vendor matching misses acquisitions, successors, and UEI
+    changes; fuzzy fallback introduces unadjudicated match error.
+  - This study is exploratory; its scores and counts are non-citable, any output
+    leaving the repository must carry citable false metadata, and no research
+    question may be marked answerable on these numbers until the study reaches
+    validated status.
