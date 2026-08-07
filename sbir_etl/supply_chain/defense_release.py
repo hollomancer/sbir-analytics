@@ -7,6 +7,7 @@ import json
 import shutil
 import tempfile
 import zipfile
+from dataclasses import dataclass
 from datetime import UTC, date, datetime
 from pathlib import Path
 from typing import Any
@@ -31,7 +32,6 @@ from sbir_etl.supply_chain.defense_funding import (
     normalize_subaward_transactions,
 )
 from sbir_etl.supply_chain.subaward_network import build_subaward_facts
-from sbir_etl.supply_chain.nsf_screen import screen_direct_nsf_awards
 
 DEFAULT_LINEAGE_DIR = Path("data/processed/nsf_sbir_defense_lineage")
 DEFAULT_PRIME_SNAPSHOT_ROOT = Path("data/raw/usaspending/nsf_awardee_prime")
@@ -297,7 +297,33 @@ def _assert_analysis_date(frame: pd.DataFrame, analysis_date: date, label: str) 
         raise ValueError(f"{label} does not share analysis date {analysis_date.isoformat()}")
 
 
-def build_release(
+@dataclass(frozen=True)
+class DefenseFundingWorkset:
+    """Reproducible pre-screen state handed from build-up to the screen handoff.
+
+    ``prepare_defense_funding`` builds every deterministic product up to (but not
+    including) the contestable CET screen and records the funded-organization
+    ids the screen needs. The exploratory asset layer screens ``direct`` and
+    hands the frame to :func:`build_release`; neither function imports the screen
+    (spec epistemic-tier-enforcement R3).
+    """
+
+    lineage_dir: Path
+    analysis_date: date
+    analysis_timestamp: pd.Timestamp
+    direct: pd.DataFrame
+    registry: pd.DataFrame
+    prime: pd.DataFrame
+    subaward_transactions: pd.DataFrame
+    summary: pd.DataFrame
+    funded_organization_ids: frozenset[str]
+    snapshots: list[Path]
+    prime_api_parquets: list[Path]
+    archive_inputs: list[dict[str, str]]
+    subaward_paths: list[Path]
+
+
+def prepare_defense_funding(
     *,
     lineage_dir: Path,
     analysis_date: date,
@@ -311,8 +337,13 @@ def build_release(
     subaward_sources: list[Path] | None = None,
     allow_missing_prime: bool = False,
     allow_missing_subawards: bool = False,
-) -> dict[str, Any]:
-    """Materialize Phase 2/3 products from pinned NSF and USAspending inputs."""
+) -> DefenseFundingWorkset:
+    """Build reproducible prime/subaward/summary products and funded-org ids.
+
+    Everything here is deterministic movement from pinned inputs; the contestable
+    CET screen is applied by the exploratory caller, which then hands the screened
+    frame to :func:`build_release`.
+    """
 
     direct_path = lineage_dir / "nsf_sbir_awards_direct.parquet"
     awardees_path = lineage_dir / "nsf_sbir_awardee_status.parquet"
@@ -438,7 +469,45 @@ def build_release(
                 "nsf_organization_id",
             ].astype(str)
         )
-    award_screen = screen_direct_nsf_awards(direct, funded_organization_ids=funded_ids)
+    return DefenseFundingWorkset(
+        lineage_dir=lineage_dir,
+        analysis_date=analysis_date,
+        analysis_timestamp=analysis_timestamp,
+        direct=direct,
+        registry=registry,
+        prime=prime,
+        subaward_transactions=subaward_transactions,
+        summary=summary,
+        funded_organization_ids=frozenset(funded_ids),
+        snapshots=snapshots,
+        prime_api_parquets=list(prime_api_parquets or []),
+        archive_inputs=archive_inputs,
+        subaward_paths=subaward_paths,
+    )
+
+
+def build_release(workset: DefenseFundingWorkset, *, award_screen: pd.DataFrame) -> dict[str, Any]:
+    """Assemble evidence, quality gates, products, and manifest from a workset.
+
+    The contestable CET screen is computed by the exploratory asset layer and
+    handed in as ``award_screen`` data, already stamped with its ``screen_version``;
+    this pipelines module only moves and reshapes it, importing no exploratory
+    screen (spec epistemic-tier-enforcement R3).
+    """
+
+    lineage_dir = workset.lineage_dir
+    analysis_date = workset.analysis_date
+    analysis_timestamp = workset.analysis_timestamp
+    direct = workset.direct
+    registry = workset.registry
+    prime = workset.prime
+    subaward_transactions = workset.subaward_transactions
+    summary = workset.summary
+    snapshots = workset.snapshots
+    prime_api_parquets = workset.prime_api_parquets
+    archive_inputs = workset.archive_inputs
+    subaward_paths = workset.subaward_paths
+
     evidence = build_nsf_award_defense_evidence(
         direct,
         prime,
@@ -580,5 +649,7 @@ __all__ = [
     "DEFAULT_ARCHIVE_EXTRACT_DIR",
     "DEFAULT_LINEAGE_DIR",
     "DEFAULT_PRIME_SNAPSHOT_ROOT",
+    "DefenseFundingWorkset",
     "build_release",
+    "prepare_defense_funding",
 ]

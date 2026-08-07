@@ -194,8 +194,12 @@ What already holds:
   invalid declarations in CI.
 - The tier dependency lattice is executable: `scripts/ci/check_tier_boundaries.py`
   (in `make lint-boundaries` and CI) resolves each module's effective tier and
-  blocks imports below it, with a stale-failing allowlist of named edges that
-  each carry a removal condition (`specs/epistemic-tier-enforcement/`).
+  blocks imports below it. Its `TIER_IMPORT_ALLOWLIST` is empty — every seeded
+  edge from the T1.2 triage has been retired (canonical company merge promoted
+  into `sbir_etl.identity`, the NSF CET screen inverted out of the pipelines
+  release, the opportunity scorer and NAICS text-inference registration moved
+  behind exploratory composition points), so any new cross-tier import fails the
+  build outright (`specs/epistemic-tier-enforcement/`).
 - The Phase III census implements the evidence-tier mechanisms: frozen
   artifacts, SHA enforcement, a declared estimand, and a blocking asset check.
 

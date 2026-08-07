@@ -1,4 +1,11 @@
-"""NAICS enrichment strategies."""
+"""NAICS enrichment strategies.
+
+Epistemic tier: pipelines (package default). The exploratory
+``TextInferenceStrategy`` is deliberately not re-exported here so importing this
+package does not pull in contestable inference; its callers import
+``sbir_etl.enrichers.naics.fiscal.strategies.text_inference`` directly (spec
+epistemic-tier-enforcement, T1.2 edge 5).
+"""
 
 from __future__ import annotations
 
@@ -9,7 +16,6 @@ from .simple_strategies import (
     SectorFallbackStrategy,
     TopicCodeStrategy,
 )
-from .text_inference import TextInferenceStrategy
 from .usaspending_dataframe import USAspendingDataFrameStrategy
 
 __all__ = [
@@ -17,7 +23,6 @@ __all__ = [
     "NAICSEnrichmentResult",
     "OriginalDataStrategy",
     "TopicCodeStrategy",
-    "TextInferenceStrategy",
     "AgencyDefaultsStrategy",
     "SectorFallbackStrategy",
     "USAspendingDataFrameStrategy",

@@ -98,6 +98,7 @@ def test_direct_award_screen_uses_cet_and_funding_without_policy_mapping() -> No
     assert pd.isna(screened.loc["1234567", "defense_policy_mapping_version"])
     assert screened["cet_classifier_version"].notna().all()
     assert screened["cet_taxonomy_version"].notna().all()
+    assert (screened["screen_version"] == "nsf-screen-v1").all()
     assert not screened.loc["7654321", "critical_supply_chain_review_candidate"]
     assert screened.loc["1122334", "primary_cet"] == "semiconductors_and_microelectronics"
     assert screened.loc["1122334", "critical_supply_chain_review_candidate"]

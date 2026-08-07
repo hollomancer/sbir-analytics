@@ -22,6 +22,11 @@ from sbir_etl.reporting.local_cet_classifier import (
 
 EPISTEMIC_TIER = "exploratory"
 
+# Provenance tag stamped onto every direct-award screen output so downstream
+# readers (evidence, the critical-supply-chain product) can tell which screen
+# policy produced the CET signal after it is handed to the pipelines release.
+NSF_DIRECT_SCREEN_VERSION = "nsf-screen-v1"
+
 
 def screen_direct_nsf_awards(
     direct_awards: pd.DataFrame,
@@ -151,6 +156,7 @@ def screen_direct_nsf_awards(
         "CET text and legal-entity funding support review only; criticality and use of the "
         "specific NSF award are not established"
     )
+    screened["screen_version"] = NSF_DIRECT_SCREEN_VERSION
     return screened.sort_values("nsf_award_id").reset_index(drop=True)
 
 

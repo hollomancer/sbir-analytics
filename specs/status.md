@@ -54,12 +54,18 @@ bypassing lifecycle review; the status and rationale still require human judgmen
   test are accepted; and weekly-report refactor T2.3 plus the injected,
   typed-return work in T3.2 are complete. Offline, full-context, and shadow
   gates still precede any production integration.
-- **`epistemic-tier-enforcement` — Active.** Enforcement follow-on to the 2026-08
-  module-labeling sweep (PRs #550–#552). T1 adds a blocking tier-aware import
-  guard seeded with the three known pipelines→exploratory edges; T2/T3 burn that
-  allowlist down via a versioned identity canonical-merge policy and NSF-screen
-  dependency inversion; T4 documents the workbench/operated split. Implementation
-  starts after the labeling PRs merge. No fifth tier and no directory moves.
+- **`epistemic-tier-enforcement` — Maintenance.** Enforcement follow-on to the
+  2026-08 module-labeling sweep (PRs #550–#552). Shipped: the blocking
+  tier-aware import guard (`scripts/ci/check_tier_boundaries.py`, in
+  `make lint-boundaries` and CI), the workbench/operated doctrine (T4.1), and a
+  full burndown of `TIER_IMPORT_ALLOWLIST` to zero — canonical company merge
+  promoted into `sbir_etl.identity` under `CanonicalMergePolicy.PRELOAD_V1`
+  (T2, byte-identical to the golden corpus), the NSF CET screen inverted out of
+  the pipelines defense release into the operated exploratory asset layer (T3),
+  the opportunity scorer split into an exploratory pairing module (edge 4), and
+  NAICS text-inference registration moved behind an exploratory composition
+  point (edges 5-6). No fifth tier and no directory moves. Remaining work is
+  ordinary upkeep of declarations as modules are added.
 - **`fiscal-tax-impact-v2.md` — Gated backlog.** Valid D2 methodology upgrade.
   Leave inactive until fiscal-model refresh is selected.
 - **`follow-on-multiplier-validation` — Active.** Design-only follow-up to the
