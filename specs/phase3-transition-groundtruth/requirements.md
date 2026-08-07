@@ -1,9 +1,14 @@
 # Independent Phase III Transition Ground-Truth Set — Requirements
 
-**Target epistemic tier:** `evidence`
+**Target epistemic tier:** `pipelines`
 
-> **Status:** Draft spec. No implementation. Validation deliverable for the
-> merged award-grain fusion ranker (#467).
+> **Status:** Implemented through T6/T7 — the independent corpus, scoring
+> results, and decision memo landed; results remain provisional
+> portfolio-linkage evidence. Retiered from evidence on 2026-08-07: the
+> deterministic corpus construction is pipelines work, the scoring
+> evaluation is exploratory, and citation requires a future study contract
+> per docs/steering/epistemic-tiers.md. Originally the validation
+> deliverable for the merged award-grain fusion ranker (#467).
 > Supports inventory questions **B2 / E1** in [docs/research-questions.md](../../docs/research-questions.md).
 
 **Research question anchor:** B2 (did SBIR research transition to a federal contract), E1 (Phase III identification)

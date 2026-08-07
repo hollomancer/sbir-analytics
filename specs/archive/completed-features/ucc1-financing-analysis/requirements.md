@@ -5,9 +5,9 @@
 > **Status:** Pilot complete — PRs #303 / #305 merged. CA-only pilot found
 > equipment-finance and community-bank lender patterns and an absence of venture-debt
 > lenders in the CA-organized channel. See
-> [docs/research/sbir-ucc1-pilot.md](../../docs/research/sbir-ucc1-pilot.md)
+> [docs/research/sbir-ucc1-pilot.md](../../../../docs/research/sbir-ucc1-pilot.md)
 > for findings. Anchors inventory question **F1** (UCC-1 sub-question) in
-> [docs/research-questions.md](../../docs/research-questions.md).
+> [docs/research-questions.md](../../../../docs/research-questions.md).
 
 **Research question anchor:** F1 — secured-debt composition of SBIR firms; A4 — foreign-lender signal
 **Answers for:** entrepreneurial finance researchers, defense industrial base analysts
