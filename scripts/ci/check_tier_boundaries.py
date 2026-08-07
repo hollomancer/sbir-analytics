@@ -40,18 +40,6 @@ ALLOWED_TIER_IMPORTS = {
 # tolerated. Every entry needs a reason and a removal condition; an entry that
 # stops suppressing a violation fails the run so it cannot linger.
 TIER_IMPORT_ALLOWLIST: dict[str, frozenset[str]] = {
-    # Contestable CET-relevance screening called inline from a pipelines
-    # module. Removed by spec R3/T3.1: the exploratory asset layer calls the
-    # screen and passes screened data in as a parameter.
-    "sbir_etl/supply_chain/defense_release.py": frozenset(
-        {"sbir_etl.supply_chain.nsf_screen"}
-    ),
-    # Package init re-exports the exploratory screen, so importing the
-    # pipelines-tier package imports the screen. Removed by spec R3/T3.2:
-    # the re-export is dropped and callers import the module directly.
-    "sbir_etl/supply_chain/__init__.py": frozenset(
-        {"sbir_etl.supply_chain.nsf_screen"}
-    ),
     # The census-facing pair builder carries a lazy in-function import of the
     # exploratory scorer for the non-census ranking path. Removed when the
     # scoring entry point moves into its own exploratory module (tracked in

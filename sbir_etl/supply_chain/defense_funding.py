@@ -858,6 +858,7 @@ def build_nsf_award_defense_evidence(
             "critical_supply_chain_screen_basis",
             "defense_policy_mapping_status",
             "defense_policy_mapping_version",
+            "screen_version",
         ]
         available = [column for column in screen_columns if column in award_screen.columns]
         evidence = evidence.merge(
