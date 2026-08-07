@@ -1,6 +1,6 @@
 import pandas as pd
 
-from sbir_analytics.assets.phase_iii_candidates.pairing import (
+from sbir_analytics.assets.phase_iii_candidates.opportunity_pairing import (
     DIRECTED_NOTICE_TYPES,
     FOLLOWON_NOTICE_TYPES,
     pair_filter_s2,

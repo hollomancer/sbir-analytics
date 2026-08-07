@@ -40,13 +40,6 @@ ALLOWED_TIER_IMPORTS = {
 # tolerated. Every entry needs a reason and a removal condition; an entry that
 # stops suppressing a violation fails the run so it cannot linger.
 TIER_IMPORT_ALLOWLIST: dict[str, frozenset[str]] = {
-    # The census-facing pair builder carries a lazy in-function import of the
-    # exploratory scorer for the non-census ranking path. Removed when the
-    # scoring entry point moves into its own exploratory module (tracked in
-    # the spec's T1.2 triage notes).
-    "packages/sbir-analytics/sbir_analytics/assets/phase_iii_candidates/pairing.py": frozenset(
-        {"sbir_analytics.assets.phase_iii_candidates.similarity"}
-    ),
     # The NAICS strategy registry registers every strategy, including the
     # exploratory text-inference one, from pipelines-tier machinery. Removed
     # when registration of that strategy moves behind an exploratory
