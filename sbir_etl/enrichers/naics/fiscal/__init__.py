@@ -5,13 +5,17 @@ This module provides a refactored, strategy-based implementation of fiscal
 NAICS enrichment. The enricher tries multiple strategies in order of confidence
 until one succeeds.
 
-Strategies (in order):
+Deterministic default strategies (in order):
 1. Original SBIR data (0.95 confidence)
 2. USAspending DataFrame lookups (0.85 confidence)
 3. Topic code mapping (0.75 confidence)
-4. Text-based inference (0.65 confidence)
-5. Agency defaults (0.50 confidence)
-6. Sector fallback (0.30 confidence)
+4. Agency defaults (0.50 confidence)
+5. Sector fallback (0.30 confidence)
+
+Text-based inference (0.65 confidence) is exploratory-tier and is NOT in the
+deterministic default; it is injected at its mid-confidence slot via
+``default_strategies(extra_strategies=...)`` by exploratory callers only
+(see ``exploratory_strategies.fiscal_strategies_with_text_inference``).
 
 Public API:
 - FiscalNAICSEnricher: Main orchestrator class
