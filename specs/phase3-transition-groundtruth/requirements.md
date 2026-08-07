@@ -17,6 +17,27 @@
 
 ---
 
+## Epistemic framing
+
+This spec spans two tiers, which is why its target is `pipelines` with the
+scoring evaluation held to `exploratory` (see
+[docs/steering/epistemic-tiers.md](../../docs/steering/epistemic-tiers.md)):
+
+- **Corpus construction is `pipelines`.** Cataloging sources, the frozen
+  extraction schema, identifier resolution, and retrieval-test assembly are
+  deterministic and reproducible from the declared inputs.
+- **Ranker scoring and the go/no-go decision are `exploratory`.** Precision@K,
+  MRR, the stratum/provenance splits, and the fusion-ordering recommendation
+  are analysis, not a validated finding; the reported figures are non-citable.
+- **Citing any of these numbers as validation requires a future `studies/`
+  contract** — frozen spec, SHA-pinned inputs, declared estimand, blocking
+  checks. Producing the numbers here does not make them citable; the corpus and
+  results stay provisional portfolio-linkage evidence until then. "Validation"
+  throughout this document means *this exploratory check*, not evidence-tier
+  validation.
+
+---
+
 ## Done when
 
 > ≥ **60** real Phase III transitions are collected from agency SBIR
@@ -27,7 +48,8 @@
 > scored against the recoverable subset; **precision@1/@3 and MRR are reported
 > split by stratum and by provenance, with 95% CIs**, and compared to the
 > proxy-label 0.68@1. The citation-independence and selection-bias caveats are
-> quantified, not hand-waved.
+> quantified, not hand-waved. These reported figures are exploratory-tier and
+> non-citable (see Epistemic framing).
 
 ---
 
