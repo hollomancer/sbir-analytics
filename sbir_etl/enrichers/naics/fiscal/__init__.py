@@ -40,6 +40,7 @@ def enrich_sbir_awards_with_fiscal_naics(
     awards_df: pd.DataFrame,
     usaspending_df: pd.DataFrame | None = None,
     config: dict[str, Any] | None = None,
+    strategies: list[Any] | None = None,
 ) -> tuple[pd.DataFrame, dict[str, Any]]:
     """Convenience function to enrich SBIR awards with fiscal NAICS codes.
 
@@ -49,11 +50,18 @@ def enrich_sbir_awards_with_fiscal_naics(
         awards_df: SBIR awards DataFrame
         usaspending_df: Optional USAspending data for enrichment
         config: Optional configuration override
+        strategies: Optional explicit strategy chain. When omitted the enricher
+            uses the deterministic pipelines default (no text inference);
+            exploratory callers wanting keyword text inference pass
+            ``fiscal_strategies_with_text_inference(...)`` from
+            ``sbir_etl.enrichers.naics.fiscal.exploratory_strategies``.
 
     Returns:
         Tuple of (enriched DataFrame, quality metrics)
     """
-    enricher = FiscalNAICSEnricher(config=config, usaspending_df=usaspending_df)
+    enricher = FiscalNAICSEnricher(
+        config=config, usaspending_df=usaspending_df, strategies=strategies
+    )
     enriched_df = enricher.enrich_awards_dataframe(awards_df, usaspending_df)
     quality_metrics = enricher.validate_enrichment_quality(enriched_df)
 

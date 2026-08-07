@@ -38,19 +38,11 @@ ALLOWED_TIER_IMPORTS = {
 
 # Importer path -> imported first-party modules whose tier violation is
 # tolerated. Every entry needs a reason and a removal condition; an entry that
-# stops suppressing a violation fails the run so it cannot linger.
-TIER_IMPORT_ALLOWLIST: dict[str, frozenset[str]] = {
-    # The NAICS strategy registry registers every strategy, including the
-    # exploratory text-inference one, from pipelines-tier machinery. Removed
-    # when registration of that strategy moves behind an exploratory
-    # composition point or the strategy is validated and relabeled.
-    "sbir_etl/enrichers/naics/fiscal/strategies/__init__.py": frozenset(
-        {"sbir_etl.enrichers.naics.fiscal.strategies.text_inference"}
-    ),
-    "sbir_etl/enrichers/naics/fiscal/strategy_registry.py": frozenset(
-        {"sbir_etl.enrichers.naics.fiscal.strategies.text_inference"}
-    ),
-}
+# stops suppressing a violation fails the run so it cannot linger. The allowlist
+# is intentionally empty: every seeded edge from the T1.2 triage has been retired
+# (spec epistemic-tier-enforcement). Add an entry only with a reason and a
+# concrete removal condition; a bare suppression is not permitted.
+TIER_IMPORT_ALLOWLIST: dict[str, frozenset[str]] = {}
 
 
 @dataclass(frozen=True)

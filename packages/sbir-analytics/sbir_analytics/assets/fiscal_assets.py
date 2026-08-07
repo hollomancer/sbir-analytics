@@ -23,6 +23,9 @@ from sbir_etl.config.loader import get_config
 from sbir_etl.enrichers.fiscal_bea_mapper import NAICSToBEAMapper, enrich_awards_with_bea_sectors
 from sbir_etl.enrichers.inflation_adjuster import adjust_awards_for_inflation
 from sbir_etl.enrichers.naics import enrich_sbir_awards_with_fiscal_naics
+from sbir_etl.enrichers.naics.fiscal.exploratory_strategies import (
+    fiscal_strategies_with_text_inference,
+)
 from sbir_etl.transformers.bea_io_adapter import BEAIOAdapter
 from sbir_etl.transformers.fiscal import (
     FiscalComponentCalculator,
@@ -104,9 +107,14 @@ def fiscal_naics_enriched_awards(
     )
 
     with performance_monitor.monitor_block("fiscal_naics_enrichment"):
+        # Compose the exploratory text-inference strategy in here (the operated
+        # exploratory asset), keeping the pipelines NAICS registry free of it.
         enriched_df, quality_metrics = enrich_sbir_awards_with_fiscal_naics(
             awards_df=enriched_sbir_awards,
             usaspending_df=raw_usaspending_recipients,
+            strategies=fiscal_strategies_with_text_inference(
+                usaspending_df=raw_usaspending_recipients
+            ),
         )
 
     total = len(enriched_df)
