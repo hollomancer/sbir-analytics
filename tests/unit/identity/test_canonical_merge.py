@@ -116,7 +116,11 @@ def test_low_similarity_names_do_not_merge() -> None:
     frame = pd.DataFrame(
         [
             {"company_name": "Falcon Robotics", "company_uei": None, "company_duns": None},
-            {"company_name": "Falcon Robotic Automation", "company_uei": None, "company_duns": None},
+            {
+                "company_name": "Falcon Robotic Automation",
+                "company_uei": None,
+                "company_duns": None,
+            },
         ]
     )
     result = _promoted(frame)
@@ -143,12 +147,32 @@ def test_unsupported_policy_is_rejected() -> None:
 
 def _random_corpus(seed: int, size: int) -> pd.DataFrame:
     stems = [
-        "Acme Robotics", "Quantum Wave", "Blue River Analytics", "Orion Data Systems",
-        "Helios Energy", "Cascade Micro", "Vector Dynamics", "Northstar Photonics",
-        "Redwood Biotech", "Summit Aerospace", "Ironclad Security", "Granite Materials",
+        "Acme Robotics",
+        "Quantum Wave",
+        "Blue River Analytics",
+        "Orion Data Systems",
+        "Helios Energy",
+        "Cascade Micro",
+        "Vector Dynamics",
+        "Northstar Photonics",
+        "Redwood Biotech",
+        "Summit Aerospace",
+        "Ironclad Security",
+        "Granite Materials",
     ]
-    suffixes = ["", " Inc", " Incorporated", " LLC", " Corp", " Group", " Technologies",
-                " Systems", " Solutions", ", Inc.", " Co"]
+    suffixes = [
+        "",
+        " Inc",
+        " Incorporated",
+        " LLC",
+        " Corp",
+        " Group",
+        " Technologies",
+        " Systems",
+        " Solutions",
+        ", Inc.",
+        " Co",
+    ]
     rng = random.Random(seed)
     rows = []
     for _ in range(size):

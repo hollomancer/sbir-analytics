@@ -486,9 +486,7 @@ def prepare_defense_funding(
     )
 
 
-def build_release(
-    workset: DefenseFundingWorkset, *, award_screen: pd.DataFrame
-) -> dict[str, Any]:
+def build_release(workset: DefenseFundingWorkset, *, award_screen: pd.DataFrame) -> dict[str, Any]:
     """Assemble evidence, quality gates, products, and manifest from a workset.
 
     The contestable CET screen is computed by the exploratory asset layer and
