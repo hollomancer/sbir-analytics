@@ -21,12 +21,16 @@ Public API:
 
 from __future__ import annotations
 
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import pandas as pd
 
 from .enricher import FiscalNAICSEnricher
 from .strategies import NAICSEnrichmentResult
+
+
+if TYPE_CHECKING:
+    from .strategies.base import EnrichmentStrategy
 
 
 __all__ = [
@@ -40,7 +44,7 @@ def enrich_sbir_awards_with_fiscal_naics(
     awards_df: pd.DataFrame,
     usaspending_df: pd.DataFrame | None = None,
     config: dict[str, Any] | None = None,
-    strategies: list[Any] | None = None,
+    strategies: list[EnrichmentStrategy] | None = None,
 ) -> tuple[pd.DataFrame, dict[str, Any]]:
     """Convenience function to enrich SBIR awards with fiscal NAICS codes.
 

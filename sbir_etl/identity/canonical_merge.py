@@ -29,6 +29,7 @@ of the frozen contract:
 """
 
 from enum import StrEnum
+from typing import Any, cast
 
 import pandas as pd
 
@@ -76,7 +77,9 @@ def _is_missing(value: object) -> bool:
     """Scalar ``pd.isna`` (the frozen null test: '' and whitespace are values)."""
 
     try:
-        return bool(pd.isna(value))
+        # value is an arbitrary DataFrame cell; cast satisfies the scalar
+        # isna overload without changing the runtime call.
+        return bool(pd.isna(cast(Any, value)))
     except (TypeError, ValueError):  # pragma: no cover - non-scalar cell
         return False
 

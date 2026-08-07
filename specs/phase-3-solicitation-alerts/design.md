@@ -137,18 +137,22 @@ validated_phase_ii_awards (existing) ----> |   prior_award_universe      |
    assets are standard Dagster pattern; this is not an abstraction for its
    own sake.
 
-6. **Pair filters** — three module-level functions in
-   `packages/sbir-analytics/sbir_analytics/assets/phase_iii_candidates/pairing.py`:
+6. **Pair filters** — module-level functions under
+   `packages/sbir-analytics/sbir_analytics/assets/phase_iii_candidates/`.
+   `pair_filter_s1` lives in `pairing.py` (pipelines tier, shared with the
+   census); the contestable S2/S3 opportunity scorers were split into
+   `opportunity_pairing.py` (exploratory) by the tier-allowlist burndown
+   (`specs/epistemic-tier-enforcement`):
 
-   - `pair_filter_s1(prior, contracts)` — `contract.recipient_uei IN
+   - `pairing.pair_filter_s1(prior, contracts)` — `contract.recipient_uei IN
      prior.uei_set` AND hierarchical agency match
      (agency → sub-tier → office, finest available) AND NOT
      `contract.phase_iii_already_coded`.
-   - `pair_filter_s2(prior, opps)` — `opp.notice_type IN
+   - `opportunity_pairing.pair_filter_s2(prior, opps)` — `opp.notice_type IN
      {sole_source, justification, notice_of_intent, award}`; match by
      `awardee_uei IN prior.uei_set` when present, else fall back to
      agency + NAICS match.
-   - `pair_filter_s3(prior, opps)` — `opp.notice_type == "solicitation"`
+   - `opportunity_pairing.pair_filter_s3(prior, opps)` — `opp.notice_type == "solicitation"`
      AND (NAICS overlap OR PSC overlap) AND token-overlap Jaccard ≥ 0.10
      on title tokens. Cheap pre-filter to keep cross-product manageable.
 
