@@ -128,6 +128,16 @@ bypassing lifecycle review; the status and rationale still require human judgmen
 - **`transition-coverage-expansion` — Active.** Initial access and coverage
   spikes are recorded. Credible grant/subaward attribution, OT resolution, and a
   channel-by-channel wire-in decision remain.
+- **`transition-precision-benchmark` — Active.** Automates the full-corpus
+  Phase III retrospective precision benchmark that today runs only as a
+  fixture-level PR canary. Pins the benchmark corpus by a committed
+  hash-plus-coarse-aggregates manifest (bytes stay private/gitignored on a public
+  repo), runs the benchmark server-side as an operated Dagster asset with a
+  blocking ≥85% check, and keeps the fast PR canary unchanged. Building the
+  reproducible measurement and the gate (pipelines); a citable precision claim
+  stays gated on the decoy/estimand work in `phase3-transition-groundtruth` and a
+  `studies/transition-scoring/` promotion. No GitHub-runner execution, no
+  committed corpus bytes, no server schedule.
 - **`ucc1-financing-analysis` — Archive candidate.** CA-only pilot is complete
   and extension is explicitly deferred by the research memo.
 - **`weekly-awards-report-refactor` — Maintenance.** Monolith is already split
