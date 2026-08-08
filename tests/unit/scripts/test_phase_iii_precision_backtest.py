@@ -1,10 +1,11 @@
 """PR-time precision canary for the Phase III retrospective backtest.
 
-The full ≥0.85 HIGH-precision benchmark runs against the S3 corpus in the
-``transition-mvp`` CI job (workflow_dispatch only). These tests keep the
-benchmark exercised on every PR with a small deterministic fixture: obvious
-true-positive pairs must clear the threshold, obvious non-transitions must
-not, and the data-missing sentinel must fail loudly in ``--strict`` mode.
+The full ≥0.85 HIGH-precision benchmark runs against the S3 corpus by invoking
+``scripts/phase_iii_precision_backtest.py`` manually; that full run is not yet
+automated in CI. These tests keep the benchmark exercised on every PR with a
+small deterministic fixture: obvious true-positive pairs must clear the
+threshold, obvious non-transitions must not, and the data-missing sentinel must
+fail loudly in ``--strict`` mode.
 """
 
 import sys
