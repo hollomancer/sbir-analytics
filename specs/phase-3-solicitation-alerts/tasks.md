@@ -3,8 +3,10 @@
 > **Status (2026-07-15):** Phases 1–2 (S1 retrospective reclassification) implemented and merged
 > (PRs #394, #410, #412) — models in `sbir_etl/models/phase_iii_candidate.py`, asset package in
 > `packages/sbir-analytics/sbir_analytics/assets/phase_iii_candidates/` (`assets.py`, `pairing.py`,
-> `similarity.py`), precision gate `scripts/phase_iii_precision_backtest.py` wired into
-> `.github/workflows/ci.yml`. The public Opportunities model/extractor, S2/S3 pairing,
+> `similarity.py`), precision gate `scripts/phase_iii_precision_backtest.py` exercised
+> on every PR by the fixture canary `tests/unit/scripts/test_phase_iii_precision_backtest.py`
+> (the full S3-corpus benchmark is run manually, not automated in CI). The public
+> Opportunities model/extractor, S2/S3 pairing,
 > candidate assets, and monthly procurement-center report are now implemented. The Dagster
 > ingestion/config layer, production hand audits, and acceptance sign-off remain open.
 
@@ -52,8 +54,11 @@ ship independently.
       DoD-coded Phase III contracts as positives, runs the scorer, asserts
       `RETROSPECTIVE` HIGH precision ≥ 0.85, writes
       `reports/phase_iii/backtest.json`, exits non-zero on failure.
-- [x] 2.6 Wire the backtest script into the existing CI workflow that
-      already runs other release gates (reuse — do not add a new workflow).
+- [x] 2.6 Exercise the backtest on every PR via a fixture canary
+      (`tests/unit/scripts/test_phase_iii_precision_backtest.py`) that runs in
+      the Fast Tests shards — no new workflow. *(Shipped as a pytest canary on
+      a deterministic fixture, not a ci.yml step; the full ≥85% benchmark
+      against the S3 corpus is run manually and is not yet automated in CI.)*
 - [x] 2.7 Integration test: 100-row fixture with known positives and
       negatives; assert schema, evidence NDJSON structure, precision gate.
 
