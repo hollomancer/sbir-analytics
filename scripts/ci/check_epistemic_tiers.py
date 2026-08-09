@@ -13,6 +13,7 @@ TIER_DECLARATION = re.compile(
     r"^\*\*Target epistemic tier:\*\*\s*`?([A-Za-z]+)`?\s*$",
     flags=re.MULTILINE,
 )
+FENCE = re.compile(r"^[ \t]*(?P<fence>`{3,}|~{3,})(?P<suffix>.*)$")
 EXCLUDED_SPEC_DIRECTORIES = frozenset({"archive"})
 
 
@@ -25,6 +26,41 @@ class TierDeclarationViolation:
 
     def format(self) -> str:
         return f"{self.path}: {self.message}"
+
+
+def _outside_fenced_code(markdown: str) -> str:
+    """Return Markdown content outside complete fenced code blocks.
+
+    Unterminated candidate fences are retained. A malformed example must not
+    hide a real declaration later in the specification.
+    """
+
+    retained: list[str] = []
+    pending: list[str] = []
+    marker: tuple[str, int] | None = None
+    for line in markdown.splitlines():
+        match = FENCE.match(line)
+        if marker is None:
+            if match and not (
+                match.group("fence").startswith("`") and "`" in match.group("suffix")
+            ):
+                fence = match.group("fence")
+                marker = fence[0], len(fence)
+                pending = [line]
+            else:
+                retained.append(line)
+            continue
+        pending.append(line)
+        if (
+            match
+            and match.group("fence")[0] == marker[0]
+            and len(match.group("fence")) >= marker[1]
+            and not match.group("suffix").strip()
+        ):
+            marker = None
+            pending = []
+    retained.extend(pending)
+    return "\n".join(retained)
 
 
 def validate_spec_directory(
@@ -44,7 +80,8 @@ def validate_spec_directory(
             )
         ]
 
-    declarations = TIER_DECLARATION.findall(requirements.read_text(encoding="utf-8"))
+    markdown = _outside_fenced_code(requirements.read_text(encoding="utf-8"))
+    declarations = TIER_DECLARATION.findall(markdown)
     if not declarations:
         return [
             TierDeclarationViolation(

@@ -86,3 +86,103 @@ def test_capitalized_tier_is_reported_as_invalid_not_missing(tmp_path: Path) -> 
 
     assert len(violations) == 1
     assert "invalid target tier 'Evidence'" in violations[0].message
+
+
+def test_declaration_inside_fenced_code_is_ignored(tmp_path: Path) -> None:
+    spec = tmp_path / "specs" / "example"
+    _write(
+        tmp_path,
+        "specs/example/requirements.md",
+        "# Example\n\n"
+        "**Target epistemic tier:** pipelines\n\n"
+        "```markdown\n"
+        "**Target epistemic tier:** evidence\n"
+        "```\n",
+    )
+
+    assert not tiers.validate_spec_directory(spec, repository_root=tmp_path)
+
+
+def test_unterminated_fence_does_not_swallow_a_real_declaration(tmp_path: Path) -> None:
+    spec = tmp_path / "specs" / "example"
+    _write(
+        tmp_path,
+        "specs/example/requirements.md",
+        "# Example\n\n```markdown\nunterminated example\n\n**Target epistemic tier:** pipelines\n",
+    )
+
+    assert not tiers.validate_spec_directory(spec, repository_root=tmp_path)
+
+
+def test_unterminated_fence_still_reports_a_genuine_duplicate(tmp_path: Path) -> None:
+    spec = tmp_path / "specs" / "example"
+    _write(
+        tmp_path,
+        "specs/example/requirements.md",
+        "**Target epistemic tier:** pipelines\n\n```markdown\nunterminated example\n\n"
+        "**Target epistemic tier:** evidence\n",
+    )
+
+    violations = tiers.validate_spec_directory(spec, repository_root=tmp_path)
+
+    assert len(violations) == 1
+    assert "multiple target tier" in violations[0].message
+
+
+def test_indented_fence_inside_list_hides_example_declaration(tmp_path: Path) -> None:
+    spec = tmp_path / "specs" / "example"
+    _write(
+        tmp_path,
+        "specs/example/requirements.md",
+        "**Target epistemic tier:** pipelines\n\n"
+        "- Example:\n"
+        "    ```markdown\n"
+        "    **Target epistemic tier:** evidence\n"
+        "    ```\n",
+    )
+
+    assert not tiers.validate_spec_directory(spec, repository_root=tmp_path)
+
+
+def test_closing_fence_with_info_string_does_not_close(tmp_path: Path) -> None:
+    spec = tmp_path / "specs" / "example"
+    _write(
+        tmp_path,
+        "specs/example/requirements.md",
+        "**Target epistemic tier:** pipelines\n\n"
+        "```markdown\n"
+        "```python\n"
+        "**Target epistemic tier:** evidence\n"
+        "```\n",
+    )
+
+    assert not tiers.validate_spec_directory(spec, repository_root=tmp_path)
+
+
+def test_inline_code_span_at_line_start_is_not_a_fence(tmp_path: Path) -> None:
+    spec = tmp_path / "specs" / "example"
+    _write(
+        tmp_path,
+        "specs/example/requirements.md",
+        "```markdown``` is inline code\n\n**Target epistemic tier:** pipelines\n",
+    )
+
+    assert not tiers.validate_spec_directory(spec, repository_root=tmp_path)
+
+
+def test_supported_fence_variants_hide_example_declarations(tmp_path: Path) -> None:
+    for name, opener, closer in (
+        ("tilde", "~~~markdown", "~~~"),
+        ("long", "````markdown", "````"),
+        ("tab", "\t```markdown", "\t```"),
+        ("spaces", "   ```markdown", "   ```"),
+    ):
+        spec = tmp_path / "specs" / name
+        _write(
+            tmp_path,
+            f"specs/{name}/requirements.md",
+            "**Target epistemic tier:** pipelines\n\n"
+            f"{opener}\n**Target epistemic tier:** evidence\n{closer}\n",
+        )
+
+        assert not tiers.validate_spec_directory(spec, repository_root=tmp_path)
