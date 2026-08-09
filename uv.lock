@@ -2594,14 +2594,13 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "dagster", specifier = ">=1.7.0,<2.0.0" },
-    { name = "sbir-etl", extras = ["cloud", "uspto", "monitoring"] },
     { name = "sbir-etl", extras = ["dev"], marker = "extra == 'dev'" },
-    { name = "sbir-etl", extras = ["r"], marker = "extra == 'r'" },
+    { name = "sbir-etl", extras = ["uspto", "monitoring"] },
     { name = "sbir-graph" },
     { name = "sbir-ml", extras = ["modernbert-local"], marker = "extra == 'modernbert-local'" },
     { name = "sbir-ml", extras = ["nlp"] },
 ]
-provides-extras = ["r", "modernbert-local", "dev"]
+provides-extras = ["modernbert-local", "dev"]
 
 [[package]]
 name = "sbir-etl"
@@ -2733,7 +2732,7 @@ requires-dist = [
     { name = "types-pyyaml", marker = "extra == 'dev'", specifier = ">=6.0.0,<7.0.0" },
     { name = "types-tqdm", marker = "extra == 'dev'", specifier = ">=4.67.3.20260408,<5.0.0" },
 ]
-provides-extras = ["ucc1-pilot", "uspto", "uspto-browser", "cloud", "streaming", "phonetic", "monitoring", "viz", "dev", "stack-dev"]
+provides-extras = ["ucc1-pilot", "uspto", "uspto-browser", "streaming", "phonetic", "monitoring", "viz", "dev", "stack-dev"]
 
 [package.metadata.requires-dev]
 notebooks = [

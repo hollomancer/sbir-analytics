@@ -44,9 +44,6 @@ uspto = ["pyreadstat>=1.1.4,<2.0.0"]
 # pins the same constraint in the Dockerfile, which installs packages directly
 # rather than installing this project.
 uspto-browser = ["playwright>=1.47.0,<2.0.0"]
-# AWS S3 cloud storage (for extractors that pull from S3)
-cloud = [
-]
 # Stream a single member out of a remote USAspending database .zip over HTTP range,
 # avoiding the full ~217GB download (contract_extractor.stream_remote_zip_member).
 streaming = ["remotezip>=0.12.0,<1.0.0"]

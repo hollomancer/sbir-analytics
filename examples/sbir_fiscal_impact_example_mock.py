@@ -86,7 +86,6 @@ class MockBEAIOAdapter:
 
         # Add metadata
         result_df["model_version"] = self.model_version
-        result_df["confidence"] = 0.85  # Mock confidence score
         result_df["quality_flags"] = "mock_data"
 
         # Clean up temporary columns
@@ -267,8 +266,7 @@ def main():
     print("=" * 80)
     print()
     print("NOTE: This is a demonstration using mock economic multipliers.")
-    print("      For real calculations, set BEA_API_KEY environment variable.")
-    print("      See Dockerfile and docker-compose.yml for setup.")
+    print("      Its numerical outputs are illustrative and non-citable.")
     print()
 
     # Step 1: Create/load SBIR awards
@@ -387,19 +385,13 @@ def main():
         print(f"  {flag}: {count} records")
     print()
 
-    avg_confidence = float(impacts["confidence"].mean())
-    print(f"Average Confidence Score: {avg_confidence:.2%}")
-    print()
-
     print("=" * 80)
     print("Analysis Complete!")
     print("=" * 80)
     print()
     print("Next steps:")
-    print("  - For real calculations: docker compose --profile dev up --build")
-    print(
-        "  - Then run: docker compose exec dagster-webserver python examples/sbir_fiscal_impact_example.py"
-    )
+    print("  - To exercise the BEA-backed path, set BEA_API_KEY and run")
+    print("    examples/sbir_fiscal_impact_example.py")
     print("  - Export results to CSV/database")
     print("  - Create visualizations")
     print("  - Compare across fiscal years")

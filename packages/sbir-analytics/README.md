@@ -30,7 +30,7 @@ make install-core  # reusable sbir-etl library only; uv sync
 | Package | What You Get |
 |---------|-------------|
 | `sbir-etl` | ETL library — extractors, enrichers, transformers, models, config |
-| `sbir-etl[cloud,uspto,monitoring]` | ETL integrations used by the pipeline |
+| `sbir-etl[uspto,monitoring]` | ETL integrations used by the pipeline |
 | `sbir-ml[nlp]` | ML/NLP models and enrichment |
 | `sbir-graph` | Neo4j loaders, queries, and packaged migrations |
 | **`sbir-analytics`** | **All of the above** + orchestration and analysis tools |
