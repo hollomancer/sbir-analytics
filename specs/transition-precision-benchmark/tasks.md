@@ -9,7 +9,7 @@
   - Add a hash helper (compute + verify SHA256 per input frame) beside the
     backtest, and generate `studies/transition-scoring/benchmark-corpus.manifest.json`
     (frame hashes + coarse row/positive/firm counts + provenance), mirroring
-    `phase3-notice-corpus-fusion/corpus.manifest.json`. Coarse aggregates only.
+    `specs/phase3-notice-corpus-fusion/corpus.manifest.json`. Coarse aggregates only.
   - Verify: manifest commits; no `.gitignore` exception added; a unit test on a
     fixture proves hash mismatch is detected and matching frames pass;
     `git check-ignore` confirms the corpus parquets stay ignored.

@@ -129,8 +129,9 @@ bypassing lifecycle review; the status and rationale still require human judgmen
   spikes are recorded. Credible grant/subaward attribution, OT resolution, and a
   channel-by-channel wire-in decision remain.
 - **`transition-precision-benchmark` — Active.** Automates the full-corpus
-  Phase III retrospective precision benchmark that today runs only as a
-  fixture-level PR canary. Pins the benchmark corpus by a committed
+  Phase III retrospective precision benchmark, whose PR-time automation today
+  is limited to a fixture-level canary while the full-corpus script is run
+  manually. Pins the benchmark corpus by a committed
   hash-plus-coarse-aggregates manifest (bytes stay private/gitignored on a public
   repo), runs the benchmark server-side as an operated Dagster asset with a
   blocking ≥85% check, and keeps the fast PR canary unchanged. Building the

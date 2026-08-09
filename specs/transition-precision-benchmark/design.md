@@ -26,7 +26,7 @@ Dagster asset: transition_precision_benchmark (server profile, heavy-assets)
 
 ## R1 — Corpus pinning (public hash, private bytes)
 
-Reuse the `phase3-notice-corpus-fusion/corpus.manifest.json` shape verbatim —
+Reuse the `specs/phase3-notice-corpus-fusion/corpus.manifest.json` shape verbatim —
 it already pins a corpus by `frame_hash` + coarse aggregates and commits only
 the manifest. The new `benchmark-corpus.manifest.json` records, per input frame
 (contracts, Phase II):
