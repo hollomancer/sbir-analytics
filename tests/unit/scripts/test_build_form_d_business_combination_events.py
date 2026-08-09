@@ -93,14 +93,32 @@ def _write_fixture(
     universe_data = _jsonl_bytes(rows)
     universe.write_bytes(universe_data)
     quarters = producer._expected_quarters()
+    quarter_metadata = {
+        quarter: {
+            "counters": {
+                "emitted_business_combination_filings": 0,
+                "invalid_business_combination_flags": 0,
+                "omitted_business_combination_filings": 0,
+                "selected_business_combination_filings": 0,
+                "selected_non_business_combination_filings": 0,
+                "selected_submissions": 0,
+            },
+            "headers": {"OFFERING.tsv": ["ISBUSINESSCOMBINATIONTRANS"]},
+        }
+        for quarter in quarters
+    }
+    for issuer in rows:
+        for filing in issuer["filings"]:
+            counters = quarter_metadata[filing["source_quarter"]]["counters"]
+            counters["selected_submissions"] += 1
+            if filing["is_business_combination"]:
+                counters["selected_business_combination_filings"] += 1
+                counters["emitted_business_combination_filings"] += 1
+            else:
+                counters["selected_non_business_combination_filings"] += 1
     manifest: dict[str, object] = {
         "complete": True,
-        "inputs": {
-            "quarters": {
-                quarter: {"headers": {"OFFERING.tsv": ["ISBUSINESSCOMBINATIONTRANS"]}}
-                for quarter in quarters
-            }
-        },
+        "inputs": {"quarters": quarter_metadata},
         "invariants": {"broad_ciks_unique": True},
         "outputs": {
             "broad_issuer_universe": {
@@ -166,6 +184,8 @@ def test_build_streams_deterministic_events_coverage_and_manifest(tmp_path: Path
         "accessions_unique": True,
         "coverage_equals_verified_issuer_rows": True,
         "event_ids_unique": True,
+        "flagged_source_filings_omitted": 0,
+        "flagged_source_filings_reconciled": True,
         "source_input_hash_rows_bytes_verified": True,
         "source_quarters_complete": True,
     }
@@ -221,6 +241,29 @@ def test_missing_business_combination_header_fails_source_contract(tmp_path: Pat
     source_manifest.write_text(json.dumps(manifest), encoding="utf-8")
 
     with pytest.raises(producer.BuildError, match="2017Q3.*ISBUSINESSCOMBINATIONTRANS"):
+        producer.build(_args(source_manifest, universe, tmp_path / "output"))
+
+
+def test_omitted_business_combination_filing_fails_source_contract(tmp_path: Path) -> None:
+    source_manifest, universe, manifest = _write_fixture(tmp_path)
+    counters = manifest["inputs"]["quarters"]["2017Q3"]["counters"]
+    counters["selected_business_combination_filings"] = 1
+    counters["omitted_business_combination_filings"] = 1
+    counters["selected_submissions"] = 1
+    source_manifest.write_text(json.dumps(manifest), encoding="utf-8")
+
+    with pytest.raises(producer.BuildError, match="2017Q3 omitted 1"):
+        producer.build(_args(source_manifest, universe, tmp_path / "output"))
+
+
+def test_missing_business_combination_audit_counters_fail_source_contract(
+    tmp_path: Path,
+) -> None:
+    source_manifest, universe, manifest = _write_fixture(tmp_path)
+    del manifest["inputs"]["quarters"]["2017Q3"]["counters"]["omitted_business_combination_filings"]
+    source_manifest.write_text(json.dumps(manifest), encoding="utf-8")
+
+    with pytest.raises(producer.BuildError, match="2017Q3 omitted_business.*non-negative"):
         producer.build(_args(source_manifest, universe, tmp_path / "output"))
 
 

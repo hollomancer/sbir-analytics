@@ -126,6 +126,44 @@ def load_source_manifest(path: Path) -> dict[str, Any]:
                 f"Required source quarter {quarter} does not pin "
                 "OFFERING.tsv ISBUSINESSCOMBINATIONTRANS"
             )
+        counters = metadata.get("counters")
+        if not isinstance(counters, Mapping):
+            raise BuildError(f"Required source quarter {quarter} has no counters object")
+        selected_flagged = counters.get("selected_business_combination_filings")
+        selected_unflagged = counters.get("selected_non_business_combination_filings")
+        emitted_flagged = counters.get("emitted_business_combination_filings")
+        omitted_flagged = counters.get("omitted_business_combination_filings")
+        invalid_flags = counters.get("invalid_business_combination_flags")
+        selected_submissions = counters.get("selected_submissions")
+        for label, value in (
+            ("selected_business_combination_filings", selected_flagged),
+            ("selected_non_business_combination_filings", selected_unflagged),
+            ("emitted_business_combination_filings", emitted_flagged),
+            ("omitted_business_combination_filings", omitted_flagged),
+            ("invalid_business_combination_flags", invalid_flags),
+            ("selected_submissions", selected_submissions),
+        ):
+            _positive_int(value, label=f"{quarter} {label}")
+        if selected_flagged + selected_unflagged != selected_submissions:
+            raise BuildError(
+                f"Required source quarter {quarter} does not reconcile all selected "
+                "business-combination flags"
+            )
+        if invalid_flags != 0:
+            raise BuildError(
+                f"Required source quarter {quarter} has {invalid_flags} invalid "
+                "business-combination flag(s)"
+            )
+        if selected_flagged != emitted_flagged + omitted_flagged:
+            raise BuildError(
+                f"Required source quarter {quarter} has inconsistent business-combination "
+                "filing counters"
+            )
+        if omitted_flagged != 0:
+            raise BuildError(
+                f"Required source quarter {quarter} omitted {omitted_flagged} "
+                "business-combination filing(s) from the issuer universe"
+            )
 
     outputs = manifest.get("outputs")
     product = outputs.get("broad_issuer_universe") if isinstance(outputs, Mapping) else None
@@ -262,6 +300,10 @@ def build(args: argparse.Namespace) -> dict[str, Any]:
     issuer_universe_path = Path(args.issuer_universe)
     source_manifest = load_source_manifest(source_manifest_path)
     product = source_manifest["outputs"]["broad_issuer_universe"]
+    expected_event_rows = sum(
+        int(metadata["counters"]["emitted_business_combination_filings"])
+        for metadata in source_manifest["inputs"]["quarters"].values()
+    )
     if not issuer_universe_path.is_file():
         raise BuildError(f"Pinned issuer universe is missing: {issuer_universe_path}")
     if issuer_universe_path.stat().st_size != product["size_bytes"]:
@@ -375,6 +417,10 @@ def build(args: argparse.Namespace) -> dict[str, Any]:
             raise BuildError("Issuer-universe SHA-256 does not match the source manifest")
         if counters["coverage_rows"] != counters["issuer_rows"]:
             raise BuildError("Coverage row count does not equal the verified issuer count")
+        if counters["event_rows"] != expected_event_rows:
+            raise BuildError(
+                "Emitted event count does not match the source manifest's complete flagged count"
+            )
         source_validated = True
     finally:
         if event_handle is not None:
@@ -425,6 +471,8 @@ def build(args: argparse.Namespace) -> dict[str, Any]:
             "coverage_equals_verified_issuer_rows": counters["coverage_rows"]
             == counters["issuer_rows"],
             "event_ids_unique": len(seen_event_ids) == counters["event_rows"],
+            "flagged_source_filings_omitted": 0,
+            "flagged_source_filings_reconciled": counters["event_rows"] == expected_event_rows,
             "source_input_hash_rows_bytes_verified": True,
             "source_quarters_complete": True,
         },
