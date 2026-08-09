@@ -467,7 +467,7 @@ def main(argv: list[str] | None = None) -> int:
     bars = ax.barh(plabels, pvals, color=colors, alpha=0.85)
     ax.set_xlabel("Unique nanotech SBIR firms", fontsize=10)
     ax.set_title("SBIR firm acquisitions by prime\n[D]=defense  [P]=pharma/medtech", fontsize=10)
-    for bar, val in zip(bars, pvals):
+    for bar, val in zip(bars, pvals, strict=False):
         ax.text(val + 0.03, bar.get_y() + bar.get_height() / 2,
                 str(val), va="center", fontsize=9)
     # Custom legend
@@ -490,7 +490,7 @@ def main(argv: list[str] | None = None) -> int:
         ax2.barh(alabels, avals, color="#00897B", alpha=0.85)
         ax2.set_xlabel("Awards (post-Phase II temporal filter)", fontsize=10)
         ax2.set_title("Post-Phase II prime acquisitions\nby funding agency", fontsize=10)
-        for i, (bar, val) in enumerate(zip(ax2.patches, avals)):
+        for bar, val in zip(ax2.patches, avals, strict=False):
             ax2.text(val + 0.03, bar.get_y() + bar.get_height() / 2,
                      str(val), va="center", fontsize=9)
     else:

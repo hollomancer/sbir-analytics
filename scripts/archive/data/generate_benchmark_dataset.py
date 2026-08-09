@@ -290,7 +290,6 @@ def generate_awards(company_profile, award_idx_start):
         # How many of the p2_comm_target fall in years before the transition window?
         # Distribute proportionally, with remaining in the overlap years
         pre_transition_years = list(range(comm_start, min(comm_end + 1, trans_start)))
-        overlap_years = list(range(max(comm_start, trans_start), min(comm_end, trans_end) + 1))
 
         if pre_transition_years:
             # Most commercialization Phase II awards should be in earlier years

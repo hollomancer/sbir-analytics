@@ -78,7 +78,7 @@ def print_sensitivity_report(report_path: Path) -> None:
 
 def print_artifact_links(fy: str, run_url: str) -> None:
     """Print artifact download table linking to the run page."""
-    print(f"## Artifacts\n")
+    print("## Artifacts\n")
     print(f"Download from the [workflow run artifacts]({run_url}#artifacts).\n")
     print("| Artifact | Contents |")
     print("|----------|----------|")

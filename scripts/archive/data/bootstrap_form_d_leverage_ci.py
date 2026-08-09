@@ -355,7 +355,7 @@ def write_markdown(snapshot: dict[str, Any], path: Path) -> None:
     L.append(f"**Source:** {snapshot['form_d_path']} + {snapshot['sbir_path']}")
     L.append(f"**Year window:** {snapshot['year_min']}-{snapshot['year_max']}")
     L.append(f"**Bootstrap iterations:** {snapshot['bootstrap_iterations']:,}")
-    L.append(f"**Resampling unit:** firm")
+    L.append("**Resampling unit:** firm")
     L.append(f"**RNG seed:** {snapshot['seed']}")
     L.append("")
 

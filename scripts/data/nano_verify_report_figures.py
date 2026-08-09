@@ -84,7 +84,8 @@ def main(argv: list[str] | None = None) -> int:
     fd_pos_n = sum(1 for r in fd if r.get("form_d_post_p2") == "True")
     check("Form D post-P2 %", round(pct(fd_pos_n, n), 1), 9.5, 0.05)
 
-    key = lambda r: (r["award_id"], r["company"], r["award_year"], r.get("agency", ""))
+    def key(r):
+        return (r["award_id"], r["company"], r["award_year"], r.get("agency", ""))
     fd_pos_full = {key(r) for r in fd if r.get("form_d_post_p2") == "True"}
     overlap = sum(1 for r in kw if r.get("sig_fpds_phase3_coded") == "True" and key(r) in fd_pos_full)
     check("overlap awards", overlap, 37)
@@ -221,8 +222,8 @@ def main(argv: list[str] | None = None) -> int:
     check("alias-recovered firms N", len(alias_recov), 11)
 
     def any_evidence(f):
-        l = liv_by_bucket.get(f, {})
-        pat = l.get("match_confidence") == "high" and l.get("any_filed_post_award") == "True"
+        live = liv_by_bucket.get(f, {})
+        pat = live.get("match_confidence") == "high" and live.get("any_filed_post_award") == "True"
         tmk = tm_by_name.get(f, {}).get("tm_filed_post_award") == "True"
         subv = f in {r["firm_normalized"] for r in sub if r["subaward_tier"] in ("strong", "moderate")}
         sec = f in {r["firm_normalized"] for r in sector}
@@ -263,7 +264,7 @@ def main(argv: list[str] | None = None) -> int:
     print("=" * 78)
     print("SECTION: Finding 4 (WS1 evidence tiers)")
     print("=" * 78)
-    ws1_536 = [r for r in ws1]
+    ws1_536 = list(ws1)
     check("WS1 population", len(ws1_536), 536)
     tiers = Counter(r["evidence_tier"] for r in ws1_536)
     check("WS1 strong N", tiers["strong"], 301)

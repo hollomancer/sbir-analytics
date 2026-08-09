@@ -232,7 +232,7 @@ def match_form_d_to_sbir(
     checked = 0
 
     # First pass: exact normalized name match (fast)
-    for sbir_norm, sbir_data in sbir_companies.items():
+    for sbir_norm in sbir_companies:
         if sbir_norm in fd_by_norm:
             matches[sbir_norm] = fd_by_norm[sbir_norm]
 
@@ -250,7 +250,7 @@ def match_form_d_to_sbir(
         if len(norm) >= 3:
             fd_blocks[norm[:3]].append(norm)
 
-    for sbir_norm, sbir_data in unmatched_sbir.items():
+    for sbir_norm in unmatched_sbir:
         if len(sbir_norm) < 3:
             continue
         candidates = fd_blocks.get(sbir_norm[:3], [])

@@ -26,7 +26,6 @@ Throttle: 1s base sleep between USAspending calls, exponential backoff on 429/5x
 from __future__ import annotations
 
 import argparse
-import json
 import sys
 import time
 from pathlib import Path
@@ -46,9 +45,12 @@ THRESHOLDS = {
 
 
 def assign_tier(p2: int) -> str | None:
-    if p2 >= 101: return "tier2"
-    if p2 >= 51:  return "tier1"
-    if p2 >= 16:  return "standard"
+    if p2 >= 101:
+        return "tier2"
+    if p2 >= 51:
+        return "tier1"
+    if p2 >= 16:
+        return "standard"
     return None
 
 
@@ -136,7 +138,7 @@ def main() -> int:
     end_fy = (args.eval_fy - 1) - 2
     start_fy = end_fy - 10 + 1
     print(f"Commercialization window: FY{start_fy}-FY{end_fy} (eval_fy={args.eval_fy})")
-    print(f"Sales proxy: USAspending prime contracts; investment proxy: Form D")
+    print("Sales proxy: USAspending prime contracts; investment proxy: Form D")
     if args.net:
         print("Net mode: subtracting SBIR.gov P1+P2 totals from federal sales total")
 
@@ -153,7 +155,7 @@ def main() -> int:
             contracts = fetch_usaspending_total(client, r.uei, start_fy, end_fy, CONTRACT_TYPES)
             time.sleep(1.0)
             grants = fetch_usaspending_total(client, r.uei, start_fy, end_fy, GRANT_TYPES)
-            print(f"\r", end="", flush=True)
+            print("\r", end="", flush=True)
             sales = contracts + grants
             net_sales = sales - (r.p1_total_usd + r.p2_total_usd) if args.net else sales
             invest = fd_map.get((r.firm or "").upper().strip(), 0.0)

@@ -122,8 +122,8 @@ def main(argv: list[str] | None = None) -> int:
     tm_own = {r["normalized_name"]: r for r in csv.DictReader(open(tm_csv, newline="", encoding="utf-8"))}
 
     def own_negative(f: str) -> bool:
-        l, t = liv.get(f, {}), tm_own.get(f, {})
-        pat = l.get("match_confidence") == "high" and l.get("any_filed_post_award") == "True"
+        live, t = liv.get(f, {}), tm_own.get(f, {})
+        pat = live.get("match_confidence") == "high" and live.get("any_filed_post_award") == "True"
         tmk = t.get("tm_filed_post_award") == "True"
         return not (pat or tmk)
 

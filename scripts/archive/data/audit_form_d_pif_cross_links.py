@@ -235,7 +235,7 @@ def classify_high_tier_robustness(
         "person_only_at_risk": [],
         "neither_full": [],
     }
-    for op_name, op in distinct_ops.items():
+    for _op_name, op in distinct_ops.items():
         person = op["person_score"] or 0.0
         addr = op["address_score"] or 0.0
         person_ok = person >= 0.7
@@ -327,8 +327,8 @@ def write_markdown(summary: dict[str, Any], path: Path) -> None:
     L.append("")
     L.append("## Headline impact")
     L.append("")
-    L.append(f"| Cohort | Counted $ from cross-linked ops | Headline | % of headline |")
-    L.append(f"|---|---|---|---|")
+    L.append("| Cohort | Counted $ from cross-linked ops | Headline | % of headline |")
+    L.append("|---|---|---|---|")
     L.append(f"| High-only | ${summary['high_tier_counted_dollars_at_cross_link_op_side']/1e9:.3f}B | ${summary['high_only_headline_usd']/1e9:.2f}B | {summary['high_tier_pct_of_headline']:.2f}% |")
     L.append(f"| High + Medium | ${summary['hm_tier_counted_dollars_at_cross_link_op_side']/1e9:.3f}B | ${summary['hm_headline_usd']/1e9:.2f}B | {summary['hm_pct_of_headline']:.2f}% |")
     L.append("")

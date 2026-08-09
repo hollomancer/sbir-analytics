@@ -27,7 +27,6 @@ Usage:
 
 import argparse
 import json
-import os
 import sys
 from datetime import datetime, UTC
 from pathlib import Path
@@ -190,7 +189,7 @@ def run_analysis(
             )
 
             cache_file = output_dir / "usaspending_api_cache.json"
-            print(f"\nFetching commercialization data from USAspending API...")
+            print("\nFetching commercialization data from USAspending API...")
             uei_col = next((c for c in df.columns if c.upper() == "UEI"), None)
             if uei_col:
                 print(f"  Querying {len(candidate_ueis)} candidate UEIs (not all {df[uei_col].nunique():,})")

@@ -321,7 +321,7 @@ def item_3_time_series_branch_ratios(
     """
     # Total program $ per branch across all years — for filtering
     branch_totals: dict[str, float] = defaultdict(float)
-    for (b, y), v in program_by_branch_year.items():
+    for (b, _y), v in program_by_branch_year.items():
         branch_totals[b] += v
     major_branches = {b for b, t in branch_totals.items() if t >= min_program_usd}
 

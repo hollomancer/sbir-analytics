@@ -27,7 +27,7 @@ import csv
 import json
 import sys
 from collections import defaultdict
-from datetime import date, timedelta
+from datetime import date
 from pathlib import Path
 
 import matplotlib
@@ -127,9 +127,9 @@ def temporal_join(award: dict, form_d: dict) -> dict | None:
     total_raised = sum(
         float(o.get("total_amount_sold") or 0) for o in post_offerings
     )
-    sec_types = sorted(set(
+    sec_types = sorted({
         t for o in post_offerings for t in o.get("securities_types", [])
-    ))
+    })
 
     return {
         "form_d_cik": form_d["cik"],
@@ -246,7 +246,7 @@ def main() -> int:
     n_active = stats["form_d_post_p2_active_award"]
     n_predate = stats["form_d_match_predates_p2"]
 
-    post_p2 = [r for r in results if r.get("form_d_post_p2") == True]
+    post_p2 = [r for r in results if r.get("form_d_post_p2") is True]
 
     print()
     print("=" * 60)
@@ -278,7 +278,7 @@ def main() -> int:
     for r in results:
         ag = r.get("agency", "Unknown")
         agency_counts[ag]["total"] += 1
-        if r.get("form_d_post_p2") == True:
+        if r.get("form_d_post_p2") is True:
             agency_counts[ag]["post_p2"] += 1
 
     print("Post-Phase II Form D by agency:")
@@ -316,7 +316,7 @@ def main() -> int:
         print(f"  Median:  {lags_sorted[n//2]} days ({lags_sorted[n//2]//365:.1f} yr)")
         print(f"  25th:    {lags_sorted[n//4]} days")
         print(f"  75th:    {lags_sorted[int(n*0.75)]} days ({lags_sorted[int(n*0.75)]//365:.1f} yr)")
-        neg = sum(1 for l in lags if l < 0)
+        neg = sum(1 for lag in lags if lag < 0)
         if neg:
             print(f"  NOTE: {neg} negative lags — Phase II end_date is fallback estimate")
 
@@ -326,7 +326,7 @@ def main() -> int:
 
         # Left: lag histogram
         ax = axes[0]
-        ax.hist([l / 365 for l in lags], bins=30, color="#2196F3", alpha=0.8, edgecolor="white")
+        ax.hist([lag / 365 for lag in lags], bins=30, color="#2196F3", alpha=0.8, edgecolor="white")
         ax.axvline(0, color="red", linestyle="--", linewidth=1.5, label="Phase II ends")
         ax.set_xlabel("Years after Phase II end date", fontsize=11)
         ax.set_ylabel("Number of awards", fontsize=11)
@@ -348,7 +348,7 @@ def main() -> int:
         ax2.axvline(100 * n_match / total, color="gray", linestyle="--", linewidth=1,
                     label=f"Cohort avg {100*n_match/total:.1f}%")
         ax2.legend(fontsize=9)
-        for bar, rate in zip(bars, ag_rates):
+        for bar, rate in zip(bars, ag_rates, strict=False):
             ax2.text(rate + 0.3, bar.get_y() + bar.get_height() / 2,
                      f"{rate:.1f}%", va="center", fontsize=9)
 

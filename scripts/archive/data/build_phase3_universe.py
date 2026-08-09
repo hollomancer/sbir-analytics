@@ -144,7 +144,7 @@ def main() -> int:
     # Indexed by Award ID; value tracks provenance + row content. Award IDs
     # are PIIDs which are unique per contract, so this is a safe dedup key.
     universe: dict[str, dict] = {}
-    per_kw_counts: dict[str, int] = {kw: 0 for kw in args.keywords}
+    per_kw_counts: dict[str, int] = dict.fromkeys(args.keywords, 0)
 
     with httpx.Client(timeout=60, headers=HEADERS) as client:
         for fy in range(args.start_fy, args.end_fy + 1):
