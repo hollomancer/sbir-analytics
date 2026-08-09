@@ -16,6 +16,7 @@ import math
 import os
 import re
 import subprocess
+import sys
 import tempfile
 import urllib.parse
 import urllib.request
@@ -26,6 +27,10 @@ from datetime import datetime
 from html.parser import HTMLParser
 from pathlib import Path
 from typing import Any
+
+REPO_ROOT = Path(__file__).resolve().parents[2]
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
 
 from sbir_etl.identity import CompanyNameProfile, normalize_company_name
 
