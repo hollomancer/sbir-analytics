@@ -26,7 +26,7 @@ Local pre-commit hook            Runs in CI as
 ─────────────────────            ──────────────
 Standard file checks       →     (local only)
 Ruff (lint/format)         →     ci.yml · quality job
-MyPy (types)               →     ci.yml · quality job (sbir_etl + sbir-graph)
+MyPy (types)               →     ci.yml · quality job (sbir_etl + sbir-graph + sbir-ml)
 Bandit (security)          →     (nowhere — manual only)
 Detect-secrets             →     (nowhere — manual only)
 (no local hook)            →     ci.yml · quality job (actionlint)
@@ -172,27 +172,22 @@ This workflow runs on:
 
 **Jobs (in parallel/sequence):**
 
-1. **code-quality**
-   - Runs: `ruff check`, `ruff format --check`, `mypy sbir_etl`, and a removed-source-root reference check (`scripts/ci/check_removed_src_references.py`, the "Reject removed source-root references" step).
+1. **quality** ("Lint, Types, and Guards")
+   - Runs: `ruff check`, `ruff format --check`, `mypy sbir_etl packages/sbir-graph/sbir_graph packages/sbir-ml/sbir_ml`, Dagster definition validation, the architecture/documentation/hygiene guards, compose-file validation, and actionlint.
    - Purpose: Pull-request and push quality gate for checks that mirror the local Ruff/MyPy pre-commit hooks.
    - Time: ~5-10 minutes.
 
-2. **package-type-checks**
-   - Runs: package-specific MyPy checks for `sbir-analytics`, `sbir-ml`, and `sbir-graph`.
-   - Purpose: Package-level type-checking visibility beyond the core `sbir_etl` check.
-   - Time: ~1-2 minutes per package.
+   There is no separate package-type-check job: all three type-checked roots are
+   arguments to the single blocking MyPy step above. `sbir-analytics` is not yet
+   type-checked in CI.
 
-3. **workflow-lint**
-   - Runs: GitHub Actions workflow syntax/lint validation.
-   - Purpose: Keeps the current workflow set valid as `.github/workflows/` changes.
-
-4. **test**, **container-build-test**, **performance-check**, **e2e-docker**, and related CI jobs
+2. **test**, **container-build-test**, **performance-check**, **e2e-docker**, and related CI jobs
    - Runs: unit/integration tests, container checks, performance regression checks, E2E Docker checks, and transition MVP checks as configured in `ci.yml`.
    - Purpose: Keeps PR/push feedback consolidated in the current CI workflow.
 
 ### Why Multiple Jobs?
 
-- **code-quality:** Ensures core local style checks pass in CI
+- **quality:** Ensures core local style checks pass in CI
 - **Individual jobs:** Provide clear, separate visibility in GitHub checks for linting, typing, workflow validation, tests, containers, performance, and E2E coverage
 - **Parallelization:** Faster overall execution
 - **Debugging:** Easier to identify which check failed
@@ -253,7 +248,7 @@ Tool versions are pinned in:
 | Tool versions | `.pre-commit-config.yaml` | `.pre-commit-config.yaml` | Identical |
 | Ruff scope | `.pre-commit-config.yaml` | `ci.yml` | Both: all production roots plus `tests` |
 | Ruff config | `pyproject.toml` | `pyproject.toml` | Identical |
-| MyPy scope | `pyproject.toml` + `.pre-commit-config.yaml` | `ci.yml` | Local: `sbir_etl`. CI: `sbir_etl` **plus** `sbir-graph`, both in the `quality` job |
+| MyPy scope | `pyproject.toml` + `.pre-commit-config.yaml` | `ci.yml` | Local: `sbir_etl`. CI: `sbir_etl` **plus** `sbir-graph` and `sbir-ml`, all in the `quality` job |
 | MyPy config | `pyproject.toml` | `pyproject.toml` | Identical |
 | Bandit scope | `.pre-commit-config.yaml` | not run in CI | Manual only since the security-scan job was retired |
 | Bandit config | `pyproject.toml` | `pyproject.toml` | Identical |

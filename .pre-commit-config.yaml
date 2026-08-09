@@ -19,8 +19,8 @@ repos:
       - id: ruff-format
         files: ^(sbir_etl|packages/sbir-(analytics/sbir_analytics|ml/sbir_ml|graph/sbir_graph)|tests)/
 
-  # Type checking (matches blocking CI scope: sbir_etl only)
-  # CI equivalent: mypy sbir_etl
+  # Type checking (local subset of the blocking CI scope: sbir_etl only)
+  # CI equivalent: mypy sbir_etl packages/sbir-graph/sbir_graph packages/sbir-ml/sbir_ml
   # Note: mypy is configured in pyproject.toml with exclude patterns for
   # scripts/, tests/, and examples/ to match this scope
   - repo: https://github.com/pre-commit/mirrors-mypy
@@ -65,7 +65,7 @@ repos:
 #
 #   Tool Scope Mapping:
 #   - Ruff (lint/format): all production package roots and tests
-#   - MyPy (type check):  sbir_etl/      [CI also checks sbir-graph]
+#   - MyPy (type check):  sbir_etl/      [CI also checks sbir-graph, sbir-ml]
 #   - Bandit (security):  all production package roots  [manual only]
 #   - Standard hooks:     all files       [good practice, not in CI]
 #   - Detect-secrets:     all files       [manual only]
