@@ -108,8 +108,7 @@ def test_unterminated_fence_does_not_swallow_a_real_declaration(tmp_path: Path) 
     _write(
         tmp_path,
         "specs/example/requirements.md",
-        "# Example\n\n```markdown\nunterminated example\n\n"
-        "**Target epistemic tier:** pipelines\n",
+        "# Example\n\n```markdown\nunterminated example\n\n**Target epistemic tier:** pipelines\n",
     )
 
     assert not tiers.validate_spec_directory(spec, repository_root=tmp_path)
