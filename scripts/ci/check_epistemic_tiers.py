@@ -13,7 +13,7 @@ TIER_DECLARATION = re.compile(
     r"^\*\*Target epistemic tier:\*\*\s*`?([A-Za-z]+)`?\s*$",
     flags=re.MULTILINE,
 )
-FENCE = re.compile(r"^[ \t]{0,3}(`{3,}|~{3,})")
+FENCE = re.compile(r"^[ \t]*(?P<fence>`{3,}|~{3,})(?P<suffix>.*)$")
 EXCLUDED_SPEC_DIRECTORIES = frozenset({"archive"})
 
 
@@ -29,21 +29,37 @@ class TierDeclarationViolation:
 
 
 def _outside_fenced_code(markdown: str) -> str:
-    """Return Markdown content outside fenced code blocks."""
+    """Return Markdown content outside complete fenced code blocks.
+
+    Unterminated candidate fences are retained. A malformed example must not
+    hide a real declaration later in the specification.
+    """
 
     retained: list[str] = []
+    pending: list[str] = []
     marker: tuple[str, int] | None = None
     for line in markdown.splitlines():
         match = FENCE.match(line)
         if marker is None:
-            if match:
-                fence = match.group(1)
+            if match and not (
+                match.group("fence").startswith("`") and "`" in match.group("suffix")
+            ):
+                fence = match.group("fence")
                 marker = fence[0], len(fence)
+                pending = [line]
             else:
                 retained.append(line)
             continue
-        if match and match.group(1)[0] == marker[0] and len(match.group(1)) >= marker[1]:
+        pending.append(line)
+        if (
+            match
+            and match.group("fence")[0] == marker[0]
+            and len(match.group("fence")) >= marker[1]
+            and not match.group("suffix").strip()
+        ):
             marker = None
+            pending = []
+    retained.extend(pending)
     return "\n".join(retained)
 
 

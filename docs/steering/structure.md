@@ -105,9 +105,9 @@ the manifest schema, frozen-artifact hashes, and implementation references.
 
 ### Transitional Script Dependencies
 
-First-party packages may not add dependencies on `scripts/`. All transitional bridges are
-retired: the architecture guard's import and execution allowlists are empty, and every
-formerly bridged script is now reached through a package API with the CLI retained as an
+First-party packages may not add dependencies on `scripts/`. All three transitional execution
+bridges are retired: the architecture guard's import and execution allowlists are empty, and
+every formerly bridged script is now reached through a package API with the CLI retained as an
 entry point. Any future bridge must be named in the guard with a reason and a removal
 condition; it is a migration device, not a fifth epistemic tier and not an implicit
 promotion of the script, and an `evidence` artifact may never depend on one.

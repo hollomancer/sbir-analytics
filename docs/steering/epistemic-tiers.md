@@ -113,7 +113,7 @@ removal condition: move the implementation behind a package API while retaining
 the CLI as an entry point. No new bridge may be added without those conditions,
 and an `evidence` artifact may not depend on one. See
 [structure.md](structure.md#transitional-script-dependencies) for the current
-bridge.
+bridge policy; no transitional bridges are currently active.
 
 #### Two populations: workbench and operated
 
