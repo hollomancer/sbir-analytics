@@ -584,7 +584,7 @@ class TestGetConfig:
                 "NEO4J_PASSWORD": "custom-password",
                 "NEO4J_DATABASE": "analytics",
             }
-            with patch.dict(os.environ, neo4j_environment):
+            with patch.dict(os.environ, neo4j_environment, clear=True):
                 reload_config()  # Clear cache
                 config = get_config(environment="development", config_dir=config_dir)
 
@@ -592,6 +592,22 @@ class TestGetConfig:
             assert config.neo4j.username == "custom-user"
             assert config.neo4j.password == "custom-password"
             assert config.neo4j.database == "analytics"
+
+    def test_nested_neo4j_environment_overrides_direct_compatibility_values(self):
+        """Nested compatibility values retain their documented precedence."""
+        environment = {
+            "NEO4J_USER": "direct-user",
+            "NEO4J_PASSWORD": "direct-password",
+            "SBIR_ETL__NEO4J__USERNAME": "nested-user",
+            "SBIR_ETL__NEO4J__PASSWORD": "nested-password",
+        }
+
+        with patch.dict(os.environ, environment, clear=True):
+            reload_config()
+            config = get_config(environment="development")
+
+        assert config.neo4j.username == "nested-user"
+        assert config.neo4j.password == "nested-password"
 
     def test_get_config_handles_legacy_loading_neo4j(self):
         """Test get_config handles legacy 'loading.neo4j' structure."""

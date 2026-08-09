@@ -2,6 +2,7 @@ from pathlib import Path
 
 
 ENV_EXAMPLE = Path(__file__).parents[3] / ".env.example"
+COMPOSE_FILE = Path(__file__).parents[3] / "docker-compose.yml"
 
 
 def _documented_keys() -> set[str]:
@@ -22,14 +23,19 @@ def test_env_example_documents_the_supported_runtime_selectors() -> None:
         "NEO4J_USER",
         "NEO4J_PASSWORD",
         "NEO4J_DATABASE",
+        "NEO4J_USERNAME",
+        "SBIR_ETL__NEO4J__BOLT_URL",
     } <= keys
 
-    assert {
-        "SBIR_ETL__NEO4J__BOLT_URL",
-        "SBIR_ETL__NEO4J__HOST",
-        "SBIR_ETL__NEO4J__PORT",
-        "SBIR_ETL__DATA_DIR",
-        "SBIR_ETL__CONFIG_DIR",
-        "SBIR_ETL__LOG_DIR",
-        "SBIR_ETL__METRICS_DIR",
-    }.isdisjoint(keys)
+    nested_neo4j_keys = {key for key in keys if key.startswith("SBIR_ETL__NEO4J__")}
+    assert nested_neo4j_keys == {"SBIR_ETL__NEO4J__BOLT_URL"}
+
+
+def test_compose_forwards_every_documented_direct_neo4j_setting() -> None:
+    compose = COMPOSE_FILE.read_text(encoding="utf-8")
+    common_environment = compose.split("x-common-environment:", 1)[1].split(
+        "x-dev-environment:", 1
+    )[0]
+
+    for key in ("NEO4J_URI", "NEO4J_USER", "NEO4J_PASSWORD", "NEO4J_DATABASE"):
+        assert f"  {key}:" in common_environment
