@@ -1,8 +1,4 @@
-"""Example scripts demonstrating SBIR Analytics functionality.
+"""Standalone example scripts. See README.md in this directory for an index.
 
-This package contains example scripts showcasing various features:
-- Congressional district resolution
-- Enhanced matching capabilities
-- Multi-source enrichment
-- Fiscal impact analysis
+Exploratory tier: illustrative only, not citable, not part of any pipeline.
 """

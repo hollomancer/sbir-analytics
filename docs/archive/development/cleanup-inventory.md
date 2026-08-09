@@ -54,13 +54,13 @@ implementation commitment.
 | `cross-agency-taxonomy` | Gated backlog; 0 done, 16 pending | Promote only when M3 cross-agency taxonomy reporting is selected. |
 | `data-imputation` | Gated backlog; implementation not started; 30 pending | Defer unless missing-field recovery becomes the next data-quality priority. |
 | `follow-on-multiplier-validation` | Design-only spec, no task file | Either add tasks and make active, or leave as design note. |
-| `iterative_api_enrichment` | USAspending refresh live; 18 done, 2 pending | Split Phase 2 source expansion into a new spec or archive Phase 1 as complete. |
-| `modernbert_analysis_layer` | Maintenance; core embeddings/similarity implemented | Keep Neo4j, quality, and Bayesian work as scoped follow-ups. |
+| `iterative-api-enrichment` | USAspending refresh live; 18 done, 2 pending | Split Phase 2 source expansion into a new spec or archive Phase 1 as complete. |
+| `modernbert-analysis-layer` | Maintenance; core embeddings/similarity implemented | Keep Neo4j, quality, and Bayesian work as scoped follow-ups. |
 | `naics-enricher-consolidation` | Maintenance cleanup; 11 done, 5 pending | Close obsolete audit/golden-file tasks as superseded; finish docs cleanup. |
 | `ot-consortium-subaward-attribution` | Gated backlog; 17 pending | Keep gated on coverage probe; do not implement before T0 decision. |
 | `patent-cost-spillover` | Gated backlog; 23 pending | Defer unless C3 patent-cost analysis is the next research priority. |
 | `phase-3-solicitation-alerts` | Maintenance; S1 shipped, S2/S3 backlog | Avoid adding another ingestion path until SAM.gov Opportunities is prioritized. |
-| `sbir_ma_match_rate_by_fy` | Gated backlog; 19 pending | Keep only if it will produce a near-term analysis artifact. |
+| `sbir-ma-match-rate-by-fy` | Gated backlog; 19 pending | Keep only if it will produce a near-term analysis artifact. |
 | `state-local-tax-rates` | Maintenance; hardcoded provider exists | Good low-risk cleanup: make rates data-driven when fiscal v2 resumes. |
 | `ucc1-financing-analysis` | Archive candidate; 24 done, 14 deferred | Archive completed pilot; move deferred lifecycle/lender work to a follow-up only if active. |
 | `weekly-awards-report-refactor` | Maintenance; 12 done, 4 pending | Finish injection/coverage cleanup; drop alias cleanup only if still meaningful. |

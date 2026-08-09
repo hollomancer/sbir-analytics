@@ -80,7 +80,7 @@ Each milestone produces an analytical output that (a) replicates or exceeds a sp
 | Topic clustering | Built | `packages/sbir-analytics/sbir_analytics/tools/mission_a/cluster_topics.py` |
 | Portfolio metrics | Built | `packages/sbir-analytics/sbir_analytics/tools/mission_a/compute_portfolio_metrics.py` |
 | Gap detection | Built | `packages/sbir-analytics/sbir_analytics/tools/mission_a/detect_gaps.py` |
-| ModernBert embeddings | ~50% spec | `specs/modernbert_analysis_layer/` |
+| ModernBert embeddings | ~50% spec | `specs/modernbert-analysis-layer/` |
 | **Full corpus classification** | **Missing** | Needs: batch classifier run on all SBIR.gov awards |
 | **Cross-agency visualization** | **Missing** | Needs: agency-level technology allocation output |
 
@@ -135,7 +135,7 @@ Each milestone produces an analytical output that (a) replicates or exceeds a sp
 2. **`follow-on-multiplier-validation`** — validation/sensitivity/review-sampling for the delivered M1 multiplier
 
 ### Next Sprint (M3 parallel)
-3. **`modernbert_analysis_layer`** (~50%) — Embeddings infrastructure for M3 full-corpus classification
+3. **`modernbert-analysis-layer`** (~50%) — Embeddings infrastructure for M3 full-corpus classification
 4. **`cross-agency-taxonomy`** (spec exists, not started) — M3 core: batch classifier, agency-level output, visualization
 
 ### Following Sprint (M2 analytical layer)
