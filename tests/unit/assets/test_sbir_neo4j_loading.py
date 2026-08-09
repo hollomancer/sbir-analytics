@@ -2,7 +2,24 @@
 
 import pytest
 
-from sbir_analytics.assets.sbir_neo4j_loading import _ensure_unique_award_transaction_ids
+from sbir_analytics.assets.sbir_neo4j_loading import (
+    _ensure_unique_award_transaction_ids,
+    _updated_since,
+)
+
+
+class _Metrics:
+    def __init__(self, nodes_updated: dict[str, int]):
+        self.nodes_updated = nodes_updated
+
+
+def test_updated_since_reports_canonical_label_delta():
+    metrics = _Metrics({"FinancialTransaction": 7, "Organization": 11, "Individual": 3})
+
+    assert _updated_since(metrics, "FinancialTransaction") == (7, 7)
+    assert _updated_since(metrics, "Organization", previous=5) == (6, 11)
+    assert _updated_since(metrics, "Individual") == (3, 3)
+    assert _updated_since(metrics, "Award") == (0, 0)
 
 
 def test_unique_award_transaction_ids_pass():

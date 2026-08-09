@@ -67,6 +67,12 @@ def _company_id_for_award(award: Award) -> str | None:
     return None
 
 
+def _updated_since(metrics: Any, label: str, previous: int = 0) -> tuple[int, int]:
+    """Return updates for one load step and the new cumulative checkpoint."""
+    current = int(metrics.nodes_updated.get(label, 0))
+    return current - previous, current
+
+
 def _get_neo4j_client() -> "Neo4jClient | None":
     """Open a Neo4j connection from config; return None when SKIP_NEO4J_LOADING is set."""
     skip_neo4j = os.getenv("SKIP_NEO4J_LOADING", "false").lower() in ("true", "1", "yes")
@@ -485,6 +491,7 @@ def neo4j_sbir_awards(
         award_institution_rels: list[tuple] = []
         researcher_award_rels: list[tuple] = []
         researcher_company_rels: list[tuple] = []
+        organization_updates = 0
 
         # Error counters (logged at end; first 10 of each kind go to debug log).
         skipped_zero_amount = 0
@@ -674,6 +681,9 @@ def neo4j_sbir_awards(
                 f"{metrics.nodes_created.get('Organization', 0)} created, "
                 f"{metrics.nodes_updated.get('Organization', 0)} updated"
             )
+        companies_updated, organization_updates = _updated_since(
+            metrics, "Organization", organization_updates
+        )
 
         if award_nodes:
             metrics = client.batch_upsert_nodes(
@@ -683,6 +693,7 @@ def neo4j_sbir_awards(
                 metrics=metrics,
             )
             context.log.info(f"Loaded {len(award_nodes)} FinancialTransaction nodes (AWARD type)")
+        awards_updated, _ = _updated_since(metrics, "FinancialTransaction")
 
         metrics = _load_nodes(
             client,
@@ -693,6 +704,7 @@ def neo4j_sbir_awards(
             description="researchers",
             context=context,
         )
+        researchers_updated, _ = _updated_since(metrics, "Individual")
         metrics = _load_nodes(
             client,
             label="Organization",
@@ -701,6 +713,9 @@ def neo4j_sbir_awards(
             metrics=metrics,
             description="research institutions",
             context=context,
+        )
+        institutions_updated, organization_updates = _updated_since(
+            metrics, "Organization", organization_updates
         )
 
         for rels, desc in (
@@ -871,13 +886,13 @@ def neo4j_sbir_awards(
         result = {
             "status": "success",
             "awards_loaded": len(award_nodes),
-            "awards_updated": metrics.nodes_updated.get("Award", 0),
+            "awards_updated": awards_updated,
             "companies_loaded": len(company_nodes_map),
-            "companies_updated": metrics.nodes_updated.get("Company", 0),
+            "companies_updated": companies_updated,
             "researchers_loaded": len(researcher_nodes_map),
-            "researchers_updated": metrics.nodes_updated.get("Researcher", 0),
+            "researchers_updated": researchers_updated,
             "institutions_loaded": len(institution_nodes_map),
-            "institutions_updated": metrics.nodes_updated.get("ResearchInstitution", 0),
+            "institutions_updated": institutions_updated,
             "relationships_created": sum(metrics.relationships_created.values()),
             "errors": metrics.errors,
             "duration_seconds": duration,
