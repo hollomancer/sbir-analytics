@@ -137,7 +137,7 @@ def test_asset_neo4j_award_cet_relationships_invokes_loader(monkeypatch, tmp_pat
     """
     Validate that the Dagster asset:
     - Reads classification rows via helper
-    - Invokes CETLoader.load_award_cet_relationships with those rows
+    - Invokes CETLoader.create_award_cet_relationships with those rows
     - Returns a serialized metrics dict
     """
     # Skip if dagster or sbir_analytics are unavailable in this environment
@@ -175,8 +175,8 @@ def test_asset_neo4j_award_cet_relationships_invokes_loader(monkeypatch, tmp_pat
             self.config = config
             self.rows_received = None
 
-        def load_award_cet_relationships(self, rows_in):
-            """Match the actual method name in CETLoader."""
+        def create_award_cet_relationships(self, rows_in):
+            """Match the production CETLoader API."""
             self.rows_received = list(rows_in)
             # emulate counting relationships from rows
             count = 0
@@ -227,13 +227,10 @@ def test_asset_neo4j_award_cet_relationships_invokes_loader(monkeypatch, tmp_pat
     assert result["awards"] == len(rows)
     assert result["metrics"]["relationships_created"]["APPLICABLE_TO"] == expected_rels
 
-    # The asset attempts to write a checks JSON; it tolerates missing dirs.
-    # If created, validate structure; otherwise, just ensure no exception occurred.
     checks_path = (
         tmp_path / "data" / "loaded" / "neo4j" / "neo4j_award_cet_relationships.checks.json"
     )
-    if checks_path.exists():
-        with checks_path.open("r", encoding="utf-8") as fh:
-            payload = json.load(fh)
-        assert payload.get("status") == "success"
-        assert payload.get("awards") == len(rows)
+    with checks_path.open("r", encoding="utf-8") as fh:
+        payload = json.load(fh)
+    assert payload.get("status") == "success"
+    assert payload.get("awards") == len(rows)

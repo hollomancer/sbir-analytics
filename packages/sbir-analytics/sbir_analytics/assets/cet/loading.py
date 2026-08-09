@@ -11,6 +11,7 @@ This module contains:
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 from typing import Any
 
@@ -35,6 +36,82 @@ except Exception:
     CETLoaderConfig = None
 
 
+def _skip_requested(context, operation: str) -> bool:
+    if os.getenv("SKIP_NEO4J_LOADING", "false").lower() not in {"true", "1", "yes"}:
+        return False
+    context.log.warning(f"Skipping {operation}: SKIP_NEO4J_LOADING is enabled")
+    return True
+
+
+def _require_loader() -> None:
+    if CETLoader is None or CETLoaderConfig is None:
+        raise RuntimeError("CET Neo4j loader dependencies are unavailable")
+
+
+def _connected_client():
+    client = _get_neo4j_client()
+    if client is None:
+        raise RuntimeError("Neo4j loading was not skipped, but no client was created")
+    return client
+
+
+def _close_client(client, context) -> None:
+    try:
+        client.close()
+    except Exception as exc:  # pragma: no cover - defensive cleanup
+        context.log.warning(f"Failed to close Neo4j client cleanly: {exc}")
+
+
+def _ensure_successful_metrics(metrics, operation: str) -> None:
+    errors = int(getattr(metrics, "errors", 0) or 0)
+    if errors:
+        raise RuntimeError(f"{operation} completed with {errors} loader error(s)")
+
+
+def _write_summary(filename: str, result: dict[str, Any]) -> None:
+    out_path = DEFAULT_OUTPUT_DIR / filename
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    with out_path.open("w", encoding="utf-8") as fh:
+        json.dump(result, fh, indent=2)
+
+
+def _award_enrichments(classifications: list[dict]) -> list[dict]:
+    enrichments = []
+    for row in classifications:
+        supporting = row.get("supporting_cets") or []
+        enrichments.append(
+            {
+                "award_id": row["award_id"],
+                "cet_primary_id": row.get("primary_cet"),
+                "cet_primary_score": row.get("primary_score"),
+                "cet_supporting_ids": [
+                    item.get("cet_id") for item in supporting if isinstance(item, dict)
+                ],
+                "cet_taxonomy_version": row.get("taxonomy_version"),
+                "cet_classified_at": row.get("classified_at"),
+                "cet_model_version": row.get("model_version"),
+            }
+        )
+    return enrichments
+
+
+def _company_enrichments(profiles: list[dict]) -> list[dict]:
+    enrichments = []
+    for row in profiles:
+        cet_scores = row.get("cet_scores") or {}
+        enrichments.append(
+            {
+                "company_id": row["company_id"],
+                "cet_dominant_id": row.get("dominant_cet"),
+                "cet_dominant_score": row.get("dominant_score"),
+                "cet_specialization_score": row.get("specialization_score"),
+                "cet_areas": list(cet_scores) if isinstance(cet_scores, dict) else [],
+                "cet_taxonomy_version": row.get("taxonomy_version"),
+            }
+        )
+    return enrichments
+
+
 @asset(
     name="loaded_cet_areas",
     description="Load CETArea nodes into Neo4j from CET taxonomy artifact.",
@@ -50,13 +127,9 @@ except Exception:
 )
 def loaded_cet_areas(context, cet_taxonomy) -> dict[str, Any]:
     """Upsert CETArea nodes based on taxonomy output."""
-    if CETLoader is None or CETLoaderConfig is None:
-        context.log.warning("CETLoader unavailable; skipping CETArea loading")
-        return {"status": "skipped", "reason": "loader_unavailable"}
-
-    client = _get_neo4j_client()
-    if client is None:
-        return {"status": "skipped", "reason": "neo4j_skipped"}
+    if _skip_requested(context, "CETArea loading"):
+        return {"status": "skipped", "reason": "explicit_skip"}
+    _require_loader()
 
     # Config
     taxonomy_parquet = Path(
@@ -68,10 +141,11 @@ def loaded_cet_areas(context, cet_taxonomy) -> dict[str, Any]:
     batch_size = int(context.op_config.get("batch_size", 1000))
 
     # Read taxonomy (expect: cet_id, name, definition, keywords, taxonomy_version)
-    expected_cols = ("cet_id", "name", "definition", "keywords", "taxonomy_version")
+    expected_cols = ("cet_id", "name", "taxonomy_version")
     areas = _read_parquet_or_ndjson(taxonomy_parquet, taxonomy_json, expected_columns=expected_cols)
     context.log.info(f"Loaded CET taxonomy records for Neo4j: {len(areas)}")
 
+    client = _connected_client()
     try:
         loader = CETLoader(client, CETLoaderConfig(batch_size=batch_size))
         if create_constraints:
@@ -80,33 +154,20 @@ def loaded_cet_areas(context, cet_taxonomy) -> dict[str, Any]:
             loader.create_indexes()
 
         metrics = loader.load_cet_areas(areas)
+        _ensure_successful_metrics(metrics, "CETArea loading")
         result = {
             "status": "success",
             "areas": len(areas),
             "metrics": _serialize_metrics(metrics),
         }
 
-        # Persist a small run summary
-        out_path = DEFAULT_OUTPUT_DIR / "neo4j_cetarea_nodes.checks.json"
-        out_path.parent.mkdir(parents=True, exist_ok=True)
-        try:
-            with out_path.open("w", encoding="utf-8") as fh:
-                json.dump(result, fh, indent=2)
-        except Exception:
-            pass
-
-        try:
-            client.close()
-        except Exception:
-            pass
+        _write_summary("neo4j_cetarea_nodes.checks.json", result)
         return result
     except Exception as exc:
         context.log.exception(f"CETArea loading failed: {exc}")
-        try:
-            client.close()
-        except Exception:
-            pass
-        return {"status": "error", "error": str(exc)}
+        raise
+    finally:
+        _close_client(client, context)
 
 
 @asset(
@@ -129,13 +190,9 @@ def loaded_award_cet_enrichment(
     context, enriched_cet_award_classifications, loaded_cet_areas
 ) -> dict[str, Any]:
     """Upsert CET enrichment properties onto Award nodes."""
-    if CETLoader is None or CETLoaderConfig is None:
-        context.log.warning("CETLoader unavailable; skipping Award CET enrichment")
-        return {"status": "skipped", "reason": "loader_unavailable"}
-
-    client = _get_neo4j_client()
-    if client is None:
-        return {"status": "skipped", "reason": "neo4j_skipped"}
+    if _skip_requested(context, "Award CET enrichment"):
+        return {"status": "skipped", "reason": "explicit_skip"}
+    _require_loader()
 
     # Config
     award_class_parquet = Path(
@@ -147,42 +204,30 @@ def loaded_award_cet_enrichment(
     batch_size = int(context.op_config.get("batch_size", 1000))
 
     # Read award classifications
-    expected_cols = ("award_id", "primary_cet", "supporting_cets", "confidence", "evidence")
+    expected_cols = ("award_id", "primary_cet")
     classifications = _read_parquet_or_ndjson(
         award_class_parquet, award_class_json, expected_columns=expected_cols
     )
     context.log.info(f"Loaded award classifications for Neo4j: {len(classifications)}")
 
+    client = _connected_client()
     try:
         loader = CETLoader(client, CETLoaderConfig(batch_size=batch_size))
-        metrics = loader.load_award_cet_enrichment(classifications)
+        metrics = loader.upsert_award_cet_enrichment(_award_enrichments(classifications))
+        _ensure_successful_metrics(metrics, "Award CET enrichment")
         result = {
             "status": "success",
             "awards": len(classifications),
             "metrics": _serialize_metrics(metrics),
         }
 
-        # Persist a small run summary
-        out_path = DEFAULT_OUTPUT_DIR / "neo4j_award_cet_enrichment.checks.json"
-        out_path.parent.mkdir(parents=True, exist_ok=True)
-        try:
-            with out_path.open("w", encoding="utf-8") as fh:
-                json.dump(result, fh, indent=2)
-        except Exception:
-            pass
-
-        try:
-            client.close()
-        except Exception:
-            pass
+        _write_summary("neo4j_award_cet_enrichment.checks.json", result)
         return result
     except Exception as exc:
         context.log.exception(f"Award CET enrichment failed: {exc}")
-        try:
-            client.close()
-        except Exception:
-            pass
-        return {"status": "error", "error": str(exc)}
+        raise
+    finally:
+        _close_client(client, context)
 
 
 @asset(
@@ -203,13 +248,9 @@ def loaded_company_cet_enrichment(
     context, transformed_cet_company_profiles, loaded_cet_areas
 ) -> dict[str, Any]:
     """Upsert CET enrichment properties onto Company nodes."""
-    if CETLoader is None or CETLoaderConfig is None:
-        context.log.warning("CETLoader unavailable; skipping Company CET enrichment")
-        return {"status": "skipped", "reason": "loader_unavailable"}
-
-    client = _get_neo4j_client()
-    if client is None:
-        return {"status": "skipped", "reason": "neo4j_skipped"}
+    if _skip_requested(context, "Company CET enrichment"):
+        return {"status": "skipped", "reason": "explicit_skip"}
+    _require_loader()
 
     # Config
     company_profiles_parquet = Path(
@@ -221,48 +262,32 @@ def loaded_company_cet_enrichment(
     batch_size = int(context.op_config.get("batch_size", 1000))
 
     # Read company profiles
-    expected_cols = (
-        "company_uei",
-        "dominant_cet",
-        "specialization_score",
-        "award_count",
-        "total_funding",
-    )
+    expected_cols = ("company_id", "dominant_cet", "specialization_score")
     profiles = _read_parquet_or_ndjson(
         company_profiles_parquet, company_profiles_json, expected_columns=expected_cols
     )
     context.log.info(f"Loaded company profiles for Neo4j: {len(profiles)}")
 
+    client = _connected_client()
     try:
         loader = CETLoader(client, CETLoaderConfig(batch_size=batch_size))
-        metrics = loader.load_company_cet_enrichment(profiles)
+        metrics = loader.upsert_company_cet_enrichment(
+            _company_enrichments(profiles), key_property="company_id"
+        )
+        _ensure_successful_metrics(metrics, "Company CET enrichment")
         result = {
             "status": "success",
             "companies": len(profiles),
             "metrics": _serialize_metrics(metrics),
         }
 
-        # Persist a small run summary
-        out_path = DEFAULT_OUTPUT_DIR / "neo4j_company_cet_enrichment.checks.json"
-        out_path.parent.mkdir(parents=True, exist_ok=True)
-        try:
-            with out_path.open("w", encoding="utf-8") as fh:
-                json.dump(result, fh, indent=2)
-        except Exception:
-            pass
-
-        try:
-            client.close()
-        except Exception:
-            pass
+        _write_summary("neo4j_company_cet_enrichment.checks.json", result)
         return result
     except Exception as exc:
         context.log.exception(f"Company CET enrichment failed: {exc}")
-        try:
-            client.close()
-        except Exception:
-            pass
-        return {"status": "error", "error": str(exc)}
+        raise
+    finally:
+        _close_client(client, context)
 
 
 @asset(
@@ -286,13 +311,9 @@ def loaded_award_cet_relationships(
     context, enriched_cet_award_classifications, loaded_cet_areas, loaded_award_cet_enrichment
 ) -> dict[str, Any]:
     """Create Award -> CETArea relationships."""
-    if CETLoader is None or CETLoaderConfig is None:
-        context.log.warning("CETLoader unavailable; skipping Award CET relationships")
-        return {"status": "skipped", "reason": "loader_unavailable"}
-
-    client = _get_neo4j_client()
-    if client is None:
-        return {"status": "skipped", "reason": "neo4j_skipped"}
+    if _skip_requested(context, "Award CET relationships"):
+        return {"status": "skipped", "reason": "explicit_skip"}
+    _require_loader()
 
     # Config
     award_class_parquet = Path(
@@ -304,42 +325,30 @@ def loaded_award_cet_relationships(
     batch_size = int(context.op_config.get("batch_size", 1000))
 
     # Read award classifications
-    expected_cols = ("award_id", "primary_cet", "supporting_cets", "confidence", "evidence")
+    expected_cols = ("award_id", "primary_cet")
     classifications = _read_parquet_or_ndjson(
         award_class_parquet, award_class_json, expected_columns=expected_cols
     )
     context.log.info(f"Creating Award->CETArea relationships for {len(classifications)} awards")
 
+    client = _connected_client()
     try:
         loader = CETLoader(client, CETLoaderConfig(batch_size=batch_size))
-        metrics = loader.load_award_cet_relationships(classifications)
+        metrics = loader.create_award_cet_relationships(classifications)
+        _ensure_successful_metrics(metrics, "Award CET relationship loading")
         result = {
             "status": "success",
             "awards": len(classifications),
             "metrics": _serialize_metrics(metrics),
         }
 
-        # Persist a small run summary
-        out_path = DEFAULT_OUTPUT_DIR / "neo4j_award_cet_relationships.checks.json"
-        out_path.parent.mkdir(parents=True, exist_ok=True)
-        try:
-            with out_path.open("w", encoding="utf-8") as fh:
-                json.dump(result, fh, indent=2)
-        except Exception:
-            pass
-
-        try:
-            client.close()
-        except Exception:
-            pass
+        _write_summary("neo4j_award_cet_relationships.checks.json", result)
         return result
     except Exception as exc:
         context.log.exception(f"Award CET relationships failed: {exc}")
-        try:
-            client.close()
-        except Exception:
-            pass
-        return {"status": "error", "error": str(exc)}
+        raise
+    finally:
+        _close_client(client, context)
 
 
 @asset(
@@ -361,13 +370,9 @@ def loaded_company_cet_relationships(
     context, transformed_cet_company_profiles, loaded_cet_areas, loaded_company_cet_enrichment
 ) -> dict[str, Any]:
     """Create Company -> CETArea relationships."""
-    if CETLoader is None or CETLoaderConfig is None:
-        context.log.warning("CETLoader unavailable; skipping Company CET relationships")
-        return {"status": "skipped", "reason": "loader_unavailable"}
-
-    client = _get_neo4j_client()
-    if client is None:
-        return {"status": "skipped", "reason": "neo4j_skipped"}
+    if _skip_requested(context, "Company CET relationships"):
+        return {"status": "skipped", "reason": "explicit_skip"}
+    _require_loader()
 
     # Config
     company_profiles_parquet = Path(
@@ -379,48 +384,30 @@ def loaded_company_cet_relationships(
     batch_size = int(context.op_config.get("batch_size", 1000))
 
     # Read company profiles
-    expected_cols = (
-        "company_uei",
-        "dominant_cet",
-        "specialization_score",
-        "award_count",
-        "total_funding",
-    )
+    expected_cols = ("company_id", "dominant_cet", "specialization_score")
     profiles = _read_parquet_or_ndjson(
         company_profiles_parquet, company_profiles_json, expected_columns=expected_cols
     )
     context.log.info(f"Creating Company->CETArea relationships for {len(profiles)} companies")
 
+    client = _connected_client()
     try:
         loader = CETLoader(client, CETLoaderConfig(batch_size=batch_size))
-        metrics = loader.load_company_cet_relationships(profiles)
+        metrics = loader.create_company_cet_relationships(profiles, key_property="company_id")
+        _ensure_successful_metrics(metrics, "Company CET relationship loading")
         result = {
             "status": "success",
             "companies": len(profiles),
             "metrics": _serialize_metrics(metrics),
         }
 
-        # Persist a small run summary
-        out_path = DEFAULT_OUTPUT_DIR / "neo4j_company_cet_relationships.checks.json"
-        out_path.parent.mkdir(parents=True, exist_ok=True)
-        try:
-            with out_path.open("w", encoding="utf-8") as fh:
-                json.dump(result, fh, indent=2)
-        except Exception:
-            pass
-
-        try:
-            client.close()
-        except Exception:
-            pass
+        _write_summary("neo4j_company_cet_relationships.checks.json", result)
         return result
     except Exception as exc:
         context.log.exception(f"Company CET relationships failed: {exc}")
-        try:
-            client.close()
-        except Exception:
-            pass
-        return {"status": "error", "error": str(exc)}
+        raise
+    finally:
+        _close_client(client, context)
 
 
 # ============================================================================
