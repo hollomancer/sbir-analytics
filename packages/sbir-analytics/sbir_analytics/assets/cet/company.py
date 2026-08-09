@@ -386,7 +386,7 @@ def _get_neo4j_client():
     try:
         config = Neo4jConfig(
             uri=DEFAULT_NEO4J_URI,
-            user=DEFAULT_NEO4J_USER,
+            username=DEFAULT_NEO4J_USER,
             password=DEFAULT_NEO4J_PASSWORD,
             database=DEFAULT_NEO4J_DATABASE,
         )
