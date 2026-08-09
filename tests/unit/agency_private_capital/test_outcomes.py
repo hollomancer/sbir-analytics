@@ -117,6 +117,62 @@ def test_phase_i_to_ii_graduation_uses_company_match() -> None:
     assert bool(row["available"]) is True
 
 
+def test_phase_i_to_ii_graduation_excludes_prior_phase_ii() -> None:
+    awards = pd.DataFrame(
+        [
+            {
+                "agency": "NSF",
+                "phase": "Phase II",
+                "award_year": 2014,
+                "uei": "AAA",
+            },
+            {
+                "agency": "NSF",
+                "phase": "Phase I",
+                "award_year": 2016,
+                "uei": "AAA",
+            },
+        ]
+    )
+    cohort = AgencyCohortBuilder(agency_code="NSF").build(awards)
+
+    outcomes = OutcomeMetricsCalculator().compute(cohort)
+    row = outcomes[outcomes["metric"] == "phase_i_to_ii_graduation"].iloc[0]
+
+    assert row["denominator"] == 1
+    assert row["numerator"] == 0
+
+
+def test_phase_i_to_ii_graduation_excludes_phase_ii_outside_horizon() -> None:
+    awards = pd.DataFrame(
+        [
+            {
+                "agency": "NSF",
+                "phase": "Phase I",
+                "award_year": 2015,
+                "uei": "AAA",
+            },
+            {
+                "agency": "NSF",
+                "phase": "Phase II",
+                "award_year": 2021,
+                "uei": "AAA",
+            },
+        ]
+    )
+    cohort = AgencyCohortBuilder(agency_code="NSF").build(awards)
+
+    default_outcomes = OutcomeMetricsCalculator().compute(cohort)
+    default_row = default_outcomes[default_outcomes["metric"] == "phase_i_to_ii_graduation"].iloc[0]
+    six_year_outcomes = OutcomeMetricsCalculator(graduation_horizon_years=6).compute(cohort)
+    six_year_row = six_year_outcomes[
+        six_year_outcomes["metric"] == "phase_i_to_ii_graduation"
+    ].iloc[0]
+
+    assert default_row["numerator"] == 0
+    assert six_year_row["numerator"] == 1
+
+
 def test_metrics_with_missing_inputs_marked_unavailable() -> None:
     cohort = AgencyCohortBuilder(agency_code="NSF").build(_nsf_awards())
     outcomes = OutcomeMetricsCalculator().compute(cohort)

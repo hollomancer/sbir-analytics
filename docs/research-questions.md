@@ -998,7 +998,12 @@ The relevant literature is Lerner [L10], Howell [L11], and Kortum & Lerner
   For Phase II awardees of any agency, do follow-on funding and exit outcomes
   match published small-business and peer-reviewed entrepreneurial-finance
   baselines?
-  *Deps: ER, SEC EDGAR · Refs: [L10], [L11], [L24] · Spec: (PR #321 merged, supersedes #311; agency-parameterized via the `agency_private_capital_baseline_comparison` asset in group `agency_private_capital`, with terminology changed from "VC" to "private capital")*
+  **Status:** Partial and non-citable. The Phase 1 NSF review validates the
+  Phase I→II cohort component: 672 of 1,502 firms in the 2015–2019 vintage
+  (44.7%, 95% Wilson interval 42.2%–47.3%). It does not yet answer this
+  question because transition, survival, M&A, and patent channels were
+  unavailable in that run.
+  *Deps: ER, SEC EDGAR · Refs: [L10], [L11], [L24] · Report: [NSF Phase I baseline review](research/agency-private-capital-phase1-nsf.md) · Spec: [../specs/agency-private-capital-comparison/](../specs/agency-private-capital-comparison/) (PR #321 merged, supersedes #311; agency-parameterized via the `agency_private_capital_baseline_comparison` asset in group `agency_private_capital`, with terminology changed from "VC" to "private capital")*
 
 - **Crowd-in vs. crowd-out**
   Does SBIR funding crowd in or crowd out subsequent private capital?

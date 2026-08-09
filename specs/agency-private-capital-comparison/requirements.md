@@ -1,11 +1,13 @@
 # SBIR vs. Private-Capital Comparison — Requirements (agency-parameterized; NSF as initial target)
 
-**Target epistemic tier:** `pipelines`
+**Target epistemic tier:** `exploratory`
 
-> **Status:** Phase 1 implemented; Phase 2 is a gated backlog item now that the
-> Form D / M&A infrastructure from PR #286 is available. Do not start Phase 2
-> until the private-capital control-cohort comparison is selected as a current
-> research priority.
+> **Status (2026-08-09):** Phase 1 is implemented and its pinned NSF real-data
+> review artifact is materialized, but it is non-citable and awaits sign-off.
+> Phase 2 has a tested scaffold, not a valid matched comparison: it still lacks
+> a reproducible control-universe producer and symmetric FPDS/PATLINK/M&A
+> outcome inputs. Do not materialize or publish Phase 2 before the Phase 1 gate
+> and those input contracts are satisfied.
 > Supports inventory questions **F3** (private-capital comparison), **B2** (commercialization outcomes), **B3** (transition rates) in [docs/research-questions.md](../../docs/research-questions.md).
 
 **Research question anchor:** F3 / B2 / B3 — SBIR vs. private-capital cohort comparison (NSF initial target)
@@ -94,8 +96,9 @@ This spec ships in two sequential phases, each independently useful.
   artifacts to filter to NSF awardees, construct a non-SBIR Form D control
   cohort, and compute outcome deltas. Gated on PR #286 merging to main.
 
-Phase 1 is the gating deliverable. Phase 2 starts after #286 merges and our
-branch rebases on top.
+Phase 1 is the gating deliverable. Although #286 is now on main and a Phase 2
+scaffold exists, a real Phase 2 run remains gated on Phase 1 sign-off and the
+missing input contracts described above.
 
 ## Phase 1 Requirements
 
@@ -138,6 +141,12 @@ Can produce a single artifact (notebook or markdown report) that states:
 survival proxy is [X]% on cohort [vintage range, n=Y]. The difference is
 attributable to [Z]."
 Reproduces the exact reconciliation pattern of `follow-on-multiplier-analysis`.
+
+The [2026-08-09 NSF review artifact](../../docs/research/agency-private-capital-phase1-nsf.md)
+validates the Phase I→II cohort component (672/1,502, or 44.7%, for 2015–2019)
+and pins its inputs in a deterministic manifest. It does **not** close the gate:
+the transition, survival, M&A, and patent channels were unavailable, and the
+cohort estimand and identity approach still require review.
 
 ## Phase 2 Requirements
 

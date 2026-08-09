@@ -7,7 +7,8 @@ all numeric fields are ``None`` so the downstream report can still render.
 
 Metrics:
     - phase_i_to_ii_graduation: any company with a Phase I award in stratum
-      that has a Phase II award (any year) in the cohort.
+      that has a Phase II award in the cohort no earlier than that Phase I
+      and within the configured graduation horizon (default: 5 years).
     - phase_ii_to_federal_contract_transition: Phase II awards with at least
       one upstream transition score >= the configured threshold (consumes
       ``transformed_transition_scores`` produced by the existing detector;
@@ -28,6 +29,8 @@ from dataclasses import dataclass, field
 from typing import Any
 
 import pandas as pd
+
+from .cohort import _award_year
 
 
 WILSON_Z_95 = 1.959963984540054
@@ -107,6 +110,9 @@ class OutcomeMetricsCalculator:
     """Compute per-stratum SBIR cohort outcome rates with Wilson CIs.
 
     Args:
+        graduation_horizon_years: maximum inclusive number of calendar years
+            from a Phase I award to a qualifying Phase II award. Default 5
+            matches the published-baseline cohort window.
         transition_score_threshold: minimum upstream transition-score for a
             Phase II award to count as transitioned. Default 0.65 matches
             the ``likely`` confidence threshold in
@@ -115,6 +121,7 @@ class OutcomeMetricsCalculator:
             recipient/vendor activity. Default 5.
     """
 
+    graduation_horizon_years: int = 5
     transition_score_threshold: float = 0.65
     survival_horizon_years: int = 5
     z: float = WILSON_Z_95
@@ -146,15 +153,32 @@ class OutcomeMetricsCalculator:
         cohort["_company_key"] = cohort.apply(_company_key, axis=1)
         cohort["_name_key"] = cohort.apply(_normalized_name_key, axis=1)
 
-        # Phase I->II graduation: per-vintage
+        # Phase I->II graduation: per-vintage. A Phase II that predates its
+        # company's Phase I is not a graduation, nor is one outside the
+        # configured cohort window.
         phase_i = cohort[cohort["phase_label"] == "I"]
-        phase_ii_companies = {
-            ck for ck in cohort.loc[cohort["phase_label"] == "II", "_company_key"] if ck
-        }
+        phase_ii = cohort[cohort["phase_label"] == "II"].copy()
+        phase_ii_years: dict[str, set[int]] = {}
+        for _, row in phase_ii.iterrows():
+            company_key = row["_company_key"]
+            year = _award_year(row)
+            if company_key and year is not None:
+                phase_ii_years.setdefault(company_key, set()).add(year)
+
         for vintage, group in phase_i.groupby("vintage_bucket", dropna=False):
             keys = [k for k in group["_company_key"].tolist() if k]
             unique_keys = set(keys)
-            graduated = unique_keys & phase_ii_companies
+            graduated: set[str] = set()
+            for _, row in group.iterrows():
+                company_key = row["_company_key"]
+                phase_i_year = _award_year(row)
+                if not company_key or phase_i_year is None:
+                    continue
+                if any(
+                    phase_i_year <= phase_ii_year <= phase_i_year + self.graduation_horizon_years
+                    for phase_ii_year in phase_ii_years.get(company_key, set())
+                ):
+                    graduated.add(company_key)
             records.append(
                 self._make_row(
                     vintage,
@@ -167,7 +191,6 @@ class OutcomeMetricsCalculator:
             )
 
         # Phase II -> federal-contract transition
-        phase_ii = cohort[cohort["phase_label"] == "II"].copy()
         transition_award_ids = self._transitioned_award_ids()
         for vintage, group in phase_ii.groupby("vintage_bucket", dropna=False):
             denom = len(group)

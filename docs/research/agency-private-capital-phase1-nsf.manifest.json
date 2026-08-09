@@ -1,0 +1,121 @@
+{
+  "citable": false,
+  "epistemic_tier": "exploratory",
+  "inputs": {
+    "awards_csv": {
+      "available": true,
+      "path": "award_data.csv",
+      "row_count": 219500,
+      "schema": {
+        "columns": [
+          "Company",
+          "Award Title",
+          "Agency",
+          "Branch",
+          "Phase",
+          "Program",
+          "Agency Tracking Number",
+          "Contract",
+          "Proposal Award Date",
+          "Contract End Date",
+          "Solicitation Number",
+          "Solicitation Year",
+          "Solicitation Close Date",
+          "Proposal Receipt Date",
+          "Date of Notification",
+          "Topic Code",
+          "Award Year",
+          "Award Amount",
+          "UEI",
+          "Duns",
+          "HUBZone Owned",
+          "Socially and Economically Disadvantaged",
+          "Woman Owned",
+          "Number Employees",
+          "Company Website",
+          "Address1",
+          "Address2",
+          "City",
+          "State",
+          "Zip",
+          "Abstract",
+          "Contact Name",
+          "Contact Title",
+          "Contact Phone",
+          "Contact Email",
+          "PI Name",
+          "PI Title",
+          "PI Phone",
+          "PI Email",
+          "RI Name",
+          "RI POC Name",
+          "RI POC Phone"
+        ],
+        "format": "csv"
+      },
+      "sha256": "73d646fc6883ed93b36d19518b0d9442a9ebae94c5b49ad5a7fcd6d3c2b872dd",
+      "size_bytes": 394456822,
+      "source": "sbir_gov_bulk_awards"
+    },
+    "ma_events_jsonl": {
+      "available": false,
+      "path": "sbir_ma_events.jsonl",
+      "row_count": null,
+      "schema": {
+        "company_key": "company_name",
+        "format": "jsonl"
+      },
+      "sha256": null,
+      "size_bytes": null,
+      "source": "sbir_ma_events"
+    },
+    "published_baselines_yaml": {
+      "available": true,
+      "path": "published_baselines.yaml",
+      "row_count": 4,
+      "schema": {
+        "collection": "baselines",
+        "format": "yaml"
+      },
+      "sha256": "5bfa088e1a86c2290d08befae1e3d35ca46c6f3aaf28bbdb684279d69c4405f7",
+      "size_bytes": 3578,
+      "source": "published_baseline_registry"
+    }
+  },
+  "limitations": [
+    "Standalone runner omits transition-score and federal-activity enrichment inputs.",
+    "Patent rate is deferred to Phase 2.",
+    "Results are exploratory and non-citable."
+  ],
+  "metric_availability": {
+    "five_year_survival_proxy": {
+      "available": false,
+      "reason": "Federal recipient/vendor activity is not read by this standalone runner."
+    },
+    "ma_exit_rate": {
+      "available": false,
+      "reason": "The M&A events input was not found."
+    },
+    "patent_rate": {
+      "available": false,
+      "reason": "PATLINK is deferred to Phase 2 and is not read by this runner."
+    },
+    "phase_i_to_ii_graduation": {
+      "available": true,
+      "reason": null
+    },
+    "phase_ii_to_federal_contract_transition": {
+      "available": false,
+      "reason": "Transition-score enrichment is not read by this standalone runner."
+    }
+  },
+  "parameters": {
+    "agency_code": "NSF",
+    "graduation_horizon_years": 5,
+    "headline_vintage": "2015-2019",
+    "survival_horizon_years": 5,
+    "transition_score_threshold": 0.65,
+    "vintage_bucket_size": 5
+  },
+  "schema_version": 1
+}

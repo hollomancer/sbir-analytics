@@ -7,7 +7,9 @@ agency match uses normalized substring comparison so variants like
 ``"National Science Foundation (NSF)"`` all resolve to the ``"NSF"`` agency
 code. When an explicit ALN/CFDA column is present it is checked first
 against the agency's known ALN set; the agency-name column acts as a
-fallback when ALN is absent.
+fallback when ALN is absent. Both normalized column names and the canonical
+SBIR.gov bulk-file casing (for example, ``Agency`` and ``Award Year``) are
+accepted.
 """
 
 from __future__ import annotations
@@ -71,13 +73,26 @@ def _normalize_phase(value: object) -> str | None:
     return None
 
 
+def _first_nonempty(row: pd.Series, *keys: str) -> object | None:
+    """Return the first non-empty value among column-name aliases."""
+
+    for key in keys:
+        value = row.get(key)
+        if value is None or pd.isna(value) or not str(value).strip():
+            continue
+        return value
+    return None
+
+
 def _is_agency_row(row: pd.Series, agency_code: str = "NSF") -> bool:
     """Return True if ``row`` belongs to the given agency.
 
     Matching strategy (in priority order):
     1. If the row has an explicit ALN/CFDA number and that number is in the
-       agency's known ALN set, accept it.
-    2. Normalize the row's ``agency`` column value (lowercase + strip), then
+       agency's known ALN set, accept it. Normalized and title-cased aliases
+       are accepted.
+    2. Normalize the row's ``agency`` or raw ``Agency`` column value
+       (lowercase + strip), then
        check whether any of the agency's known name tokens is a substring of
        that value. Tokens include both the abbreviation (e.g. ``"nsf"``) and
        the full name (e.g. ``"national science foundation"``), so all of
@@ -91,12 +106,20 @@ def _is_agency_row(row: pd.Series, agency_code: str = "NSF") -> bool:
     code_upper = agency_code.strip().upper()
     alns = AGENCY_ALN_MAP.get(code_upper, frozenset())
 
-    cfda = row.get("cfda_number") or row.get("aln") or row.get("assistance_listing_number")
-    if cfda and str(cfda).strip() in alns:
+    cfda = _first_nonempty(
+        row,
+        "cfda_number",
+        "CFDA Number",
+        "aln",
+        "ALN",
+        "assistance_listing_number",
+        "Assistance Listing Number",
+    )
+    if cfda is not None and str(cfda).strip() in alns:
         return True
 
-    agency = row.get("agency")
-    if agency is None or (isinstance(agency, float) and pd.isna(agency)):
+    agency = _first_nonempty(row, "agency", "Agency")
+    if agency is None:
         return False
 
     agency_lower = str(agency).strip().lower()

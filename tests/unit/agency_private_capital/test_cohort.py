@@ -110,6 +110,33 @@ def test_filter_keeps_only_nsf_rows_by_agency_name() -> None:
     assert set(cohort["vintage_bucket"].tolist()) == {"2015-2019"}
 
 
+def test_filter_accepts_canonical_sbir_gov_column_casing() -> None:
+    awards = pd.DataFrame(
+        [
+            {
+                "Company": "Raw NSF Firm",
+                "Agency": "National Science Foundation",
+                "Phase": "Phase I",
+                "Award Year": "2017",
+                "UEI": "RAWNSF000001",
+            },
+            {
+                "Company": "Raw DOD Firm",
+                "Agency": "Department of Defense",
+                "Phase": "Phase II",
+                "Award Year": "2018",
+                "UEI": "RAWDOD000001",
+            },
+        ]
+    )
+
+    cohort = AgencyCohortBuilder(agency_code="NSF").build(awards)
+
+    assert cohort["Company"].tolist() == ["Raw NSF Firm"]
+    assert cohort["phase_label"].tolist() == ["I"]
+    assert cohort["vintage_bucket"].tolist() == ["2015-2019"]
+
+
 def test_filter_keeps_rows_by_explicit_aln() -> None:
     df = pd.DataFrame(
         [
