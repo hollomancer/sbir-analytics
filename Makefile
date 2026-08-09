@@ -229,6 +229,7 @@ lint-boundaries: ## Enforce package and archive dependency boundaries
 	$(call run,uv run python scripts/ci/check_architecture_boundaries.py)
 	$(call run,uv run python scripts/ci/check_tier_boundaries.py)
 	$(call run,uv run python scripts/ci/check_file_sizes.py)
+	$(call run,uv run python scripts/ci/check_config_boundaries.py)
 	$(call run,uv run python scripts/ci/check_removed_src_references.py)
 	$(call run,uv run python scripts/ci/validate_study_manifests.py)
 

@@ -16,7 +16,7 @@ from dataclasses import dataclass
 from enum import StrEnum
 from pathlib import Path
 
-import yaml
+from sbir_etl.config.yaml_io import read_yaml_mapping
 
 
 DEFAULT_REGISTRY_PATH = Path("config/agency_private_capital/published_baselines.yaml")
@@ -53,8 +53,11 @@ class PublishedBaselineRegistry:
 
     @classmethod
     def load(cls, path: str | Path = DEFAULT_REGISTRY_PATH) -> PublishedBaselineRegistry:
-        text = Path(path).read_text(encoding="utf-8")
-        data = yaml.safe_load(text) or {}
+        data = read_yaml_mapping(
+            Path(path),
+            description="published baseline registry",
+            allow_empty=True,
+        )
         raw = data.get("baselines") or []
         records = tuple(_to_baseline(entry) for entry in raw)
         return cls(baselines=records)

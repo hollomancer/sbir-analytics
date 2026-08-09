@@ -6,8 +6,8 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
-import yaml
-
+from sbir_etl.config.yaml_io import read_yaml_mapping
+from sbir_etl.exceptions import ConfigurationError
 from sbir_etl.utils.procurement_text import find_lineage_phrases
 
 
@@ -24,11 +24,15 @@ def load_cet_vocabulary(path: str | None = None) -> dict[str, tuple[str, ...]]:
 
     taxonomy_path = Path(path) if path is not None else DEFAULT_TAXONOMY_PATH
     try:
-        data = yaml.safe_load(taxonomy_path.read_text(encoding="utf-8"))
-    except (OSError, yaml.YAMLError):
+        data = read_yaml_mapping(
+            taxonomy_path,
+            description="CET taxonomy",
+            allow_empty=True,
+        )
+    except ConfigurationError:
         return {}
     vocabulary: dict[str, tuple[str, ...]] = {}
-    for area in (data or {}).get("cet_areas", []):
+    for area in data.get("cet_areas", []):
         name = str(area.get("name", "")).strip()
         keywords = tuple(str(keyword).strip() for keyword in area.get("keywords", []) if keyword)
         if name and keywords:

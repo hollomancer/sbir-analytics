@@ -12,8 +12,10 @@ validate a schema. Pipeline configuration resolution belongs in
 ``loader.get_config``; per-file schema validation stays with the caller that
 owns the schema.
 
-Callers that treat an empty file as a valid empty mapping want ``or {}`` at the
-call site instead — that is a different policy, not a bug this helper fixes.
+Callers that intentionally treat an empty file as an empty mapping must opt in
+with ``allow_empty=True``. Keeping that policy in this primitive prevents each
+caller from growing its own ``safe_load(...) or {}`` implementation while the
+default stays fail-closed.
 """
 
 from pathlib import Path
@@ -27,20 +29,28 @@ from ..exceptions import ConfigurationError
 __all__ = ["read_yaml_mapping"]
 
 
-def read_yaml_mapping(path: Path, *, description: str = "YAML file") -> dict[str, Any]:
+def read_yaml_mapping(
+    path: Path,
+    *,
+    description: str = "YAML file",
+    allow_empty: bool = False,
+) -> dict[str, Any]:
     """Read ``path`` and return its top-level mapping.
 
     Args:
         path: File to read.
         description: What the file is, used in error messages (e.g. "CET
             taxonomy"). Keep it a noun phrase — it is interpolated directly.
+        allow_empty: Return an empty mapping when the document is empty or
+            comment-only. Invalid YAML and non-mapping documents still fail.
 
     Returns:
         The parsed top-level mapping.
 
     Raises:
         ConfigurationError: The file is missing, unreadable, not valid YAML,
-            empty, or does not hold a mapping at the top level.
+            empty when ``allow_empty`` is false, or does not hold a mapping at
+            the top level.
     """
     try:
         text = path.read_text(encoding="utf-8")
@@ -53,6 +63,8 @@ def read_yaml_mapping(path: Path, *, description: str = "YAML file") -> dict[str
         raise ConfigurationError(f"{description} is not valid YAML: {path} ({exc})") from exc
 
     if payload is None:
+        if allow_empty:
+            return {}
         raise ConfigurationError(f"{description} is empty: {path}")
     if not isinstance(payload, dict):
         raise ConfigurationError(
