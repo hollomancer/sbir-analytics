@@ -15,6 +15,7 @@ Then, depending on the work:
 | Doing | Read |
 |---|---|
 | Anything at all | [CLAUDE.md](CLAUDE.md) |
+| Exploratory research or analysis | [the notebook-first workflow](notebooks/README.md), then the closest example under `notebooks/examples/` |
 | Deployment, server operations, or live Dagster materialization | [the self-hosted server runbook](docs/deployment/self-hosted-server.md#live-instance-on-the-server-host) — **before** acting, not after — plus the live-deployment section of CLAUDE.md |
 | Implementing a spec | [the status registry](specs/status.md), [the spec workflow](docs/development/spec-workflow-guide.md), [the tier contract](docs/steering/epistemic-tiers.md), then the spec directory in `specs/` |
 | Judging whether work is in scope | [docs/research-questions.md](docs/research-questions.md) |

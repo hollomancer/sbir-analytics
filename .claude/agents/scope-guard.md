@@ -46,6 +46,10 @@ For each item, answer these questions:
 - Could we achieve 80% of the value with 20% of the code?
 - Are there abstractions being built for one-time operations?
 - Are there configuration systems for things that could be constants?
+- Is uncertain research being prematurely implemented as a large script or pipeline when a
+  bounded notebook would resolve the open assumptions?
+- Does a proposed notebook duplicate canonical logic instead of importing it or reading its
+  artifacts?
 
 ### 3. Scope
 - Is this doing more than what was asked?
@@ -155,3 +159,6 @@ cleanup cost grow without bound as questions accumulate.
   config surfaces on code that answers one question once
 - **A script becoming infrastructure** — Anything under `scripts/` acquiring
   importers from `sbir_etl/` or `packages/`
+- **Notebook/script divergence** — Two implementations of one calculation with no canonical path
+- **Notebook as evidence** — A polished exploratory notebook presented as citable without explicit
+  promotion through the `evidence` contract

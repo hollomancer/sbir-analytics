@@ -108,6 +108,30 @@ studies/                  # Versioned contracts for reproducible and citable res
 - **Tests:** Place in `tests/unit|integration|e2e/`; use the Make targets or `uv run pytest`
 - **Neo4j:** Modify `packages/sbir-graph/sbir_graph/loaders/`, use MERGE operations
 
+## Research and analysis workflow
+
+Use a **notebook-first** workflow when the research question, cohort definition, matching rule,
+statistical assumption, or visualization is still changing. New research notebooks are
+`exploratory` tier and non-citable by default; a polished notebook does not promote its claims.
+
+- Start from `notebooks/_template.ipynb`, tie the work to a concrete entry in
+  `docs/research-questions.md`, and reuse the closest notebook under `notebooks/examples/`.
+- Track active and migrated investigations in `notebooks/BACKLOG.md`.
+- Use notebooks for exploration, evidence inspection, sensitivity analysis, and narrative. Keep
+  scheduled jobs, downloads, database mutation, and recurring artifact generation in scripts,
+  Dagster assets, or library modules.
+- Import existing project functions and read canonical artifacts rather than copying logic from
+  `sbir_etl/`, packages, or `scripts/data/` into cells.
+- Record inputs, grain, keys, exclusions, as-of dates, assumptions, and deterministic seeds. Clear
+  outputs and execution counts before committing.
+- When exploratory work needs to become reusable, scheduled, or citable, make promotion explicit
+  and satisfy the destination contract in `docs/steering/epistemic-tiers.md`. Keep the notebook as
+  the research record and diagnostic front end; it is not itself an evidence contract.
+
+Before implementing an uncertain analysis directly as a large Python script, agents must check
+whether a bounded notebook would answer the open questions first. Before porting an existing
+script, preserve one canonical computation path and avoid notebook/script duplication.
+
 ## Testing
 
 ```bash
