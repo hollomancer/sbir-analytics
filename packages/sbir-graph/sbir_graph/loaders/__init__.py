@@ -4,9 +4,9 @@ Epistemic tier: pipelines. Loaders move validated records into Neo4j with
 deterministic MERGE semantics; correctness is faithfulness to the input
 records, and no loader performs inference or scoring.
 
-Neo4j loaders are available when the ``neo4j`` extra is installed::
+Neo4j loaders are available after installing the repository workspace::
 
-    pip install sbir-graph
+    make install
 """
 
 from __future__ import annotations

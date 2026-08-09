@@ -26,6 +26,9 @@ position of any agency.
 The fastest end-to-end example is a deterministic Army procurement-transition
 packet built entirely from committed synthetic data:
 
+Run `make install` from the repository root first; `make install-core` omits the
+`sbir_ml` package used by this example.
+
 ```bash
 uv run python scripts/data/monthly_procurement_transition_report.py \
   --month 2026-06 \
@@ -45,8 +48,8 @@ The repository separates software capability from evidentiary maturity:
 
 | Capability | Current status | Evidence or boundary |
 | --- | --- | --- |
-| Procurement-transition reporting | Runnable synthetic demonstration | [Synthetic example and expected output](examples/README_ARMY_PROCUREMENT_TRANSITION.md) |
-| Award ingestion, entity resolution, and graph loading | Implemented; real-data setup required | [Getting-started guide](docs/getting-started/README.md) and [architecture](docs/architecture/detailed-overview.md) |
+| Procurement-transition reporting | Exploratory; runnable synthetic demonstration | [Synthetic example and expected output](examples/README_ARMY_PROCUREMENT_TRANSITION.md) |
+| Award ingestion, entity resolution, and graph loading | Implemented; real-data setup required | Operational capability, not an evidence claim; see the [getting-started guide](docs/getting-started/README.md) and [architecture](docs/architecture/detailed-overview.md) |
 | Phase III outcome analysis | Reproducible; not validated or approved for citation | [Phase III census study record](studies/phase-iii-census/study.yaml) |
 | Private-capital, M&A, and fiscal analyses | Exploratory and data-dependent | [Research output status index](docs/research/README.md) and the limitations below |
 
@@ -76,8 +79,9 @@ record to other public datasets. A few of the questions it explores:
   economic activity attributable to award spending, using BEA input-output tables
   where available and fallback assumptions when live BEA inputs are unavailable.
 
-The full, sourced inventory (organized by policy area and complexity) is
-in [docs/research-questions.md](docs/research-questions.md).
+The full, sourced inventory in
+[docs/research-questions.md](docs/research-questions.md) is the heart of the
+project: the code and studies exist to investigate and validate those questions.
 
 ## What it actually does
 
@@ -151,7 +155,7 @@ repository, start with these documents in order:
 
 ## Running it
 
-The project supports **Python 3.11 and 3.12** and uses
+The project targets **Python 3.11** and uses
 [`uv`](https://github.com/astral-sh/uv) for
 dependency management. There is intentionally no `requirements.txt` — the
 dependency set is defined by `pyproject.toml` and pinned in `uv.lock`. (If you
@@ -208,6 +212,9 @@ for compatibility boundaries, increment rules, and the release checklist.
 ## License
 
 MIT — see [LICENSE](LICENSE). Copyright (c) 2025 Conrad Hollomon.
+
+Contributions are welcome; see [CONTRIBUTING.md](CONTRIBUTING.md) for the local
+workflow and review expectations.
 
 ## Acknowledgments
 

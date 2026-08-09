@@ -12,6 +12,8 @@ ETL library.
 These packages are currently installed from a repository checkout; they are not
 published to PyPI.
 
+From the repository root:
+
 ```bash
 make install       # full workspace; uv sync --extra stack-dev
 make install-core  # reusable sbir-etl library only; uv sync
