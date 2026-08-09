@@ -22,21 +22,22 @@ Status meanings:
 These notebooks do not replace the scripts. They replace the ad hoc cycle of inspecting CSVs,
 running one-off snippets, and manually transferring intermediate observations into prose.
 
-## Wave 2 — convert when next active
+## Wave 2 — companion notebooks added
 
-| Candidate investigation | Starting source | Suggested notebook focus |
+| Candidate investigation | Starting source | Notebook |
 |---|---|---|
-| Time to first commercialization signal | `nano_survival_analysis.py` | Censoring choices, channel-specific curves, cutoff sensitivity |
-| Acquisition evidence and deal terms | `nano_prime_acquisitions.py`, `nano_prime_edgar_filings.py` | Firm-level evidence review, confidence tiers, outlier diagnostics |
-| Subaward leverage | `nano_subaward_leverage.py` | Denominator definitions, dominant-prime sensitivity, firm distributions |
-| Dark-firm registry evidence | `nano_ws5b_sam_status.py`, `nano_ws5c_sector_registries.py` | Missingness versus negative evidence, sector coverage |
-| Maintenance-fee lapse evidence | `nano_dark_firm_maintenance_lapses.py` | Event timing and alternative liveness definitions |
-| Survey frame design | `nano_survey_frame.py` | Stratification balance, sampling diagnostics, seed sensitivity |
-| Agency/private-capital comparisons | `run_benchmark_analysis.py` and agency comparison assets | Cohort comparability, weighting, alternative benchmarks |
-| Per-firm commercialization audit | `audit_one_firm.py` | Traceable evidence bundle and reviewer annotations |
+| Time to first commercialization signal | `nano_survival_analysis.py` | `examples/time_to_first_signal_review.ipynb` |
+| Acquisition evidence and deal terms | `nano_prime_acquisitions.py`, `nano_prime_edgar_filings.py` | `examples/prime_acquisitions_review.ipynb` |
+| Subaward leverage | `nano_subaward_leverage.py` | `examples/subaward_leverage_review.ipynb` |
+| Dark-firm registry evidence | `nano_ws5b_sam_status.py`, `nano_ws5c_sector_registries.py` | `examples/dark_firm_registry_evidence_review.ipynb` |
+| Maintenance-fee lapse evidence | `nano_dark_firm_maintenance_lapses.py` | `examples/maintenance_fee_lapse_review.ipynb` |
+| Survey frame design | `nano_survey_frame.py` | `examples/survey_frame_review.ipynb` |
+| Agency/private-capital comparisons | `run_benchmark_analysis.py` and agency comparison assets | `examples/agency_private_capital_review.ipynb` |
+| Per-firm commercialization audit | `audit_one_firm.py` | `examples/firm_commercialization_audit_review.ipynb` |
 
-Do not migrate dormant work merely to change its format. Convert a candidate when a research
-question makes it active, using the closest Wave 1 notebook as the template.
+As in Wave 1, these are companion views over the canonical artifacts — the scripts remain
+the repeatable computation layer, and each notebook degrades to a "run the generator first"
+message when an artifact is absent.
 
 ## Keep automated — not notebook candidates
 

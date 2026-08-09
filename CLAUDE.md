@@ -142,7 +142,11 @@ make lint-boundaries                   # Architecture, identity, and study guard
 make docs-check                        # Links, stale commands, and repository hygiene
 ```
 
-Transition scoring changes must maintain ≥85% precision benchmark.
+Transition scoring changes must maintain the ≥85% Phase III retrospective
+HIGH-precision benchmark. Enforcement today is a fixture-level canary
+(`tests/unit/scripts/test_phase_iii_precision_backtest.py`) that runs on every
+PR; the full benchmark against the S3 corpus is run manually via
+`scripts/phase_iii_precision_backtest.py` and is not yet automated in CI.
 
 ## Releases and versioning
 

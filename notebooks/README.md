@@ -74,7 +74,25 @@ silently change a notebook's tier:
   channel coverage, overlap, and evidence-strength diagnostics.
 - [`dark_majority_review.ipynb`](examples/dark_majority_review.ipynb) — secondary-channel coverage
   and unresolved-firm review.
+- [`time_to_first_signal_review.ipynb`](examples/time_to_first_signal_review.ipynb) — censoring
+  choices, channel-specific first-signal composition, and cutoff sensitivity.
+- [`prime_acquisitions_review.ipynb`](examples/prime_acquisitions_review.ipynb) — firm-level
+  acquisition evidence review, confidence tiers, and deal-term outlier diagnostics.
+- [`subaward_leverage_review.ipynb`](examples/subaward_leverage_review.ipynb) — denominator
+  definitions, dominant-prime concentration, and firm-level leverage distributions.
+- [`dark_firm_registry_evidence_review.ipynb`](examples/dark_firm_registry_evidence_review.ipynb) —
+  SAM and sector-registry evidence with missingness kept separate from negative evidence.
+- [`maintenance_fee_lapse_review.ipynb`](examples/maintenance_fee_lapse_review.ipynb) — lapse
+  timing and sensitivity of the dormancy flag to alternative threshold definitions.
+- [`survey_frame_review.ipynb`](examples/survey_frame_review.ipynb) — stratification balance,
+  sampling diagnostics, and seed sensitivity for the dark-firm survey frame.
+- [`agency_private_capital_review.ipynb`](examples/agency_private_capital_review.ipynb) — benchmark
+  sensitivity and agency-cohort comparisons against published private-capital baselines.
+- [`firm_commercialization_audit_review.ipynb`](examples/firm_commercialization_audit_review.ipynb)
+  — per-firm §638(qq) benchmark verdicts as traceable evidence bundles with reviewer annotations.
 
 The examples are completed exploratory companion views over canonical artifacts. Their source
-scripts continue to be the repeatable computation layer, and the notebooks remain non-citable
-unless separately promoted.
+scripts continue to be the repeatable computation layer. In the repository's
+[epistemic-tier doctrine](../docs/steering/epistemic-tiers.md), this directory is the workbench
+population of the exploratory tier—non-citable by definition unless explicitly promoted through
+the path above.

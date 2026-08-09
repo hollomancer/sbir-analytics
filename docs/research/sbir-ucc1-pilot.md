@@ -7,7 +7,7 @@ pilot run on the alphabetical-first 70 of 3,639 cohort firms produced a
 representative result; full coverage stopped by Imperva anti-bot
 operational limits (see "Pilot Results — Partial Run" section below).
 
-**Related:** [specs/ucc1-financing-analysis/](../../specs/ucc1-financing-analysis/),
+**Related:** [specs/archive/completed-features/ucc1-financing-analysis/](../../specs/archive/completed-features/ucc1-financing-analysis/),
 [sbir-form-d-fundraising-analysis.md](sbir-form-d-fundraising-analysis.md),
 [sbir-ma-exit-analysis.md](sbir-ma-exit-analysis.md)
 

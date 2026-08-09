@@ -1,14 +1,40 @@
 # Independent Phase III Transition Ground-Truth Set — Requirements
 
-**Target epistemic tier:** `evidence`
+**Target epistemic tier:** `pipelines`
 
-> **Status:** Draft spec. No implementation. Validation deliverable for the
-> merged award-grain fusion ranker (#467).
+> **Status:** Implemented through T6/T7 — the independent corpus, scoring
+> results, and decision memo landed; results remain provisional
+> portfolio-linkage evidence. Retiered from evidence on 2026-08-07: the
+> deterministic corpus construction is pipelines work, the scoring
+> evaluation is exploratory, and citation requires a future study contract
+> per docs/steering/epistemic-tiers.md. Originally the validation
+> deliverable for the merged award-grain fusion ranker (#467).
 > Supports inventory questions **B2 / E1** in [docs/research-questions.md](../../docs/research-questions.md).
 
 **Research question anchor:** B2 (did SBIR research transition to a federal contract), E1 (Phase III identification)
 **Answers for:** Whoever decides whether the fusion ranker is trustworthy enough to drive packet selection
 **Complexity tier:** Relational (Tier 2)
+
+---
+
+## Epistemic framing
+
+This spec spans two tiers, which is why its target is `pipelines` with the
+scoring evaluation held to `exploratory` (see
+[docs/steering/epistemic-tiers.md](../../docs/steering/epistemic-tiers.md)):
+
+- **Corpus construction is `pipelines`.** Cataloging sources, the frozen
+  extraction schema, identifier resolution, and retrieval-test assembly are
+  deterministic and reproducible from the declared inputs.
+- **Ranker scoring and the go/no-go decision are `exploratory`.** Precision@K,
+  MRR, the stratum/provenance splits, and the fusion-ordering recommendation
+  are analysis, not a validated finding; the reported figures are non-citable.
+- **Citing any of these numbers as validation requires a future `studies/`
+  contract** — frozen spec, SHA-pinned inputs, declared estimand, blocking
+  checks. Producing the numbers here does not make them citable; the corpus and
+  results stay provisional portfolio-linkage evidence until then. "Validation"
+  throughout this document means *this exploratory check*, not evidence-tier
+  validation.
 
 ---
 
@@ -22,7 +48,8 @@
 > scored against the recoverable subset; **precision@1/@3 and MRR are reported
 > split by stratum and by provenance, with 95% CIs**, and compared to the
 > proxy-label 0.68@1. The citation-independence and selection-bias caveats are
-> quantified, not hand-waved.
+> quantified, not hand-waved. These reported figures are exploratory-tier and
+> non-citable (see Epistemic framing).
 
 ---
 

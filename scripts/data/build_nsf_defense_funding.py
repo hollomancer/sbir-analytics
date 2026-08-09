@@ -13,7 +13,9 @@ from sbir_etl.supply_chain.defense_release import (
     DEFAULT_LINEAGE_DIR,
     DEFAULT_PRIME_SNAPSHOT_ROOT,
     build_release,
+    prepare_defense_funding,
 )
+from sbir_etl.supply_chain.nsf_screen import screen_direct_nsf_awards
 
 
 def _parser() -> argparse.ArgumentParser:
@@ -35,7 +37,7 @@ def _parser() -> argparse.ArgumentParser:
 
 def main() -> int:
     args = _parser().parse_args()
-    manifest = build_release(
+    workset = prepare_defense_funding(
         lineage_dir=args.lineage_dir,
         analysis_date=args.analysis_date,
         prime_snapshots=args.prime_snapshot,
@@ -49,6 +51,13 @@ def main() -> int:
         allow_missing_prime=args.allow_missing_prime,
         allow_missing_subawards=args.allow_missing_subawards,
     )
+    # Exploratory CLI: run the contestable CET screen, then hand the frame to the
+    # pipelines release builder (spec epistemic-tier-enforcement R3).
+    award_screen = screen_direct_nsf_awards(
+        workset.direct,
+        funded_organization_ids=set(workset.funded_organization_ids),
+    )
+    manifest = build_release(workset, award_screen=award_screen)
     print(json.dumps(manifest, indent=2, sort_keys=True))
     return 0
 
@@ -57,4 +66,4 @@ if __name__ == "__main__":
     raise SystemExit(main())
 
 
-__all__ = ["build_release", "main"]
+__all__ = ["build_release", "main", "prepare_defense_funding"]

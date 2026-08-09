@@ -20,7 +20,8 @@ from sbir_etl.models.transition_models import CompetitionType, FederalContract
 from sbir_ml.transition.detection.scoring import TransitionScorer
 from sbir_ml.transition.detection.ranking_features import id_xref
 
-from .pairing import pair_filter_s1, pair_filter_s2, pair_filter_s3
+from .opportunity_pairing import pair_filter_s2, pair_filter_s3
+from .pairing import pair_filter_s1
 from .similarity import (
     normalize_code,
     compute_text_similarity_batch,

@@ -54,12 +54,18 @@ bypassing lifecycle review; the status and rationale still require human judgmen
   test are accepted; and weekly-report refactor T2.3 plus the injected,
   typed-return work in T3.2 are complete. Offline, full-context, and shadow
   gates still precede any production integration.
-- **`epistemic-tier-enforcement` — Active.** Enforcement follow-on to the 2026-08
-  module-labeling sweep (PRs #550–#552). T1 adds a blocking tier-aware import
-  guard seeded with the three known pipelines→exploratory edges; T2/T3 burn that
-  allowlist down via a versioned identity canonical-merge policy and NSF-screen
-  dependency inversion; T4 documents the workbench/operated split. Implementation
-  starts after the labeling PRs merge. No fifth tier and no directory moves.
+- **`epistemic-tier-enforcement` — Maintenance.** Enforcement follow-on to the
+  2026-08 module-labeling sweep (PRs #550–#552). Shipped: the blocking
+  tier-aware import guard (`scripts/ci/check_tier_boundaries.py`, in
+  `make lint-boundaries` and CI), the workbench/operated doctrine (T4.1), and a
+  full burndown of `TIER_IMPORT_ALLOWLIST` to zero — canonical company merge
+  promoted into `sbir_etl.identity` under `CanonicalMergePolicy.PRELOAD_V1`
+  (T2, byte-identical to the golden corpus), the NSF CET screen inverted out of
+  the pipelines defense release into the operated exploratory asset layer (T3),
+  the opportunity scorer split into an exploratory pairing module (edge 4), and
+  NAICS text-inference registration moved behind an exploratory composition
+  point (edges 5-6). No fifth tier and no directory moves. Remaining work is
+  ordinary upkeep of declarations as modules are added.
 - **`fiscal-tax-impact-v2.md` — Gated backlog.** Valid D2 methodology upgrade.
   Leave inactive until fiscal-model refresh is selected.
 - **`follow-on-multiplier-validation` — Active.** Design-only follow-up to the
@@ -110,8 +116,9 @@ bypassing lifecycle review; the status and rationale still require human judgmen
   reproduction, frozen coefficients, and packet integration landed. Reconcile
   the remaining documentation task and the explicitly missing second label channel.
 - **`phase3-transition-groundtruth` — Maintenance.** The independent corpus,
-  T6 results, and T7 decision memo landed, but the requirements header still
-  describes the work as unimplemented. Reconcile the spec before any extension.
+  T6 results, and T7 decision memo landed; the requirements header now says so
+  and the spec was retiered evidence → pipelines on 2026-08-07 (corpus
+  construction is deterministic; citation requires a future study contract).
 - **`phase3-undercount-extension` — Gated backlog.** Valid B3 follow-up, but it
   depends on reusable resolution/self-label components and must keep contract
   undercount separate from provisional non-contract vehicle counts.
@@ -128,24 +135,17 @@ bypassing lifecycle review; the status and rationale still require human judgmen
 - **`transition-coverage-expansion` — Active.** Initial access and coverage
   spikes are recorded. Credible grant/subaward attribution, OT resolution, and a
   channel-by-channel wire-in decision remain.
-- **`ucc1-financing-analysis` — Archive candidate.** CA-only pilot is complete
-  and extension is explicitly deferred by the research memo.
 - **`weekly-awards-report-refactor` — Maintenance.** Monolith is already split
   into weekly reporting modules. Remaining work is injection, coverage, and
   alias cleanup.
 
 ## Archive Candidates
 
-`ucc1-financing-analysis` is the only top-level archive candidate from this
-review. Before moving it:
-
-1. Update `docs/research-questions.md` and `docs/research/sbir-ucc1-pilot.md`
-   links to the archived path.
-2. Add a completion record summarizing PRs #303 / #305, the CA-only pilot result,
-   and the stop/defer rationale.
-3. Move the spec under `specs/archive/completed-features/` if treating the pilot
-   as complete, or `specs/archive/superseded/` if treating the extension plan as
-   dropped.
+`ucc1-financing-analysis` was archived on 2026-08-07 under
+`specs/archive/completed-features/` (treated as a completed pilot: it answered
+its Phase 0 question and the stop was a deliberate scope decision). All three
+archive steps were executed — live-doc links updated, completion record added,
+directory moved.
 
 No other top-level spec should be archived from this review because each still
 anchors a live research question or an active maintenance cleanup.
