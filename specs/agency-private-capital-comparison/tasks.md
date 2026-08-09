@@ -11,7 +11,10 @@
 > bounded Form D identity universe, but its manifest correctly reports
 > `complete_sbir_exclusion=false` and `covariates_ready=false`. Phase 2 remains
 > open until higher-recall identity exclusion, validated matching covariates,
-> and symmetric FPDS/patent/M&A outcomes are wired and validated.
+> and symmetric FPDS/patent/verified-M&A outcomes are wired and validated. A
+> shared date-aware event/coverage evaluator and a CIK-native Form D
+> business-combination filing proxy now establish the first symmetric source
+> contract, but do not constitute an M&A-exit outcome or matched comparison.
 
 Tasks are grouped by phase. Phase 1 ships independently of PR #286. Phase 2 is
 gated on Phase 1 sign-off and its missing real-data input contracts.
@@ -119,14 +122,21 @@ on a pinned real-data run.
   matching ratio (agency firm : k matched controls) in the output. The existing
   matched asset must fail closed on the staging universe while
   `complete_sbir_exclusion` or `covariates_ready` is false.
-- [ ] 2.4 Complete `MatchedCohortOutcomes` — join both cohorts to FPDS
+- [ ] 2.4 Complete `MatchedCohortOutcomes` — **OPEN / PARTIAL (2026-08-09).**
+  Join both cohorts to FPDS
   contracts, patent evidence, and symmetric M&A evidence. Emit per-cohort rates
   with Wilson CIs. Reuse Phase 1's `OutcomeMetricsCalculator` where applicable;
   phase-graduation and survival metrics are agency-cohort-only (control N/A).
-  The current scaffold has no real FPDS or patent input, and #286's
-  `sbir_ma_events.jsonl` is SBIR-only rather than control coverage. Record those
-  outcomes as unavailable, never zero. Add the symmetric outcome contracts in
-  separate follow-on PRs.
+  The shared `symmetric_event_coverage` evaluator now distinguishes observed
+  zero from missing identity, missing/incomplete coverage, and right-censoring,
+  using the same date rule for both arms. The maintained Form D adapter emits
+  exact-CIK evidence for `form_d_business_combination_filing_proxy`; every event
+  retains accession and filing-date provenance. That metric is a lower-bound
+  transaction-financing filing proxy, not an M&A-exit rate. The matched asset no
+  longer consumes #286's SBIR-only `sbir_ma_events.jsonl` and keeps the proxy
+  unavailable until a valid matched risk set plus symmetric coverage are wired.
+  FPDS, patent, and verified M&A adapters remain open; record absent outcomes as
+  unavailable, never zero.
 - [ ] 2.5 Complete the `ThreatsToValidity` gate — required entries: SAFE/convertible
   undercount, late-stage Form D inclusion, incomplete SBIR-CIK exclusion,
   SIC-to-NAICS-2 mapping validity, technical-merit vs. lawyer-access selection

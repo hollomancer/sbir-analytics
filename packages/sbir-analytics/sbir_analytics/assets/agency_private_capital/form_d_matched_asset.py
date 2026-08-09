@@ -19,12 +19,11 @@ from .form_d_inputs import (
     load_form_d_matches,
 )
 from .matching import CohortMatcher, _pairs_frame
-from .phase2_outcomes import MatchedCohortOutcomes, _outcome_frame, keys_from_ma_events
+from .phase2_outcomes import MatchedCohortOutcomes, _outcome_frame
 from .threats import ThreatsToValidity
 
 
 DEFAULT_OUTPUT_ROOT = Path("data/processed/agency_private_capital")
-DEFAULT_MA_EVENTS_PATH = Path("data/sbir_ma_events.jsonl")
 
 
 class AgencyPrivateCapitalPhase2Config(Config):
@@ -33,7 +32,8 @@ class AgencyPrivateCapitalPhase2Config(Config):
     agency_code: str = "NSF"
     form_d_matches_path: str = str(DEFAULT_FORM_D_MATCHES_PATH)
     form_d_control_universe_path: str = str(DEFAULT_FORM_D_CONTROL_UNIVERSE_PATH)
-    ma_events_path: str = str(DEFAULT_MA_EVENTS_PATH)
+    # Retained for run-config compatibility. SBIR-only M&A evidence is not consumed.
+    ma_events_path: str | None = None
     controls_per_treated: int = 3
     year_min: int = 2009
     year_max: int = 2024
@@ -117,8 +117,7 @@ def agency_private_capital_form_d_matched_comparison(
         enriched_sbir_awards,
         treated,
     )
-    ma_keys = keys_from_ma_events(config.ma_events_path)
-    outcomes = MatchedCohortOutcomes(ma_event_keys=ma_keys).compute(pairs)
+    outcomes = MatchedCohortOutcomes().compute(pairs)
     threats_payload = ThreatsToValidity().write(threats_path)
 
     pairs.to_parquet(pairs_path, index=False)

@@ -34,18 +34,19 @@ def _pairs() -> pd.DataFrame:
     )
 
 
-def test_ma_exit_rate_available_for_treated_and_controls() -> None:
-    outcomes = MatchedCohortOutcomes(ma_event_keys={"name:acme corp", "cik:998"}).compute(_pairs())
+def test_form_d_business_combination_proxy_is_unavailable_without_symmetric_coverage() -> None:
+    outcomes = MatchedCohortOutcomes().compute(_pairs())
     rows = {
         (row["cohort"], row["metric"]): row
-        for _, row in outcomes[outcomes["metric"] == "ma_exit_rate"].iterrows()
+        for _, row in outcomes[
+            outcomes["metric"] == "form_d_business_combination_filing_proxy"
+        ].iterrows()
     }
 
-    assert rows[("agency_sbir", "ma_exit_rate")]["numerator"] == 1
-    assert rows[("agency_sbir", "ma_exit_rate")]["denominator"] == 2
-    assert rows[("form_d_control", "ma_exit_rate")]["numerator"] == 1
-    assert rows[("form_d_control", "ma_exit_rate")]["denominator"] == 2
-    assert bool(rows[("form_d_control", "ma_exit_rate")]["available"]) is True
+    assert rows[("agency_sbir", "form_d_business_combination_filing_proxy")]["denominator"] == 2
+    assert rows[("form_d_control", "form_d_business_combination_filing_proxy")]["denominator"] == 2
+    assert all(not bool(row["available"]) for row in rows.values())
+    assert outcomes["metric"].ne("ma_exit_rate").all()
 
 
 def test_missing_event_sets_are_unavailable_not_zero() -> None:

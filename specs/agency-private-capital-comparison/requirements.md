@@ -6,8 +6,10 @@
 > review artifact is materialized, but it is non-citable and awaits sign-off.
 > Phase 2 has a tested scaffold and a maintained, reproducible SEC DERA staging
 > producer, not a valid matched comparison. The staged universe has incomplete
-> SBIR exclusion and no validated NAICS-2 covariate, and the scaffold lacks
-> symmetric FPDS/patent/M&A outcome inputs. Do not materialize or publish Phase 2
+> SBIR exclusion and no validated NAICS-2 covariate. A shared date-aware
+> event/coverage contract and a CIK-native Form D business-combination filing
+> proxy now exist, but FPDS, patent, and verified M&A outcome inputs remain
+> missing. Do not materialize or publish Phase 2
 > before the Phase 1, identity, covariate, and outcome gates are satisfied.
 > Supports inventory questions **F3** (private-capital comparison), **B2** (commercialization outcomes), **B3** (transition rates) in [docs/research-questions.md](../../docs/research-questions.md).
 
@@ -183,13 +185,25 @@ provisional identity staging only.
    The existing matched asset SHALL refuse staging output while either gate is
    false. Document cohort sizes and balance only after both gates pass.
 10. **SHALL** compute applicable outcomes symmetrically for treated and control
-    cohorts: federal-contract presence, patent presence, and M&A exit rate.
-    The current scaffold has no real FPDS or patent input, while #286's
-    `sbir_ma_events.jsonl` contains SBIR-only M&A evidence and cannot establish
-    control coverage. Missing outcome inputs or coverage SHALL be reported as
-    unavailable, never zero. Implement each symmetric outcome contract in a
-    separate follow-on PR. Survival proxy and Phase-graduation rates do not
-    apply to controls and remain N/A.
+    cohorts: federal-contract presence, patent presence, and verified M&A exit
+    rate. A common evaluator SHALL use the same exact identity, index date,
+    inclusive follow-up horizon, event-date rule, and source-coverage rule for
+    both arms. A covered firm with no in-window event is an observed zero;
+    missing identity, missing or incomplete source coverage, and insufficient
+    follow-up are unavailable and excluded from the denominator.
+
+    The first implemented source contract is the exact CIK-native metric
+    `form_d_business_combination_filing_proxy`, derived from the official Form D
+    `ISBUSINESSCOMBINATIONTRANS` field with accession and filing-date provenance.
+    It is a lower-bound transaction-financing filing proxy, not a verified
+    acquisition or M&A exit, and does not satisfy the verified-M&A portion of
+    this requirement. The current scaffold has no real FPDS or patent input,
+    while #286's `sbir_ma_events.jsonl` contains SBIR-only M&A evidence and
+    cannot establish control coverage. The matched asset SHALL NOT consume that
+    SBIR-only file. Missing outcome inputs or coverage SHALL be reported as
+    unavailable, never zero. Implement remaining source contracts in separate
+    follow-on PRs. Survival proxy and Phase-graduation rates do not apply to
+    controls and remain N/A.
 11. **SHALL** publish a threats-to-validity section before any headline
     finding. Required entries: SAFE/convertible undercount, late-stage Form
     D inclusion, unknown exact-name exclusion recall, alias/rename/acquisition
@@ -226,7 +240,10 @@ not sufficient to evaluate it.
   identity or outcome contract
 - Authoritative CIK/alias union with demonstrated exclusion recall — MISSING
 - Validated SIC-to-NAICS-2 strategy — MISSING
-- Symmetric FPDS, patent, and M&A outcome inputs — MISSING
+- Shared date-aware event/coverage evaluator — EXISTS
+- Symmetric CIK-native Form D business-combination filing proxy — EXISTS;
+  matched-risk-set integration remains gated
+- Symmetric FPDS, patent, and verified M&A outcome inputs — MISSING
 
 ## Out of Scope
 
