@@ -156,23 +156,21 @@ When upgrading an existing deployment that ran the retired analytics API,
 `http://127.0.0.1:8010`. If another service now owns that port, the helper warns
 and leaves it untouched.
 
-`make server-up` builds the native Python base image from
-`Dockerfile.python-base` before starting the stack. The first build takes
-several minutes; later builds reuse Docker's layer cache and are quick unless
-the base's inputs actually changed.
+`make server-up` builds the application image directly from `Dockerfile`. The
+image installs the production workspace from `uv.lock` and uses a Python base
+pinned by digest, so rebuilding the same commit reproduces the same Python
+environment. The first build takes several minutes; later builds reuse Docker's
+layer cache.
 
-It no longer pulls the published image first. Nothing republishes
-`ghcr.io/hollomancer/sbir-analytics-python-base:latest` since the image-build
-workflow was retired, so preferring the pull pinned this host to a base that
-will never be refreshed again.
-
-To force a full refresh — including the upstream image the base builds `FROM`,
-which is how OS and interpreter security updates arrive — use:
+To rebuild every application layer and restart the stack, use:
 
 ```bash
-make server-rebuild     # rebuilds base + app images, then restarts the stack
+make server-rebuild     # rebuilds the locked app image, then restarts the stack
 docker image prune      # reclaim the superseded layers
 ```
+
+OS and interpreter updates arrive through a reviewed change to the pinned
+Python image digest in `Dockerfile`, rather than an unreviewed mutable-tag pull.
 
 `server-rebuild` recreates containers, so **any in-flight Dagster run is
 killed**. Check `make server-status` for active runs before using it, and

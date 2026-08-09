@@ -127,21 +127,19 @@ uncommitted; `.env.server` belongs only to the deployment checkout.
 
 | Dockerfile | Purpose |
 | --- | --- |
-| `Dockerfile.python-base` | Native Python base with stable shared dependencies |
-| `Dockerfile` | Default ETL, Dagster, and graph application image |
-| `Dockerfile.full` | Optional heavier ML/fiscal image |
+| `Dockerfile` | Locked ETL, Dagster, graph, ML/NLP, fiscal, and browser-automation image |
 
 Build locally:
 
 ```bash
 make docker-build
-docker build -f Dockerfile.full -t sbir-analytics-full:latest .
 ```
 
-The self-hosted server builds images for its container runtime's native
-architecture. It may use the published Python base when a matching manifest
-exists and otherwise builds `Dockerfile.python-base` from source. GitHub Actions
-does not publish application images.
+The image uses the multi-architecture Python 3.11.9 manifest pinned by digest in
+`Dockerfile`, then installs the `server` extra with `uv sync --frozen`. The same
+`uv.lock` therefore controls local, CI, and deployed Python versions. Updating
+the Python base or UV installer is an explicit reviewed Dockerfile change.
+GitHub Actions builds and smoke-tests this image but does not publish it.
 
 ## Data and volumes
 

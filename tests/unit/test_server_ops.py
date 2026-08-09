@@ -499,7 +499,7 @@ def test_tailscale_up_rolls_back_all_routes_after_late_neo4j_failure(tmp_path):
     assert any("--https=443" in call and "off" in call for call in calls)
 
 
-def test_server_up_runs_preflight_and_native_base_fallback_first(tmp_path):
+def test_server_up_runs_preflight_before_locked_image_build(tmp_path):
     result = subprocess.run(
         ["make", "-n", "server-up", f"SERVER_ENV_FILE={tmp_path / '.env.server'}"],
         cwd=REPO_ROOT,
@@ -509,7 +509,6 @@ def test_server_up_runs_preflight_and_native_base_fallback_first(tmp_path):
 
     assert result.returncode == 0, result.stdout + result.stderr
     output = result.stdout
-    assert output.index("check-prerequisites.sh") < output.index("docker pull")
-    assert output.index("docker pull") < output.index("Dockerfile.python-base")
-    assert output.index("Dockerfile.python-base") < output.index("--profile server up -d --build")
+    assert output.index("check-prerequisites.sh") < output.index("--profile server up -d --build")
+    assert "Dockerfile.python-base" not in output
     assert "--wait --wait-timeout 300" in output

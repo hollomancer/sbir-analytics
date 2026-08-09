@@ -1,53 +1,60 @@
-# syntax=docker/dockerfile:1.4
+# syntax=docker/dockerfile:1.7
 #
-# SBIR Analytics ETL Image
-# Lightweight image for ETL pipelines (no R, no ML)
+# SBIR Analytics production image
 #
-# Used by: GitHub Actions ETL, local development
-#
-ARG BASE_IMAGE=ghcr.io/hollomancer/sbir-analytics-python-base:latest
+# Python dependencies come exclusively from uv.lock. Update the lockfile and
+# this image together; `uv sync --frozen` refuses an out-of-date lock.
 
-FROM ${BASE_IMAGE} AS runtime
+ARG PYTHON_IMAGE=python:3.11.9-slim-bookworm@sha256:8fb099199b9f2d70342674bd9dbccd3ed03a258f26bbd1d556822c6dfc60c317
 
-# Install ETL-specific dependencies
-# boto3/cloudpathlib intentionally absent: the AWS data plane is retired
-# (docs/deployment/aws-decommission-plan.md).
-RUN pip install \
-    "rapidfuzz>=3.0.0,<4.0.0" \
-    "jellyfish>=1.0.0,<2.0.0" \
-    "httpx>=0.27.0,<1.0.0" \
-    "tenacity>=8.2.3,<10.0.0" \
-    "playwright>=1.47.0,<2.0.0"
+FROM ${PYTHON_IMAGE} AS runtime
 
-# USPTO patent assignments are only reachable through browser automation since
-# data.uspto.gov stopped serving them to plain HTTP clients (2026-06-18), so
-# uspto_download_job needs a real Chromium on the server image.
-#
-# The playwright pin above duplicates the `uspto-browser` extra in pyproject.toml,
-# which is the source of truth. This image installs packages directly rather than
-# installing this project (it copies source and sets PYTHONPATH), so it cannot
-# resolve the extra; keep the two constraints in step by hand.
-ENV PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers
-RUN playwright install --with-deps chromium && \
-    chmod -R a+rX /opt/pw-browsers
+ARG UV_VERSION=0.11.2
 
-# Copy application code
-COPY sbir_etl/ /app/sbir_etl/
-COPY packages/sbir-analytics/sbir_analytics/ /app/sbir_analytics/
-COPY packages/sbir-graph/sbir_graph/ /app/sbir_graph/
-COPY packages/sbir-ml/sbir_ml/ /app/sbir_ml/
-COPY scripts/ /app/scripts/
-COPY config/ /app/config/
-COPY specs/phase-iii-census/ /app/specs/phase-iii-census/
-COPY specs/phase3-notice-corpus-fusion/ /app/specs/phase3-notice-corpus-fusion/
-COPY studies/phase-iii-census/ /app/studies/phase-iii-census/
-COPY workspace.server.yaml /app/workspace.server.yaml
-COPY data/reference/ /app/data/reference/
-COPY pyproject.toml /app/
+ENV DEBIAN_FRONTEND=noninteractive \
+    PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    PIP_NO_CACHE_DIR=1 \
+    PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PYTHONPATH=/app \
+    UV_PROJECT_ENVIRONMENT=/app/.venv \
+    PATH="/app/.venv/bin:$PATH"
 
-ENV PYTHONPATH=/app
+WORKDIR /app
 
-# Create directories
-RUN mkdir -p /app/data /app/logs /app/reports
+# Runtime scripts and health checks use curl and netcat. UV itself is pinned;
+# every application dependency is resolved from the committed lockfile below.
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        ca-certificates \
+        curl \
+        netcat-openbsd \
+    && rm -rf /var/lib/apt/lists/* \
+    && python -m pip install "uv==${UV_VERSION}"
+
+# Copy the complete Python workspace before syncing so first-party packages are
+# installed as ordinary wheels rather than relying on broad hand-maintained
+# `pip install` ranges or PYTHONPATH-only imports.
+COPY pyproject.toml uv.lock README.md ./
+COPY sbir_etl/ ./sbir_etl/
+COPY packages/ ./packages/
+
+RUN uv sync --frozen --no-dev --extra server --no-editable
+
+# Browser automation is a locked Python dependency; this step installs only its
+# matching Chromium binary and OS libraries.
+RUN playwright install --with-deps chromium \
+    && chmod -R a+rX /opt/pw-browsers \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY scripts/ ./scripts/
+COPY config/ ./config/
+COPY specs/phase-iii-census/ ./specs/phase-iii-census/
+COPY specs/phase3-notice-corpus-fusion/ ./specs/phase3-notice-corpus-fusion/
+COPY studies/phase-iii-census/ ./studies/phase-iii-census/
+COPY workspace.server.yaml ./workspace.server.yaml
+COPY data/reference/ ./data/reference/
+
+RUN mkdir -p data logs reports artifacts dagster_home
 
 CMD ["dagster", "job", "list", "-m", "sbir_analytics.definitions"]
