@@ -1,5 +1,9 @@
 # SBIR/STTR Commercialization Analytics
 
+[![CI](https://github.com/hollomancer/sbir-analytics/actions/workflows/ci.yml/badge.svg)](https://github.com/hollomancer/sbir-analytics/actions/workflows/ci.yml)
+[![Python 3.11](https://img.shields.io/badge/python-3.11-blue.svg)](https://www.python.org/downloads/)
+[![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+
 A research project linking federal SBIR/STTR award data to
 downstream commercialization signals (federal contracts,
 patents, private financing, and acquisitions) to better
@@ -38,7 +42,7 @@ uv run python scripts/data/monthly_procurement_transition_report.py \
   --output-root /tmp/procurement-transition-example
 ```
 
-Read the [example walkthrough](examples/README_ARMY_PROCUREMENT_TRANSITION.md)
+Read the [example walkthrough](examples/army-procurement-transition.md)
 and compare the result with the committed
 [expected report](examples/army_science_technology_report.md). Every company,
 award, opportunity, and judgment in this example is synthetic; it demonstrates
@@ -48,7 +52,7 @@ The repository separates software capability from evidentiary maturity:
 
 | Capability | Current status | Evidence or boundary |
 | --- | --- | --- |
-| Procurement-transition reporting | Exploratory; runnable synthetic demonstration | [Synthetic example and expected output](examples/README_ARMY_PROCUREMENT_TRANSITION.md) |
+| Procurement-transition reporting | Exploratory; runnable synthetic demonstration | [Synthetic example and expected output](examples/army-procurement-transition.md) |
 | Award ingestion, entity resolution, and graph loading | Implemented; real-data setup required | Operational capability, not an evidence claim; see the [getting-started guide](docs/getting-started/README.md) and [architecture](docs/architecture/detailed-overview.md) |
 | Phase III outcome analysis | Reproducible; not validated or approved for citation | [Phase III census study record](studies/phase-iii-census/study.yaml) |
 | Private-capital, M&A, and fiscal analyses | Exploratory and data-dependent | [Research output status index](docs/research/README.md) and the limitations below |
@@ -122,11 +126,12 @@ packages/
   sbir-ml/             CET classifier and transition-detection models
 config/                Thresholds, paths, performance settings (base.yaml)
 docs/                  research-questions.md (start here), architecture, methodology
-specs/                 Per-feature design notes
-examples/              Standalone demo scripts
+specs/                 Per-feature design notes; status.md is the lifecycle registry
+studies/               Versioned contracts for reproducible, citable research
+tests/                 Unit, integration, functional, and end-to-end suites
+examples/              Standalone demo scripts (see examples/README.md)
 notebooks/             Notebook-first research workbench and reusable examples
-scripts/               One-off analysis and operational scripts
-studies/                Reproducible analytical studies and evidence artifacts
+scripts/               One-off analysis and operational scripts (exploratory tier)
 ```
 
 The live deployment runs Docker Compose behind Tailscale.
@@ -139,18 +144,21 @@ repository, start with these documents in order:
 
 1. [Research questions](docs/research-questions.md): the core policy and
    evaluation questions the project is trying to answer.
-2. [Army procurement-transition example](examples/README_ARMY_PROCUREMENT_TRANSITION.md):
+2. [Army procurement-transition example](examples/army-procurement-transition.md):
    a runnable vertical slice with synthetic inputs and a committed expected report.
-3. [Study contracts](studies/README.md): how the project distinguishes exploratory,
+3. [Epistemic tiers](docs/steering/epistemic-tiers.md): the contract that decides
+   what each artifact in this repository is allowed to claim, and what it costs
+   to move a result from exploratory to citable.
+4. [Study contracts](studies/README.md): how the project distinguishes exploratory,
    reproducible, validated, and citable work.
-4. [SEC EDGAR SBIR learnings](docs/research/sec-edgar-sbir-learnings.md):
+5. [SEC EDGAR SBIR learnings](docs/research/sec-edgar-sbir-learnings.md):
    practical findings from using EDGAR to detect SBIR-related exits and
    financing signals.
-5. [SBIR Form D fundraising analysis](docs/research/sbir-form-d-fundraising-analysis.md):
+6. [SBIR Form D fundraising analysis](docs/research/sbir-form-d-fundraising-analysis.md):
    the private-capital lens on awardee commercialization.
-6. [Phase transition latency](docs/phase-transition-latency.md): how the repo
+7. [Phase transition latency](docs/phase-transition-latency.md): how the repo
    thinks about timing from SBIR awards to follow-on federal contracts.
-7. [SBIR identification methodology](docs/sbir-identification-methodology.md):
+8. [SBIR identification methodology](docs/sbir-identification-methodology.md):
    the methodology behind identifying and linking SBIR firms across datasets.
 
 ## Running it
@@ -183,12 +191,29 @@ brings one up along with the supporting services. See
 > designed to run locally, but full end-to-end reproduction requires source-data
 > downloads, API credentials, and local services such as Neo4j.
 
+### Verifying a checkout
+
+None of these need credentials, network access, or Neo4j — they run against a
+fresh clone and are the same gates CI enforces:
+
+```bash
+make install          # uv sync --extra stack-dev
+make test-unit        # ~5,800 unit tests, under a minute
+make lint             # Ruff across the repository, MyPy over sbir_etl
+make lint-boundaries  # architecture, epistemic-tier, config, and study guards
+make docs-check       # dead doc links, stale commands, spec-registry coverage
+```
+
+The remaining suites need services: `uv run pytest -m integration` expects a
+local Neo4j (`make neo4j-up`), and `make docker-e2e` drives the full stack.
+
 ## Versioning
 
 The repository follows [Semantic Versioning 2.0.0](https://semver.org/) with synchronized
 versions for the root ETL project and the three packages under `packages/`. Git release tags use
 the form `vMAJOR.MINOR.PATCH`. See the [versioning and release policy](docs/steering/versioning.md)
-for compatibility boundaries, increment rules, and the release checklist.
+for compatibility boundaries, increment rules, and the release checklist, and
+[CHANGELOG.md](CHANGELOG.md) for what has landed in each release.
 
 ## Limitations
 
