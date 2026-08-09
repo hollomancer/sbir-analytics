@@ -268,8 +268,8 @@ restart fails so recovery work cannot erase the backup.
 
 ### Schedules
 
-- The daily all-assets schedule is gated off on the server
-  (`SBIR_ETL__DAGSTER__SCHEDULES__DAILY_ALL_ASSETS_ENABLED=false`).
+- The repository-wide daily all-assets schedule has been retired. New assets
+  cannot enter automation without being added to an explicitly named job.
 - A `weekly_core_refresh` schedule exists but stays **STOPPED** until you flip
   `SBIR_ETL__DAGSTER__SCHEDULES__WEEKLY_CORE_REFRESH_ENABLED=true` — do this
   only after a manual run of `core_refresh_job` succeeds.

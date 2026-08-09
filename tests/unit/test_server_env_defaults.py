@@ -44,12 +44,10 @@ def test_heavy_assets_loaded_but_not_scheduled():
     # always-on host must never launch one on its own.
     env = _parse_env(ENV_EXAMPLE)
     assert env["DAGSTER_LOAD_HEAVY_ASSETS"] == "true"
-    assert env["SBIR_ETL__DAGSTER__SCHEDULES__DAILY_ALL_ASSETS_ENABLED"] == "false"
 
 
 def test_schedules_gated_off_by_default():
     env = _parse_env(ENV_EXAMPLE)
-    assert env["SBIR_ETL__DAGSTER__SCHEDULES__DAILY_ALL_ASSETS_ENABLED"] == "false"
     assert env["SBIR_ETL__DAGSTER__SCHEDULES__WEEKLY_CORE_REFRESH_ENABLED"] == "false"
 
 

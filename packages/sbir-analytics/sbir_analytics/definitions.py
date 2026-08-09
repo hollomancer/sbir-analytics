@@ -76,32 +76,6 @@ def _get_job(name: str) -> DiscoveredJob | None:
 # Try to get CET jobs (may not be available if heavy assets are skipped)
 cet_full_pipeline_job = _get_job("cet_full_pipeline_job")
 
-# Define a job that materializes all assets
-etl_job = define_asset_job(
-    name="sbir_analytics_job",
-    selection=AssetSelection.all(),
-    description="Complete SBIR ETL pipeline execution",
-)
-
-# Define a schedule to run the job daily.
-#
-# The heavy daily all-assets schedule is gated so the always-on server profile
-# does not launch it automatically. It defaults to RUNNING (unchanged behavior
-# for dev/local) unless SBIR_ETL__DAGSTER__SCHEDULES__DAILY_ALL_ASSETS_ENABLED
-# is set to a falsey value (the server template sets it to "false").
-daily_schedule = ScheduleDefinition(
-    job=etl_job,
-    cron_schedule=os.getenv(
-        "SBIR_ETL__DAGSTER__SCHEDULES__ETL_JOB", "0 2 * * *"
-    ),  # Default 02:00 UTC; override via SBIR_ETL__DAGSTER__SCHEDULES__ETL_JOB
-    name="daily_sbir_analytics",
-    description="Daily SBIR ETL pipeline execution",
-    default_status=_schedule_status(
-        "SBIR_ETL__DAGSTER__SCHEDULES__DAILY_ALL_ASSETS_ENABLED",
-        default_running=True,
-    ),
-)
-
 
 # Opt-in weekly core refresh for the server profile. It materializes the core
 # (non-heavy) assets. The selection excludes heavy modules explicitly rather
@@ -247,7 +221,6 @@ else:
 
 # Create schedules only for available jobs
 schedules = [
-    daily_schedule,
     weekly_core_refresh_schedule,
     *source_download_schedules,
     *research_release_schedules,
@@ -275,7 +248,7 @@ if cet_drift_job is not None:
 all_sensors = _discover_sensors()
 
 # Aggregate jobs for repository registration
-job_definitions: list[DiscoveredJob] = [etl_job, core_refresh_job]
+job_definitions: list[DiscoveredJob] = [core_refresh_job]
 # Add conditional jobs if they exist
 if cet_drift_job is not None:
     job_definitions.append(cet_drift_job)

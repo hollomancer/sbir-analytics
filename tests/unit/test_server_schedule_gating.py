@@ -1,7 +1,7 @@
 """Tests for server schedule gating in sbir_analytics.definitions.
 
-The always-on server profile must not auto-launch the heavy daily all-assets
-schedule, and the weekly core refresh must stay STOPPED until explicitly enabled.
+The repository-wide all-assets schedule must remain absent, and the weekly core
+refresh must stay STOPPED until explicitly enabled.
 
 These import the real Dagster definitions module, so they run wherever the
 `sbir_analytics` package and Dagster are installed (CI), not in the fast smoke.
@@ -67,22 +67,11 @@ def test_weekly_core_refresh_opt_in(monkeypatch):
     assert weekly.default_status == DefaultScheduleStatus.RUNNING
 
 
-def test_daily_all_assets_can_be_gated_off(monkeypatch):
-    defs = _reload_definitions(
-        monkeypatch,
-        SBIR_ETL__DAGSTER__SCHEDULES__DAILY_ALL_ASSETS_ENABLED="false",
-    )
-    daily = _schedule(defs, "daily_sbir_analytics")
-    assert daily.default_status == DefaultScheduleStatus.STOPPED
+def test_repository_wide_job_and_schedule_are_retired(monkeypatch):
+    defs = _reload_definitions(monkeypatch)
 
-
-def test_daily_all_assets_running_by_default(monkeypatch):
-    defs = _reload_definitions(
-        monkeypatch,
-        SBIR_ETL__DAGSTER__SCHEDULES__DAILY_ALL_ASSETS_ENABLED=None,
-    )
-    daily = _schedule(defs, "daily_sbir_analytics")
-    assert daily.default_status == DefaultScheduleStatus.RUNNING
+    assert "sbir_analytics_job" not in {job.name for job in defs.job_definitions}
+    assert "daily_sbir_analytics" not in {schedule.name for schedule in defs.schedules}
 
 
 @pytest.mark.parametrize(
