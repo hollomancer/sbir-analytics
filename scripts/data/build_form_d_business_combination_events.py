@@ -19,7 +19,7 @@ from collections import Counter
 from collections.abc import Mapping
 from datetime import date
 from pathlib import Path
-from typing import Any, BinaryIO
+from typing import Any, BinaryIO, cast
 
 from sbir_analytics.assets.agency_private_capital.symmetric_event_coverage import EVENT_TYPE
 
@@ -57,28 +57,27 @@ def _expected_quarters() -> list[str]:
     return list(EXPECTED_QUARTERS)
 
 
-def sha256_path(path: Path) -> str:
-    digest = hashlib.sha256()
-    with path.open("rb") as handle:
-        for block in iter(lambda: handle.read(1024 * 1024), b""):
-            digest.update(block)
-    return digest.hexdigest()
-
-
-def _positive_int(value: object, *, label: str) -> int:
+def _non_negative_int(value: object, *, label: str) -> int:
     if isinstance(value, bool) or not isinstance(value, int) or value < 0:
         raise BuildError(f"{label} must be a non-negative integer")
     return value
 
 
-def load_source_manifest(path: Path) -> dict[str, Any]:
+def _positive_int(value: object, *, label: str) -> int:
+    if isinstance(value, bool) or not isinstance(value, int) or value <= 0:
+        raise BuildError(f"{label} must be a positive integer")
+    return value
+
+
+def load_source_manifest(path: Path) -> tuple[dict[str, Any], bytes]:
     """Load and validate the closed 64-quarter PR2 source contract."""
 
     if not path.is_file():
         raise BuildError(f"Required tracked PR2 source manifest is missing: {path}")
     try:
-        manifest = json.loads(path.read_text(encoding="utf-8"))
-    except json.JSONDecodeError as exc:
+        manifest_data = path.read_bytes()
+        manifest = json.loads(manifest_data)
+    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
         raise BuildError(f"Invalid JSON in source manifest {path}: {exc}") from exc
     if not isinstance(manifest, dict):
         raise BuildError("Source manifest must be a JSON object")
@@ -112,6 +111,7 @@ def load_source_manifest(path: Path) -> dict[str, Any]:
         )
     if extra:
         raise BuildError(f"Source manifest has unexpected quarter metadata: {', '.join(extra)}")
+    total_emitted_filings = 0
     for quarter in expected_quarters:
         metadata = quarter_metadata[quarter]
         if not isinstance(metadata, Mapping):
@@ -129,21 +129,33 @@ def load_source_manifest(path: Path) -> dict[str, Any]:
         counters = metadata.get("counters")
         if not isinstance(counters, Mapping):
             raise BuildError(f"Required source quarter {quarter} has no counters object")
-        selected_flagged = counters.get("selected_business_combination_filings")
-        selected_unflagged = counters.get("selected_non_business_combination_filings")
-        emitted_flagged = counters.get("emitted_business_combination_filings")
-        omitted_flagged = counters.get("omitted_business_combination_filings")
-        invalid_flags = counters.get("invalid_business_combination_flags")
-        selected_submissions = counters.get("selected_submissions")
-        for label, value in (
-            ("selected_business_combination_filings", selected_flagged),
-            ("selected_non_business_combination_filings", selected_unflagged),
-            ("emitted_business_combination_filings", emitted_flagged),
-            ("omitted_business_combination_filings", omitted_flagged),
-            ("invalid_business_combination_flags", invalid_flags),
-            ("selected_submissions", selected_submissions),
-        ):
-            _positive_int(value, label=f"{quarter} {label}")
+        selected_flagged = _non_negative_int(
+            counters.get("selected_business_combination_filings"),
+            label=f"{quarter} selected_business_combination_filings",
+        )
+        selected_unflagged = _non_negative_int(
+            counters.get("selected_non_business_combination_filings"),
+            label=f"{quarter} selected_non_business_combination_filings",
+        )
+        emitted_flagged = _non_negative_int(
+            counters.get("emitted_business_combination_filings"),
+            label=f"{quarter} emitted_business_combination_filings",
+        )
+        omitted_flagged = _non_negative_int(
+            counters.get("omitted_business_combination_filings"),
+            label=f"{quarter} omitted_business_combination_filings",
+        )
+        invalid_flags = _non_negative_int(
+            counters.get("invalid_business_combination_flags"),
+            label=f"{quarter} invalid_business_combination_flags",
+        )
+        selected_submissions = _non_negative_int(
+            counters.get("selected_submissions"),
+            label=f"{quarter} selected_submissions",
+        )
+        emitted_filings = _non_negative_int(
+            counters.get("emitted_filings"), label=f"{quarter} emitted_filings"
+        )
         if selected_flagged + selected_unflagged != selected_submissions:
             raise BuildError(
                 f"Required source quarter {quarter} does not reconcile all selected "
@@ -164,6 +176,17 @@ def load_source_manifest(path: Path) -> dict[str, Any]:
                 f"Required source quarter {quarter} omitted {omitted_flagged} "
                 "business-combination filing(s) from the issuer universe"
             )
+        if emitted_flagged > emitted_filings or emitted_filings > selected_submissions:
+            raise BuildError(
+                f"Required source quarter {quarter} has inconsistent emitted filing counters"
+            )
+        emitted_unflagged = emitted_filings - emitted_flagged
+        if emitted_unflagged > selected_unflagged:
+            raise BuildError(
+                f"Required source quarter {quarter} emits more non-business-combination "
+                "filings than were selected"
+            )
+        total_emitted_filings += emitted_filings
 
     outputs = manifest.get("outputs")
     product = outputs.get("broad_issuer_universe") if isinstance(outputs, Mapping) else None
@@ -176,13 +199,20 @@ def load_source_manifest(path: Path) -> dict[str, Any]:
     _positive_int(product.get("size_bytes"), label="Pinned issuer-universe size_bytes")
 
     source_counts = manifest.get("source_counts")
-    issuer_count = source_counts.get("issuer_ciks") if isinstance(source_counts, Mapping) else None
+    if not isinstance(source_counts, Mapping):
+        raise BuildError("Source manifest has no source_counts object")
+    issuer_count = _positive_int(source_counts.get("issuer_ciks"), label="Source issuer-CIK count")
+    source_filing_count = _positive_int(source_counts.get("filings"), label="Source filing count")
+    if source_filing_count != total_emitted_filings:
+        raise BuildError(
+            "Source filing count does not equal the sum of per-quarter emitted filings"
+        )
     if issuer_count != product.get("row_count"):
         raise BuildError("Source issuer-CIK count does not match the pinned universe row count")
     invariants = manifest.get("invariants")
     if not isinstance(invariants, Mapping) or invariants.get("broad_ciks_unique") is not True:
         raise BuildError("Source manifest does not establish unique broad-universe CIKs")
-    return manifest
+    return manifest, manifest_data
 
 
 def _canonical_firm_key(record: Mapping[str, Any], *, line_number: int) -> tuple[str, str]:
@@ -203,8 +233,15 @@ def _required_text(value: object, *, field: str, line_number: int) -> str:
 
 
 def _filing_record(
-    filing: Mapping[str, Any], *, firm_key: str, line_number: int, source_snapshot_id: str
+    filing: Mapping[str, Any],
+    *,
+    cik: str,
+    firm_key: str,
+    line_number: int,
+    source_snapshot_id: str,
 ) -> dict[str, Any]:
+    if filing.get("cik") != cik:
+        raise BuildError(f"Issuer universe line {line_number} filing CIK does not match its issuer")
     accession = _required_text(
         filing.get("accession_number"), field="accession_number", line_number=line_number
     )
@@ -226,6 +263,11 @@ def _filing_record(
     )
     if source_quarter not in EXPECTED_QUARTER_SET:
         raise BuildError(f"Issuer universe line {line_number} has unknown source_quarter")
+    expected_quarter = f"{filing_date.year}Q{((filing_date.month - 1) // 3) + 1}"
+    if source_quarter != expected_quarter:
+        raise BuildError(
+            f"Issuer universe line {line_number} filing source_quarter does not match filing_date"
+        )
     is_amendment = filing.get("is_amendment")
     if not isinstance(is_amendment, bool):
         raise BuildError(f"Issuer universe line {line_number} filing has invalid is_amendment")
@@ -280,7 +322,7 @@ def _temporary_output(path: Path) -> tuple[BinaryIO, Path]:
     handle = tempfile.NamedTemporaryFile(
         mode="w+b", dir=path.parent, prefix=f".{path.name}.", delete=False
     )
-    return handle, Path(handle.name)
+    return cast(BinaryIO, handle), Path(handle.name)
 
 
 def _git_commit() -> str:
@@ -289,6 +331,7 @@ def _git_commit() -> str:
             ["git", "rev-parse", "HEAD"],
             check=True,
             capture_output=True,
+            cwd=REPO_ROOT,
             text=True,
         ).stdout.strip()
     except (OSError, subprocess.CalledProcessError):
@@ -298,28 +341,36 @@ def _git_commit() -> str:
 def build(args: argparse.Namespace) -> dict[str, Any]:
     source_manifest_path = Path(args.source_manifest)
     issuer_universe_path = Path(args.issuer_universe)
-    source_manifest = load_source_manifest(source_manifest_path)
+    source_manifest, source_manifest_data = load_source_manifest(source_manifest_path)
     product = source_manifest["outputs"]["broad_issuer_universe"]
-    expected_event_rows = sum(
-        int(metadata["counters"]["emitted_business_combination_filings"])
-        for metadata in source_manifest["inputs"]["quarters"].values()
-    )
+    expected_filing_rows = int(source_manifest["source_counts"]["filings"])
+    source_quarters = source_manifest["inputs"]["quarters"]
+    expected_filing_quarters = {
+        quarter: int(source_quarters[quarter]["counters"]["emitted_filings"])
+        for quarter in EXPECTED_QUARTERS
+    }
+    expected_event_quarters = {
+        quarter: int(source_quarters[quarter]["counters"]["emitted_business_combination_filings"])
+        for quarter in EXPECTED_QUARTERS
+    }
+    expected_event_rows = sum(expected_event_quarters.values())
     if not issuer_universe_path.is_file():
         raise BuildError(f"Pinned issuer universe is missing: {issuer_universe_path}")
     if issuer_universe_path.stat().st_size != product["size_bytes"]:
         raise BuildError("Issuer-universe byte count does not match the source manifest")
 
-    source_manifest_sha = sha256_path(source_manifest_path)
+    source_manifest_sha = hashlib.sha256(source_manifest_data).hexdigest()
     source_snapshot_id = f"form_d_control_universe_manifest_sha256:{source_manifest_sha}"
     output_dir = Path(args.output_dir)
-    event_path = output_dir / f"{EVENT_TYPE}.events.jsonl"
-    coverage_path = output_dir / f"{EVENT_TYPE}.coverage.jsonl"
+    event_staging_hint = output_dir / f"{EVENT_TYPE}.events.jsonl"
+    coverage_staging_hint = output_dir / f"{EVENT_TYPE}.coverage.jsonl"
     manifest_path = output_dir / f"{EVENT_TYPE}.manifest.json"
     event_handle: BinaryIO | None = None
     coverage_handle: BinaryIO | None = None
     event_temp: Path | None = None
     coverage_temp: Path | None = None
     counters: Counter[str] = Counter()
+    filing_quarters: Counter[str] = Counter()
     event_quarters: Counter[str] = Counter()
     input_digest = hashlib.sha256()
     event_digest = hashlib.sha256()
@@ -332,8 +383,8 @@ def build(args: argparse.Namespace) -> dict[str, Any]:
     source_validated = False
 
     try:
-        event_handle, event_temp = _temporary_output(event_path)
-        coverage_handle, coverage_temp = _temporary_output(coverage_path)
+        event_handle, event_temp = _temporary_output(event_staging_hint)
+        coverage_handle, coverage_temp = _temporary_output(coverage_staging_hint)
         with issuer_universe_path.open("rb") as source:
             for line_number, raw_line in enumerate(source, start=1):
                 input_digest.update(raw_line)
@@ -346,13 +397,22 @@ def build(args: argparse.Namespace) -> dict[str, Any]:
                     raise BuildError(f"Invalid issuer-universe JSON at line {line_number}") from exc
                 if not isinstance(record, Mapping):
                     raise BuildError(f"Issuer universe line {line_number} must be a JSON object")
-                _, firm_key = _canonical_firm_key(record, line_number=line_number)
+                cik, firm_key = _canonical_firm_key(record, line_number=line_number)
                 if previous_firm_key is not None and firm_key <= previous_firm_key:
                     raise BuildError("Issuer universe firm keys must be unique and ordered")
                 previous_firm_key = firm_key
                 filings = record.get("filings")
                 if not isinstance(filings, list) or not filings:
                     raise BuildError(f"Issuer universe line {line_number} has no filing evidence")
+                filing_count = record.get("filing_count")
+                if (
+                    isinstance(filing_count, bool)
+                    or not isinstance(filing_count, int)
+                    or filing_count != len(filings)
+                ):
+                    raise BuildError(
+                        f"Issuer universe line {line_number} filing_count does not match filings"
+                    )
 
                 validated_filings: list[dict[str, Any]] = []
                 for filing in filings:
@@ -363,6 +423,7 @@ def build(args: argparse.Namespace) -> dict[str, Any]:
                         )
                     validated = _filing_record(
                         filing,
+                        cik=cik,
                         firm_key=firm_key,
                         line_number=line_number,
                         source_snapshot_id=source_snapshot_id,
@@ -371,6 +432,7 @@ def build(args: argparse.Namespace) -> dict[str, Any]:
                     if accession in seen_accessions:
                         raise BuildError(f"Issuer universe repeats accession {accession}")
                     seen_accessions.add(accession)
+                    filing_quarters[str(validated["source_quarter"])] += 1
                     if validated.pop("_is_proxy_event"):
                         event_id = str(validated["event_id"])
                         if event_id in seen_event_ids:
@@ -413,6 +475,8 @@ def build(args: argparse.Namespace) -> dict[str, Any]:
 
         if counters["issuer_rows"] != product["row_count"]:
             raise BuildError("Issuer-universe row count does not match the source manifest")
+        if counters["filing_rows"] != expected_filing_rows:
+            raise BuildError("Issuer-universe filing count does not match the source manifest")
         if input_digest.hexdigest() != product["sha256"]:
             raise BuildError("Issuer-universe SHA-256 does not match the source manifest")
         if counters["coverage_rows"] != counters["issuer_rows"]:
@@ -421,6 +485,16 @@ def build(args: argparse.Namespace) -> dict[str, Any]:
             raise BuildError(
                 "Emitted event count does not match the source manifest's complete flagged count"
             )
+        actual_filing_quarters = {
+            quarter: filing_quarters.get(quarter, 0) for quarter in EXPECTED_QUARTERS
+        }
+        if actual_filing_quarters != expected_filing_quarters:
+            raise BuildError("Issuer-universe filing counts do not reconcile by source quarter")
+        actual_event_quarters = {
+            quarter: event_quarters.get(quarter, 0) for quarter in EXPECTED_QUARTERS
+        }
+        if actual_event_quarters != expected_event_quarters:
+            raise BuildError("Emitted event counts do not reconcile by source quarter")
         source_validated = True
     finally:
         if event_handle is not None:
@@ -433,17 +507,21 @@ def build(args: argparse.Namespace) -> dict[str, Any]:
             if coverage_temp is not None:
                 coverage_temp.unlink(missing_ok=True)
 
+    event_sha = event_digest.hexdigest()
+    coverage_sha = coverage_digest.hexdigest()
+    event_path = output_dir / f"{EVENT_TYPE}.events.{event_sha}.jsonl"
+    coverage_path = output_dir / f"{EVENT_TYPE}.coverage.{coverage_sha}.jsonl"
     outputs = {
         "coverage": {
             "path": coverage_path.name,
             "row_count": counters["coverage_rows"],
-            "sha256": coverage_digest.hexdigest(),
+            "sha256": coverage_sha,
             "size_bytes": coverage_size,
         },
         "events": {
             "path": event_path.name,
             "row_count": counters["event_rows"],
-            "sha256": event_digest.hexdigest(),
+            "sha256": event_sha,
             "size_bytes": event_size,
         },
     }
@@ -453,6 +531,7 @@ def build(args: argparse.Namespace) -> dict[str, Any]:
         "counters": dict(sorted(counters.items())),
         "event_counts_by_source_quarter": dict(sorted(event_quarters.items())),
         "event_type": EVENT_TYPE,
+        "filing_counts_by_source_quarter": dict(sorted(filing_quarters.items())),
         "inputs": {
             "issuer_universe": {
                 "path": issuer_universe_path.name,
@@ -463,14 +542,24 @@ def build(args: argparse.Namespace) -> dict[str, Any]:
             "source_manifest": {
                 "path": source_manifest_path.name,
                 "sha256": source_manifest_sha,
-                "size_bytes": source_manifest_path.stat().st_size,
+                "size_bytes": len(source_manifest_data),
             },
         },
         "invariants": {
             "accessions_unique": len(seen_accessions) == counters["filing_rows"],
+            "content_addressed_outputs": True,
             "coverage_equals_verified_issuer_rows": counters["coverage_rows"]
             == counters["issuer_rows"],
+            "event_counts_reconcile_by_source_quarter": {
+                quarter: event_quarters.get(quarter, 0) for quarter in EXPECTED_QUARTERS
+            }
+            == expected_event_quarters,
             "event_ids_unique": len(seen_event_ids) == counters["event_rows"],
+            "filing_counts_reconcile_by_source_quarter": {
+                quarter: filing_quarters.get(quarter, 0) for quarter in EXPECTED_QUARTERS
+            }
+            == expected_filing_quarters,
+            "filing_rows_equal_source_manifest": counters["filing_rows"] == expected_filing_rows,
             "flagged_source_filings_omitted": 0,
             "flagged_source_filings_reconciled": counters["event_rows"] == expected_event_rows,
             "source_input_hash_rows_bytes_verified": True,

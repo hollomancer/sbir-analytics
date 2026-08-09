@@ -13,17 +13,27 @@ Status: draft
 
 ## Materialization result
 
-The maintained producer verified and streamed the complete audited Form D issuer
-universe for 2009Q1–2024Q4: 673,656 live D or D/A filings across 311,809 exact
-issuer CIKs. It emitted 14,408 filings for which the official
-`ISBUSINESSCOMBINATIONTRANS` field is true, representing 10,224 CIKs. Of those
-filings, 1,535 are amendments. Flagged filing dates run from 2009-01-09 through
-2024-12-31, and every one of the 64 source quarters contains flagged evidence.
+The maintained producer verified complete proxy-event ascertainment within the
+emitted exact-CIK Form D issuer universe for 2009Q1–2024Q4: 673,656 live D or
+D/A filings across 311,809 exact issuer CIKs. It emitted 14,408 filings for
+which the official `ISBUSINESSCOMBINATIONTRANS` field is true, representing
+10,224 CIKs. Of those filings, 1,535 are amendments. Flagged filing dates run
+from 2009-01-09 through 2024-12-31, and every one of the 64 source quarters
+contains flagged evidence.
+
+The upstream audit reconciled all 673,679 selected filings into 14,408 true and
+659,271 false source flags, with no invalid flag values and no omitted true
+flags. Twenty-three false-flag filings were excluded because their blank issuer
+names could not satisfy the identity contract. They receive no coverage row and
+therefore cannot be interpreted as observed zero outcomes.
 
 | Source-adapter audit measure | Value |
 | --- | ---: |
 | SEC quarters verified | 64 / 64 |
-| Source filing rows verified | 673,656 |
+| Selected source filings reconciled | 673,679 |
+| Selected true / false flags | 14,408 / 659,271 |
+| Emitted exact-CIK filing rows verified | 673,656 |
+| Omitted true / false flags | 0 / 23 |
 | Exact Form D CIKs with coverage rows | 311,809 |
 | Flagged filing-evidence rows | 14,408 |
 | CIKs with at least one flagged filing | 10,224 |
@@ -52,6 +62,9 @@ business combination occurred or that the issuer exited. Each evidence row
 therefore retains the accession number, filing date, source quarter, D/D-A
 status, prior accession when present, source snapshot, and
 `evidence_kind="proxy"`.
+
+This proxy is not a verified acquisition, merger, or exit outcome and must not
+be labeled as a verified acquisition or M&A exit.
 
 ## Symmetric outcome contract
 

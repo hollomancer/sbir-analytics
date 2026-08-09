@@ -14,6 +14,10 @@ import pytest
 
 
 SCRIPT = Path(__file__).parents[3] / "scripts/data/build_form_d_business_combination_events.py"
+REPORT = (
+    Path(__file__).parents[3]
+    / "docs/research/agency-private-capital-form-d-business-combination-proxy.md"
+)
 
 
 def _load_module() -> ModuleType:
@@ -59,9 +63,11 @@ def _filing(
 
 
 def _issuer(cik: str, filings: list[dict[str, object]]) -> dict[str, object]:
+    canonical_filings = [{**filing, "cik": cik} for filing in filings]
     return {
         "cik": cik,
-        "filings": filings,
+        "filing_count": len(canonical_filings),
+        "filings": canonical_filings,
         "firm_key": f"form_d_cik:{cik}",
         "issuer_name": f"Issuer {cik}",
     }
@@ -72,23 +78,24 @@ def _write_fixture(
     *,
     rows: list[dict[str, object]] | None = None,
 ) -> tuple[Path, Path, dict[str, object]]:
-    rows = rows or [
-        _issuer(
-            "1",
-            [
-                _filing("ACC-1", "2019-01-01", "2019Q1", event=True),
-                _filing(
-                    "ACC-2",
-                    "2020-02-02",
-                    "2020Q1",
-                    event=True,
-                    amendment=True,
-                    previous_accession="ACC-1",
-                ),
-            ],
-        ),
-        _issuer("2", [_filing("ACC-3", "2024-12-31", "2024Q4", event=False)]),
-    ]
+    if rows is None:
+        rows = [
+            _issuer(
+                "1",
+                [
+                    _filing("ACC-1", "2019-01-01", "2019Q1", event=True),
+                    _filing(
+                        "ACC-2",
+                        "2020-02-02",
+                        "2020Q1",
+                        event=True,
+                        amendment=True,
+                        previous_accession="ACC-1",
+                    ),
+                ],
+            ),
+            _issuer("2", [_filing("ACC-3", "2024-12-31", "2024Q4", event=False)]),
+        ]
     universe = tmp_path / "issuer-universe.jsonl"
     universe_data = _jsonl_bytes(rows)
     universe.write_bytes(universe_data)
@@ -97,6 +104,7 @@ def _write_fixture(
         quarter: {
             "counters": {
                 "emitted_business_combination_filings": 0,
+                "emitted_filings": 0,
                 "invalid_business_combination_flags": 0,
                 "omitted_business_combination_filings": 0,
                 "selected_business_combination_filings": 0,
@@ -111,6 +119,7 @@ def _write_fixture(
         for filing in issuer["filings"]:
             counters = quarter_metadata[filing["source_quarter"]]["counters"]
             counters["selected_submissions"] += 1
+            counters["emitted_filings"] += 1
             if filing["is_business_combination"]:
                 counters["selected_business_combination_filings"] += 1
                 counters["emitted_business_combination_filings"] += 1
@@ -134,7 +143,10 @@ def _write_fixture(
             "quarters": quarters,
             "start_quarter": "2009Q1",
         },
-        "source_counts": {"issuer_ciks": len(rows)},
+        "source_counts": {
+            "filings": sum(len(issuer["filings"]) for issuer in rows),
+            "issuer_ciks": len(rows),
+        },
     }
     manifest_path = tmp_path / "source-manifest.json"
     manifest_path.write_text(
@@ -180,10 +192,19 @@ def test_build_streams_deterministic_events_coverage_and_manifest(tmp_path: Path
         "issuer_rows": 2,
     }
     assert manifest["event_counts_by_source_quarter"] == {"2019Q1": 1, "2020Q1": 1}
+    assert manifest["filing_counts_by_source_quarter"] == {
+        "2019Q1": 1,
+        "2020Q1": 1,
+        "2024Q4": 1,
+    }
     assert manifest["invariants"] == {
         "accessions_unique": True,
+        "content_addressed_outputs": True,
         "coverage_equals_verified_issuer_rows": True,
+        "event_counts_reconcile_by_source_quarter": True,
         "event_ids_unique": True,
+        "filing_counts_reconcile_by_source_quarter": True,
+        "filing_rows_equal_source_manifest": True,
         "flagged_source_filings_omitted": 0,
         "flagged_source_filings_reconciled": True,
         "source_input_hash_rows_bytes_verified": True,
@@ -218,6 +239,7 @@ def test_build_streams_deterministic_events_coverage_and_manifest(tmp_path: Path
     for output_name in ("events", "coverage"):
         product = manifest["outputs"][output_name]
         path = output / product["path"]
+        assert product["sha256"] in product["path"]
         assert product["row_count"] == len(_read_jsonl(path))
         assert product["size_bytes"] == path.stat().st_size
         assert product["sha256"] == hashlib.sha256(path.read_bytes()).hexdigest()
@@ -325,6 +347,58 @@ def test_incomplete_source_manifest_is_rejected(tmp_path: Path) -> None:
         producer.build(_args(source_manifest, universe, tmp_path / "output"))
 
 
+def test_empty_complete_source_manifest_is_rejected(tmp_path: Path) -> None:
+    source_manifest, universe, _ = _write_fixture(tmp_path, rows=[])
+
+    with pytest.raises(producer.BuildError, match="positive integer"):
+        producer.build(_args(source_manifest, universe, tmp_path / "output"))
+
+
+def test_nested_filing_count_and_cik_must_match_parent(tmp_path: Path) -> None:
+    row = _issuer("1", [_filing("ACC-1", "2020-01-01", "2020Q1", event=False)])
+    row["filing_count"] = 2
+    source_manifest, universe, _ = _write_fixture(tmp_path, rows=[row])
+    with pytest.raises(producer.BuildError, match="filing_count does not match"):
+        producer.build(_args(source_manifest, universe, tmp_path / "count-output"))
+
+    row = _issuer("1", [_filing("ACC-1", "2020-01-01", "2020Q1", event=False)])
+    row["filings"][0]["cik"] = "2"
+    source_manifest, universe, _ = _write_fixture(tmp_path, rows=[row])
+    with pytest.raises(producer.BuildError, match="filing CIK does not match"):
+        producer.build(_args(source_manifest, universe, tmp_path / "cik-output"))
+
+
+def test_source_quarter_must_match_filing_date(tmp_path: Path) -> None:
+    row = _issuer("1", [_filing("ACC-1", "2020-01-01", "2020Q2", event=True)])
+    source_manifest, universe, _ = _write_fixture(tmp_path, rows=[row])
+
+    with pytest.raises(producer.BuildError, match="source_quarter does not match"):
+        producer.build(_args(source_manifest, universe, tmp_path / "output"))
+
+
+def test_source_manifest_counts_must_reconcile_for_each_quarter(tmp_path: Path) -> None:
+    source_manifest, universe, manifest = _write_fixture(tmp_path)
+    quarters = manifest["inputs"]["quarters"]
+    quarter_2019_q1 = quarters["2019Q1"]["counters"]
+    quarter_2019_q2 = quarters["2019Q2"]["counters"]
+    for counter in (
+        "emitted_business_combination_filings",
+        "emitted_filings",
+        "selected_business_combination_filings",
+        "selected_submissions",
+    ):
+        quarter_2019_q1[counter] -= 1
+        quarter_2019_q2[counter] += 1
+    source_manifest.write_text(
+        json.dumps(manifest, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+    )
+
+    with pytest.raises(
+        producer.BuildError, match="filing counts do not reconcile by source quarter"
+    ):
+        producer.build(_args(source_manifest, universe, tmp_path / "output"))
+
+
 def test_accessions_are_unique_across_all_issuer_records(tmp_path: Path) -> None:
     rows = [
         _issuer("1", [_filing("DUPLICATE", "2020-01-01", "2020Q1", event=True)]),
@@ -365,3 +439,51 @@ def test_manifest_staging_failure_does_not_publish_unmanifested_products(
         producer.build(_args(source_manifest, universe, output))
 
     assert {path: path.read_bytes() for path in sentinels} == sentinels
+
+
+def test_product_publish_failure_preserves_prior_manifest_generation(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    prior_fixture = tmp_path / "prior"
+    prior_fixture.mkdir()
+    source_manifest, universe, _ = _write_fixture(prior_fixture)
+    output = tmp_path / "output"
+    prior = producer.build(_args(source_manifest, universe, output))
+    prior_manifest_path = output / f"{producer.EVENT_TYPE}.manifest.json"
+    prior_manifest_bytes = prior_manifest_path.read_bytes()
+    prior_products = {
+        output / product["path"]: (product["sha256"], (output / product["path"]).read_bytes())
+        for product in prior["outputs"].values()
+    }
+
+    next_fixture = tmp_path / "next"
+    next_fixture.mkdir()
+    next_rows = [_issuer("1", [_filing("ACC-NEW", "2021-03-03", "2021Q1", event=True)])]
+    source_manifest, universe, _ = _write_fixture(next_fixture, rows=next_rows)
+
+    original_replace = producer.os.replace
+    replacements = 0
+
+    def fail_second_publish(source: object, destination: object) -> None:
+        nonlocal replacements
+        replacements += 1
+        if replacements == 2:
+            raise OSError("coverage publish failed")
+        original_replace(source, destination)
+
+    monkeypatch.setattr(producer.os, "replace", fail_second_publish)
+    with pytest.raises(OSError, match="coverage publish failed"):
+        producer.build(_args(source_manifest, universe, output))
+
+    assert prior_manifest_path.read_bytes() == prior_manifest_bytes
+    for path, (expected_sha, expected_bytes) in prior_products.items():
+        assert path.read_bytes() == expected_bytes
+        assert hashlib.sha256(path.read_bytes()).hexdigest() == expected_sha
+
+
+def test_report_keeps_exact_proxy_name_and_rejects_ma_exit_interpretation() -> None:
+    report = REPORT.read_text(encoding="utf-8")
+
+    assert "`form_d_business_combination_filing_proxy`" in report
+    assert "not a verified acquisition, merger, or exit outcome" in report
+    assert "be labeled as a verified acquisition or M&A exit" in report
