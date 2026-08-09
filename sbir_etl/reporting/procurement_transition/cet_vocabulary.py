@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from functools import lru_cache
 from pathlib import Path
 from typing import Any
@@ -11,6 +12,8 @@ from sbir_etl.exceptions import ConfigurationError
 from sbir_etl.utils.procurement_text import find_lineage_phrases
 
 
+logger = logging.getLogger(__name__)
+
 DEFAULT_TAXONOMY_PATH = Path("config/cet/taxonomy.yaml")
 
 
@@ -18,8 +21,11 @@ DEFAULT_TAXONOMY_PATH = Path("config/cet/taxonomy.yaml")
 def load_cet_vocabulary(path: str | None = None) -> dict[str, tuple[str, ...]]:
     """Map lowercased CET-area display name → keyword phrases.
 
-    Returns an empty mapping when the taxonomy file is missing or unreadable —
-    the packet degrades to no CET fact rather than failing.
+    Returns an empty mapping when the taxonomy file is missing, unreadable, or
+    not a mapping — the packet degrades to no CET fact rather than failing. The
+    degradation is logged, because a structurally invalid taxonomy is an
+    authoring error rather than an expected absence, and this result is cached
+    for the process lifetime.
     """
 
     taxonomy_path = Path(path) if path is not None else DEFAULT_TAXONOMY_PATH
@@ -29,7 +35,12 @@ def load_cet_vocabulary(path: str | None = None) -> dict[str, tuple[str, ...]]:
             description="CET taxonomy",
             allow_empty=True,
         )
-    except ConfigurationError:
+    except ConfigurationError as error:
+        logger.warning(
+            "CET taxonomy at %s is unusable, degrading to no CET fact: %s",
+            taxonomy_path,
+            error,
+        )
         return {}
     vocabulary: dict[str, tuple[str, ...]] = {}
     for area in data.get("cet_areas", []):
