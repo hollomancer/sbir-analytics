@@ -66,7 +66,7 @@ class ComputeTechCensusTool(BaseTool):
     """Classify awards into a versioned technology profile and aggregate them."""
 
     name = "compute_tech_census"
-    version = "2.1.0"
+    version = "2.2.0"
 
     def execute(
         self,
@@ -181,6 +181,7 @@ class ComputeTechCensusTool(BaseTool):
         results_df = pd.DataFrame(result["classified_awards"])
 
         summary = {
+            "_epistemic": result["_epistemic"],
             "area_id": result["area_id"],
             "display_name": result["display_name"],
             "config_version": result["config_version"],
@@ -235,11 +236,14 @@ class ComputeTechCensusTool(BaseTool):
 
     @staticmethod
     def _empty_result(area_id: str) -> dict[str, Any]:
+        from sbir_etl.utils.tech_census import census_epistemic_metadata
+
         return {
             "award_count": 0,
             "award_dollars": 0.0,
             "results": pd.DataFrame(),
             "summary": {
+                "_epistemic": census_epistemic_metadata(),
                 "area_id": area_id,
                 "grand_total": {"n": 0, "usd": 0.0},
                 "fy_totals": {},

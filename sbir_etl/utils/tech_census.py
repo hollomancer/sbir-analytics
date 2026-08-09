@@ -31,6 +31,19 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 CONFIG_DIR = REPO_ROOT / "config" / "tech_census"
 
 
+def census_epistemic_metadata() -> dict[str, Any]:
+    """Return the non-citable status that every census output must preserve."""
+
+    return {
+        "tier": EPISTEMIC_TIER,
+        "citable": False,
+        "notice": (
+            "Profile-driven technology classification is exploratory; "
+            "do not cite as an evidence-tier result."
+        ),
+    }
+
+
 class CensusAward(TypedDict, total=False):
     """Canonical award shape used by the census engine."""
 
@@ -536,6 +549,7 @@ def run_census(
             totals["usd"] = round(totals["usd"], 2)
 
     return {
+        "_epistemic": census_epistemic_metadata(),
         "area_id": compiled.area_id,
         "display_name": compiled.display_name,
         "config_version": compiled.version,

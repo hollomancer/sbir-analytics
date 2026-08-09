@@ -42,6 +42,7 @@ class TestComputeTechCensusTool:
     def test_empty_dataframe(self):
         tool = ComputeTechCensusTool()
         result = tool.run(awards_df=pd.DataFrame(), area_id="drone_manufacturing")
+        assert result.data["summary"]["_epistemic"]["citable"] is False
         assert result.data["summary"]["grand_total"] == {"n": 0, "usd": 0.0}
         assert "No awards data provided" in result.metadata.warnings
 
@@ -75,6 +76,8 @@ class TestComputeTechCensusTool:
         )
         result = tool.run(awards_df=df, area_id="drone_manufacturing")
         summary = result.data["summary"]
+        assert summary["_epistemic"]["tier"] == "exploratory"
+        assert summary["_epistemic"]["citable"] is False
         assert summary["grand_total"] == {"n": 2, "usd": 1_500_000.0}
         assert result.data["award_count"] == 2
         assert result.data["award_dollars"] == 1_500_000.0

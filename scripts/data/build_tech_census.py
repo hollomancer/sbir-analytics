@@ -121,6 +121,9 @@ def main() -> int:
             if normalize_state_code(award.get("state")) in selected_states
         ]
     result = run_census(reporting_awards, compiled, programs=args.programs)
+    epistemic = result["_epistemic"]
+    print("\nStatus: EXPLORATORY / NON-CITABLE")
+    print(f"  {epistemic['notice']}")
     grand = result["grand_total"]
     print(f"\nIn-scope awards: {grand['n']:,}  (${grand['usd'] / 1e6:,.1f}M)")
     if result["exclusion_counts"]:
@@ -220,6 +223,7 @@ def main() -> int:
     summary_path = out_dir / "summary.json"
     source_timestamp = _source_timestamp(awards_csv)
     json_safe = {
+        "_epistemic": result["_epistemic"],
         "area_id": result["area_id"],
         "display_name": result["display_name"],
         "grand_total": result["grand_total"],
