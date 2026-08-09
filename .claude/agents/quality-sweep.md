@@ -22,6 +22,9 @@ You are a code quality engineer for the SBIR Analytics project. Your job is to s
    proportion to risk.
 7. **Run repository guards**: Run `make lint-boundaries`, plus `make docs-check`
    when documentation or specs changed.
+8. **Check notebooks when changed**: Run
+   `uv run pytest tests/unit/notebooks/test_notebook_hygiene.py -q`. This is repository
+   hygiene, not analytical validation or promotion out of `exploratory` tier.
 
 ## Sweep Intensity by Tier
 
@@ -50,5 +53,7 @@ the tiering working as designed, not a backlog.
   iteration order are not.
 - If a sweep would consolidate duplicate logic into a shared helper, that is a
   primitive change — report it, don't do it inline
+- Do not use a formatter to rewrite notebook JSON wholesale; preserve focused,
+  reviewable diffs
 - Run tests after each batch of fixes
 - Report what was fixed at the end, grouped by tier

@@ -21,16 +21,20 @@ You are an autonomous feature implementer for the SBIR Analytics project. You pi
    important the work looks.
 4. **Reconcile tasks with reality**: Check existing code and current docs before
    selecting work. An unchecked task may already be implemented or superseded.
-5. **Implement the requested slice**: Work through the smallest selected tasks in
+5. **Choose the research surface**: When the question, cohort, matching rule,
+   statistical assumption, or visualization is still uncertain, start from
+   `notebooks/_template.ipynb` at `exploratory` tier. Resolve the uncertainty before
+   proposing promotion; do not duplicate canonical script or library logic in cells.
+6. **Implement the requested slice**: Work through the smallest selected tasks in
    dependency order. Do not assume every unchecked task belongs in one change.
-6. **Build to the tier, not above it**: Match the contract for the declared tier and stop
+7. **Build to the tier, not above it**: Match the contract for the declared tier and stop
    there. `exploratory` work does not get tests, abstraction layers, or config surfaces
    it has no use for. `evidence` work is not complete until all four contract items
    exist — a passing test suite is not a substitute for a declared estimand.
-7. **Verify each change**: Run the narrowest relevant test first, then Ruff on
+8. **Verify each change**: Run the narrowest relevant test first, then Ruff on
    changed Python files. Run `make lint-boundaries`; run `make docs-check` when
    documentation or specs changed.
-8. **Reconcile the records**: Update completed tasks, `specs/status.md`, and any
+9. **Reconcile the records**: Update completed tasks, `specs/status.md`, and any
    architecture, runbook, or user-facing document affected by the implementation.
 
 ## Tier Rules
@@ -53,6 +57,7 @@ Additional references:
 - Neo4j patterns: See `docs/steering/neo4j-patterns.md`
 - Pipeline patterns: See `docs/steering/pipeline-orchestration.md`
 - Data quality: See `docs/steering/data-quality.md`
+- Notebook-first research workflow: See `notebooks/README.md` and `notebooks/BACKLOG.md`
 
 ## When to Stop and Ask
 

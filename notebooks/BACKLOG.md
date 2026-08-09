@@ -50,10 +50,11 @@ question makes it active, using the closest Wave 1 notebook as the template.
   `build_phase3_prospect_digest.py`, `migrate_nano_report_artifacts.py`.
 - Publication verification: `nano_verify_report_figures.py`, `verify_tech_area_figures.py`.
 
-## Graduation queue
+## Promotion queue
 
 Large research scripts should be made library-first when revisited. The notebook is the caller and
 narrative—not the destination for another 500–1,000 lines of embedded business logic. In
 particular, extract reusable computations from `build_tech_area_cohort.py`,
 `nano_prime_acquisitions.py`, and `run_benchmark_analysis.py` before expanding their notebook
-companions.
+companions. Promotion is explicit tier work under `docs/steering/epistemic-tiers.md`; a companion
+notebook does not make its source artifacts citable.

@@ -3,7 +3,8 @@
 This directory is the workbench for exploratory research tied to
 [`docs/research-questions.md`](../docs/research-questions.md). Use notebooks to inspect cohorts,
 test assumptions, compare definitions, review matches, and develop the narrative around tables and
-figures.
+figures. New notebooks are [`exploratory` tier](../docs/steering/epistemic-tiers.md) and non-citable
+by default.
 
 Notebooks are not the canonical home for reusable calculations, scheduled work, or published
 figures. Stable logic belongs in `sbir_etl/` or a first-party package; repeatable commands belong in
@@ -23,7 +24,7 @@ figures. Stable logic belongs in `sbir_etl/` or a first-party package; repeatabl
    make notebook
    ```
 
-5. Update [`BACKLOG.md`](BACKLOG.md) when the exploration starts or graduates.
+5. Update [`BACKLOG.md`](BACKLOG.md) when the exploration starts or its promotion status changes.
 
 ## Directory layout
 
@@ -33,7 +34,7 @@ notebooks/
   examples/             Completed companion notebooks; reuse their patterns
   explorations/         Active question-driven work
   BACKLOG.md             Migration inventory and status
-  getting_started.ipynb Environment smoke test used by CI
+  getting_started.ipynb Deterministic local environment smoke test
 ```
 
 ## Notebook-first rules
@@ -51,17 +52,19 @@ notebooks/
 - Do not add exploratory notebooks to CI execution. Promote only a small, deterministic notebook
   when it provides a useful environment or integration smoke test.
 
-## Graduation path
+## Promotion path
 
-An exploration graduates when it is rerun, cited in a findings report, scheduled, or consumed by
-another analysis:
+Reuse, scheduling, or a proposed citation triggers an explicit promotion decision; it does not
+silently change a notebook's tier:
 
-1. Extract calculations into a typed, tested module.
-2. Keep or add a thin CLI for repeatable artifact generation.
-3. Add a verifier for load-bearing published figures.
-4. Reduce the notebook to narrative, diagnostics, sensitivity checks, and calls to canonical code.
-5. Link the resulting report or specification from the notebook and mark it graduated in
-   [`BACKLOG.md`](BACKLOG.md).
+1. Choose the destination tier and satisfy its contract in
+   [`docs/steering/epistemic-tiers.md`](../docs/steering/epistemic-tiers.md).
+2. Extract recurring calculations into the canonical pipeline or evidence implementation.
+3. Keep or add a thin CLI or Dagster asset for repeatable artifact generation.
+4. For citable work, add the frozen spec, SHA enforcement, blocking asset checks, and declared
+   estimand required by the `evidence` contract.
+5. Keep the notebook as narrative, diagnostics, sensitivity checks, and calls to canonical code;
+   record the promotion in [`BACKLOG.md`](BACKLOG.md).
 
 ## Examples
 
@@ -72,5 +75,6 @@ another analysis:
 - [`dark_majority_review.ipynb`](examples/dark_majority_review.ipynb) — secondary-channel coverage
   and unresolved-firm review.
 
-The examples are companion views over canonical artifacts. Their source scripts continue to be the
-repeatable computation layer.
+The examples are completed exploratory companion views over canonical artifacts. Their source
+scripts continue to be the repeatable computation layer, and the notebooks remain non-citable
+unless separately promoted.
