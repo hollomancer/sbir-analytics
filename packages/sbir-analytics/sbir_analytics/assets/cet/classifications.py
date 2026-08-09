@@ -140,14 +140,15 @@ def enriched_cet_award_classifications() -> Output:
     """
     Dagster asset to perform batch CET classification over enriched award records.
 
-    Behavior (best-effort / import-safe):
-    - Attempts to load a trained ApplicabilityModel from a well-known artifacts path.
-      If the model is missing, writes an empty classification output and a checks JSON
-      explaining the missing artifact.
+    Required inputs and dependencies fail the materialization instead of producing a
+    placeholder artifact. A successful materialization therefore means that real input
+    data was processed and the returned path names the artifact that was actually written.
+
+    Behavior:
+    - Loads a trained ApplicabilityModel from a well-known artifacts path.
     - Loads the taxonomy via TaxonomyLoader and instantiates EvidenceExtractor.
     - Reads enriched award records from `data/processed/enriched_sbir_awards.ndjson`
-      (NDJSON) or `data/processed/enriched_sbir_awards.parquet` if available. If neither
-      exists, operates on a very small sample to allow the asset to run in CI.
+      (NDJSON) or `data/processed/enriched_sbir_awards.parquet` if available.
     - Classifies awards in batches (configurable via classification config) and attaches
       up to N evidence statements per CET classification.
     - Persists classifications to `data/processed/cet_award_classifications.parquet`
@@ -158,16 +159,16 @@ def enriched_cet_award_classifications() -> Output:
 
     # Local imports to keep module import-safe when optional deps are missing
 
-    # Lazy imports for ML components (may be unavailable in minimal CI)
+    # Lazy imports keep repository discovery import-safe, but materialization requires them.
     try:
         from sbir_ml.ml.features.evidence_extractor import EvidenceExtractor
-    except Exception:
-        EvidenceExtractor = None  # type: ignore
+    except Exception as exc:
+        raise RuntimeError("CET evidence extraction dependency is unavailable") from exc
 
     try:
         from sbir_ml.ml.models.cet_classifier import ApplicabilityModel
-    except Exception:
-        ApplicabilityModel = None  # type: ignore
+    except Exception as exc:
+        raise RuntimeError("CET award classifier dependency is unavailable") from exc
 
     # Paths and defaults
     awards_ndjson = Path("data/processed/enriched_sbir_awards.ndjson")
@@ -180,51 +181,11 @@ def enriched_cet_award_classifications() -> Output:
     try:
         loader = TaxonomyLoader()
         taxonomy = loader.load_taxonomy()
-    except Exception:
-        logger.exception("Failed to load taxonomy; writing empty output")
-        import pandas as pd
-
-        df_empty = pd.DataFrame(
-            columns=[
-                "award_id",
-                "primary_cet",
-                "primary_score",
-                "supporting_cets",
-                "evidence",
-                "classified_at",
-                "taxonomy_version",
-            ]
-        )
-        output_path = save_dataframe_parquet(df_empty, output_path)
-        checks = {"ok": False, "reason": "taxonomy_load_failed", "num_awards": 0}
-        checks_path.parent.mkdir(parents=True, exist_ok=True)
-        with open(checks_path, "w", encoding="utf-8") as fh:
-            json.dump(checks, fh, indent=2)
-        metadata = {
-            "path": str(output_path),
-            "rows": 0,
-            "checks_path": str(checks_path),
-        }
-        return Output(value=str(output_path), metadata=metadata)  # type: ignore[arg-type]  # type: ignore[arg-type]
-
-    try:
         classification_config = loader.load_classification_config()
-    except Exception:
-        # If classification config cannot be loaded, fall back to defaults
-        logger.warning("Could not load classification config; using defaults")
-        classification_config = {}  # type: ignore[assignment, no-redef]
+    except Exception as exc:
+        raise RuntimeError("Failed to load the CET taxonomy and classification config") from exc
 
-    # Prepare EvidenceExtractor if available
-    extractor = None
-    if EvidenceExtractor is not None:
-        try:
-            # type: ignore[arg-type]
-            extractor = EvidenceExtractor(list(taxonomy.cet_areas), classification_config)  # type: ignore[arg-type]
-        except Exception:
-            extractor = None
-            logger.exception("Failed to initialize EvidenceExtractor; evidence extraction disabled")
-
-    # Load awards (prefer parquet, then ndjson). If neither present, use a tiny sample.
+    # Load awards (prefer parquet, then ndjson).
     awards: list[dict] = []
     try:
         if awards_parquet.exists():
@@ -247,99 +208,30 @@ def enriched_cet_award_classifications() -> Output:
                     if line.strip():
                         awards.append(json.loads(line))
         else:
-            # Minimal sample so asset can run in lightweight CI
-            awards = [
-                {
-                    "award_id": "sample_001",
-                    "title": "AI for imaging",
-                    "abstract": "This project applies machine learning and deep neural networks to image analysis.",
-                    "keywords": ["machine learning", "neural networks"],
-                },
-                {
-                    "award_id": "sample_002",
-                    "title": "Quantum algorithms",
-                    "abstract": "Research on quantum optimization and qubit coherence for algorithms.",
-                    "keywords": ["quantum computing", "qubits"],
-                },
-            ]
-            logger.warning(
-                "No enriched awards found at expected paths; running classification on a small sample"
+            raise FileNotFoundError(
+                f"No enriched award input found at {awards_parquet} or {awards_ndjson}"
             )
-    except Exception:
-        logger.exception("Failed to load awards for classification; writing empty output")
-        awards = []
+    except FileNotFoundError:
+        raise
+    except Exception as exc:
+        raise RuntimeError("Failed to load enriched awards for CET classification") from exc
 
-    # If model artifact not found or loading fails, write placeholder output & checks
-    if not model_path.exists() or ApplicabilityModel is None:
-        logger.warning(
-            "Trained model not available; skipping classification (model: %s)", model_path
-        )
-        # Produce an empty DataFrame with expected columns so downstream consumers have schema
-        import pandas as pd
-
-        df_empty = pd.DataFrame(
-            columns=[
-                "award_id",
-                "primary_cet",
-                "primary_score",
-                "supporting_cets",
-                "evidence",
-                "classified_at",
-                "taxonomy_version",
-            ]
-        )
-        output_path = save_dataframe_parquet(df_empty, output_path)
-
-        checks = {
-            "ok": False,
-            "reason": "model_missing",
-            "model_path": str(model_path),
-            "num_awards": len(awards),
-            "num_classified": 0,
-        }
-        checks_path.parent.mkdir(parents=True, exist_ok=True)
-        with open(checks_path, "w", encoding="utf-8") as fh:
-            json.dump(checks, fh, indent=2)
-        metadata = {
-            "path": str(output_path),
-            "rows": 0,
-            "model_present": False,
-            "checks_path": str(checks_path),
-        }
-        return Output(value=str(output_path), metadata=metadata)  # type: ignore[arg-type]  # type: ignore[arg-type]
+    if not model_path.exists():
+        raise FileNotFoundError(f"Trained CET award model not found: {model_path}")
 
     # Load trained model
     try:
         model = ApplicabilityModel.load(model_path)
-    except Exception:
-        logger.exception("Failed to load trained model from %s", model_path)
-        model = None
+    except Exception as exc:
+        raise RuntimeError(f"Failed to load trained CET award model: {model_path}") from exc
 
     if model is None:
-        logger.warning("Model could not be loaded; aborting classification")
-        df_empty = __import__("pandas").DataFrame(
-            columns=[
-                "award_id",
-                "primary_cet",
-                "primary_score",
-                "supporting_cets",
-                "evidence",
-                "classified_at",
-                "taxonomy_version",
-            ]
-        )
-        output_path = save_dataframe_parquet(df_empty, output_path)
-        checks = {"ok": False, "reason": "model_load_failed", "num_awards": len(awards)}
-        checks_path.parent.mkdir(parents=True, exist_ok=True)
-        with open(checks_path, "w", encoding="utf-8") as fh:
-            json.dump(checks, fh, indent=2)
-        metadata = {
-            "path": str(output_path),
-            "rows": 0,
-            "model_present": False,
-            "checks_path": str(checks_path),
-        }
-        return Output(value=str(output_path), metadata=metadata)  # type: ignore[arg-type]  # type: ignore[arg-type]
+        raise RuntimeError(f"CET award model loader returned no model: {model_path}")
+
+    try:
+        extractor = EvidenceExtractor(list(taxonomy.cet_areas), classification_config)  # type: ignore[arg-type]
+    except Exception as exc:
+        raise RuntimeError("Failed to initialize the CET evidence extractor") from exc
 
     # Build texts for classification and perform batch classification
     texts = []
@@ -391,58 +283,27 @@ def enriched_cet_award_classifications() -> Output:
         else 1000
     )
 
-    # Perform batch classification with error handling
+    # Perform batch classification.
     try:
         classifications_by_award = model.classify_batch(texts, batch_size=batch_size)
-    except Exception:
-        logger.exception("Batch classification failed; writing empty output")
-        df_empty = pd.DataFrame(
-            columns=[
-                "award_id",
-                "primary_cet",
-                "primary_score",
-                "supporting_cets",
-                "evidence",
-                "classified_at",
-                "taxonomy_version",
-            ]
-        )
-        output_path = save_dataframe_parquet(df_empty, output_path)
-        checks = {"ok": False, "reason": "classification_failed", "num_awards": len(awards)}
-        checks_path.parent.mkdir(parents=True, exist_ok=True)
-        with open(checks_path, "w", encoding="utf-8") as fh:
-            json.dump(checks, fh, indent=2)
-        metadata = {
-            "path": str(output_path),
-            "rows": 0,
-            "model_present": True,
-            "checks_path": str(checks_path),
-        }
-        return Output(value=str(output_path), metadata=metadata)  # type: ignore[arg-type]  # type: ignore[arg-type]
+    except Exception as exc:
+        raise RuntimeError("CET award batch classification failed") from exc
 
     # Attach evidence if extractor available
-    if extractor is not None:
-        # Build document_parts list matching expectations of EvidenceExtractor
-        doc_parts_list = []
-        for a in awards:
-            doc_parts_list.append(
-                {
-                    "abstract": str(a.get("abstract", "")),
-                    "keywords": " ".join(a.get("keywords") or []),
-                    "title": str(a.get("title", "")),
-                }
-            )
-        try:
-            classifications_with_evidence = extractor.extract_batch_evidence(
-                classifications_by_award, doc_parts_list
-            )
-        except Exception:
-            logger.exception(
-                "Batch evidence extraction failed; falling back to classification-only results"
-            )
-            classifications_with_evidence = classifications_by_award
-    else:
-        classifications_with_evidence = classifications_by_award
+    doc_parts_list = [
+        {
+            "abstract": str(a.get("abstract", "")),
+            "keywords": " ".join(a.get("keywords") or []),
+            "title": str(a.get("title", "")),
+        }
+        for a in awards
+    ]
+    try:
+        classifications_with_evidence = extractor.extract_batch_evidence(
+            classifications_by_award, doc_parts_list
+        )
+    except Exception as exc:
+        raise RuntimeError("CET award evidence extraction failed") from exc
 
     # Flatten classification results into a DataFrame (one row per award)
     import pandas as pd
@@ -497,8 +358,8 @@ def enriched_cet_award_classifications() -> Output:
 
     df_out = pd.DataFrame(rows)
 
-    # Persist classifications (parquet preferred, NDJSON fallback).
-    output_path = save_dataframe_parquet(df_out, output_path)
+    # Persist classifications (parquet preferred, NDJSON fallback)
+    artifact_path = save_dataframe_parquet(df_out, output_path)
 
     # Build checks: coverage, high-confidence rate, evidence coverage
     num_awards = len(rows)
@@ -533,7 +394,7 @@ def enriched_cet_award_classifications() -> Output:
         json.dump(checks, fh, indent=2)
 
     metadata = {
-        "path": str(output_path),
+        "path": str(artifact_path),
         "rows": len(df_out),
         "taxonomy_version": taxonomy.version,
         "model_version": getattr(model, "model_version", None),
@@ -541,7 +402,7 @@ def enriched_cet_award_classifications() -> Output:
     }
 
     logger.info(
-        "Completed cet_award_classifications asset", rows=len(df_out), output=str(output_path)
+        "Completed cet_award_classifications asset", rows=len(df_out), output=str(artifact_path)
     )
 
     # Perform statistical analysis with CET analyzer
@@ -554,14 +415,7 @@ def enriched_cet_award_classifications() -> Output:
                 "stage": "transform",
             }
 
-            # Load the classified DataFrame from the output file
-            import pandas as pd
-
-            try:
-                classified_df = pd.read_parquet(output_path)
-            except Exception:
-                logger.warning(f"Could not load classified DataFrame from {output_path}")
-                classified_df = pd.DataFrame()
+            classified_df = df_out
 
             # Prepare module data for analysis
             module_data = {
@@ -570,9 +424,7 @@ def enriched_cet_award_classifications() -> Output:
                     "classified_records": len(classified_df),
                     "failed_records": 0,  # Assume all records were processed
                     "duration_seconds": 0.0,  # Could be enhanced with actual timing
-                    "classification_rate": len(
-                        classified_df[classified_df["primary_cet_area"].notna()]
-                    )
+                    "classification_rate": len(classified_df[classified_df["primary_cet"].notna()])
                     / len(classified_df)
                     if len(classified_df) > 0
                     else 0,
@@ -640,7 +492,7 @@ def enriched_cet_award_classifications() -> Output:
     else:
         logger.info("CET analyzer not available; skipping statistical analysis")  # type: ignore[unreachable]
 
-    return Output(value=str(output_path), metadata=metadata)  # type: ignore[arg-type]
+    return Output(value=str(artifact_path), metadata=metadata)  # type: ignore[arg-type]
 
 
 @asset(
@@ -655,14 +507,14 @@ def enriched_cet_patent_classifications() -> Output:
     """
     Dagster asset to perform batch CET classification over patent title records.
 
-    Behavior (best-effort / import-safe):
-    - Attempts to load a trained PatentCETClassifier from a well-known artifacts path.
-      If the model is missing, writes an empty classification output and a checks JSON
-      explaining the missing artifact.
+    Required inputs and dependencies fail the materialization instead of producing a
+    placeholder artifact.
+
+    Behavior:
+    - Loads a trained PatentCETClassifier from a well-known artifacts path.
     - Loads the taxonomy via TaxonomyLoader for metadata.
     - Reads transformed patent records from `data/processed/transformed_patents.ndjson`
-      (NDJSON) or `data/processed/transformed_patents.parquet` if available. If neither
-      exists, operates on a very small sample so the asset can run in CI.
+      (NDJSON) or `data/processed/transformed_patents.parquet` if available.
     - Classifies patent titles in batches and persists outputs with NDJSON/parquet fallback.
     - Writes a companion checks JSON summarizing classification coverage.
     """
@@ -670,11 +522,11 @@ def enriched_cet_patent_classifications() -> Output:
 
     # Local imports to keep module import-safe when optional deps are missing
 
-    # Lazy import of classifier implementation (may be unavailable in minimal CI)
+    # Lazy import keeps repository discovery import-safe, but materialization requires it.
     try:
         from sbir_ml.ml.models.patent_classifier import PatentCETClassifier
-    except Exception:
-        PatentCETClassifier = None  # type: ignore
+    except Exception as exc:
+        raise RuntimeError("CET patent classifier dependency is unavailable") from exc
 
     # Paths and defaults
     patents_ndjson = Path("data/processed/transformed_patents.ndjson")
@@ -683,14 +535,14 @@ def enriched_cet_patent_classifications() -> Output:
     output_path = Path("data/processed/cet_patent_classifications.parquet")
     checks_path = output_path.with_suffix(".checks.json")
 
-    # Load taxonomy for metadata (non-fatal)
-    loader = TaxonomyLoader()
     try:
+        loader = TaxonomyLoader()
         taxonomy = loader.load_taxonomy()
-    except Exception:
-        taxonomy = None
+        classification_config = loader.load_classification_config()
+    except Exception as exc:
+        raise RuntimeError("Failed to load the CET taxonomy and classification config") from exc
 
-    # Load patent records (prefer parquet, then ndjson). If neither present, use a tiny sample.
+    # Load patent records (prefer parquet, then ndjson).
     patents: list[dict] = []
     try:
         if patents_parquet.exists():
@@ -712,95 +564,25 @@ def enriched_cet_patent_classifications() -> Output:
                     if line.strip():
                         patents.append(json.loads(line))
         else:
-            # Minimal sample so asset can run in lightweight CI
-            patents = [
-                {
-                    "patent_id": "sample_p1",
-                    "title": "Machine learning for image analysis",
-                    "assignee": "Acme Labs",
-                },
-                {
-                    "patent_id": "sample_p2",
-                    "title": "Quantum computing improvements for qubit stability",
-                    "assignee": "QuantumCorp",
-                },
-            ]
-            logger.warning(
-                "No transformed patents found at expected paths; running classification on a small sample"
+            raise FileNotFoundError(
+                f"No transformed patent input found at {patents_parquet} or {patents_ndjson}"
             )
-    except Exception:
-        logger.exception("Failed to load patent records for classification; writing empty output")
-        patents = []
+    except FileNotFoundError:
+        raise
+    except Exception as exc:
+        raise RuntimeError("Failed to load patents for CET classification") from exc
 
-    # If model artifact not found or loading fails, write placeholder output & checks
-    if not model_path.exists() or PatentCETClassifier is None:
-        logger.warning(
-            "Trained patent model not available; skipping classification (model: %s)", model_path
-        )
-        # Produce an empty DataFrame with expected columns so downstream consumers have schema
-        import pandas as pd
-
-        df_empty = pd.DataFrame(
-            columns=[
-                "patent_id",
-                "primary_cet",
-                "primary_score",
-                "supporting_cets",
-                "classified_at",
-                "taxonomy_version",
-            ]
-        )
-        output_path = save_dataframe_parquet(df_empty, output_path)
-
-        checks = {
-            "ok": False,
-            "reason": "model_missing",
-            "model_path": str(model_path),
-            "num_patents": len(patents),
-            "num_classified": 0,
-        }
-        checks_path.parent.mkdir(parents=True, exist_ok=True)
-        with open(checks_path, "w", encoding="utf-8") as fh:
-            json.dump(checks, fh, indent=2)
-        metadata = {
-            "path": str(output_path),
-            "rows": 0,
-            "model_present": False,
-            "checks_path": str(checks_path),
-        }
-        return Output(value=str(output_path), metadata=metadata)  # type: ignore[arg-type]  # type: ignore[arg-type]
+    if not model_path.exists():
+        raise FileNotFoundError(f"Trained CET patent model not found: {model_path}")
 
     # Load trained model
     try:
         classifier = PatentCETClassifier.load(model_path)
-    except Exception:
-        logger.exception("Failed to load patent classifier from %s", model_path)
-        classifier = None
+    except Exception as exc:
+        raise RuntimeError(f"Failed to load trained CET patent model: {model_path}") from exc
 
     if classifier is None:
-        logger.warning("Patent model could not be loaded; aborting classification")
-        df_empty = __import__("pandas").DataFrame(
-            columns=[
-                "patent_id",
-                "primary_cet",
-                "primary_score",
-                "supporting_cets",
-                "classified_at",
-                "taxonomy_version",
-            ]
-        )
-        output_path = save_dataframe_parquet(df_empty, output_path)
-        checks = {"ok": False, "reason": "model_load_failed", "num_patents": len(patents)}
-        checks_path.parent.mkdir(parents=True, exist_ok=True)
-        with open(checks_path, "w", encoding="utf-8") as fh:
-            json.dump(checks, fh, indent=2)
-        metadata = {
-            "path": str(output_path),
-            "rows": 0,
-            "model_present": False,
-            "checks_path": str(checks_path),
-        }
-        return Output(value=str(output_path), metadata=metadata)  # type: ignore[arg-type]  # type: ignore[arg-type]
+        raise RuntimeError(f"CET patent model loader returned no model: {model_path}")
 
     # Build texts for classification and perform batch classification
     titles = []
@@ -839,19 +621,18 @@ def enriched_cet_patent_classifications() -> Output:
             patent_ids.append(p.get("patent_id") or "")
             assignees.append(p.get("assignee") or None)
 
-    # batch_size: try to read from classification config if loader provided it, else default 1000
-    try:
-        classification_config = loader.load_classification_config()
-    except Exception:
-        classification_config = {}  # type: ignore[assignment, no-redef]
-
     batch_size = (
         classification_config.get("batch", {}).get("size", 1000)
         if isinstance(classification_config, dict)
         else 1000
     )
 
-    classifications_by_patent = classifier.classify_batch(titles, assignees, batch_size=batch_size)
+    try:
+        classifications_by_patent = classifier.classify_batch(
+            titles, assignees, batch_size=batch_size
+        )
+    except Exception as exc:
+        raise RuntimeError("CET patent batch classification failed") from exc
 
     # Flatten classification results into a DataFrame (one row per patent)
     import pandas as pd
@@ -890,8 +671,8 @@ def enriched_cet_patent_classifications() -> Output:
 
     df_out = pd.DataFrame(rows)
 
-    # Persist classifications (parquet preferred, NDJSON fallback).
-    output_path = save_dataframe_parquet(df_out, output_path)
+    # Persist classifications (parquet preferred, NDJSON fallback)
+    artifact_path = save_dataframe_parquet(df_out, output_path)
 
     # Build checks: coverage and counts
     num_patents = len(rows)
@@ -908,7 +689,7 @@ def enriched_cet_patent_classifications() -> Output:
         json.dump(checks, fh, indent=2)
 
     metadata = {
-        "path": str(output_path),
+        "path": str(artifact_path),
         "rows": len(df_out),
         "taxonomy_version": taxonomy.version if taxonomy else None,
         "model_version": getattr(classifier, "model_version", None),
@@ -916,7 +697,7 @@ def enriched_cet_patent_classifications() -> Output:
     }
 
     logger.info(
-        "Completed cet_patent_classifications asset", rows=len(df_out), output=str(output_path)
+        "Completed cet_patent_classifications asset", rows=len(df_out), output=str(artifact_path)
     )
 
-    return Output(value=str(output_path), metadata=metadata)  # type: ignore[arg-type]
+    return Output(value=str(artifact_path), metadata=metadata)  # type: ignore[arg-type]

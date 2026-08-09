@@ -85,10 +85,9 @@ def transformed_cet_company_profiles() -> Output:
     """
     Dagster asset to perform company-level aggregation of CET classifications.
 
-    Behavior (best-effort / import-safe):
+    Behavior:
     - Attempts to load `data/processed/cet_award_classifications.parquet` or `.json` NDJSON fallback.
-      If the classifications input is missing, produces an empty company profiles output so downstream
-      consumers have a deterministic schema.
+      Missing or unreadable classification inputs fail the materialization.
     - Uses `CompanyCETAggregator` (from `src.transformers.company_cet_aggregator`) to compute per-company
       CET aggregates: coverage, dominant CET, specialization (HHI), CET score map, and trend.
     - Persists company profiles to `data/processed/cet_company_profiles.parquet` with NDJSON fallback.
@@ -101,62 +100,15 @@ def transformed_cet_company_profiles() -> Output:
     from pathlib import Path
 
     try:
-        import pandas as pd
-    except Exception:
-        pd = None  # type: ignore
-
-    try:
         from sbir_etl.transformers.company_cet_aggregator import CompanyCETAggregator
-    except Exception:
-        CompanyCETAggregator = None  # type: ignore
+    except Exception as exc:
+        raise RuntimeError("CET company aggregation dependency is unavailable") from exc
 
     # Paths
     classifications_parquet = Path("data/processed/cet_award_classifications.parquet")
     classifications_ndjson = Path("data/processed/cet_award_classifications.json")
     output_path = Path("data/processed/cet_company_profiles.parquet")
     checks_path = output_path.with_suffix(".checks.json")
-
-    # If dependencies missing, write placeholder output & checks
-    if pd is None or CompanyCETAggregator is None:
-        logger.warning(  # type: ignore[unreachable]
-            "Missing dependencies for company aggregation (pandas: %s, aggregator: %s). Writing placeholder output.",
-            pd is not None,
-            CompanyCETAggregator is not None,
-        )
-        # Produce an empty DataFrame with expected columns so downstream consumers have schema
-        if pd is not None:
-            df_empty = pd.DataFrame(
-                columns=[
-                    "company_id",
-                    "company_name",
-                    "total_awards",
-                    "awards_with_cet",
-                    "coverage",
-                    "dominant_cet",
-                    "dominant_score",
-                    "specialization_score",
-                    "cet_scores",
-                    "first_award_date",
-                    "last_award_date",
-                    "cet_trend",
-                ]
-            )
-            output_path = save_dataframe_parquet(df_empty, output_path)
-        checks = {
-            "ok": False,
-            "reason": "missing_dependency",
-            "pandas_present": pd is not None,
-            "aggregator_present": CompanyCETAggregator is not None,
-        }
-        checks_path.parent.mkdir(parents=True, exist_ok=True)
-        with open(checks_path, "w", encoding="utf-8") as fh:
-            json.dump(checks, fh, indent=2)
-        metadata = {
-            "path": str(output_path),
-            "rows": 0,
-            "checks_path": str(checks_path),
-        }
-        return Output(value=str(output_path), metadata=metadata)  # type: ignore[arg-type]
 
     # Load classifications (prefer parquet, then NDJSON)
     try:
@@ -170,37 +122,14 @@ def transformed_cet_company_profiles() -> Output:
                         recs.append(json.loads(line))
             df_cls = pd.DataFrame(recs)
         else:
-            logger.warning(
-                "No cet_award_classifications found at expected paths; producing empty company profiles"
+            raise FileNotFoundError(
+                "No CET award classifications found at "
+                f"{classifications_parquet} or {classifications_ndjson}"
             )
-            df_cls = pd.DataFrame(
-                columns=[
-                    "award_id",
-                    "company_id",
-                    "company_name",
-                    "primary_cet",
-                    "primary_score",
-                    "supporting_cets",
-                    "classified_at",
-                    "award_date",
-                    "phase",
-                ]
-            )
-    except Exception:
-        logger.exception("Failed to load award classifications; producing empty company profiles")
-        df_cls = pd.DataFrame(
-            columns=[
-                "award_id",
-                "company_id",
-                "company_name",
-                "primary_cet",
-                "primary_score",
-                "supporting_cets",
-                "classified_at",
-                "award_date",
-                "phase",
-            ]
-        )
+    except FileNotFoundError:
+        raise
+    except Exception as exc:
+        raise RuntimeError("Failed to load CET award classifications") from exc
 
     # Join with enriched awards to get company information if missing
     if not df_cls.empty and "company_id" not in df_cls.columns:
@@ -251,10 +180,10 @@ def transformed_cet_company_profiles() -> Output:
                         logger.info(
                             f"Joined classifications with enriched awards to get company info (joined {df_cls['company_id'].notna().sum()} rows)"
                         )
-        except Exception:
-            logger.exception(
-                "Failed to join classifications with enriched awards; proceeding without company info"
-            )
+        except Exception as exc:
+            raise RuntimeError(
+                "Failed to join CET classifications with enriched award company data"
+            ) from exc
 
     # Ensure company_id and company_name columns exist (CompanyCETAggregator expects them)
     if not df_cls.empty:
@@ -267,27 +196,11 @@ def transformed_cet_company_profiles() -> Output:
     try:
         aggregator = CompanyCETAggregator(df_cls)
         df_comp = aggregator.to_dataframe()
-    except Exception:
-        logger.exception("Company aggregation failed; producing empty company profiles")
-        df_comp = pd.DataFrame(
-            columns=[
-                "company_id",
-                "company_name",
-                "total_awards",
-                "awards_with_cet",
-                "coverage",
-                "dominant_cet",
-                "dominant_score",
-                "specialization_score",
-                "cet_scores",
-                "first_award_date",
-                "last_award_date",
-                "cet_trend",
-            ]
-        )
+    except Exception as exc:
+        raise RuntimeError("CET company aggregation failed") from exc
 
-    # Persist company profiles (parquet preferred, NDJSON fallback).
-    output_path = save_dataframe_parquet(df_comp, output_path)
+    # Persist company profiles (parquet preferred, NDJSON fallback)
+    artifact_path = save_dataframe_parquet(df_comp, output_path)
 
     # Build checks
     num_companies = len(df_comp)
@@ -301,14 +214,16 @@ def transformed_cet_company_profiles() -> Output:
         json.dump(checks, fh, indent=2)
 
     metadata = {
-        "path": str(output_path),
+        "path": str(artifact_path),
         "rows": len(df_comp),
         "checks_path": str(checks_path),
     }
 
-    logger.info("Completed cet_company_profiles asset", rows=len(df_comp), output=str(output_path))
+    logger.info(
+        "Completed cet_company_profiles asset", rows=len(df_comp), output=str(artifact_path)
+    )
 
-    return Output(value=str(output_path), metadata=metadata)  # type: ignore[arg-type]
+    return Output(value=str(artifact_path), metadata=metadata)  # type: ignore[arg-type]
 
 
 # ============================================================================
