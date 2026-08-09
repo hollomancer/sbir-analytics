@@ -9,7 +9,7 @@ a research memo answering (a) "what fraction of CA-organized cohort firms
 took secured debt and from whom" and (b) "do UCC-3 terminations
 corroborate known M&A events for those firms."
 
-See [docs/research/sbir-ucc1-pilot.md](../../docs/research/sbir-ucc1-pilot.md)
+See [docs/research/sbir-ucc1-pilot.md](../../../../docs/research/sbir-ucc1-pilot.md)
 for the Phase 0 findings that drove the CA-only narrowing.
 
 ## Architecture

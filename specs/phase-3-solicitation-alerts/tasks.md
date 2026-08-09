@@ -3,8 +3,10 @@
 > **Status (2026-07-15):** Phases 1–2 (S1 retrospective reclassification) implemented and merged
 > (PRs #394, #410, #412) — models in `sbir_etl/models/phase_iii_candidate.py`, asset package in
 > `packages/sbir-analytics/sbir_analytics/assets/phase_iii_candidates/` (`assets.py`, `pairing.py`,
-> `similarity.py`), precision gate `scripts/phase_iii_precision_backtest.py` wired into
-> `.github/workflows/ci.yml`. The public Opportunities model/extractor, S2/S3 pairing,
+> `similarity.py`), precision gate `scripts/phase_iii_precision_backtest.py` exercised
+> on every PR by the fixture canary `tests/unit/scripts/test_phase_iii_precision_backtest.py`
+> (the full S3-corpus benchmark is run manually, not automated in CI). The public
+> Opportunities model/extractor, S2/S3 pairing,
 > candidate assets, and monthly procurement-center report are now implemented. The Dagster
 > ingestion/config layer, production hand audits, and acceptance sign-off remain open.
 
@@ -52,8 +54,11 @@ ship independently.
       DoD-coded Phase III contracts as positives, runs the scorer, asserts
       `RETROSPECTIVE` HIGH precision ≥ 0.85, writes
       `reports/phase_iii/backtest.json`, exits non-zero on failure.
-- [x] 2.6 Wire the backtest script into the existing CI workflow that
-      already runs other release gates (reuse — do not add a new workflow).
+- [x] 2.6 Exercise the backtest on every PR via a fixture canary
+      (`tests/unit/scripts/test_phase_iii_precision_backtest.py`) that runs in
+      the Fast Tests shards — no new workflow. *(Shipped as a pytest canary on
+      a deterministic fixture, not a ci.yml step; the full ≥85% benchmark
+      against the S3 corpus is run manually and is not yet automated in CI.)*
 - [x] 2.7 Integration test: 100-row fixture with known positives and
       negatives; assert schema, evidence NDJSON structure, precision gate.
 
@@ -75,7 +80,8 @@ ship independently.
       `config/base.yaml` with parquet path, S3 path, rate limit, API key
       env var.
 - [x] 3.5 Implement `pair_filter_s2` in `pairing.py` (notice-type gate +
-      UEI match, else agency + NAICS fallback).
+      UEI match, else agency + NAICS fallback). *(Later moved to
+      `opportunity_pairing.py` by the tier-allowlist burndown.)*
 - [x] 3.6 Instantiate `phase_iii_directed_candidates` from
       `build_candidate_asset` with `WEIGHTS_DIRECTED` and
       `HIGH_THRESHOLD_DIRECTED = 0.75`.
@@ -88,7 +94,8 @@ ship independently.
 ## Phase 4: S3 — competitive solicitation follow-on candidates
 
 - [x] 4.1 Implement `pair_filter_s3` in `pairing.py` (solicitation
-      notice-type + NAICS/PSC overlap + token-Jaccard ≥ 0.10).
+      notice-type + NAICS/PSC overlap + token-Jaccard ≥ 0.10). *(Later moved
+      to `opportunity_pairing.py` by the tier-allowlist burndown.)*
 - [x] 4.2 Instantiate `phase_iii_followon_candidates` from
       `build_candidate_asset` with `WEIGHTS_FOLLOWON` and
       `HIGH_THRESHOLD_FOLLOWON = 0.60`. Column naming uses "follow-on

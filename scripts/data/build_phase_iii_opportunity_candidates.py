@@ -14,7 +14,10 @@ from sbir_analytics.assets.phase_iii_candidates.assets import (
     WEIGHTS_FOLLOWON,
     score_candidate_pairs,
 )
-from sbir_analytics.assets.phase_iii_candidates.pairing import pair_filter_s2, pair_filter_s3
+from sbir_analytics.assets.phase_iii_candidates.opportunity_pairing import (
+    pair_filter_s2,
+    pair_filter_s3,
+)
 from sbir_etl.models.phase_iii_candidate import SignalClass
 from sbir_etl.reporting.procurement_transition import build_award_cohorts, normalize_awards
 

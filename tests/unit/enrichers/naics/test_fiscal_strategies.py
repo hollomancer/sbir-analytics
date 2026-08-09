@@ -218,8 +218,8 @@ class TestAgencyDefaultsStrategy:
 class TestDefaultStrategies:
     """Tests for the strategy_registry.default_strategies factory."""
 
-    def test_returns_list_of_six_strategies(self):
-        """default_strategies() returns six strategies in the expected order."""
+    def test_returns_five_deterministic_strategies_without_text_inference(self):
+        """default_strategies() omits the exploratory text-inference strategy."""
         from sbir_etl.enrichers.naics.fiscal.strategy_registry import default_strategies
         from sbir_etl.enrichers.naics.fiscal.strategies.simple_strategies import (
             AgencyDefaultsStrategy,
@@ -234,13 +234,56 @@ class TestDefaultStrategies:
 
         strategies = default_strategies()
 
-        assert len(strategies) == 6
+        assert len(strategies) == 5
         assert isinstance(strategies[0], OriginalDataStrategy)
         assert isinstance(strategies[1], USAspendingDataFrameStrategy)
         assert isinstance(strategies[2], TopicCodeStrategy)
+        assert isinstance(strategies[3], AgencyDefaultsStrategy)
+        assert isinstance(strategies[4], SectorFallbackStrategy)
+        assert not any(isinstance(strategy, TextInferenceStrategy) for strategy in strategies)
+
+    def test_extra_strategies_are_injected_before_agency_default(self):
+        """extra_strategies land at the mid-confidence slot (index 3)."""
+        from sbir_etl.enrichers.naics.fiscal.strategy_registry import default_strategies
+        from sbir_etl.enrichers.naics.fiscal.strategies.simple_strategies import (
+            AgencyDefaultsStrategy,
+            TopicCodeStrategy,
+        )
+        from sbir_etl.enrichers.naics.fiscal.strategies.text_inference import TextInferenceStrategy
+
+        strategies = default_strategies(extra_strategies=[TextInferenceStrategy()])
+
+        assert len(strategies) == 6
+        assert isinstance(strategies[2], TopicCodeStrategy)
         assert isinstance(strategies[3], TextInferenceStrategy)
         assert isinstance(strategies[4], AgencyDefaultsStrategy)
-        assert isinstance(strategies[5], SectorFallbackStrategy)
+
+    def test_exploratory_composition_reproduces_historical_order(self):
+        """The exploratory wiring point rebuilds the historical six-strategy chain."""
+        from sbir_etl.enrichers.naics.fiscal.exploratory_strategies import (
+            fiscal_strategies_with_text_inference,
+        )
+        from sbir_etl.enrichers.naics.fiscal.strategies.simple_strategies import (
+            AgencyDefaultsStrategy,
+            OriginalDataStrategy,
+            SectorFallbackStrategy,
+            TopicCodeStrategy,
+        )
+        from sbir_etl.enrichers.naics.fiscal.strategies.text_inference import TextInferenceStrategy
+        from sbir_etl.enrichers.naics.fiscal.strategies.usaspending_dataframe import (
+            USAspendingDataFrameStrategy,
+        )
+
+        strategies = fiscal_strategies_with_text_inference()
+
+        assert [type(strategy) for strategy in strategies] == [
+            OriginalDataStrategy,
+            USAspendingDataFrameStrategy,
+            TopicCodeStrategy,
+            TextInferenceStrategy,
+            AgencyDefaultsStrategy,
+            SectorFallbackStrategy,
+        ]
 
     def test_passes_usaspending_df_to_strategy(self):
         """default_strategies(usaspending_df=...) propagates df to the USAspending strategy."""
@@ -273,9 +316,14 @@ class TestFiscalNAICSEnricherStrategiesArg:
         assert enricher.strategies == [sentinel]
 
     def test_default_strategies_used_when_none_passed(self):
-        """Without strategies=, the enricher builds the default six-strategy list."""
+        """Without strategies=, the enricher builds the deterministic default list."""
         from sbir_etl.enrichers.naics.fiscal.enricher import FiscalNAICSEnricher
+        from sbir_etl.enrichers.naics.fiscal.strategies.text_inference import TextInferenceStrategy
 
         enricher = FiscalNAICSEnricher()
 
-        assert len(enricher.strategies) == 6
+        # Deterministic-only default: five strategies, no exploratory text inference.
+        assert len(enricher.strategies) == 5
+        assert not any(
+            isinstance(strategy, TextInferenceStrategy) for strategy in enricher.strategies
+        )

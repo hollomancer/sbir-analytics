@@ -1,8 +1,11 @@
 # Requirements — ModernBert Analysis Layer
 
-**Target epistemic tier:** `evidence`
+**Target epistemic tier:** `exploratory`
 
-> **Status:** Partially implemented. Core ModernBert client, embedding assets,
+> **Status:** Partially implemented. Retiered from evidence on 2026-08-07:
+> embedding similarity is unvalidated model inference, matching the
+> modules' own exploratory labels; promotion returns via a study contract
+> if a question needs citable similarity results. Core ModernBert client, embedding assets,
 > similarity output, config, and client-level tests exist. Neo4j `SIMILAR_TO`
 > loading, quality/cohesion metrics, fuller asset checks, and Dagster integration
 > tests remain open. Requirements 5–7 (Bayesian MoE routing) are deferred pending
