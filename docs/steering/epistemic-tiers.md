@@ -160,6 +160,31 @@ Two rules make this stick:
   new contract satisfied in that change. Nothing gets promoted by being useful,
   by being imported, or by accumulating callers.
 
+### Assigning spec targets
+
+A spec's declaration is the contract for its next authorized implementation
+slice. It is neither a claim that current code already satisfies that contract
+nor an aspirational label for every possible future phase. Review
+[`specs/status.md`](../../specs/status.md) first, then apply these rules:
+
+- Target `primitives` only when the deliverable is the single shared,
+  versioned implementation of a repository-wide concept.
+- Target `pipelines` when the authorized work is deterministic extraction,
+  materialization, or operational plumbing. A gated or deferred spec may use
+  this target to permit data preparation, but it does not authorize any
+  contestable analysis in that spec; that phase requires an explicit retier.
+- Target `evidence` only when a selected active or maintenance deliverable is
+  an externally reportable finding, benchmark, or validation and the
+  implementation must satisfy all four evidence-contract items.
+- Target `exploratory` for open-ended prototypes and contestable work without
+  an approved evidence contract.
+
+The initial declaration sweep therefore capped gated and deferred analytical
+specs at their deterministic preparation stage and retained `evidence` only
+where the requirements already named the reportable result or validation as a
+selected deliverable. Determinism alone never turns classification, imputation,
+ranking, or another contestable decision into a pipeline.
+
 ## Relationship to the research questions
 
 [research-questions.md](../research-questions.md) is the inventory of what the

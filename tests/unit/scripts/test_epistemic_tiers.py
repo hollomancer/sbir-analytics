@@ -86,3 +86,18 @@ def test_capitalized_tier_is_reported_as_invalid_not_missing(tmp_path: Path) -> 
 
     assert len(violations) == 1
     assert "invalid target tier 'Evidence'" in violations[0].message
+
+
+def test_declaration_inside_fenced_code_is_ignored(tmp_path: Path) -> None:
+    spec = tmp_path / "specs" / "example"
+    _write(
+        tmp_path,
+        "specs/example/requirements.md",
+        "# Example\n\n"
+        "**Target epistemic tier:** pipelines\n\n"
+        "```markdown\n"
+        "**Target epistemic tier:** evidence\n"
+        "```\n",
+    )
+
+    assert not tiers.validate_spec_directory(spec, repository_root=tmp_path)

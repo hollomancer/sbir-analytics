@@ -112,8 +112,10 @@ entry point. Any future bridge must be named in the guard with a reason and a re
 condition; it is a migration device, not a fifth epistemic tier and not an implicit
 promotion of the script, and an `evidence` artifact may never depend on one.
 
-The guard inspects both imports and literal Python-script targets passed to `subprocess`.
-Hiding a package-to-script dependency behind process execution does not change its direction.
+The guard inspects both imports and literal Python-script targets in `subprocess` command
+arguments, following simple local assignments. It is an architecture lint, not a runtime
+sandbox, so dynamically constructed paths remain outside its static view. Hiding a
+package-to-script dependency behind process execution does not change its direction.
 
 ### Separation of Concerns
 

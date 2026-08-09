@@ -4,6 +4,10 @@
 The package layout is intentionally layered.  This check makes that direction
 an executable contract so a convenient local import cannot quietly turn into a
 new architectural back-edge.
+
+Subprocess inspection follows literal command arguments and simple local
+assignments. It is an architecture lint, not a runtime sandbox, and cannot see
+dynamically constructed targets.
 """
 
 from __future__ import annotations
@@ -40,7 +44,7 @@ TRANSITIONAL_SCRIPT_EXECUTIONS: dict[str, frozenset[str]] = {}
 
 @dataclass(frozen=True)
 class BoundaryViolation:
-    """One forbidden first-party import."""
+    """One forbidden first-party dependency."""
 
     path: str
     line_number: int
