@@ -6,11 +6,17 @@ It also documents where our methodology diverges from the authoritative SBA proc
 
 ## Implementation status — read this first
 
-The audit harness this doc describes (`run_commercialization_benchmark.py`, `audit_one_firm.py`, the FY2026 audited CSV at `reports/validation/commercialization_benchmark_eval_fy2026.csv`) is **local-only / not committed to this repo**. It exists on the author's machine and was used to produce the FY2026 figures cited below (143 cohort firms, 28 Tier-1/2 firms, 2 dual-penalty firms).
+The audit harness and FY2026 cohort used for the numerical results below are not
+committed. Those results cannot be independently reproduced from this
+repository and must not be treated as validated or citable outputs.
 
 The shippable counterpart on `main` is `scripts/run_benchmark.py` + `sbir_etl/models/benchmark_models.py`, which implements the same statutory framework (§638(qq) tier thresholds, 10-FY window, cohort selection) via a different CLI shape (`evaluate` / `sensitivity` / `company` subcommands). It does not currently produce per-firm audit JSON files or do the USAspending + Form D proxy substitution the harness does.
 
-This doc is committed as the **methodology record** so the audit-harness logic is auditable and reproducible, even before the harness itself ships. **Future work**: migrate the harness into `scripts/run_benchmark.py` (or alongside it under `packages/sbir-analytics/`) so the cited file paths resolve and the run is reproducible from `main`. See research-questions.md "Output products" section for the broader status.
+This document is retained as a **historical methodology record**. The described
+audit-harness logic is not auditable from the repository until it is migrated
+into `scripts/run_benchmark.py` (or alongside it under
+`packages/sbir-analytics/`) with committed fixtures and verification. See
+research-questions.md "Output products" for the broader status.
 
 ## Authoritative sources
 

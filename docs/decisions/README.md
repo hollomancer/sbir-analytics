@@ -1,6 +1,6 @@
 ---
 Type: Overview
-Owner: docs@project
+Maintainer: Conrad Hollomon
 Last-Reviewed: 2026-07-16
 Status: active
 

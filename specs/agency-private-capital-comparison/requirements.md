@@ -59,7 +59,7 @@ not "what would seed VCs alone do."
 
 This spec was originally drafted under the assumption that EDGAR ingest, Form
 D parsing, CIK resolution, and M&A signal extraction were all greenfield work.
-That assumption was wrong. **PR #286 (`claude/sbir-ma-exit-analysis`) builds
+That assumption was wrong. **PR #286 builds
 all of that infrastructure** and was discovered mid-spec:
 
 - `sbir_etl/enrichers/sec_edgar/{client,enricher,form_d_scoring}.py` — full

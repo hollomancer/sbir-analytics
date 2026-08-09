@@ -595,8 +595,8 @@ statutory goal is Phase III commercialization.*
   company-level CLI) backed by `sbir_etl/models/benchmark_models.py`, with tests
   in `tests/unit/test_benchmark_evaluator.py`.
   *Caveat:* the fuller methodology is committed, but its additional per-firm audit
-  infrastructure and FY2026 audited cohort remain local-only — see
-  [Output products](#commercialization-benchmark-methodology-committed-audit-harness-remains-local).
+  infrastructure and FY2026 cohort are not reproducible from this repository — see
+  [Output products](#commercialization-benchmark-methodology-historical-not-reproducible).
   *Deps: ER, ID, transitions, SEC EDGAR · Spec: [../specs/archive/completed-features/commercialization-benchmark/](../specs/archive/completed-features/commercialization-benchmark/)*
 
 ### B4. Predictive (Tier 4)
@@ -1037,9 +1037,9 @@ political-safety vetting. Vetting depth covers press review, SEC Form D filings,
 M&A history, and political-sensitivity factors (foreign ownership, classified
 work exposure, recent acquisition).
 
-**Districts covered to date** (in conversation; not yet committed as repo
-artifacts): KY-3 (McGarvey), NJ-10 (McIver), NY-16 (Latimer), NH-2 (Goodlander),
-MT-2 (Downing), TX-6 (Ellzey), plus a CNMI null finding for King-Hinds.
+No district briefing artifacts are committed. Until a reproducible briefing
+workflow and its evidence packet are present, this remains a proposed output
+rather than a repository capability.
 
 **Supporting code:** `sbir_etl/enrichers/congressional_district_resolver.py`
 (UEI → district resolver), `scripts/setup_congressional_districts.py` (district
@@ -1069,7 +1069,7 @@ program-wide private-capital leverage.
 **Pulls from:** F1 (Form D profile), F3 (private-to-SBIR leverage), A1/A4
 (DoD-specific firm-health and acquisition decomposition).
 
-### Commercialization-benchmark methodology (committed; audit harness remains local)
+### Commercialization-benchmark methodology (historical, not reproducible)
 
 **Audience:** SBA program oversight, statutory compliance reviewers, GAO.
 
@@ -1078,17 +1078,15 @@ is committed and documents the §638(qq)(3) statutory framework, FY2026 evaluati
 method, data-source provenance (FPDS/USAspending contracts, SEC Form D investment,
 and SBIR.gov FABS grants), and per-firm audit protocol.
 
-The methodology doc pairs with a per-firm audit harness
-(`scripts/archive/data/run_commercialization_benchmark.py` and
-`scripts/data/audit_one_firm.py`) and an FY2026 audited cohort CSV — all of which
-are **local-only / uncommitted** on the author's machine. The shippable
-counterpart on `main` is `scripts/run_benchmark.py` plus
+The methodology document refers to an audit harness and FY2026 cohort that are
+not committed and therefore cannot be independently reviewed or reproduced.
+Its numerical results are historical context, not citable repository outputs.
+The maintained counterpart is `scripts/run_benchmark.py` plus
 `sbir_etl/models/benchmark_models.py`, which implements the same statutory
 framework through a different CLI shape.
 
-The methodology is reviewable, but the local audit harness and FY2026 audited
-cohort are still not reproducible from `main`. Migrating that harness into the
-maintained CLI remains the coverage gap.
+Migrating the missing audit behavior into the maintained CLI, with committed
+synthetic fixtures and validation checks, remains the coverage gap.
 
 **Pulls from:** B3 (transition effectiveness and the §638(qq) benchmark
 question), F1 (Form D investment signal), F2 (NVCA-baseline comparison).

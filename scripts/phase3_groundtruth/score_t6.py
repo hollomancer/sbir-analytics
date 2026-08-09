@@ -22,6 +22,7 @@ through the evidence-tier contract of specs/phase3-transition-groundtruth.
 import argparse
 import csv
 import json
+import os
 import random
 import re
 import sys
@@ -52,13 +53,10 @@ from sbir_ml.transition.detection.fusion_scoring import (  # noqa: E402
 
 EPISTEMIC_TIER = "exploratory"
 
-REPO_MAIN = Path("/Users/hollomancer/projects/sbir-analytics")
-DEFAULT_AWARD_DATA = REPO_MAIN / "data" / "raw" / "sbir" / "award_data.csv"
-DEFAULT_UNIVERSE = REPO_MAIN / "data" / "processed" / "sbir_phase3" / "phase3_universe.jsonl"
-DEFAULT_CORPUS = Path(
-    "/Users/hollomancer/projects/sbir-analytics/.claude/worktrees/"
-    "notice-corpus-fusion-spec/data/derived/phase3_notice_corpus.parquet"
-)
+DATA_ROOT = Path(os.getenv("SBIR_ETL__PATHS__DATA_ROOT", _WORKTREE_ROOT / "data"))
+DEFAULT_AWARD_DATA = DATA_ROOT / "raw" / "sbir" / "award_data.csv"
+DEFAULT_UNIVERSE = DATA_ROOT / "processed" / "sbir_phase3" / "phase3_universe.jsonl"
+DEFAULT_CORPUS = DATA_ROOT / "derived" / "phase3_notice_corpus.parquet"
 SPEC_DIR = _WORKTREE_ROOT / "specs" / "phase3-transition-groundtruth"
 COLLECTED_DIR = SPEC_DIR / "collected"
 

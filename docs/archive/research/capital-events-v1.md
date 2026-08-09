@@ -1,7 +1,6 @@
 # Capital-Event Timeline v1 — Results
 
 **Date:** 2026-05-17
-**Branch:** `claude/capital-events-timeline`
 **Cohort:** Form D high-confidence SBIR cohort (3,639 firms; produced by
 `sbir_etl/ucc/export_cohort.py` from PR #303)
 **Source code:** `scripts/data/build_capital_events.py` +

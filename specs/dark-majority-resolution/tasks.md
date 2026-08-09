@@ -76,7 +76,7 @@ Sequencing rationale in `requirements.md`. Effort tags: S (<half day), M (1–2 
   enriched_sbir_ma_events.jsonl, and the Finding 2 prime registry — invisible to all
   three). Six conclusions total (was five).
 
-- [x] **T21 (S, addendum, 2026-07-12, branch claude/nanotech-maintenance-fee-lapses):**
+- [x] **T21 (S, addendum, 2026-07-12):**
   Patent maintenance-fee lapse check — the first weak-negative instrument in the plan
   (every prior WS3/5/6 channel is a positive detector that can only raise the floor).
   → `scripts/data/nano_dark_firm_maintenance_lapses.py`, USPTO PTMNFEE2 (single latest
@@ -92,7 +92,7 @@ Sequencing rationale in `requirements.md`. Effort tags: S (<half day), M (1–2 
   use is ranking the T11 survey's priority stratum, not moving the headline percentages.
   Report: new Finding 3 paragraph, methodological note, and a sentence in the "measurement
   lesson" closing paragraph. Opened as an isolated branch/PR per user request, based on
-  the tip of claude/nanotech-sbir-analysis (PR #428) so the shared liveness/alias
+  PR #428 so the shared liveness/alias
   infrastructure is available without re-deriving it.
 
 - [ ] **T7 (M, WS3.3) — DEFERRED (2026-07-12):** State corporate registry status for dark
