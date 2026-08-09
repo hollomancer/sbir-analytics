@@ -15,13 +15,14 @@
 #   ENTRYPOINT ["sh", "/app/scripts/docker/entrypoint.sh", "dagster-daemon"]
 #   ENTRYPOINT ["sh", "/app/scripts/docker/entrypoint.sh", "etl-runner", "python", "-m", "my.module"]
 #
-# Environment variables used (documented in .env.example):
-#   ENVIRONMENT                - dev|test|prod (affects behavior)
-#   SBIR_ETL__NEO4J__HOST      - Neo4j host (default: neo4j)
-#   SBIR_ETL__NEO4J__PORT      - Neo4j bolt port (default: 7687)
-#   SBIR_ETL__NEO4J__USERNAME  - Neo4j username
-#   SBIR_ETL__NEO4J__PASSWORD  - Neo4j password
-#   SERVICE_STARTUP_TIMEOUT    - seconds to wait for dependencies (default: 120)
+# Environment variables:
+#   ENVIRONMENT             - dev|test|prod (affects behavior)
+#   NEO4J_USER              - Neo4j username
+#   NEO4J_PASSWORD          - Neo4j password
+#   NEO4J_DATABASE          - Neo4j database name
+#   SERVICE_STARTUP_TIMEOUT - seconds to wait for dependencies (default: 120)
+# Compose supplies SBIR_ETL__NEO4J__HOST/PORT internally for dependency probes;
+# they are not host-facing .env.example settings.
 #
 # Notes:
 # - This script is intentionally POSIX-sh compatible for maximum portability.
