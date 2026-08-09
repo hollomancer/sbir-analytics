@@ -6,7 +6,6 @@ from datetime import datetime
 from pathlib import Path
 
 import pandas as pd
-
 from sbir_analytics.assets.cet import enriched_cet_patent_classifications
 from sbir_ml.ml.models.dummy_pipeline import DummyPipeline
 
@@ -110,12 +109,8 @@ def _read_patent_output_records(root: Path):
     return []
 
 
-def test_cet_patent_asset_writes_placeholder_when_model_missing(tmp_path, monkeypatch):
-    """
-    When the trained patent model artifact is missing, the asset should still run and
-    write a schema-compatible placeholder output plus a checks JSON describing
-    the missing model.
-    """
+def test_cet_patent_asset_fails_when_model_missing(tmp_path, monkeypatch):
+    """A missing trained model fails without publishing placeholder artifacts."""
     # run in isolated tmp dir so asset reads/writes local paths
     monkeypatch.chdir(tmp_path)
 
@@ -134,18 +129,13 @@ def test_cet_patent_asset_writes_placeholder_when_model_missing(tmp_path, monkey
     if model_path.exists():
         model_path.unlink()
 
-    # Execute asset
-    enriched_cet_patent_classifications()
+    with pytest.raises(FileNotFoundError, match="Trained CET patent model not found"):
+        enriched_cet_patent_classifications()
 
-    # Validate checks JSON indicates missing model and contains correct counts
-    checks = _read_patent_checks(tmp_path)
-    assert checks.get("reason") == "model_missing"
-    assert checks.get("num_patents") == 2
-    assert checks.get("num_classified") == 0 or checks.get("num_classified") is None
-
-    # Output placeholder should exist (either parquet placeholder or json)
-    out_records = _read_patent_output_records(tmp_path)
-    assert isinstance(out_records, list)
+    processed = tmp_path / "data" / "processed"
+    assert not (processed / "cet_patent_classifications.parquet").exists()
+    assert not (processed / "cet_patent_classifications.json").exists()
+    assert not (processed / "cet_patent_classifications.checks.json").exists()
 
 
 def test_cet_patent_asset_classifies_with_synthetic_model(tmp_path, monkeypatch):
