@@ -70,11 +70,6 @@ except Exception:
     # Optional feature module not available; keep extract_features / PatentFeatureVector as None
     pass
 
-try:
-    from sbir_ml.ml.features.vectorizers import create_feature_matrix_builder  # type: ignore[attr-defined]
-except Exception:  # pragma: no cover - optional import
-    create_feature_matrix_builder = None
-
 
 class PatentFeatureExtractor:
     """
