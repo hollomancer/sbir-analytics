@@ -136,7 +136,10 @@ on a pinned real-data run.
   longer consumes #286's SBIR-only `sbir_ma_events.jsonl` and keeps the proxy
   unavailable until a valid matched risk set plus symmetric coverage are wired.
   FPDS, patent, and verified M&A adapters remain open; record absent outcomes as
-  unavailable, never zero.
+  unavailable, never zero. The pinned
+  [real-data source-adapter audit](../../docs/research/agency-private-capital-form-d-business-combination-proxy.md)
+  materialized 14,408 evidence filings across 10,224 CIKs and 311,809 explicit
+  coverage rows; those are source counts, not matched-cohort outcomes.
 - [ ] 2.5 Complete the `ThreatsToValidity` gate — required entries: SAFE/convertible
   undercount, late-stage Form D inclusion, incomplete SBIR-CIK exclusion,
   SIC-to-NAICS-2 mapping validity, technical-merit vs. lawyer-access selection
