@@ -945,7 +945,7 @@ the NVCA Yearbook [L25] — rather than NASEM and GAO.
   UCC-1 complements Form D's equity view. The CA-only pilot found equipment and
   community-bank patterns, and an absence of venture-debt lenders in the CA
   channel.
-  *Deps: ER, UCC-1 · Spec: [../specs/ucc1-financing-analysis/](../specs/ucc1-financing-analysis/) (PRs #303 / #305 merged)*
+  *Deps: ER, UCC-1 · Spec: [../specs/archive/completed-features/ucc1-financing-analysis/](../specs/archive/completed-features/ucc1-financing-analysis/) (PRs #303 / #305 merged)*
 
 - **Unified capital-event timeline**
   What does a single firm history look like when federal awards, private

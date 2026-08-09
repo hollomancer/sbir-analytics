@@ -1,14 +1,18 @@
 # Tech-Area Transition Report — Requirements
 
-**Target epistemic tier:** `evidence`
+**Target epistemic tier:** `exploratory`
 
-> **Status:** In progress (v1 cohort parameterization)
+> **Status:** In progress (v1 cohort parameterization). Retiered from
+> evidence on 2026-08-07 to match the deliberately exploratory,
+> citable-false implementation; when a headline channel earns evidence,
+> that promotion arrives as its own study contract per the tiers doctrine.
 > Anchors inventory questions **B** (commercialization / Phase II→III pathways) and
 > **C1** (cross-agency CET portfolio) in [docs/research-questions.md](../../docs/research-questions.md).
 > Coordinates with [dark-majority-resolution](../dark-majority-resolution/requirements.md)
 > (that spec owns deficiency *treatments*; this one owns parameterized *cohort → signal → report skeleton*).
-> Current implementation status: **exploratory / non-citable**. The named v1
-> admission profile has not yet earned this spec's evidence contract.
+> Current implementation status: **exploratory / non-citable**, now matching
+> the declared tier. A headline channel that earns evidence gets its own
+> study contract under `studies/`.
 
 **Research question anchor:** B — technology-area Phase II→III commercialization pathways;
 C1 — CET-area portfolio composition

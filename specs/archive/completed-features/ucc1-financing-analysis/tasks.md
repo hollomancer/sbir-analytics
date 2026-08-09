@@ -1,7 +1,7 @@
 # UCC-1 Financing Analysis — Tasks
 
 **Status:** Pilot complete through the partial-run epistemic checkpoint;
-extension deferred. See [docs/research/sbir-ucc1-pilot.md](../../docs/research/sbir-ucc1-pilot.md)
+extension deferred. See [docs/research/sbir-ucc1-pilot.md](../../../../docs/research/sbir-ucc1-pilot.md)
 ("Recommendation: Stop here") for the rationale. Phases 4–6 and the
 remaining pieces of 7 / 8 are unimplemented by design — re-open this
 spec only if one of the Future-options paths (multi-state, paid DE bulk,
@@ -9,7 +9,7 @@ or BDC SoI pivot) is selected.
 
 ## Phase 0: Feasibility check — COMPLETE
 
-Recorded in [docs/research/sbir-ucc1-pilot.md](../../docs/research/sbir-ucc1-pilot.md).
+Recorded in [docs/research/sbir-ucc1-pilot.md](../../../../docs/research/sbir-ucc1-pilot.md).
 
 - [x] 0.1 ~~DE web search of 5 firms~~ → **DE has no free public UCC search.**
       All non-"Search to Reflect" searches require a paid Authorized
