@@ -1,5 +1,5 @@
 {
-  "code_commit": "ca99d7c4503dcaf1e706d4e5ca96d526d7e7a23b",
+  "code_commit": "fc691b397f851fc77ce17e25243014292c5bc805",
   "complete": true,
   "counters": {
     "amendment_event_rows": 1535,
@@ -77,6 +77,72 @@
     "2024Q4": 213
   },
   "event_type": "form_d_business_combination_filing_proxy",
+  "filing_counts_by_source_quarter": {
+    "2009Q1": 4113,
+    "2009Q2": 5254,
+    "2009Q3": 5756,
+    "2009Q4": 5720,
+    "2010Q1": 10524,
+    "2010Q2": 6449,
+    "2010Q3": 6100,
+    "2010Q4": 6374,
+    "2011Q1": 10510,
+    "2011Q2": 6892,
+    "2011Q3": 6708,
+    "2011Q4": 6601,
+    "2012Q1": 10503,
+    "2012Q2": 7510,
+    "2012Q3": 6610,
+    "2012Q4": 6847,
+    "2013Q1": 10653,
+    "2013Q2": 7700,
+    "2013Q3": 7721,
+    "2013Q4": 8309,
+    "2014Q1": 11259,
+    "2014Q2": 8971,
+    "2014Q3": 8680,
+    "2014Q4": 9074,
+    "2015Q1": 11436,
+    "2015Q2": 9371,
+    "2015Q3": 9036,
+    "2015Q4": 9123,
+    "2016Q1": 11764,
+    "2016Q2": 9625,
+    "2016Q3": 9084,
+    "2016Q4": 9313,
+    "2017Q1": 12065,
+    "2017Q2": 10269,
+    "2017Q3": 9667,
+    "2017Q4": 9940,
+    "2018Q1": 12542,
+    "2018Q2": 10928,
+    "2018Q3": 10446,
+    "2018Q4": 10769,
+    "2019Q1": 12242,
+    "2019Q2": 11679,
+    "2019Q3": 10906,
+    "2019Q4": 10977,
+    "2020Q1": 12703,
+    "2020Q2": 10202,
+    "2020Q3": 10856,
+    "2020Q4": 12327,
+    "2021Q1": 14873,
+    "2021Q2": 15114,
+    "2021Q3": 14843,
+    "2021Q4": 16577,
+    "2022Q1": 18557,
+    "2022Q2": 16124,
+    "2022Q3": 14181,
+    "2022Q4": 13570,
+    "2023Q1": 14227,
+    "2023Q2": 13783,
+    "2023Q3": 12678,
+    "2023Q4": 12281,
+    "2024Q1": 14208,
+    "2024Q2": 13699,
+    "2024Q3": 13222,
+    "2024Q4": 13611
+  },
   "inputs": {
     "issuer_universe": {
       "path": "form_d_issuer_universe.identity-staging.jsonl",
@@ -86,28 +152,34 @@
     },
     "source_manifest": {
       "path": "agency-private-capital-form-d-control-universe.manifest.json",
-      "sha256": "ea8959eced26e5435bf4db29947452cbc19878cb494d5ec5ee30d9954b0c8916",
-      "size_bytes": 229986
+      "sha256": "1777119114c4f7385dd09d6b60c603f2c5c59db765311255440513190d94b331",
+      "size_bytes": 247889
     }
   },
   "invariants": {
     "accessions_unique": true,
+    "content_addressed_outputs": true,
     "coverage_equals_verified_issuer_rows": true,
+    "event_counts_reconcile_by_source_quarter": true,
     "event_ids_unique": true,
+    "filing_counts_reconcile_by_source_quarter": true,
+    "filing_rows_equal_source_manifest": true,
+    "flagged_source_filings_omitted": 0,
+    "flagged_source_filings_reconciled": true,
     "source_input_hash_rows_bytes_verified": true,
     "source_quarters_complete": true
   },
   "outputs": {
     "coverage": {
-      "path": "form_d_business_combination_filing_proxy.coverage.jsonl",
+      "path": "form_d_business_combination_filing_proxy.coverage.1a8b017959109e8c14ce8469fd93b6ef3df5751b93678a4b092b8af7562c510b.jsonl",
       "row_count": 311809,
-      "sha256": "df6b5adfb8370a1d5cfcaa788a40504e824925618f0abcf6edd0b604a3b0b220",
+      "sha256": "1a8b017959109e8c14ce8469fd93b6ef3df5751b93678a4b092b8af7562c510b",
       "size_bytes": 125345249
     },
     "events": {
-      "path": "form_d_business_combination_filing_proxy.events.jsonl",
+      "path": "form_d_business_combination_filing_proxy.events.8ad27fa2cc319971853f6aaed8b637c7267ca4803901fa62b3b30799da5086fb.jsonl",
       "row_count": 14408,
-      "sha256": "da60dff53ab8f5084ea528ed3c435b39b38bf6b1bbc8ade586b2983d19190005",
+      "sha256": "8ad27fa2cc319971853f6aaed8b637c7267ca4803901fa62b3b30799da5086fb",
       "size_bytes": 8356489
     }
   },
@@ -120,7 +192,7 @@
     "source": "sec_dera_form_d_quarterly_bulk",
     "source_complete": true,
     "source_snapshot_date": "2024-12-31",
-    "source_snapshot_id": "form_d_control_universe_manifest_sha256:ea8959eced26e5435bf4db29947452cbc19878cb494d5ec5ee30d9954b0c8916",
+    "source_snapshot_id": "form_d_control_universe_manifest_sha256:1777119114c4f7385dd09d6b60c603f2c5c59db765311255440513190d94b331",
     "start_quarter": "2009Q1"
   }
 }

@@ -95,25 +95,30 @@ unavailable rather than becoming a control-side zero.
 
 The full [tracked materialization manifest](agency-private-capital-form-d-business-combination-proxy.manifest.json)
 pins the producer commit, audited input manifest and universe, source interval,
-quarter-level event counts, output hashes, and uniqueness/coverage invariants.
+quarter-level filing and event counts, output hashes, and uniqueness/coverage
+invariants.
 
 | Product | Rows | Bytes | SHA-256 |
 | --- | ---: | ---: | --- |
-| Filing evidence | 14,408 | 8,356,489 | `da60dff53ab8f5084ea528ed3c435b39b38bf6b1bbc8ade586b2983d19190005` |
-| Exact-CIK coverage | 311,809 | 125,345,249 | `df6b5adfb8370a1d5cfcaa788a40504e824925618f0abcf6edd0b604a3b0b220` |
+| Filing evidence | 14,408 | 8,356,489 | `8ad27fa2cc319971853f6aaed8b637c7267ca4803901fa62b3b30799da5086fb` |
+| Exact-CIK coverage | 311,809 | 125,345,249 | `1a8b017959109e8c14ce8469fd93b6ef3df5751b93678a4b092b8af7562c510b` |
 
 The producer verified the 725,072,925-byte issuer universe against SHA-256
 `28bb167e0281bca00652444600b6635c4c0b60b0103817715df34a98f67e3fe5`.
-All 673,656 accessions and all emitted event IDs are unique. A second full
-streaming build produced byte-identical event, coverage, and manifest hashes.
-The large JSONL products remain gitignored; the complete manifest is tracked.
+It also verified the 247,889-byte source manifest against SHA-256
+`1777119114c4f7385dd09d6b60c603f2c5c59db765311255440513190d94b331`.
+All 673,656 accessions and all emitted event IDs are unique, and filing and
+event counts reconcile in every source quarter. A second full streaming build
+produced byte-identical event, coverage, and manifest hashes. Products use
+content-addressed filenames and the manifest pointer is published last. The
+large JSONL products remain gitignored; the complete manifest is tracked.
 
 Reproduce after materializing the audited issuer universe from the preceding
 control-identity build:
 
 ```bash
 uv run python scripts/data/build_form_d_business_combination_events.py \
-  --code-version ca99d7c4503dcaf1e706d4e5ca96d526d7e7a23b
+  --code-version fc691b397f851fc77ce17e25243014292c5bc805
 ```
 
 ## Gate decision
