@@ -32,8 +32,13 @@ bypassing lifecycle review; the status and rationale still require human judgmen
   addressing; do not restore the old broad lint job by default.
 - **`agency-private-capital-comparison` — Active.** The NSF Phase 1 real-data
   gate is materialized for review but remains non-citable and unsigned. Phase 2
-  stays gated on Phase 1 sign-off, a reproducible Form D control-universe
-  producer, and symmetric FPDS/PATLINK/M&A outcome inputs.
+  now has a maintained, deterministic 2009Q1–2024Q4 SEC DERA Form D staging
+  producer, but task 2.2 remains open: exact-name SBIR exclusion has unknown
+  recall (`complete_sbir_exclusion=false`), DERA has no NAICS and the staging
+  covariates are not ready (`covariates_ready=false`), and the existing matched
+  asset must not consume it. Phase 2 stays gated on Phase 1 sign-off, a
+  higher-recall authoritative CIK/alias union, a validated SIC-to-NAICS-2
+  strategy, and symmetric FPDS/patent/M&A outcome inputs.
 - **`bea-nipa-tax-rates` — Active.** The NIPA provider exists; the remaining
   work is the on-disk cache and removal of hardcoded effective-rate consumers.
 - **`company-categorization` — Maintenance.** About 80% complete. Evaluate the
