@@ -60,7 +60,7 @@ def test_dagster_uses_shared_internal_code_server():
 
     assert "host: dagster-code-server" in workspace
     assert "port: 4000" in workspace
-    assert "COPY workspace.server.yaml /app/workspace.server.yaml" in DOCKERFILE.read_text()
+    assert "COPY workspace.server.yaml ./workspace.server.yaml" in DOCKERFILE.read_text()
     assert "\n    ports:" not in code_server
     assert 'expose:\n      - "4000"' in code_server
     assert "grpc-health-check" in code_server
