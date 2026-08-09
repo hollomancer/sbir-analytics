@@ -134,7 +134,6 @@ def train_patent_classifier(
     title_col: str = "title",
     assignee_col: str | None = None,
     cet_label_col: str = "cet_labels",
-    use_feature_extraction: bool = True,
     keywords_map: dict[str, list[str]] | None = None,
     taxonomy_version: str | None = None,
     model_version: str | None = None,
@@ -156,9 +155,6 @@ def train_patent_classifier(
         Optional column for assignee/owner, used for small additional signal in text.
     cet_label_col : str
         Column name for label sets per row (iterable[str] or delimited string).
-    use_feature_extraction : bool
-        Whether to leverage the lightweight feature extractor to produce normalized
-        texts for training.
     keywords_map : Optional[Dict[str, List[str]]]
         Optional keyword map passed through to feature extraction; used when your
         extractor relies on custom keywords (safe to leave None).
@@ -212,7 +208,6 @@ def train_patent_classifier(
         assignee_col=assignee_col,
         cet_label_col=cet_label_col,
         pipelines_factory=pipelines_factory,
-        use_feature_extraction=use_feature_extraction,
         keywords_map=keywords_map,
     )
 
@@ -320,7 +315,6 @@ def train_and_evaluate(
     title_col: str = "title",
     assignee_col: str | None = None,
     cet_label_col: str = "cet_labels",
-    use_feature_extraction: bool = True,
     keywords_map: dict[str, list[str]] | None = None,
     taxonomy_version: str | None = None,
     model_version: str | None = None,
@@ -339,7 +333,6 @@ def train_and_evaluate(
         title_col=title_col,
         assignee_col=assignee_col,
         cet_label_col=cet_label_col,
-        use_feature_extraction=use_feature_extraction,
         keywords_map=keywords_map,
         taxonomy_version=taxonomy_version,
         model_version=model_version,

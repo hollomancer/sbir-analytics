@@ -104,7 +104,6 @@ def test_patent_classifier_smoke():
         assignee_col="assignee",
         cet_label_col="cet_labels",
         pipelines_factory=factory,
-        use_feature_extraction=False,
     )
 
     results = classifier.classify(

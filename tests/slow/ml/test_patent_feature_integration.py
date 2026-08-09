@@ -91,7 +91,7 @@ def test_train_classifier_with_feature_extraction_and_dummy_pipelines(tmp_path):
     # Classifier starts with no pipelines; we'll provide a pipelines_factory
     classifier = PatentCETClassifier(pipelines={})
 
-    # Train using feature extraction (use_feature_extraction=True)
+    # train_from_dataframe always runs PatentFeatureExtractor
     pipelines_factory = make_pipelines_factory()
     classifier.train_from_dataframe(
         df,
@@ -99,7 +99,6 @@ def test_train_classifier_with_feature_extraction_and_dummy_pipelines(tmp_path):
         assignee_col="assignee",
         cet_label_col="cet_labels",
         pipelines_factory=pipelines_factory,
-        use_feature_extraction=True,
     )
 
     # After training, classifier should be marked trained and pipelines should be present
