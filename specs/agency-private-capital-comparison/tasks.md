@@ -6,9 +6,12 @@
 > (`tests/unit/agency_private_capital/`) and an integration test (`tests/integration/agency_private_capital/`).
 > A pinned NSF real-data report now exists for Phase 1 review. It remains
 > non-citable and unsigned because the cohort estimand and identity handling
-> require review and four outcome channels are unavailable. A Phase 2 scaffold exists, but its tasks
-> remain open until a reproducible Form D control universe and symmetric
-> FPDS/PATLINK/M&A outcomes are wired and validated.
+> require review and four outcome channels are unavailable. A maintained SEC
+> DERA CLI now stages a
+> bounded Form D identity universe, but its manifest correctly reports
+> `complete_sbir_exclusion=false` and `covariates_ready=false`. Phase 2 remains
+> open until higher-recall identity exclusion, validated matching covariates,
+> and symmetric FPDS/patent/M&A outcomes are wired and validated.
 
 Tasks are grouped by phase. Phase 1 ships independently of PR #286. Phase 2 is
 gated on Phase 1 sign-off and its missing real-data input contracts.
@@ -81,44 +84,65 @@ gated on Phase 1 sign-off and its missing real-data input contracts.
 ## Phase 2 — Agency-vs-Private-Capital Matched Cohort
 
 **Prerequisite:** Phase 1 sign-off. PR #286 is on main and the Phase 2 code
-scaffold is present, but no maintained producer currently creates
-`data/form_d_control_universe.jsonl`. The scaffold also does not yet provide
-symmetric real FPDS/PATLINK/M&A outcome joins for treated and control firms.
-Keep tasks 2.1–2.9 open until their acceptance criteria are demonstrated on a
-pinned real-data run.
+scaffold is present. `scripts/data/build_form_d_control_universe.py` now stages
+the closed 2009Q1–2024Q4 official SEC DERA quarterly Form D universe with
+deterministic manifests. That output is identity-only and is not ready for the
+matched asset: exact normalized-name exclusion has unknown recall, and DERA
+provides SIC and Form D industry group rather than NAICS. The scaffold also does
+not provide symmetric real FPDS/patent/M&A outcome joins for treated and control
+firms. Keep tasks 2.1–2.9 open until their acceptance criteria are demonstrated
+on a pinned real-data run.
 
-- [ ] 2.1 Add `AgencyAwardeeFilter` — apply the configured agency's ALN(s)
-  (e.g. NSF: 47.041 / 47.084) to #286's resolved SBIR-CIK set produced by
-  `sec_edgar_enrichment`. Output: agency-CIK set + agency-UEI set, persisted
-  as parquet.
-- [ ] 2.2 Add `PrivateCapitalControlCohortBuilder` — read #286's Form D
-  index, drop issuers whose CIK appears in the broader SBIR-CIK set
-  (control = capital-financed firms with no SBIR exposure ever). Bucket
-  by (filing-year, NAICS-2, state).
-- [ ] 2.3 Add `CohortMatcher` — coarsened-exact matching on (vintage,
-  NAICS-2, state). Report balance and unmatched residuals. Document
-  matching ratio (agency firm : k matched controls) in the output.
-- [ ] 2.4 Add `MatchedCohortOutcomes` — join both cohorts to FPDS
-  contracts, PATLINK patents, and #286's `sbir_ma_events.jsonl`. Emit
-  per-cohort rates with Wilson CIs. Reuse Phase 1's `OutcomeMetricsCalculator`
-  where applicable; phase-graduation and survival metrics are agency-cohort-
-  only (control N/A).
-- [ ] 2.5 Add `ThreatsToValidity` gate — required entries: SAFE/convertible
-  undercount, late-stage Form D inclusion, NAICS self-report noise, #286
-  CIK-recall floor, technical-merit vs. lawyer-access selection bias,
-  control-cohort timing-leak. Headline artifact suppressed if any entry
-  is missing or stale.
-- [ ] 2.6 Wire Phase 2 as a Dagster asset
-  `agency_private_capital_form_d_matched_comparison`. Output artifacts:
-  `agency_vs_form_d_comparison.parquet`, `agency_vs_form_d_comparison.md`,
-  `threats_to_validity.json`.
-- [ ] 2.7 Add security-type / offering-size decomposition view (uses #286's
-  Form D scoring tiers directly). Cross-check by reproducing #286's
-  published 1.82x SBIR-to-Form-D leverage ratio scoped to the configured
-  agency only.
-- [ ] 2.8 Add unit + integration tests under `tests/unit/agency_private_capital/` and
-  `tests/integration/agency_private_capital/`. Integration test reuses #286's existing
-  fixtures where available.
+- [ ] 2.1 Complete and validate `AgencyAwardeeFilter` — apply the configured agency's ALN(s)
+  (e.g. NSF: 47.041 / 47.084) across the observed SBIR award history, preserve
+  every historical organization name present there, and join it to the
+  validated higher-recall CIK/alias union required by task 2.2. Output the
+  agency CIK and UEI sets with provenance; do not treat PR #286's heuristic
+  matches as a complete resolved set.
+- [ ] 2.2 Complete `PrivateCapitalControlCohortBuilder` — **OPEN / PARTIAL
+  (2026-08-09).** The maintained CLI now consumes the official SEC DERA
+  quarterly bulk ZIPs for the pinned 2009Q1–2024Q4 window and emits: (a) the
+  broad issuer universe; (b) candidate SBIR-CIK exclusion evidence from exact
+  equality of every historical name present in the SBIR award history and issuer
+  names normalized with `CompanyNameProfile.ORGANIZATION_KEY_V1`; and (c)
+  filtered, disjoint identity-only controls. Its manifest states
+  `complete_sbir_exclusion=false` and `covariates_ready=false`. Retained issuers
+  are only not exact-name-matched to observed SBIR history; they are not proven
+  to have "no SBIR exposure ever."
+  Keep this task open until a higher-recall authoritative CIK/alias union and a
+  validated SIC-to-NAICS-2 strategy exist.
+- [ ] 2.3 Complete and validate `CohortMatcher` — coarsened-exact matching on (vintage,
+  validated NAICS-2, state). Report balance and unmatched residuals. Document
+  matching ratio (agency firm : k matched controls) in the output. The existing
+  matched asset must fail closed on the staging universe while
+  `complete_sbir_exclusion` or `covariates_ready` is false.
+- [ ] 2.4 Complete `MatchedCohortOutcomes` — join both cohorts to FPDS
+  contracts, patent evidence, and symmetric M&A evidence. Emit per-cohort rates
+  with Wilson CIs. Reuse Phase 1's `OutcomeMetricsCalculator` where applicable;
+  phase-graduation and survival metrics are agency-cohort-only (control N/A).
+  The current scaffold has no real FPDS or patent input, and #286's
+  `sbir_ma_events.jsonl` is SBIR-only rather than control coverage. Record those
+  outcomes as unavailable, never zero. Add the symmetric outcome contracts in
+  separate follow-on PRs.
+- [ ] 2.5 Complete the `ThreatsToValidity` gate — required entries: SAFE/convertible
+  undercount, late-stage Form D inclusion, incomplete SBIR-CIK exclusion,
+  SIC-to-NAICS-2 mapping validity, technical-merit vs. lawyer-access selection
+  bias, and control-cohort timing leak. Headline artifact suppressed if any
+  entry is missing or stale.
+- [ ] 2.6 Harden the existing Phase 2 Dagster asset
+  `agency_private_capital_form_d_matched_comparison`. It must not consume the
+  provisional identity-only control output. Target output
+  artifacts: `agency_vs_form_d_comparison.parquet`,
+  `agency_vs_form_d_comparison.md`, `threats_to_validity.json`.
+- [ ] 2.7 Add security-type / offering-size decomposition view. Reuse #286's
+  Form D scoring tiers only after verifying compatibility with the DERA schema.
+  Cross-check by reproducing #286's published 1.82x SBIR-to-Form-D leverage
+  ratio scoped to the configured agency only.
+- [ ] 2.8 Extend the unit + integration scaffold tests under
+  `tests/unit/agency_private_capital/` and
+  `tests/integration/agency_private_capital/` to exercise the validated real
+  input contracts. Reuse #286's fixtures only where their source boundary is
+  applicable.
 - [ ] 2.9 **Phase 2 gate:** produce cohort-vs-cohort report. Deliverable
   language: "On vintage [X], NAICS-2 [Y], state [Z]: NSF Phase II awardees
   transitioned to federal contract at [A]% within 5 years; matched
@@ -134,25 +158,18 @@ pinned real-data run.
 - [ ] X.3 After Phase 2 ships with NSF, extend to DoD / NIH / DOE by passing
   a different `agency_code` — no new spec required, just parametrize.
 
-## Removed Tasks (vs. earlier draft)
+## Existing infrastructure and remaining gaps
 
-The following tasks were in the prior draft but are **no longer needed**
-because PR #286 delivers them. Listed here for reviewer visibility:
+PR #286 supplied useful SBIR-focused SEC EDGAR/Form D parsing, heuristic CIK
+matching, scoring tiers, and SBIR M&A signal extraction. Its artifacts do not
+constitute a maintained broad control-universe producer, a complete resolved
+SBIR-CIK set, control-side M&A coverage, or a Phase 2 patent input.
 
-- ~~Add `sec_edgar` enrichment source~~ — done in #286 (`sbir_etl/enrichers/sec_edgar/`).
-- ~~Form D parser~~ — done in #286 (`form_d_scoring.py`, `fetch_form_d_*.py`).
-- ~~Form D DuckDB staging~~ — done in #286.
-- ~~CIK ↔ UEI/EIN crosswalk~~ — done in #286 (3-layer filter + city co-occurrence).
-- ~~Crosswalk backtest set + precision/recall gate~~ — done in #286
-  (validated against Physical Optics→Mercury, RMD→Dynasil, Coherent
-  Tech→Lockheed).
-- ~~Match-rate ≥30% gate~~ — #286 reports ~28% of SBIR companies have any
-  EDGAR presence; documented as a threats-to-validity entry rather than
-  a hard gate (the gate concept is moot once we're consuming a fixed
-  upstream artifact).
-- ~~Form D ingest scope coordination with M&A spec~~ — moot; #286
-  consolidates both M&A and Form D under one PR.
-- ~~NSF-only scope~~ — module renamed from `nsf_vc/` to `agency_private_capital/`;
-  all code now accepts `agency_code` parameter (default "NSF"). The
-  configured funding agency, with NSF as the initial implementation target,
-  can now be extended to DoD / NIH / DOE without a separate spec.
+- The maintained official-quarterly DERA producer in task 2.2 is a distinct,
+  bounded prerequisite. Its exact-name exclusions remain provisional.
+- A higher-recall authoritative CIK/alias union and its precision/recall
+  validation remain open; a few known-company spot checks cannot close them.
+- FPDS, patent, and M&A evidence must be made symmetric in separate PRs before
+  outcome deltas are computed.
+- The agency parameterization is already present: `agency_code` defaults to
+  `"NSF"` and can later support DoD, NIH, or DOE without a separate spec.
