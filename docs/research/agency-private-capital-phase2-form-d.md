@@ -16,6 +16,8 @@ SEC Division of Economic and Risk Analysis (DERA)
 Its source contract is the closed, inclusive set **2009Q1 through 2024Q4**, not a
 moving "latest" window. Deterministic manifests pin the expected quarter set and
 the source and product checksums so a rerun cannot silently change its inputs.
+The [real-data identity audit](agency-private-capital-form-d-control-universe.md)
+records the first complete materialization and its gate decision.
 
 The SEC's [official Form D](https://www.sec.gov/files/Form_D.pdf) and the DERA bulk
 files supply issuer SIC and Form D industry-group fields. They do **not** supply
