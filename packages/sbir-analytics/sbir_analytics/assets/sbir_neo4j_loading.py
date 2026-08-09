@@ -19,9 +19,9 @@ from dagster import (
 from loguru import logger
 
 from sbir_etl.config.loader import get_config
+from sbir_etl.identity import CanonicalMergePolicy, build_canonical_company_map
 from sbir_etl.identity.geography import normalize_us_jurisdiction
 from sbir_etl.models.award import Award
-from sbir_etl.utils.company_canonicalizer import canonicalize_companies_from_awards
 from sbir_etl.utils.text_normalization import normalize_name
 
 try:
@@ -468,11 +468,11 @@ def neo4j_sbir_awards(
 
         dedup_config = get_config().transformation.company_deduplication  # type: ignore[attr-defined]
         context.log.info("Pre-processing: Canonicalizing companies...")
-        canonical_map = canonicalize_companies_from_awards(
-            validated_sbir_awards,
-            high_threshold=dedup_config.get("high_threshold", 90),
-            low_threshold=dedup_config.get("low_threshold", 75),
-            enhanced_config=dedup_config.get("enhanced_matching"),
+        # Frozen PRELOAD_V1 identity policy reproduces the prior fuzzy pre-load
+        # dedup byte-identically (UEI > DUNS > name key, 90/75 gate); behavior
+        # changes require a new named policy version, not tuning here.
+        canonical_map = build_canonical_company_map(
+            validated_sbir_awards, policy=CanonicalMergePolicy.PRELOAD_V1
         )
         context.log.info(f"Canonicalized {len(canonical_map)} companies")
 

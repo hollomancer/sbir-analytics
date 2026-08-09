@@ -38,44 +38,11 @@ ALLOWED_TIER_IMPORTS = {
 
 # Importer path -> imported first-party modules whose tier violation is
 # tolerated. Every entry needs a reason and a removal condition; an entry that
-# stops suppressing a violation fails the run so it cannot linger.
-TIER_IMPORT_ALLOWLIST: dict[str, frozenset[str]] = {
-    # Fuzzy pre-load company deduplication inside the Neo4j loading asset.
-    # Removed by spec R2/T2: canonical merge moves behind a versioned
-    # sbir_etl.identity policy and the loader imports only identity.
-    "packages/sbir-analytics/sbir_analytics/assets/sbir_neo4j_loading.py": frozenset(
-        {"sbir_etl.utils.company_canonicalizer"}
-    ),
-    # Contestable CET-relevance screening called inline from a pipelines
-    # module. Removed by spec R3/T3.1: the exploratory asset layer calls the
-    # screen and passes screened data in as a parameter.
-    "sbir_etl/supply_chain/defense_release.py": frozenset(
-        {"sbir_etl.supply_chain.nsf_screen"}
-    ),
-    # Package init re-exports the exploratory screen, so importing the
-    # pipelines-tier package imports the screen. Removed by spec R3/T3.2:
-    # the re-export is dropped and callers import the module directly.
-    "sbir_etl/supply_chain/__init__.py": frozenset(
-        {"sbir_etl.supply_chain.nsf_screen"}
-    ),
-    # The census-facing pair builder carries a lazy in-function import of the
-    # exploratory scorer for the non-census ranking path. Removed when the
-    # scoring entry point moves into its own exploratory module (tracked in
-    # the spec's T1.2 triage notes).
-    "packages/sbir-analytics/sbir_analytics/assets/phase_iii_candidates/pairing.py": frozenset(
-        {"sbir_analytics.assets.phase_iii_candidates.similarity"}
-    ),
-    # The NAICS strategy registry registers every strategy, including the
-    # exploratory text-inference one, from pipelines-tier machinery. Removed
-    # when registration of that strategy moves behind an exploratory
-    # composition point or the strategy is validated and relabeled.
-    "sbir_etl/enrichers/naics/fiscal/strategies/__init__.py": frozenset(
-        {"sbir_etl.enrichers.naics.fiscal.strategies.text_inference"}
-    ),
-    "sbir_etl/enrichers/naics/fiscal/strategy_registry.py": frozenset(
-        {"sbir_etl.enrichers.naics.fiscal.strategies.text_inference"}
-    ),
-}
+# stops suppressing a violation fails the run so it cannot linger. The allowlist
+# is intentionally empty: every seeded edge from the T1.2 triage has been retired
+# (spec epistemic-tier-enforcement). Add an entry only with a reason and a
+# concrete removal condition; a bare suppression is not permitted.
+TIER_IMPORT_ALLOWLIST: dict[str, frozenset[str]] = {}
 
 
 @dataclass(frozen=True)

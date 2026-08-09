@@ -75,7 +75,8 @@ ship independently.
       `config/base.yaml` with parquet path, S3 path, rate limit, API key
       env var.
 - [x] 3.5 Implement `pair_filter_s2` in `pairing.py` (notice-type gate +
-      UEI match, else agency + NAICS fallback).
+      UEI match, else agency + NAICS fallback). *(Later moved to
+      `opportunity_pairing.py` by the tier-allowlist burndown.)*
 - [x] 3.6 Instantiate `phase_iii_directed_candidates` from
       `build_candidate_asset` with `WEIGHTS_DIRECTED` and
       `HIGH_THRESHOLD_DIRECTED = 0.75`.
@@ -88,7 +89,8 @@ ship independently.
 ## Phase 4: S3 — competitive solicitation follow-on candidates
 
 - [x] 4.1 Implement `pair_filter_s3` in `pairing.py` (solicitation
-      notice-type + NAICS/PSC overlap + token-Jaccard ≥ 0.10).
+      notice-type + NAICS/PSC overlap + token-Jaccard ≥ 0.10). *(Later moved
+      to `opportunity_pairing.py` by the tier-allowlist burndown.)*
 - [x] 4.2 Instantiate `phase_iii_followon_candidates` from
       `build_candidate_asset` with `WEIGHTS_FOLLOWON` and
       `HIGH_THRESHOLD_FOLLOWON = 0.60`. Column naming uses "follow-on

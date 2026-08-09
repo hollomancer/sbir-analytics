@@ -4,9 +4,21 @@ from datetime import date
 
 import pandas as pd
 
-from scripts.data.build_nsf_defense_funding import build_release
+from scripts.data.build_nsf_defense_funding import build_release, prepare_defense_funding
 from scripts.data.export_sbir_dib_network_web import export_lineage
+from sbir_etl.supply_chain.nsf_screen import screen_direct_nsf_awards
 from sbir_etl.supply_chain.release_validation import validate_nsf_defense_lineage_release
+
+
+def _run_release(**kwargs):
+    """Prepare, screen (exploratory), and build — the production call path."""
+
+    workset = prepare_defense_funding(**kwargs)
+    award_screen = screen_direct_nsf_awards(
+        workset.direct,
+        funded_organization_ids=set(workset.funded_organization_ids),
+    )
+    return build_release(workset, award_screen=award_screen)
 
 
 def _sha256(path) -> str:
@@ -178,7 +190,7 @@ def test_build_release_writes_prime_subaward_summary_evidence_and_partitions(tmp
         ]
     ).to_csv(subaward, index=False)
 
-    manifest = build_release(
+    manifest = _run_release(
         lineage_dir=lineage_dir,
         analysis_date=date(2026, 8, 3),
         prime_api_parquets=[prime],
@@ -206,6 +218,9 @@ def test_build_release_writes_prime_subaward_summary_evidence_and_partitions(tmp
     assert screen.loc[0, "defense_policy_mapping_status"] == (
         "deferred_no_authoritative_dod14_or_ndis8_mapping"
     )
+    # Screen-derived provenance survives the handoff into the pipelines release.
+    assert set(screen["screen_version"]) == {"nsf-screen-v1"}
+    assert set(evidence["screen_version"].dropna()) == {"nsf-screen-v1"}
     assert (
         lineage_dir
         / "nsf_awardee_dod_prime_transactions"
@@ -287,7 +302,7 @@ def test_build_release_partitions_archive_when_api_sources_are_configured(tmp_pa
         ]
     ).to_parquet(prime_archive, index=False)
 
-    manifest = build_release(
+    manifest = _run_release(
         lineage_dir=lineage_dir,
         analysis_date=date(2026, 8, 3),
         prime_api_parquets=[prime_api],

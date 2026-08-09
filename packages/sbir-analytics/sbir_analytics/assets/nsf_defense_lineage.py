@@ -1,4 +1,13 @@
-"""Recurring, fail-closed NSF SBIR to DoD funding lineage release assets."""
+"""Recurring, fail-closed NSF SBIR to DoD funding lineage release assets.
+
+Epistemic tier: exploratory. This is the operated asset layer that orchestrates
+the NSF/defense lineage flow: it invokes the contestable CET
+``screen_direct_nsf_awards`` and hands the screened frame to the pipelines
+release builder, so the outputs are evidence-gated review candidates, not
+citable findings (spec epistemic-tier-enforcement R3; two-populations doctrine
+in docs/steering/epistemic-tiers.md). Housing the screen call here keeps
+``sbir_etl.supply_chain.defense_release`` free of any exploratory import.
+"""
 
 import json
 import os
@@ -19,6 +28,8 @@ from sbir_etl.supply_chain.release_validation import validate_nsf_defense_lineag
 from sbir_etl.supply_chain.web_release import export_lineage
 from sbir_etl.utils.cloud_storage import get_data_root
 
+
+EPISTEMIC_TIER = "exploratory"
 
 _ENV_PREFIX = "SBIR_ETL__NSF_DEFENSE_LINEAGE__"
 
@@ -106,12 +117,13 @@ def nsf_defense_funding_release(
     context: AssetExecutionContext,
     nsf_direct_award_release: dict,
 ) -> Output[dict]:
-    from sbir_etl.supply_chain.defense_release import build_release
+    from sbir_etl.supply_chain.defense_release import build_release, prepare_defense_funding
+    from sbir_etl.supply_chain.nsf_screen import screen_direct_nsf_awards
 
     del nsf_direct_award_release
     analysis_date = _analysis_date()
     output_dir = _lineage_dir()
-    manifest = build_release(
+    workset = prepare_defense_funding(
         lineage_dir=output_dir,
         analysis_date=analysis_date,
         prime_snapshots=_paths_env("PRIME_API_SNAPSHOTS"),
@@ -127,6 +139,13 @@ def nsf_defense_funding_release(
         allow_missing_prime=False,
         allow_missing_subawards=False,
     )
+    # The contestable CET screen runs here, in the exploratory asset layer; the
+    # pipelines release builder only reshapes the screened frame it is given.
+    award_screen = screen_direct_nsf_awards(
+        workset.direct,
+        funded_organization_ids=set(workset.funded_organization_ids),
+    )
+    manifest = build_release(workset, award_screen=award_screen)
     return Output(manifest, metadata=_metadata(manifest))
 
 
