@@ -110,7 +110,10 @@ on a pinned real-data run.
   are only not exact-name-matched to observed SBIR history; they are not proven
   to have "no SBIR exposure ever."
   Keep this task open until a higher-recall authoritative CIK/alias union and a
-  validated SIC-to-NAICS-2 strategy exist.
+  validated SIC-to-NAICS-2 strategy exist. The pinned
+  [real-data identity audit](../../docs/research/agency-private-capital-form-d-control-universe.md)
+  materialized 311,809 issuer CIKs and 307,344 provisional retained identities;
+  those are audit counts, not a matched cohort.
 - [ ] 2.3 Complete and validate `CohortMatcher` — coarsened-exact matching on (vintage,
   validated NAICS-2, state). Report balance and unmatched residuals. Document
   matching ratio (agency firm : k matched controls) in the output. The existing
