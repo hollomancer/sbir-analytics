@@ -93,7 +93,7 @@ runs:
       uses: actions/cache@v5
       with:
         path: .mypy_cache
-        key: mypy-${{ runner.os }}-${{ inputs.python-version }}-${{ hashFiles('sbir_etl/**/*.py', 'packages/sbir-graph/sbir_graph/**/*.py', 'pyproject.toml') }}
+        key: mypy-${{ runner.os }}-${{ inputs.python-version }}-${{ hashFiles('sbir_etl/**/*.py', 'packages/sbir-graph/sbir_graph/**/*.py', 'packages/sbir-ml/sbir_ml/**/*.py', 'pyproject.toml') }}
         restore-keys: |
           mypy-${{ runner.os }}-${{ inputs.python-version }}-
 

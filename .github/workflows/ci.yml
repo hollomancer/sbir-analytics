@@ -1,8 +1,9 @@
 name: CI
 
-# GitHub Actions runs the test suite and nothing else. Data-plane work
-# (extraction, enrichment, reporting, image publishing) runs on the self-hosted server
-# as Dagster schedules or cron — see docs/deployment/self-hosted-server.md.
+# GitHub Actions performs code-quality, security, build, and test validation.
+# Data-plane work (extraction, enrichment, reporting, image publishing) runs on
+# the self-hosted server as Dagster schedules or cron — see
+# docs/deployment/self-hosted-server.md.
 
 permissions:
   contents: read
@@ -48,8 +49,8 @@ jobs:
       - name: Run Ruff format check
         run: uv run python -m ruff format --check sbir_etl packages/sbir-analytics/sbir_analytics packages/sbir-ml/sbir_ml packages/sbir-graph/sbir_graph tests
 
-      - name: Run MyPy type checker
-        run: uv run python -m mypy sbir_etl packages/sbir-graph/sbir_graph
+      - name: Run MyPy on core, graph, and ML packages
+        run: uv run python -m mypy sbir_etl packages/sbir-graph/sbir_graph packages/sbir-ml/sbir_ml
 
       # Importing and validating the complete graph catches duplicate asset
       # keys, unresolved jobs, invalid partition mappings, and missing
@@ -73,15 +74,6 @@ jobs:
           # the similarity contract. Previously exercised only by its own unit
           # test, which caught accidents but not drift.
           uv run python scripts/ci/check_identity_boundaries.py
-
-      # This file is now the only workflow in the repository, so an invalid
-      # ci.yml means CI silently stops running with nothing left to notice.
-      # That is not hypothetical: on 2026-08-02 a step left with an empty
-      # `env:` (parses as null, which Actions rejects) took weekly.yml out of
-      # service for hours. yaml.safe_load accepts that; actionlint does not.
-      # Compose validation needs no image and takes about a second, so it
-      # lives here rather than behind the docker job's build. That also means
-      # it now runs on every PR instead of only when a Docker path changed.
 
       # Compose validation needs no image and takes about a second, so it
       # lives here rather than behind the docker job's build. That also means
@@ -228,13 +220,14 @@ jobs:
         with:
           container-name: test-neo4j
 
-      - name: Upload coverage
+      - name: Upload coverage artifact
         if: ${{ !cancelled() && hashFiles('coverage.xml') != '' }}
-        uses: codecov/codecov-action@v7
+        uses: actions/upload-artifact@v7
         with:
-          files: ./coverage.xml
-          flags: full
-          name: full-coverage
+          name: coverage-report
+          path: coverage.xml
+          if-no-files-found: error
+          retention-days: 14
 
       - name: Neo4j logs on failure
         if: failure()
