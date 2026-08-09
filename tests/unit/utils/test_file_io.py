@@ -33,7 +33,7 @@ def temp_dir():
 def test_save_dataframe_parquet_success(temp_dir, sample_dataframe):
     """Test successful Parquet save."""
     path = temp_dir / "test.parquet"
-    save_dataframe_parquet(sample_dataframe, path)
+    assert save_dataframe_parquet(sample_dataframe, path) == path
     assert path.exists()
 
     # Verify can read back
@@ -42,17 +42,46 @@ def test_save_dataframe_parquet_success(temp_dir, sample_dataframe):
     assert list(df.columns) == ["a", "b"]
 
 
-def test_save_dataframe_parquet_fallback_to_ndjson(temp_dir, sample_dataframe):
-    """Test fallback to NDJSON when Parquet fails."""
+def test_save_dataframe_parquet_fallback_to_ndjson(temp_dir, sample_dataframe, monkeypatch):
+    """The NDJSON fallback must report where it actually wrote.
+
+    The fallback is handled inside the helper rather than raised, so a caller
+    that keeps using the Parquet path it passed in ends up pointing at a file
+    this function deleted.
+    """
+
     path = temp_dir / "test.parquet"
 
-    # Mock failure by using invalid path (but this won't actually fail)
-    # Instead, test the fallback mechanism by disabling parquet
-    # For a real test, we'd need to mock the to_parquet call
+    def _explode(*args, **kwargs):
+        raise OSError("simulated parquet engine failure")
 
-    # Test that NDJSON fallback path is created correctly
-    ndjson_path = path.with_suffix(".ndjson")
-    assert ndjson_path == temp_dir / "test.ndjson"
+    monkeypatch.setattr(pd.DataFrame, "to_parquet", _explode)
+
+    written = save_dataframe_parquet(sample_dataframe, path)
+
+    assert written == temp_dir / "test.ndjson"
+    assert written.exists()
+    assert not path.exists(), "stale Parquet must be removed so readers find the NDJSON"
+
+    records = [json.loads(line) for line in written.read_text(encoding="utf-8").splitlines()]
+    assert len(records) == 3
+    assert set(records[0]) == {"a", "b"}
+
+
+def test_save_dataframe_parquet_reraises_when_fallback_disabled(
+    temp_dir, sample_dataframe, monkeypatch
+):
+    """With the fallback disabled the caller owns the failure."""
+
+    def _explode(*args, **kwargs):
+        raise OSError("simulated parquet engine failure")
+
+    monkeypatch.setattr(pd.DataFrame, "to_parquet", _explode)
+
+    with pytest.raises(OSError, match="simulated parquet engine failure"):
+        save_dataframe_parquet(
+            sample_dataframe, temp_dir / "test.parquet", fallback_to_ndjson=False
+        )
 
 
 def test_write_json_atomic(temp_dir):

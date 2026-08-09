@@ -81,11 +81,16 @@ def save_dataframe_parquet(
     index: bool = False,
     fallback_to_ndjson: bool = True,
     **kwargs: Any,
-) -> None:
+) -> Path:
     """Save DataFrame to Parquet format with NDJSON fallback.
 
     Attempts to save as Parquet first. If that fails and fallback_to_ndjson is True,
     falls back to NDJSON format in the same directory with .ndjson suffix.
+
+    The fallback is handled here rather than raised, so a caller that assumes the
+    data landed at ``path`` is wrong whenever it fires — the Parquet file is
+    deleted and the rows are at the ``.ndjson`` sibling. Use the returned path
+    rather than the one passed in.
 
     Args:
         df: DataFrame to save
@@ -93,13 +98,17 @@ def save_dataframe_parquet(
         index: Whether to include DataFrame index in output
         fallback_to_ndjson: If True, fall back to NDJSON if Parquet save fails
         **kwargs: Additional arguments passed to pandas.DataFrame.to_parquet()
+
+    Returns:
+        The path actually written: ``path`` on success, or the ``.ndjson``
+        sibling when the Parquet write failed and the fallback was taken.
     """
     _ensure_parent_dir(path)
 
     try:
         df.to_parquet(path, index=index, **kwargs)
         logger.debug(f"Saved DataFrame to Parquet: {path}")
-        return
+        return path
     except Exception as e:
         if not fallback_to_ndjson:
             logger.error(f"Failed to save Parquet and fallback disabled: {e}")
@@ -125,6 +134,7 @@ def save_dataframe_parquet(
                 pass
 
         logger.info(f"Saved DataFrame to NDJSON fallback: {ndjson_path}")
+        return ndjson_path
 
 
 def write_json_atomic(
