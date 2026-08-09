@@ -180,6 +180,14 @@ def test_run_census_aggregates_without_double_counting() -> None:
         ],
         _compiled(),
     )
+    assert result["_epistemic"] == {
+        "tier": "exploratory",
+        "citable": False,
+        "notice": (
+            "Profile-driven technology classification is exploratory; "
+            "do not cite as an evidence-tier result."
+        ),
+    }
     assert result["grand_total"] == {"n": 3, "usd": 350_000.0}
     assert result["subset_totals"]["Propulsion"] == {"n": 2, "usd": 300_000.0}
     assert result["fy_totals"][2025] == {"n": 1, "usd": 50_000.0}

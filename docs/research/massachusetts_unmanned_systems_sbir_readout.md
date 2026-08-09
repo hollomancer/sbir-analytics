@@ -1,5 +1,10 @@
 # Massachusetts Physical Unmanned-Systems SBIR/STTR Readout
 
+> **Exploratory / non-citable.** Use this readout for discovery, not as
+> evidence-tier support or an externally cited result. The 238-award reviewed
+> total cannot be regenerated until the original award-level review decisions
+> are reconstructed as a retained, auditable ledger.
+
 - **Data source:** SBIR.gov bulk `award_data.csv` local snapshot
 - **Source timestamp:** 2026-04-01T00:00:06.904233+00:00
 - **Source SHA-256:** `73d646fc6883ed93b36d19518b0d9442a9ebae94c5b49ad5a7fcd6d3c2b872dd`
