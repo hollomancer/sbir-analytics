@@ -1,6 +1,7 @@
 # CET Patent Classifier — Training and Feature Flow
 
-This document covers the **patent** CET classifier: feature extraction, vectorizers, training/inference flow, evaluation, and Dagster assets.
+This document covers the **patent** CET classifier: feature extraction,
+training and inference, evaluation, and Dagster assets.
 
 For the **award** CET classifier (`ApplicabilityModel`) — including architecture, hyperparameters, Neo4j schema, quality checks, and integration scenarios — see [cet-integration.md](cet-integration.md).
 
@@ -16,14 +17,6 @@ For the **award** CET classifier (`ApplicabilityModel`) — including architectu
     - `extract_ipc_cpc`, `guess_assignee_type`, `bag_of_keywords_features`
     - `extract_features(record) -> PatentFeatureVector` with `as_dict()`
     - Small default keyword map and stopword set for deterministic testing.
-
-- Vectorizers (convert features → numeric matrices)
-  - `packages/sbir-ml/sbir_ml/ml/features/vectorizers.py`
-    - `KeywordVectorizer`: count and presence features by keyword group
-    - `TokenCounterVectorizer`: token counts with/without stopwords
-    - `AssigneeTypeVectorizer`: one-hot encoding of assignee type
-    - `IPCPresenceVectorizer`: IPC/CPC section presence flags (A–H)
-    - `FeatureMatrixBuilder`: combine vectorizers to produce a single 2D matrix
 
 - Classifier wrapper and extractor
   - `packages/sbir-ml/sbir_ml/ml/models/patent_classifier.py`
@@ -65,26 +58,6 @@ This module avoids heavy NLP dependencies and only uses Python and `re`.
 
 ---
 
-## Vectorizers
-
-When training real sklearn-like pipelines, you will typically need numeric feature matrices. `packages/sbir-ml/sbir_ml/ml/features/vectorizers.py` provides a minimal set:
-
-- `KeywordVectorizer(keywords_map)`:
-  - For each group in `keywords_map`, creates `<group>__count` and `<group>__presence`.
-- `TokenCounterVectorizer()`:
-  - Two columns: `n_tokens`, `n_tokens_no_stopwords`.
-- `AssigneeTypeVectorizer()`:
-  - One-hot across: `academic`, `company`, `government`, `individual`, `unknown`.
-- `IPCPresenceVectorizer()`:
-  - Binary presence for IPC and CPC across sections `A..H`.
-- `FeatureMatrixBuilder([vec1, vec2, ...])`:
-  - Horizontal concatenation of individual matrices
-  - `get_feature_names()` returns concatenated feature names across all vectorizers
-
-These are designed to be import-safe and deterministic.
-
----
-
 ## Classifier
 
 `packages/sbir-ml/sbir_ml/ml/models/patent_classifier.py`
@@ -99,9 +72,13 @@ These are designed to be import-safe and deterministic.
 
 Notes:
 
-- Training can proceed using normalized title-only text, or using extracted features transformed into numeric matrices via `FeatureMatrixBuilder`.
+- Training can proceed using normalized title-only text. Callers may instead
+  inject a numeric feature builder through `feature_matrix_builder`; this
+  repository does not currently provide a built-in structured-feature matrix
+  builder.
 - For lightweight pipelines (like `DummyPipeline` used in tests), text inputs are sufficient.
-- For production pipelines (sklearn), pass a matrix via `feature_matrix_builder` in `train_from_dataframe`.
+- For sklearn pipelines that require numeric input, pass a matrix builder through
+  `feature_matrix_builder` in `train_from_dataframe`.
 
 ---
 
@@ -186,9 +163,10 @@ Store evaluation metrics in your artifact metadata by merging them into `config`
 
 ## CI & Import Safety
 
-- Feature extraction and vectorizers avoid heavy dependencies.
+- Feature extraction avoids heavy dependencies.
 - Many components perform defensive imports and fallback to minimal behavior to keep tests green in lean environments.
-- ML unit tests live under `tests/unit/ml/` and are included in the fast `ml-unit-tests` CI job.
+- ML unit tests live under `tests/unit/ml/` and run in the pull-request unit
+  shards and the post-merge full suite.
 
 ---
 
@@ -205,7 +183,9 @@ Store evaluation metrics in your artifact metadata by merging them into `config`
 ## Practical Tips
 
 - Start simple: use `use_feature_extraction=True` to feed normalized text to text-based pipelines (or `DummyPipeline` for CI).
-- Move to numeric features for sklearn: construct a `FeatureMatrixBuilder` and pass it to `train_from_dataframe` as `feature_matrix_builder`.
+- To use numeric features, supply a caller-owned builder with `fit_transform`
+  and, optionally, `get_feature_names`, then pass it to `train_from_dataframe`
+  as `feature_matrix_builder`.
 - Persist feature names:
   - `PatentCETClassifier` stores `feature_names` in `config` when a matrix builder is used; include this in your artifact metadata for interpretability.
 - For portability across environments:
