@@ -42,6 +42,14 @@ def test_comment_only_file_is_rejected(tmp_path: Path) -> None:
         read_yaml_mapping(path)
 
 
+@pytest.mark.parametrize("content", ["", "# intentionally empty\n"])
+def test_empty_file_can_explicitly_mean_empty_mapping(tmp_path: Path, content: str) -> None:
+    path = tmp_path / "empty.yaml"
+    path.write_text(content, encoding="utf-8")
+
+    assert read_yaml_mapping(path, allow_empty=True) == {}
+
+
 @pytest.mark.parametrize(
     ("content", "type_name"),
     [("- one\n- two\n", "list"), ("just a string\n", "str"), ("42\n", "int")],

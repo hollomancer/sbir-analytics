@@ -28,7 +28,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 
-import yaml
+from sbir_etl.config.yaml_io import read_yaml_mapping
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 DATA = REPO_ROOT / "data"
@@ -128,7 +128,11 @@ class ReportPaths:
                 f"No area config at {self.config_path}. "
                 f"Add config/transition_reports/{self.area_id}.yaml"
             )
-        cfg = yaml.safe_load(self.config_path.read_text(encoding="utf-8")) or {}
+        cfg = read_yaml_mapping(
+            self.config_path,
+            description=f"{self.area_id} transition-report profile",
+            allow_empty=True,
+        )
         cfg.setdefault("area_id", self.area_id)
         return cfg
 

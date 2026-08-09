@@ -18,10 +18,10 @@ from types import MappingProxyType
 from typing import Any
 
 import pandas as pd
-import yaml
 from loguru import logger
 
 from ..config.loader import get_config
+from ..config.yaml_io import read_yaml_mapping
 
 
 EPISTEMIC_TIER = "exploratory"
@@ -167,8 +167,11 @@ class NAICSToBEAMapper:
         # Load fallback configuration
         if self.fallback_config_path.exists():
             try:
-                with self.fallback_config_path.open() as f:
-                    self.fallback_config = yaml.safe_load(f) or {}
+                self.fallback_config = read_yaml_mapping(
+                    self.fallback_config_path,
+                    description="NAICS-to-BEA fallback config",
+                    allow_empty=True,
+                )
                 logger.info(f"Loaded fallback mappings from {self.fallback_config_path}")
             except Exception as e:
                 logger.warning(

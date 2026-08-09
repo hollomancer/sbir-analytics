@@ -557,7 +557,7 @@ def load_keywords_map(path: object | None = None) -> Mapping[str, Sequence[str]]
         # Local imports for import-safety
         from pathlib import Path
 
-        import yaml
+        from sbir_etl.config.yaml_io import read_yaml_mapping
     except Exception:
         return {}
 
@@ -576,9 +576,11 @@ def load_keywords_map(path: object | None = None) -> Mapping[str, Sequence[str]]
         return {}
 
     try:
-        data = yaml.safe_load(candidate.read_text(encoding="utf-8")) or {}
-        if not isinstance(data, dict):
-            return {}
+        data = read_yaml_mapping(
+            candidate,
+            description="CET patent keyword map",
+            allow_empty=True,
+        )
         # Allow both nested and flat schemas
         if "cet_keywords" in data and isinstance(data["cet_keywords"], dict):
             kw_map = data["cet_keywords"]

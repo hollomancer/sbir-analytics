@@ -19,8 +19,7 @@ from collections.abc import Iterable
 from pathlib import Path
 from typing import Any, TypedDict
 
-import yaml
-
+from sbir_etl.config.yaml_io import read_yaml_mapping
 from sbir_etl.extractors.sbir_public_awards import load_sbir_awards_csv
 from sbir_etl.identity.geography import normalize_us_jurisdiction
 
@@ -80,7 +79,11 @@ def load_census_config(area_id: str, config_dir: Path | None = None) -> dict[str
         raise FileNotFoundError(
             f"No tech-census config at {path}. Add config/tech_census/{area_id}.yaml"
         )
-    cfg = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+    cfg = read_yaml_mapping(
+        path,
+        description=f"{area_id} tech-census profile",
+        allow_empty=True,
+    )
     if cfg.get("area_id") and cfg["area_id"] != area_id:
         raise ValueError(f"area_id in {path} is {cfg['area_id']!r}, expected {area_id!r}")
     cfg["area_id"] = area_id
@@ -106,7 +109,11 @@ def load_census_config(area_id: str, config_dir: Path | None = None) -> dict[str
             raise ValueError(f"{path}: overrides_file must remain under {directory}") from exc
         if not override_path.exists():
             raise FileNotFoundError(f"Override ledger not found: {override_path}")
-        ledger = yaml.safe_load(override_path.read_text(encoding="utf-8")) or {}
+        ledger = read_yaml_mapping(
+            override_path,
+            description=f"{area_id} tech-census override ledger",
+            allow_empty=True,
+        )
         cfg["_overrides"] = ledger.get("overrides", []) or []
         cfg["_override_version"] = str(ledger.get("version", "unversioned"))
     return cfg

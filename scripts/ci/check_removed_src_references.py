@@ -19,6 +19,7 @@ AGENT_DOCUMENTATION_FILES = {"AGENTS.md", "CLAUDE.md"}
 AGENT_DOCUMENTATION_PREFIXES = (".claude/", ".agents/")
 EXCLUDED_HISTORICAL_DOCUMENTS = {"docs/decisions/ADR-002-etl-library-extraction.md"}
 EXCLUDED_SCAN_FILES = {
+    "scripts/ci/check_config_boundaries.py",
     "scripts/ci/check_identity_boundaries.py",
     "tests/unit/scripts/test_repository_hygiene.py",
 }

@@ -202,12 +202,13 @@ What already holds:
   build outright (`specs/epistemic-tier-enforcement/`).
 - The Phase III census implements the evidence-tier mechanisms: frozen
   artifacts, SHA enforcement, a declared estimand, and a blocking asset check.
+- Production YAML mapping reads route through the configuration loader or the
+  shared strict-mapping reader. `scripts/ci/check_config_boundaries.py` makes
+  that single-reader contract executable while preserving explicit
+  `allow_empty=True` policy at permissive call sites.
 
 What does not:
 
-- Seven direct `yaml.safe_load` call sites remain outside the configuration
-  loader and the shared strict-mapping reader; several intentionally use
-  permissive empty-file behavior.
 - `scripts/phase3_groundtruth/` and `scripts/validation/` now carry explicit
   `exploratory` labels, but their analytical weight — T6/T7 groundtruth
   results feeding the evidence-target `phase3-transition-groundtruth` spec —
