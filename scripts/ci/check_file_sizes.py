@@ -68,9 +68,14 @@ def scan(
 
     for relative in tracked_files(repository_root):
         path = repository_root / relative
-        if not path.is_file():  # symlink or deleted-but-staged edge case
+        if path.is_symlink():
+            # Git stores the link target text, not the target's bytes. Use lstat
+            # so a tracked link cannot make the guard inspect outside the repo.
+            size = path.lstat().st_size
+        elif path.is_file():
+            size = path.stat().st_size
+        else:  # deleted-but-staged or other non-file edge case
             continue
-        size = path.stat().st_size
         if size <= max_bytes:
             continue
         if relative in allowlist:

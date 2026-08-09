@@ -49,6 +49,16 @@ def test_gitignored_large_file_is_not_flagged(tmp_path):
     assert guard.scan(repository_root=root, max_bytes=1024 * 1024) == []
 
 
+def test_tracked_symlink_measures_link_not_target(tmp_path):
+    root = _repo(tmp_path)
+    target = tmp_path.parent / "large-target.bin"
+    target.write_bytes(b"x" * 2048)
+    (root / "large-target-link").symlink_to(target)
+    _git(root, "add", "large-target-link")
+
+    assert guard.scan(repository_root=root, max_bytes=512) == []
+
+
 def test_allowlisted_oversized_file_passes(tmp_path):
     root = _repo(tmp_path)
     _track(root, "big.bin", 2 * 1024 * 1024)
