@@ -11,11 +11,11 @@ is documented under [`docs/ml/`](../../docs/ml/) and
 
 ## Installation
 
-Installed automatically with the ML extra or the full pipeline:
+The workspace packages are currently installed from a repository checkout; they
+are not published to PyPI. From the repository root:
 
 ```bash
-pip install "sbir-etl[ml]"   # ETL library + this package
-pip install sbir-analytics    # full pipeline (includes [ml])
+make install  # full workspace, including sbir-ml[nlp]
 ```
 
 Core deps: `sbir-etl`, `scikit-learn`, `tqdm`. Optional extras:

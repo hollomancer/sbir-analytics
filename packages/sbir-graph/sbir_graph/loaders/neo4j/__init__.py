@@ -5,9 +5,9 @@ Epistemic tier: pipelines. Every loader writes upstream records with
 deterministic MERGE semantics; correctness is faithfulness to the input
 records, and no loader performs inference or scoring.
 
-This package requires the ``neo4j`` optional dependency.  Install it with::
+This package requires the ``neo4j`` dependency from the repository workspace::
 
-    pip install sbir-graph
+    make install
 
 All public symbols are lazily imported so that the rest of the ``sbir_etl``
 package can be imported without neo4j being installed.
@@ -89,7 +89,7 @@ def __getattr__(name: str) -> Any:
         except ImportError as exc:
             raise ImportError(
                 f"The neo4j package is required to use {name}. "
-                "Install it with: pip install sbir-graph"
+                "Install this repository's full workspace with: make install"
             ) from exc
         value = getattr(mod, attr)
         globals()[name] = value

@@ -14,7 +14,8 @@ try:
     from neo4j import Driver, GraphDatabase, Session, Transaction  # type: ignore[attr-defined]
 except ImportError as _neo4j_err:
     raise ImportError(
-        "The neo4j package is required for Neo4j loaders. Install it with: pip install sbir-graph"
+        "The neo4j package is required for Neo4j loaders. "
+        "Install this repository's full workspace with: make install"
     ) from _neo4j_err
 
 
