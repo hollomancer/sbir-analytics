@@ -29,3 +29,10 @@
     component, collision, quarantine, and candidate-edge counts while every downstream gate stays
     closed.
   - Requirements: 1.1–4.4
+
+## Active follow-on
+
+The bounded fuzzy-name and contact-evidence review universe is specified in
+[`../sbir-form-d-candidate-enrichment/`](../sbir-form-d-candidate-enrichment/). It preserves these
+exact edges and remains candidate-only; identity acceptance belongs to the later adjudication
+phase.
