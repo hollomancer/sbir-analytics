@@ -15,6 +15,15 @@ import pytest
 
 
 SCRIPT = Path(__file__).parents[3] / "scripts/data/audit_sbir_form_d_business_combination_proxy.py"
+REPO_ROOT = Path(__file__).parents[3]
+TRACKED_MANIFEST = (
+    REPO_ROOT
+    / "docs/research/agency-private-capital-sbir-form-d-business-combination-proxy-audit.manifest.json"
+)
+TRACKED_REPORT = (
+    REPO_ROOT
+    / "docs/research/agency-private-capital-sbir-form-d-business-combination-proxy-audit.md"
+)
 
 
 def _load_module() -> ModuleType:
@@ -438,3 +447,28 @@ def test_manifest_publish_failure_rolls_back_new_product(
 
     assert args.audit_manifest.read_bytes() == prior_manifest
     assert not list(args.output_dir.glob("*.jsonl"))
+
+
+def test_tracked_report_reconciles_to_materialization_manifest() -> None:
+    manifest = json.loads(TRACKED_MANIFEST.read_text(encoding="utf-8"))
+    report = TRACKED_REPORT.read_text(encoding="utf-8")
+    report_words = " ".join(report.split())
+    complete = manifest["counts"]["complete_filing_fiscal_year_window"]
+    product = manifest["outputs"]["filing_evidence_audit"]
+
+    assert complete == {
+        "end_fy": 2024,
+        "proxy_bearing_ciks": 212,
+        "proxy_filings": 283,
+        "start_fy": 2010,
+    }
+    assert "283 unique Form D accessions across 212 exact Form D CIKs" in report_words
+    assert product["row_count"] == 283
+    assert (
+        f"| Complete-FY filing evidence audit | 283 | 244,696 | `{product['sha256']}` |" in report
+    )
+    assert manifest["complete_sbir_identity"] is False
+    assert manifest["complete_sbir_exclusion"] is False
+    assert manifest["covariates_ready"] is False
+    assert manifest["ready_for_matching"] is False
+    assert manifest["verified_ma"] is False

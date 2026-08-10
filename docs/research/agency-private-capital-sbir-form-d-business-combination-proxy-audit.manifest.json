@@ -1,0 +1,253 @@
+{
+  "caveats": [
+    "Exact-name candidate identities are not verified SBIR identities.",
+    "Exact-name identity recall is unknown.",
+    "The event is a filer-supplied Form D filing proxy, not a verified legal event.",
+    "Filing dates are evidence dates and are not transaction or exit dates.",
+    "Agency memberships overlap and must not be summed.",
+    "No count in this audit is an outcome, prevalence, or match rate."
+  ],
+  "code_commit": "3e76c3bf165693ebca056841127255a28ad497d6",
+  "complete": true,
+  "complete_sbir_exclusion": false,
+  "complete_sbir_identity": false,
+  "counts": {
+    "agency_membership_nonexclusive": {
+      "DHS": {
+        "proxy_bearing_ciks": 1,
+        "proxy_filings": 1
+      },
+      "DOC": {
+        "proxy_bearing_ciks": 3,
+        "proxy_filings": 6
+      },
+      "DOD": {
+        "proxy_bearing_ciks": 76,
+        "proxy_filings": 96
+      },
+      "DOE": {
+        "proxy_bearing_ciks": 23,
+        "proxy_filings": 31
+      },
+      "DOT": {
+        "proxy_bearing_ciks": 3,
+        "proxy_filings": 5
+      },
+      "ED": {
+        "proxy_bearing_ciks": 3,
+        "proxy_filings": 3
+      },
+      "EPA": {
+        "proxy_bearing_ciks": 2,
+        "proxy_filings": 2
+      },
+      "HHS": {
+        "proxy_bearing_ciks": 133,
+        "proxy_filings": 181
+      },
+      "NASA": {
+        "proxy_bearing_ciks": 21,
+        "proxy_filings": 28
+      },
+      "NSF": {
+        "proxy_bearing_ciks": 31,
+        "proxy_filings": 44
+      },
+      "USDA": {
+        "proxy_bearing_ciks": 7,
+        "proxy_filings": 12
+      }
+    },
+    "amendment_proxy_filings": 26,
+    "candidate_ciks": 4465,
+    "complete_filing_fiscal_year_window": {
+      "end_fy": 2024,
+      "proxy_bearing_ciks": 212,
+      "proxy_filings": 283,
+      "start_fy": 2010
+    },
+    "filing_fiscal_years": {
+      "2010": {
+        "proxy_bearing_ciks": 23,
+        "proxy_filings": 26
+      },
+      "2011": {
+        "proxy_bearing_ciks": 23,
+        "proxy_filings": 29
+      },
+      "2012": {
+        "proxy_bearing_ciks": 13,
+        "proxy_filings": 16
+      },
+      "2013": {
+        "proxy_bearing_ciks": 20,
+        "proxy_filings": 29
+      },
+      "2014": {
+        "proxy_bearing_ciks": 21,
+        "proxy_filings": 22
+      },
+      "2015": {
+        "proxy_bearing_ciks": 18,
+        "proxy_filings": 20
+      },
+      "2016": {
+        "proxy_bearing_ciks": 16,
+        "proxy_filings": 19
+      },
+      "2017": {
+        "proxy_bearing_ciks": 12,
+        "proxy_filings": 14
+      },
+      "2018": {
+        "proxy_bearing_ciks": 10,
+        "proxy_filings": 12
+      },
+      "2019": {
+        "proxy_bearing_ciks": 14,
+        "proxy_filings": 16
+      },
+      "2020": {
+        "proxy_bearing_ciks": 16,
+        "proxy_filings": 17
+      },
+      "2021": {
+        "proxy_bearing_ciks": 16,
+        "proxy_filings": 17
+      },
+      "2022": {
+        "proxy_bearing_ciks": 11,
+        "proxy_filings": 13
+      },
+      "2023": {
+        "proxy_bearing_ciks": 15,
+        "proxy_filings": 16
+      },
+      "2024": {
+        "proxy_bearing_ciks": 15,
+        "proxy_filings": 17
+      }
+    },
+    "full_source_join": {
+      "proxy_bearing_ciks": 222,
+      "proxy_filings": 295
+    },
+    "identity_evidence_classes": {
+      "ambiguous_name_only": {
+        "proxy_bearing_ciks": 26,
+        "proxy_filings": 33
+      },
+      "unique_within_materialized_name_map": {
+        "proxy_bearing_ciks": 186,
+        "proxy_filings": 250
+      }
+    },
+    "incomplete_boundary_fiscal_years": {
+      "2009": {
+        "proxy_bearing_ciks": 10,
+        "proxy_filings": 10
+      },
+      "2025": {
+        "proxy_bearing_ciks": 2,
+        "proxy_filings": 2
+      }
+    },
+    "submission_types": {
+      "D": 257,
+      "D/A": 26
+    }
+  },
+  "covariates_ready": false,
+  "exclusion_recall": "unknown",
+  "identity_status": "exact_name_candidate",
+  "inputs": {
+    "awards_snapshot": {
+      "path": "award_data.csv",
+      "row_count": 219500,
+      "sha256": "73d646fc6883ed93b36d19518b0d9442a9ebae94c5b49ad5a7fcd6d3c2b872dd",
+      "size_bytes": 394456822
+    },
+    "candidate_exclusions": {
+      "path": "sbir_cik_exclusion_candidates.identity-staging.jsonl",
+      "row_count": 4465,
+      "sha256": "94cb5bc0eae682675f6e0015cc2c21b48411aba6429b6ef5e4cccfe769af38d3",
+      "size_bytes": 2276095
+    },
+    "control_manifest": {
+      "path": "agency-private-capital-form-d-control-universe.manifest.json",
+      "sha256": "1777119114c4f7385dd09d6b60c603f2c5c59db765311255440513190d94b331",
+      "size_bytes": 247889
+    },
+    "proxy_coverage": {
+      "path": "form_d_business_combination_filing_proxy.coverage.1a8b017959109e8c14ce8469fd93b6ef3df5751b93678a4b092b8af7562c510b.jsonl",
+      "row_count": 311809,
+      "sha256": "1a8b017959109e8c14ce8469fd93b6ef3df5751b93678a4b092b8af7562c510b",
+      "size_bytes": 125345249
+    },
+    "proxy_events": {
+      "path": "form_d_business_combination_filing_proxy.events.8ad27fa2cc319971853f6aaed8b637c7267ca4803901fa62b3b30799da5086fb.jsonl",
+      "row_count": 14408,
+      "sha256": "8ad27fa2cc319971853f6aaed8b637c7267ca4803901fa62b3b30799da5086fb",
+      "size_bytes": 8356489
+    },
+    "proxy_manifest": {
+      "path": "agency-private-capital-form-d-business-combination-proxy.manifest.json",
+      "sha256": "0bad05474580a27200f38474f5ea629bf2ff827c68c53e5d89bc47e3640dd680",
+      "size_bytes": 5048
+    }
+  },
+  "invariants": {
+    "agency_tags_nonempty_and_sorted": true,
+    "candidate_ciks_have_complete_proxy_coverage": true,
+    "complete_fiscal_years_only": true,
+    "content_addressed_output": true,
+    "exact_cik_join_only": true,
+    "identity_classes_exhaustive_and_exclusive": true,
+    "input_hash_rows_bytes_verified": true,
+    "one_row_per_unique_accession": true,
+    "per_fiscal_year_filings_reconcile": true
+  },
+  "outcome_kind": "filing_proxy",
+  "outputs": {
+    "filing_evidence_audit": {
+      "path": "sbir_form_d_proxy_audit.aaa60a046a8a8d952dee06fd4a83a496eecb167f3ce2bff2d0e4ae69a5f4af91.jsonl",
+      "row_count": 283,
+      "sha256": "aaa60a046a8a8d952dee06fd4a83a496eecb167f3ce2bff2d0e4ae69a5f4af91",
+      "size_bytes": 244696
+    }
+  },
+  "ready_for_matching": false,
+  "schema_version": 1,
+  "source": {
+    "coverage_end_date": "2024-12-31",
+    "coverage_start_date": "2009-01-01",
+    "date_basis": "filing_date",
+    "event_type": "form_d_business_combination_filing_proxy",
+    "source": "sec_dera_form_d_quarterly_bulk",
+    "source_snapshot_id": "form_d_control_universe_manifest_sha256:1777119114c4f7385dd09d6b60c603f2c5c59db765311255440513190d94b331"
+  },
+  "verified_ma": false,
+  "window": {
+    "complete_filing_fiscal_years": [
+      2010,
+      2011,
+      2012,
+      2013,
+      2014,
+      2015,
+      2016,
+      2017,
+      2018,
+      2019,
+      2020,
+      2021,
+      2022,
+      2023,
+      2024
+    ],
+    "excluded_incomplete_boundary_fiscal_years": [
+      2009,
+      2025
+    ]
+  }
+}
