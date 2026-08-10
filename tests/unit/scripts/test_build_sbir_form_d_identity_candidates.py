@@ -762,9 +762,29 @@ def test_similarity_backend_version_drift_fails_closed(
         awards=[_award("Alpha Research")],
         issuers=[_issuer("10", "Alpha Research")],
     )
-    monkeypatch.setattr(module.rapidfuzz, "__version__", "3.14.2")
+    monkeypatch.setattr(module, "distribution_version", lambda _name: "3.14.2")
 
     with pytest.raises(module.BuildError, match="rapidfuzz==3.14.3"):
+        _build(module, paths)
+
+    assert not paths["candidate_output"].exists()
+
+
+def test_similarity_backend_fallback_fails_closed(
+    module: Any,
+    crosswalk_module: Any,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    paths = _fixture(
+        tmp_path,
+        crosswalk_module,
+        awards=[_award("Alpha Research")],
+        issuers=[_issuer("10", "Alpha Research")],
+    )
+    monkeypatch.setattr(module, "company_name_similarity", lambda *_args, **_kwargs: 0.5)
+
+    with pytest.raises(module.BuildError, match="not using the pinned backend"):
         _build(module, paths)
 
     assert not paths["candidate_output"].exists()

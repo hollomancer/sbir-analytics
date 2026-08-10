@@ -19,11 +19,9 @@ import tempfile
 import unicodedata
 from collections import Counter, defaultdict
 from collections.abc import Iterable, Mapping, Sequence
+from importlib.metadata import PackageNotFoundError, version as distribution_version
 from pathlib import Path
 from typing import Any
-
-import rapidfuzz
-from rapidfuzz import fuzz as rapidfuzz_fuzz
 
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -34,6 +32,7 @@ from sbir_etl.identity import (
     CompanyNameMetric,
     CompanyNameProfile,
     USJurisdictionProfile,
+    company_name_similarity,
     normalize_company_name,
     normalize_us_jurisdiction,
 )
@@ -68,6 +67,7 @@ STATE_SUPPORTED_THRESHOLD = 0.85
 ZIP_SUPPORTED_THRESHOLD = 0.80
 SIMILARITY_BACKEND = "rapidfuzz"
 SIMILARITY_BACKEND_VERSION = "3.14.3"
+SIMILARITY_BACKEND_SENTINEL = 0.8571428571428572
 ROUTE_ORDER = ("exact_normalized_name", "strong_name", "state_supported", "zip_supported")
 CONTACT_FIELDS = ("street1", "city", "state", "zip5", "phone10")
 EXPECTED_IDENTITY_FIELDS = (
@@ -333,21 +333,24 @@ def _fuzzy_eligible(value: str) -> bool:
 
 
 def _validate_similarity_backend() -> None:
-    actual = rapidfuzz.__version__
+    try:
+        actual = distribution_version(SIMILARITY_BACKEND)
+    except PackageNotFoundError as exc:
+        raise BuildError(
+            f"Candidate similarity requires {SIMILARITY_BACKEND}=={SIMILARITY_BACKEND_VERSION}"
+        ) from exc
     if actual != SIMILARITY_BACKEND_VERSION:
         raise BuildError(
             "Candidate similarity requires "
             f"{SIMILARITY_BACKEND}=={SIMILARITY_BACKEND_VERSION}; found {actual}"
         )
+    sentinel = company_name_similarity("ABCCCCC", "ABCBCCC", metric=CompanyNameMetric.RATIO)
+    if abs(sentinel - SIMILARITY_BACKEND_SENTINEL) > 1e-12:
+        raise BuildError("Shared company-name similarity is not using the pinned backend")
 
 
 def _similarity(left: str, right: str, *, metric: CompanyNameMetric) -> float:
-    scorers = {
-        CompanyNameMetric.RATIO: rapidfuzz_fuzz.ratio,
-        CompanyNameMetric.TOKEN_SET: rapidfuzz_fuzz.token_set_ratio,
-        CompanyNameMetric.TOKEN_SORT: rapidfuzz_fuzz.token_sort_ratio,
-    }
-    return float(scorers[metric](left, right)) / 100.0
+    return company_name_similarity(left, right, metric=metric)
 
 
 def _normalize_zip5(value: object) -> str | None:

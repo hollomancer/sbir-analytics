@@ -43,8 +43,9 @@ For fuzzy-eligible SBIR names, two deterministic indexes avoid a Cartesian compa
 Each Form D alias draws possible SBIR names from its prefix block and each issuer ZIP draws names
 from its ZIP block. Unequal name pairs then apply exactly the three rules in the requirements.
 Route counts may overlap. There is no top-k truncation; retrieval is exhaustive within the frozen
-blocks and thresholds. Similarity calls go directly to the required RapidFuzz `3.14.3` backend;
-the producer rejects a different or missing backend instead of changing algorithms silently.
+blocks and thresholds. Similarity calls use the shared `sbir_etl.identity` contract. The producer
+requires the RapidFuzz `3.14.3` distribution and checks a backend-specific sentinel before work, so
+a missing dependency, version drift, or fallback implementation fails closed.
 
 Exact pairs are seeded from Phase 1 and are never inferred again. During the broad-issuer scan,
 exact equality is reconstructed solely to prove that the seeded set is complete and unchanged.
