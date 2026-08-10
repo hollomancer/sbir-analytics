@@ -14,7 +14,10 @@
 > and symmetric FPDS/patent/verified-M&A outcomes are wired and validated. A
 > shared date-aware event/coverage evaluator and a CIK-native Form D
 > business-combination filing proxy now establish the first symmetric source
-> contract, but do not constitute an M&A-exit outcome or matched comparison.
+> contract, but do not constitute an M&A-exit outcome or matched comparison. A
+> deterministic possible-contamination screen now queues fuzzy name/location
+> candidates for review without changing the provisional controls or the open
+> identity gate.
 
 Tasks are grouped by phase. Phase 1 ships independently of PR #286. Phase 2 is
 gated on Phase 1 sign-off and its missing real-data input contracts.
@@ -116,7 +119,11 @@ on a pinned real-data run.
   validated SIC-to-NAICS-2 strategy exist. The pinned
   [real-data identity audit](../../docs/research/agency-private-capital-form-d-control-universe.md)
   materialized 311,809 issuer CIKs and 307,344 provisional retained identities;
-  those are audit counts, not a matched cohort.
+  those are audit counts, not a matched cohort. The follow-on
+  [possible-contamination audit](../../docs/research/agency-private-capital-form-d-sbir-contamination-audit.md)
+  queued 2,588 unreviewed candidate pairs spanning 1,568 provisional control
+  CIKs and applied zero exclusions. Its recall remains unknown, so this task is
+  still open.
 - [ ] 2.3 Complete and validate `CohortMatcher` — coarsened-exact matching on (vintage,
   validated NAICS-2, state). Report balance and unmatched residuals. Document
   matching ratio (agency firm : k matched controls) in the output. The existing
