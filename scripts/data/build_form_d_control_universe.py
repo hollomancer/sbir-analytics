@@ -56,10 +56,15 @@ TABLE_COLUMNS: dict[str, frozenset[str]] = {
     "ISSUERS.tsv": frozenset(
         {
             "ACCESSIONNUMBER",
+            "CITY",
             "IS_PRIMARYISSUER_FLAG",
             "CIK",
             "ENTITYNAME",
+            "ISSUERPHONENUMBER",
+            "JURISDICTIONOFINC",
             "STATEORCOUNTRY",
+            "STREET1",
+            "STREET2",
             "ZIPCODE",
             "ENTITYTYPE",
             "YEAROFINC_TIMESPAN_CHOICE",
@@ -454,6 +459,7 @@ def parse_quarter(path: Path, *, quarter: str) -> tuple[list[dict[str, Any]], di
             {
                 "accession_number": accession,
                 "cik": cik,
+                "city": str(issuer.get("CITY") or "").strip() or None,
                 "date_of_first_sale": _optional_date(
                     offering.get("SALE_DATE"),
                     field="sale date",
@@ -468,6 +474,9 @@ def parse_quarter(path: Path, *, quarter: str) -> tuple[list[dict[str, Any]], di
                 "is_business_combination": _truthy(offering.get("ISBUSINESSCOMBINATIONTRANS")),
                 "issuer_name": issuer_name,
                 "issuer_name_aliases": aliases,
+                "issuer_phone": str(issuer.get("ISSUERPHONENUMBER") or "").strip() or None,
+                "jurisdiction_of_incorporation": str(issuer.get("JURISDICTIONOFINC") or "").strip()
+                or None,
                 "previous_accession_number": str(
                     offering.get("PREVIOUSACCESSIONNUMBER") or ""
                 ).strip()
@@ -477,6 +486,8 @@ def parse_quarter(path: Path, *, quarter: str) -> tuple[list[dict[str, Any]], di
                 "sic_code": sic_code,
                 "source_quarter": quarter,
                 "state": str(issuer.get("STATEORCOUNTRY") or "").strip().upper() or None,
+                "street1": str(issuer.get("STREET1") or "").strip() or None,
+                "street2": str(issuer.get("STREET2") or "").strip() or None,
                 "submission_type": str(submission.get("SUBMISSIONTYPE") or "").strip().upper(),
                 "total_amount_sold": _amount(offering.get("TOTALAMOUNTSOLD"), counters=counters),
                 "total_amount_sold_raw": sold_amount_raw,
@@ -558,6 +569,49 @@ def aggregate_issuers(filings: Iterable[dict[str, Any]]) -> list[dict[str, Any]]
             }
         )
     return sorted(issuers, key=lambda row: str(row["cik"]))
+
+
+IDENTITY_EVIDENCE_FIELDS = (
+    "issuer_name",
+    "street1",
+    "street2",
+    "city",
+    "state",
+    "zip_code",
+    "issuer_phone",
+    "jurisdiction_of_incorporation",
+    "year_of_incorporation",
+)
+
+
+def identity_field_coverage(
+    filings: Iterable[Mapping[str, Any]], issuers: Iterable[Mapping[str, Any]]
+) -> dict[str, Any]:
+    """Count filing- and CIK-grain availability of retained identity evidence."""
+
+    filing_rows = list(filings)
+    issuer_rows = list(issuers)
+    filing_counts = {
+        field: sum(row.get(field) not in (None, "") for row in filing_rows)
+        for field in IDENTITY_EVIDENCE_FIELDS
+    }
+    cik_counts: dict[str, int] = {}
+    for field in IDENTITY_EVIDENCE_FIELDS:
+        cik_counts[field] = sum(
+            any(filing.get(field) not in (None, "") for filing in issuer["filings"])
+            for issuer in issuer_rows
+        )
+    cik_counts["historical_alias_beyond_filing_name"] = sum(
+        any(
+            any(alias != filing["issuer_name"] for alias in filing["issuer_name_aliases"])
+            for filing in issuer["filings"]
+        )
+        for issuer in issuer_rows
+    )
+    return {
+        "cik_grain": {"rows": len(issuer_rows), "with_field": cik_counts},
+        "filing_grain": {"rows": len(filing_rows), "with_field": filing_counts},
+    }
 
 
 def _read_award_names(path: Path) -> tuple[dict[str, set[str]], int]:
@@ -791,6 +845,7 @@ def build(args: argparse.Namespace) -> dict[str, Any]:
     if len(accessions) != len(set(accessions)):
         raise BuildError("A filing accession appears in more than one selected quarter")
     issuers = aggregate_issuers(all_filings)
+    identity_coverage = identity_field_coverage(all_filings, issuers)
     exclusions, exclusion_metadata = build_exclusions(
         issuers,
         awards_csv=Path(args.awards_csv),
@@ -844,6 +899,13 @@ def build(args: argparse.Namespace) -> dict[str, Any]:
         "exclusion": exclusion_metadata,
         "exclusion_recall": "unknown",
         "identity_only": True,
+        "identity_evidence_contract": {
+            "fields": list(IDENTITY_EVIDENCE_FIELDS),
+            "grain": "form_d_filing_accession",
+            "historical_aliases_retained": True,
+            "source_table": "ISSUERS.tsv",
+        },
+        "identity_field_coverage": identity_coverage,
         "inputs": {
             "catalog": {
                 "sha256": sha256_bytes(catalog),

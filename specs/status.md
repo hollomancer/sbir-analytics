@@ -1,6 +1,6 @@
 # Specification Status Registry
 
-Reviewed: 2026-08-03
+Reviewed: 2026-08-10
 
 This registry is the cleanup checkpoint for top-level specs. It does not replace
 the requirements, design, or tasks files; it records whether a spec is a current
@@ -136,6 +136,12 @@ bypassing lifecycle review; the status and rationale still require human judgmen
 - **`procurement-transition-p1-remediation` — Active.** Award identity and path
   attribution landed. Cold-start bounds, source-normalization provenance, and
   ranking/auditability phases remain.
+- **`sbir-form-d-identity-crosswalk` — Active.** Narrow M4 validation and repair
+  for the private-capital identity seam. Its first phase freezes the expanded
+  Form D identity evidence, builds a deterministic SBIR firm ledger, and emits
+  atomic awardee-CIK review candidates only. Legal-entity acceptance, control
+  exclusion, matching eligibility, and downstream rates remain gated on the
+  planned adjudication and sensitivity phases.
 - **`sbir-ma-match-rate-by-fy` — Gated backlog.** Analysis-only F2 follow-up on
   completed M&A detection. Start only when FY match-rate reporting is requested.
 - **`state-local-tax-rates` — Maintenance.** Existing hardcoded 2024 provider

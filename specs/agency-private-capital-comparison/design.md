@@ -200,6 +200,12 @@ therefore needs a separately validated, higher-recall authoritative CIK/alias
 union before it may call an issuer SBIR-excluded. Whether that union extends
 `VendorCrosswalk` or another identity component is a follow-on design decision.
 
+The focused [SBIR ↔ Form D identity crosswalk](../sbir-form-d-identity-crosswalk/)
+repairs the first-CIK and pooled-evidence failure mode by emitting one review
+candidate per `(sbir_firm_id, CIK)` and retaining source-row and accession
+lineage. It intentionally does not turn exact name equality into an accepted
+identity; candidate enrichment and adjudication remain separate gates.
+
 ## Risks
 
 - **False control eligibility**: exact normalized-name exclusion has unknown
