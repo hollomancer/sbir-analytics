@@ -8,8 +8,10 @@
 > producer, not a valid matched comparison. The staged universe has incomplete
 > SBIR exclusion and no validated NAICS-2 covariate. A shared date-aware
 > event/coverage contract and a CIK-native Form D business-combination filing
-> proxy now exist, but FPDS, patent, and verified M&A outcome inputs remain
-> missing. Do not materialize or publish Phase 2
+> proxy now exist. A synthetic-only, fail-closed PatentsView source contract
+> also exists, but no real patent release, accepted identity bridge, coverage,
+> or outcome projection does. FPDS, patent-outcome, and verified-M&A inputs
+> remain missing. Do not materialize or publish Phase 2
 > before the Phase 1, identity, covariate, and outcome gates are satisfied.
 > Supports inventory questions **F3** (private-capital comparison), **B2** (commercialization outcomes), **B3** (transition rates) in [docs/research-questions.md](../../docs/research-questions.md).
 
@@ -82,6 +84,14 @@ The bounded broad-universe prerequisite is now maintained separately by
 for the closed 2009Q1–2024Q4 window and pins sources and products in deterministic
 manifests. The [official Form D](https://www.sec.gov/files/Form_D.pdf) and DERA
 files provide SIC and Form D industry group, not NAICS.
+
+The patent source boundary uses the USPTO PatentsView Granted Patent
+Disambiguated Data product (`PVGPATDIS`). The three-table contract follows the
+field names in the official
+[PatentsView export definitions](https://github.com/PatentsView/PatentsView-DB/blob/5ba17dea3ef9435065301a10dc7bd094ed8f586d/resources/create_export_views.sql).
+PatentsView is a research dataset rather than the official patent record, so a
+later real-data acquisition must pin the release and preserve that limitation;
+see the [USPTO PatentsView description](https://www.uspto.gov/ip-policy/economic-research/patentsview).
 
 ## Phasing
 
@@ -213,6 +223,18 @@ provisional identity staging only.
     unavailable, never zero. Implement remaining source contracts in separate
     follow-on PRs. Survival proxy and Phase-graduation rates do not apply to
     controls and remain N/A.
+
+    Patent staging SHALL begin with a separate, fail-closed PatentsView
+    granted-patent source contract. Before any study outcome is possible, the
+    contract SHALL verify one pinned `PVGPATDIS` release containing the
+    assignee, patent, and application ZIP roles by byte size, SHA-256, declared
+    archive member, and required headers. Its native event grain is
+    `(source_release_id, assignee_id, patent_id)` and SHALL contain no CIK,
+    cohort arm, index date, availability flag, denominator, or rate. A Form D
+    CIK-to-assignee name match SHALL remain `candidate` or `ambiguous`; this
+    contract SHALL NOT accept a link or turn missing patent evidence into zero.
+    Real acquisition, identity adjudication, coverage, and outcome projection
+    remain later gates.
 11. **SHALL** publish a threats-to-validity section before any headline
     finding. Required entries: SAFE/convertible undercount, late-stage Form
     D inclusion, unknown exact-name exclusion recall, alias/rename/acquisition
@@ -240,7 +262,9 @@ not sufficient to evaluate it.
 - NSF identification (ALN 47.041 / 47.084) — `sbir_etl/models/sbir_identification.py` (EXISTS)
 - Transition detection (≥85% precision) — `packages/sbir-ml/sbir_ml/transition/` (EXISTS)
 - Entity resolution cascade — UEI/DUNS/CAGE/fuzzy-name (EXISTS)
-- Phase 2 patent linkage — NOT WIRED; no PATLINK input is present in the scaffold
+- Phase 2 patent linkage — native synthetic source contract EXISTS; a real
+  release, accepted CIK-to-assignee bridge, coverage, and PATLINK outcome input
+  are NOT WIRED
 - CET classifier (EXISTS, used for Phase 1 stratification)
 - Official SEC DERA quarterly Form D bulk data, pinned 2009Q1–2024Q4 — staging
   producer EXISTS; higher-recall exclusion and validated NAICS-2 do not
