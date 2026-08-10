@@ -177,6 +177,15 @@ provisional identity staging only.
    `complete_sbir_exclusion=false`; retained means only not exact-name-matched to
    observed SBIR history, not "never SBIR." Requirement 8 remains open until a
    higher-recall authoritative CIK/alias union is validated.
+
+   A follow-on possible-contamination screen SHALL remain candidate-only unless
+   an explicit adjudication record establishes the identity decision. Its
+   deterministic manifest SHALL pin the provisional controls, current exact
+   exclusions, SBIR award snapshot, name/geography policies, thresholds, and
+   output hashes. Missing geography SHALL NOT count as agreement, candidate
+   scores SHALL NOT automatically remove a CIK, and the screen SHALL preserve
+   `complete_sbir_exclusion=false`, `exclusion_recall="unknown"`,
+   `covariates_ready=false`, and `ready_for_matching=false`.
 9. **SHALL** match the agency and eligible control cohorts on vintage year,
    validated NAICS-2, and state using coarsened-exact matching; no propensity
    scoring in v1. DERA supplies SIC and Form D industry group, not NAICS. The
