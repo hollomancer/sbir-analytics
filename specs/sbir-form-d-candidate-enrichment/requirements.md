@@ -2,7 +2,7 @@
 
 - Research questions: F1, F2, F3
 **Target epistemic tier:** `pipelines`
-- Status: active
+- Status: maintenance
 - Out of scope: legal-entity decisions; confidence tiers; people, affiliates, acquisitions, and
   successors; offering amounts; control exclusion; matching; outcomes; rates
 

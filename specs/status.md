@@ -136,10 +136,11 @@ bypassing lifecycle review; the status and rationale still require human judgmen
 - **`procurement-transition-p1-remediation` — Active.** Award identity and path
   attribution landed. Cold-start bounds, source-normalization provenance, and
   ranking/auditability phases remain.
-- **`sbir-form-d-candidate-enrichment` — Active.** Bounded follow-on to the
-  atomic crosswalk. It preserves every exact awardee-CIK edge, adds only three
-  frozen fuzzy-name routes, and appends CIK-local contact corroboration for a
-  later blinded adjudication. Identity and every analytical gate remain closed.
+- **`sbir-form-d-candidate-enrichment` — Maintenance.** The bounded follow-on
+  is implemented and audited. It preserves every exact awardee-CIK edge, adds
+  only three frozen fuzzy-name routes, and appends CIK-local contact
+  corroboration for a later blinded adjudication. Identity and every analytical
+  gate remain closed.
 - **`sbir-form-d-identity-crosswalk` — Active.** Narrow M4 validation and repair
   for the private-capital identity seam. Its first phase freezes the expanded
   Form D identity evidence, builds a deterministic SBIR firm ledger, and emits

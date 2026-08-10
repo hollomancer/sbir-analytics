@@ -14,6 +14,6 @@
 - [x] 4. Run focused tests, Ruff, mypy, repository guards, and scope review.
   - Verify: all checks pass without opening identity or analytical gates.
 
-- [ ] 5. Materialize the pinned full corpus twice and publish the tracked manifest and audit.
+- [x] 5. Materialize the pinned full corpus twice and publish the tracked manifest and audit.
   - Verify: both releases are byte-identical and the report reconciles exact, fuzzy, route,
     contact, collision, and quarantine counts.

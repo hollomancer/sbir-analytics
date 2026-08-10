@@ -1,0 +1,147 @@
+{
+  "artifact_role": "tracked_research_manifest",
+  "candidate_only": true,
+  "complete": true,
+  "complete_sbir_exclusion": false,
+  "counts": {
+    "candidate_ciks": 6033,
+    "candidate_firms": 5631,
+    "candidate_pairs": 7787,
+    "contact_supported_pairs": {
+      "city": 5079,
+      "phone10": 1733,
+      "state": 6942,
+      "street1": 641,
+      "zip5": 4522
+    },
+    "exact_pairs": 4542,
+    "firms_with_multiple_candidate_ciks": 787,
+    "form_d_ciks_with_multiple_candidate_firms": 779,
+    "fuzzy_only_pairs": 3245,
+    "max_candidate_ciks_per_firm": 27,
+    "max_candidate_firms_per_cik": 29,
+    "routes": {
+      "exact_normalized_name": 4542,
+      "state_supported": 1201,
+      "strong_name": 271,
+      "zip_supported": 1871
+    }
+  },
+  "covariates_ready": false,
+  "decision_contract": {
+    "decision": "candidate_unreviewed",
+    "same_legal_entity": "unknown"
+  },
+  "exclusion_eligible": false,
+  "exclusion_recall": "unknown",
+  "identity_accepted": false,
+  "identity_only": true,
+  "inputs": {
+    "broad_issuer_universe": {
+      "path": "form_d_issuer_universe.identity-staging.jsonl",
+      "row_count": 311809,
+      "sha256": "a7c2ba7c84cf10711a029fd9b2e9326bd1e9137af61146ee47385d8aa03b310b",
+      "size_bytes": 827044055
+    },
+    "control_manifest": {
+      "path": "form_d_control_universe.manifest.json",
+      "sha256": "3ce34a04b592131dbd0aefdb8692c21c5ab72e46f90f5f81a2aeffb9dbaeeaaf",
+      "size_bytes": 231122
+    },
+    "crosswalk_manifest": {
+      "path": "sbir_form_d_identity_crosswalk.manifest.json",
+      "sha256": "71944c74dd7d6db05545757db85b812c56aa03fdb5cf25febdb23f13e50744c3",
+      "size_bytes": 3998
+    },
+    "exact_candidate_edges": {
+      "path": "sbir_form_d_candidate_edges.v1.5677ffe3b96b8d103312a7cc99b1ef9d12d3a7ebf95032b5e24e4c53fbbc193a.jsonl",
+      "row_count": 4542,
+      "sha256": "5677ffe3b96b8d103312a7cc99b1ef9d12d3a7ebf95032b5e24e4c53fbbc193a",
+      "size_bytes": 6578060
+    },
+    "firm_identity_ledger": {
+      "path": "sbir_firm_identity_ledger.v1.272d566a665aca6262f073c75c585dcca4d9ed61ff52bb7f8197e95f50b80508.jsonl",
+      "row_count": 34426,
+      "sha256": "272d566a665aca6262f073c75c585dcca4d9ed61ff52bb7f8197e95f50b80508",
+      "size_bytes": 62253221
+    },
+    "sbir_awards_csv": {
+      "path": "award_data.csv",
+      "row_count": 219500,
+      "sha256": "73d646fc6883ed93b36d19518b0d9442a9ebae94c5b49ad5a7fcd6d3c2b872dd",
+      "size_bytes": 394456822
+    }
+  },
+  "invariants": {
+    "all_candidates_atomic_by_sbir_firm_and_cik": true,
+    "all_candidates_unreviewed": true,
+    "all_downstream_gates_closed": true,
+    "all_routes_have_traceable_evidence": true,
+    "broad_form_d_evidence_cik_local": true,
+    "contact_evidence_never_generates_pairs": true,
+    "exact_phase1_pairs_preserved": true,
+    "no_forbidden_output_fields": true,
+    "source_records_reconcile_to_phase1_ledger": true
+  },
+  "matching_eligible": false,
+  "outputs": {
+    "identity_candidates": {
+      "path": "sbir_form_d_identity_candidates.v2.67779f952df4abb114488bbfcee3f3898758662f6898898ae6abd952bc71a1c7.jsonl",
+      "row_count": 7787,
+      "sha256": "67779f952df4abb114488bbfcee3f3898758662f6898898ae6abd952bc71a1c7",
+      "size_bytes": 25768887
+    }
+  },
+  "parameters": {
+    "candidate_contract": "sbir-form-d-identity-candidate-v2",
+    "contact_normalizers": {
+      "city": "alphanumeric-key-v1",
+      "phone10": "us-phone10-v1",
+      "state": "us-jurisdiction-strict-v1",
+      "street1": "alphanumeric-key-v1",
+      "zip5": "strict-zip5-v1"
+    },
+    "fuzzy_minimum_alphanumeric_length": 6,
+    "name_metrics": [
+      "ratio",
+      "token-sort",
+      "token-set"
+    ],
+    "name_normalizer": "organization-key-v1",
+    "prefix_length": 2,
+    "retrieval_is_exhaustive_within_declared_rules": true,
+    "routes": {
+      "state_supported": {
+        "same_prefix": true,
+        "strict_state_intersection": true,
+        "threshold": 0.85
+      },
+      "strong_name": {
+        "same_prefix": true,
+        "threshold": 0.95
+      },
+      "zip_supported": {
+        "strict_zip5_intersection": true,
+        "threshold": 0.8
+      }
+    },
+    "similarity_backend": {
+      "name": "rapidfuzz",
+      "version": "3.14.3"
+    }
+  },
+  "producer": {
+    "code_commit": "c91f00ac55f95b4c0d0d468af8a82c2428f9be61",
+    "path": "scripts/data/build_sbir_form_d_identity_candidates.py",
+    "sha256": "692df6d0a3d271f69db3d7e0b146c5fecaba0d4979c13e8e0b27ddae5a255bea",
+    "size_bytes": 68867
+  },
+  "rate_eligible": false,
+  "ready_for_matching": false,
+  "schema_version": 1,
+  "source_validation": {
+    "form_d_filing_rows": 673656,
+    "form_d_issuer_rows": 311809,
+    "sbir_award_rows": 219500
+  }
+}
