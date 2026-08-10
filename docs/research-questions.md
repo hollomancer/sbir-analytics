@@ -968,7 +968,10 @@ The relevant literature is Lerner [L10], Howell [L11], and Kortum & Lerner
 - **Form D fundraising profile**
   What is the Form D [L23] private-placement fundraising profile of SBIR
   awardees?
-  *Deps: ER, SEC EDGAR · Spec: [../specs/archive/completed-features/form-d-pipeline/](../specs/archive/completed-features/form-d-pipeline/) (PR #286 merged)*
+  **Status:** Partial and non-citable. A reproducible audit now preserves 4,542
+  atomic awardee–CIK candidates, but legal-entity identity is still unreviewed
+  and no fundraising amounts have been recomputed from that candidate set.
+  *Deps: ER, SEC EDGAR · Report: [atomic SBIR–Form D identity audit](research/agency-private-capital-sbir-form-d-identity-crosswalk.md) · Spec: [../specs/archive/completed-features/form-d-pipeline/](../specs/archive/completed-features/form-d-pipeline/) (PR #286 merged), [../specs/sbir-form-d-identity-crosswalk/](../specs/sbir-form-d-identity-crosswalk/)*
 
 - **Debt vs. equity composition**
   In SBIR-firm Form D filings, how much of the money raised is debt versus
@@ -1030,7 +1033,9 @@ The relevant literature is Lerner [L10], Howell [L11], and Kortum & Lerner
   What is the private-to-SBIR leverage ratio (private capital raised ÷ SBIR
   funding) by agency, vintage, and firm size?
   The private-side mirror of NASEM's 4:1 DoD follow-on funding multiplier [L1].
-  *Deps: ER, ID, SEC EDGAR · Refs: [L1] · Spec: [../specs/archive/completed-features/form-d-pipeline/](../specs/archive/completed-features/form-d-pipeline/), [../specs/agency-private-capital-comparison/](../specs/agency-private-capital-comparison/)*
+  **Status:** Exploratory and non-citable. The atomic crosswalk is candidate-only;
+  accepted identity, amount deduplication, and linkage-error sensitivity remain open.
+  *Deps: ER, ID, SEC EDGAR · Refs: [L1] · Report: [atomic SBIR–Form D identity audit](research/agency-private-capital-sbir-form-d-identity-crosswalk.md) · Spec: [../specs/archive/completed-features/form-d-pipeline/](../specs/archive/completed-features/form-d-pipeline/), [../specs/agency-private-capital-comparison/](../specs/agency-private-capital-comparison/)*
 
 - **Outcomes vs. private-capital baselines**
   For Phase II awardees of any agency, do follow-on funding and exit outcomes
@@ -1042,9 +1047,11 @@ The relevant literature is Lerner [L10], Howell [L11], and Kortum & Lerner
   question because transition, survival, M&A, and patent channels were
   unavailable in that run. A reproducible 2009Q1–2024Q4 Form D identity audit
   now materializes 311,809 issuer CIKs and 307,344
-  provisional retained identities, but exact-name SBIR exclusion has unknown
-  recall and the source has no NAICS; the controls are not match-ready.
-  *Deps: ER, SEC EDGAR · Refs: [L10], [L11], [L24] · Reports: [NSF Phase I baseline review](research/agency-private-capital-phase1-nsf.md), [Form D control-identity audit](research/agency-private-capital-form-d-control-universe.md) · Spec: [../specs/agency-private-capital-comparison/](../specs/agency-private-capital-comparison/) (PR #321 merged, supersedes #311; agency-parameterized via the `agency_private_capital_baseline_comparison` asset in group `agency_private_capital`, with terminology changed from "VC" to "private capital")*
+  provisional retained identities. A second audit atomizes exact-name matching
+  into 4,542 awardee–CIK candidates, but neither audit establishes accepted
+  identity or complete SBIR exclusion, and the source has no NAICS; the controls
+  are not match-ready.
+  *Deps: ER, SEC EDGAR · Refs: [L10], [L11], [L24] · Reports: [NSF Phase I baseline review](research/agency-private-capital-phase1-nsf.md), [Form D control-identity audit](research/agency-private-capital-form-d-control-universe.md), [atomic SBIR–Form D identity audit](research/agency-private-capital-sbir-form-d-identity-crosswalk.md) · Spec: [../specs/agency-private-capital-comparison/](../specs/agency-private-capital-comparison/) (PR #321 merged, supersedes #311; agency-parameterized via the `agency_private_capital_baseline_comparison` asset in group `agency_private_capital`, with terminology changed from "VC" to "private capital")*
 
 - **Crowd-in vs. crowd-out**
   Does SBIR funding crowd in or crowd out subsequent private capital?

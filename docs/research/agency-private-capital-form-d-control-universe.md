@@ -1,7 +1,7 @@
 ---
 Type: Research Report
 Owner: research@project
-Last-Reviewed: 2026-08-09
+Last-Reviewed: 2026-08-10
 Status: draft
 ---
 
@@ -43,6 +43,14 @@ key and were omitted. No quarter, required table, required header, or accession
 join was missing. A second cache-only build produced byte-identical hashes for
 all three JSONL products.
 
+The refreshed staging products retain issuer name, both street lines, city,
+state, ZIP, issuer phone, incorporation jurisdiction, and incorporation year at
+filing grain. At CIK grain, name, street 1, and city are present for all 311,809
+issuers; phone and state for 311,807; ZIP for 311,792; incorporation jurisdiction
+for 311,576; and a numeric incorporation year for 284,729. Historical aliases
+beyond a filing's current issuer name occur for 47,746 CIKs. These are identity
+evidence fields only, not independently verified firm attributes.
+
 ## What the exclusion does and does not establish
 
 The exclusion is intentionally asymmetric: any exact historical-name collision
@@ -73,9 +81,9 @@ input, output hashes, and invariant results.
 
 | Product | Rows | Bytes | SHA-256 |
 | --- | ---: | ---: | --- |
-| Broad issuer identity universe | 311,809 | 725,072,925 | `28bb167e0281bca00652444600b6635c4c0b60b0103817715df34a98f67e3fe5` |
+| Broad issuer identity universe | 311,809 | 827,044,055 | `a7c2ba7c84cf10711a029fd9b2e9326bd1e9137af61146ee47385d8aa03b310b` |
 | Candidate SBIR-CIK exclusion evidence | 4,465 | 2,276,095 | `94cb5bc0eae682675f6e0015cc2c21b48411aba6429b6ef5e4cccfe769af38d3` |
-| Provisional retained control identities | 307,344 | 710,168,771 | `aaffebbda1ef3d2b1fe04e211b6973a027181d6840b03c12d4329a1649f31c75` |
+| Provisional retained control identities | 307,344 | 809,915,557 | `eedbca2caac1fb87c2526822c75caaf6bc846568ba7805c769dd9afbaf6d48f0` |
 
 The source archive set contains 174,385,952 bytes. Its catalog snapshot hashes
 to `e6cbafae178d4c6316f1752436b6d53edf3c268c3fe6f0ab75791e2e12de054c`.
@@ -90,7 +98,8 @@ SEC-compliant contact string:
 ```bash
 SBIR_SEC_USER_AGENT="SBIR-Analytics/1.0 contact@example.org" \
   uv run python scripts/data/build_form_d_control_universe.py \
-  --awards-csv data/raw/sbir/award_data.csv
+  --awards-csv data/raw/sbir/award_data.csv \
+  --code-version 84cd4db9bd04be23bf61d30d8b9405d08ab95c73
 ```
 
 ## Gate decision

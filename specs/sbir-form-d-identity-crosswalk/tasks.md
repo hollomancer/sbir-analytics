@@ -24,7 +24,7 @@
   - Verify: focused pytest, Ruff, mypy, `make lint-boundaries`, `make docs-check`, and scope diff pass.
   - Requirements: 4.4
 
-- [ ] 6. Materialize the pinned full-history inputs twice and publish the tracked audit record.
+- [x] 6. Materialize the pinned full-history inputs twice and publish the tracked audit record.
   - Verify: both real runs are byte-identical; the tracked manifest and report reconcile source,
     component, collision, quarantine, and candidate-edge counts while every downstream gate stays
     closed.
