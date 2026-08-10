@@ -14,9 +14,9 @@ Status: draft
 
 ## Materialization result
 
-Producer commit `c91f00ac55f95b4c0d0d468af8a82c2428f9be61` materialized the pinned
+Producer commit `c787d2dfbc8a06dd8dc9c2635649179caf1a5c42` materialized the pinned
 full-history inputs twice. The two release directories were byte-identical. Their runtime manifests
-both have SHA-256 `a2c293796b135094ce4bfa77f6aa2f704c153277394adffa7aebf121ca09744f`;
+both have SHA-256 `adf9dc5219861f8ca144da46ead0038577b28e9fb5d122492c403a6a4955de32`;
 their candidate JSONLs both have SHA-256
 `67779f952df4abb114488bbfcee3f3898758662f6898898ae6abd952bc71a1c7`.
 
@@ -108,7 +108,7 @@ uv run python scripts/data/build_sbir_form_d_identity_candidates.py \
   --control-manifest-sha256 3ce34a04b592131dbd0aefdb8692c21c5ab72e46f90f5f81a2aeffb9dbaeeaaf \
   --awards-csv data/raw/sbir/award_data.csv \
   --output-dir /tmp/sbir-form-d-candidate-enrichment-run-1 \
-  --code-version c91f00ac55f95b4c0d0d468af8a82c2428f9be61
+  --code-version c787d2dfbc8a06dd8dc9c2635649179caf1a5c42
 ```
 
 Repeat with `run-2`, then compare the directories with `diff -rq`.

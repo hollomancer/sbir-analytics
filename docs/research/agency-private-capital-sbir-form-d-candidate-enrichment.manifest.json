@@ -131,10 +131,10 @@
     }
   },
   "producer": {
-    "code_commit": "c91f00ac55f95b4c0d0d468af8a82c2428f9be61",
+    "code_commit": "c787d2dfbc8a06dd8dc9c2635649179caf1a5c42",
     "path": "scripts/data/build_sbir_form_d_identity_candidates.py",
-    "sha256": "692df6d0a3d271f69db3d7e0b146c5fecaba0d4979c13e8e0b27ddae5a255bea",
-    "size_bytes": 68867
+    "sha256": "648f1437604142b8a1b333109d33f34cefa56dd6a2df4bce1887eba9a25cfcb4",
+    "size_bytes": 69215
   },
   "rate_eligible": false,
   "ready_for_matching": false,
