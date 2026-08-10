@@ -135,7 +135,14 @@ def _fixture(tmp_path: Path) -> argparse.Namespace:
             "resolution_method": "candidate_exact_normalized_name",
         }
     )
-    _jsonl(candidates_path, [alpha, _candidate("456", "BETA SYSTEMS", 2)])
+    _jsonl(
+        candidates_path,
+        [
+            alpha,
+            _candidate("456", "BETA SYSTEMS", 2),
+            _candidate("789", "DELTA RESEARCH", 1),
+        ],
+    )
     with awards_path.open("w", encoding="utf-8", newline="") as handle:
         writer = csv.DictWriter(handle, fieldnames=["Company", "Agency"])
         writer.writeheader()
@@ -147,16 +154,20 @@ def _fixture(tmp_path: Path) -> argparse.Namespace:
                     "Company": "Beta Systems LLC",
                     "Agency": "Department of Health and Human Services",
                 },
+                {"Company": "Delta Research LLC", "Agency": "Department of Defense"},
+                {"Company": "Gamma Works Inc.", "Agency": "Unmapped for unlinked name"},
             ]
         )
+    awards_ref = _meta(awards_path, 5)
+    awards_ref["unique_normalized_company_names"] = 4
     control = {
         "complete": True,
         "complete_sbir_exclusion": False,
         "exclusion": {
-            "awards_csv": _meta(awards_path, 3),
+            "awards_csv": awards_ref,
             "exact_match": {
-                "candidate_cik_count": 2,
-                "matched_normalized_name_count": 2,
+                "candidate_cik_count": 3,
+                "matched_normalized_name_count": 3,
                 "normalized_names_mapping_to_multiple_ciks": 1,
                 "normalizer_version": "organization-key-v1",
             },
@@ -165,11 +176,11 @@ def _fixture(tmp_path: Path) -> argparse.Namespace:
         "outputs": {
             "broad_issuer_universe": {
                 "path": "issuer-universe.jsonl",
-                "row_count": 3,
+                "row_count": 4,
                 "sha256": "a" * 64,
                 "size_bytes": 10,
             },
-            "candidate_sbir_cik_exclusions": _meta(candidates_path, 2),
+            "candidate_sbir_cik_exclusions": _meta(candidates_path, 3),
         },
         "schema_version": 1,
     }
@@ -178,7 +189,7 @@ def _fixture(tmp_path: Path) -> argparse.Namespace:
     snapshot_id = (
         f"form_d_control_universe_manifest_sha256:{hashlib.sha256(control_data).hexdigest()}"
     )
-    coverage_rows = [_coverage(cik, snapshot_id) for cik in ("123", "456", "999")]
+    coverage_rows = [_coverage(cik, snapshot_id) for cik in ("123", "456", "789", "999")]
     event_rows = [
         _event("123", "a", "2009-09-30", snapshot_id),
         _event("123", "b", "2009-10-01", snapshot_id),
@@ -259,7 +270,7 @@ def test_build_uses_exact_cik_and_excludes_partial_fiscal_years(tmp_path: Path) 
     args = _fixture(tmp_path)
     manifest = audit.build(args)
 
-    assert manifest["counts"]["candidate_ciks"] == 2
+    assert manifest["counts"]["candidate_ciks"] == 3
     assert manifest["counts"]["complete_filing_fiscal_year_window"] == {
         "end_fy": 2024,
         "proxy_filings": 2,
@@ -286,6 +297,42 @@ def test_build_uses_exact_cik_and_excludes_partial_fiscal_years(tmp_path: Path) 
     assert rows[1]["submission_type"] == "D/A"
     assert rows[1]["previous_accession_number"] == "prior-accession"
 
+    name_product = manifest["outputs"]["normalized_name_observation"]
+    name_rows = [
+        json.loads(line)
+        for line in (args.output_dir / name_product["path"])
+        .read_text(encoding="utf-8")
+        .splitlines()
+    ]
+    by_name = {row["normalized_sbir_name"]: row for row in name_rows}
+    assert list(by_name) == ["ALPHA LABS", "BETA SYSTEMS", "DELTA RESEARCH", "GAMMA WORKS"]
+    assert by_name["ALPHA LABS"] == {
+        "boundary_proxy_accessions": ["a"],
+        "candidate_ciks": ["123"],
+        "complete_fy_proxy_accessions": ["b"],
+        "exact_name_candidate_link_class": audit.NAME_LINK_UNIQUE,
+        "normalized_sbir_name": "ALPHA LABS",
+        "observation_status": audit.NAME_STATUS_COMPLETE,
+        "raw_sbir_names": ["Alpha Labs", "Alpha Labs, Inc."],
+    }
+    assert by_name["BETA SYSTEMS"]["candidate_ciks"] == ["123", "456"]
+    assert by_name["BETA SYSTEMS"]["complete_fy_proxy_accessions"] == ["b", "c"]
+    assert by_name["BETA SYSTEMS"]["boundary_proxy_accessions"] == ["a", "d"]
+    assert by_name["BETA SYSTEMS"]["exact_name_candidate_link_class"] == (audit.NAME_LINK_AMBIGUOUS)
+    assert by_name["DELTA RESEARCH"]["observation_status"] == audit.NAME_STATUS_COVERED_ZERO
+    assert by_name["DELTA RESEARCH"]["complete_fy_proxy_accessions"] == []
+    assert by_name["DELTA RESEARCH"]["boundary_proxy_accessions"] == []
+    assert by_name["GAMMA WORKS"]["observation_status"] == audit.NAME_STATUS_NO_LINK
+    assert by_name["GAMMA WORKS"]["candidate_ciks"] == []
+    assert by_name["GAMMA WORKS"]["complete_fy_proxy_accessions"] is None
+    assert by_name["GAMMA WORKS"]["boundary_proxy_accessions"] is None
+    assert manifest["counts"]["normalized_name_observation"]["observation_statuses"] == {
+        audit.NAME_STATUS_COMPLETE: 2,
+        audit.NAME_STATUS_BOUNDARY: 0,
+        audit.NAME_STATUS_COVERED_ZERO: 1,
+        audit.NAME_STATUS_NO_LINK: 1,
+    }
+
 
 def test_build_is_byte_deterministic(tmp_path: Path) -> None:
     args = _fixture(tmp_path)
@@ -293,6 +340,9 @@ def test_build_is_byte_deterministic(tmp_path: Path) -> None:
     first_manifest = args.audit_manifest.read_bytes()
     first_product = (
         args.output_dir / first["outputs"]["filing_evidence_audit"]["path"]
+    ).read_bytes()
+    first_name_product = (
+        args.output_dir / first["outputs"]["normalized_name_observation"]["path"]
     ).read_bytes()
 
     args.output_dir = tmp_path / "second-output"
@@ -303,6 +353,52 @@ def test_build_is_byte_deterministic(tmp_path: Path) -> None:
     assert (
         args.output_dir / second["outputs"]["filing_evidence_audit"]["path"]
     ).read_bytes() == first_product
+    assert (
+        args.output_dir / second["outputs"]["normalized_name_observation"]["path"]
+    ).read_bytes() == first_name_product
+
+
+def test_name_observation_fanout_and_boundary_status_are_explicit() -> None:
+    candidates = {
+        "1": {"matched_normalized_names": ["CURRENT NAME", "FORMER NAME"]},
+        "2": {"matched_normalized_names": ["CURRENT NAME"]},
+        "3": {"matched_normalized_names": ["BOUNDARY NAME"]},
+    }
+    award_names = {
+        "BOUNDARY NAME": ["Boundary Name LLC"],
+        "CURRENT NAME": ["Current Name Inc."],
+        "FORMER NAME": ["Former Name Inc."],
+        "UNLINKED NAME": ["Unlinked Name LLC"],
+    }
+    candidate_events = {
+        "1": {"boundary": [], "complete_fy": ["complete-a"]},
+        "2": {"boundary": [], "complete_fy": ["complete-b"]},
+        "3": {"boundary": ["boundary-a"], "complete_fy": []},
+    }
+
+    rows = audit._name_observation_rows(candidates, award_names, candidate_events)
+    counts = audit._name_observation_counts(rows, candidates, candidate_events)
+    by_name = {row["normalized_sbir_name"]: row for row in rows}
+
+    assert by_name["CURRENT NAME"]["candidate_ciks"] == ["1", "2"]
+    assert by_name["CURRENT NAME"]["complete_fy_proxy_accessions"] == [
+        "complete-a",
+        "complete-b",
+    ]
+    assert by_name["FORMER NAME"]["complete_fy_proxy_accessions"] == ["complete-a"]
+    assert by_name["BOUNDARY NAME"]["observation_status"] == audit.NAME_STATUS_BOUNDARY
+    assert by_name["UNLINKED NAME"]["observation_status"] == audit.NAME_STATUS_NO_LINK
+    assert counts["proxy_cik_to_name_grain_reconciliation"] == {
+        "bounded_source_proxy_bearing_candidate_ciks": 3,
+        "bounded_source_proxy_observed_linked_normalized_names": 3,
+        "complete_fy_proxy_bearing_candidate_ciks": 2,
+        "complete_fy_proxy_observed_linked_normalized_names": 2,
+        "incomplete_boundary_only_proxy_observed_linked_normalized_names": 1,
+        "name_grain_minus_cik_grain_observed_difference": 0,
+        "observed_normalized_names_linked_to_multiple_proxy_bearing_ciks": 1,
+        "proxy_bearing_cik_name_memberships": 4,
+        "proxy_bearing_ciks_linked_to_multiple_normalized_names": 1,
+    }
 
 
 def test_tampered_candidate_product_fails_before_publication(tmp_path: Path) -> None:
