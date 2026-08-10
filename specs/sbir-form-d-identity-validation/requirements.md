@@ -2,7 +2,7 @@
 
 - Research questions: F1, F3
 **Target epistemic tier:** `evidence`
-- Status: implementation
+- Status: active
 - Out of scope: legal-entity certification; recall or negative-class validation; automatic identity
   acceptance; controls, matching, amounts, outcomes, and rates; people, emails, websites,
   affiliates, acquisitions, and successors

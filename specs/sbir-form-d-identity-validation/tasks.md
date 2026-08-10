@@ -20,7 +20,7 @@
 - [x] 5. Run focused pytest, Ruff, mypy, repository guards, and a repeat-build byte comparison.
   - Verify: all checks pass and no real labels, packets, maps, or precision results enter git.
 
-- [ ] 6. Materialize the real 400-case private instrument and publish only hashes plus aggregate
+- [x] 6. Materialize the real 400-case private instrument and publish only hashes plus aggregate
   audit metadata.
   - Verify: real packet and case-map bytes remain private; the tracked report contains no labels
     or precision claim. This task is owned by the release integrator, not the script implementation.

@@ -968,11 +968,12 @@ The relevant literature is Lerner [L10], Howell [L11], and Kortum & Lerner
 - **Form D fundraising profile**
   What is the Form D [L23] private-placement fundraising profile of SBIR
   awardees?
-  **Status:** Partial and non-citable. A reproducible bounded audit now preserves
-  7,787 atomic awardee–CIK candidates: 4,542 exact and 3,245 fuzzy-only. Legal-entity
-  identity remains unreviewed, and no fundraising amounts have been recomputed from
-  that candidate set.
-  *Deps: ER, SEC EDGAR · Reports: [atomic SBIR–Form D identity audit](research/agency-private-capital-sbir-form-d-identity-crosswalk.md), [candidate-enrichment audit](research/agency-private-capital-sbir-form-d-candidate-enrichment.md) · Specs: [../specs/archive/completed-features/form-d-pipeline/](../specs/archive/completed-features/form-d-pipeline/) (PR #286 merged), [../specs/sbir-form-d-identity-crosswalk/](../specs/sbir-form-d-identity-crosswalk/), [../specs/sbir-form-d-candidate-enrichment/](../specs/sbir-form-d-candidate-enrichment/)*
+  **Status:** Partial and non-citable. A reproducible bounded audit preserves
+  7,787 atomic awardee–CIK candidates: 4,542 exact and 3,245 fuzzy-only. A private,
+  outcome-blind instrument now freezes 100 eligible cases in each of four exclusive
+  route strata, but no human labels or accepted organizational-identity links exist,
+  and no fundraising amounts have been recomputed from that candidate set.
+  *Deps: ER, SEC EDGAR · Reports: [atomic SBIR–Form D identity audit](research/agency-private-capital-sbir-form-d-identity-crosswalk.md), [candidate-enrichment audit](research/agency-private-capital-sbir-form-d-candidate-enrichment.md), [identity-review instrument audit](research/agency-private-capital-sbir-form-d-identity-review-instrument.md) · Specs: [../specs/archive/completed-features/form-d-pipeline/](../specs/archive/completed-features/form-d-pipeline/) (PR #286 merged), [../specs/sbir-form-d-identity-crosswalk/](../specs/sbir-form-d-identity-crosswalk/), [../specs/sbir-form-d-candidate-enrichment/](../specs/sbir-form-d-candidate-enrichment/), [../specs/sbir-form-d-identity-validation/](../specs/sbir-form-d-identity-validation/)*
 
 - **Debt vs. equity composition**
   In SBIR-firm Form D filings, how much of the money raised is debt versus
@@ -1035,9 +1036,10 @@ The relevant literature is Lerner [L10], Howell [L11], and Kortum & Lerner
   funding) by agency, vintage, and firm size?
   The private-side mirror of NASEM's 4:1 DoD follow-on funding multiplier [L1].
   **Status:** Exploratory and non-citable. The 7,787-pair bounded crosswalk is
-  candidate-only; accepted identity, amount deduplication, and linkage-error
-  sensitivity remain open.
-  *Deps: ER, ID, SEC EDGAR · Refs: [L1] · Reports: [atomic SBIR–Form D identity audit](research/agency-private-capital-sbir-form-d-identity-crosswalk.md), [candidate-enrichment audit](research/agency-private-capital-sbir-form-d-candidate-enrichment.md) · Specs: [../specs/archive/completed-features/form-d-pipeline/](../specs/archive/completed-features/form-d-pipeline/), [../specs/sbir-form-d-candidate-enrichment/](../specs/sbir-form-d-candidate-enrichment/), [../specs/agency-private-capital-comparison/](../specs/agency-private-capital-comparison/)*
+  candidate-only. A reproducible 400-case review instrument exists, but human route
+  validation, accepted identity, amount deduplication, and linkage-error sensitivity
+  remain open.
+  *Deps: ER, ID, SEC EDGAR · Refs: [L1] · Reports: [atomic SBIR–Form D identity audit](research/agency-private-capital-sbir-form-d-identity-crosswalk.md), [candidate-enrichment audit](research/agency-private-capital-sbir-form-d-candidate-enrichment.md), [identity-review instrument audit](research/agency-private-capital-sbir-form-d-identity-review-instrument.md) · Specs: [../specs/archive/completed-features/form-d-pipeline/](../specs/archive/completed-features/form-d-pipeline/), [../specs/sbir-form-d-candidate-enrichment/](../specs/sbir-form-d-candidate-enrichment/), [../specs/sbir-form-d-identity-validation/](../specs/sbir-form-d-identity-validation/), [../specs/agency-private-capital-comparison/](../specs/agency-private-capital-comparison/)*
 
 - **Outcomes vs. private-capital baselines**
   For Phase II awardees of any agency, do follow-on funding and exit outcomes
@@ -1051,10 +1053,11 @@ The relevant literature is Lerner [L10], Howell [L11], and Kortum & Lerner
   now materializes 311,809 issuer CIKs and 307,344
   provisional retained identities. A second audit atomizes exact-name matching
   into 4,542 exact awardee–CIK candidates; a bounded follow-on expands that queue
-  to 7,787 pairs with frozen fuzzy routes and contact corroboration. None of these
-  audits establishes accepted identity or complete SBIR exclusion, and the source
-  has no NAICS; the controls are not match-ready.
-  *Deps: ER, SEC EDGAR · Refs: [L10], [L11], [L24] · Reports: [NSF Phase I baseline review](research/agency-private-capital-phase1-nsf.md), [Form D control-identity audit](research/agency-private-capital-form-d-control-universe.md), [atomic SBIR–Form D identity audit](research/agency-private-capital-sbir-form-d-identity-crosswalk.md), [candidate-enrichment audit](research/agency-private-capital-sbir-form-d-candidate-enrichment.md) · Spec: [../specs/agency-private-capital-comparison/](../specs/agency-private-capital-comparison/) (PR #321 merged, supersedes #311; agency-parameterized via the `agency_private_capital_baseline_comparison` asset in group `agency_private_capital`, with terminology changed from "VC" to "private capital")*
+  to 7,787 pairs with frozen fuzzy routes and contact corroboration. A subsequent
+  instrument samples 400 eligible cases for route-masked human review but
+  contains no labels. None of these audits establishes accepted identity or complete SBIR
+  exclusion, and the source has no NAICS; the controls are not match-ready.
+  *Deps: ER, SEC EDGAR · Refs: [L10], [L11], [L24] · Reports: [NSF Phase I baseline review](research/agency-private-capital-phase1-nsf.md), [Form D control-identity audit](research/agency-private-capital-form-d-control-universe.md), [atomic SBIR–Form D identity audit](research/agency-private-capital-sbir-form-d-identity-crosswalk.md), [candidate-enrichment audit](research/agency-private-capital-sbir-form-d-candidate-enrichment.md), [identity-review instrument audit](research/agency-private-capital-sbir-form-d-identity-review-instrument.md) · Spec: [../specs/agency-private-capital-comparison/](../specs/agency-private-capital-comparison/) (PR #321 merged, supersedes #311; agency-parameterized via the `agency_private_capital_baseline_comparison` asset in group `agency_private_capital`, with terminology changed from "VC" to "private capital")*
 
 - **Crowd-in vs. crowd-out**
   Does SBIR funding crowd in or crowd out subsequent private capital?
