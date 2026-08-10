@@ -172,6 +172,17 @@ eligible controls                         configured-agency treated cohort
    accepted links, firm coverage, availability, denominators, or rates. Bulk
    acquisition, production-scale materialization, real bridge review, and the
    five-year patent outcome adapter remain separate work.
+
+   The federal-contract follow-on also stops at the native source layer. A
+   local USAspending contract verifies a contiguous set of closed-year,
+   all-agency `All_Contracts_Full` archives and emits deterministic
+   `usaspending_prime_contract_action` rows at source transaction grain. It
+   preserves signed obligations, modifications, AWARD-versus-IDV distinctions,
+   and UEI/DUNS source identifiers without interpreting an action as a new
+   award or transition. Content pins freeze the observed release, not upstream
+   history or firm coverage. Real acquisition, a symmetric CIK-to-UEI/DUNS
+   identity bridge, per-firm coverage, new-award semantics, and the five-year
+   federal-contract outcome adapter remain separate work.
 9. **`ThreatsToValidity`** — Emits the structured caveats record. Required
    entries:
    - SAFE/convertible undercount (Form D weak on these)
