@@ -12,6 +12,11 @@ import pytest
 
 
 SCRIPT = Path(__file__).resolve().parents[3] / "scripts/data/audit_form_d_matching_covariates.py"
+REPO_ROOT = Path(__file__).resolve().parents[3]
+TRACKED_MANIFEST = (
+    REPO_ROOT / "docs/research/agency-private-capital-form-d-matching-covariates.manifest.json"
+)
+TRACKED_REPORT = REPO_ROOT / "docs/research/agency-private-capital-form-d-matching-covariates.md"
 SPEC = importlib.util.spec_from_file_location("audit_form_d_matching_covariates", SCRIPT)
 assert SPEC is not None and SPEC.loader is not None
 MODULE = importlib.util.module_from_spec(SPEC)
@@ -379,3 +384,23 @@ def test_hard_link_output_alias_is_rejected_without_touching_input(tmp_path: Pat
         MODULE.build(args)
 
     assert Path(args.universe).read_bytes() == original
+
+
+def test_tracked_report_reconciles_to_real_data_manifest() -> None:
+    manifest = json.loads(TRACKED_MANIFEST.read_text(encoding="utf-8"))
+    report = " ".join(TRACKED_REPORT.read_text(encoding="utf-8").split())
+    cik = manifest["availability"]["cik_grain"]
+    support = manifest["mechanical_common_support"]
+
+    assert cik["broad"]["rows"] == 311_809
+    assert cik["broad"]["sic_code_present"] == 7_041
+    assert manifest["history_diagnostics"]["broad"]["pooled_investment_fund_ciks"] == 146_737
+    assert support["candidate_ciks_with_at_least_1_provisional_in_same_cell"] == 4_287
+    assert support["candidate_ciks_with_at_least_3_provisional_in_same_cell"] == 3_897
+    assert "present for 7,041 of 311,809 issuer CIKs" in report
+    assert "Of those, 4,287 share a cell with at least one" in report
+    assert "and 3,897 share a cell with at least three" in report
+    assert manifest["complete_sbir_identity"] is False
+    assert manifest["complete_sbir_exclusion"] is False
+    assert manifest["covariates_ready"] is False
+    assert manifest["ready_for_matching"] is False
