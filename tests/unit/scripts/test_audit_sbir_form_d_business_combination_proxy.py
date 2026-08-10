@@ -550,7 +550,9 @@ def test_tracked_report_reconciles_to_materialization_manifest() -> None:
     report = TRACKED_REPORT.read_text(encoding="utf-8")
     report_words = " ".join(report.split())
     complete = manifest["counts"]["complete_filing_fiscal_year_window"]
+    name_observation = manifest["counts"]["normalized_name_observation"]
     product = manifest["outputs"]["filing_evidence_audit"]
+    name_product = manifest["outputs"]["normalized_name_observation"]
 
     assert complete == {
         "end_fy": 2024,
@@ -563,8 +565,56 @@ def test_tracked_report_reconciles_to_materialization_manifest() -> None:
     assert (
         f"| Complete-FY filing evidence audit | 283 | 244,696 | `{product['sha256']}` |" in report
     )
+    assert name_observation == {
+        "exact_name_candidate_link_classes": {
+            "ambiguous_exact_name_candidate_link": 89,
+            "no_exact_name_candidate_link": 29_864,
+            "unique_exact_name_candidate_link": 4_334,
+        },
+        "observation_statuses": {
+            "no_exact_name_candidate_link": 29_864,
+            "no_proxy_observed_on_exact_name_candidate_link_in_bounded_source": 4_191,
+            "proxy_observed_in_complete_fiscal_year_window_on_exact_name_candidate_link": 222,
+            "proxy_observed_only_in_incomplete_boundary_fiscal_years_on_exact_name_candidate_link": 10,
+        },
+        "proxy_cik_to_name_grain_reconciliation": {
+            "bounded_source_proxy_bearing_candidate_ciks": 222,
+            "bounded_source_proxy_observed_linked_normalized_names": 232,
+            "complete_fy_proxy_bearing_candidate_ciks": 212,
+            "complete_fy_proxy_observed_linked_normalized_names": 222,
+            "incomplete_boundary_only_proxy_observed_linked_normalized_names": 10,
+            "name_grain_minus_cik_grain_observed_difference": 10,
+            "observed_normalized_names_linked_to_multiple_proxy_bearing_ciks": 3,
+            "proxy_bearing_cik_name_memberships": 235,
+            "proxy_bearing_ciks_linked_to_multiple_normalized_names": 12,
+        },
+        "rows": 34_287,
+    }
+    assert name_product == {
+        "path": (
+            "sbir_form_d_proxy_observation."
+            "97c12eb10fe38b21ac37d2d962e54218144d47b78950029ed1a7c29fac7dd171.jsonl"
+        ),
+        "row_count": 34_287,
+        "sha256": "97c12eb10fe38b21ac37d2d962e54218144d47b78950029ed1a7c29fac7dd171",
+        "size_bytes": 10_239_501,
+    }
+    assert (
+        f"| Normalized-name observation ledger | 34,287 | 10,239,501 | `{name_product['sha256']}` |"
+    ) in report
+    assert manifest["code_commit"] == "3f6c962526be1c2d3a7c053b4fd442d632b6ce8e"
+    assert hashlib.sha256(TRACKED_MANIFEST.read_bytes()).hexdigest() == (
+        "dcaf1e3b26e35873769d4c06eeba0ed4b521726fa75672ba1045f774fbff6f5c"
+    )
     assert manifest["complete_sbir_identity"] is False
     assert manifest["complete_sbir_exclusion"] is False
+    assert manifest["exclusion_recall"] == "unknown"
+    assert manifest["verified_identity"] is False
+    assert manifest["identity_recall"] == "unknown"
+    assert manifest["post_award"] is False
+    assert manifest["filer_nonfiler_ready"] is False
     assert manifest["covariates_ready"] is False
     assert manifest["ready_for_matching"] is False
+    assert manifest["rate_ready"] is False
+    assert manifest["outcome_kind"] == "filing_proxy"
     assert manifest["verified_ma"] is False

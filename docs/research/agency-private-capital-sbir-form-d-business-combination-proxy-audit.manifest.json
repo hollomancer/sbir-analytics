@@ -1,5 +1,8 @@
 {
   "caveats": [
+    "The name ledger is normalized-name grain, not verified firm grain.",
+    "Boundary-only proxy evidence is separate from complete-fiscal-year evidence.",
+    "No exact-name candidate link is outcome-unobserved, not a binary zero.",
     "Exact-name candidate identities are not verified SBIR identities.",
     "Exact-name identity recall is unknown.",
     "The event is a filer-supplied Form D filing proxy, not a verified legal event.",
@@ -7,7 +10,7 @@
     "Agency memberships overlap and must not be summed.",
     "No count in this audit is an outcome, prevalence, or match rate."
   ],
-  "code_commit": "3e76c3bf165693ebca056841127255a28ad497d6",
+  "code_commit": "3f6c962526be1c2d3a7c053b4fd442d632b6ce8e",
   "complete": true,
   "complete_sbir_exclusion": false,
   "complete_sbir_identity": false,
@@ -152,6 +155,31 @@
         "proxy_filings": 2
       }
     },
+    "normalized_name_observation": {
+      "exact_name_candidate_link_classes": {
+        "ambiguous_exact_name_candidate_link": 89,
+        "no_exact_name_candidate_link": 29864,
+        "unique_exact_name_candidate_link": 4334
+      },
+      "observation_statuses": {
+        "no_exact_name_candidate_link": 29864,
+        "no_proxy_observed_on_exact_name_candidate_link_in_bounded_source": 4191,
+        "proxy_observed_in_complete_fiscal_year_window_on_exact_name_candidate_link": 222,
+        "proxy_observed_only_in_incomplete_boundary_fiscal_years_on_exact_name_candidate_link": 10
+      },
+      "proxy_cik_to_name_grain_reconciliation": {
+        "bounded_source_proxy_bearing_candidate_ciks": 222,
+        "bounded_source_proxy_observed_linked_normalized_names": 232,
+        "complete_fy_proxy_bearing_candidate_ciks": 212,
+        "complete_fy_proxy_observed_linked_normalized_names": 222,
+        "incomplete_boundary_only_proxy_observed_linked_normalized_names": 10,
+        "name_grain_minus_cik_grain_observed_difference": 10,
+        "observed_normalized_names_linked_to_multiple_proxy_bearing_ciks": 3,
+        "proxy_bearing_cik_name_memberships": 235,
+        "proxy_bearing_ciks_linked_to_multiple_normalized_names": 12
+      },
+      "rows": 34287
+    },
     "submission_types": {
       "D": 257,
       "D/A": 26
@@ -159,6 +187,8 @@
   },
   "covariates_ready": false,
   "exclusion_recall": "unknown",
+  "filer_nonfiler_ready": false,
+  "identity_recall": "unknown",
   "identity_status": "exact_name_candidate",
   "inputs": {
     "awards_snapshot": {
@@ -199,13 +229,44 @@
   "invariants": {
     "agency_tags_nonempty_and_sorted": true,
     "candidate_ciks_have_complete_proxy_coverage": true,
+    "compact_name_observation_schema": true,
     "complete_fiscal_years_only": true,
     "content_addressed_output": true,
     "exact_cik_join_only": true,
     "identity_classes_exhaustive_and_exclusive": true,
     "input_hash_rows_bytes_verified": true,
+    "linked_proxy_accessions_are_unique": true,
+    "name_observation_content_addressed": true,
+    "name_observation_rows_sorted_and_unique": true,
+    "name_observation_statuses_exhaustive": true,
+    "no_link_proxy_observations_are_unknown": true,
     "one_row_per_unique_accession": true,
-    "per_fiscal_year_filings_reconcile": true
+    "per_fiscal_year_filings_reconcile": true,
+    "proxy_observed_name_timing_partition_reconciles": true
+  },
+  "name_observation_contract": {
+    "exact_name_candidate_link_classes": [
+      "unique_exact_name_candidate_link",
+      "ambiguous_exact_name_candidate_link",
+      "no_exact_name_candidate_link"
+    ],
+    "fields": [
+      "boundary_proxy_accessions",
+      "candidate_ciks",
+      "complete_fy_proxy_accessions",
+      "exact_name_candidate_link_class",
+      "normalized_sbir_name",
+      "observation_status",
+      "raw_sbir_names"
+    ],
+    "grain": "normalized_historical_sbir_name",
+    "normalizer_version": "organization-key-v1",
+    "observation_statuses": [
+      "proxy_observed_in_complete_fiscal_year_window_on_exact_name_candidate_link",
+      "proxy_observed_only_in_incomplete_boundary_fiscal_years_on_exact_name_candidate_link",
+      "no_proxy_observed_on_exact_name_candidate_link_in_bounded_source",
+      "no_exact_name_candidate_link"
+    ]
   },
   "outcome_kind": "filing_proxy",
   "outputs": {
@@ -214,8 +275,16 @@
       "row_count": 283,
       "sha256": "aaa60a046a8a8d952dee06fd4a83a496eecb167f3ce2bff2d0e4ae69a5f4af91",
       "size_bytes": 244696
+    },
+    "normalized_name_observation": {
+      "path": "sbir_form_d_proxy_observation.97c12eb10fe38b21ac37d2d962e54218144d47b78950029ed1a7c29fac7dd171.jsonl",
+      "row_count": 34287,
+      "sha256": "97c12eb10fe38b21ac37d2d962e54218144d47b78950029ed1a7c29fac7dd171",
+      "size_bytes": 10239501
     }
   },
+  "post_award": false,
+  "rate_ready": false,
   "ready_for_matching": false,
   "schema_version": 1,
   "source": {
@@ -226,6 +295,7 @@
     "source": "sec_dera_form_d_quarterly_bulk",
     "source_snapshot_id": "form_d_control_universe_manifest_sha256:1777119114c4f7385dd09d6b60c603f2c5c59db765311255440513190d94b331"
   },
+  "verified_identity": false,
   "verified_ma": false,
   "window": {
     "complete_filing_fiscal_years": [
