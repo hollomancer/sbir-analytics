@@ -429,22 +429,24 @@ class CetClassificationAnalyzer(ModuleAnalyzer):
             for col in category_columns:
                 if col in classified_df.columns:
                     count += (classified_df[col].str.lower() == area).sum()
-            records_per_category[area] = count
+            records_per_category[area] = int(count)
 
         return {
             "total_cet_areas": len(self.cet_areas),
-            "covered_areas": list(covered_areas),
-            "uncovered_areas": list(uncovered_areas),
-            "coverage_rate": coverage_rate,
+            "covered_areas": sorted(covered_areas),
+            "uncovered_areas": sorted(uncovered_areas),
+            "coverage_rate": float(coverage_rate),
             "areas_covered_count": len(covered_areas),
             "areas_uncovered_count": len(uncovered_areas),
             "records_per_category": records_per_category,
-            "average_records_per_area": sum(records_per_category.values()) / len(covered_areas)
+            "average_records_per_area": float(
+                sum(records_per_category.values()) / len(covered_areas)
+            )
             if covered_areas
-            else 0,
-            "taxonomy_utilization": len(classified_categories) / len(self.cet_areas)
+            else 0.0,
+            "taxonomy_utilization": float(len(classified_categories) / len(self.cet_areas))
             if self.cet_areas
-            else 0,
+            else 0.0,
         }
 
     def _calculate_classification_success(

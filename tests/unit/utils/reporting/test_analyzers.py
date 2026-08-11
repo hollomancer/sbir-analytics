@@ -8,6 +8,7 @@ Tests for base analyzer class and all specialized analyzer implementations:
 - TransitionDetectionAnalyzer: Transition detection analysis
 """
 
+import json
 from typing import Any
 
 import pandas as pd
@@ -639,6 +640,9 @@ class TestCetClassificationAnalyzer:
             "artificial_intelligence": 0.5,
             "quantum_information_science": 0.5,
         }
+
+        taxonomy_coverage = analyzer._calculate_taxonomy_coverage(classified_df, {})
+        assert json.loads(json.dumps(taxonomy_coverage)) == taxonomy_coverage
 
     def test_calculate_confidence_distribution(self, sample_classified_df):
         """Test calculating confidence score distribution."""
