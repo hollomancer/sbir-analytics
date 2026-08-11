@@ -67,10 +67,20 @@ def _company_id_for_award(award: Award) -> str | None:
     return None
 
 
+def _count_since(metrics: Any, field: str, label: str, previous: int = 0) -> tuple[int, int]:
+    """Return a non-negative counter delta and its new cumulative checkpoint."""
+    current = int(getattr(metrics, field).get(label, 0))
+    return max(0, current - previous), current
+
+
 def _updated_since(metrics: Any, label: str, previous: int = 0) -> tuple[int, int]:
     """Return updates for one load step and the new cumulative checkpoint."""
-    current = int(metrics.nodes_updated.get(label, 0))
-    return current - previous, current
+    return _count_since(metrics, "nodes_updated", label, previous)
+
+
+def _created_since(metrics: Any, label: str, previous: int = 0) -> tuple[int, int]:
+    """Return creations for one load step and the new cumulative checkpoint."""
+    return _count_since(metrics, "nodes_created", label, previous)
 
 
 def _get_neo4j_client() -> "Neo4jClient | None":
@@ -491,6 +501,7 @@ def neo4j_sbir_awards(
         award_institution_rels: list[tuple] = []
         researcher_award_rels: list[tuple] = []
         researcher_company_rels: list[tuple] = []
+        organization_creations = 0
         organization_updates = 0
 
         # Error counters (logged at end; first 10 of each kind go to debug log).
@@ -681,6 +692,9 @@ def neo4j_sbir_awards(
                 f"{metrics.nodes_created.get('Organization', 0)} created, "
                 f"{metrics.nodes_updated.get('Organization', 0)} updated"
             )
+        companies_created, organization_creations = _created_since(
+            metrics, "Organization", organization_creations
+        )
         companies_updated, organization_updates = _updated_since(
             metrics, "Organization", organization_updates
         )
@@ -693,6 +707,7 @@ def neo4j_sbir_awards(
                 metrics=metrics,
             )
             context.log.info(f"Loaded {len(award_nodes)} FinancialTransaction nodes (AWARD type)")
+        awards_created, _ = _created_since(metrics, "FinancialTransaction")
         awards_updated, _ = _updated_since(metrics, "FinancialTransaction")
 
         metrics = _load_nodes(
@@ -704,6 +719,7 @@ def neo4j_sbir_awards(
             description="researchers",
             context=context,
         )
+        researchers_created, _ = _created_since(metrics, "Individual")
         researchers_updated, _ = _updated_since(metrics, "Individual")
         metrics = _load_nodes(
             client,
@@ -713,6 +729,9 @@ def neo4j_sbir_awards(
             metrics=metrics,
             description="research institutions",
             context=context,
+        )
+        institutions_created, organization_creations = _created_since(
+            metrics, "Organization", organization_creations
         )
         institutions_updated, organization_updates = _updated_since(
             metrics, "Organization", organization_updates
@@ -819,7 +838,9 @@ def neo4j_sbir_awards(
                 "(FinancialTransaction → Organization)"
             )
         if agency_subsidiary_pairs:
-            metrics = OrganizationLoader(client).create_subsidiary_relationships(
+            organization_loader = OrganizationLoader(client)
+            organization_loader.metrics = metrics
+            metrics = organization_loader.create_subsidiary_relationships(
                 agency_subsidiary_pairs,
                 source="AGENCY_HIERARCHY",
             )
@@ -885,13 +906,21 @@ def neo4j_sbir_awards(
         duration = time.time() - start_time
         result = {
             "status": "success",
-            "awards_loaded": len(award_nodes),
+            "awards_submitted": len(award_nodes),
+            "awards_loaded": awards_created + awards_updated,
+            "awards_created": awards_created,
             "awards_updated": awards_updated,
-            "companies_loaded": len(company_nodes_map),
+            "companies_submitted": len(company_nodes_map),
+            "companies_loaded": companies_created + companies_updated,
+            "companies_created": companies_created,
             "companies_updated": companies_updated,
-            "researchers_loaded": len(researcher_nodes_map),
+            "researchers_submitted": len(researcher_nodes_map),
+            "researchers_loaded": researchers_created + researchers_updated,
+            "researchers_created": researchers_created,
             "researchers_updated": researchers_updated,
-            "institutions_loaded": len(institution_nodes_map),
+            "institutions_submitted": len(institution_nodes_map),
+            "institutions_loaded": institutions_created + institutions_updated,
+            "institutions_created": institutions_created,
             "institutions_updated": institutions_updated,
             "relationships_created": sum(metrics.relationships_created.values()),
             "errors": metrics.errors,
@@ -970,6 +999,7 @@ def neo4j_sbir_awards_load_check(neo4j_sbir_awards: dict[str, Any]) -> AssetChec
     status = neo4j_sbir_awards.get("status")
     errors = neo4j_sbir_awards.get("errors", 0)
     awards_loaded = neo4j_sbir_awards.get("awards_loaded", 0)
+    awards_submitted = neo4j_sbir_awards.get("awards_submitted", awards_loaded)
     total_rows = neo4j_sbir_awards.get("total_rows_processed", 0)
 
     if status != "success":
@@ -998,25 +1028,26 @@ def neo4j_sbir_awards_load_check(neo4j_sbir_awards: dict[str, Any]) -> AssetChec
             },
         )
 
-    if awards_loaded == 0:
+    if awards_submitted == 0:
         return AssetCheckResult(
             passed=False,
             severity=AssetCheckSeverity.ERROR,
-            description="✗ No awards were loaded",
-            metadata={"awards_loaded": 0},
+            description="✗ No awards were submitted for loading",
+            metadata={"awards_submitted": 0, "awards_loaded": awards_loaded},
         )
 
     return AssetCheckResult(
         passed=True,
         severity=AssetCheckSeverity.WARN,
         description=(
-            f"✓ Neo4j load successful: {awards_loaded} awards, "
+            f"✓ Neo4j load successful: {awards_loaded}/{awards_submitted} awards written, "
             f"{neo4j_sbir_awards.get('researchers_loaded', 0)} researchers, "
             f"{neo4j_sbir_awards.get('institutions_loaded', 0)} institutions "
             f"({error_rate * 100:.1f}% error rate)"
         ),
         metadata={
             "awards_loaded": awards_loaded,
+            "awards_submitted": awards_submitted,
             "companies_loaded": neo4j_sbir_awards.get("companies_loaded", 0),
             "researchers_loaded": neo4j_sbir_awards.get("researchers_loaded", 0),
             "institutions_loaded": neo4j_sbir_awards.get("institutions_loaded", 0),
