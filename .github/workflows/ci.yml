@@ -296,12 +296,14 @@ jobs:
         with:
           filters: |
             # The production image is installed from the workspace lockfile,
-            # so Docker, lock, and package metadata changes all require a build.
+            # so Docker, lock, package metadata, and server environment changes
+            # all require a build.
             docker:
               - 'Dockerfile*'
               - '.dockerignore'
               - 'docker-compose.yml'
               - 'docker-compose.server.yml'
+              - '.env.server.example'
               - 'scripts/docker/**'
               - 'workspace.server.yaml'
               - 'pyproject.toml'

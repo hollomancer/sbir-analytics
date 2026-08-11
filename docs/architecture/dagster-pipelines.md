@@ -37,7 +37,6 @@ import, its job is replaced by an empty **placeholder** job (name suffixed
 
 | Job (`name`) | Selection | Purpose |
 |---|---|---|
-| `sbir_analytics_job` (var `etl_job`) | `AssetSelection.all()` | Complete SBIR ETL pipeline |
 | `core_refresh_job` | all currently-loaded non-heavy assets | Weekly refresh of core (non-heavy) assets |
 | `cet_drift_job` | `["ml","validated_cet_drift_detection"]` | CET drift detection (only created if that ML asset is loaded) |
 | `sbir_weekly_refresh_job` | raw→validated→enriched SBIR + `neo4j_sbir_awards` | Weekly refresh subset; uses `in_process_executor` to fit 7 GB CI runners |
@@ -66,13 +65,12 @@ Cron strings are env-overridable; defaults below are verified. Dagster's default
 
 | Schedule | Job | Cron (default) | Default status |
 |---|---|---|---|
-| `daily_sbir_analytics` | `sbir_analytics_job` | `0 2 * * *` (02:00 UTC daily) | **RUNNING** (disable via `SBIR_ETL__DAGSTER__SCHEDULES__DAILY_ALL_ASSETS_ENABLED=false`) |
 | `weekly_core_refresh` | `core_refresh_job` | `0 3 * * 0` (Sun 03:00 UTC) | STOPPED |
 | `daily_cet_full_pipeline` | `cet_full_pipeline_job` | `0 2 * * *` | STOPPED (only if the job is loaded) |
 | `daily_cet_drift_detection` | `cet_drift_job` | `0 6 * * *` | STOPPED (only if the drift asset is loaded) |
 
-Cron overrides use `SBIR_ETL__DAGSTER__SCHEDULES__<JOB>` env vars (e.g.
-`..._ETL_JOB`, `..._WEEKLY_CORE_REFRESH_JOB`).
+Cron overrides use `SBIR_ETL__DAGSTER__SCHEDULES__<JOB>` env vars (for example,
+`..._WEEKLY_CORE_REFRESH_JOB`).
 
 ### Secondary location (`definitions_ml.py`)
 
@@ -90,7 +88,13 @@ Cron overrides use `SBIR_ETL__DAGSTER__SCHEDULES__<JOB>` env vars (e.g.
 ## Registration
 
 `Definitions(...)` in `definitions.py` registers: all assets/checks
-(auto-loaded), `job_definitions` (the two core jobs + `cet_drift_job` if present
+(auto-loaded), `job_definitions` (`core_refresh_job` + `cet_drift_job` if present
 + all auto-discovered public jobs under `assets/jobs/`), `schedules`, and the
 sensor. See `packages/sbir-analytics/sbir_analytics/definitions.py` and
 `assets/jobs/job_registry.py`.
+
+Fourteen heavy asset keys currently belong to no named job: the four USPTO AI
+evidence keys, three fiscal-impact keys, and seven `ml/` CET training/analysis
+keys. They remain selectable individually in the Dagster UI or CLI, but cannot
+be launched as one of the registered jobs. This is not scheduled-coverage loss:
+all heavy schedules remain stopped by default.

@@ -39,17 +39,22 @@ def test_bindings_are_loopback():
     assert env["SERVER_LOOPBACK"] == "127.0.0.1"
 
 
-def test_heavy_assets_loaded_but_not_scheduled():
+def test_heavy_assets_loaded_and_all_schedule_flags_disabled():
     # Heavy jobs must be runnable by hand now that AWS Batch is gone, but the
     # always-on host must never launch one on its own.
     env = _parse_env(ENV_EXAMPLE)
     assert env["DAGSTER_LOAD_HEAVY_ASSETS"] == "true"
-    assert env["SBIR_ETL__DAGSTER__SCHEDULES__DAILY_ALL_ASSETS_ENABLED"] == "false"
+    schedule_flags = {
+        name: value
+        for name, value in env.items()
+        if name.startswith("SBIR_ETL__DAGSTER__SCHEDULES__") and name.endswith("_ENABLED")
+    }
+    assert schedule_flags
+    assert set(schedule_flags.values()) == {"false"}
 
 
 def test_schedules_gated_off_by_default():
     env = _parse_env(ENV_EXAMPLE)
-    assert env["SBIR_ETL__DAGSTER__SCHEDULES__DAILY_ALL_ASSETS_ENABLED"] == "false"
     assert env["SBIR_ETL__DAGSTER__SCHEDULES__WEEKLY_CORE_REFRESH_ENABLED"] == "false"
 
 

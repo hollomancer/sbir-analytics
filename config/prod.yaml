@@ -198,7 +198,6 @@ cet:
 dagster:
   schedules:
     # Recommended schedules (UTC); adjust for your environment
-    etl_job: "0 2 * * *"          # Full ETL at 02:00 UTC daily
     cet_drift_job: "0 6 * * *"    # CET drift detection at 06:00 UTC daily
   jobs:
     - name: "cet_full_pipeline_job"
