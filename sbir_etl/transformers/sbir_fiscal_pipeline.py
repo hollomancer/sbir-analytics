@@ -211,7 +211,7 @@ class SBIRFiscalImpactCalculator:
         integrate with BEA employment data.
 
         Args:
-            impacts: Impacts DataFrame from R adapter
+            impacts: Impacts DataFrame from the BEA I-O adapter
 
         Returns:
             Impacts DataFrame with added jobs_created column
