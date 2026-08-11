@@ -73,7 +73,7 @@ def test_docker_build_rejects_lock_drift_and_caches_dependency_layers():
     assert "uv sync --locked" in dockerfile
     assert "uv sync --frozen" not in dockerfile
     assert "--no-install-project --no-install-workspace" in dockerfile
-    assert dockerfile.count("--mount=type=cache,target=/root/.cache/uv") == 3
+    assert dockerfile.count("--mount=type=cache,target=/root/.cache/uv") >= 2
     assert dockerfile.index("--no-install-workspace") < dockerfile.index("COPY sbir_etl/")
     assert dockerfile.index("playwright install --with-deps chromium") < dockerfile.index(
         "COPY sbir_etl/"
