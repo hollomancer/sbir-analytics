@@ -270,7 +270,7 @@ restart fails so recovery work cannot erase the backup.
 
 - The repository-wide daily all-assets schedule has been retired.
   `core_refresh_job` still selects every currently loaded non-heavy asset and
-  remains **STOPPED** by default, so a newly added non-heavy asset can enter
+  remains available for manual runs, so a newly added non-heavy asset can enter
   that selection without an explicit job edit.
 - A `weekly_core_refresh` schedule exists but stays **STOPPED** until you flip
   `SBIR_ETL__DAGSTER__SCHEDULES__WEEKLY_CORE_REFRESH_ENABLED=true` — do this
