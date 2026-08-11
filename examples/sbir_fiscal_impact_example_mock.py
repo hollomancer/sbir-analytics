@@ -3,8 +3,8 @@
 This example demonstrates the complete pipeline from SBIR awards to
 tax and job impact analysis by state and industry using mock data.
 
-This version works WITHOUT R and provides realistic demo outputs.
-For real calculations, set BEA_API_KEY (register at https://apps.bea.gov/API/signup/).
+This version uses hand-authored multipliers and produces illustrative,
+non-citable demo outputs without network access.
 
 Usage:
     python examples/sbir_fiscal_impact_example_mock.py
@@ -25,14 +25,14 @@ from sbir_etl.enrichers.fiscal_bea_mapper import NAICSToBEAMapper as NAICSBEAMap
 
 
 class MockBEAIOAdapter:
-    """Mock BEA I-O adapter that provides realistic outputs for examples."""
+    """Mock BEA I-O adapter that provides illustrative outputs for examples."""
 
     def __init__(self):
         """Initialize mock adapter."""
         self.model_version = "v2.1-mock"
 
     def compute_impacts(self, shocks_df: pd.DataFrame) -> pd.DataFrame:
-        """Compute mock impacts using simple but realistic multipliers.
+        """Compute mock impacts using simple illustrative multipliers.
 
         Args:
             shocks_df: DataFrame with state, bea_sector, fiscal_year, shock_amount
@@ -282,7 +282,7 @@ def main():
     calculator = MockSBIRFiscalImpactCalculator()
     print("  ✓ Mock calculator initialized")
     print("  ✓ NAICS→BEA mapper loaded")
-    print("  ✓ Using simplified economic multipliers (BEA_API_KEY not set)")
+    print("  ✓ Using hand-authored illustrative economic multipliers")
     print()
 
     # Step 3: Calculate impacts

@@ -43,13 +43,24 @@ input-output tables. Its tax and employment estimates remain exploratory and
 non-citable; see the epistemic-tier declaration in
 `sbir_etl/transformers/sbir_fiscal_pipeline.py`.
 
-Both examples expect awards with these columns:
+When `BEA_API_KEY` is absent, or a BEA request fails, this path falls back to
+hard-coded placeholder multipliers. Check `quality_flags`: only
+`bea_api_with_ratios` and `bea_api_default_ratios` identify BEA-backed rows;
+`placeholder_computation` is illustrative fallback output.
 
-- `award_id`
+The Python and mock calculator examples require these award columns:
+
 - `award_amount`
 - `state`
 - `naics_code`
 - `fiscal_year`
 
+The district example additionally requires `company_address`, `company_city`,
+`company_state`, and `company_zip` for geographic resolution. Its sample also
+includes `award_id` and `company_name` for readability, but neither calculator
+requires them.
+
 For the project-wide evidence boundaries, see the
 [research output status index](../docs/research/README.md).
+For the fiscal pipeline schema and quality flags, see the
+[fiscal pipeline guide](../docs/fiscal/sbir-fiscal-pipeline-guide.md).

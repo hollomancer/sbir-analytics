@@ -527,7 +527,6 @@ def _create_placeholder_impacts(
     for col in _IMPACT_COLS:
         df[col] = 0.0
     df["model_version"] = "placeholder"
-    df["confidence"] = 0.0
     df["quality_flags"] = "bea_adapter_unavailable"
     return Output(
         value=df,
