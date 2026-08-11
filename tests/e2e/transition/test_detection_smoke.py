@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import json
-
 import pandas as pd
 import pytest
 
@@ -58,21 +56,3 @@ def test_transition_pipeline_summary(
     assert "award_transition_rate" in summary
     assert "company_transition_rate" in summary
     assert "cet_area_transition_rates" in summary
-
-
-def test_pipeline_output_files(tmp_path):
-    """Ensure downstream tasks write analytics + report artifacts."""
-    output_dir = tmp_path / "data" / "processed"
-    output_dir.mkdir(parents=True, exist_ok=True)
-
-    analytics_json = output_dir / "transition_analytics.json"
-    summary_md = output_dir / "transition_analytics_executive_summary.md"
-    checks_json = output_dir / "transition_analytics.checks.json"
-
-    analytics_json.write_text(json.dumps({"score_threshold": 0.6}))
-    summary_md.write_text("# Executive Summary")
-    checks_json.write_text(json.dumps({"ok": True}))
-
-    for path in (analytics_json, summary_md, checks_json):
-        assert path.exists()
-        assert path.stat().st_size > 0

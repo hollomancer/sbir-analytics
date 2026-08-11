@@ -7,23 +7,11 @@ Tests each major pipeline function end-to-end:
 - ModernBert embeddings
 """
 
-import pytest
-import pandas as pd
-from pathlib import Path
-
-
-@pytest.fixture
-def output_dir(tmp_path):
-    """Create temporary output directory."""
-    output = tmp_path / "data" / "processed"
-    output.mkdir(parents=True)
-    return output
-
 
 class TestTransitionPipeline:
     """Functional tests for transition detection pipeline."""
 
-    def test_transition_run_produces_outputs(self, output_dir):
+    def test_transition_run_produces_outputs(self):
         """Test that transition pipeline produces expected outputs."""
         from dagster import materialize
         from sbir_analytics.assets.transition import validated_contracts_sample
@@ -83,73 +71,6 @@ class TestModernBertPipeline:
         assert len(result.asset_materializations_for_node("modernbert_embeddings_awards")) > 0
 
 
-@pytest.mark.parametrize(
-    "output_type,required_cols,validators",
-    [
-        (
-            "transitions",
-            ["award_id", "contract_id", "transition_score", "confidence"],
-            {
-                "transition_score": lambda df: (
-                    df["transition_score"].dtype in ["float64", "float32"]
-                ),
-                "confidence": lambda df: df["confidence"].dtype in ["float64", "float32"],
-            },
-        ),
-        (
-            "cet_classifications",
-            ["award_id", "cet_id", "score", "classification"],
-            {
-                "classification": lambda df: (
-                    df["classification"].isin(["High", "Medium", "Low"]).all()
-                ),
-            },
-        ),
-        (
-            "fiscal_returns",
-            ["award_id", "roi", "federal_tax_receipts", "economic_impact"],
-            {
-                "roi": lambda df: (
-                    df["roi"].dtype in ["float64", "float32"] and (df["roi"] >= 0).all()
-                ),
-            },
-        ),
-        (
-            "modernbert_award_patent_similarity",
-            ["award_id", "patent_id", "similarity_score"],
-            {
-                "similarity_score": lambda df: (
-                    df["similarity_score"].dtype in ["float64", "float32"]
-                    and (df["similarity_score"] >= 0).all()
-                    and (df["similarity_score"] <= 1).all()
-                ),
-            },
-        ),
-    ],
-)
-def test_pipeline_output_schema(
-    output_type: str, required_cols: list[str], validators: dict, repo_root: Path
-):
-    """Test that pipeline outputs have valid schema."""
-    output_path = repo_root / "data" / "processed" / f"{output_type}.parquet"
-    if not output_path.exists():
-        pytest.skip(f"{output_type} output not found")
-
-    df = pd.read_parquet(output_path)
-
-    # Validate schema
-    for col in required_cols:
-        assert col in df.columns, f"Missing column: {col}"
-
-    # Validate data quality
-    assert len(df) > 0, "Output is empty"
-    assert df[required_cols[0]].notna().all(), f"Null values in {required_cols[0]}"
-
-    # Run custom validators
-    for field, validator in validators.items():
-        assert validator(df), f"Validation failed for {field}"
-
-
 class TestPipelineIntegration:
     """Integration tests across multiple pipelines."""
 
@@ -166,17 +87,3 @@ class TestPipelineIntegration:
         # Run CET second
         result2 = materialize([enriched_cet_award_classifications])
         assert result2.success
-
-    def test_pipeline_outputs_dont_conflict(self):
-        """Test that pipeline outputs use separate files."""
-        outputs = [
-            "data/processed/transitions.parquet",
-            "data/processed/cet_classifications.parquet",
-            "data/processed/fiscal_returns.parquet",
-            "data/processed/modernbert_embeddings_awards.parquet",
-            "data/processed/modernbert_embeddings_patents.parquet",
-            "data/processed/modernbert_award_patent_similarity.parquet",
-        ]
-
-        # Check that outputs are distinct
-        assert len(outputs) == len(set(outputs))

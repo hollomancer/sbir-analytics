@@ -1099,7 +1099,7 @@ Public studies this inventory draws from or benchmarks against.
 
 **NASEM reviews (congressionally mandated):**
 
-- **[L1]** NASEM (2026). *Review of the SBIR and STTR Programs at the Department of Defense.* Key finding: DoD SBIR firms attract >4× non-SBIR DoD funding per SBIR dollar (2012–2020); SBIR firms are ~1/3 of the defense R&D base. <https://www.nationalacademies.org/projects/PGA-STEP-17-08/publication/29329>
+- **[L1]** NASEM (2026). *Review of the SBIR and STTR Programs at the Department of Defense.* Key finding: DoD SBIR firms attract >4× non-SBIR DoD funding per SBIR dollar (2012–2020); SBIR firms are ~1/3 of the defense R&D base. <https://doi.org/10.17226/29329> (project page: <https://www.nationalacademies.org/projects/PGA-STEP-17-08/publication/29329>)
 - **[L2]** NRC (2014). *SBIR at the Department of Defense.* Earlier assessment — baseline for longitudinal comparison. (Published under the National Research Council name, before the July 2015 NASEM rename.) <https://nap.nationalacademies.org/read/18821/>
 - **[L3]** NASEM (2022). *Assessment of the SBIR and STTR Programs at the NIH.* <https://nap.nationalacademies.org/read/26376/>
 - **[L4]** NASEM (2023). *Review of the SBIR and STTR Programs at the National Science Foundation.* <https://nap.nationalacademies.org/read/26884/>
@@ -1154,13 +1154,33 @@ Public studies this inventory draws from or benchmarks against.
 - **[L32]** CSIS Center for the Industrial Base. *New Entrants and Small Business Graduation in the Market for Federal Contracts.* FPDS-based analysis (2001–2016) of entrant, exit, and small-business graduation rates in federal contracting. <https://www.csis.org/analysis/new-entrants-and-small-business-graduation-market-federal-contracts>
 - **[L33]** DoD SBIR/STTR Fast Track. Match mechanism of up to four SBIR/STTR dollars per outside-investor dollar (1:1 to 1:4), contingent on Phase II selection. Verified leverage anchor for A-CP11. <https://www.sbir.gov/tutorials/individual-agency-requirements/DOD-services>
 
+**2026-08 citation audit additions** (from the 2019–2026 literature map,
+[`research/literature-map/`](research/literature-map/); metadata from OpenAlex, DOIs
+spot-checked against publisher records):
+
+- **[L34]** Howell, S.T., Rathje, J., Van Reenen, J., & Wong, J. (2025). "Opening Up Military Innovation: Causal Effects of Reforms to US Defense Research." *Journal of Political Economy* 133(11), 3605–3651. Causal estimates of DoD research-funding reform (Air Force open-topic SBIR) — the first peer-reviewed econometrics behind the Section A leverage and open-topic questions, which otherwise rest on policy reports [L16], [L17], [L28]–[L33]. <https://doi.org/10.1086/737235>
+- **[L35]** Link, A.N. & van Hasselt, M. (2023). *Small Firms and U.S. Technology Policy.* Edward Elgar. Synthesizing monograph (book, not an article); the book-length companion to [L10] and [L12]. <https://doi.org/10.4337/9781802205596>
+- **[L36]** Fini, R., Perkmann, M., Kenney, M., & Maki, K.M. (2022). "Are public subsidies effective for university spinoffs? Evidence from SBIR awards in the University of California system." *Research Policy* 52(1), 104662. The most-cited recent SBIR commercialization study; modern complement to Link & Scott [L12]. <https://doi.org/10.1016/j.respol.2022.104662>
+- **[L37]** Guerrero, M., Link, A.N., & van Hasselt, M. (2023). "The transfer of federally funded technology: A study of small, entrepreneurial, and ambidextrous firms." *Small Business Economics* 62(3), 1009–1023. Firm-capability correlates of federally funded technology transfer. <https://doi.org/10.1007/s11187-023-00794-y>
+- **[L38]** Swann, C.A. (2026). "Firm reliance on SBIR funding and its relation to the generation of spin-off firms and patenting." *The Journal of Technology Transfer.* Relates firm-level SBIR reliance to spin-off generation and patenting; extends the Section C spillover line [L9], [L13]. <https://doi.org/10.1007/s10961-025-10318-3>
+- **[L39]** Audretsch, D.B., Link, A.N., & van Hasselt, M. (2019). "Knowledge begets knowledge: university knowledge spillovers and the output of scientific papers from U.S. Small Business Innovation Research (SBIR) projects." *Scientometrics* 121(3), 1367–1383. Publication-output measure of SBIR knowledge spillovers. <https://doi.org/10.1007/s11192-019-03260-3>
+- **[L40]** Lanahan, L., Joshi, A.M., & Johnson, E. (2021). "Do public R&D subsidies produce jobs? Evidence from the SBIR/STTR program." *Research Policy* 50(7), 104286. Employment effects of SBIR/STTR awards; peer-reviewed counterpart to the grey-literature impact studies [L19]–[L21]. <https://doi.org/10.1016/j.respol.2021.104286>
+- **[L41]** Feldman, M.P. et al. (2022). "Evaluating the tail of the distribution: the economic contributions of frequently awarded government R&D recipients." *Research Policy* 51(7), 104539. Economic contributions of repeat awardees; bears directly on the Section D repeat-vs-new-winner ROI cut. <https://doi.org/10.1016/j.respol.2022.104539>
+- **[L42]** Giga, A. et al. (2021). "Helping the Little Guy: the impact of government awards on small technology firms." *The Journal of Technology Transfer* 47(3), 846–871. Firm-level impact of government awards on small technology firms. <https://doi.org/10.1007/s10961-021-09859-0>
+- **[L43]** Howell, S.T. & Brown, J.D. (2023). "Do Cash Windfalls Affect Wages? Evidence from R&D Grants to Small Firms." *The Review of Financial Studies* 36(5), 1889–1929. Regression-discontinuity estimate of the wage response to an SBIR grant windfall (applicant rankings linked to IRS W-2 and Census data); extends the Howell [L11] anchor. Earlier NBER working paper w26717. <https://doi.org/10.1093/rfs/hhac076>
+- **[L44]** Bhattacharya, V. (2021). "An Empirical Model of R&D Procurement Contests: An Analysis of the DOD SBIR Program." *Econometrica* 89(5), 2189–2224. Structural model of the DoD SBIR program as an R&D procurement contest; the methodological flagship for the Section E program-mechanics questions [L14], [L15], [L18]. <https://doi.org/10.3982/ecta16581>
+- **[L45]** Wang, Y., Siegel, J.I., & Li, J. (2024). "Who captures the state? Evidence from irregular awards in a public innovation grant program." *Strategic Management Journal* 45(12), 2420–2458. Irregular-award detection in a public innovation grant program; relevant to award-quality and data-integrity screening. <https://doi.org/10.1002/smj.3635>
+- **[L46]** Link, A.N. & Swann, C.A. (2024). "SBIR mills and the U.S. Department of Defense." *The Journal of Technology Transfer* 49(6), 2306–2335. Characterizes "SBIR mill" firms in DoD SBIR — the academic treatment of the multiple-award-firm problem behind the §638(qq)(3) performance standards [L14]. <https://doi.org/10.1007/s10961-024-10144-z>
+- **[L47]** Rovito, S.M., Kamp, J., & Etemadi, A.H. (2025). "Exploring Department of the Navy SBIR Phase III awards and corresponding public sector commercialization success factors." *The Journal of Technology Transfer* 50(4), 1363–1395. Navy Phase III awards and the firm attributes predicting public-sector commercialization; finds Phase III receipt only weakly predictive of commercialization success. Relevant to the Section B transition questions and the [`phase3-transition-groundtruth`](../specs/phase3-transition-groundtruth/) spec. <https://doi.org/10.1007/s10961-024-10141-2>
+- **[L48]** NASEM (2026). *Review of the SBIR and STTR Programs at NASA.* National Academies Press. Fills the NASA gap in the [L1]–[L8] agency-review block, which otherwise covers DoD, NIH, NSF, and DOE. <https://doi.org/10.17226/29381>
+
 ---
 
 ## Maintenance
 
-**Last reviewed:** 2026-08-03. Status vocabulary now distinguishes computable,
-validated, and citable work; unmerged branch-only references were removed. Git
-history preserves earlier editorial and section-consolidation notes.
+**Last reviewed:** 2026-08-11. The 2026-08 citation audit added [L34]–[L48] from
+the 2019–2026 literature map and pinned [L1] to its published DOI. Git history
+preserves earlier editorial and section-consolidation notes.
 
 Open source-verification items:
 
@@ -1173,7 +1193,17 @@ Open source-verification items:
 - **A3 / "4:1 NASEM" multiplier attribution** — the A3 "~4:1" figure and its
   NASEM attribution [L1], [L2] were left untouched per scope.
   `[TODO: verify A3 4:1 attribution against NASEM source]` before the next
-  citation audit relies on it.
+  citation audit relies on it. The 2026-08 audit pinned [L1] to its published
+  DOI (`10.17226/29329`), so the source record is now fixed and citable; reading
+  the leverage-ratio figure out of that report — and confirming the 2012–2020
+  window A3 states — is still open.
+- **Unverified 2026-08 refresh candidate** — a proposed `[L49]`, Jones & Fearon,
+  "Big Small Business: The Effect of Increasing Performance Standards on 'Fraud,
+  Waste, and Abuse' in the SBIR and STTR Programs" (Stanford Digital Repository,
+  `10.25740/xq826fj1447`), was **not added**: the deposit could not be confirmed
+  from any indexer during the audit, and it is a non-peer-reviewed repository
+  deposit. It studies the §638(qq)(3) regime directly, so it is worth re-checking
+  at the next refresh; if confirmed it takes the next free slot, [L49].
 
 The next audit should verify:
 

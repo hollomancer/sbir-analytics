@@ -14,6 +14,9 @@ connector), covering 2019–2026.
   DOIs, citation counts, FWCI, OA status, and relevance/area tags.
 - `lit_overview.png` — volume-by-year, A–F coverage, and venue breakdown.
 
+**Status:** the 2026-08 citation audit merged the shortlist below into the `[L#]` list as
+[L34]–[L48]. This directory is the provenance record for those entries, not a pending queue.
+
 **Citation-gap analysis (map vs. `[L#]`)**
 - [`citation_gap_memo.md`](citation_gap_memo.md) — which recent works are not yet in `[L#]`,
   ranked and tied to the slot each would update.

@@ -10,11 +10,11 @@ documented in [`docs/schemas/neo4j.md`](../../docs/schemas/neo4j.md) and
 
 ## Installation
 
-Install the graph package directly, or install the full analytics pipeline that depends on it:
+The workspace packages are currently installed from a repository checkout; they
+are not published to PyPI. From the repository root:
 
 ```bash
-pip install sbir-graph       # graph loaders, Neo4j client, and packaged migrations
-pip install sbir-analytics   # full pipeline; installs sbir-graph as a dependency
+make install  # full workspace, including sbir-graph
 ```
 
 Depends on `neo4j>=5.20`, `pydantic`, `pandas`, `loguru`.
