@@ -216,8 +216,14 @@ def enriched_cet_award_classifications() -> Output:
     except Exception as exc:
         raise RuntimeError("Failed to load enriched awards for CET classification") from exc
 
+    if not awards:
+        raise ValueError("Enriched award input is empty; no awards are available to classify")
+
     if not model_path.exists():
-        raise FileNotFoundError(f"Trained CET award model not found: {model_path}")
+        raise FileNotFoundError(
+            f"Trained CET award model not found: {model_path}. "
+            "Provision a trained ApplicabilityModel artifact at this path before materializing."
+        )
 
     # Load trained model
     try:
@@ -250,33 +256,6 @@ def enriched_cet_award_classifications() -> Output:
         texts.append(combined)
         award_ids.append(a.get("award_id") or "")
 
-    # Handle empty awards list
-    if not texts or not award_ids:
-        logger.warning("No award texts to classify; writing empty output")
-        df_empty = pd.DataFrame(
-            columns=[
-                "award_id",
-                "primary_cet",
-                "primary_score",
-                "supporting_cets",
-                "evidence",
-                "classified_at",
-                "taxonomy_version",
-            ]
-        )
-        output_path = save_dataframe_parquet(df_empty, output_path)
-        checks = {"ok": False, "reason": "no_awards_to_classify", "num_awards": len(awards)}
-        checks_path.parent.mkdir(parents=True, exist_ok=True)
-        with open(checks_path, "w", encoding="utf-8") as fh:
-            json.dump(checks, fh, indent=2)
-        metadata = {
-            "path": str(output_path),
-            "rows": 0,
-            "model_present": True,
-            "checks_path": str(checks_path),
-        }
-        return Output(value=str(output_path), metadata=metadata)  # type: ignore[arg-type]  # type: ignore[arg-type]
-
     batch_size = (
         classification_config.get("batch", {}).get("size", 1000)
         if isinstance(classification_config, dict)
@@ -285,9 +264,15 @@ def enriched_cet_award_classifications() -> Output:
 
     # Perform batch classification.
     try:
-        classifications_by_award = model.classify_batch(texts, batch_size=batch_size)
+        classifications_by_award = list(model.classify_batch(texts, batch_size=batch_size))
     except Exception as exc:
         raise RuntimeError("CET award batch classification failed") from exc
+
+    if len(classifications_by_award) != len(awards):
+        raise ValueError(
+            "CET award classifier returned "
+            f"{len(classifications_by_award)} results for {len(awards)} source rows"
+        )
 
     # Attach evidence if extractor available
     doc_parts_list = [
@@ -299,17 +284,23 @@ def enriched_cet_award_classifications() -> Output:
         for a in awards
     ]
     try:
-        classifications_with_evidence = extractor.extract_batch_evidence(
-            classifications_by_award, doc_parts_list
+        classifications_with_evidence = list(
+            extractor.extract_batch_evidence(classifications_by_award, doc_parts_list)
         )
     except Exception as exc:
         raise RuntimeError("CET award evidence extraction failed") from exc
+
+    if len(classifications_with_evidence) != len(awards):
+        raise ValueError(
+            "CET award evidence extractor returned "
+            f"{len(classifications_with_evidence)} results for {len(awards)} source rows"
+        )
 
     # Flatten classification results into a DataFrame (one row per award)
     import pandas as pd
 
     rows: list[Any] = []
-    for aid, cls_list in zip(award_ids, classifications_with_evidence, strict=False):
+    for aid, cls_list in zip(award_ids, classifications_with_evidence, strict=True):
         if not cls_list:
             rows.append(
                 {
@@ -572,6 +563,9 @@ def enriched_cet_patent_classifications() -> Output:
     except Exception as exc:
         raise RuntimeError("Failed to load patents for CET classification") from exc
 
+    if not patents:
+        raise ValueError("Transformed patent input is empty; no patents are available to classify")
+
     if not model_path.exists():
         raise FileNotFoundError(f"Trained CET patent model not found: {model_path}")
 
@@ -596,8 +590,13 @@ def enriched_cet_patent_classifications() -> Output:
         kw_map = get_keywords_map()
         extractor = PatentFeatureExtractor(keywords_map=kw_map)
         if hasattr(extractor, "transform"):
-            feature_dicts = extractor.transform(patents)
-            for p, fv in zip(patents, feature_dicts, strict=False):
+            feature_dicts = list(extractor.transform(patents))
+            if len(feature_dicts) != len(patents):
+                raise ValueError(
+                    "CET patent feature extractor returned "
+                    f"{len(feature_dicts)} results for {len(patents)} source rows"
+                )
+            for p, fv in zip(patents, feature_dicts, strict=True):
                 norm_title = (
                     fv.get("normalized_title")
                     if isinstance(fv, dict)
@@ -615,6 +614,8 @@ def enriched_cet_patent_classifications() -> Output:
                 titles.append(normalize_title(p.get("title")))
                 patent_ids.append(p.get("patent_id") or "")
                 assignees.append(None)
+    except ValueError:
+        raise
     except Exception:
         for p in patents:
             titles.append(str(p.get("title") or ""))
@@ -628,17 +629,23 @@ def enriched_cet_patent_classifications() -> Output:
     )
 
     try:
-        classifications_by_patent = classifier.classify_batch(
-            titles, assignees, batch_size=batch_size
+        classifications_by_patent = list(
+            classifier.classify_batch(titles, assignees, batch_size=batch_size)
         )
     except Exception as exc:
         raise RuntimeError("CET patent batch classification failed") from exc
+
+    if len(classifications_by_patent) != len(patents):
+        raise ValueError(
+            "CET patent classifier returned "
+            f"{len(classifications_by_patent)} results for {len(patents)} source rows"
+        )
 
     # Flatten classification results into a DataFrame (one row per patent)
     import pandas as pd
 
     rows: list[Any] = []
-    for pid, cls_list in zip(patent_ids, classifications_by_patent, strict=False):
+    for pid, cls_list in zip(patent_ids, classifications_by_patent, strict=True):
         if not cls_list:
             rows.append(
                 {

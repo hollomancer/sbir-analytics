@@ -24,7 +24,7 @@ def raw_cet_human_sampling() -> Output:
     """
     Produce a small, human-readable sample for annotation.
 
-    - Reads `data/processed/cet_award_classifications.parquet` (preferred) or `.json` NDJSON.
+    - Reads `data/processed/cet_award_classifications.parquet` (preferred) or `.ndjson`.
     - Writes NDJSON sample to `data/processed/cet_human_sample.ndjson`.
     - Writes a checks JSON to `data/processed/cet_human_sample.checks.json`.
 
@@ -46,7 +46,7 @@ def raw_cet_human_sampling() -> Output:
 
     processed_dir = Path("data/processed")
     input_parquet = processed_dir / "cet_award_classifications.parquet"
-    input_json = processed_dir / "cet_award_classifications.json"
+    input_json = processed_dir / "cet_award_classifications.ndjson"
 
     output_ndjson = processed_dir / "cet_human_sample.ndjson"
     checks_path = processed_dir / "cet_human_sample.checks.json"
@@ -396,7 +396,7 @@ def validated_cet_drift_detection() -> Output:
 
     processed_dir = Path("data/processed")
     awards_parquet = processed_dir / "cet_award_classifications.parquet"
-    awards_json = processed_dir / "cet_award_classifications.json"
+    awards_json = processed_dir / "cet_award_classifications.ndjson"
 
     benchmarks_dir = Path("reports/benchmarks")
     benchmarks_dir.mkdir(parents=True, exist_ok=True)

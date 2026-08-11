@@ -86,7 +86,7 @@ def transformed_cet_company_profiles() -> Output:
     Dagster asset to perform company-level aggregation of CET classifications.
 
     Behavior:
-    - Attempts to load `data/processed/cet_award_classifications.parquet` or `.json` NDJSON fallback.
+    - Attempts to load `data/processed/cet_award_classifications.parquet` or `.ndjson` fallback.
       Missing or unreadable classification inputs fail the materialization.
     - Uses `CompanyCETAggregator` (from `src.transformers.company_cet_aggregator`) to compute per-company
       CET aggregates: coverage, dominant CET, specialization (HHI), CET score map, and trend.
@@ -106,7 +106,7 @@ def transformed_cet_company_profiles() -> Output:
 
     # Paths
     classifications_parquet = Path("data/processed/cet_award_classifications.parquet")
-    classifications_ndjson = Path("data/processed/cet_award_classifications.json")
+    classifications_ndjson = Path("data/processed/cet_award_classifications.ndjson")
     output_path = Path("data/processed/cet_company_profiles.parquet")
     checks_path = output_path.with_suffix(".checks.json")
 
@@ -130,6 +130,9 @@ def transformed_cet_company_profiles() -> Output:
         raise
     except Exception as exc:
         raise RuntimeError("Failed to load CET award classifications") from exc
+
+    if df_cls.empty:
+        raise ValueError("CET award classification input is empty; no companies can be aggregated")
 
     # Join with enriched awards to get company information if missing
     if not df_cls.empty and "company_id" not in df_cls.columns:
@@ -185,12 +188,10 @@ def transformed_cet_company_profiles() -> Output:
                 "Failed to join CET classifications with enriched award company data"
             ) from exc
 
-    # Ensure company_id and company_name columns exist (CompanyCETAggregator expects them)
-    if not df_cls.empty:
-        if "company_id" not in df_cls.columns:
-            df_cls["company_id"] = None
-        if "company_name" not in df_cls.columns:
-            df_cls["company_name"] = None
+    if "company_id" not in df_cls.columns or not df_cls["company_id"].notna().any():
+        raise ValueError("CET award classifications contain no usable company identifiers")
+    if "company_name" not in df_cls.columns:
+        df_cls["company_name"] = None
 
     # Run aggregation
     try:
@@ -198,6 +199,9 @@ def transformed_cet_company_profiles() -> Output:
         df_comp = aggregator.to_dataframe()
     except Exception as exc:
         raise RuntimeError("CET company aggregation failed") from exc
+
+    if df_comp.empty:
+        raise ValueError("CET company aggregation produced no company profiles")
 
     # Persist company profiles (parquet preferred, NDJSON fallback)
     artifact_path = save_dataframe_parquet(df_comp, output_path)
@@ -255,10 +259,10 @@ DEFAULT_TAXONOMY_PARQUET = DEFAULT_PROCESSED_DIR_NEO4J / "cet_taxonomy.parquet"
 DEFAULT_TAXONOMY_JSON = DEFAULT_PROCESSED_DIR_NEO4J / "cet_taxonomy.json"
 
 DEFAULT_AWARD_CLASS_PARQUET = DEFAULT_PROCESSED_DIR_NEO4J / "cet_award_classifications.parquet"
-DEFAULT_AWARD_CLASS_JSON = DEFAULT_PROCESSED_DIR_NEO4J / "cet_award_classifications.json"
+DEFAULT_AWARD_CLASS_JSON = DEFAULT_PROCESSED_DIR_NEO4J / "cet_award_classifications.ndjson"
 
 DEFAULT_COMPANY_PROFILES_PARQUET = DEFAULT_PROCESSED_DIR_NEO4J / "cet_company_profiles.parquet"
-DEFAULT_COMPANY_PROFILES_JSON = DEFAULT_PROCESSED_DIR_NEO4J / "cet_company_profiles.json"
+DEFAULT_COMPANY_PROFILES_JSON = DEFAULT_PROCESSED_DIR_NEO4J / "cet_company_profiles.ndjson"
 
 DEFAULT_OUTPUT_DIR = Path(os.environ.get("SBIR_ETL__CET__NEO4J_OUTPUT_DIR", "data/loaded/neo4j"))
 

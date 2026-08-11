@@ -284,6 +284,7 @@ class CetClassificationAnalyzer(ModuleAnalyzer):
 
         # Check for CET classification columns
         cet_columns = [
+            "primary_cet",
             "primary_cet_area",
             "cet_classification",
             "technology_category",
@@ -294,7 +295,12 @@ class CetClassificationAnalyzer(ModuleAnalyzer):
         for col in cet_columns:
             if col in classified_df.columns:
                 # Handle single category assignments
-                if col in ["primary_cet_area", "cet_classification", "technology_category"]:
+                if col in [
+                    "primary_cet",
+                    "primary_cet_area",
+                    "cet_classification",
+                    "technology_category",
+                ]:
                     category_counts = classified_df[col].value_counts()
                     for category, count in category_counts.items():
                         if pd.notna(category):  # type: ignore[call-overload]
@@ -398,7 +404,12 @@ class CetClassificationAnalyzer(ModuleAnalyzer):
 
         # Get classified categories
         classified_categories: set[Any] = set()
-        category_columns = ["primary_cet_area", "cet_classification", "technology_category"]
+        category_columns = [
+            "primary_cet",
+            "primary_cet_area",
+            "cet_classification",
+            "technology_category",
+        ]
 
         for col in category_columns:
             if col in classified_df.columns:
@@ -456,6 +467,7 @@ class CetClassificationAnalyzer(ModuleAnalyzer):
 
         # Check for classification indicator columns
         classification_columns = [
+            "primary_cet",
             "primary_cet_area",
             "cet_classification",
             "technology_category",
@@ -571,6 +583,7 @@ class CetClassificationAnalyzer(ModuleAnalyzer):
             # Base score from classification presence
             has_classification = False
             classification_columns = [
+                "primary_cet",
                 "primary_cet_area",
                 "cet_classification",
                 "technology_category",
@@ -646,6 +659,7 @@ class CetClassificationAnalyzer(ModuleAnalyzer):
 
         # Fields added during classification
         classification_fields = [
+            "primary_cet",
             "primary_cet_area",
             "cet_classification",
             "technology_category",
@@ -661,7 +675,12 @@ class CetClassificationAnalyzer(ModuleAnalyzer):
 
         # Count records that received classifications
         classified_records = 0
-        for field in ["primary_cet_area", "cet_classification", "technology_category"]:
+        for field in [
+            "primary_cet",
+            "primary_cet_area",
+            "cet_classification",
+            "technology_category",
+        ]:
             if field in classified_df.columns:
                 classified_records = max(classified_records, classified_df[field].notna().sum())
 

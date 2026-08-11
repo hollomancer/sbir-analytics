@@ -1,6 +1,7 @@
 """Failure and artifact-path contracts for CET materializations."""
 
 import json
+from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import patch
 
@@ -55,7 +56,14 @@ def test_award_training_returns_real_ndjson_fallback(
     tmp_path,
 ):
     mock_taxonomy_loader.return_value.load_taxonomy.return_value = SimpleNamespace(version="v1")
-    mock_save_parquet.side_effect = RuntimeError("parquet unavailable")
+
+    def save_as_ndjson(df, path):
+        actual_path = Path(path).with_suffix(".ndjson")
+        actual_path.parent.mkdir(parents=True, exist_ok=True)
+        df.to_json(actual_path, orient="records", lines=True)
+        return actual_path
+
+    mock_save_parquet.side_effect = save_as_ndjson
     monkeypatch.chdir(tmp_path)
     source = tmp_path / "data/processed/cet_award_training.ndjson"
     source.parent.mkdir(parents=True)
@@ -70,20 +78,78 @@ def test_award_training_returns_real_ndjson_fallback(
 
 @patch("sbir_etl.transformers.company_cet_aggregator.CompanyCETAggregator")
 @patch("sbir_analytics.assets.cet.company.save_dataframe_parquet")
-def test_company_profiles_return_real_json_fallback(
+def test_company_profiles_return_real_ndjson_fallback(
     mock_save_parquet, mock_aggregator_class, monkeypatch, tmp_path
 ):
     mock_aggregator_class.return_value.to_dataframe.return_value = pd.DataFrame(
         [{"company_id": "C-1", "company_name": "Example"}]
     )
-    mock_save_parquet.side_effect = RuntimeError("parquet unavailable")
+
+    def save_as_ndjson(df, path):
+        actual_path = Path(path).with_suffix(".ndjson")
+        actual_path.parent.mkdir(parents=True, exist_ok=True)
+        df.to_json(actual_path, orient="records", lines=True)
+        return actual_path
+
+    mock_save_parquet.side_effect = save_as_ndjson
     monkeypatch.chdir(tmp_path)
-    source = tmp_path / "data/processed/cet_award_classifications.json"
+    source = tmp_path / "data/processed/cet_award_classifications.ndjson"
     source.parent.mkdir(parents=True)
     source.write_text(json.dumps({"award_id": "A-1", "company_id": "C-1"}) + "\n")
 
     result = transformed_cet_company_profiles()
 
-    assert result.value == "data/processed/cet_company_profiles.json"
+    assert result.value == "data/processed/cet_company_profiles.ndjson"
     assert (tmp_path / result.value).is_file()
     assert not (tmp_path / "data/processed/cet_company_profiles.parquet").exists()
+
+
+@patch("sbir_etl.transformers.company_cet_aggregator.CompanyCETAggregator")
+@patch("sbir_analytics.assets.cet.company.save_dataframe_parquet")
+def test_company_profiles_reject_empty_classification_input(
+    mock_save_parquet, mock_aggregator_class, monkeypatch, tmp_path
+):
+    monkeypatch.chdir(tmp_path)
+    source = tmp_path / "data/processed/cet_award_classifications.ndjson"
+    source.parent.mkdir(parents=True)
+    source.write_text("")
+
+    with pytest.raises(ValueError, match="classification input is empty"):
+        transformed_cet_company_profiles()
+
+    mock_aggregator_class.assert_not_called()
+    mock_save_parquet.assert_not_called()
+
+
+@patch("sbir_etl.transformers.company_cet_aggregator.CompanyCETAggregator")
+@patch("sbir_analytics.assets.cet.company.save_dataframe_parquet")
+def test_company_profiles_require_usable_company_identifiers(
+    mock_save_parquet, mock_aggregator_class, monkeypatch, tmp_path
+):
+    monkeypatch.chdir(tmp_path)
+    source = tmp_path / "data/processed/cet_award_classifications.ndjson"
+    source.parent.mkdir(parents=True)
+    source.write_text(json.dumps({"award_id": "A-1", "primary_cet": "quantum"}) + "\n")
+
+    with pytest.raises(ValueError, match="no usable company identifiers"):
+        transformed_cet_company_profiles()
+
+    mock_aggregator_class.assert_not_called()
+    mock_save_parquet.assert_not_called()
+
+
+@patch("sbir_etl.transformers.company_cet_aggregator.CompanyCETAggregator")
+@patch("sbir_analytics.assets.cet.company.save_dataframe_parquet")
+def test_company_profiles_reject_empty_aggregation(
+    mock_save_parquet, mock_aggregator_class, monkeypatch, tmp_path
+):
+    mock_aggregator_class.return_value.to_dataframe.return_value = pd.DataFrame()
+    monkeypatch.chdir(tmp_path)
+    source = tmp_path / "data/processed/cet_award_classifications.ndjson"
+    source.parent.mkdir(parents=True)
+    source.write_text(json.dumps({"award_id": "A-1", "company_id": "C-1"}) + "\n")
+
+    with pytest.raises(ValueError, match="produced no company profiles"):
+        transformed_cet_company_profiles()
+
+    mock_save_parquet.assert_not_called()

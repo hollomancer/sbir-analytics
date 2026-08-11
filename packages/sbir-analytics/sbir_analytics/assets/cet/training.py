@@ -118,7 +118,8 @@ def train_cet_patent_classifier() -> Output:
     name="cet_award_training_dataset",
     key_prefix=["ml"],
     description=(
-        "Load labeled CET award training dataset from CSV or NDJSON, validate and persist to "
+        "Load labeled CET award training dataset with required `text` and `labels` columns "
+        "from CSV or NDJSON, validate and persist to "
         "`data/processed/cet_award_training.parquet` and emit a companion checks JSON. "
         "The returned path always identifies the artifact that was actually written."
     ),

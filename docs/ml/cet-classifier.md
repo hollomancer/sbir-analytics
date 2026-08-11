@@ -102,7 +102,7 @@ Two options:
 1) Dagster asset
 
 - `train_cet_patent_classifier` expects:
-  - `data/processed/cet_patent_training.parquet` with columns:
+  - `data/processed/cet_patent_training.parquet` or `.ndjson` with columns:
     - `title`
     - `cet_labels`
     - optional `assignee`
@@ -128,9 +128,8 @@ Two options:
       - `classified_at`, `taxonomy_version`
     - Companion checks JSON with coverage
 
-Fallback behavior:
-
-- If the artifact or dependencies are missing, the asset produces an empty schema-compatible output and a checks JSON indicating the reason.
+Missing or empty inputs, unavailable dependencies, missing model artifacts, and incomplete batch
+results fail the materialization rather than producing an empty schema-compatible output.
 
 ---
 
@@ -153,10 +152,10 @@ Store evaluation metrics in your artifact metadata by merging them into `config`
   - `artifacts/models/patent_classifier_v1.pkl` (pickle)
   - `artifacts/models/patent_classifier_v1.checks.json` (training metadata)
 - Inputs
-  - Training: `data/processed/cet_patent_training.parquet`
+  - Training: `data/processed/cet_patent_training.parquet` (preferred) or `.ndjson`
   - Inference: `data/processed/transformed_patents.parquet` (preferred) or `.ndjson`
 - Outputs
-  - Inference: `data/processed/cet_patent_classifications.parquet` (preferred) or `.json`
+  - Inference: `data/processed/cet_patent_classifications.parquet` (preferred) or `.ndjson`
   - Checks: `.checks.json` alongside outputs
 
 ---

@@ -627,6 +627,19 @@ class TestCetClassificationAnalyzer:
 
         assert distribution == {}
 
+    def test_calculate_category_distribution_accepts_asset_primary_cet_column(self):
+        analyzer = CetClassificationAnalyzer()
+        classified_df = pd.DataFrame(
+            {"primary_cet": ["artificial_intelligence", "quantum_information_science"]}
+        )
+
+        distribution = analyzer._calculate_category_distribution(classified_df)
+
+        assert distribution == {
+            "artificial_intelligence": 0.5,
+            "quantum_information_science": 0.5,
+        }
+
     def test_calculate_confidence_distribution(self, sample_classified_df):
         """Test calculating confidence score distribution."""
         analyzer = CetClassificationAnalyzer()
