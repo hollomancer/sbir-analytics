@@ -44,7 +44,7 @@ The inventory on 2026-08-03 found:
 | Definitions | 105 asset definitions representing 109 asset keys, 47 checks, 22 jobs, 10 schedules, and 5 sensors | A single code location carries unrelated operational and research workloads |
 | Grouping | 22 groups; 18 assets remain in `default` | Group names do not provide a dependable ownership or product boundary |
 | Discovery | Assets and jobs are imported by filesystem scanning; failed job imports can become placeholders | Definition-load failures can be hidden and deployed contents can vary with optional dependencies |
-| Broad jobs | `sbir_analytics_job` selects every asset and is scheduled daily outside the server profile; `core_refresh_job` is derived by excluding a dynamic list of heavy assets | New assets can enter production automation without an explicit scheduling decision |
+| Broad jobs | `sbir_analytics_job` and its daily schedule are retired; `core_refresh_job` remains derived by excluding a dynamic list of heavy assets and is stopped by default | Enabling `core_refresh_job` can still bring new non-heavy assets into automation without an explicit scheduling decision |
 | Heavy profile | Disabling heavy assets still loads 64 assets and 34 checks; phase-transition classification loads optional ML dependencies | The lightweight server boundary is implicit and incomplete |
 | Lineage | Phase II and Phase III assets read files directly and declare no upstream assets | Dagster cannot determine source vintage or safely order/backfill transition analysis |
 | Source acquisition | Several download workflows are op jobs rather than versioned assets | Source changes, lineage, checks, and partitions are inferred from event-log metadata |
@@ -265,7 +265,7 @@ At minimum, enforce before downstream publication:
 
 | Current job or family | Disposition |
 | --- | --- |
-| `sbir_analytics_job` | Retire; it is an unsafe repository-wide scheduling boundary |
+| `sbir_analytics_job` | Retired; it was an unsafe repository-wide scheduling boundary |
 | `core_refresh_job` | Retire after equivalent explicit jobs exist |
 | `sbir_weekly_refresh_job` | Split into foundation, optional evidence, and publishing jobs |
 | Source download op jobs | Wrap/convert to versioned source assets with manifests |

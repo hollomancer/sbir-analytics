@@ -88,7 +88,13 @@ Cron overrides use `SBIR_ETL__DAGSTER__SCHEDULES__<JOB>` env vars (for example,
 ## Registration
 
 `Definitions(...)` in `definitions.py` registers: all assets/checks
-(auto-loaded), `job_definitions` (the two core jobs + `cet_drift_job` if present
+(auto-loaded), `job_definitions` (`core_refresh_job` + `cet_drift_job` if present
 + all auto-discovered public jobs under `assets/jobs/`), `schedules`, and the
 sensor. See `packages/sbir-analytics/sbir_analytics/definitions.py` and
 `assets/jobs/job_registry.py`.
+
+Fourteen heavy asset keys currently belong to no named job: the four USPTO AI
+evidence keys, three fiscal-impact keys, and seven `ml/` CET training/analysis
+keys. They remain selectable individually in the Dagster UI or CLI, but cannot
+be launched as one of the registered jobs. This is not scheduled-coverage loss:
+all heavy schedules remain stopped by default.
