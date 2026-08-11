@@ -453,7 +453,7 @@ _IMPACT_COLS = (
 @asset(
     description="Economic impacts computed from shocks using BEA I-O model",
     group_name="economic_modeling",
-    compute_kind="r",
+    compute_kind="python_bea_io",
 )
 def economic_impacts(
     context: AssetExecutionContext,
@@ -527,7 +527,6 @@ def _create_placeholder_impacts(
     for col in _IMPACT_COLS:
         df[col] = 0.0
     df["model_version"] = "placeholder"
-    df["confidence"] = 0.0
     df["quality_flags"] = "bea_adapter_unavailable"
     return Output(
         value=df,
@@ -556,7 +555,9 @@ def economic_impacts_quality_check(economic_impacts: pd.DataFrame) -> AssetCheck
         return AssetCheckResult(
             passed=False,
             severity=AssetCheckSeverity.ERROR,
-            description="✗ Economic impacts FAILED: Using placeholder model (R adapter unavailable)",
+            description=(
+                "✗ Economic impacts FAILED: Using placeholder model (BEA I-O adapter unavailable)"
+            ),
             metadata={"model_version": "placeholder"},
         )
 

@@ -3,8 +3,8 @@
 This example demonstrates the complete pipeline from SBIR awards to
 tax and job impact analysis by state and industry using mock data.
 
-This version works WITHOUT R and provides realistic demo outputs.
-For real calculations, set BEA_API_KEY (register at https://apps.bea.gov/API/signup/).
+This version uses hand-authored multipliers and produces illustrative,
+non-citable demo outputs without network access.
 
 Usage:
     python examples/sbir_fiscal_impact_example_mock.py
@@ -25,14 +25,14 @@ from sbir_etl.enrichers.fiscal_bea_mapper import NAICSToBEAMapper as NAICSBEAMap
 
 
 class MockBEAIOAdapter:
-    """Mock BEA I-O adapter that provides realistic outputs for examples."""
+    """Mock BEA I-O adapter that provides illustrative outputs for examples."""
 
     def __init__(self):
         """Initialize mock adapter."""
         self.model_version = "v2.1-mock"
 
     def compute_impacts(self, shocks_df: pd.DataFrame) -> pd.DataFrame:
-        """Compute mock impacts using simple but realistic multipliers.
+        """Compute mock impacts using simple illustrative multipliers.
 
         Args:
             shocks_df: DataFrame with state, bea_sector, fiscal_year, shock_amount
@@ -86,7 +86,6 @@ class MockBEAIOAdapter:
 
         # Add metadata
         result_df["model_version"] = self.model_version
-        result_df["confidence"] = 0.85  # Mock confidence score
         result_df["quality_flags"] = "mock_data"
 
         # Clean up temporary columns
@@ -267,8 +266,7 @@ def main():
     print("=" * 80)
     print()
     print("NOTE: This is a demonstration using mock economic multipliers.")
-    print("      For real calculations, set BEA_API_KEY environment variable.")
-    print("      See Dockerfile and docker-compose.yml for setup.")
+    print("      Its numerical outputs are illustrative and non-citable.")
     print()
 
     # Step 1: Create/load SBIR awards
@@ -284,7 +282,7 @@ def main():
     calculator = MockSBIRFiscalImpactCalculator()
     print("  ✓ Mock calculator initialized")
     print("  ✓ NAICS→BEA mapper loaded")
-    print("  ✓ Using simplified economic multipliers (BEA_API_KEY not set)")
+    print("  ✓ Using hand-authored illustrative economic multipliers")
     print()
 
     # Step 3: Calculate impacts
@@ -387,19 +385,13 @@ def main():
         print(f"  {flag}: {count} records")
     print()
 
-    avg_confidence = float(impacts["confidence"].mean())
-    print(f"Average Confidence Score: {avg_confidence:.2%}")
-    print()
-
     print("=" * 80)
     print("Analysis Complete!")
     print("=" * 80)
     print()
     print("Next steps:")
-    print("  - For real calculations: docker compose --profile dev up --build")
-    print(
-        "  - Then run: docker compose exec dagster-webserver python examples/sbir_fiscal_impact_example.py"
-    )
+    print("  - To exercise the BEA-backed path, set BEA_API_KEY and run")
+    print("    examples/sbir_fiscal_impact_example.py")
     print("  - Export results to CSV/database")
     print("  - Create visualizations")
     print("  - Compare across fiscal years")

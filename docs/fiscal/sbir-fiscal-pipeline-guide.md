@@ -70,7 +70,7 @@ impacts = calculator.calculate_impacts_from_sbir_awards(awards_df)
 # - award_total (sum of SBIR awards)
 # - production_impact (economic multiplier)
 # - wage_impact, tax_impact, jobs_created
-# - model_version, confidence, quality_flags
+# - model_version, quality_flags
 ```
 
 ### Summary Statistics
@@ -103,7 +103,6 @@ sector_summary = calculator.calculate_summary_by_sector(impacts)
 | consumption_impact | Consumption effects | Dollars |
 | jobs_created | Employment created | Count |
 | model_version | Economic model version | String |
-| confidence | Confidence score (0-1) | Float |
 | quality_flags | Data quality indicators | String |
 
 ### Quality Flags
@@ -302,8 +301,10 @@ high_quality = impacts[
     impacts["quality_flags"].str.contains("stateio_ratios")
 ]
 
-# Check confidence scores
-reliable = impacts[impacts["confidence"] > 0.7]
+# Keep only rows backed by a successful BEA computation
+bea_backed = impacts[
+    impacts["quality_flags"].isin(["bea_api_with_ratios", "bea_api_default_ratios"])
+]
 ```
 
 ## Troubleshooting
@@ -329,23 +330,26 @@ Warning: No BEA mapping found for NAICS 999999
 
 **Solution**: Check NAICS code validity or provide custom concordance
 
-### Low Confidence Scores
+### Placeholder Computation
 
 ```console
-Average Confidence Score: 0.40
+Warning: BEA_API_KEY not set. Adapter will use placeholder computation.
 ```
 
-**Causes**:
+`confidence` is not emitted: the prior fixed values were not calibrated quality
+scores. Use `quality_flags` to distinguish BEA-backed rows from placeholders.
 
-- BEA data unavailable for requested year
-- Fallback to default ratios
+**Causes of placeholder output**:
+
+- BEA data unavailable for the requested year
+- BEA request failure
 - BEA API key not configured
 
 **Solutions**:
 
 - Set BEA_API_KEY environment variable
 - Use a year with available BEA I-O tables (2017-2022 typically available)
-- Accept lower precision or exclude low-confidence records
+- Exclude `placeholder_computation` rows from analytical use
 
 ## References
 

@@ -371,7 +371,6 @@ class BEAIOAdapter:
                             "production_impact": production_impact,
                             "employment_impact": employment_impact,
                             "model_version": model_version,
-                            "confidence": Decimal("0.85"),
                             "quality_flags": quality_flags,
                         }
                     )
@@ -394,7 +393,6 @@ class BEAIOAdapter:
                             "production_impact": Decimal("0"),
                             "employment_impact": 0.0,
                             "model_version": model_version,
-                            "confidence": Decimal("0.0"),
                             "quality_flags": f"bea_api_failed:{str(e)[:50]}",
                         }
                     )
@@ -440,8 +438,6 @@ class BEAIOAdapter:
                 )
 
         result_df["model_version"] = model_version
-        if "confidence" not in result_df.columns:
-            result_df["confidence"] = 0.85
         if "quality_flags" not in result_df.columns:
             result_df["quality_flags"] = "bea_api_computation"
 
@@ -470,7 +466,6 @@ class BEAIOAdapter:
         result_df["production_impact"] = result_df["shock_amount"] * multiplier
         result_df["employment_impact"] = result_df["wage_impact"].astype(float) / 100_000
         result_df["model_version"] = model_version
-        result_df["confidence"] = Decimal("0.75")
         result_df["quality_flags"] = "placeholder_computation"
 
         return result_df

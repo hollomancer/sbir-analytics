@@ -84,7 +84,6 @@ class SBIRFiscalImpactCalculator:
                 - consumption_impact: Consumption effects
                 - jobs_created: Employment created (if include_employment=True)
                 - model_version: Economic model version used
-                - confidence: Confidence score (0-1)
                 - quality_flags: Data quality indicators
 
         Raises:
@@ -212,7 +211,7 @@ class SBIRFiscalImpactCalculator:
         integrate with BEA employment data.
 
         Args:
-            impacts: Impacts DataFrame from R adapter
+            impacts: Impacts DataFrame from the BEA I-O adapter
 
         Returns:
             Impacts DataFrame with added jobs_created column
