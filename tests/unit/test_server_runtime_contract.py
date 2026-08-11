@@ -14,6 +14,7 @@ SERVER_COMPOSE = REPO_ROOT / "docker-compose.server.yml"
 SERVER_ENV_EXAMPLE = REPO_ROOT / ".env.server.example"
 DOCKERFILE = REPO_ROOT / "Dockerfile"
 SERVER_WORKSPACE = REPO_ROOT / "workspace.server.yaml"
+ROOT_PROJECT = REPO_ROOT / "pyproject.toml"
 DAGSTER_HEALTHCHECK = REPO_ROOT / "scripts" / "docker" / "healthcheck" / "dagster.sh"
 DAEMON_HEALTHCHECK = REPO_ROOT / "scripts" / "docker" / "healthcheck" / "daemon.sh"
 ENTRYPOINT = REPO_ROOT / "scripts" / "docker" / "entrypoint.sh"
@@ -60,10 +61,29 @@ def test_dagster_uses_shared_internal_code_server():
 
     assert "host: dagster-code-server" in workspace
     assert "port: 4000" in workspace
-    assert "COPY workspace.server.yaml /app/workspace.server.yaml" in DOCKERFILE.read_text()
+    assert "COPY workspace.server.yaml ./workspace.server.yaml" in DOCKERFILE.read_text()
     assert "\n    ports:" not in code_server
     assert 'expose:\n      - "4000"' in code_server
     assert "grpc-health-check" in code_server
+
+
+def test_docker_build_rejects_lock_drift_and_caches_dependency_layers():
+    dockerfile = DOCKERFILE.read_text()
+
+    assert "uv sync --locked" in dockerfile
+    assert "uv sync --frozen" not in dockerfile
+    assert "--no-install-project --no-install-workspace" in dockerfile
+    assert dockerfile.count("--mount=type=cache,target=/root/.cache/uv") >= 2
+    assert dockerfile.index("--no-install-workspace") < dockerfile.index("COPY sbir_etl/")
+    assert dockerfile.index("playwright install --with-deps chromium") < dockerfile.index(
+        "COPY sbir_etl/"
+    )
+
+
+def test_server_extra_locks_default_spacy_pipeline():
+    project = ROOT_PROJECT.read_text()
+
+    assert "en_core_web_sm-3.8.0-py3-none-any.whl" in project
 
 
 def test_dagster_execution_memory_belongs_to_code_server():

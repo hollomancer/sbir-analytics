@@ -65,6 +65,7 @@ Dockerfile*
 # Documentation (except README)
 *.md
 !README.md
+!packages/*/README.md
 docs/
 notebooks/
 *.ipynb

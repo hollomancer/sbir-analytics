@@ -1,53 +1,88 @@
-# syntax=docker/dockerfile:1.4
+# syntax=docker/dockerfile:1.7
 #
-# SBIR Analytics ETL Image
-# Lightweight image for ETL pipelines (no R, no ML)
+# SBIR Analytics production image
 #
-# Used by: GitHub Actions ETL, local development
-#
-ARG BASE_IMAGE=ghcr.io/hollomancer/sbir-analytics-python-base:latest
+# The application environment is synchronized against the committed uv.lock.
+# `uv sync --locked` rejects manifest drift and never updates the lock during a
+# build. The pinned uv bootstrap and isolated package build tools sit outside
+# that application lock contract.
 
-FROM ${BASE_IMAGE} AS runtime
+ARG PYTHON_IMAGE=python:3.11.9-slim-bookworm@sha256:8fb099199b9f2d70342674bd9dbccd3ed03a258f26bbd1d556822c6dfc60c317
 
-# Install ETL-specific dependencies
-# boto3/cloudpathlib intentionally absent: the AWS data plane is retired
-# (docs/deployment/aws-decommission-plan.md).
-RUN pip install \
-    "rapidfuzz>=3.0.0,<4.0.0" \
-    "jellyfish>=1.0.0,<2.0.0" \
-    "httpx>=0.27.0,<1.0.0" \
-    "tenacity>=8.2.3,<10.0.0" \
-    "playwright>=1.47.0,<2.0.0"
+FROM ${PYTHON_IMAGE} AS runtime-base
 
-# USPTO patent assignments are only reachable through browser automation since
-# data.uspto.gov stopped serving them to plain HTTP clients (2026-06-18), so
-# uspto_download_job needs a real Chromium on the server image.
-#
-# The playwright pin above duplicates the `uspto-browser` extra in pyproject.toml,
-# which is the source of truth. This image installs packages directly rather than
-# installing this project (it copies source and sets PYTHONPATH), so it cannot
-# resolve the extra; keep the two constraints in step by hand.
-ENV PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers
-RUN playwright install --with-deps chromium && \
-    chmod -R a+rX /opt/pw-browsers
+ARG UV_VERSION=0.11.2
 
-# Copy application code
-COPY sbir_etl/ /app/sbir_etl/
-COPY packages/sbir-analytics/sbir_analytics/ /app/sbir_analytics/
-COPY packages/sbir-graph/sbir_graph/ /app/sbir_graph/
-COPY packages/sbir-ml/sbir_ml/ /app/sbir_ml/
-COPY scripts/ /app/scripts/
-COPY config/ /app/config/
-COPY specs/phase-iii-census/ /app/specs/phase-iii-census/
-COPY specs/phase3-notice-corpus-fusion/ /app/specs/phase3-notice-corpus-fusion/
-COPY studies/phase-iii-census/ /app/studies/phase-iii-census/
-COPY workspace.server.yaml /app/workspace.server.yaml
-COPY data/reference/ /app/data/reference/
-COPY pyproject.toml /app/
+ENV DEBIAN_FRONTEND=noninteractive \
+    PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    PIP_NO_CACHE_DIR=1 \
+    PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PYTHONPATH=/app \
+    UV_LINK_MODE=copy \
+    UV_PROJECT_ENVIRONMENT=/app/.venv \
+    PATH="/app/.venv/bin:$PATH"
 
-ENV PYTHONPATH=/app
+WORKDIR /app
 
-# Create directories
-RUN mkdir -p /app/data /app/logs /app/reports
+# Runtime scripts and health checks use curl and netcat. uv itself is pinned by
+# version here; the application environment is installed from uv.lock below.
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        ca-certificates \
+        curl \
+        netcat-openbsd \
+    && rm -rf /var/lib/apt/lists/* \
+    && python -m pip install "uv==${UV_VERSION}"
+
+# Install locked dependencies before copying source. Workspace metadata is
+# enough for uv to select the `server` extra, while `--no-install-workspace`
+# keeps first-party packages out of this environment. Source-only changes
+# therefore reuse this layer and the Chromium layer below.
+COPY pyproject.toml uv.lock README.md ./
+COPY packages/sbir-analytics/pyproject.toml packages/sbir-analytics/README.md ./packages/sbir-analytics/
+COPY packages/sbir-graph/pyproject.toml ./packages/sbir-graph/
+COPY packages/sbir-ml/pyproject.toml packages/sbir-ml/README.md ./packages/sbir-ml/
+
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv sync --locked --no-dev --extra server --no-editable \
+        --no-install-project --no-install-workspace
+
+# Browser automation is a locked Python dependency; this step installs only its
+# matching Chromium binary and OS libraries.
+RUN playwright install --with-deps chromium \
+    && chmod -R a+rX /opt/pw-browsers \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy the complete workspace and install its first-party packages as ordinary
+# wheels. PYTHONPATH intentionally keeps the historical repo-root `sbir_etl`
+# import behavior; the three packages below resolve from the installed wheels
+# unless the development Compose profile explicitly mounts live source paths.
+COPY sbir_etl/ ./sbir_etl/
+COPY packages/ ./packages/
+
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv sync --locked --no-dev --extra server --no-editable
+
+COPY scripts/ ./scripts/
+COPY config/ ./config/
+COPY specs/phase-iii-census/ ./specs/phase-iii-census/
+COPY specs/phase3-notice-corpus-fusion/ ./specs/phase3-notice-corpus-fusion/
+COPY studies/phase-iii-census/ ./studies/phase-iii-census/
+COPY workspace.server.yaml ./workspace.server.yaml
+COPY data/reference/ ./data/reference/
+
+RUN mkdir -p data logs reports artifacts dagster_home
+
+# Compose's CI profile adds test dependencies at image-build time. It never
+# mutates the environment when the test container starts.
+FROM runtime-base AS test
+
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv sync --locked --no-dev --extra server --extra dev --no-editable
+
+CMD ["pytest", "-m", "fast", "-q"]
+
+FROM runtime-base AS runtime
 
 CMD ["dagster", "job", "list", "-m", "sbir_analytics.definitions"]

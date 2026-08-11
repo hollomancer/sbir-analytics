@@ -593,7 +593,6 @@ validate: lint test ## Run linting, type checking, and tests
 SERVER_COMPOSE_FILE ?= docker-compose.server.yml
 SERVER_ENV_FILE     ?= .env.server
 SERVER_COMPOSE       = $(DOCKER_COMPOSE) -f $(SERVER_COMPOSE_FILE) --env-file $(SERVER_ENV_FILE)
-SERVER_PYTHON_BASE_IMAGE ?= ghcr.io/hollomancer/sbir-analytics-python-base:latest
 
 .PHONY: server-env-check
 server-env-check: ## Ensure .env.server exists
@@ -610,29 +609,10 @@ server-check: ## Validate server prerequisites (Docker, storage, ports, Tailscal
 	@$(call info,Checking Tailscale-only server prerequisites)
 	$(call run,SERVER_ENV_FILE=$(SERVER_ENV_FILE) ./scripts/server/check-prerequisites.sh)
 
-.PHONY: server-base-image
-server-base-image: server-check ## Build the native Python base image from source
-	@$(call info,Building the native Python base image)
-	# Built locally rather than pulled. This used to try `docker pull` first and
-	# only build when the pull failed, which meant "missing manifest for this
-	# architecture" was the sole trigger. Since build-images.yml was retired
-	# nothing republishes ghcr.io/.../sbir-analytics-python-base:latest, so the
-	# pull always succeeded and pinned this host to a base image that will never
-	# be refreshed again. Building from Dockerfile.python-base keeps the base in
-	# step with the repository; Docker's layer cache makes repeat builds cheap,
-	# so only a real change to the base's inputs costs the full build.
-	$(call run,docker build -f Dockerfile.python-base -t $(SERVER_PYTHON_BASE_IMAGE) .)
-	@$(call success,Native Python base image is ready)
-
 .PHONY: server-rebuild
-server-rebuild: server-env-check ## Rebuild base + app images from source and restart the stack
+server-rebuild: server-check ## Rebuild the locked app image and restart the stack
 	@$(call warn,This recreates containers: any in-flight Dagster run will be killed)
-	@$(call info,Rebuilding the native Python base image (pulling its upstream base))
-	# --pull refreshes the upstream image Dockerfile.python-base builds FROM, so
-	# a scheduled rebuild picks up base-OS and interpreter security updates
-	# rather than rebuilding on top of an increasingly old cached layer.
-	$(call run,docker build --pull -f Dockerfile.python-base -t $(SERVER_PYTHON_BASE_IMAGE) .)
-	@$(call info,Rebuilding the application images)
+	@$(call info,Rebuilding the application image from its pinned base and uv.lock)
 	$(call run,$(SERVER_COMPOSE) --profile server build --pull)
 	@$(call info,Restarting the stack on the new images)
 	$(call run,$(SERVER_COMPOSE) --profile server up -d --wait --wait-timeout 300)
@@ -640,7 +620,7 @@ server-rebuild: server-env-check ## Rebuild base + app images from source and re
 	@$(call success,Server stack rebuilt. Run 'docker image prune' to reclaim superseded layers)
 
 .PHONY: server-up
-server-up: server-base-image ## Preflight and start the always-on server stack (profile=server)
+server-up: server-check ## Preflight and start the always-on server stack (profile=server)
 	@$(call info,Starting server stack (profile: server))
 	$(call run,$(SERVER_COMPOSE) --profile server up -d --build --wait --wait-timeout 300)
 	$(call run,$(SERVER_COMPOSE) --profile server ps)

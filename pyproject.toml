@@ -40,9 +40,7 @@ uspto = ["pyreadstat>=1.1.4,<2.0.0"]
 # to plain HTTP clients on 2026-06-18, so uspto_download_job drives a real
 # browser (sbir_etl/extractors/source_downloads/uspto_browser.py). Kept out of
 # stack-dev: the wheel is large and needs a separate `playwright install
-# chromium` for the browser itself, which CI has no use for. The server image
-# pins the same constraint in the Dockerfile, which installs packages directly
-# rather than installing this project.
+# chromium` for the browser itself, which CI has no use for.
 uspto-browser = ["playwright>=1.47.0,<2.0.0"]
 # Stream a single member out of a remote USAspending database .zip over HTTP range,
 # avoiding the full ~217GB download (contract_extractor.stream_remote_zip_member).
@@ -77,6 +75,16 @@ stack-dev = [
     "sbir-ml",
     "sbir-graph",
     "sbir-analytics",
+]
+# Locked production environment used by Dockerfile. sbir-analytics supplies
+# Dagster, graph, ML/NLP, USPTO file parsing, and monitoring; the additional
+# ETL extras cover browser downloads, remote archive streaming, and phonetics.
+server = [
+    "sbir-analytics",
+    "sbir-etl[phonetic,streaming,uspto-browser]",
+    # EvidenceExtractor defaults to this pipeline. Lock the exact compatible
+    # wheel so heavy-asset runs cannot silently fall back when the model is absent.
+    "en-core-web-sm @ https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.8.0/en_core_web_sm-3.8.0-py3-none-any.whl",
 ]
 
 [tool.uv.sources]
@@ -253,6 +261,11 @@ code_location_name = "sbir-analytics-production"
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
+
+[tool.hatch.metadata]
+# The server-only spaCy model is an exact, lockable wheel from the publisher's
+# release repository rather than an unversioned download during image build.
+allow-direct-references = true
 
 [dependency-groups]
 notebooks = [

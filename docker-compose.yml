@@ -205,15 +205,24 @@ services:
     profiles:
       - ci
       - dev
-    environment: *common-environment
+    environment:
+      <<: *common-environment
+      # The image environment stays at /app/.venv. These additional import
+      # roots make the individually mounted package sources live-editable.
+      PYTHONPATH: /app:/app/packages/sbir-analytics:/app/packages/sbir-ml:/app/packages/sbir-graph
     volumes:
-      # Bind mounts work for both dev (live editing) and CI (ephemeral runner filesystem)
+      # Mount source trees individually: a repository-wide /app bind would hide
+      # the locked Linux environment baked into /app/.venv.
       - ./config:/app/config:rw
       - ./.env:/app/.env:ro
       - ./reports:/app/reports:rw
       - ./logs:/app/logs:rw
       - ./data:/app/data:rw
-      - ./:/app:ro
+      - ./sbir_etl:/app/sbir_etl:ro
+      - ./packages/sbir-analytics/sbir_analytics:/app/packages/sbir-analytics/sbir_analytics:ro
+      - ./packages/sbir-ml/sbir_ml:/app/packages/sbir-ml/sbir_ml:ro
+      - ./packages/sbir-graph/sbir_graph:/app/packages/sbir-graph/sbir_graph:ro
+      - ./scripts:/app/scripts:ro
     entrypoint: ["sh", "/app/scripts/docker/entrypoint.sh", "etl-runner"]
     command:
       - "--"
@@ -231,7 +240,11 @@ services:
   # CI Test App Service
   # =============================================================================
   app:
-    image: sbir-analytics:ci-${GITHUB_SHA:-latest}
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: test
+    image: ${IMAGE_NAME:-sbir-analytics}:${IMAGE_TAG:-local}-test
     container_name: sbir-app-test
     user: root
     profiles:
@@ -275,12 +288,7 @@ services:
     command: >
       sh -c "
         set -eux;
-        echo 'Installing UV for fast dependency management';
-        curl -LsSf https://astral.sh/uv/install.sh | sh;
-        export PATH=\"/root/.local/bin:$$PATH\";
-        echo 'Installing CI test dependencies (data libs, pytest, ML libs for test collection)';
-        uv pip install --system --no-cache pandas pyarrow pyreadstat pytest pytest-cov pytest-xdist pytest-asyncio scikit-learn || pip install --no-cache-dir pandas pyarrow pyreadstat pytest pytest-cov pytest-xdist pytest-asyncio scikit-learn;
-        echo 'Running fast tests inside container';
+        echo 'Running fast tests from the locked test image';
         pytest -m fast -q;
         if [ -n \"$${E2E_TEST_SCENARIO}\" ] && [ \"$${E2E_TEST_SCENARIO}\" != \"none\" ]; then
           echo 'Running E2E tests...';

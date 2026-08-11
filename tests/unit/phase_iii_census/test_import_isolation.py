@@ -77,12 +77,11 @@ assert assets.verify_materialization_gate()["materialization_allowed"] is True
     )
 
     assert result.returncode == 0, result.stderr or result.stdout
-    docker_copy = "COPY specs/phase-iii-census/ /app/specs/phase-iii-census/"
-    study_copy = "COPY studies/phase-iii-census/ /app/studies/phase-iii-census/"
-    for dockerfile in (REPOSITORY_ROOT / "Dockerfile", REPOSITORY_ROOT / "Dockerfile.full"):
-        docker_text = dockerfile.read_text(encoding="utf-8")
-        assert docker_copy in docker_text
-        assert study_copy in docker_text
+    docker_copy = "COPY specs/phase-iii-census/ ./specs/phase-iii-census/"
+    study_copy = "COPY studies/phase-iii-census/ ./studies/phase-iii-census/"
+    docker_text = (REPOSITORY_ROOT / "Dockerfile").read_text(encoding="utf-8")
+    assert docker_copy in docker_text
+    assert study_copy in docker_text
     dockerignore = (REPOSITORY_ROOT / ".dockerignore").read_text(encoding="utf-8")
     assert "!specs/phase-iii-census/design.md" in dockerignore
     assert "!specs/phase-iii-census/amendments.md" in dockerignore
