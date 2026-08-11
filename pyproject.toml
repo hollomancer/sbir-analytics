@@ -82,6 +82,9 @@ stack-dev = [
 server = [
     "sbir-analytics",
     "sbir-etl[phonetic,streaming,uspto-browser]",
+    # EvidenceExtractor defaults to this pipeline. Lock the exact compatible
+    # wheel so heavy-asset runs cannot silently fall back when the model is absent.
+    "en-core-web-sm @ https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.8.0/en_core_web_sm-3.8.0-py3-none-any.whl",
 ]
 
 [tool.uv.sources]
@@ -258,6 +261,11 @@ code_location_name = "sbir-analytics-production"
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
+
+[tool.hatch.metadata]
+# The server-only spaCy model is an exact, lockable wheel from the publisher's
+# release repository rather than an unversioned download during image build.
+allow-direct-references = true
 
 [dependency-groups]
 notebooks = [

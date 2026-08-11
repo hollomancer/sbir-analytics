@@ -157,10 +157,13 @@ When upgrading an existing deployment that ran the retired analytics API,
 and leaves it untouched.
 
 `make server-up` builds the application image directly from `Dockerfile`. The
-image installs the production workspace from `uv.lock` and uses a Python base
-pinned by digest, so rebuilding the same commit reproduces the same Python
-environment. The first build takes several minutes; later builds reuse Docker's
-layer cache.
+image installs the production workspace with `uv sync --locked`, which rejects
+manifest/lock drift, and uses a Python base pinned by digest. Rebuilding the same
+commit therefore reproduces the locked application environment. The separately
+pinned uv bootstrap and isolated wheel-build tools sit outside that guarantee.
+The locked server extra includes the `en_core_web_sm` model required by the
+default NLP evidence extractor. The first build takes several minutes; later
+builds reuse Docker's dependency and browser layers.
 
 To rebuild every application layer and restart the stack, use:
 

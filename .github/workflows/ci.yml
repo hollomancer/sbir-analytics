@@ -300,6 +300,10 @@ jobs:
             docker:
               - 'Dockerfile*'
               - '.dockerignore'
+              - 'docker-compose.yml'
+              - 'docker-compose.server.yml'
+              - 'scripts/docker/**'
+              - 'workspace.server.yaml'
               - 'pyproject.toml'
               - 'packages/*/pyproject.toml'
               - 'uv.lock'
@@ -352,6 +356,8 @@ jobs:
       - name: Smoke test the entrypoint and Dagster definitions
         run: |
           docker run --rm sbir-analytics:ci-${{ github.sha }} dagster --version
+          docker run --rm sbir-analytics:ci-${{ github.sha }} \
+            python -c "import spacy; spacy.load('en_core_web_sm')"
           docker run --rm \
             -e SBIR_ETL__PIPELINE__ENVIRONMENT=test \
             sbir-analytics:ci-${{ github.sha }} \

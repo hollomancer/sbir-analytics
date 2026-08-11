@@ -715,6 +715,14 @@ wheels = [
 ]
 
 [[package]]
+name = "en-core-web-sm"
+version = "3.8.0"
+source = { url = "https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.8.0/en_core_web_sm-3.8.0-py3-none-any.whl" }
+wheels = [
+    { url = "https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.8.0/en_core_web_sm-3.8.0-py3-none-any.whl", hash = "sha256:1932429db727d4bff3deed6b34cfc05df17794f4a52eeb26cf8928f7c1a0fb85" },
+]
+
+[[package]]
 name = "execnet"
 version = "2.1.2"
 source = { registry = "https://pypi.org/simple" }
@@ -2868,6 +2876,7 @@ phonetic = [
     { name = "jellyfish" },
 ]
 server = [
+    { name = "en-core-web-sm" },
     { name = "jellyfish" },
     { name = "playwright" },
     { name = "remotezip" },
@@ -2924,6 +2933,7 @@ requires-dist = [
     { name = "bandit", marker = "extra == 'dev'", specifier = ">=1.7.0,<2.0.0" },
     { name = "curl-cffi", marker = "extra == 'ucc1-pilot'", specifier = ">=0.7.0,<1.0.0" },
     { name = "duckdb", specifier = ">=1.0.0,<2.0.0" },
+    { name = "en-core-web-sm", marker = "extra == 'server'", url = "https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.8.0/en_core_web_sm-3.8.0-py3-none-any.whl" },
     { name = "httpx", specifier = ">=0.27.0,<1.0.0" },
     { name = "jellyfish", marker = "extra == 'phonetic'", specifier = ">=1.0.0,<2.0.0" },
     { name = "loguru", specifier = ">=0.7.0,<1.0.0" },
