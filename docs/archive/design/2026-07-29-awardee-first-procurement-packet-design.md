@@ -2,7 +2,7 @@
 
 **Date:** 2026-07-29
 **Status:** Implemented; retained as the design record
-**Original branch:** `feat/awardee-first-procurement-packet` (merged through PR #466 follow-ups)
+**Implementation history:** PR #466 and follow-up PRs
 
 ## Problem
 
@@ -212,7 +212,6 @@ reproduces it (golden test) so future drift is caught.
 
 ## Consolidation
 
-This branch is built on `codex/pr450-address-comments` (PR #464), which already contains
-all of `agent/monthly-procurement-transition-report` (PR #450). A single PR against `main`
-will therefore carry all three bodies of work. PRs #450 and #464 will be closed with a
-pointer to the consolidated PR.
+This work was built on PR #464, which already contained the work from PR #450. A
+single PR against `main` therefore carried all three bodies of work. PRs #450 and
+#464 were superseded by the consolidated PR.

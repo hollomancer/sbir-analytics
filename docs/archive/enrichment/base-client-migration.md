@@ -1,6 +1,6 @@
 # Enricher consolidation: BaseAsyncAPIClient migration
 
-Status as of 2026-04-13 · see branch `claude/repo-analysis-AYGBQ`
+Status as of 2026-04-13
 
 Short version: **8 of 10 enricher clients** now inherit from
 `sbir_etl.enrichers.base_client.BaseAsyncAPIClient`, sharing a single

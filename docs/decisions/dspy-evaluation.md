@@ -1,6 +1,6 @@
 ---
 Type: Evaluation
-Owner: data@project
+Maintainer: Conrad Hollomon
 Last-Reviewed: 2026-07-16
 Status: prototype-recommended
 ---

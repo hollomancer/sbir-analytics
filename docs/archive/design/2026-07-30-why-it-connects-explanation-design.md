@@ -2,7 +2,7 @@
 
 **Date:** 2026-07-30
 **Status:** Implemented; retained as the Phase 1/2 design record
-**Original branch:** `feat/awardee-first-procurement-packet` (PR #466 and follow-up phases)
+**Implementation history:** PR #466 and follow-up PRs
 
 ## Problem
 

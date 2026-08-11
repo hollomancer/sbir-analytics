@@ -1,6 +1,6 @@
 ---
 Type: Decision
-Owner: data@project
+Maintainer: Conrad Hollomon
 Last-Reviewed: 2026-08-04
 Status: accepted
 ---

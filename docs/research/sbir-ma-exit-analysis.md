@@ -1,7 +1,6 @@
 # SBIR Company M&A Exit Analysis
 
 **Date:** 2026-04-23
-**Branch:** `claude/sbir-ma-exit-analysis`
 **Research question:** A4 (M&A activity detection)
 
 ## Summary

@@ -6,11 +6,21 @@ It also documents where our methodology diverges from the authoritative SBA proc
 
 ## Implementation status — read this first
 
-The audit harness this doc describes (`run_commercialization_benchmark.py`, `audit_one_firm.py`, the FY2026 audited CSV at `reports/validation/commercialization_benchmark_eval_fy2026.csv`) is **local-only / not committed to this repo**. It exists on the author's machine and was used to produce the FY2026 figures cited below (143 cohort firms, 28 Tier-1/2 firms, 2 dual-penalty firms).
+The audit harness is committed
+(`scripts/archive/data/run_commercialization_benchmark.py` and
+`scripts/data/audit_one_firm.py`), but the FY2026 cohort and the evaluation
+output it produced are not. The numerical results below therefore cannot be
+independently reproduced from this repository and must not be treated as
+validated or citable outputs.
 
 The shippable counterpart on `main` is `scripts/run_benchmark.py` + `sbir_etl/models/benchmark_models.py`, which implements the same statutory framework (§638(qq) tier thresholds, 10-FY window, cohort selection) via a different CLI shape (`evaluate` / `sensitivity` / `company` subcommands). It does not currently produce per-firm audit JSON files or do the USAspending + Form D proxy substitution the harness does.
 
-This doc is committed as the **methodology record** so the audit-harness logic is auditable and reproducible, even before the harness itself ships. **Future work**: migrate the harness into `scripts/run_benchmark.py` (or alongside it under `packages/sbir-analytics/`) so the cited file paths resolve and the run is reproducible from `main`. See research-questions.md "Output products" section for the broader status.
+This document is retained as a **historical methodology record**. The committed
+harness makes its statutory and proxy logic auditable, but reproducing the
+FY2026 figures requires the missing cohort and evaluation output. Future work
+may migrate the harness into `scripts/run_benchmark.py` (or alongside it under
+`packages/sbir-analytics/`) with committed fixtures and verification. See
+research-questions.md "Output products" for the broader status.
 
 ## Authoritative sources
 
@@ -115,7 +125,7 @@ Firms in the `increased_*` cohort (P2 ≥ 51) that also FAIL their `standard_net
 - §638(mm)(2): ineligible for Phase I awards for 1 year
 - §638(qq): capped at 20 SBIR/STTR awards per agency
 
-In our FY2026 run, 2 firms hit this dual-penalty state under net broad: **NanoSonic** (VA, tier 1, 69 P2) and **Nanohmics** (TX, tier 1, 54 P2). Both have ~95% of their federal revenue derived from their own SBIR P1+P2 awards and zero Form D capital. Under strict CCR the dual-penalty count expands materially.
+The historical FY2026 run reported 2 firms in this dual-penalty state under net broad: **NanoSonic** (VA, tier 1, 69 P2) and **Nanohmics** (TX, tier 1, 54 P2). At the time of that run, both had ~95% of their observed federal revenue derived from their own SBIR P1+P2 awards and zero matched Form D capital. Under the strict CCR calculation, the reported dual-penalty count expanded materially.
 
 ## Sales proxy: USAspending
 
@@ -140,13 +150,13 @@ Each cohort firm is matched on `UPPER(TRIM(company_name)) = UPPER(TRIM(firm))`. 
 - The filing's state matches the SBIR firm's USPS state code, **OR**
 - The Form D enricher tagged it `match_confidence.tier = "high"`
 
-This filter dropped 14 false-positive matches representing $421M of "investment" from an earlier unfiltered run. Final cohort match rate: **6 of 143 firms (4%)** have any Form D credit. All 6 are Standard tier; **zero Tier 1/2 firms have Form D credit**.
+This filter dropped 14 false-positive matches representing $421M of "investment" from an earlier unfiltered run. The historical final cohort match rate was **6 of 143 firms (4%)** with any Form D credit. All 6 were Standard tier; **zero Tier 1/2 firms had Form D credit**.
 
 **Known structural undercount**: Form D covers Reg D securities offerings only. Misses bank loans, convertible notes outside Reg D, M&A proceeds, foreign rounds, and companies that file 10-K instead (Luna Innovations is publicly traded). The CCR captures these via self-report; we cannot.
 
 ## Patents path: not implemented
 
-CCR Standard tier allows passing via ≥15% patents per P2 as an alternative to the dollar threshold. The script does not test this path because USPTO data on this branch is fixture-only — ingestion has not been run. None of our 115 Standard-tier passes need the patent path under our dollar calculation, but a firm we report as Standard FAIL could potentially be a patent-path PASS.
+CCR Standard tier allows passing via ≥15% patents per P2 as an alternative to the dollar threshold. The script does not test this path. At the time of the historical run, USPTO ingestion had not been run and only fixture data was available. None of the 115 reported Standard-tier passes needed the patent path under the historical dollar calculation, but a firm reported as Standard FAIL could potentially have been a patent-path PASS.
 
 ## Known divergences from the authoritative SBA process
 
@@ -160,7 +170,7 @@ CCR Standard tier allows passing via ≥15% patents per P2 as an alternative to 
 | `recipient_search_text` is full-text search, not strict UEI equality | Pre-UEI awards (with DUNS only) may be missed | DUNS→UEI mapping wasn't fully back-applied to USAspending; conservative undercount of older obligations |
 | No subaward inclusion | Misses subcontract revenue | `subawards=false` explicit in API call |
 | Other Transaction Authority (OTA) agreements not in FPDS/FABS | Misses DARPA OTA work | Acknowledged structural blind spot |
-| Two sequential USAspending queries on the same firm can return marginally different totals if the index updates between calls | Caused 1 of 143 firms (Lambda Science) to show `contracts_rd_usd` $826 higher than `contracts_fpds_usd` in our FY2026 run — a USAspending-side inconsistency | Script clamps `contracts_non_rd_val = max(contracts − contracts_rd, 0)`; effect on the affected firm's verdict was $0 (strict avg/P2 would have been $52 vs $100K threshold either way). Audit JSON files in `data/audit/fy2026/usaspending/<UEI>_*.json` preserve the source-of-truth API responses |
+| Two sequential USAspending queries on the same firm can return marginally different totals if the index updates between calls | Caused 1 of 143 firms (Lambda Science) to show `contracts_rd_usd` $826 higher than `contracts_fpds_usd` in the historical FY2026 run — a USAspending-side inconsistency | Script clamps `contracts_non_rd_val = max(contracts − contracts_rd, 0)`; effect on the affected firm's verdict was $0 (strict avg/P2 would have been $52 vs $100K threshold either way). Audit JSON files in `data/audit/fy2026/usaspending/<UEI>_*.json` preserve the source-of-truth API responses |
 
 ## Reproducibility
 

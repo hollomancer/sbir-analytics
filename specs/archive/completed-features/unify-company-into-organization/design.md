@@ -88,7 +88,7 @@ One Cypher check: `count(:Company)` == orphan count (ideally 0); a sampled
 | Orphan `:Company` deleted | Med | Log + leave unmatched `:Company` (no blind delete) |
 | Property name collision on merge | Low | Inventory in task 1; distinct namespaces; exclude `__`-prefixed |
 | Coverage drop (categorization for a firm not yet an `:Organization`) | Low | Same as Phase 1 award reasoning — categorization is keyed on SBIR-recipient UEIs, which the SBIR loader writes as `:Organization`; orphans logged |
-| Depends on PR #379 (Phase 1 primitive) | — | Stack on `claude/unify-graph-node-labels`; rebase onto main once #379 merges |
+| Depends on PR #379 (Phase 1 primitive) | — | Stack on PR #379; rebase onto main once it merges |
 
 ## Deferred
 

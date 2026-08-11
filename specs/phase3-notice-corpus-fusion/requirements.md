@@ -2,7 +2,7 @@
 
 **Target epistemic tier:** `evidence`
 
-> **Status:** Implemented (T1–T7 done — see `tasks.md`). This branch ships a production
+> **Status:** Implemented (T1–T7 done — see `tasks.md`). The implementation ships a production
 > scoring path: coefficients are frozen at
 > `packages/sbir-ml/sbir_ml/transition/detection/fusion_coefficients.json` and the monthly
 > procurement packet consumes them, which **changes packet ordering** (strongest match
@@ -52,8 +52,7 @@ here rather than quietly dropped:
 ## Background
 
 The transition-ranker study (commit `2bc346a6`; findings in
-`specs/phase3-match-benchmark/transition-ranker.md` on branch
-`codex/phase3-methodology-hardening`, not yet on `main`) produced the strongest
+`specs/phase3-match-benchmark/transition-ranker.md`) produced the strongest
 candidate-selection result in the repo: award-level retrieval
 **AUC 0.844** (95% CI [0.800, 0.886]) from sparse word TF-IDF fused with orthogonal
 structural features (char-n-gram, temporal soft-gap, identifier cross-ref, NAICS,
@@ -66,8 +65,8 @@ because its **training substrate is not in the repo**:
   July 2026 benchmark sessions from GSA's `falextracts` Contract-Opportunities
   archive (`aws s3 cp`) and linked firm↔notice via FPDS `VENDOR_UEI` and
   Sol#+PIID joins (33/849 solicitations recovered over a 10-year window).
-- Only derived outputs were committed (the scoring core and findings on the
-  hardening branch; local benchmark parquets under `data/derived/` are gitignored
+- Only derived outputs were committed (the scoring core and findings; local
+  benchmark parquets under `data/derived/` are gitignored
   per `/data/*`, so no notice text is in version control). The corpus and recovery
   scripts were not committed to `main`.
 - The ranker findings parked productionization under **#442** ("external evidence

@@ -1,6 +1,6 @@
 ---
 Type: Overview
-Owner: research@project
+Maintainer: Conrad Hollomon
 Last-Reviewed: 2026-08-03
 Status: active
 ---

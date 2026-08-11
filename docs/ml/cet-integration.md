@@ -1,6 +1,6 @@
 ---
 Type: Subsystem Overview
-Owner: ml@project
+Maintainer: Conrad Hollomon
 Last-Reviewed: 2026-08-03
 Status: active
 ---

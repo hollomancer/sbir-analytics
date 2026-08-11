@@ -1,6 +1,6 @@
 ---
 Type: <Tutorial|How-to|Explanation|Reference|Overview>
-Owner: <owner-email>
+Maintainer: <maintainer-name>
 Last-Reviewed: <YYYY-MM-DD>
 Status: <active|draft|deprecated|archived>
 

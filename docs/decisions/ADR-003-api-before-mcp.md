@@ -1,7 +1,7 @@
 ---
 
 Type: Decision
-Owner: data@project
+Maintainer: Conrad Hollomon
 Last-Reviewed: 2026-07-12
 Status: superseded
 

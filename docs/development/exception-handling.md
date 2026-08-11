@@ -1,7 +1,7 @@
 # Exception Handling Guide
 
 **Type**: Reference
-**Owner**: Engineering Team
+**Maintainer**: Conrad Hollomon
 **Last-Reviewed**: 2025-01-04
 **Status**: Active
 

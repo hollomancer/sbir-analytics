@@ -1,7 +1,6 @@
 # SEC EDGAR Enrichment for SBIR Companies — Learnings
 
 **Date:** 2026-04-19/22
-**Branch:** `claude/integrate-sec-edgar-sbir-6Krd1`
 **PR:** #227
 
 ## What We Built
