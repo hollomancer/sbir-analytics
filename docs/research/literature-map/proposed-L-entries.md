@@ -1,4 +1,4 @@
-# Proposed `[L#]` Additions — Recent SBIR/STTR Literature (L34–L46)
+# Proposed `[L#]` Additions — Recent SBIR/STTR Literature (L34–L49)
 
 **Status:** Proposal / advisory. These entries are **not** yet merged into
 [`docs/research-questions.md`](../../research-questions.md). Review the wording, then paste the
@@ -68,3 +68,41 @@ it as a brief relevance gloss — your call.
   *(→ updates E-section methods)*
 - **[L46]** Albert N. Link & Christopher A. Swann (2024). "SBIR mills and the U.S. Department of Defense." *The Journal of Technology Transfer* 49(6), 2306–2335. Characterizes 'SBIR mill' firms in DoD SBIR; the academic treatment of the multiple-award-firm problem behind the §638(qq)(3) benchmark work. <https://doi.org/10.1007/s10961-024-10144-z>  
   *(→ updates E-section methods (L14))*
+
+---
+
+## August 2026 refresh additions (L47–L49)
+
+Added by the 2026-08 literature refresh (`literature_refresh_2026-08.md`), which re-scanned for
+work published since the original June scan. Metadata verified via OpenAlex.
+
+### Commercialization / transitions (Section B)
+
+- **[L47]** Sarah Rovito, John Kamp, & Amir H. Etemadi (2024). "Exploring Department of the Navy SBIR Phase III awards and corresponding public sector commercialization success factors." *The Journal of Technology Transfer*. Peer-reviewed analysis of Navy Phase III awards and the factors predicting public-sector commercialization success. Directly relevant to the Section B transition questions and to the `phase3-transition-groundtruth` spec. <https://doi.org/10.1007/s10961-024-10141-2>  
+  *(→ updates B-section transitions; complements L1/L14 on Phase III undercount)*
+
+### Cross-agency NASEM coverage (Section C / agency reviews)
+
+- **[L48]** National Academies of Sciences, Engineering, and Medicine (2026). *Review of the SBIR and STTR Programs at NASA.* National Academies Press. Fills an agency gap in the L1–L8 NASEM block, which currently covers DoD, NIH, NSF, and DOE but not NASA. <https://doi.org/10.17226/29381>  
+  *(→ extends the L1–L8 NASEM agency-review block; supports C1 cross-agency portfolio work)*
+
+### Program management & methods (Section E)
+
+- **[L49]** Rachel Mackenzie Jones & James Fearon (2026). "Big Small Business: The Effect of Increasing Performance Standards on 'Fraud, Waste, and Abuse' in the SBIR and STTR Programs." Stanford Digital Repository. **Not peer-reviewed** (university repository deposit) — same authority tier as the Air Force thesis excluded from the L34–L46 set; included here only because it studies the §638(qq)(3) increased-performance-standards regime directly, which no peer-reviewed work does. Natural companion to L46 (*SBIR mills*). <https://doi.org/10.25740/xq826fj1447>  
+  *(→ updates E-section methods; bears directly on B3 and `scripts/run_benchmark.py`)*
+
+---
+
+## Proposed amendment to an existing entry — **[L1]**
+
+Not an addition. The NASEM DoD review cited at `[L1]` — the source of the ~4:1 leverage
+benchmark — now resolves to a published DOI, **`10.17226/29329`**, which the current entry does
+not carry (it cites a `nationalacademies.org/projects/…` project page). Adding the DOI gives the
+program's central benchmark a fixed, citable published record, and bears on the open
+`[TODO: verify A3 4:1 attribution against NASEM source]` in the Maintenance section.
+
+Suggested amended entry:
+
+```
+- **[L1]** NASEM (2026). *Review of the SBIR and STTR Programs at the Department of Defense.* Key finding: DoD SBIR firms attract >4× non-SBIR DoD funding per SBIR dollar (2012–2020); SBIR firms are ~1/3 of the defense R&D base. <https://doi.org/10.17226/29329> (project page: <https://www.nationalacademies.org/projects/PGA-STEP-17-08/publication/29329>)
+```
