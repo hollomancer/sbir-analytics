@@ -62,10 +62,59 @@ def _close_client(client, context) -> None:
         context.log.warning(f"Failed to close Neo4j client cleanly: {exc}")
 
 
-def _ensure_successful_metrics(metrics, operation: str) -> None:
+def _metric_count(metrics, field: str, key: str) -> int:
+    values = getattr(metrics, field, {}) or {}
+    if not isinstance(values, dict):
+        return int(values)
+    return int(values.get(key, 0) or 0)
+
+
+def _complete_load(
+    *,
+    filename: str,
+    operation: str,
+    count_field: str,
+    submitted: int,
+    processed: int,
+    metrics,
+    reported_count: int | None = None,
+) -> dict[str, Any]:
+    """Persist an auditable load summary and fail unless every submitted item was processed."""
     errors = int(getattr(metrics, "errors", 0) or 0)
+    match_rate = processed / submitted if submitted else 0.0
+    successful = submitted > 0 and processed == submitted and errors == 0
+    result = {
+        "status": "success" if successful else "error",
+        count_field: submitted if reported_count is None else reported_count,
+        "submitted": submitted,
+        "processed": processed,
+        "match_rate": match_rate,
+        "errors": errors,
+        "metrics": _serialize_metrics(metrics),
+    }
+    _write_summary(filename, result)
     if errors:
         raise RuntimeError(f"{operation} completed with {errors} loader error(s)")
+    if not submitted:
+        raise RuntimeError(f"{operation} received no records")
+    if processed != submitted:
+        raise RuntimeError(
+            f"{operation} processed {processed}/{submitted} submitted item(s) ({match_rate:.1%})"
+        )
+    return result
+
+
+def _expected_award_relationships(classifications: list[dict]) -> int:
+    expected = 0
+    for row in classifications:
+        if row.get("primary_cet"):
+            expected += 1
+        supporting = row.get("supporting_cets") or []
+        if isinstance(supporting, list):
+            expected += sum(
+                1 for item in supporting if isinstance(item, dict) and item.get("cet_id")
+            )
+    return expected
 
 
 def _write_summary(filename: str, result: dict[str, Any]) -> None:
@@ -154,15 +203,17 @@ def loaded_cet_areas(context, cet_taxonomy) -> dict[str, Any]:
             loader.create_indexes()
 
         metrics = loader.load_cet_areas(areas)
-        _ensure_successful_metrics(metrics, "CETArea loading")
-        result = {
-            "status": "success",
-            "areas": len(areas),
-            "metrics": _serialize_metrics(metrics),
-        }
-
-        _write_summary("neo4j_cetarea_nodes.checks.json", result)
-        return result
+        # The upsert metrics intentionally exclude content-identical matches, so successful
+        # processing is the submitted row count minus rows recorded as loader errors.
+        processed = max(0, len(areas) - int(getattr(metrics, "errors", 0) or 0))
+        return _complete_load(
+            filename="neo4j_cetarea_nodes.checks.json",
+            operation="CETArea loading",
+            count_field="areas",
+            submitted=len(areas),
+            processed=processed,
+            metrics=metrics,
+        )
     except Exception as exc:
         context.log.exception(f"CETArea loading failed: {exc}")
         raise
@@ -214,15 +265,14 @@ def loaded_award_cet_enrichment(
     try:
         loader = CETLoader(client, CETLoaderConfig(batch_size=batch_size))
         metrics = loader.upsert_award_cet_enrichment(_award_enrichments(classifications))
-        _ensure_successful_metrics(metrics, "Award CET enrichment")
-        result = {
-            "status": "success",
-            "awards": len(classifications),
-            "metrics": _serialize_metrics(metrics),
-        }
-
-        _write_summary("neo4j_award_cet_enrichment.checks.json", result)
-        return result
+        return _complete_load(
+            filename="neo4j_award_cet_enrichment.checks.json",
+            operation="Award CET enrichment",
+            count_field="awards",
+            submitted=len(classifications),
+            processed=_metric_count(metrics, "nodes_updated", "FinancialTransaction"),
+            metrics=metrics,
+        )
     except Exception as exc:
         context.log.exception(f"Award CET enrichment failed: {exc}")
         raise
@@ -274,15 +324,14 @@ def loaded_company_cet_enrichment(
         metrics = loader.upsert_company_cet_enrichment(
             _company_enrichments(profiles), key_property="company_id"
         )
-        _ensure_successful_metrics(metrics, "Company CET enrichment")
-        result = {
-            "status": "success",
-            "companies": len(profiles),
-            "metrics": _serialize_metrics(metrics),
-        }
-
-        _write_summary("neo4j_company_cet_enrichment.checks.json", result)
-        return result
+        return _complete_load(
+            filename="neo4j_company_cet_enrichment.checks.json",
+            operation="Company CET enrichment",
+            count_field="companies",
+            submitted=len(profiles),
+            processed=_metric_count(metrics, "nodes_updated", "Organization"),
+            metrics=metrics,
+        )
     except Exception as exc:
         context.log.exception(f"Company CET enrichment failed: {exc}")
         raise
@@ -335,15 +384,16 @@ def loaded_award_cet_relationships(
     try:
         loader = CETLoader(client, CETLoaderConfig(batch_size=batch_size))
         metrics = loader.create_award_cet_relationships(classifications)
-        _ensure_successful_metrics(metrics, "Award CET relationship loading")
-        result = {
-            "status": "success",
-            "awards": len(classifications),
-            "metrics": _serialize_metrics(metrics),
-        }
-
-        _write_summary("neo4j_award_cet_relationships.checks.json", result)
-        return result
+        expected = _expected_award_relationships(classifications)
+        return _complete_load(
+            filename="neo4j_award_cet_relationships.checks.json",
+            operation="Award CET relationship loading",
+            count_field="awards",
+            submitted=expected,
+            processed=_metric_count(metrics, "relationships_created", "APPLICABLE_TO"),
+            metrics=metrics,
+            reported_count=len(classifications),
+        )
     except Exception as exc:
         context.log.exception(f"Award CET relationships failed: {exc}")
         raise
@@ -394,15 +444,14 @@ def loaded_company_cet_relationships(
     try:
         loader = CETLoader(client, CETLoaderConfig(batch_size=batch_size))
         metrics = loader.create_company_cet_relationships(profiles, key_property="company_id")
-        _ensure_successful_metrics(metrics, "Company CET relationship loading")
-        result = {
-            "status": "success",
-            "companies": len(profiles),
-            "metrics": _serialize_metrics(metrics),
-        }
-
-        _write_summary("neo4j_company_cet_relationships.checks.json", result)
-        return result
+        return _complete_load(
+            filename="neo4j_company_cet_relationships.checks.json",
+            operation="Company CET relationship loading",
+            count_field="companies",
+            submitted=len(profiles),
+            processed=_metric_count(metrics, "relationships_created", "SPECIALIZES_IN"),
+            metrics=metrics,
+        )
     except Exception as exc:
         context.log.exception(f"Company CET relationships failed: {exc}")
         raise

@@ -157,7 +157,11 @@ __all__ = ["save_dataframe_parquet"]
 
 
 def _read_parquet_or_ndjson(
-    parquet_path: Path, json_path: Path, expected_columns: tuple
+    parquet_path: Path,
+    json_path: Path,
+    expected_columns: tuple,
+    *,
+    allow_empty: bool = False,
 ) -> list[dict]:
     """Read and validate a parquet or NDJSON artifact without hiding malformed input."""
     if parquet_path.exists():
@@ -166,7 +170,10 @@ def _read_parquet_or_ndjson(
         if missing:
             names = ", ".join(sorted(missing))
             raise ValueError(f"{parquet_path} is missing required columns: {names}")
-        return df.to_dict(orient="records")
+        records = df.to_dict(orient="records")
+        if not records and not allow_empty:
+            raise ValueError(f"{parquet_path} contains no records")
+        return records
 
     if json_path.exists():
         records = []
@@ -187,6 +194,8 @@ def _read_parquet_or_ndjson(
                         f"{json_path} line {line_number} is missing required fields: {names}"
                     )
                 records.append(record)
+        if not records and not allow_empty:
+            raise ValueError(f"{json_path} contains no records")
         return records
 
     raise FileNotFoundError(f"No input artifact found at {parquet_path} or {json_path}")
