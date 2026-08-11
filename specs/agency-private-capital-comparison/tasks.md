@@ -30,8 +30,9 @@ gated on Phase 1 sign-off and its missing real-data input contracts.
   re-running on the follow-on-multiplier fixture set reproduces transition rates
   within tolerance.
   — implemented: `packages/sbir-analytics/sbir_analytics/assets/agency_private_capital/outcomes.py`
-  (`wilson_interval`, consumes upstream transition scores, UEI/DUNS-first M&A join
-  with name fallback, company-level survival denominator)
+  (`wilson_interval`, consumes upstream transition scores, exact connected-component
+  UEI/DUNS/name identity crosswalk, company-level survival denominator, configurable
+  graduation horizon)
 - [x] 1.3 Add `PublishedBaselineRegistry` — hard-coded YAML at
   `config/agency_private_capital/published_baselines.yaml` with source citations + as-of
   dates. Initial entries: BLS BED 5-yr survival, Lerner [L10] effect size,
@@ -72,9 +73,10 @@ gated on Phase 1 sign-off and its missing real-data input contracts.
   **Review artifact materialized 2026-08-09:**
   [NSF Phase I baseline review](../../docs/research/agency-private-capital-phase1-nsf.md)
   reports 672/1,502 (44.7%, 95% Wilson interval 42.2%–47.3%) for the 2015–2019
-  vintage with a five-year horizon. Keep this task open until the estimand and
-  identity approach are accepted and the required missing outcome channels are
-  resolved.
+  vintage with a five-year horizon. The repaired artifact also records
+  2/3/5/unbounded sensitivity, UEI/DUNS/name coverage, and output hashes. Keep
+  this task open until the estimand and identity approach are accepted and the
+  required missing outcome channels are resolved.
 
 ## Phase 2 — Agency-vs-Private-Capital Matched Cohort
 

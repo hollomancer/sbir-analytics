@@ -1,7 +1,7 @@
 ---
 Type: Research Report
 Owner: research@project
-Last-Reviewed: 2026-08-09
+Last-Reviewed: 2026-08-11
 Status: draft
 ---
 
@@ -36,7 +36,11 @@ claim relative program performance.
   cohort builder from canonical raw `Agency` values.
 - **Vintage:** firms with at least one Phase I award in calendar years
   2015–2019.
-- **Firm key:** UEI when present, then DUNS, then lower-cased company name.
+- **Program scope:** SBIR and STTR are pooled. A cross-program STTR Phase I to
+  SBIR Phase II (or the reverse) counts when the firm and timing rules match.
+- **Firm key:** connected components across every UEI, DUNS, and exact
+  `ORGANIZATION_KEY_V1` normalized-name alias present on each firm's rows;
+  canonical labels prefer UEI, then DUNS, then name.
 - **Numerator:** a firm with at least one Phase II award in `[Phase I year,
   Phase I year + 5]` for any of its Phase I awards in the vintage.
 - **Denominator:** unique recoverable firm keys with a Phase I award in the
@@ -45,9 +49,35 @@ claim relative program performance.
 
 This definition fixes two problems in the prior implementation: Phase II awards
 that predated Phase I could count as graduation, and there was no follow-up
-horizon. Entity changes that are not bridged by UEI or DUNS can still undercount
-graduation; this run does not claim that the fallback name key fully resolves
-firm lineage.
+horizon. It also fixes mixed-identifier undercount: a DUNS-only Phase I row now
+joins a UEI+DUNS or UEI-only Phase II row through the exact alias graph.
+
+This is a **firm-level**, not project-level, graduation estimand. A qualifying
+Phase II need not descend from the particular in-vintage Phase I project, so the
+rate is not comparable to NSF's project-level conversion statistic. Corporate
+renames or restructurings with no shared UEI, DUNS, or exact normalized name can
+still undercount graduation; the crosswalk does not use fuzzy matching.
+
+## Horizon sensitivity
+
+| Maximum follow-up from Phase I | Graduated firms | Phase I firms | Rate |
+| --- | ---: | ---: | ---: |
+| 2 years | 609 | 1,502 | 40.5% |
+| 3 years | 661 | 1,502 | 44.0% |
+| 5 years | 672 | 1,502 | 44.7% |
+| Unbounded | 679 | 1,502 | 45.2% |
+
+The five-year cutoff is the current review setting, not a validated optimum.
+The sensitivity table makes the consequence of revising that estimand explicit.
+
+## Entity-resolution coverage
+
+The 1,502 firms in the headline Phase I denominator comprise 1,160 UEI-backed
+components, 326 DUNS-backed components with no UEI, and 16 normalized-name-only
+components. Of these, 1,143 components bridge both UEI and DUNS. All 1,546 Phase
+I award rows in the 2015–2019 vintage have at least one recoverable identity
+alias. These are coverage diagnostics, not a recall estimate against an
+independently labeled firm-lineage set.
 
 ## Outcome availability
 
@@ -72,6 +102,13 @@ The machine-readable manifest is
 | `published_baselines.yaml` | `5bfa088e1a86c2290d08befae1e3d35ca46c6f3aaf28bbdb684279d69c4405f7` | 3,578 bytes / 4 entries |
 | `sbir_ma_events.jsonl` | unavailable | M&A metric suppressed |
 
+The SBIR.gov snapshot was retrieved on **2026-03-31** from the
+[bulk awards CSV](https://data.www.sbir.gov/mod_awarddatapublic/award_data.csv);
+this repaired run was executed on **2026-08-11**. The manifest records the
+headline result, the four horizon-sensitivity rows, identity coverage, and
+SHA-256 hashes for every generated output so the prose can be checked against
+the machine-readable run.
+
 Reproduce from a checkout with the awards snapshot available:
 
 ```bash
@@ -81,6 +118,8 @@ uv run --extra stack-dev python \
   --awards-csv data/raw/sbir/award_data.csv \
   --headline-vintage 2015-2019 \
   --graduation-horizon-years 5 \
+  --run-date 2026-08-11 \
+  --awards-retrieved-at 2026-03-31 \
   --skip-download
 ```
 
@@ -93,7 +132,8 @@ and deterministic `run_manifest.json` under
 Phase 1 is **materialized but not signed off**. Review must resolve the following
 before Phase 2 begins:
 
-1. accept or revise the five-year graduation estimand and entity-key fallback;
+1. accept or revise the five-year, firm-level, pooled SBIR/STTR graduation
+   estimand and the exact-alias crosswalk assumptions;
 2. decide whether the missing transition, survival, M&A, and patent channels
    must be populated before Phase 1 is considered complete.
 

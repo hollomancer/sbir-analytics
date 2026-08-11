@@ -150,8 +150,10 @@ class AgencyCohortBuilder:
     """Filter to a funding agency's SBIR/STTR awards and stratify by vintage + phase.
 
     ``build`` returns a copy of the input frame restricted to rows matching
-    ``agency_code`` with two new columns: ``vintage_bucket`` (5-year label)
-    and ``phase_label`` (``"I"`` | ``"II"`` | ``"III"``).
+    ``agency_code`` with three new columns: ``award_year_resolved`` (nullable
+    integer), ``vintage_bucket`` (5-year label), and ``phase_label``
+    (``"I"`` | ``"II"`` | ``"III"``). Rows with no parseable award year are
+    retained with a null year and vintage instead of aborting the full run.
 
     Args:
         agency_code: The agency to filter to. Default ``"NSF"`` preserves
@@ -166,17 +168,22 @@ class AgencyCohortBuilder:
     def build(self, awards: pd.DataFrame) -> pd.DataFrame:
         if awards.empty:
             return awards.assign(
-                vintage_bucket=pd.Series(dtype="object"), phase_label=pd.Series(dtype="object")
+                award_year_resolved=pd.Series(dtype="Int64"),
+                vintage_bucket=pd.Series(dtype="object"),
+                phase_label=pd.Series(dtype="object"),
             )
         mask = awards.apply(_is_agency_row, axis=1, agency_code=self.agency_code)  # type: ignore[call-overload]
         cohort = awards[mask].copy()
         if cohort.empty:
+            cohort["award_year_resolved"] = pd.Series(dtype="Int64")
             cohort["vintage_bucket"] = pd.Series(dtype="object")
             cohort["phase_label"] = pd.Series(dtype="object")
             return cohort
-        years = cohort.apply(_award_year, axis=1)  # type: ignore[call-overload]
+        years = cohort.apply(_award_year, axis=1).astype("Int64")  # type: ignore[call-overload]
+        cohort["award_year_resolved"] = years
         cohort["vintage_bucket"] = years.map(
-            lambda y: vintage_bucket(y, size=self.vintage_size) if y is not None else None
+            lambda y: vintage_bucket(y, size=self.vintage_size) if pd.notna(y) else None,
+            na_action="ignore",
         )
         phase_src = cohort.get("phase", cohort.get("Phase"))
         cohort["phase_label"] = phase_src.map(_normalize_phase) if phase_src is not None else None

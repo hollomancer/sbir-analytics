@@ -8,6 +8,7 @@ import pandas as pd
 import pytest
 
 from sbir_analytics.assets.agency_private_capital.cohort import AgencyCohortBuilder
+from sbir_analytics.assets.agency_private_capital.asset import AgencyPrivateCapitalConfig
 from sbir_analytics.assets.agency_private_capital.outcomes import (
     OutcomeMetricsCalculator,
     wilson_interval,
@@ -15,6 +16,13 @@ from sbir_analytics.assets.agency_private_capital.outcomes import (
 
 
 pytestmark = pytest.mark.fast
+
+
+def test_asset_config_exposes_graduation_horizon() -> None:
+    assert AgencyPrivateCapitalConfig().graduation_horizon_years == 5
+    assert (
+        AgencyPrivateCapitalConfig(graduation_horizon_years=None).graduation_horizon_years is None
+    )
 
 
 def test_wilson_interval_zero_denominator_yields_nan() -> None:
@@ -173,6 +181,91 @@ def test_phase_i_to_ii_graduation_excludes_phase_ii_outside_horizon() -> None:
     assert six_year_row["numerator"] == 1
 
 
+def test_phase_i_to_ii_graduation_supports_unbounded_horizon() -> None:
+    awards = pd.DataFrame(
+        [
+            {"agency": "NSF", "phase": "Phase I", "award_year": 2015, "uei": "AAA"},
+            {"agency": "NSF", "phase": "Phase II", "award_year": 2025, "uei": "AAA"},
+        ]
+    )
+    cohort = AgencyCohortBuilder(agency_code="NSF").build(awards)
+
+    outcomes = OutcomeMetricsCalculator(graduation_horizon_years=None).compute(cohort)
+    row = outcomes[outcomes["metric"] == "phase_i_to_ii_graduation"].iloc[0]
+
+    assert row["numerator"] == 1
+    assert row["denominator"] == 1
+
+
+def test_phase_i_to_ii_graduation_crosswalks_mixed_uei_and_duns_rows() -> None:
+    awards = pd.DataFrame(
+        [
+            {
+                "agency": "NSF",
+                "phase": "Phase I",
+                "award_year": 2015,
+                "duns": "123456789",
+                "company_name": "Alpha Research, Inc.",
+            },
+            {
+                "agency": "NSF",
+                "phase": "Phase II",
+                "award_year": 2018,
+                "uei": "ALPHAUEI001",
+                "duns": "123456789",
+                "company_name": "Alpha Research Inc",
+            },
+        ]
+    )
+    cohort = AgencyCohortBuilder(agency_code="NSF").build(awards)
+
+    outcomes = OutcomeMetricsCalculator().compute(cohort)
+    row = outcomes[outcomes["metric"] == "phase_i_to_ii_graduation"].iloc[0]
+    coverage = OutcomeMetricsCalculator.identity_coverage(cohort)
+
+    assert row["numerator"] == 1
+    assert row["denominator"] == 1
+    assert coverage["company_count"] == 1
+    assert coverage["company_basis_counts"] == {"uei": 1, "duns": 0, "name": 0}
+    assert coverage["uei_duns_bridge_company_count"] == 1
+
+
+def test_phase_i_to_ii_graduation_crosswalk_is_transitive_across_aliases() -> None:
+    awards = pd.DataFrame(
+        [
+            {
+                "agency": "NSF",
+                "phase": "Phase I",
+                "award_year": 2015,
+                "duns": "123456789",
+                "company_name": "Alpha Research",
+            },
+            {
+                "agency": "NSF",
+                "phase": "Phase I",
+                "award_year": 2016,
+                "uei": "ALPHAUEI001",
+                "duns": "123456789",
+                "company_name": "Alpha Research",
+            },
+            {
+                "agency": "NSF",
+                "phase": "Phase II",
+                "award_year": 2019,
+                "uei": "ALPHAUEI001",
+                "company_name": "Alpha Research Labs",
+            },
+        ]
+    )
+    cohort = AgencyCohortBuilder(agency_code="NSF").build(awards)
+
+    outcomes = OutcomeMetricsCalculator().compute(cohort)
+    row = outcomes[outcomes["metric"] == "phase_i_to_ii_graduation"].iloc[0]
+
+    assert row["numerator"] == 1
+    assert row["denominator"] == 1
+
+
 def test_metrics_with_missing_inputs_marked_unavailable() -> None:
     cohort = AgencyCohortBuilder(agency_code="NSF").build(_nsf_awards())
     outcomes = OutcomeMetricsCalculator().compute(cohort)
@@ -184,6 +277,7 @@ def test_metrics_with_missing_inputs_marked_unavailable() -> None:
         rows = outcomes[outcomes["metric"] == metric]
         assert not rows.empty, metric
         assert (rows["available"] == False).all(), metric  # noqa: E712
+        assert rows["numerator"].isna().all(), metric
 
 
 def test_transition_rate_consumes_score_threshold() -> None:

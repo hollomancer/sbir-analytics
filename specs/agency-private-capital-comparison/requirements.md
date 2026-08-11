@@ -107,7 +107,11 @@ missing input contracts described above.
    initial implementation target.
 2. **SHALL** compute the following cohort outcomes, stratified by award
    vintage (5-year buckets) and Phase (I, II):
-   - Phase I → Phase II graduation rate
+   - Phase I → Phase II graduation rate, firm-level and pooled across SBIR and
+     STTR. Qualifying Phase II awards must be no earlier than Phase I and no
+     later than the configured inclusive horizon (current Phase 1 review
+     default: 5 years). The review artifact SHALL also report 2-year, 3-year,
+     5-year, and unbounded sensitivity.
    - Phase II → first non-SBIR federal contract transition rate (reuse
      existing transition detector, ≥85% precision benchmark)
    - 5-year survival proxy (firm appears as recipient/vendor in any federal
@@ -131,8 +135,11 @@ missing input contracts described above.
    narrative").
 5. **SHOULD** stratify outcomes by CET technology area (reuse CET classifier)
    so the comparison is not blurred by sector mix.
-6. **SHALL** report match rates and entity-resolution coverage as sensitivity
-   metadata (mirrors `follow-on-multiplier-analysis` requirement 7).
+6. **SHALL** resolve firms through an exact connected-component crosswalk over
+   every UEI, DUNS, and versioned normalized-name alias present on their award
+   rows, and report match rates plus UEI-backed, DUNS-only, name-only, and
+   UEI↔DUNS bridge coverage as sensitivity metadata (mirrors
+   `follow-on-multiplier-analysis` requirement 7).
 
 ### Phase 1 Gate Condition
 

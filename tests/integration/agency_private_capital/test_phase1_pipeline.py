@@ -40,11 +40,11 @@ def _make_nsf_fixture(n_phase_i: int = 200, graduation_rate: float = 0.30) -> pd
         rows.append(
             {
                 "award_id": f"NSF-I-{i:04d}",
-                "agency": "National Science Foundation",
-                "phase": "Phase I",
-                "award_year": 2015,
-                "uei": f"COMPANY{i:05d}",
-                "company_name": f"Firm {i}",
+                "Agency": "National Science Foundation",
+                "Phase": "Phase I",
+                "Award Year": 2015,
+                "UEI": f"COMPANY{i:05d}",
+                "Company": f"Firm {i}",
             }
         )
     # First N graduate to Phase II in 2017
@@ -52,11 +52,11 @@ def _make_nsf_fixture(n_phase_i: int = 200, graduation_rate: float = 0.30) -> pd
         rows.append(
             {
                 "award_id": f"NSF-II-{i:04d}",
-                "agency": "National Science Foundation",
-                "phase": "Phase II",
-                "award_year": 2017,
-                "uei": f"COMPANY{i:05d}",
-                "company_name": f"Firm {i}",
+                "Agency": "National Science Foundation",
+                "Phase": "Phase II",
+                "Award Year": 2017,
+                "UEI": f"COMPANY{i:05d}",
+                "Company": f"Firm {i}",
             }
         )
     # A few non-NSF rows to confirm filtering
@@ -64,11 +64,11 @@ def _make_nsf_fixture(n_phase_i: int = 200, graduation_rate: float = 0.30) -> pd
         rows.append(
             {
                 "award_id": f"DOD-I-{j:04d}",
-                "agency": "Department of Defense",
-                "phase": "Phase I",
-                "award_year": 2015,
-                "uei": f"DODFIRM{j:05d}",
-                "company_name": f"Defense Firm {j}",
+                "Agency": "Department of Defense",
+                "Phase": "Phase I",
+                "Award Year": 2015,
+                "UEI": f"DODFIRM{j:05d}",
+                "Company": f"Defense Firm {j}",
             }
         )
     return pd.DataFrame(rows)
@@ -79,7 +79,7 @@ def test_phase1_pipeline_produces_three_artifacts(tmp_path) -> None:
 
     cohort = AgencyCohortBuilder(agency_code="NSF").build(awards)
     # Filter discarded the 5 DOD rows
-    assert (cohort["agency"].str.lower() != "department of defense").all()
+    assert (cohort["Agency"].str.lower() != "department of defense").all()
     assert len(cohort) == 200 + 60
 
     federal_activity_companies = {f"uei:COMPANY{i:05d}" for i in range(36)}

@@ -5,6 +5,8 @@
     "awards_csv": {
       "available": true,
       "path": "award_data.csv",
+      "retrieved_at": "2026-03-31",
+      "retrieved_at_basis": "provided",
       "row_count": 219500,
       "schema": {
         "columns": [
@@ -55,11 +57,14 @@
       },
       "sha256": "73d646fc6883ed93b36d19518b0d9442a9ebae94c5b49ad5a7fcd6d3c2b872dd",
       "size_bytes": 394456822,
-      "source": "sbir_gov_bulk_awards"
+      "source": "sbir_gov_bulk_awards",
+      "source_url": "https://data.www.sbir.gov/mod_awarddatapublic/award_data.csv"
     },
     "ma_events_jsonl": {
       "available": false,
       "path": "sbir_ma_events.jsonl",
+      "retrieved_at": null,
+      "retrieved_at_basis": null,
       "row_count": null,
       "schema": {
         "company_key": "company_name",
@@ -67,11 +72,14 @@
       },
       "sha256": null,
       "size_bytes": null,
-      "source": "sbir_ma_events"
+      "source": "sbir_ma_events",
+      "source_url": null
     },
     "published_baselines_yaml": {
       "available": true,
       "path": "published_baselines.yaml",
+      "retrieved_at": null,
+      "retrieved_at_basis": null,
       "row_count": 4,
       "schema": {
         "collection": "baselines",
@@ -79,7 +87,8 @@
       },
       "sha256": "5bfa088e1a86c2290d08befae1e3d35ca46c6f3aaf28bbdb684279d69c4405f7",
       "size_bytes": 3578,
-      "source": "published_baseline_registry"
+      "source": "published_baseline_registry",
+      "source_url": null
     }
   },
   "limitations": [
@@ -109,6 +118,23 @@
       "reason": "Transition-score enrichment is not read by this standalone runner."
     }
   },
+  "outputs": {
+    "agency_baseline_comparison_json": {
+      "path": "agency_baseline_comparison.json",
+      "sha256": "0e40db8a993c5830a2c600f0432b0519363b91f01e5a6667a512adfcbaf21ca5",
+      "size_bytes": 6639
+    },
+    "agency_cohort_outcomes_parquet": {
+      "path": "agency_cohort_outcomes.parquet",
+      "sha256": "e09cb80c92c65e6ff569e2ac658c665e6786f1551fff8d52f577fcf6fe3a2b11",
+      "size_bytes": 6991
+    },
+    "agency_vs_published_baselines_markdown": {
+      "path": "agency_vs_published_baselines.md",
+      "sha256": "78f9f83807efacfc32bf9255314540e72b71c17b9a7ce854dae5296a6b6feb68",
+      "size_bytes": 5937
+    }
+  },
   "parameters": {
     "agency_code": "NSF",
     "graduation_horizon_years": 5,
@@ -117,5 +143,73 @@
     "transition_score_threshold": 0.65,
     "vintage_bucket_size": 5
   },
-  "schema_version": 1
+  "review_artifact": {
+    "path": "docs/research/agency-private-capital-phase1-nsf.md",
+    "sha256": "6d377238318f30985504a66829f0af47de8b5b948b7a3aca0dbf1b2a86c0417b",
+    "size_bytes": 6717
+  },
+  "results": {
+    "graduation_horizon_sensitivity": [
+      {
+        "available": true,
+        "ci_high": 0.430500094008737,
+        "ci_low": 0.3809010343528,
+        "denominator": 1502,
+        "horizon_years": 2,
+        "numerator": 609,
+        "rate": 0.4054593874833555
+      },
+      {
+        "available": true,
+        "ci_high": 0.4653051187281718,
+        "ci_low": 0.4151603851629432,
+        "denominator": 1502,
+        "horizon_years": 3,
+        "numerator": 661,
+        "rate": 0.4400798934753662
+      },
+      {
+        "available": true,
+        "ci_high": 0.4726517838014854,
+        "ci_low": 0.42242349183627115,
+        "denominator": 1502,
+        "horizon_years": 5,
+        "numerator": 672,
+        "rate": 0.4474034620505992
+      },
+      {
+        "available": true,
+        "ci_high": 0.47732407161179863,
+        "ci_low": 0.4270483315010934,
+        "denominator": 1502,
+        "horizon_years": null,
+        "numerator": 679,
+        "rate": 0.45206391478029295
+      }
+    ],
+    "headline_graduation": {
+      "available": true,
+      "ci_high": 0.4726517838014854,
+      "ci_low": 0.42242349183627115,
+      "denominator": 1502,
+      "horizon_years": 5,
+      "numerator": 672,
+      "rate": 0.4474034620505992,
+      "vintage_bucket": "2015-2019"
+    },
+    "identity_coverage": {
+      "company_basis_counts": {
+        "duns": 326,
+        "name": 16,
+        "uei": 1160
+      },
+      "company_count": 1502,
+      "resolved_row_count": 1546,
+      "resolved_row_rate": 1.0,
+      "row_count": 1546,
+      "uei_duns_bridge_company_count": 1143
+    }
+  },
+  "run_date": "2026-08-11",
+  "schema_version": 2
 }

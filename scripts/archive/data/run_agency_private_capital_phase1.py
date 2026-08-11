@@ -33,6 +33,7 @@ import argparse
 import hashlib
 import json
 import sys
+from datetime import UTC, datetime
 from pathlib import Path
 
 import pandas as pd
@@ -48,12 +49,14 @@ from sbir_analytics.assets.agency_private_capital.cohort import AgencyCohortBuil
 from sbir_analytics.assets.agency_private_capital.outcomes import OutcomeMetricsCalculator
 from sbir_analytics.assets.agency_private_capital.reconcile import ReconciliationNarrative
 from sbir_etl.extractors.sbir_gov_api import SBIR_AWARDS_CSV_URL
+from sbir_etl.identity import CompanyNameProfile, normalize_company_name
 
 
 DEFAULT_AWARDS_CSV = Path("/tmp/sbir_awards_full.csv")
 DEFAULT_MA_EVENTS = Path("data/sbir_ma_events.jsonl")
 DEFAULT_HEADLINE_VINTAGE = "2015-2019"
 DEFAULT_GRADUATION_HORIZON_YEARS = 5
+DEFAULT_SENSITIVITY_HORIZONS: tuple[int | None, ...] = (2, 3, 5, None)
 
 _METRICS = (
     "phase_i_to_ii_graduation",
@@ -108,7 +111,12 @@ def _load_ma_event_companies(path: Path) -> set[str] | None:
                 continue
             name = event.get("company_name")
             if name and str(name).strip():
-                keys.add(f"name:{str(name).strip().lower()}")
+                normalized = normalize_company_name(
+                    name,
+                    profile=CompanyNameProfile.ORGANIZATION_KEY_V1,
+                )
+                if normalized:
+                    keys.add(f"name:{normalized.lower()}")
     return keys
 
 
@@ -131,6 +139,9 @@ def _file_provenance(
     source: str,
     row_count: int | None,
     schema: dict[str, object],
+    source_url: str | None = None,
+    retrieved_at: str | None = None,
+    retrieved_at_basis: str | None = None,
 ) -> dict[str, object]:
     """Describe an input without persisting a machine-specific absolute path."""
 
@@ -143,6 +154,21 @@ def _file_provenance(
         "sha256": _sha256_file(path) if available else None,
         "size_bytes": path.stat().st_size if available else None,
         "source": source,
+        "source_url": source_url,
+        "retrieved_at": retrieved_at if available else None,
+        "retrieved_at_basis": retrieved_at_basis if available else None,
+    }
+
+
+def _file_modified_date(path: Path) -> str:
+    return datetime.fromtimestamp(path.stat().st_mtime, tz=UTC).date().isoformat()
+
+
+def _output_provenance(path: Path) -> dict[str, object]:
+    return {
+        "path": path.name,
+        "sha256": _sha256_file(path),
+        "size_bytes": path.stat().st_size,
     }
 
 
@@ -177,11 +203,106 @@ def _metric_availability(
     return availability
 
 
+def _graduation_result(outcomes: pd.DataFrame, *, vintage: str) -> dict[str, object]:
+    rows = outcomes[
+        (outcomes["metric"] == "phase_i_to_ii_graduation") & (outcomes["vintage_bucket"] == vintage)
+    ]
+    if rows.empty:
+        return {
+            "available": False,
+            "numerator": None,
+            "denominator": None,
+            "rate": None,
+            "ci_low": None,
+            "ci_high": None,
+        }
+    row = rows.iloc[0]
+    return {
+        "available": bool(row["available"]),
+        "numerator": int(row["numerator"]) if pd.notna(row["numerator"]) else None,
+        "denominator": int(row["denominator"]) if pd.notna(row["denominator"]) else None,
+        "rate": float(row["rate"]) if pd.notna(row["rate"]) else None,
+        "ci_low": float(row["ci_low"]) if pd.notna(row["ci_low"]) else None,
+        "ci_high": float(row["ci_high"]) if pd.notna(row["ci_high"]) else None,
+    }
+
+
+def _graduation_sensitivity(
+    cohort: pd.DataFrame,
+    *,
+    headline_vintage: str,
+) -> list[dict[str, object]]:
+    rows: list[dict[str, object]] = []
+    for horizon in DEFAULT_SENSITIVITY_HORIZONS:
+        outcomes = OutcomeMetricsCalculator(graduation_horizon_years=horizon).compute(cohort)
+        rows.append(
+            {
+                "horizon_years": horizon,
+                **_graduation_result(outcomes, vintage=headline_vintage),
+            }
+        )
+    return rows
+
+
+def _format_rate(value: object) -> str:
+    return "not available" if value is None else f"{float(str(value)):.1%}"
+
+
+def _diagnostics_markdown(
+    *,
+    horizon_sensitivity: list[dict[str, object]],
+    identity_coverage: dict[str, object],
+) -> str:
+    lines = [
+        "## Graduation-horizon sensitivity",
+        "",
+        "| Maximum follow-up | Graduated firms | Phase I firms | Rate |",
+        "| --- | ---: | ---: | ---: |",
+    ]
+    for result in horizon_sensitivity:
+        horizon = result["horizon_years"]
+        horizon_label = "Unbounded" if horizon is None else f"{horizon} years"
+        lines.append(
+            f"| {horizon_label} | {result['numerator']} | {result['denominator']} | "
+            f"{_format_rate(result['rate'])} |"
+        )
+    basis = identity_coverage["company_basis_counts"]
+    assert isinstance(basis, dict)
+    resolved_rate = identity_coverage["resolved_row_rate"]
+    lines.extend(
+        [
+            "",
+            "## Entity-resolution coverage",
+            "",
+            (
+                f"The headline Phase I denominator resolves to "
+                f"**{identity_coverage['company_count']:,} firms**: "
+                f"{basis['uei']:,} with a UEI-backed component, "
+                f"{basis['duns']:,} with DUNS but no UEI, and "
+                f"{basis['name']:,} by normalized name only. "
+                f"{identity_coverage['uei_duns_bridge_company_count']:,} components bridge both "
+                "UEI and DUNS."
+            ),
+            "",
+            (
+                f"Resolved award rows in the headline denominator: "
+                f"{identity_coverage['resolved_row_count']:,}/"
+                f"{identity_coverage['row_count']:,} ({float(str(resolved_rate)):.1%})."
+                if resolved_rate is not None
+                else "No headline award rows were available for identity coverage."
+            ),
+        ]
+    )
+    return "\n".join(lines)
+
+
 def _annotate_report(
     markdown: str,
     *,
     metric_availability: dict[str, dict[str, object]],
     graduation_horizon_years: int,
+    horizon_sensitivity: list[dict[str, object]],
+    identity_coverage: dict[str, object],
 ) -> str:
     unavailable = [
         f"`{metric}` ({details['reason']})"
@@ -198,7 +319,11 @@ def _annotate_report(
     )
     if not separator:
         return f"{title}\n\n{banner}\n"
-    return f"{title}\n\n{banner}\n{remainder}"
+    diagnostics = _diagnostics_markdown(
+        horizon_sensitivity=horizon_sensitivity,
+        identity_coverage=identity_coverage,
+    )
+    return f"{title}\n\n{banner}\n{remainder}\n{diagnostics}\n"
 
 
 def _build_run_manifest(
@@ -210,8 +335,13 @@ def _build_run_manifest(
     ma_events_row_count: int | None,
     registry_path: Path,
     registry_row_count: int,
+    run_date: str,
+    awards_retrieved_at: str,
+    awards_retrieved_at_basis: str,
     parameters: dict[str, object],
     metric_availability: dict[str, dict[str, object]],
+    results: dict[str, object],
+    output_paths: dict[str, Path],
 ) -> dict[str, object]:
     """Build deterministic provenance for a standalone exploratory run."""
 
@@ -222,6 +352,9 @@ def _build_run_manifest(
             "awards_csv": _file_provenance(
                 awards_path,
                 source="sbir_gov_bulk_awards",
+                source_url=SBIR_AWARDS_CSV_URL,
+                retrieved_at=awards_retrieved_at,
+                retrieved_at_basis=awards_retrieved_at_basis,
                 row_count=awards_row_count,
                 schema={"columns": awards_columns, "format": "csv"},
             ),
@@ -244,8 +377,11 @@ def _build_run_manifest(
             "Results are exploratory and non-citable.",
         ],
         "metric_availability": metric_availability,
+        "outputs": {name: _output_provenance(path) for name, path in sorted(output_paths.items())},
         "parameters": parameters,
-        "schema_version": 1,
+        "results": results,
+        "run_date": run_date,
+        "schema_version": 2,
     }
 
 
@@ -277,6 +413,19 @@ def main() -> int:
         ),
     )
     parser.add_argument(
+        "--run-date",
+        default=datetime.now(UTC).date().isoformat(),
+        help="Manifest run date in YYYY-MM-DD format (default: current UTC date)",
+    )
+    parser.add_argument(
+        "--awards-retrieved-at",
+        default=None,
+        help=(
+            "SBIR.gov snapshot retrieval date in YYYY-MM-DD format. Defaults to the input "
+            "file's modification date and records that basis explicitly."
+        ),
+    )
+    parser.add_argument(
         "--output-dir",
         type=Path,
         default=None,
@@ -293,6 +442,16 @@ def main() -> int:
     args = parser.parse_args()
     if args.graduation_horizon_years < 0:
         parser.error("--graduation-horizon-years must be non-negative")
+    for option, value in (
+        ("--run-date", args.run_date),
+        ("--awards-retrieved-at", args.awards_retrieved_at),
+    ):
+        if value is None:
+            continue
+        try:
+            datetime.strptime(value, "%Y-%m-%d")
+        except ValueError:
+            parser.error(f"{option} must use YYYY-MM-DD format")
 
     agency_code: str = args.agency.strip().upper()
     output_dir: Path = args.output_dir or (
@@ -303,6 +462,8 @@ def main() -> int:
         print(f"awards CSV not found at {args.awards_csv}", file=sys.stderr)
         return 2
     awards_path = _ensure_awards_csv(args.awards_csv)
+    awards_retrieved_at = args.awards_retrieved_at or _file_modified_date(awards_path)
+    awards_retrieved_at_basis = "provided" if args.awards_retrieved_at else "file_mtime"
 
     print(f"Loading awards from {awards_path}")
     awards = pd.read_csv(awards_path, dtype=str, low_memory=False, encoding_errors="replace")
@@ -327,6 +488,15 @@ def main() -> int:
         ma_event_companies=ma_companies,
     )
     outcomes = calc.compute(cohort)
+    horizon_sensitivity = _graduation_sensitivity(
+        cohort,
+        headline_vintage=args.headline_vintage,
+    )
+    identity_coverage = OutcomeMetricsCalculator.identity_coverage(
+        cohort,
+        vintage_bucket=args.headline_vintage,
+        phase_label="I",
+    )
     metric_availability = _metric_availability(
         outcomes,
         ma_events_loaded=ma_companies is not None,
@@ -349,15 +519,24 @@ def main() -> int:
         ),
         metric_availability=metric_availability,
         graduation_horizon_years=args.graduation_horizon_years,
+        horizon_sensitivity=horizon_sensitivity,
+        identity_coverage=identity_coverage,
     )
     md_path.write_text(
         md_text,
         encoding="utf-8",
     )
-    json_path.write_text(
-        json.dumps([r.to_json() for r in records], indent=2, default=str),
-        encoding="utf-8",
-    )
+    comparison_records = []
+    for record in records:
+        payload = record.to_json()
+        payload["analysis_parameters"] = {
+            "graduation_horizon_years": args.graduation_horizon_years,
+            "headline_vintage": args.headline_vintage,
+        }
+        payload["citable"] = False
+        comparison_records.append(payload)
+    json_path.write_text(json.dumps(comparison_records, indent=2, default=str), encoding="utf-8")
+    headline_result = _graduation_result(outcomes, vintage=args.headline_vintage)
     manifest = _build_run_manifest(
         awards_path=awards_path,
         awards_row_count=len(awards),
@@ -366,6 +545,9 @@ def main() -> int:
         ma_events_row_count=ma_event_row_count,
         registry_path=args.registry,
         registry_row_count=len(registry),
+        run_date=args.run_date,
+        awards_retrieved_at=awards_retrieved_at,
+        awards_retrieved_at_basis=awards_retrieved_at_basis,
         parameters={
             "agency_code": agency_code,
             "graduation_horizon_years": args.graduation_horizon_years,
@@ -375,6 +557,20 @@ def main() -> int:
             "vintage_bucket_size": builder.vintage_size,
         },
         metric_availability=metric_availability,
+        results={
+            "headline_graduation": {
+                "vintage_bucket": args.headline_vintage,
+                "horizon_years": args.graduation_horizon_years,
+                **headline_result,
+            },
+            "graduation_horizon_sensitivity": horizon_sensitivity,
+            "identity_coverage": identity_coverage,
+        },
+        output_paths={
+            "agency_baseline_comparison_json": json_path,
+            "agency_cohort_outcomes_parquet": parquet_path,
+            "agency_vs_published_baselines_markdown": md_path,
+        },
     )
     manifest_path = _write_run_manifest(output_dir, manifest)
 
