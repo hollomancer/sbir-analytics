@@ -84,7 +84,6 @@ class SBIRFiscalImpactCalculator:
                 - consumption_impact: Consumption effects
                 - jobs_created: Employment created (if include_employment=True)
                 - model_version: Economic model version used
-                - confidence: Confidence score (0-1)
                 - quality_flags: Data quality indicators
 
         Raises:

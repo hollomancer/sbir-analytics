@@ -574,7 +574,6 @@ class TestEdgeCases:
             "tax_impact",
             "production_impact",
             "model_version",
-            "confidence",
             "quality_flags",
         ]
 
