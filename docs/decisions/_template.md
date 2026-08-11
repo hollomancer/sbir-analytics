@@ -1,7 +1,7 @@
 ---
 
 Type: Decision
-Owner: <owner-email>
+Maintainer: <maintainer-name>
 Last-Reviewed: <YYYY-MM-DD>
 Status: draft
 

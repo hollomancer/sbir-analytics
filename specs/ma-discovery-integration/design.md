@@ -2,7 +2,7 @@
 
 **Status:** Draft for review.
 **Date:** 2026-06-26.
-**Relates to:** [`specs/archive/completed-features/merger_acquisition_detection/`](../archive/completed-features/merger_acquisition_detection/design.md) (existing Form D + EFTS detection), [`sbir_etl/capital_events/sources/ma_events.py`](../../sbir_etl/capital_events/sources/ma_events.py) (downstream consumer), local branch `chore/ma-discovery-toolkit` (scaffolded toolkit, never merged) preserved in draft PR [#371](https://github.com/hollomancer/sbir-analytics/pull/371).
+**Relates to:** [`specs/archive/completed-features/merger_acquisition_detection/`](../archive/completed-features/merger_acquisition_detection/design.md) (existing Form D + EFTS detection), [`sbir_etl/capital_events/sources/ma_events.py`](../../sbir_etl/capital_events/sources/ma_events.py) (downstream consumer), and the unmerged toolkit scaffold preserved in draft PR [#371](https://github.com/hollomancer/sbir-analytics/pull/371).
 
 ## Why
 
@@ -14,7 +14,7 @@ A web-search-based discovery path can recover some of those, but only if the row
 
 The capital-events builder at `sbir_etl/capital_events/sources/ma_events.py:13-55` reads `data/enriched_sbir_ma_events.jsonl` and filters on `confidence in {"high", "medium"}` (string tier, not a numeric score). The pipeline shape is fixed; discovery must conform to it.
 
-Note: `detect_sbir_ma_events.py` writes `data/sbir_ma_events.jsonl`; the builder reads `data/enriched_sbir_ma_events.jsonl`. **No script in this branch produces the enriched file** — the press-wire enrichment step (`SyncPressWireClient` in `sbir_etl/enrichers/press_wire.py`) exists as a library but is not wired into a standalone CLI. The diagram below treats `enrich_ma_with_press.py` as a **to-be-added** component; discovery integration assumes this enrichment glue lands as part of (or before) the discovery implementation PR.
+Note: `detect_sbir_ma_events.py` writes `data/sbir_ma_events.jsonl`; the builder reads `data/enriched_sbir_ma_events.jsonl`. **No committed script produces the enriched file** — the press-wire enrichment step (`SyncPressWireClient` in `sbir_etl/enrichers/press_wire.py`) exists as a library but is not wired into a standalone CLI. The diagram below treats `enrich_ma_with_press.py` as a **to-be-added** component; discovery integration assumes this enrichment glue lands as part of (or before) the discovery implementation PR.
 
 **Adopted: option C with collision rule C3.**
 
@@ -57,7 +57,7 @@ Rows that fail company-name match outright are not written. The LLM extractor's 
 
 ## MAEvent model — fix the `confidence` field
 
-The toolkit's `MAEvent.confidence: str` field on the `chore/ma-discovery-toolkit` branch has no derivation logic (description says "derived from the score" but every caller has to set it manually). Replace with a Pydantic `@computed_field` over `confidence_score`:
+The toolkit's `MAEvent.confidence: str` field in draft PR #371 has no derivation logic (description says "derived from the score" but every caller has to set it manually). Replace with a Pydantic `@computed_field` over `confidence_score`:
 
 ```python
 class MAEvent(BaseModel):
@@ -76,7 +76,7 @@ class MAEvent(BaseModel):
 
 **File-contract requirement.** The capital-events builder filters on the string-typed `confidence` tier (`_KEEP_CONFIDENCES = {"high", "medium"}`); it does not read a numeric score. Discovery must emit the string `confidence` tier in each row of `enriched_sbir_ma_events.jsonl` — internally derived from `confidence_score` via the `@computed_field` above, but the on-disk contract is the tier, not the score. The `≥ 0.45` threshold above is therefore an *internal* starting point; the builder-level inclusion bar is `confidence in {"high", "medium"}`.
 
-**Threshold alignment requirement.** The preserved toolkit branch in PR #371 currently maps `confidence_score` to tiers at different cutoffs (`high >= 0.8`, `medium >= 0.5`) via a model validator. Do not land the confidence-field cleanup until the implementation branch either adopts the provisional `0.75 / 0.45` cutoffs in this design or explicitly replaces them with empirically calibrated thresholds. The important invariant is that every producer writes the same string tier for the same numeric score before rows reach `capital_events.parquet`.
+**Threshold alignment requirement.** The toolkit preserved in PR #371 currently maps `confidence_score` to tiers at different cutoffs (`high >= 0.8`, `medium >= 0.5`) via a model validator. Do not land the confidence-field cleanup until the implementation either adopts the provisional `0.75 / 0.45` cutoffs in this design or explicitly replaces them with empirically calibrated thresholds. The important invariant is that every producer writes the same string tier for the same numeric score before rows reach `capital_events.parquet`.
 
 ## Triggering & cost
 

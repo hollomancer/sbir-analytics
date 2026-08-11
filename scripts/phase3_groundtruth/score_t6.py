@@ -53,7 +53,7 @@ from sbir_ml.transition.detection.fusion_scoring import (  # noqa: E402
 
 EPISTEMIC_TIER = "exploratory"
 
-DATA_ROOT = Path(os.getenv("SBIR_ETL__PATHS__DATA_ROOT", _WORKTREE_ROOT / "data"))
+DATA_ROOT = Path(os.getenv("SBIR_ETL__PATHS__DATA_ROOT", "data"))
 DEFAULT_AWARD_DATA = DATA_ROOT / "raw" / "sbir" / "award_data.csv"
 DEFAULT_UNIVERSE = DATA_ROOT / "processed" / "sbir_phase3" / "phase3_universe.jsonl"
 DEFAULT_CORPUS = DATA_ROOT / "derived" / "phase3_notice_corpus.parquet"

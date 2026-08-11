@@ -86,8 +86,8 @@ code and the description text** — the property MSE needs.
 
 ## Validation — the gold-standard tie-in
 
-The blind hand-adjudication (`~/Documents/phase3_adjudication_*`) is the external check: (a) it measures each
-list's **precision** (are flagged contracts really Phase III?), and (b) adjudicating a random sample of
+The external `phase3_adjudication_*` hand-adjudication artifacts are the independent check: (a) they measure
+each list's **precision** (are flagged contracts really Phase III?), and (b) adjudicating a random sample of
 **un-flagged** DoD contracts directly estimates the false-negative rate → an *independent* read on the dark
 cell to cross-check the MSE extrapolation. If the direct sample and the MSE disagree, the model assumptions
 are wrong and we learn which.

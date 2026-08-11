@@ -1,7 +1,7 @@
 # Logging Standards
 
 **Type**: Reference
-**Owner**: Engineering Team
+**Maintainer**: Conrad Hollomon
 **Last-Updated**: 2025-11-05
 **Status**: Active
 

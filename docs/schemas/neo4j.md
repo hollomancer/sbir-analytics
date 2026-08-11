@@ -1,7 +1,7 @@
 ---
 
 Type: Reference
-Owner: data@project
+Maintainer: Conrad Hollomon
 Last-Reviewed: 2026-06-26
 Status: active
 

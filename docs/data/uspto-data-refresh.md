@@ -1,6 +1,6 @@
 ---
 Type: Operator Guide
-Owner: data-team
+Maintainer: Conrad Hollomon
 Last-Reviewed: 2026-08-03
 Status: active
 ---
