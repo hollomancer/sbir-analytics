@@ -5,21 +5,53 @@ downstream commercialization signals (federal contracts,
 patents, private financing, and acquisitions) to better
 understand what happens after a small business wins an SBIR award.
 
-## About this project (please read first)
+## My role and use of AI
 
-- I am a federal employee working in the SBIR/STTR domain, not a
-  trained data scientist or ML engineer. I'm hoping to contribute which
-  questions are worth asking, how they map to the policy and
-  academic literature, and what data could plausibly answer them.
-- This is built with substantial help from AI agents. Much of the
-  implementation was generated and iterated with Claude and Codex. I
-  directed the design and validated the analysis, but this code definitely
-  isn't professional-grade engineering. This is a **personal side project,
-  not production software.** PRs welcome!
-- Recommend newcomers read **[docs/research-questions.md](docs/research-questions.md)**, 
-  a structured inventory of the questions this project exists to answer, each
-  tied to the relevant GAO/NASEM/CRS reports and peer-reviewed studies. That
-  document is the heart of the project, and the code is the work to validate it.
+- Defined the research agenda and functional requirements, starting with the
+  policy questions in [docs/research-questions.md](docs/research-questions.md).
+- Selected public data sources and specified the entity-linkage, analytical,
+  and reporting methods used to investigate those questions.
+- Set evidence and validation boundaries, including what the outputs can and
+  cannot support.
+- Used Claude and Codex extensively to implement and iterate on the software,
+  then reviewed the work through tests, reproducibility checks, and documented
+  evidence limits.
+
+This is independent research software developed on personal time. It is not an
+agency product or a production service, and its findings do not represent the
+position of any agency.
+
+## See it work
+
+The fastest end-to-end example is a deterministic Army procurement-transition
+packet built entirely from committed synthetic data:
+
+Run `make install` from the repository root first; `make install-core` omits the
+`sbir_ml` package used by this example.
+
+```bash
+uv run python scripts/data/monthly_procurement_transition_report.py \
+  --month 2026-06 \
+  --awards examples/army_science_technology_awards.csv \
+  --candidates examples/army_science_technology_candidates.csv \
+  --opportunities examples/army_science_technology_opportunities.csv \
+  --output-root /tmp/procurement-transition-example
+```
+
+Read the [example walkthrough](examples/README_ARMY_PROCUREMENT_TRANSITION.md)
+and compare the result with the committed
+[expected report](examples/army_science_technology_report.md). Every company,
+award, opportunity, and judgment in this example is synthetic; it demonstrates
+the workflow and evidence trail, not live acquisition intelligence.
+
+The repository separates software capability from evidentiary maturity:
+
+| Capability | Current status | Evidence or boundary |
+| --- | --- | --- |
+| Procurement-transition reporting | Exploratory; runnable synthetic demonstration | [Synthetic example and expected output](examples/README_ARMY_PROCUREMENT_TRANSITION.md) |
+| Award ingestion, entity resolution, and graph loading | Implemented; real-data setup required | Operational capability, not an evidence claim; see the [getting-started guide](docs/getting-started/README.md) and [architecture](docs/architecture/detailed-overview.md) |
+| Phase III outcome analysis | Reproducible; not validated or approved for citation | [Phase III census study record](studies/phase-iii-census/study.yaml) |
+| Private-capital, M&A, and fiscal analyses | Exploratory and data-dependent | [Research output status index](docs/research/README.md) and the limitations below |
 
 ## Questions I'm trying to answer
 
@@ -47,8 +79,9 @@ record to other public datasets. A few of the questions it explores:
   economic activity attributable to award spending, using BEA input-output tables
   where available and fallback assumptions when live BEA inputs are unavailable.
 
-The full, sourced inventory (organized by policy area and complexity) is
-in [docs/research-questions.md](docs/research-questions.md).
+The full, sourced inventory in
+[docs/research-questions.md](docs/research-questions.md) is the heart of the
+project: the code and studies exist to investigate and validate those questions.
 
 ## What it actually does
 
@@ -106,19 +139,24 @@ repository, start with these documents in order:
 
 1. [Research questions](docs/research-questions.md): the core policy and
    evaluation questions the project is trying to answer.
-2. [SEC EDGAR SBIR learnings](docs/research/sec-edgar-sbir-learnings.md):
+2. [Army procurement-transition example](examples/README_ARMY_PROCUREMENT_TRANSITION.md):
+   a runnable vertical slice with synthetic inputs and a committed expected report.
+3. [Study contracts](studies/README.md): how the project distinguishes exploratory,
+   reproducible, validated, and citable work.
+4. [SEC EDGAR SBIR learnings](docs/research/sec-edgar-sbir-learnings.md):
    practical findings from using EDGAR to detect SBIR-related exits and
    financing signals.
-3. [SBIR Form D fundraising analysis](docs/research/sbir-form-d-fundraising-analysis.md):
+5. [SBIR Form D fundraising analysis](docs/research/sbir-form-d-fundraising-analysis.md):
    the private-capital lens on awardee commercialization.
-4. [Phase transition latency](docs/phase-transition-latency.md): how the repo
+6. [Phase transition latency](docs/phase-transition-latency.md): how the repo
    thinks about timing from SBIR awards to follow-on federal contracts.
-5. [SBIR identification methodology](docs/sbir-identification-methodology.md):
+7. [SBIR identification methodology](docs/sbir-identification-methodology.md):
    the methodology behind identifying and linking SBIR firms across datasets.
 
 ## Running it
 
-The project uses **Python 3.11** and [`uv`](https://github.com/astral-sh/uv) for
+The project targets **Python 3.11** and uses
+[`uv`](https://github.com/astral-sh/uv) for
 dependency management. There is intentionally no `requirements.txt` — the
 dependency set is defined by `pyproject.toml` and pinned in `uv.lock`. (If you
 need a flat list, run `uv export`.)
@@ -174,6 +212,9 @@ for compatibility boundaries, increment rules, and the release checklist.
 ## License
 
 MIT — see [LICENSE](LICENSE). Copyright (c) 2025 Conrad Hollomon.
+
+Contributions are welcome; see [CONTRIBUTING.md](CONTRIBUTING.md) for the local
+workflow and review expectations.
 
 ## Acknowledgments
 

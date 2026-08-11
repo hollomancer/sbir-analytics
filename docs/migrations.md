@@ -38,11 +38,10 @@ Migrations are located in
 
 ### Manual CLI (Default)
 
-Install `sbir-graph` (or the full `sbir-analytics` package) before using the repository CLI
-wrapper:
+Install the full workspace from the repository root before using the repository CLI wrapper:
 
 ```bash
-pip install sbir-graph
+make install
 ```
 
 ```bash

@@ -127,21 +127,35 @@ uncommitted; `.env.server` belongs only to the deployment checkout.
 
 | Dockerfile | Purpose |
 | --- | --- |
-| `Dockerfile.python-base` | Native Python base with stable shared dependencies |
-| `Dockerfile` | Default ETL, Dagster, and graph application image |
-| `Dockerfile.full` | Optional heavier ML/fiscal image |
+| `Dockerfile` | Locked ETL, Dagster, graph, ML/NLP, fiscal, and browser-automation image |
 
 Build locally:
 
 ```bash
 make docker-build
-docker build -f Dockerfile.full -t sbir-analytics-full:latest .
 ```
 
-The self-hosted server builds images for its container runtime's native
-architecture. It may use the published Python base when a matching manifest
-exists and otherwise builds `Dockerfile.python-base` from source. GitHub Actions
-does not publish application images.
+The image uses the multi-architecture Python 3.11.9 manifest pinned by digest in
+`Dockerfile`, then installs the `server` extra with `uv sync --locked`. The flag
+rejects drift between workspace manifests and `uv.lock` and does not update the
+lock during the build. The committed lock controls the image's application
+environment; the separately pinned uv bootstrap and isolated wheel-build tools
+are outside that contract. Updating the Python base or uv installer is an
+explicit reviewed Dockerfile change.
+
+The server extra includes the locked `en_core_web_sm` 3.8.0 pipeline used by
+`EvidenceExtractor`; heavy-asset runs do not silently lose sentence extraction
+because the model is absent. Introducing the webserver runtime also moved the
+locked Dagster family from 1.13.1 to 1.13.17 and added its webserver transitive
+dependencies. Treat that as a deployment dependency change during release
+classification, not as a Docker-only refactor.
+
+The development ETL runner mounts live source directories individually. It does
+not bind the repository over `/app`, because doing so would hide the Linux
+virtual environment baked into `/app/.venv`. The CI profile likewise runs from
+a locked test-image stage; it does not install packages when the container
+starts.
+GitHub Actions builds and smoke-tests this image but does not publish it.
 
 ## Data and volumes
 

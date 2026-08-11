@@ -51,7 +51,7 @@ import, its job is replaced by an empty **placeholder** job (name suffixed
 | Job (`name`) | Selection | Notes |
 |---|---|---|
 | `cet_full_pipeline_job` | 8 CET keys (classifications, profiles, Neo4j CET nodes/edges) | Ships run config (parquet/json paths, `batch_size: 1000`, create constraints/indexes) |
-| `fiscal_returns_mvp_job` | 9 fiscal keys (NAICS→BEA, inflation, economic/tax) | R/StateIO; needs at least 8 GB RAM |
+| `fiscal_returns_mvp_job` | 9 fiscal keys (NAICS→BEA, inflation, economic/tax) | Exploratory Python/BEA model; memory requirement is not yet measured |
 | `fiscal_returns_full_job` | asset groups `fiscal_data_prep`, `economic_modeling`, `tax_calculation`, `sensitivity_analysis` | Full fiscal run incl. sensitivity sweep |
 | `modernbert_job` | ModernBERT award/patent embeddings + similarity | Requires ML extras |
 | `uspto_ai_extraction_job` | USPTO AI extract + dedup + human sample | — |

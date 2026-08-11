@@ -193,7 +193,7 @@ class TestSBIRFiscalImpactCalculator:
         )
         mock_aggregate.return_value = mock_shocks
 
-        # Mock R adapter compute_impacts
+        # Mock BEA I-O adapter compute_impacts
         calculator.io_adapter.compute_impacts.return_value = sample_impacts.copy()
 
         # Run pipeline

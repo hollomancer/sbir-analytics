@@ -117,3 +117,23 @@ def test_dependency_wait_contract_matches_slim_server_image():
 def test_ci_container_mounts_server_env_contract():
     compose = CI_COMPOSE.read_text()
     assert "./.env.server.example:/app/.env.server.example:ro" in compose
+
+
+def test_dev_runner_live_mounts_do_not_shadow_locked_environment():
+    compose = CI_COMPOSE.read_text()
+    runner = compose.split("  etl-runner:", 1)[1].split("\n  app:", 1)[0]
+
+    assert "./:/app:ro" not in runner
+    assert "./sbir_etl:/app/sbir_etl:ro" in runner
+    assert "./packages/sbir-ml/sbir_ml:/app/packages/sbir-ml/sbir_ml:ro" in runner
+    assert "PYTHONPATH: /app:/app/packages/sbir-analytics" in runner
+
+
+def test_ci_profile_uses_locked_test_image_without_startup_installs():
+    compose = CI_COMPOSE.read_text()
+    app = compose.split("  app:", 1)[1].split("\n  tools:", 1)[0]
+
+    assert "target: test" in app
+    assert "pytest -m fast -q" in app
+    assert "uv pip install" not in app
+    assert "pip install" not in app

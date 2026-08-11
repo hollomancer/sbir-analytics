@@ -10,6 +10,7 @@ SCRIPT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 . "$SCRIPT_DIR/env-file.sh"
 load_env_key SERVER_BACKUP_DIR
 load_env_key SERVER_NEO4J_DIR
+load_env_key NEO4J_DATABASE
 
 BACKUP_DIR="${SERVER_BACKUP_DIR:-./backups}"
 NEO4J_DIR="${SERVER_NEO4J_DIR:-./data/neo4j}"

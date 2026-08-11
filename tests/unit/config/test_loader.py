@@ -567,8 +567,8 @@ class TestGetConfig:
             # Production uses prod-neo4j by default (can be overridden via env vars)
             assert config.neo4j.uri == "bolt://prod-neo4j:7687"
 
-    def test_get_config_respects_explicit_neo4j_uri_env(self):
-        """Test get_config respects explicit NEO4J_URI environment variable."""
+    def test_get_config_respects_direct_neo4j_environment(self):
+        """Direct Neo4j variables populate every connection field in the schema."""
         base_content = {}
 
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -578,11 +578,36 @@ class TestGetConfig:
             with open(base_file, "w") as f:
                 yaml.dump(base_content, f)
 
-            with patch.dict(os.environ, {"NEO4J_URI": "bolt://custom:7687"}):
+            neo4j_environment = {
+                "NEO4J_URI": "bolt://custom:7687",
+                "NEO4J_USER": "custom-user",
+                "NEO4J_PASSWORD": "custom-password",
+                "NEO4J_DATABASE": "analytics",
+            }
+            with patch.dict(os.environ, neo4j_environment, clear=True):
                 reload_config()  # Clear cache
                 config = get_config(environment="development", config_dir=config_dir)
 
             assert config.neo4j.uri == "bolt://custom:7687"
+            assert config.neo4j.username == "custom-user"
+            assert config.neo4j.password == "custom-password"
+            assert config.neo4j.database == "analytics"
+
+    def test_nested_neo4j_environment_overrides_direct_compatibility_values(self):
+        """Nested compatibility values retain their documented precedence."""
+        environment = {
+            "NEO4J_USER": "direct-user",
+            "NEO4J_PASSWORD": "direct-password",
+            "SBIR_ETL__NEO4J__USERNAME": "nested-user",
+            "SBIR_ETL__NEO4J__PASSWORD": "nested-password",
+        }
+
+        with patch.dict(os.environ, environment, clear=True):
+            reload_config()
+            config = get_config(environment="development")
+
+        assert config.neo4j.username == "nested-user"
+        assert config.neo4j.password == "nested-password"
 
     def test_get_config_handles_legacy_loading_neo4j(self):
         """Test get_config handles legacy 'loading.neo4j' structure."""

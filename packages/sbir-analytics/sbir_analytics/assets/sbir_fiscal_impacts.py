@@ -28,7 +28,7 @@ EPISTEMIC_TIER = "exploratory"
 @asset(
     description="SBIR fiscal impacts: tax revenue and jobs by state and industry",
     group_name="fiscal_analysis",
-    compute_kind="r_economic_model",
+    compute_kind="python_bea_io",
 )
 def sbir_fiscal_impacts(
     context: AssetExecutionContext,

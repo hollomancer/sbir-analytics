@@ -295,17 +295,20 @@ jobs:
         id: filter
         with:
           filters: |
-            # Only what can actually break the image build. The Dockerfile
-            # pip-installs pinned versions and never reads uv.lock, so a
-            # lockfile bump cannot affect it — including uv.lock here meant
-            # every dependabot PR paid a ~2m30s build for nothing. The server
-            # Compose/env contract is included because it controls the image's
-            # runtime definition load and smoke-test environment.
+            # The production image is installed from the workspace lockfile,
+            # so Docker, lock, package metadata, and server environment changes
+            # all require a build.
             docker:
               - 'Dockerfile*'
               - '.dockerignore'
+              - 'docker-compose.yml'
               - 'docker-compose.server.yml'
               - '.env.server.example'
+              - 'scripts/docker/**'
+              - 'workspace.server.yaml'
+              - 'pyproject.toml'
+              - 'packages/*/pyproject.toml'
+              - 'uv.lock'
             # Run the real Neo4j contract only when graph persistence or its
             # test harness changes. The full suite still runs after merge.
             integration:
@@ -319,10 +322,7 @@ jobs:
               - 'tests/neo4j_service.py'
               - 'pyproject.toml'
               - 'uv.lock'
-            # uv.lock and pyproject.toml stay out of the docker filter (#507:
-            # the Dockerfile never reads them) but belong here, because
-            # setup_dev.sh runs `uv sync` and a lockfile change can genuinely
-            # break it.
+            # setup_dev.sh also consumes the root lock and project metadata.
             setup:
               - 'scripts/setup_dev.sh'
               - 'uv.lock'
@@ -352,13 +352,14 @@ jobs:
           push: false
           load: true
           tags: sbir-analytics:ci-${{ github.sha }}
-          build-args: WITH_R=false
           cache-from: type=gha,scope=docker-ci
           cache-to: type=gha,mode=max,scope=docker-ci
 
       - name: Smoke test the entrypoint and Dagster definitions
         run: |
           docker run --rm sbir-analytics:ci-${{ github.sha }} dagster --version
+          docker run --rm sbir-analytics:ci-${{ github.sha }} \
+            python -c "import spacy; spacy.load('en_core_web_sm')"
           docker run --rm \
             -e SBIR_ETL__PIPELINE__ENVIRONMENT=test \
             sbir-analytics:ci-${{ github.sha }} \

@@ -148,6 +148,7 @@ class TestBEAIOAdapterImpactComputation:
         assert len(result) == 3
         assert "wage_impact" in result.columns
         assert result["quality_flags"].iloc[0] == "placeholder_computation"
+        assert "confidence" not in result.columns
 
     @patch("sbir_etl.transformers.bea_io_adapter.BEAApiClient")
     @patch("sbir_etl.transformers.bea_io_adapter.fetch_use_table")
@@ -184,6 +185,7 @@ class TestBEAIOAdapterImpactComputation:
         assert "wage_impact" in result.columns
         assert "production_impact" in result.columns
         assert result["model_version"].iloc[0] == "v2.1"
+        assert "confidence" not in result.columns
 
     @patch("sbir_etl.transformers.bea_io_adapter.BEAApiClient")
     def test_ensure_impact_columns(self, mock_client_cls, mock_config, sample_shocks):

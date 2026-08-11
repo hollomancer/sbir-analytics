@@ -89,7 +89,7 @@ def main():
     calculator = SBIRFiscalImpactCalculator()
     print("  ✓ Calculator initialized")
     print("  ✓ NAICS→BEA mapper loaded")
-    print("  ✓ BEA I-O economic models ready")
+    print("  ✓ BEA I-O adapter initialized; inspect quality_flags for fallback use")
     print()
 
     # Step 3: Calculate impacts
@@ -193,10 +193,6 @@ def main():
         print("Quality Flags Distribution:")
         for flag, count in quality_counts.items():
             print(f"  {flag}: {count} records")
-        print()
-
-        avg_confidence = float(impacts["confidence"].mean())
-        print(f"Average Confidence Score: {avg_confidence:.2%}")
         print()
 
     except Exception as e:

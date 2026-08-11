@@ -196,7 +196,7 @@ class TestFiscalPipelineIntegration:
         context = build_asset_context()
 
         # Set up mocks
-        # Mock R adapter availability
+        # Mock BEA I-O adapter availability
         mock_is_available.return_value = True
 
         # Mock geographic resolution
