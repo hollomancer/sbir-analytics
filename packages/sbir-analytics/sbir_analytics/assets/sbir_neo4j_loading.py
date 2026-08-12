@@ -995,7 +995,12 @@ def neo4j_sbir_awards(
     description="Verify SBIR awards were loaded successfully into Neo4j",
 )
 def neo4j_sbir_awards_load_check(neo4j_sbir_awards: dict[str, Any]) -> AssetCheckResult:
-    """Fail if the loader status is not "success", error rate is too high, or no awards loaded."""
+    """Fail if the loader errored, the error rate is too high, or nothing was submitted.
+
+    Note this gates on ``awards_submitted``, not ``awards_loaded``: ``awards_loaded``
+    counts nodes actually created or updated, so an idempotent re-run of unchanged
+    data legitimately writes zero and must still pass.
+    """
     status = neo4j_sbir_awards.get("status")
     errors = neo4j_sbir_awards.get("errors", 0)
     awards_loaded = neo4j_sbir_awards.get("awards_loaded", 0)
