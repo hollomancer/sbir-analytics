@@ -15,14 +15,78 @@ from typing import Any
 import pandas as pd
 from loguru import logger
 
+from sbir_etl.utils.identifiers import normalize_uei
+
 from .utils import (
     AssetCheckResult,
     AssetCheckSeverity,
     Output,
     asset,
     asset_check,
+    neo4j_skip_requested,
     save_dataframe_parquet,
 )
+
+
+_COMPANY_UEI_COLUMNS = ("company_uei", "uei", "recipient_uei")
+
+
+def _find_exact_column(df: pd.DataFrame, candidates: tuple[str, ...]) -> str | None:
+    columns = {str(column).lower(): str(column) for column in df.columns}
+    return next(
+        (columns[candidate.lower()] for candidate in candidates if candidate.lower() in columns),
+        None,
+    )
+
+
+def _attach_company_uei(df_cls: pd.DataFrame, df_awards: pd.DataFrame) -> pd.DataFrame:
+    """Attach an explicit UEI and use it as the aggregator's compatibility company key."""
+    result = df_cls.copy()
+    classification_uei_col = _find_exact_column(result, _COMPANY_UEI_COLUMNS)
+    if classification_uei_col:
+        result["company_uei"] = result[classification_uei_col].map(normalize_uei)
+    else:
+        result["company_uei"] = None
+
+    if not df_awards.empty and "award_id" in result.columns:
+        from sbir_etl.utils.asset_column_helper import AssetColumnHelper
+        from sbir_etl.utils.column_finder import ColumnFinder
+
+        award_id_col = AssetColumnHelper.find_award_id_column(df_awards)
+        uei_col = _find_exact_column(df_awards, _COMPANY_UEI_COLUMNS)
+        company_name_col = ColumnFinder.find_column_by_patterns(
+            df_awards, ["company_name", "company"]
+        )
+
+        if award_id_col and uei_col:
+            join_cols = [award_id_col, uei_col]
+            selected_company_name_col = (
+                company_name_col
+                if company_name_col and "company_name" not in result.columns
+                else None
+            )
+            if selected_company_name_col and selected_company_name_col not in join_cols:
+                join_cols.append(selected_company_name_col)
+
+            df_join = df_awards[join_cols].copy()
+            rename_columns = {
+                award_id_col: "award_id",
+                uei_col: "_enriched_company_uei",
+            }
+            if selected_company_name_col:
+                rename_columns[selected_company_name_col] = "company_name"
+            df_join = df_join.rename(columns=rename_columns)
+            df_join["_enriched_company_uei"] = df_join["_enriched_company_uei"].map(normalize_uei)
+            result = result.merge(df_join, on="award_id", how="left")
+            result["company_uei"] = result["_enriched_company_uei"].combine_first(
+                result["company_uei"]
+            )
+            result = result.drop(columns="_enriched_company_uei")
+
+    # CompanyCETAggregator still groups on company_id. Keep that internal alias tied
+    # strictly to a typed UEI so DUNS or arbitrary legacy IDs cannot reach a UEI match.
+    result["company_id"] = result["company_uei"]
+    return result
 
 
 @asset_check(
@@ -134,8 +198,9 @@ def transformed_cet_company_profiles() -> Output:
     if df_cls.empty:
         raise ValueError("CET award classification input is empty; no companies can be aggregated")
 
-    # Join with enriched awards to get company information if missing
-    if not df_cls.empty and "company_id" not in df_cls.columns:
+    # Join with enriched awards to attach a typed UEI. The classification artifact does
+    # not normally carry company identity, and generic company IDs are not graph keys.
+    if not df_cls.empty:
         try:
             enriched_awards_parquet = Path("data/processed/enriched_sbir_awards.parquet")
             enriched_awards_ndjson = Path("data/processed/enriched_sbir_awards.ndjson")
@@ -150,39 +215,11 @@ def transformed_cet_company_profiles() -> Output:
                 df_awards = pd.DataFrame(recs)
             else:
                 df_awards = pd.DataFrame()
-
-            if not df_awards.empty and "award_id" in df_cls.columns:
-                # Try to find award ID column in enriched awards using helper
-                from sbir_etl.utils.asset_column_helper import AssetColumnHelper
-
-                award_id_col = AssetColumnHelper.find_award_id_column(df_awards)
-
-                if award_id_col:
-                    # Try to find company identifier columns using ColumnFinder
-                    from sbir_etl.utils.column_finder import ColumnFinder
-
-                    company_id_col = ColumnFinder.find_id_column(df_awards, "company")
-                    company_name_col = ColumnFinder.find_column_by_patterns(
-                        df_awards, ["company", "company_name"]
-                    )
-
-                    # Join on award_id
-                    if company_id_col:
-                        join_cols = [award_id_col, company_id_col]
-                        if company_name_col and company_name_col not in join_cols:
-                            join_cols.append(company_name_col)
-                        df_join = df_awards[
-                            [col for col in join_cols if col in df_awards.columns]
-                        ].copy()
-                        df_join = df_join.rename(
-                            columns={award_id_col: "award_id", company_id_col: "company_id"}
-                        )
-                        if company_name_col and company_name_col != "company_id":
-                            df_join = df_join.rename(columns={company_name_col: "company_name"})
-                        df_cls = df_cls.merge(df_join, on="award_id", how="left")
-                        logger.info(
-                            f"Joined classifications with enriched awards to get company info (joined {df_cls['company_id'].notna().sum()} rows)"
-                        )
+            df_cls = _attach_company_uei(df_cls, df_awards)
+            logger.info(
+                "Joined classifications with explicit company UEIs "
+                f"(joined {df_cls['company_uei'].notna().sum()} rows)"
+            )
         except Exception as exc:
             raise RuntimeError(
                 "Failed to join CET classifications with enriched award company data"
@@ -202,6 +239,9 @@ def transformed_cet_company_profiles() -> Output:
 
     if df_comp.empty:
         raise ValueError("CET company aggregation produced no company profiles")
+
+    # Preserve the semantic identity alongside CompanyCETAggregator's compatibility field.
+    df_comp["company_uei"] = df_comp["company_id"]
 
     # Persist company profiles (parquet preferred, NDJSON fallback)
     artifact_path = save_dataframe_parquet(df_comp, output_path)
@@ -269,10 +309,8 @@ DEFAULT_OUTPUT_DIR = Path(os.environ.get("SBIR_ETL__CET__NEO4J_OUTPUT_DIR", "dat
 
 def _get_neo4j_client():
     """Get Neo4j client with error handling."""
-    import os
-
     # Check if Neo4j loading is explicitly skipped
-    skip_neo4j = os.getenv("SKIP_NEO4J_LOADING", "false").lower() in ("true", "1", "yes")
+    skip_neo4j = neo4j_skip_requested()
 
     if Neo4jClient is None or Neo4jConfig is None:
         if skip_neo4j:

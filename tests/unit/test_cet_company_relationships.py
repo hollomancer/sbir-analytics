@@ -210,24 +210,24 @@ def test_asset_neo4j_company_cet_relationships_invokes_loader(monkeypatch, tmp_p
     """
     Validate that the Dagster asset:
     - Reads input rows via helper
-    - Invokes CETLoader.load_company_cet_relationships with those rows and returns serialized metrics
+    - Invokes CETLoader.create_company_cet_relationships with those rows and returns serialized metrics
     """
     # Skip if dagster or sbir_analytics are unavailable in this environment
     pytest.importorskip("dagster")
     pytest.importorskip("sbir_analytics")
     monkeypatch.chdir(tmp_path)
 
-    # Prepare fake input rows (using company_uei as expected by the asset)
+    # Prepare fake input rows using the company profile artifact schema.
     rows = [
         {
-            "company_uei": "UEI-1",
+            "company_uei": "ABCD1234EFGH",
             "dominant_cet": "artificial_intelligence",
             "specialization_score": 0.5,
             "award_count": 10,
             "total_funding": 1000000,
         },
         {
-            "company_uei": "UEI-2",
+            "company_uei": "JKLM5678NPQR",
             "dominant_cet": "quantum_information_science",
             "specialization_score": 0.3,
             "award_count": 5,
@@ -251,11 +251,16 @@ def test_asset_neo4j_company_cet_relationships_invokes_loader(monkeypatch, tmp_p
             self.config = config
             self.rows_received = None
 
-        def load_company_cet_relationships(self, rows_in):
-            """Match the actual method name in CETLoader."""
+        def create_company_cet_relationships(self, rows_in, *, key_property):
+            """Match the production CETLoader API."""
+            assert key_property == "uei"
             self.rows_received = list(rows_in)
-            # Count relationships as the number of rows with dominant CET present
-            count = sum(1 for r in self.rows_received if r.get("dominant_cet"))
+            assert [row["uei"] for row in self.rows_received] == [
+                "ABCD1234EFGH",
+                "JKLM5678NPQR",
+            ]
+            # Count relationships as the production loader does after schema adaptation.
+            count = sum(1 for r in self.rows_received if r.get("cet_dominant_id"))
             return FakeMetrics(count)
 
         def close(self):
@@ -293,12 +298,10 @@ def test_asset_neo4j_company_cet_relationships_invokes_loader(monkeypatch, tmp_p
     assert result["companies"] == len(rows)
     assert result["metrics"]["relationships_created"]["SPECIALIZES_IN"] == expected_rels
 
-    # If the asset created a checks file, validate JSON structure (best-effort)
     checks_path = (
         tmp_path / "data" / "loaded" / "neo4j" / "neo4j_company_cet_relationships.checks.json"
     )
-    if checks_path.exists():
-        with checks_path.open("r", encoding="utf-8") as fh:
-            payload = json.load(fh)
-        assert payload.get("status") == "success"
-        assert payload.get("companies") == len(rows)
+    with checks_path.open("r", encoding="utf-8") as fh:
+        payload = json.load(fh)
+    assert payload.get("status") == "success"
+    assert payload.get("companies") == len(rows)

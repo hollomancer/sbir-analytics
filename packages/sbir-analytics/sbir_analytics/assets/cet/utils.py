@@ -9,10 +9,25 @@ This module provides:
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 from typing import Any
 
 import pandas as pd
+
+
+# Values of SKIP_NEO4J_LOADING that request a skip. Repo-wide convention, shared by
+# every Neo4j client factory (company_categorization.py, transition/utils.py,
+# uspto/utils.py, sec_edgar_enrichment.py, sbir_neo4j_loading.py). The skip gate and
+# the client factory must read the same set: if they disagree, a value one accepts
+# and the other rejects makes the asset demand a connection it has already decided
+# not to open.
+SKIP_NEO4J_VALUES = frozenset({"true", "1", "yes"})
+
+
+def neo4j_skip_requested() -> bool:
+    """Return True when SKIP_NEO4J_LOADING requests skipping Neo4j work."""
+    return os.getenv("SKIP_NEO4J_LOADING", "false").lower() in SKIP_NEO4J_VALUES
 
 
 # ============================================================================
@@ -157,26 +172,48 @@ __all__ = ["save_dataframe_parquet"]
 
 
 def _read_parquet_or_ndjson(
-    parquet_path: Path, json_path: Path, expected_columns: tuple
+    parquet_path: Path,
+    json_path: Path,
+    expected_columns: tuple,
+    *,
+    allow_empty: bool = False,
 ) -> list[dict]:
-    """Read data from parquet or fallback to NDJSON."""
-    try:
-        if parquet_path.exists():
-            df = pd.read_parquet(parquet_path)
-            return df.to_dict(orient="records")
-        elif json_path.exists():
-            records = []
-            with json_path.open("r", encoding="utf-8") as fh:
-                for line in fh:
-                    if line.strip():
-                        try:
-                            records.append(json.loads(line))
-                        except Exception:
-                            continue
-            return records
-    except Exception:
-        pass
-    return []
+    """Read and validate a parquet or NDJSON artifact without hiding malformed input."""
+    if parquet_path.exists():
+        df = pd.read_parquet(parquet_path)
+        missing = set(expected_columns) - set(df.columns)
+        if missing:
+            names = ", ".join(sorted(missing))
+            raise ValueError(f"{parquet_path} is missing required columns: {names}")
+        records = df.to_dict(orient="records")
+        if not records and not allow_empty:
+            raise ValueError(f"{parquet_path} contains no records")
+        return records
+
+    if json_path.exists():
+        records = []
+        with json_path.open("r", encoding="utf-8") as fh:
+            for line_number, line in enumerate(fh, start=1):
+                if not line.strip():
+                    continue
+                try:
+                    record = json.loads(line)
+                except json.JSONDecodeError as exc:
+                    raise ValueError(f"Invalid JSON in {json_path} at line {line_number}") from exc
+                if not isinstance(record, dict):
+                    raise ValueError(f"Expected an object in {json_path} at line {line_number}")
+                missing = set(expected_columns) - set(record)
+                if missing:
+                    names = ", ".join(sorted(missing))
+                    raise ValueError(
+                        f"{json_path} line {line_number} is missing required fields: {names}"
+                    )
+                records.append(record)
+        if not records and not allow_empty:
+            raise ValueError(f"{json_path} contains no records")
+        return records
+
+    raise FileNotFoundError(f"No input artifact found at {parquet_path} or {json_path}")
 
 
 def _serialize_metrics(metrics: Any) -> dict[str, Any]:
