@@ -12,6 +12,8 @@ on:
   pull_request:
   push:
     branches: [main]
+  schedule:
+    - cron: "17 8 * * 6"
   workflow_dispatch:
 
 concurrency:
@@ -170,6 +172,23 @@ jobs:
             --splits 4 --group ${{ matrix.shard }} \
             --splitting-algorithm least_duration \
             --durations-path tests/.test_durations
+
+  test-e2e:
+    name: Hermetic E2E Tests
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Setup Python and UV
+        uses: ./.github/actions/setup-python-uv
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          install-dev-deps: "true"
+
+      - name: Run hermetic E2E tests
+        run: uv run pytest tests/e2e/ -m "not requires_api and not real_data"
 
   test-full:
     name: Full Tests

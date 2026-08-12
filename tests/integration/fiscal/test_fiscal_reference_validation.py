@@ -19,6 +19,9 @@ from sbir_etl.transformers.fiscal import (
 )
 
 
+pytestmark = pytest.mark.integration
+
+
 class TestBoundaryConditions:
     """Test boundary conditions and edge cases."""
 
@@ -167,7 +170,7 @@ class TestReasonablenessChecks:
         # Components should sum to production impact
         component_total = result.iloc[0]["component_total"]
         assert component_total == Decimal("100000")
-        assert result.iloc[0]["component_valid"] is True
+        assert bool(result.iloc[0]["component_valid"])
 
 
 class TestNumericalStability:

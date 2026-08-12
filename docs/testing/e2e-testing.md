@@ -89,9 +89,10 @@ uv run pytest tests/e2e/ --collect-only -q
 
 ## GitHub Actions coverage
 
-`.github/workflows/ci.yml` is the only workflow. Pull requests run fast unit-test shards. Pushes to
-`main` and manual workflow runs execute the whole `tests/` tree with Neo4j, subject to the explicit
-deselections documented in the workflow.
+`.github/workflows/ci.yml` is the only workflow. Pull requests run the hermetic E2E selection in
+addition to fast unit-test shards. Pushes to `main`, weekly scheduled runs, and manual workflow runs
+execute the whole `tests/` tree with Neo4j, subject to the explicit deselections documented in the
+workflow.
 
 CI does not currently invoke the Docker E2E Make targets. GitHub Actions is test-only and never
 runs extraction, enrichment, reporting, or live Dagster materializations.

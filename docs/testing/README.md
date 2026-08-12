@@ -63,8 +63,9 @@ troubleshooting.
 
 `.github/workflows/ci.yml` is the only workflow:
 
-- Pull requests run quality, security, and four fast unit-test shards.
-- Pushes to `main` and manual runs execute the full suite with Neo4j and coverage.
+- Pull requests run quality, security, four fast unit-test shards, and hermetic E2E tests.
+- Pushes to `main`, manual runs, and the weekly schedule execute the full suite with Neo4j and
+  coverage.
 - Docker and setup-script checks are conditional on relevant file changes.
 - GitHub Actions never performs extraction, enrichment, reporting, or live Dagster materialization.
 

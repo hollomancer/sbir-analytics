@@ -8,8 +8,8 @@
 
 **Status**: Active
 
-`.github/workflows/ci.yml` is the repository's only GitHub Actions workflow. It is event-driven;
-there is no nightly or weekly workflow in this repository.
+`.github/workflows/ci.yml` is the repository's only GitHub Actions workflow. In addition to pull
+requests and pushes to `main`, it runs a weekly regression suite at 08:17 UTC each Saturday.
 
 ## Pull requests
 
@@ -19,6 +19,7 @@ Every pull request runs:
   and actionlint.
 - Bandit and detect-secrets.
 - Four duration-balanced shards of `tests/unit/`, excluding tests marked `slow`.
+- Hermetic `tests/e2e/` cases, excluding external-API and real-data tests.
 - A Docker build and entrypoint smoke test only when Docker build inputs change.
 - The developer setup-script check only when `scripts/setup_dev.sh`, `uv.lock`, or
   `pyproject.toml` changes.
@@ -43,16 +44,16 @@ uv run pytest tests/unit/ -m "not slow" \
 `pytest-split` assigns tests using recorded duration; xdist may still parallelize within a group.
 Do not use the retired `pytest-shard`, `--shard-id`, or zero-based shard numbering.
 
-## Pushes to `main` and manual runs
+## Full and scheduled runs
 
-Pushes to `main` and `workflow_dispatch` run the full `tests/` tree with a Neo4j service and
-branch coverage. The combined first-party coverage report must remain at or above 70%. The workflow
-excludes `requires_api` tests and documents a small number of explicit test deselections that
-represent known pre-existing failures. Read the workflow before changing those exceptions; delete
-a deselection when its underlying test is repaired.
+Pushes to `main`, weekly scheduled runs, and `workflow_dispatch` run the full discoverable `tests/`
+tree with a Neo4j service and branch coverage. The combined first-party coverage report must remain
+at or above 70%. The workflow excludes `requires_api` tests. Files under `tests/validation/` are
+operator programs excluded from pytest discovery; executable reference tests live under
+`tests/integration/` so the full suite collects them.
 
 Fast PR shards do not replace the full post-merge gate. This split keeps pull-request feedback short
-while still exercising integration, functional, E2E, golden, slow, and validation tests on `main`.
+while still exercising integration, functional, E2E, golden, and slow tests after merge and weekly.
 
 ## Local selection
 
@@ -78,5 +79,5 @@ through Dagster or cron. They are operational data-plane work, not GitHub Action
 inspecting or running them, read the
 [self-hosted server runbook](../deployment/self-hosted-server.md#live-instance-on-the-server-host).
 
-If a periodic regression suite is added later, document its trigger and prerequisites here only
-after the workflow or server schedule exists. Do not describe proposed schedules as current CI.
+The GitHub Actions schedule runs tests only. It does not access persistent server data or trigger
+Dagster materializations.

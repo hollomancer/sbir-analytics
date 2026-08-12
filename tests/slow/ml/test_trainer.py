@@ -11,7 +11,6 @@ Tests cover:
 - Training report generation
 """
 
-import os
 from datetime import datetime
 from unittest.mock import MagicMock, patch
 
@@ -19,11 +18,7 @@ import numpy as np
 import pytest
 
 
-RUN_SLOW = os.getenv("PYTEST_ALLOW_SLOW", "0").lower() in {"1", "true", "yes"}
-pytestmark = [
-    pytest.mark.slow,
-    pytest.mark.skipif(not RUN_SLOW, reason="Slow test suite; set PYTEST_ALLOW_SLOW=1 to run"),
-]
+pytestmark = pytest.mark.slow
 
 from sbir_ml.ml.models.trainer import CETModelTrainer
 from sbir_etl.models.cet_models import TrainingDataset, TrainingExample
