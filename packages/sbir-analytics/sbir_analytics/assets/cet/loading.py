@@ -11,7 +11,6 @@ This module contains:
 from __future__ import annotations
 
 import json
-import os
 from pathlib import Path
 from typing import Any
 
@@ -25,7 +24,13 @@ from .company import (
     DEFAULT_TAXONOMY_PARQUET,
     _get_neo4j_client,
 )
-from .utils import AssetIn, _read_parquet_or_ndjson, _serialize_metrics, asset
+from .utils import (
+    AssetIn,
+    _read_parquet_or_ndjson,
+    _serialize_metrics,
+    asset,
+    neo4j_skip_requested,
+)
 
 
 # Neo4j loader imports
@@ -37,7 +42,12 @@ except Exception:
 
 
 def _skip_requested(context, operation: str) -> bool:
-    if os.getenv("SKIP_NEO4J_LOADING", "false").lower() not in {"true", "1", "yes"}:
+    """Return True when SKIP_NEO4J_LOADING requests skipping this load.
+
+    Delegates to the shared predicate so this gate cannot drift from the client
+    factory in ``company.py``; see ``SKIP_NEO4J_VALUES`` for the accepted values.
+    """
+    if not neo4j_skip_requested():
         return False
     context.log.warning(f"Skipping {operation}: SKIP_NEO4J_LOADING is enabled")
     return True

@@ -122,6 +122,35 @@ def test_explicit_skip_is_the_only_successful_skip(mock_client, tmp_path):
     mock_client.assert_not_called()
 
 
+@pytest.mark.parametrize("value", ["true", "TRUE", "1", "yes"])
+def test_skip_gate_and_client_factory_accept_the_same_values(value, tmp_path):
+    """The skip gate must never disagree with the client factory.
+
+    If one accepted a value the other rejected, the asset would decline to skip and
+    then demand a connection the factory had already given up on.
+    """
+    context = _taxonomy_context(tmp_path / "missing.parquet", tmp_path / "missing.json")
+
+    with patch.dict("os.environ", {"SKIP_NEO4J_LOADING": value}):
+        assert loading._skip_requested(context, "CETArea loading") is True
+        with patch.object(company, "Neo4jClient", None), patch.object(company, "Neo4jConfig", None):
+            assert company._get_neo4j_client() is None
+
+
+@pytest.mark.parametrize("value", ["false", "no", "0", ""])
+def test_skip_gate_and_client_factory_reject_the_same_values(value, tmp_path):
+    context = _taxonomy_context(tmp_path / "missing.parquet", tmp_path / "missing.json")
+
+    with patch.dict("os.environ", {"SKIP_NEO4J_LOADING": value}):
+        assert loading._skip_requested(context, "CETArea loading") is False
+        with (
+            patch.object(company, "Neo4jClient", None),
+            patch.object(company, "Neo4jConfig", None),
+            pytest.raises(RuntimeError, match="not skipped"),
+        ):
+            company._get_neo4j_client()
+
+
 @patch.dict("os.environ", {"SKIP_NEO4J_LOADING": "false"})
 @patch("sbir_analytics.assets.cet.loading.CETLoader", None)
 def test_missing_loader_fails_materialization(tmp_path):

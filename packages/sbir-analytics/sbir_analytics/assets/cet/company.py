@@ -21,6 +21,7 @@ from .utils import (
     Output,
     asset,
     asset_check,
+    neo4j_skip_requested,
     save_dataframe_parquet,
 )
 
@@ -269,10 +270,8 @@ DEFAULT_OUTPUT_DIR = Path(os.environ.get("SBIR_ETL__CET__NEO4J_OUTPUT_DIR", "dat
 
 def _get_neo4j_client():
     """Get Neo4j client with error handling."""
-    import os
-
     # Check if Neo4j loading is explicitly skipped
-    skip_neo4j = os.getenv("SKIP_NEO4J_LOADING", "false").lower() in ("true", "1", "yes")
+    skip_neo4j = neo4j_skip_requested()
 
     if Neo4jClient is None or Neo4jConfig is None:
         if skip_neo4j:

@@ -9,10 +9,25 @@ This module provides:
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 from typing import Any
 
 import pandas as pd
+
+
+# Values of SKIP_NEO4J_LOADING that request a skip. Repo-wide convention, shared by
+# every Neo4j client factory (company_categorization.py, transition/utils.py,
+# uspto/utils.py, sec_edgar_enrichment.py, sbir_neo4j_loading.py). The skip gate and
+# the client factory must read the same set: if they disagree, a value one accepts
+# and the other rejects makes the asset demand a connection it has already decided
+# not to open.
+SKIP_NEO4J_VALUES = frozenset({"true", "1", "yes"})
+
+
+def neo4j_skip_requested() -> bool:
+    """Return True when SKIP_NEO4J_LOADING requests skipping Neo4j work."""
+    return os.getenv("SKIP_NEO4J_LOADING", "false").lower() in SKIP_NEO4J_VALUES
 
 
 # ============================================================================
