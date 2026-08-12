@@ -7,6 +7,8 @@ Tests each major pipeline function end-to-end:
 - ModernBert embeddings
 """
 
+import pytest
+
 
 class TestTransitionPipeline:
     """Functional tests for transition detection pipeline."""
