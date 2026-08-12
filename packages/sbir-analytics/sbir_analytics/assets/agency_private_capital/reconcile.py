@@ -21,12 +21,6 @@ from .baselines import BaselineKind, PublishedBaseline, PublishedBaselineRegistr
 # narrative table rather than a heuristic so the report reads as a
 # deliberate human-curated statement.
 _ATTRIBUTION: dict[tuple[str, str], str] = {
-    ("phase_i_to_ii_graduation", "nvca_seed_to_series_a"): (
-        "SBIR Phase I -> Phase II is gated on technical merit and a separate "
-        "Phase II proposal; NVCA seed -> Series A is gated on lawyer access, "
-        "metric traction, and lead-investor narrative. The two selection "
-        "filters differ structurally; magnitudes are descriptive, not causal."
-    ),
     ("five_year_survival_proxy", "bls_bed_5yr_survival"): (
         "SBIR Phase II awardees pre-selected on technical merit; BLS BED "
         "covers all new establishments including retail / service. The "
@@ -54,10 +48,6 @@ _ATTRIBUTION: dict[tuple[str, str], str] = {
 
 # Per-pair selection-bias caveat. Required by Phase 1 Requirement 4.
 _CAVEAT: dict[tuple[str, str], str] = {
-    ("phase_i_to_ii_graduation", "nvca_seed_to_series_a"): (
-        "SBIR awardees pre-selected on technical merit and proposal quality; "
-        "VC-financed firms self-select on lawyer access and growth narrative."
-    ),
     ("five_year_survival_proxy", "bls_bed_5yr_survival"): (
         "The survival proxy uses federal-dataset presence; BLS BED uses "
         "establishment payroll continuation. Definition gap > sampling gap."

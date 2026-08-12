@@ -64,16 +64,16 @@ def test_record_shape_for_rate_baseline() -> None:
     reg = PublishedBaselineRegistry.load(REPO_REGISTRY)
     records = ReconciliationNarrative(reg).reconcile(_outcomes_fixture())
     by_id = {r.baseline_id: r for r in records}
-    nvca = by_id["nvca_seed_to_series_a"]
-    assert isinstance(nvca, ReconciliationRecord)
-    assert nvca.cohort_metric == "phase_i_to_ii_graduation"
-    assert nvca.baseline_kind == "rate"
-    assert nvca.baseline_point_estimate == pytest.approx(0.33)
-    assert nvca.cohort_rate == pytest.approx(0.25)
-    assert nvca.delta == pytest.approx(0.25 - 0.33)
-    assert nvca.attribution
-    assert nvca.caveat
-    assert nvca.cohort_available is True
+    bls = by_id["bls_bed_5yr_survival"]
+    assert isinstance(bls, ReconciliationRecord)
+    assert bls.cohort_metric == "five_year_survival_proxy"
+    assert bls.baseline_kind == "rate"
+    assert bls.baseline_point_estimate == pytest.approx(0.50)
+    assert bls.cohort_rate == pytest.approx(0.60)
+    assert bls.delta == pytest.approx(0.10)
+    assert bls.attribution
+    assert bls.caveat
+    assert bls.cohort_available is True
 
 
 def test_record_shape_for_effect_size_baseline() -> None:
@@ -118,7 +118,7 @@ def test_markdown_agency_code_parameterizes_header_and_rows() -> None:
     records = narrative.reconcile(_outcomes_fixture(), headline_vintage="2015-2019")
     md = narrative.to_markdown(records, headline_vintage="2015-2019", agency_code="NIH")
     assert "# NIH SBIR vs. Published Private-Capital" in md
-    assert "NIH is 25.0% on vintage 2015-2019 Phase I" in md
+    assert "NIH is 60.0% on vintage 2015-2019 Phase II" in md
     assert "NSF" not in md  # nothing hardcoded leaks through
 
 
@@ -129,8 +129,8 @@ def test_markdown_contains_gate_statement_pattern() -> None:
     md = narrative.to_markdown(records, headline_vintage="2015-2019")
     assert "# NSF SBIR vs. Published Private-Capital" in md
     assert "Gate statements" in md
-    # Required gate-statement template per spec: NVCA reports X%, NSF is Y%.
-    assert "NVCA seed -> Series A graduation rate reports 33%" in md
-    assert "NSF is 25.0% on vintage 2015-2019 Phase I" in md
+    # Required gate-statement template per spec: baseline reports X%, NSF is Y%.
+    assert "BLS Business Employment Dynamics 5-year survival reports 50%" in md
+    assert "NSF is 60.0% on vintage 2015-2019 Phase II" in md
     assert "Difference is attributable to" in md
     assert "Caveat:" in md

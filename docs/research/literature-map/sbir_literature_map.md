@@ -91,7 +91,7 @@ The **largest gap.** No SBIR-specific core work surfaced; the area is carried en
 adjacent baselines — most importantly **"Venture Capital's Role in Financing Innovation"**
 (Journal of Economic Perspectives 2020, 486 cites) and **"Bridging the equity gap for young
 innovative companies"** (Research Policy 2020, 86 cites). These are the published baselines your
-F-section explicitly benchmarks against (NVCA/Kortum-Lerner tradition [L24][L25]). The follow-on-
+F-section explicitly benchmarks against (the Kortum-Lerner tradition [L24]). The follow-on-
 funding, Form-D, and M&A-exit questions in your inventory are, in effect, **open research
 territory** — the data-linkage approach in your pipeline would be novel relative to what is
 published.

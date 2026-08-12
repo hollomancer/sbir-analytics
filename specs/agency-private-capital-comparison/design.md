@@ -26,7 +26,7 @@ SBIR.gov awards → filter by agency_code (default NSF: ALN ∈ {47.041, 47.084}
                                               - M&A exit rate (#286 join)
                                               - patent rate (Phase 2 only)
                                                        ↓
-                                          present alongside cited VC baselines
+                                          present alongside cited published baselines
                                                        ↓
                                           reconciliation narrative
 ```
@@ -42,12 +42,12 @@ SBIR.gov awards → filter by agency_code (default NSF: ALN ∈ {47.041, 47.084}
    rates with Wilson confidence intervals and sample sizes. Five-year survival
    denominator is unique companies (not award rows). M&A join is UEI/DUNS-
    first with a normalized-name fallback.
-3. **`PublishedBaselineRegistry`** — Hard-coded table of cited VC baselines
-   with source citation + as-of date. These baselines are NVCA / VC-industry
-   data and are agency-agnostic. Examples:
-   - NVCA 2023 Yearbook: seed→A ~33% (5-yr cohort)
+3. **`PublishedBaselineRegistry`** — Hard-coded table of cited private-capital
+   and small-business baselines with source citation + as-of date. These
+   baselines are agency-agnostic. Examples:
    - BLS BED: ~50% 5-yr survival, all small firms
    - Lerner [L10]: SBIR awardees grew 27% faster over 10 yrs (effect size)
+   - Howell [L11]: early-stage SBIR roughly doubles subsequent-VC probability
 4. **`ReconciliationNarrative`** — For each (agency metric, baseline) pair,
    emit a structured comparison record: delta, plausible-cause attribution,
    selection-bias caveat. Output as JSON + markdown, mirroring the

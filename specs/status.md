@@ -82,9 +82,6 @@ bypassing lifecycle review; the status and rationale still require human judgmen
 - **`naics-enricher-consolidation` — Maintenance.** Consolidation is largely
   complete. Remaining obsolete audit/golden-file tasks should not be revived as
   written.
-- **`nvca-yearbook-benchmarks` — Gated backlog.** The baseline registry exists,
-  but all remaining work is blocked on verified NVCA Yearbook source access and
-  an implementation-priority decision.
 - **`ot-consortium-subaward-attribution` — Gated backlog.** Valid A2 research
   question, but the T0 coverage probe must run before implementation.
 - **`patent-cost-spillover` — Gated backlog.** M2 analytical layer remains

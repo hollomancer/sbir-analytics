@@ -46,8 +46,8 @@ excluded.
 
 **As an entrepreneurial finance researcher,** I want SBIR awardees matched to their
 SEC Form D private-placement filings, so that I can compute private-to-SBIR leverage
-ratios by agency, vintage, and firm size and benchmark them against the NVCA Yearbook
-cohort.
+ratios by agency, vintage, and firm size and benchmark them against comparable
+private-placement cohorts.
 
 **As a defense industrial base analyst,** I want Form D matches broken out by awarding
 agency and CET area, so that I can identify which technology domains attract the highest

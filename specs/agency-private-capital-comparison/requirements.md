@@ -16,7 +16,7 @@
 
 ## Done when
 
-> **Phase 1:** A policy analyst can state: "NVCA reports seed→A graduation at ~30%. NSF Phase I→II graduation is [X]% on cohort [vintage range, n=Y]. The difference is attributable to [Z]." Produces the exact reconciliation pattern of `leverage-ratio-analysis`.
+> **Phase 1:** A policy analyst can state: "BLS reports 5-year establishment survival at ~50%. NSF Phase II 5-year survival proxy is [X]% on cohort [vintage range, n=Y]. The difference is attributable to [Z]." Produces the exact reconciliation pattern of `leverage-ratio-analysis`.
 >
 > **Phase 2:** An entrepreneurial finance researcher can state: "On vintage [X], NAICS-2 [Y], state [Z]: NSF Phase II awardees transitioned to federal contract at [A]% within 5 years; matched non-SBIR Form D issuers transitioned at [B]%. Selection-bias and matching caveats: [see threats-to-validity section]."
 
@@ -25,7 +25,7 @@
 ## User Stories
 
 **As a policy analyst benchmarking NSF's SBIR program against published venture-capital performance metrics,**
-I want Phase I→II graduation rates, 5-year survival proxies, and M&A exit rates computed for the NSF cohort and placed alongside NVCA/Howell/Lerner baselines with a reconciliation narrative, so that I can report how NSF SBIR performs relative to seed-stage private capital in a form suitable for OSTP or congressional briefings.
+I want Phase I→II graduation rates, 5-year survival proxies, and M&A exit rates computed for the NSF cohort and placed alongside BLS/Howell/Lerner baselines with a reconciliation narrative, so that I can report how NSF SBIR performs relative to seed-stage private capital in a form suitable for OSTP or congressional briefings.
 
 **As an entrepreneurial finance researcher studying whether SBIR awardees outperform comparable private-capital-financed firms,**
 I want a covariate-matched control cohort of non-SBIR Form D issuers with outcome deltas computed against the NSF SBIR cohort, so that I can assess whether the SBIR treatment effect on commercialization holds after controlling for vintage, NAICS sector, and firm geography.
@@ -116,11 +116,11 @@ branch rebases on top.
      normalized company name when UEI/DUNS are absent.
    - Patent rate — **deferred to Phase 2**. The asset does not accept
      PATLINK as an input in Phase 1; adding PATLINK is out of scope here.
-3. **SHALL** present results alongside cited public VC baselines:
-   - Seed → Series A graduation (NVCA / CB Insights public summaries)
+3. **SHALL** present results alongside cited public private-capital and
+   small-business baselines:
    - 5-year startup survival (BLS BED, public)
-   - Exit rate at 5 / 10 years (NVCA, public)
    - Lerner [L10] and Howell [L11] published effect sizes
+   - ITIF [L21] qualitative framing
 4. **SHALL** produce a reconciliation narrative explaining each delta between
    the cohort metric and the cited VC baseline, including selection-bias
    caveats ("NSF awardees pre-selected on technical merit and proposal
@@ -134,8 +134,9 @@ branch rebases on top.
 ### Phase 1 Gate Condition
 
 Can produce a single artifact (notebook or markdown report) that states:
-"NVCA reports seed→A graduation at ~30%. NSF Phase I→II graduation is [X]%
-on cohort [vintage range, n=Y]. The difference is attributable to [Z]."
+"BLS reports 5-year establishment survival at ~50%. NSF Phase II 5-year
+survival proxy is [X]% on cohort [vintage range, n=Y]. The difference is
+attributable to [Z]."
 Reproduces the exact reconciliation pattern of `follow-on-multiplier-analysis`.
 
 ## Phase 2 Requirements

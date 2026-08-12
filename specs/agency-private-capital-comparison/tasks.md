@@ -31,12 +31,12 @@ Phase 2 starts after PR #286 merges to main and this branch rebases.
   with name fallback, company-level survival denominator)
 - [x] 1.3 Add `PublishedBaselineRegistry` — hard-coded YAML at
   `config/agency_private_capital/published_baselines.yaml` with source citations + as-of
-  dates. Initial entries: NVCA seed→A, BLS BED 5-yr survival, Lerner [L10]
-  effect size, Howell [L11] follow-on-VC effect, ITIF [L21] framing claims.
-  These baselines are agency-agnostic VC-industry data; one file for all
+  dates. Initial entries: BLS BED 5-yr survival, Lerner [L10] effect size,
+  Howell [L11] follow-on-VC effect, ITIF [L21] framing claims.
+  These baselines are agency-agnostic; one file for all
   agencies.
   — implemented: `packages/sbir-analytics/sbir_analytics/assets/agency_private_capital/baselines.py`
-  + `config/agency_private_capital/published_baselines.yaml` (all 5 cited entries)
+  + `config/agency_private_capital/published_baselines.yaml` (all 4 cited entries)
 - [x] 1.4 Add `ReconciliationNarrative` writer. For each (agency metric,
   baseline) pair, emit JSON record + markdown line. Mirror the structure
   of the existing follow-on-multiplier reconciler.
@@ -60,9 +60,9 @@ Phase 2 starts after PR #286 merges to main and this branch rebases.
   — implemented: `tests/integration/agency_private_capital/test_phase1_pipeline.py`
   (vintage-2015 NSF fixture; artifact-production + reproducibility tests)
 - [ ] 1.8 **Phase 1 gate:** produce the report, hand to user for review.
-  Deliverable language: "NVCA reports seed→A graduation at ~33%. NSF Phase
-  I→II graduation is [X]% on vintage 2015–2020 (n=Y). Difference is
-  attributable to [Z]." Stop here for sign-off before Phase 2.
+  Deliverable language: "BLS reports 5-year establishment survival at ~50%.
+  NSF Phase II 5-year survival proxy is [X]% on vintage 2015–2020 (n=Y).
+  Difference is attributable to [Z]." Stop here for sign-off before Phase 2.
   Note: patent_rate is deferred to Phase 2 (the configured funding agency,
   with NSF as the initial implementation target, does not wire PATLINK in
   Phase 1).
