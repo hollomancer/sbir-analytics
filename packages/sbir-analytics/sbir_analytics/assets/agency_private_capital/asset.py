@@ -10,6 +10,9 @@ events, then emits three artifacts under
 - ``agency_vs_published_baselines.md`` — human-readable reconciliation report.
 - ``agency_baseline_comparison.json`` — structured comparison records.
 
+The graduation horizon is explicit run configuration and is recorded in the
+JSON artifact and Dagster metadata. Outputs remain exploratory and non-citable.
+
 Per project convention: ``from __future__ import annotations`` is NOT used
 here because Dagster's runtime context type-validation requires concrete
 type names.
@@ -21,6 +24,7 @@ from typing import Any
 
 import pandas as pd
 from dagster import AssetExecutionContext, Config, MetadataValue, Output, asset
+from sbir_etl.identity import CompanyNameProfile, normalize_company_name
 
 from .baselines import DEFAULT_REGISTRY_PATH, PublishedBaselineRegistry
 from .cohort import AgencyCohortBuilder
@@ -38,9 +42,13 @@ class AgencyPrivateCapitalConfig(Config):
     Attributes:
         agency_code: The funding agency to filter to. Default ``"NSF"``
             preserves existing behavior.
+        graduation_horizon_years: Maximum inclusive years from Phase I to a
+            qualifying Phase II. ``None`` restores the historical unbounded
+            estimand. Default 5 is the current Phase 1 review setting.
     """
 
     agency_code: str = "NSF"
+    graduation_horizon_years: int | None = 5
 
 
 @asset(
@@ -85,6 +93,7 @@ def agency_private_capital_baseline_comparison(
         context.log.info("Loaded M&A event company set", extra={"n": len(ma_event_companies)})
 
     calc = OutcomeMetricsCalculator(
+        graduation_horizon_years=config.graduation_horizon_years,
         transition_scores=(
             transformed_transition_scores
             if transformed_transition_scores is not None and not transformed_transition_scores.empty
@@ -103,9 +112,29 @@ def agency_private_capital_baseline_comparison(
         headline_vintage=DEFAULT_HEADLINE_VINTAGE,
         agency_code=config.agency_code,
     )
+    horizon_label = (
+        "unbounded"
+        if config.graduation_horizon_years is None
+        else f"{config.graduation_horizon_years} years"
+    )
+    md_text = (
+        "> **Exploratory / non-citable.** This comparison is a review artifact, not a "
+        "validated program-performance finding.\n>\n"
+        f"> **Phase I -> Phase II graduation horizon:** {horizon_label}.\n\n"
+        f"{md_text}"
+    )
     md_path.write_text(md_text, encoding="utf-8")
+    comparison_records = []
+    for record in records:
+        payload = record.to_json()
+        payload["analysis_parameters"] = {
+            "graduation_horizon_years": config.graduation_horizon_years,
+            "headline_vintage": DEFAULT_HEADLINE_VINTAGE,
+        }
+        payload["citable"] = False
+        comparison_records.append(payload)
     json_path.write_text(
-        json.dumps([r.to_json() for r in records], indent=2, default=str),
+        json.dumps(comparison_records, indent=2, default=str),
         encoding="utf-8",
     )
 
@@ -117,8 +146,18 @@ def agency_private_capital_baseline_comparison(
         "cohort_rows": int(len(cohort)),
         "stratum_counts": MetadataValue.json(counts.to_dict("records")),
         "headline_vintage": DEFAULT_HEADLINE_VINTAGE,
+        "graduation_horizon_years": config.graduation_horizon_years,
         "baseline_count": int(len(registry)),
         "ma_events_loaded": ma_event_companies is not None,
+        "epistemic_tier": "exploratory",
+        "citable": False,
+        "identity_coverage": MetadataValue.json(
+            OutcomeMetricsCalculator.identity_coverage(
+                cohort,
+                vintage_bucket=DEFAULT_HEADLINE_VINTAGE,
+                phase_label="I",
+            )
+        ),
     }
     return Output(str(md_path), metadata=metadata)
 
@@ -126,9 +165,8 @@ def agency_private_capital_baseline_comparison(
 def _load_ma_event_companies(path: Path) -> set[str] | None:
     """Read PR #286's M&A events JSONL and return a set of company name keys.
 
-    Each event has a ``company_name`` field; we normalize to ``name:<lower>``
-    so it can join against the cohort's ``_name_key`` (the name-based key
-    computed on every cohort row regardless of whether UEI/DUNS are present).
+    Each event has a ``company_name`` field; we normalize it with the same
+    versioned organization-key policy used by the cohort alias graph.
     Returns ``None`` if the file is missing so the calculator can render the
     metric as unavailable.
     """
@@ -147,5 +185,10 @@ def _load_ma_event_companies(path: Path) -> set[str] | None:
                 continue
             name = event.get("company_name")
             if name and str(name).strip():
-                keys.add(f"name:{str(name).strip().lower()}")
+                normalized = normalize_company_name(
+                    name,
+                    profile=CompanyNameProfile.ORGANIZATION_KEY_V1,
+                )
+                if normalized:
+                    keys.add(f"name:{normalized.lower()}")
     return keys

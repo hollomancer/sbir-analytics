@@ -1,110 +1,102 @@
-# Requirements: SBIR M&A Match Rate by Fiscal Year
+# Requirements: SBIR M&A Signal Counts by Fiscal Year
 
-**Target epistemic tier:** `pipelines`
+**Target epistemic tier:** `exploratory`
 
-> **Status:** Gated backlog — analysis-only spec, not yet implemented. Start
-> only when FY match-rate reporting is requested.
-> Supports inventory question **F2** (M&A exit rate by vintage) in [docs/research-questions.md](../../docs/research-questions.md).
-
-**Research question anchor:** F2 — SBIR-awardee M&A match rate by fiscal year
-**Answers for:** entrepreneurial finance researchers, policy analysts
-**Complexity tier:** Descriptive (Tier 1)
-
----
-
-## Done when
-
-> An entrepreneurial finance researcher can state: "The FY2015–2024 aggregate high+medium M&A match rate for SBIR awardees is [X]% (95% Wilson CI: [Y–Z]%), based on [N] distinct firms. The FY-by-FY breakdown shows [trend]. Item-2.01-only sub-rate is [P]% (reported as methodological footnote, not the headline number)."
-
----
-
-## User Stories
-
-**As an entrepreneurial finance researcher comparing SBIR-firm exit outcomes to venture-backed norms,**
-I want the SBIR M&A match rate broken down by fiscal year and confidence tier, so that I can report how acquisition frequency has changed over time and compare it to published VC exit-rate benchmarks alongside the leverage-ratio and private-capital comparison analyses.
-
-**As a policy analyst preparing a brief on SBIR program outcomes,**
-I want a reproducible firm-level M&A attribution table with signal provenance and explicit caveats, so that I can cite defensible exit-rate numbers without overstating precision from low-confidence signals like Item-2.01-only filings or Exhibit-21-only attributions.
-
----
+> **Status (2026-08-09):** The original match-rate design is superseded. The
+> fail-closed signal-count reporter is implemented, but a real-data report is
+> blocked because `data/sbir_ma_events.jsonl` is unavailable.
+>
+> **Research question anchor:** F2 — M&A evidence by vintage, descriptive
+> diagnostic only.
 
 ## Question of record
 
-What is the SBIR-awardee → M&A-event match rate for FY2015–2024,
-attributable by fiscal year, using SEC filings as evidence?
+How many normalized SBIR company-name keys in a supplied, fingerprinted M&A
+signal artifact have observation dates in each federal fiscal year from FY2015
+through FY2024, by upstream confidence tier?
 
-The user's literal question is "8-K Item 2.01 match rate." That cannot
-be answered in isolation: Item 2.01 has ~30–40% precision alone (per
-`docs/research/sbir-ma-exit-analysis.md:40-42`) and is bucketed with
-Item 1.01 in the existing pipeline. We answer the underlying question
-by combining the full signal stack.
+This deliverable does **not** estimate an acquisition rate, exit rate, hazard,
+or treatment effect. The prior design grouped numerators by signal fiscal year
+and denominators by first-award fiscal year. Those are different populations,
+so their quotient is not a coherent incidence or cohort rate. A future rate
+must use the same award-vintage cohort in both numerator and denominator and
+define a fixed observation horizon and censoring policy.
 
-## Scope
+## Evidence boundary
 
-- **In:** SBIR awardees (any agency) with ≥1 award FY2015–2024,
-  matched against SEC filings indicating acquisition in the same window.
-- **In:** Per-FY breakdown of match counts and rates.
-- **In:** Signal-tier breakdown (high / medium / low confidence).
-- **Out:** New signal extraction — reuse existing `EdgarMAEvent` rows,
-  the `mention_*` aggregates on `CompanyEdgarProfile`, and Form D
-  enrichment outputs.
-- **Out:** Re-running EFTS or Form D fetches.
-- **Out:** Backfilling Form 15 (deregistration) — tracked separately.
-
-## Definitions
-
-- **Awardee universe (denominator):** distinct SBIR firms with award
-  start date in FY2015–2024 (federal FY: Oct 1 – Sep 30).
-- **Match (numerator):** awardee has ≥1 dated M&A signal where the
-  signal's filing date falls in FY2015–2024.
-- **Acquisition FY:** fiscal year of the earliest qualifying signal
-  per awardee (one match per firm).
-- **Confidence tier per match:** the highest tier among that firm's
-  qualifying signals, using the existing tier rules in
+- Input: `data/sbir_ma_events.jsonl`, produced historically by
   `scripts/archive/data/detect_sbir_ma_events.py`.
+- Grain: one normalized `company_name` key, using only `strip()` and
+  case-folding.
+- Observation date: top-level `event_date`.
+- Federal FY: October through December map to the following calendar year;
+  January through September map to the current calendar year.
+- Confidence: the exact `high`, `medium`, or `low` value present in the
+  supplied artifact. Low is sensitivity-only.
+- Window: FY2015–FY2024 by default.
 
-## Signals used and date attribution
+The top-level date is a hybrid signal-observation proxy. The historical
+producer selected the earlier valid date between an issuer's earliest Form D
+business-combination filing and its aggregate latest EFTS mention. It is not a
+transaction announcement, agreement, or closing date, and it can be unrelated
+to the signal supporting the row's winning confidence tier.
 
-| Signal | Tier | Date used |
-|---|---|---|
-| `subsidiary` (Exhibit 21) | High | First 10-K filing date listing firm — **upper bound only** |
-| Form D `is_business_combination` | High | Form D filing date |
-| `acquisition` (10-K/10-Q text) | Medium | Filing date of the confirming 10-K/10-Q |
-| `ma_definitive` 8-K (Item 1.01/2.01) | Low | 8-K filing date |
-| `ma_definitive` tender (SC TO-T, SC 14D9) | Low | Tender filing date |
-| `ma_proxy` (DEFM14A/PREM14A) | Low | Proxy filing date |
-| `ownership_active` (SC 13D) | Low | 13D filing date (pre-event marker) |
-
-Exhibit 21 alone cannot date a transaction. When Exhibit 21 is the
-only signal, the match is attributed to the FY of the earliest 10-K
-in which the firm appears — flagged as `date_upper_bound = true`.
+The artifact contains SBIR-only detected names. Its rows are not verified
+distinct firms, deals, acquisitions, or exits, and it provides no outcome
+coverage for a non-SBIR comparison cohort.
 
 ## Outputs
 
-1. `reports/sbir_ma_match_rate_by_fy.csv` — one row per FY, columns:
-   `fiscal_year, awardees_in_fy, matched_high, matched_medium,
-   matched_low, matched_total, match_rate_high_medium,
-   match_rate_total`. The `match_rate_high_medium` column is named
-   for what it contains (high + medium tier numerator) so it cannot
-   be misread as "high tier only."
-2. `reports/sbir_ma_match_rate_by_fy.md` — narrative summary with
-   methodology, caveats, and the FY2015–2024 aggregate.
-3. `reports/sbir_ma_matched_firms_fy2015_2024.csv` — firm-level
-   detail: `award_recipient, primary_award_fy, match_fy,
-   tier, signals, acquirer (if known), date_upper_bound`.
+When a valid input is supplied, the reporter writes:
+
+1. `reports/sbir_ma_signal_counts_by_fy.csv` — one row per selected FY with
+   high, medium, high-plus-medium, low-sensitivity, and total normalized-name
+   key counts.
+2. `reports/sbir_ma_signal_counts_by_fy.md` — the same table plus input
+   fingerprint, input/deduplication counts, date-status reconciliation, method,
+   and interpretation limits.
+
+Generated reports remain gitignored. The source artifact's SHA-256 and byte
+count are embedded in the Markdown output so a later materialization identifies
+the exact evidence supplied.
 
 ## Acceptance criteria
 
-- AC1: Numerator and denominator are reproducible from existing
-  parquet outputs (no new network calls required).
-- AC2: Per-FY denominator equals the count of distinct firms whose
-  earliest FY2015–2024 award is in that FY.
-- AC3: Each matched firm appears exactly once (deduped on firm key).
-- AC4: Aggregate FY2015–2024 high+medium match rate is reported with
-  a 95% Wilson confidence interval.
-- AC5: The Item-2.01-only sub-rate is reported as a methodological
-  footnote, not as the headline number.
-- AC6: Caveats section explicitly addresses: Exhibit-21 dating,
-  private acquirers (no SEC filings), SBIR firms acquired before any
-  award in the window, and right-censoring (recent acquisitions not
-  yet filed).
+- AC1: `2020-09-30` maps to FY2020 and `2020-10-01` maps to FY2021.
+- AC2: Missing, invalid, valid-out-of-window, and in-window dates are counted
+  separately and reconcile overall and within each tier.
+- AC3: Case- and edge-whitespace-equivalent company names count once when date
+  and tier agree; conflicting duplicates fail validation.
+- AC4: High plus medium and total tier columns reconcile in every FY row.
+- AC5: Input SHA-256, bytes, input rows, distinct keys, and collapsed duplicates
+  appear in deterministic output.
+- AC6: Missing, empty, malformed, non-UTF-8, or contract-violating input exits
+  nonzero before an all-zero report can be written.
+- AC7: Input and output paths cannot alias; both outputs are staged before
+  publication and a partial replacement is rolled back.
+- AC8: Outputs contain no rate, exit-rate, control, Wilson-interval, Item-2.01,
+  or causal-comparison fields or claims.
+- AC9: No network call, raw SEC reconstruction, Dagster asset, or firm-detail
+  duplicate is added.
+
+## Materialization gate
+
+The historical JSONL was gitignored and was not committed with PR #286. The
+2026-08-09 audit found neither it nor its upstream Form D/EFTS refinement
+artifacts in the development checkout, live checkout, or persistent runtime
+data. Only published aggregate tier totals remain; they cannot recover exact FY
+counts, missing dates, duplicate diagnostics, or an input fingerprint.
+
+The final published tier assignments also cannot be regenerated from the
+tracked producer alone because the refinement/apply-back artifacts are absent.
+The reporter therefore describes only the tiers in the exact supplied artifact
+and must not assert the historical published totals.
+
+## Deferred requirements for a genuine rate
+
+A separately reviewed design is required before reporting a rate. It must, at
+minimum, define a canonical firm identity, assign numerator events to the same
+award-vintage cohort used for the denominator, use a fixed follow-up horizon,
+handle left and right censoring, establish symmetric outcome coverage, and
+retain per-filing provenance. Item 2.01 cannot be isolated from the curated
+JSONL schema because its aggregate signal fields conflate filing items/types.

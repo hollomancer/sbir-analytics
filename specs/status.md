@@ -30,9 +30,10 @@ bypassing lifecycle review; the status and rationale still require human judgmen
   blocking security scan are restored. The remaining decisions concern periodic
   scanning and whether the large pre-existing Markdown-formatting backlog is worth
   addressing; do not restore the old broad lint job by default.
-- **`agency-private-capital-comparison` — Gated backlog.** Phase 1 is
-  implemented. Phase 2 depends on prioritizing the Form D / private-capital
-  control-cohort comparison.
+- **`agency-private-capital-comparison` — Active.** The NSF Phase 1 real-data
+  gate is materialized for review but remains non-citable and unsigned. Phase 2
+  stays gated on Phase 1 sign-off, a reproducible Form D control-universe
+  producer, and symmetric FPDS/PATLINK/M&A outcome inputs.
 - **`bea-nipa-tax-rates` — Active.** The NIPA provider exists; the remaining
   work is the on-disk cache and removal of hardcoded effective-rate consumers.
 - **`company-categorization` — Maintenance.** About 80% complete. Evaluate the

@@ -1,71 +1,59 @@
-# Tasks: SBIR M&A Match Rate by Fiscal Year
+# Tasks: SBIR M&A Signal Counts by Fiscal Year
 
-> **Status (2026-07-02):** Not started. Analysis-only spec building on the completed M&A detection work (`scripts/archive/data/detect_sbir_ma_events.py`).
+> **Status (2026-08-09):** Implementation complete; real-data materialization
+> blocked by the unavailable historical input artifact. The former match-rate
+> and Dagster plan is superseded.
 
-Estimated total: 1–1.5 days. No new extraction; analysis only.
+## T0. Review the former design
 
-## T0. Resolve open questions (design.md §"Open questions")
+- [x] Verify the curated JSONL schema and date semantics.
+- [x] Audit the proposed numerator and denominator grain.
+- [x] Confirm whether Item 2.01 can be isolated from the curated schema.
+- [x] Search development, live, persistent-runtime, and historical PR artifacts
+  for the real input.
+  - Result: the proposed rate was incoherent, Item 2.01 is not recoverable, and
+    the gitignored real artifact and upstream refinement inputs are absent.
 
-- [ ] Confirm canonical join key between awards and SEC enrichment
-  (UEI/DUNS vs. normalized company name) for both `sbir_ma_events.jsonl`
-  and the `sec_edgar_enriched_companies` asset.
-- [ ] Confirm `data/form_d_details.jsonl` schema and SBIR-firm linkage
-  (CIK and/or normalized name).
-- [ ] Confirm `data/sec_edgar_scan.jsonl` mention columns and
-  classification labels.
-- [ ] Decide FY2024 right-censoring policy (footnote vs. exclude).
-  → verify: each question answered in design.md before T1.
+## T1. Implement the fail-closed count reporter
 
-## T1. Implement match-rate script
-
-- [ ] Create `scripts/analysis/sbir_ma_match_rate_by_fy.py`.
-- [ ] Build awardee denominator (FY2015–2024, distinct firms).
-- [ ] Union dated signal sources with tier + signal-type labels.
-- [ ] Tier-rank dedupe (one row per firm).
-- [ ] Compute per-FY counts and rates; Wilson CI on aggregate.
-- [ ] Compute Item-2.01-only sub-rate.
-- [ ] Write three output files to `reports/`.
-  → verify: run end-to-end on local parquets; rows match
-  `awardees_in_fy ≥ matched_total`; aggregate rate is in
-  plausible range (5–15% based on prior 8.1% all-time figure).
+- [x] Add `scripts/data/sbir_ma_signal_counts_by_fy.py`.
+- [x] Validate UTF-8 JSONL, company name, tier, and exact ISO dates.
+- [x] Fingerprint source bytes and deduplicate normalized name keys.
+- [x] Assign signal-observation FY and aggregate FY2015–FY2024 tier counts.
+- [x] Reconcile overall and per-tier date categories.
+- [x] Render deterministic CSV and Markdown with explicit evidence limits.
 
 ## T2. Unit tests
 
-- [ ] `tests/unit/scripts/test_ma_match_rate_by_fy.py`:
-  - Tier-rank dedupe with synthetic firm having High + Low signals.
-  - FY boundary cases (Sep 30 vs. Oct 1).
-  - Exhibit-21-only match flagged `date_upper_bound = true`.
-  - Wilson CI matches a known reference value.
-  - Item 2.01 sub-rate filters correctly when 1.01 also present.
-  → verify: `pytest tests/unit/scripts/test_ma_match_rate_by_fy.py -v`.
+- [x] Test September 30 / October 1 FY boundaries.
+- [x] Test missing, invalid, out-of-window, and tier reconciliation.
+- [x] Test case/edge-whitespace duplicate collapse and conflict failure.
+- [x] Test strict malformed/empty input rejection.
+- [x] Test deterministic output bytes and source fingerprinting.
+- [x] Test missing input creates no plausible empty report.
+- [x] Test path-alias rejection and staged-publication rollback.
+- [x] Test the output contract excludes rate/control/Item-2.01 claims.
 
-## T3. Dagster asset
+## T3. Materialize the real report
 
-- [ ] `packages/sbir-analytics/sbir_analytics/assets/sbir_ma_match_rate.py`.
-- [ ] Thin wrapper that invokes the script and registers
-  outputs as Dagster assets for the `reports/` files.
-- [ ] No new resources; reuse existing parquet IO managers.
-  → verify: `dagster asset materialize --select sbir_ma_match_rate_by_fy`
-  produces all three reports.
+- [ ] Supply a reviewed `data/sbir_ma_events.jsonl` artifact with a retained
+  fingerprint and documented tier lineage.
+- [ ] Run the reporter twice and verify byte-identical CSV/Markdown.
+- [ ] Review annual counts and all exclusion diagnostics before publication.
+  - **Blocked:** the historical source was gitignored and is unavailable; old
+    aggregate totals cannot reconstruct a fiscal-year series.
 
-## T4. Report and write-up
+## T4. Quality checks
 
-- [ ] Populate `reports/sbir_ma_match_rate_by_fy.md` with: methodology,
-  per-FY table, aggregate FY2015–2024 row with CI, Item 2.01 footnote,
-  caveats (Exhibit-21 dating, private acquirers, right-censoring,
-  pre-window acquisitions).
-- [ ] Cross-link from `docs/research-questions.md` A4.
-  → verify: numbers in MD match the CSV exactly; markdown lints clean.
+- [x] Run focused pytest, Ruff, MyPy, documentation checks, and `git diff
+  --check` on this implementation.
+- [x] Run the repository unit suite before publication.
 
-## T5. Quality sweep
+## Superseded scope
 
-- [ ] Run `quality-sweep` agent on changed files.
-- [ ] Run full test suite: `pytest tests/unit -v`.
-  → verify: zero ruff / mypy errors; all tests pass.
-
-## Out of scope (not in this spec)
-
-- Form 15 (deregistration) extraction.
-- Per-item-code attribution from EFTS (would require re-fetching).
-- Acquirer market-cap / sector enrichment.
-- Backfill of acquisitions before FY2015.
+The following former tasks are intentionally removed from this quick
+diagnostic: awardee denominators, FY match/exit rates, Wilson intervals,
+Item-2.01 sub-rates, raw EFTS/Form D re-union, firm-detail duplication, and a
+Dagster asset. Any genuine cohort rate requires a new reviewed design with a
+common cohort grain, fixed horizon, censoring, canonical identity, and
+symmetric outcome coverage.

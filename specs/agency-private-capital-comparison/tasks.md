@@ -1,14 +1,17 @@
 # SBIR vs. Private-Capital Comparison — Tasks (agency-parameterized; NSF as initial target)
 
-> **Status (2026-07-02):** Phase 1 implemented — cohort/outcomes/baselines/reconciliation modules and the
+> **Status (2026-08-09):** Phase 1 implemented — cohort/outcomes/baselines/reconciliation modules and the
 > `agency_private_capital_baseline_comparison` Dagster asset live in
 > `packages/sbir-analytics/sbir_analytics/assets/agency_private_capital/`, with unit tests
 > (`tests/unit/agency_private_capital/`) and an integration test (`tests/integration/agency_private_capital/`).
-> Phase 2 (Form D matched cohort) not started; its PR #286 prerequisites (`sbir_etl/enrichers/sec_edgar/`,
-> `form_d_scoring.py`, M&A events) are on main. Phase 1 gate (1.8) and cross-phase docs tasks remain open.
+> A pinned NSF real-data report now exists for Phase 1 review. It remains
+> non-citable and unsigned because the cohort estimand and identity handling
+> require review and four outcome channels are unavailable. A Phase 2 scaffold exists, but its tasks
+> remain open until a reproducible Form D control universe and symmetric
+> FPDS/PATLINK/M&A outcomes are wired and validated.
 
-Tasks are grouped by phase. Phase 1 ships independently of PR #286.
-Phase 2 starts after PR #286 merges to main and this branch rebases.
+Tasks are grouped by phase. Phase 1 ships independently of PR #286. Phase 2 is
+gated on Phase 1 sign-off and its missing real-data input contracts.
 
 ## Phase 1 — Published-Baseline Comparison
 
@@ -27,8 +30,9 @@ Phase 2 starts after PR #286 merges to main and this branch rebases.
   re-running on the follow-on-multiplier fixture set reproduces transition rates
   within tolerance.
   — implemented: `packages/sbir-analytics/sbir_analytics/assets/agency_private_capital/outcomes.py`
-  (`wilson_interval`, consumes upstream transition scores, UEI/DUNS-first M&A join
-  with name fallback, company-level survival denominator)
+  (`wilson_interval`, consumes upstream transition scores, exact connected-component
+  UEI/DUNS/name identity crosswalk, company-level survival denominator, configurable
+  graduation horizon)
 - [x] 1.3 Add `PublishedBaselineRegistry` — hard-coded YAML at
   `config/agency_private_capital/published_baselines.yaml` with source citations + as-of
   dates. Initial entries: BLS BED 5-yr survival, Lerner [L10] effect size,
@@ -66,13 +70,22 @@ Phase 2 starts after PR #286 merges to main and this branch rebases.
   Note: patent_rate is deferred to Phase 2 (the configured funding agency,
   with NSF as the initial implementation target, does not wire PATLINK in
   Phase 1).
+  **Review artifact materialized 2026-08-09:**
+  [NSF Phase I baseline review](../../docs/research/agency-private-capital-phase1-nsf.md)
+  reports 672/1,502 (44.7%, 95% Wilson interval 42.2%–47.3%) for the 2015–2019
+  vintage with a five-year horizon. The repaired artifact also records
+  2/3/5/unbounded sensitivity, UEI/DUNS/name coverage, and output hashes. Keep
+  this task open until the estimand and identity approach are accepted and the
+  required missing outcome channels are resolved.
 
 ## Phase 2 — Agency-vs-Private-Capital Matched Cohort
 
-**Prerequisite:** PR #286 merged to main; this branch rebased on top.
-Verify post-rebase that #286's Dagster asset names and JSONL schema
-haven't drifted; if they have, fix the dependency references in tasks
-2.1–2.4 before continuing.
+**Prerequisite:** Phase 1 sign-off. PR #286 is on main and the Phase 2 code
+scaffold is present, but no maintained producer currently creates
+`data/form_d_control_universe.jsonl`. The scaffold also does not yet provide
+symmetric real FPDS/PATLINK/M&A outcome joins for treated and control firms.
+Keep tasks 2.1–2.9 open until their acceptance criteria are demonstrated on a
+pinned real-data run.
 
 - [ ] 2.1 Add `AgencyAwardeeFilter` — apply the configured agency's ALN(s)
   (e.g. NSF: 47.041 / 47.084) to #286's resolved SBIR-CIK set produced by

@@ -39,9 +39,13 @@ SBIR.gov awards → filter by agency_code (default NSF: ALN ∈ {47.041, 47.084}
    `agency_code` parameter.
 2. **`OutcomeMetricsCalculator`** — Reuses existing transition detector and
    #286's `sbir_ma_events.jsonl` for the M&A-exit metric. Emits per-cohort
-   rates with Wilson confidence intervals and sample sizes. Five-year survival
-   denominator is unique companies (not award rows). M&A join is UEI/DUNS-
-   first with a normalized-name fallback.
+   rates with Wilson confidence intervals and sample sizes. The firm-level
+   graduation identity is an exact connected component across every UEI, DUNS,
+   and `ORGANIZATION_KEY_V1` name alias on the award rows. Its inclusive
+   follow-up horizon is run configuration (default 5 years; `None` restores
+   unbounded behavior), and the review artifact reports 2/3/5/unbounded
+   sensitivity. Five-year survival denominator is unique companies (not award
+   rows). M&A joins against every alias on the same resolved component.
 3. **`PublishedBaselineRegistry`** — Hard-coded table of cited private-capital
    and small-business baselines with source citation + as-of date. These
    baselines are agency-agnostic. Examples:

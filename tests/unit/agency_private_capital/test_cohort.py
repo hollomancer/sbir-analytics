@@ -110,6 +110,60 @@ def test_filter_keeps_only_nsf_rows_by_agency_name() -> None:
     assert set(cohort["vintage_bucket"].tolist()) == {"2015-2019"}
 
 
+def test_filter_accepts_canonical_sbir_gov_column_casing() -> None:
+    awards = pd.DataFrame(
+        [
+            {
+                "Company": "Raw NSF Firm",
+                "Agency": "National Science Foundation",
+                "Phase": "Phase I",
+                "Award Year": "2017",
+                "UEI": "RAWNSF000001",
+            },
+            {
+                "Company": "Raw DOD Firm",
+                "Agency": "Department of Defense",
+                "Phase": "Phase II",
+                "Award Year": "2018",
+                "UEI": "RAWDOD000001",
+            },
+        ]
+    )
+
+    cohort = AgencyCohortBuilder(agency_code="NSF").build(awards)
+
+    assert cohort["Company"].tolist() == ["Raw NSF Firm"]
+    assert cohort["phase_label"].tolist() == ["I"]
+    assert cohort["vintage_bucket"].tolist() == ["2015-2019"]
+
+
+def test_mixed_parseable_award_years_keep_unparseable_rows_without_crashing() -> None:
+    awards = pd.DataFrame(
+        [
+            {
+                "Company": "No Year Firm",
+                "Agency": "National Science Foundation",
+                "Phase": "Phase I",
+                "Award Year": "n/a",
+            },
+            {
+                "Company": "Dated Firm",
+                "Agency": "National Science Foundation",
+                "Phase": "Phase I",
+                "Award Year": "2016",
+            },
+        ]
+    )
+
+    cohort = AgencyCohortBuilder(agency_code="NSF").build(awards)
+
+    assert len(cohort) == 2
+    assert pd.isna(cohort.iloc[0]["award_year_resolved"])
+    assert pd.isna(cohort.iloc[0]["vintage_bucket"])
+    assert cohort.iloc[1]["award_year_resolved"] == 2016
+    assert cohort.iloc[1]["vintage_bucket"] == "2015-2019"
+
+
 def test_filter_keeps_rows_by_explicit_aln() -> None:
     df = pd.DataFrame(
         [
