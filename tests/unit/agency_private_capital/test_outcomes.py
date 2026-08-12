@@ -321,6 +321,42 @@ def test_ma_exit_rate_joins_on_uei_keyed_cohort_via_name_fallback() -> None:
     assert phase_ii_row["numerator"] == 1
 
 
+def test_ma_exit_rate_matches_aliases_from_elsewhere_in_the_component() -> None:
+    """The join is component-wide, not row-wide.
+
+    The Phase II row carries only a UEI. The name that the M&A artifact is keyed on
+    reaches the same component through the Phase I row. Matching per row would miss
+    it and undercount the exit rate.
+    """
+    awards = pd.DataFrame(
+        [
+            {
+                "award_id": "I-X",
+                "agency": "NSF",
+                "phase": "Phase I",
+                "award_year": 2016,
+                "uei": "XXX",
+                "company_name": "Alpha",
+            },
+            {
+                "award_id": "II-X",
+                "agency": "NSF",
+                "phase": "Phase II",
+                "award_year": 2017,
+                "uei": "XXX",
+            },
+        ]
+    )
+    cohort = AgencyCohortBuilder(agency_code="NSF").build(awards)
+    outcomes = OutcomeMetricsCalculator(ma_event_companies={"name:alpha"}).compute(cohort)
+
+    phase_ii_row = outcomes[
+        (outcomes["metric"] == "ma_exit_rate") & (outcomes["phase_label"] == "II")
+    ].iloc[0]
+    assert phase_ii_row["denominator"] == 1
+    assert phase_ii_row["numerator"] == 1
+
+
 def test_ma_event_rate_matches_when_uei_missing() -> None:
     awards = pd.DataFrame(
         [

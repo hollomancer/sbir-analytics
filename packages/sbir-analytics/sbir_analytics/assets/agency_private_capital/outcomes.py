@@ -306,6 +306,15 @@ class OutcomeMetricsCalculator:
         cohort["_company_key"] = company_keys
         cohort["_identity_aliases"] = row_aliases
 
+        # Union every alias onto its resolved component, cohort-wide. Identity is a
+        # property of the company, not of the row it happened to appear on: a
+        # UEI-only row must still match a name-keyed outcome event that reached the
+        # component through some other row.
+        aliases_by_company: dict[str, set[str]] = {}
+        for company_key, aliases in zip(company_keys, row_aliases, strict=True):
+            if company_key is not None:
+                aliases_by_company.setdefault(company_key, set()).update(aliases)
+
         # Phase I->II graduation: per-vintage. A Phase II that predates its
         # company's Phase I is not a graduation, nor is one outside the
         # configured cohort window.
@@ -426,12 +435,11 @@ class OutcomeMetricsCalculator:
                     )
                 )
                 continue
-            exited: set[str] = set()
-            for _, row in group.iterrows():
-                company_k = row.get("_company_key")
-                aliases = row.get("_identity_aliases") or frozenset()
-                if company_k and any(alias in self.ma_event_companies for alias in aliases):
-                    exited.add(company_k)
+            exited = {
+                company_k
+                for company_k in denom_keys
+                if aliases_by_company.get(company_k, set()) & self.ma_event_companies
+            }
             records.append(
                 self._make_row(
                     vintage,
