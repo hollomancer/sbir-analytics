@@ -218,10 +218,14 @@ test-modernbert: ## Test ModernBert pipeline
 	$(call run,uv run pytest tests/functional/test_pipelines.py::TestModernBertPipeline -v)
 
 .PHONY: lint
+# Keep these three in step with the "Lint, Types, and Guards" job in
+# .github/workflows/ci.yml. The README tells contributors this target is the CI
+# gate, so a narrower scope here means green locally and red in CI.
 lint: ## Run linting and type checking
 	@$(call info,Running linting and type checking)
 	$(call run,uv run ruff check .)
-	$(call run,uv run mypy sbir_etl/)
+	$(call run,uv run ruff format --check .)
+	$(call run,uv run mypy sbir_etl packages/sbir-graph/sbir_graph packages/sbir-ml/sbir_ml)
 
 .PHONY: lint-boundaries
 lint-boundaries: ## Enforce package and archive dependency boundaries

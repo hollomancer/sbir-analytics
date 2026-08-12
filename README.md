@@ -199,7 +199,7 @@ fresh clone and are the same gates CI enforces:
 ```bash
 make install          # uv sync --extra stack-dev
 make test-unit        # ~5,800 unit tests, under a minute
-make lint             # Ruff across the repository, MyPy over sbir_etl
+make lint             # Ruff lint + format across the repo, MyPy over sbir_etl and the packages
 make lint-boundaries  # architecture, epistemic-tier, config, and study guards
 make docs-check       # dead doc links, stale commands, spec-registry coverage
 ```
