@@ -37,6 +37,21 @@ def test_award_training_requires_source_data(mock_taxonomy_loader, monkeypatch, 
     assert not (tmp_path / "data/processed/cet_award_training.parquet").exists()
 
 
+@patch("sbir_analytics.assets.cet.training.TaxonomyLoader")
+def test_award_training_reports_malformed_ndjson_as_value_error(
+    mock_taxonomy_loader, monkeypatch, tmp_path
+):
+    """A malformed line names its own defect; wrapping it as RuntimeError would hide it."""
+    mock_taxonomy_loader.return_value.load_taxonomy.return_value = SimpleNamespace(version="v1")
+    monkeypatch.chdir(tmp_path)
+    training_input = tmp_path / "data/processed/cet_award_training.ndjson"
+    training_input.parent.mkdir(parents=True, exist_ok=True)
+    training_input.write_text('{"text": "ok", "labels": ["a"]}\nnot json\n', encoding="utf-8")
+
+    with pytest.raises(ValueError, match="Invalid JSON in .* at line 2"):
+        cet_award_training_dataset()
+
+
 @patch("sbir_analytics.assets.cet.company.save_dataframe_parquet")
 def test_company_profiles_require_classification_input(mock_save, monkeypatch, tmp_path):
     monkeypatch.chdir(tmp_path)

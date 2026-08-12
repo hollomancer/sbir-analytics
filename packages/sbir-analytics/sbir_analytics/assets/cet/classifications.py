@@ -604,8 +604,9 @@ def enriched_cet_patent_classifications() -> Output:
                 )
                 titles.append(str(norm_title or ""))
                 patent_ids.append(p.get("patent_id") or "")
-                # Avoid double-adding assignee when text already normalized
-                assignees.append(None)
+                # normalized_title carries the title only, so the assignee still has to
+                # be passed separately for classify_batch to see it.
+                assignees.append(p.get("assignee") or None)
         else:
             # Fallback to simple normalization when only DF-based extractor is available
             from sbir_ml.ml.features.patent_features import normalize_title
@@ -613,7 +614,7 @@ def enriched_cet_patent_classifications() -> Output:
             for p in patents:
                 titles.append(normalize_title(p.get("title")))
                 patent_ids.append(p.get("patent_id") or "")
-                assignees.append(None)
+                assignees.append(p.get("assignee") or None)
     except ValueError:
         raise
     except Exception:

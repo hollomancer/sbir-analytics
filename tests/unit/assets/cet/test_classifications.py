@@ -509,6 +509,45 @@ class TestEnrichedCETPatentClassifications:
     @patch("sbir_ml.ml.models.patent_classifier.PatentCETClassifier.load")
     @patch("sbir_analytics.assets.cet.classifications.TaxonomyLoader")
     @patch("sbir_analytics.assets.cet.classifications.save_dataframe_parquet")
+    def test_patent_classifications_pass_assignees_on_the_extractor_path(
+        self,
+        mock_save,
+        mock_taxonomy_loader,
+        mock_model_load,
+        mock_extractor_class,
+        monkeypatch,
+        tmp_path,
+    ):
+        """normalized_title is title-only, so the assignee must still reach classify_batch."""
+        mock_loader = Mock()
+        mock_loader.load_taxonomy.return_value = Mock(version="v1")
+        mock_loader.load_classification_config.return_value = {}
+        mock_taxonomy_loader.return_value = mock_loader
+        mock_extractor_class.return_value.transform.return_value = [
+            {"normalized_title": "quantum sensor"}
+        ]
+        mock_model_load.return_value.classify_batch.return_value = [[]]
+        monkeypatch.chdir(tmp_path)
+        input_path = tmp_path / "data/processed/transformed_patents.ndjson"
+        input_path.parent.mkdir(parents=True)
+        input_path.write_text(
+            json.dumps({"patent_id": "P-1", "title": "Quantum sensor", "assignee": "Example Corp"})
+            + "\n"
+        )
+        model_path = tmp_path / "artifacts/models/patent_classifier_v1.pkl"
+        model_path.parent.mkdir(parents=True)
+        model_path.touch()
+
+        enriched_cet_patent_classifications()
+
+        titles, assignees = mock_model_load.return_value.classify_batch.call_args[0][:2]
+        assert titles == ["quantum sensor"]
+        assert assignees == ["Example Corp"]
+
+    @patch("sbir_ml.ml.models.patent_classifier.PatentFeatureExtractor")
+    @patch("sbir_ml.ml.models.patent_classifier.PatentCETClassifier.load")
+    @patch("sbir_analytics.assets.cet.classifications.TaxonomyLoader")
+    @patch("sbir_analytics.assets.cet.classifications.save_dataframe_parquet")
     def test_patent_classifications_reject_short_classifier_results(
         self,
         mock_save,

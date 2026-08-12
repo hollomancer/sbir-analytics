@@ -171,6 +171,10 @@ def cet_award_training_dataset() -> Output:
             df = pd.read_csv(input_path)
         else:  # pragma: no cover - candidates above constrain extensions
             raise ValueError(f"Unsupported CET award training format: {input_path.suffix}")
+    except ValueError:
+        # Malformed NDJSON lines and unsupported suffixes already name the defect;
+        # re-wrapping them as RuntimeError would hide it from callers and tests.
+        raise
     except Exception as exc:
         raise RuntimeError(f"Failed to load CET award training data: {input_path}") from exc
 
