@@ -84,7 +84,7 @@ graph TB
 #### 4. Pipeline Validator
 
 - **Purpose**: Comprehensive validation of pipeline outputs
-- **Location**: `tests/e2e/pipeline_validator.py`
+- **Location**: `tests/utils/pipeline_validator.py`
 - **Responsibilities**:
   - Validate data flow through all ETL stages
   - Check Neo4j graph structure and relationships

@@ -9,8 +9,8 @@ Usage:
     python scripts/run_e2e_tests.py [--scenario SCENARIO] [--timeout TIMEOUT]
 
 Scenarios:
-    minimal     - Quick smoke tests (< 2 minutes)
-    standard    - Full E2E validation (5-8 minutes)
+    minimal     - Quick Dagster smoke test (< 30 seconds)
+    standard    - Hermetic production-job validation (< 1 minute)
 """
 
 import argparse
@@ -32,15 +32,15 @@ def get_test_config(scenario: str) -> dict[str, Any]:
         "minimal": {
             "description": "Quick smoke tests for basic functionality",
             "timeout": 120,
-            "test_markers": "not slow and not requires_api and not real_data",
-            "expected_duration": "< 2 minutes",
+            "test_markers": "smoke and not requires_api and not real_data",
+            "expected_duration": "< 30 seconds",
             "memory_limit": "2GB",
         },
         "standard": {
             "description": "Hermetic E2E validation with representative data",
             "timeout": 480,
             "test_markers": "not requires_api and not real_data",
-            "expected_duration": "5-8 minutes",
+            "expected_duration": "< 1 minute",
             "memory_limit": "4GB",
         },
     }
@@ -148,6 +148,7 @@ def run_e2e_tests(scenario: str, timeout: int) -> int:
 
     # Add coverage if not in minimal mode
     if scenario != "minimal":
+        coverage_dir = Path(os.getenv("E2E_ARTIFACT_DIR", "artifacts")) / "htmlcov"
         pytest_args.extend(
             [
                 "--cov=sbir_etl",
@@ -156,7 +157,7 @@ def run_e2e_tests(scenario: str, timeout: int) -> int:
                 "--cov=packages/sbir-graph/sbir_graph",
                 "--cov-branch",
                 "--cov-report=term-missing",
-                "--cov-report=html:/app/artifacts/htmlcov",
+                f"--cov-report=html:{coverage_dir}",
             ]
         )
 
@@ -207,8 +208,8 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Scenarios:
-  minimal     Quick smoke tests (< 2 minutes)
-  standard    Full E2E validation (5-8 minutes) [default]
+  minimal     Quick Dagster smoke test (< 30 seconds)
+  standard    Hermetic production-job validation (< 1 minute) [default]
 
 Examples:
   python scripts/run_e2e_tests.py

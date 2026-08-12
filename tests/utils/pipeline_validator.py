@@ -1,4 +1,4 @@
-"""Pipeline validator for E2E testing.
+"""Test-support pipeline validator.
 
 This module provides comprehensive validation of the SBIR ETL pipeline stages,
 including extraction, enrichment, and Neo4j graph validation.

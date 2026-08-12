@@ -1,4 +1,4 @@
-"""End-to-end integration test for SBIR + USAspending + SAM.gov data enrichment.
+"""Component integration test for SBIR, USAspending, and SAM.gov enrichment.
 
 This test demonstrates the complete enrichment pipeline:
 1. Load SBIR awards data (primary dataset)
@@ -6,8 +6,8 @@ This test demonstrates the complete enrichment pipeline:
 3. Enrich with SAM.gov entity data (company details)
 4. Verify the complete enriched dataset
 
-This test uses sample fixtures by default but can use real data if marked with
-@pytest.mark.real_data or USE_REAL_SBIR_DATA=1 environment variable.
+The test composes in-memory fixtures and direct enrichment helpers without
+Dagster orchestration or external services.
 """
 
 import pandas as pd
@@ -16,7 +16,7 @@ import pytest
 from sbir_etl.enrichers.usaspending import enrich_sbir_with_usaspending
 
 
-pytestmark = [pytest.mark.e2e, pytest.mark.weekly]
+pytestmark = pytest.mark.integration
 
 
 @pytest.fixture
@@ -356,20 +356,6 @@ class TestMultiSourceEnrichmentPipeline:
         print(f"NAICS Coverage Rate: {naics_coverage_rate:.1%}")
 
 
-class TestRealDataEnrichmentPipeline:
-    """Scheduled enrichment validation using restricted production-derived snapshots."""
-
-    @pytest.mark.real_data
-    @pytest.mark.skip(
-        reason=(
-            "requires approved SBIR, USAspending, and SAM.gov snapshots mounted by the "
-            "scheduled real-data workflow; those datasets are not available in local CI"
-        )
-    )
-    def test_enrichment_pipeline_with_approved_real_data_snapshots(self):
-        """Run the fixture-proven enrichment behavior against approved real-data snapshots."""
-
-
 class TestDataSourceIntegrity:
     """Test data source compatibility and schema alignment."""
 
@@ -419,27 +405,18 @@ __doc__ += """
 
 ### Quick Test (Sample Data)
 ```bash
-# Run all E2E multi-source tests with sample fixtures
-pytest tests/e2e/test_multi_source_enrichment.py -v
+# Run all multi-source integration tests with sample fixtures
+pytest tests/integration/enrichment/test_multi_source_enrichment.py -v
 
 # Run with detailed output
-pytest tests/e2e/test_multi_source_enrichment.py -v -s
-```
-
-### Real Data Test (Slower)
-```bash
-# Run with real SBIR data
-USE_REAL_SBIR_DATA=1 pytest tests/e2e/test_multi_source_enrichment.py -m real_data
-
-# Or mark individual tests
-pytest tests/e2e/test_multi_source_enrichment.py::TestRealDataEnrichmentPipeline -m real_data --run-real-data
+pytest tests/integration/enrichment/test_multi_source_enrichment.py -v -s
 ```
 
 ### Integration Testing Strategy
 
 1. **Unit Level**: Test individual extractors (SBIR, USAspending, SAM.gov)
 2. **Integration Level**: Test pairwise enrichment (SBIR+USAspending, SBIR+SAM.gov)
-3. **E2E Level**: Test complete pipeline (SBIR+USAspending+SAM.gov)
+3. **Orchestration Level**: Exercise a production Dagster job from persisted fixtures
 
 ### Expected Enrichment Flow
 
@@ -487,5 +464,5 @@ pytest tests/e2e/test_multi_source_enrichment.py::TestRealDataEnrichmentPipeline
   - `data/raw/sam_gov/sam_entity_records.parquet`
   - USAspending database dump (S3 or local)
 
-**Slow Tests**: Use sample data by default. Real data tests are marked with @pytest.mark.real_data
+**Real data**: Operator validation requires a separately approved snapshot and runbook.
 """

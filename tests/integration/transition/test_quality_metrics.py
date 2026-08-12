@@ -12,7 +12,7 @@ from sbir_ml.transition.performance.monitoring import (
 )
 
 
-pytestmark = [pytest.mark.e2e, pytest.mark.slow]
+pytestmark = [pytest.mark.integration, pytest.mark.transition]
 
 
 def _build_evaluation_payload(num_detections: int = 200, tp_count: int = 150):

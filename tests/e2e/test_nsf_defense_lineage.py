@@ -22,7 +22,7 @@ from sbir_analytics.assets.nsf_defense_lineage import (
 )
 
 
-pytestmark = [pytest.mark.integration, pytest.mark.e2e]
+pytestmark = pytest.mark.e2e
 
 
 def _write_source_fixtures(root: Path, analysis_date: date) -> dict[str, Path]:

@@ -1,4 +1,4 @@
-"""End-to-end render of the weekly awards report from fixture awards.
+"""Integration render of the weekly awards report from fixture awards.
 
 Hermetic full-document pass over models -> rendering (the unit tests cover the
 small helpers piecemeal). Asserts the output contract a reader relies on: the
@@ -13,7 +13,7 @@ import pytest
 from sbir_etl.reporting.weekly.rendering import generate_markdown
 
 
-pytestmark = [pytest.mark.e2e, pytest.mark.timeout(60)]
+pytestmark = [pytest.mark.integration, pytest.mark.timeout(60)]
 
 AGENCIES = ["DOD", "HHS", "NSF", "DOE"]
 

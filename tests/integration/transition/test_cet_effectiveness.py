@@ -7,7 +7,7 @@ import pytest
 from sbir_ml.transition.analysis.analytics import TransitionAnalytics
 
 
-pytestmark = [pytest.mark.e2e, pytest.mark.slow]
+pytestmark = [pytest.mark.integration, pytest.mark.transition]
 
 
 def test_cet_effectiveness_computation(cet_effectiveness_dataset):

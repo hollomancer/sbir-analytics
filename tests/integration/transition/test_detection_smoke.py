@@ -1,4 +1,4 @@
-"""Lightweight end-to-end tests for the transition detection pipeline."""
+"""Integration tests for transition detection and analytics components."""
 
 from __future__ import annotations
 
@@ -8,7 +8,7 @@ import pytest
 from sbir_ml.transition.analysis.analytics import TransitionAnalytics
 
 
-pytestmark = [pytest.mark.e2e, pytest.mark.slow]
+pytestmark = [pytest.mark.integration, pytest.mark.transition]
 
 
 def test_transition_detector_smoke(

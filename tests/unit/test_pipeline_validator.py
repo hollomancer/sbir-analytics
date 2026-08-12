@@ -1,4 +1,4 @@
-"""Tests for the E2E pipeline validator.
+"""Unit tests for the test-support pipeline validator.
 
 This module tests the pipeline validator functionality to ensure
 comprehensive validation of ETL pipeline stages.
@@ -7,19 +7,16 @@ comprehensive validation of ETL pipeline stages.
 from unittest.mock import Mock
 
 import pandas as pd
-import pytest
 
-
-pytestmark = pytest.mark.e2e
 
 from sbir_etl.models.quality import QualitySeverity
-from tests.e2e.pipeline_validator import (
+from tests.utils.pipeline_validator import (
     PipelineValidator,
     ValidationCheck,
     ValidationStage,
     ValidationStatus,
 )
-from tests.e2e.validation_models import (
+from tests.utils.validation_models import (
     RecommendationPriority,
     ValidationReport,
     ValidationScenario,
@@ -249,7 +246,7 @@ class TestValidationModels:
 
     def test_validation_result_properties(self):
         """Test ValidationResult property methods."""
-        from tests.e2e.pipeline_validator import StageValidationResult
+        from tests.utils.pipeline_validator import StageValidationResult
 
         # Create test stage results
         passed_stage = StageValidationResult(
@@ -294,7 +291,7 @@ class TestValidationModels:
 
     def test_test_report_generation(self):
         """Test ValidationReport generation with recommendations."""
-        from tests.e2e.pipeline_validator import StageValidationResult
+        from tests.utils.pipeline_validator import StageValidationResult
 
         # Create validation result with critical issue
         critical_check = ValidationCheck(
@@ -347,7 +344,7 @@ class TestValidationModels:
         import os
         import tempfile
 
-        from tests.e2e.pipeline_validator import StageValidationResult
+        from tests.utils.pipeline_validator import StageValidationResult
 
         # Create temporary directory for artifacts
         with tempfile.TemporaryDirectory() as temp_dir:

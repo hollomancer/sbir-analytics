@@ -1,4 +1,4 @@
-"""End-to-end test for complete fiscal I-O pipeline.
+"""Component integration test for the fiscal I-O calculation chain.
 
 This test validates the entire flow from SBIR awards to economic impact
 and fiscal return calculations:
@@ -27,7 +27,7 @@ from sbir_etl.transformers.fiscal.taxes import FiscalTaxEstimator
 from sbir_etl.enrichers.fiscal_bea_mapper import NAICSToBEAMapper
 
 
-pytestmark = [pytest.mark.e2e, pytest.mark.weekly]
+pytestmark = [pytest.mark.integration, pytest.mark.fiscal]
 
 
 @pytest.fixture
@@ -767,19 +767,19 @@ __doc__ += """
 ### Quick Test
 ```bash
 # Run all fiscal pipeline tests
-pytest tests/e2e/test_fiscal_stateio_pipeline.py -v
+pytest tests/integration/fiscal/test_stateio_pipeline.py -v
 
 # Run with verbose output
-pytest tests/e2e/test_fiscal_stateio_pipeline.py -v -s
+pytest tests/integration/fiscal/test_stateio_pipeline.py -v -s
 ```
 
 ### Test Individual Steps
 ```bash
 # Test specific step
-pytest tests/e2e/test_fiscal_stateio_pipeline.py::TestFiscalStateIOPipelineE2E::test_step1_enrich_with_usaspending -v
+pytest tests/integration/fiscal/test_stateio_pipeline.py::TestFiscalStateIOPipelineE2E::test_step1_enrich_with_usaspending -v
 
 # Test complete pipeline
-pytest tests/e2e/test_fiscal_stateio_pipeline.py::TestFiscalStateIOPipelineE2E::test_complete_pipeline_integration -v -s
+pytest tests/integration/fiscal/test_stateio_pipeline.py::TestFiscalStateIOPipelineE2E::test_complete_pipeline_integration -v -s
 ```
 
 ### Expected Output
