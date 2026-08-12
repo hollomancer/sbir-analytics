@@ -47,9 +47,9 @@ def transformed_cet_analytics() -> Output:
 
     # Inputs
     company_parquet = processed_dir / "cet_company_profiles.parquet"
-    company_json = processed_dir / "cet_company_profiles.json"
+    company_json = processed_dir / "cet_company_profiles.ndjson"
     awards_parquet = processed_dir / "cet_award_classifications.parquet"
-    awards_json = processed_dir / "cet_award_classifications.json"
+    awards_json = processed_dir / "cet_award_classifications.ndjson"
 
     # Read helpers (parquet preferred, NDJSON fallback)
     def _read_df(parquet_path: Path, json_path: Path, expected_cols=None):
@@ -199,9 +199,9 @@ def transformed_cet_analytics_aggregates() -> Output:
 
     # Inputs
     awards_parquet = processed_dir / "cet_award_classifications.parquet"
-    awards_json = processed_dir / "cet_award_classifications.json"
+    awards_json = processed_dir / "cet_award_classifications.ndjson"
     companies_parquet = processed_dir / "cet_company_profiles.parquet"
-    companies_json = processed_dir / "cet_company_profiles.json"
+    companies_json = processed_dir / "cet_company_profiles.ndjson"
 
     # Read helpers (parquet preferred, NDJSON fallback)
     def _read_df(parquet_path: Path, json_path: Path, expected_cols=None):

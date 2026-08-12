@@ -1,9 +1,8 @@
 """Tests for CET classification assets."""
 
 import json
-from unittest.mock import Mock, mock_open, patch
+from unittest.mock import Mock, patch
 
-import pandas as pd
 import pytest
 
 from sbir_analytics.assets.cet.classifications import (
@@ -40,83 +39,6 @@ def sample_checks_data():
         "with_evidence_count": 850,
         "reason": "success",
     }
-
-
-@pytest.fixture
-def sample_awards_df():
-    """Sample awards DataFrame."""
-    return pd.DataFrame(
-        {
-            "Award Number": ["AWD001", "AWD002", "AWD003"],
-            "Company": ["TechCo", "BioCo", "AeroCo"],
-            "Abstract": [
-                "Artificial intelligence and machine learning for data analysis",
-                "Biotechnology research for drug development",
-                "Aerospace engineering and quantum computing systems",
-            ],
-            "Amount": [100000, 150000, 200000],
-        }
-    )
-
-
-@pytest.fixture
-def sample_patents_df():
-    """Sample patents DataFrame."""
-    return pd.DataFrame(
-        {
-            "patent_id": ["PAT001", "PAT002", "PAT003"],
-            "title": ["AI System", "Bio Method", "Quantum Computer"],
-            "abstract": [
-                "Machine learning system for pattern recognition",
-                "Biotechnology method for gene therapy",
-                "Quantum computing hardware design",
-            ],
-        }
-    )
-
-
-@pytest.fixture
-def sample_taxonomy():
-    """Sample CET taxonomy."""
-    return {
-        "cet_areas": [
-            {
-                "id": "ai_ml",
-                "name": "Artificial Intelligence and Machine Learning",
-                "keywords": ["artificial intelligence", "machine learning", "neural networks"],
-            },
-            {
-                "id": "quantum",
-                "name": "Quantum Information Science",
-                "keywords": ["quantum computing", "quantum", "qubit"],
-            },
-            {
-                "id": "biotechnology",
-                "name": "Biotechnology",
-                "keywords": ["biotechnology", "gene therapy", "biotech"],
-            },
-        ]
-    }
-
-
-@pytest.fixture
-def sample_classification_results():
-    """Sample classification results."""
-    return pd.DataFrame(
-        {
-            "award_id": ["AWD001", "AWD002", "AWD003"],
-            "primary_cet": ["ai_ml", "biotechnology", "quantum"],
-            "primary_score": [0.95, 0.88, 0.92],
-            "supporting_cets": [["quantum"], ["ai_ml"], ["ai_ml"]],
-            "evidence": [
-                ["machine learning mentioned in abstract"],
-                ["biotechnology research mentioned"],
-                ["quantum computing in abstract"],
-            ],
-            "classified_at": ["2023-01-01T10:00:00"] * 3,
-            "taxonomy_version": ["v1.0"] * 3,
-        }
-    )
 
 
 # ==================== Quality Check Tests ====================
@@ -349,96 +271,149 @@ class TestEnrichedCETAwardClassifications:
     """Tests for enriched CET award classifications asset."""
 
     @patch("sbir_analytics.assets.cet.classifications.TaxonomyLoader")
-    @patch("sbir_analytics.assets.cet.classifications.Path")
     @patch("sbir_analytics.assets.cet.classifications.save_dataframe_parquet")
-    @patch("builtins.open", new_callable=mock_open)
-    def test_award_classifications_taxonomy_load_failure(
-        self, mock_file, mock_save, mock_path_class, mock_taxonomy_loader
-    ):
-        """Test asset handles taxonomy load failure gracefully."""
+    def test_award_classifications_taxonomy_load_failure(self, mock_save, mock_taxonomy_loader):
+        """A taxonomy failure fails the materialization without publishing output."""
         mock_taxonomy_loader.side_effect = Exception("Taxonomy load failed")
 
-        # Mock Path behaviors
-        mock_path = Mock()
-        mock_path.exists.return_value = False
-        mock_checks_path = Mock()
-        mock_checks_path.parent = Mock()
-        mock_checks_path.parent.mkdir = Mock()
-        mock_path.with_suffix.return_value = mock_checks_path
-        mock_path_class.return_value = mock_path
+        with pytest.raises(RuntimeError, match="taxonomy and classification config"):
+            enriched_cet_award_classifications()
 
-        enriched_cet_award_classifications()
-
-        # Should write empty output and checks JSON indicating failure
-        assert mock_save.called
+        mock_save.assert_not_called()
 
     @patch("sbir_analytics.assets.cet.classifications.TaxonomyLoader")
-    @patch("sbir_analytics.assets.cet.classifications.Path")
-    @patch("sbir_analytics.assets.cet.classifications.save_dataframe_parquet")
-    @patch("builtins.open", new_callable=mock_open)
-    def test_award_classifications_no_input_data(
-        self, mock_file, mock_save, mock_path_class, mock_taxonomy_loader, sample_taxonomy
-    ):
-        """Test asset handles missing input data."""
-        # Mock taxonomy loader
+    def test_award_classifications_no_input_data(self, mock_taxonomy_loader, monkeypatch, tmp_path):
+        """Missing source data fails instead of classifying built-in samples."""
         mock_loader = Mock()
-        mock_loader.load_taxonomy.return_value = sample_taxonomy
+        mock_loader.load_taxonomy.return_value = Mock(cet_areas=[])
+        mock_loader.load_classification_config.return_value = {}
         mock_taxonomy_loader.return_value = mock_loader
+        monkeypatch.chdir(tmp_path)
 
-        # Mock Path to indicate no input files exist
-        def path_side_effect(path_str):
-            mock_path = Mock()
-            mock_path.exists.return_value = False
-            mock_path.with_suffix.return_value = Mock()
-            return mock_path
-
-        mock_path_class.side_effect = path_side_effect
-
-        enriched_cet_award_classifications()
-
-        # Should handle gracefully and write output
-        assert mock_save.called
+        with pytest.raises(FileNotFoundError, match="No enriched award input"):
+            enriched_cet_award_classifications()
 
     @patch("sbir_analytics.assets.cet.classifications.TaxonomyLoader")
-    @patch("sbir_analytics.assets.cet.classifications.Path")
-    @patch("pandas.read_parquet")
+    def test_award_classifications_reject_empty_input(
+        self, mock_taxonomy_loader, monkeypatch, tmp_path
+    ):
+        mock_loader = Mock()
+        mock_loader.load_taxonomy.return_value = Mock(cet_areas=[])
+        mock_loader.load_classification_config.return_value = {}
+        mock_taxonomy_loader.return_value = mock_loader
+        monkeypatch.chdir(tmp_path)
+        input_path = tmp_path / "data/processed/enriched_sbir_awards.ndjson"
+        input_path.parent.mkdir(parents=True)
+        input_path.write_text("")
+
+        with pytest.raises(ValueError, match="Enriched award input is empty"):
+            enriched_cet_award_classifications()
+
+    @patch("sbir_analytics.assets.cet.classifications.TaxonomyLoader")
     @patch("sbir_analytics.assets.cet.classifications.save_dataframe_parquet")
-    @patch("builtins.open", new_callable=mock_open)
     def test_award_classifications_model_missing(
         self,
-        mock_file,
         mock_save,
-        mock_read_parquet,
-        mock_path_class,
         mock_taxonomy_loader,
-        sample_taxonomy,
-        sample_awards_df,
+        monkeypatch,
+        tmp_path,
     ):
-        """Test asset handles missing ML model."""
-        # Mock taxonomy loader
+        """Missing model fails without writing a schema-only artifact."""
         mock_loader = Mock()
-        mock_loader.load_taxonomy.return_value = sample_taxonomy
+        mock_loader.load_taxonomy.return_value = Mock(cet_areas=[])
+        mock_loader.load_classification_config.return_value = {}
         mock_taxonomy_loader.return_value = mock_loader
+        monkeypatch.chdir(tmp_path)
+        input_path = tmp_path / "data/processed/enriched_sbir_awards.ndjson"
+        input_path.parent.mkdir(parents=True)
+        input_path.write_text(json.dumps({"award_id": "AWD-1", "title": "Quantum sensor"}) + "\n")
 
-        # Mock parquet reader
-        mock_read_parquet.return_value = sample_awards_df
+        with pytest.raises(FileNotFoundError, match="Trained CET award model not found"):
+            enriched_cet_award_classifications()
 
-        # Mock Path to indicate model doesn't exist but data does
-        def path_side_effect(path_str):
-            mock_path = Mock()
-            if "model" in str(path_str):
-                mock_path.exists.return_value = False
-            else:
-                mock_path.exists.return_value = True
-            mock_path.with_suffix.return_value = Mock()
-            return mock_path
+        mock_save.assert_not_called()
 
-        mock_path_class.side_effect = path_side_effect
+    @patch("sbir_ml.ml.features.evidence_extractor.EvidenceExtractor")
+    @patch("sbir_ml.ml.models.cet_classifier.ApplicabilityModel.load")
+    @patch("sbir_analytics.assets.cet.classifications.TaxonomyLoader")
+    @patch("sbir_analytics.assets.cet.classifications.save_dataframe_parquet")
+    def test_award_classifications_reject_short_classifier_results(
+        self,
+        mock_save,
+        mock_taxonomy_loader,
+        mock_model_load,
+        mock_extractor,
+        monkeypatch,
+        tmp_path,
+    ):
+        mock_loader = Mock()
+        mock_loader.load_taxonomy.return_value = Mock(cet_areas=[], version="v1")
+        mock_loader.load_classification_config.return_value = {}
+        mock_taxonomy_loader.return_value = mock_loader
+        model = Mock(taxonomy_version="v1")
+        model.classify_batch.return_value = [[]]
+        mock_model_load.return_value = model
+        monkeypatch.chdir(tmp_path)
+        input_path = tmp_path / "data/processed/enriched_sbir_awards.ndjson"
+        input_path.parent.mkdir(parents=True)
+        input_path.write_text(
+            "\n".join(
+                json.dumps({"award_id": award_id, "title": "Quantum sensor", "keywords": []})
+                for award_id in ("A-1", "A-2")
+            )
+            + "\n"
+        )
+        model_path = tmp_path / "artifacts/models/cet_classifier_v1.pkl"
+        model_path.parent.mkdir(parents=True)
+        model_path.touch()
 
-        enriched_cet_award_classifications()
+        with pytest.raises(ValueError, match="classifier returned 1 results for 2 source rows"):
+            enriched_cet_award_classifications()
 
-        # Should write checks JSON indicating model is missing
-        mock_file.assert_called()
+        mock_extractor.return_value.extract_batch_evidence.assert_not_called()
+        mock_save.assert_not_called()
+
+    @patch("sbir_ml.ml.features.evidence_extractor.EvidenceExtractor")
+    @patch("sbir_ml.ml.models.cet_classifier.ApplicabilityModel.load")
+    @patch("sbir_analytics.assets.cet.classifications.TaxonomyLoader")
+    @patch("sbir_analytics.assets.cet.classifications.save_dataframe_parquet")
+    def test_award_classifications_reject_short_evidence_results(
+        self,
+        mock_save,
+        mock_taxonomy_loader,
+        mock_model_load,
+        mock_extractor_class,
+        monkeypatch,
+        tmp_path,
+    ):
+        mock_loader = Mock()
+        mock_loader.load_taxonomy.return_value = Mock(cet_areas=[], version="v1")
+        mock_loader.load_classification_config.return_value = {}
+        mock_taxonomy_loader.return_value = mock_loader
+        model = Mock(taxonomy_version="v1")
+        model.classify_batch.return_value = [[], []]
+        mock_model_load.return_value = model
+        mock_extractor_class.return_value.extract_batch_evidence.return_value = [[]]
+        monkeypatch.chdir(tmp_path)
+        input_path = tmp_path / "data/processed/enriched_sbir_awards.ndjson"
+        input_path.parent.mkdir(parents=True)
+        input_path.write_text(
+            "\n".join(
+                json.dumps({"award_id": award_id, "title": "Quantum sensor", "keywords": []})
+                for award_id in ("A-1", "A-2")
+            )
+            + "\n"
+        )
+        model_path = tmp_path / "artifacts/models/cet_classifier_v1.pkl"
+        model_path.parent.mkdir(parents=True)
+        model_path.touch()
+
+        with pytest.raises(
+            ValueError, match="evidence extractor returned 1 results for 2 source rows"
+        ):
+            enriched_cet_award_classifications()
+
+        mock_save.assert_not_called()
 
 
 # ==================== Patent Classifications Asset Tests ====================
@@ -448,58 +423,169 @@ class TestEnrichedCETPatentClassifications:
     """Tests for enriched CET patent classifications asset."""
 
     @patch("sbir_analytics.assets.cet.classifications.TaxonomyLoader")
-    @patch("sbir_analytics.assets.cet.classifications.Path")
     @patch("sbir_analytics.assets.cet.classifications.save_dataframe_parquet")
-    @patch("builtins.open", new_callable=mock_open)
-    def test_patent_classifications_taxonomy_load_failure(
-        self, mock_file, mock_save, mock_path_class, mock_taxonomy_loader
-    ):
-        """Test patent asset handles taxonomy load failure."""
-        # Mock taxonomy loader to raise exception on load_taxonomy() call
+    def test_patent_classifications_taxonomy_load_failure(self, mock_save, mock_taxonomy_loader):
+        """A taxonomy failure fails the patent materialization without output."""
         mock_loader = Mock()
         mock_loader.load_taxonomy.side_effect = Exception("Taxonomy load failed")
         mock_taxonomy_loader.return_value = mock_loader
 
-        # Mock Path behaviors
-        mock_path = Mock()
-        mock_path.exists.return_value = False
-        mock_checks_path = Mock()
-        mock_checks_path.parent = Mock()
-        mock_checks_path.parent.mkdir = Mock()
-        mock_path.with_suffix.return_value = mock_checks_path
-        mock_path_class.return_value = mock_path
+        with pytest.raises(RuntimeError, match="taxonomy and classification config"):
+            enriched_cet_patent_classifications()
 
-        enriched_cet_patent_classifications()
-
-        # Should write empty output
-        assert mock_save.called
+        mock_save.assert_not_called()
 
     @patch("sbir_analytics.assets.cet.classifications.TaxonomyLoader")
-    @patch("sbir_analytics.assets.cet.classifications.Path")
-    @patch("sbir_analytics.assets.cet.classifications.save_dataframe_parquet")
-    @patch("builtins.open", new_callable=mock_open)
     def test_patent_classifications_no_input_data(
-        self, mock_file, mock_save, mock_path_class, mock_taxonomy_loader, sample_taxonomy
+        self, mock_taxonomy_loader, monkeypatch, tmp_path
     ):
-        """Test patent asset handles missing input data."""
-        # Mock taxonomy loader
+        """Missing patent input fails instead of classifying built-in samples."""
         mock_loader = Mock()
-        mock_loader.load_taxonomy.return_value = sample_taxonomy
+        mock_loader.load_taxonomy.return_value = Mock()
+        mock_loader.load_classification_config.return_value = {}
         mock_taxonomy_loader.return_value = mock_loader
+        monkeypatch.chdir(tmp_path)
 
-        # Mock Path to indicate no input files exist
-        def path_side_effect(path_str):
-            mock_path = Mock()
-            mock_path.exists.return_value = False
-            mock_path.with_suffix.return_value = Mock()
-            return mock_path
+        with pytest.raises(FileNotFoundError, match="No transformed patent input"):
+            enriched_cet_patent_classifications()
 
-        mock_path_class.side_effect = path_side_effect
+    @patch("sbir_analytics.assets.cet.classifications.TaxonomyLoader")
+    def test_patent_classifications_reject_empty_input(
+        self, mock_taxonomy_loader, monkeypatch, tmp_path
+    ):
+        mock_loader = Mock()
+        mock_loader.load_taxonomy.return_value = Mock()
+        mock_loader.load_classification_config.return_value = {}
+        mock_taxonomy_loader.return_value = mock_loader
+        monkeypatch.chdir(tmp_path)
+        input_path = tmp_path / "data/processed/transformed_patents.ndjson"
+        input_path.parent.mkdir(parents=True)
+        input_path.write_text("")
+
+        with pytest.raises(ValueError, match="Transformed patent input is empty"):
+            enriched_cet_patent_classifications()
+
+    @patch("sbir_ml.ml.models.patent_classifier.PatentFeatureExtractor")
+    @patch("sbir_ml.ml.models.patent_classifier.PatentCETClassifier.load")
+    @patch("sbir_analytics.assets.cet.classifications.TaxonomyLoader")
+    @patch("sbir_analytics.assets.cet.classifications.save_dataframe_parquet")
+    def test_patent_classifications_reject_short_feature_results(
+        self,
+        mock_save,
+        mock_taxonomy_loader,
+        mock_model_load,
+        mock_extractor_class,
+        monkeypatch,
+        tmp_path,
+    ):
+        mock_loader = Mock()
+        mock_loader.load_taxonomy.return_value = Mock(version="v1")
+        mock_loader.load_classification_config.return_value = {}
+        mock_taxonomy_loader.return_value = mock_loader
+        mock_extractor_class.return_value.transform.return_value = [{"normalized_title": "one"}]
+        monkeypatch.chdir(tmp_path)
+        input_path = tmp_path / "data/processed/transformed_patents.ndjson"
+        input_path.parent.mkdir(parents=True)
+        input_path.write_text(
+            "\n".join(
+                json.dumps({"patent_id": patent_id, "title": "Quantum sensor"})
+                for patent_id in ("P-1", "P-2")
+            )
+            + "\n"
+        )
+        model_path = tmp_path / "artifacts/models/patent_classifier_v1.pkl"
+        model_path.parent.mkdir(parents=True)
+        model_path.touch()
+
+        with pytest.raises(
+            ValueError, match="feature extractor returned 1 results for 2 source rows"
+        ):
+            enriched_cet_patent_classifications()
+
+        mock_model_load.return_value.classify_batch.assert_not_called()
+        mock_save.assert_not_called()
+
+    @patch("sbir_ml.ml.models.patent_classifier.PatentFeatureExtractor")
+    @patch("sbir_ml.ml.models.patent_classifier.PatentCETClassifier.load")
+    @patch("sbir_analytics.assets.cet.classifications.TaxonomyLoader")
+    @patch("sbir_analytics.assets.cet.classifications.save_dataframe_parquet")
+    def test_patent_classifications_pass_assignees_on_the_extractor_path(
+        self,
+        mock_save,
+        mock_taxonomy_loader,
+        mock_model_load,
+        mock_extractor_class,
+        monkeypatch,
+        tmp_path,
+    ):
+        """normalized_title is title-only, so the assignee must still reach classify_batch."""
+        mock_loader = Mock()
+        mock_loader.load_taxonomy.return_value = Mock(version="v1")
+        mock_loader.load_classification_config.return_value = {}
+        mock_taxonomy_loader.return_value = mock_loader
+        mock_extractor_class.return_value.transform.return_value = [
+            {"normalized_title": "quantum sensor"}
+        ]
+        mock_model_load.return_value.classify_batch.return_value = [[]]
+        monkeypatch.chdir(tmp_path)
+        input_path = tmp_path / "data/processed/transformed_patents.ndjson"
+        input_path.parent.mkdir(parents=True)
+        input_path.write_text(
+            json.dumps({"patent_id": "P-1", "title": "Quantum sensor", "assignee": "Example Corp"})
+            + "\n"
+        )
+        model_path = tmp_path / "artifacts/models/patent_classifier_v1.pkl"
+        model_path.parent.mkdir(parents=True)
+        model_path.touch()
 
         enriched_cet_patent_classifications()
 
-        # Should handle gracefully
-        assert mock_save.called
+        titles, assignees = mock_model_load.return_value.classify_batch.call_args[0][:2]
+        assert titles == ["quantum sensor"]
+        assert assignees == ["Example Corp"]
+
+    @patch("sbir_ml.ml.models.patent_classifier.PatentFeatureExtractor")
+    @patch("sbir_ml.ml.models.patent_classifier.PatentCETClassifier.load")
+    @patch("sbir_analytics.assets.cet.classifications.TaxonomyLoader")
+    @patch("sbir_analytics.assets.cet.classifications.save_dataframe_parquet")
+    def test_patent_classifications_reject_short_classifier_results(
+        self,
+        mock_save,
+        mock_taxonomy_loader,
+        mock_model_load,
+        mock_extractor_class,
+        monkeypatch,
+        tmp_path,
+    ):
+        mock_loader = Mock()
+        mock_loader.load_taxonomy.return_value = Mock(version="v1")
+        mock_loader.load_classification_config.return_value = {}
+        mock_taxonomy_loader.return_value = mock_loader
+        mock_extractor_class.return_value.transform.return_value = [
+            {"normalized_title": "one"},
+            {"normalized_title": "two"},
+        ]
+        classifier = Mock(taxonomy_version="v1")
+        classifier.classify_batch.return_value = [[]]
+        mock_model_load.return_value = classifier
+        monkeypatch.chdir(tmp_path)
+        input_path = tmp_path / "data/processed/transformed_patents.ndjson"
+        input_path.parent.mkdir(parents=True)
+        input_path.write_text(
+            "\n".join(
+                json.dumps({"patent_id": patent_id, "title": "Quantum sensor"})
+                for patent_id in ("P-1", "P-2")
+            )
+            + "\n"
+        )
+        model_path = tmp_path / "artifacts/models/patent_classifier_v1.pkl"
+        model_path.parent.mkdir(parents=True)
+        model_path.touch()
+
+        with pytest.raises(ValueError, match="classifier returned 1 results for 2 source rows"):
+            enriched_cet_patent_classifications()
+
+        mock_save.assert_not_called()
 
 
 # ==================== Edge Cases ====================
@@ -559,34 +645,6 @@ class TestEdgeCases:
 
         assert result.passed is False
         assert "missing quality metrics" in result.description.lower()
-
-    @patch("sbir_analytics.assets.cet.classifications.TaxonomyLoader")
-    @patch("sbir_analytics.assets.cet.classifications.Path")
-    @patch("sbir_analytics.assets.cet.classifications.save_dataframe_parquet")
-    @patch("builtins.open", new_callable=mock_open)
-    def test_award_classifications_save_failure_propagates(
-        self, mock_file, mock_save, mock_path_class, mock_taxonomy_loader
-    ):
-        """A helper failure means neither Parquet nor NDJSON could be written."""
-        mock_taxonomy_loader.side_effect = Exception("Load failed")
-        mock_save.side_effect = OSError("Save failed")
-
-        # Mock Path behaviors
-        mock_path = Mock()
-        mock_path.exists.return_value = False
-        mock_json_path = Mock()
-        mock_json_path.parent = Mock()
-        mock_json_path.parent.mkdir = Mock()
-        mock_checks_path = Mock()
-        mock_checks_path.parent = Mock()
-        mock_checks_path.parent.mkdir = Mock()
-        mock_path.with_suffix.side_effect = lambda suffix: (
-            mock_json_path if suffix == ".json" else mock_checks_path
-        )
-        mock_path_class.return_value = mock_path
-
-        with pytest.raises(OSError, match="Save failed"):
-            enriched_cet_award_classifications()
 
     def test_quality_check_file_permission_error(self, tmp_path):
         """Test quality check handles file permission errors."""

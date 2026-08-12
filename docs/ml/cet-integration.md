@@ -61,14 +61,18 @@ and [rule-engine guide](cet-rule-engine.md) for their narrow contracts.
 
 ## Training-data limitation
 
-The `ml/cet_award_training_dataset` asset looks for labeled CSV or NDJSON inputs and writes an
-empty, failed check when no input exists. When input does exist, the current code imports
-`sbir_ml.ml.data.award_training_loader`, which is absent from the repository; the asset therefore
-records `reason: load_failed` instead of producing a usable award-training dataset. Treat award
-training as unsupported until that loader is restored or the asset is redesigned and tested.
+The `ml/cet_award_training_dataset` asset requires a non-empty labeled CSV or NDJSON input with
+`text` and `labels` columns. Missing, empty, malformed, or schema-incomplete inputs fail the
+materialization; successful runs write Parquet or return the actual `.ndjson` fallback path.
+
+Award classifier inference also requires a trained `ApplicabilityModel` at
+`artifacts/models/cet_classifier_v1.pkl`. No repository asset or command currently produces that
+model, so operators must provision a validated artifact at that path before running the complete
+CET job. The materialization fails rather than publishing a placeholder when it is absent.
 
 Patent training is separate: `train_cet_patent_classifier` expects
-`data/processed/cet_patent_training.parquet` with the schema documented in the asset itself.
+`data/processed/cet_patent_training.parquet` or its `.ndjson` sibling with the schema documented in
+the asset itself.
 
 ## Validation and evidence
 
