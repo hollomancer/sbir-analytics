@@ -121,8 +121,8 @@
   "outputs": {
     "agency_baseline_comparison_json": {
       "path": "agency_baseline_comparison.json",
-      "sha256": "0e40db8a993c5830a2c600f0432b0519363b91f01e5a6667a512adfcbaf21ca5",
-      "size_bytes": 6639
+      "sha256": "9cab800604316ccc0c94993781d215b53e0800102eecee23104d846fd2fc479a",
+      "size_bytes": 5262
     },
     "agency_cohort_outcomes_parquet": {
       "path": "agency_cohort_outcomes.parquet",
@@ -131,8 +131,8 @@
     },
     "agency_vs_published_baselines_markdown": {
       "path": "agency_vs_published_baselines.md",
-      "sha256": "78f9f83807efacfc32bf9255314540e72b71c17b9a7ce854dae5296a6b6feb68",
-      "size_bytes": 5937
+      "sha256": "7c28f05feb5f9f3513e45f36b686b5fae2ccaa9a4703e47d31fc09253a303da8",
+      "size_bytes": 5060
     }
   },
   "parameters": {
@@ -145,8 +145,8 @@
   },
   "review_artifact": {
     "path": "docs/research/agency-private-capital-phase1-nsf.md",
-    "sha256": "6d377238318f30985504a66829f0af47de8b5b948b7a3aca0dbf1b2a86c0417b",
-    "size_bytes": 6717
+    "sha256": "8a8ae9eb3d5a2dda6fc870301ce274740ec27543d156d80d6fc734e34dde7a53",
+    "size_bytes": 6198
   },
   "results": {
     "graduation_horizon_sensitivity": [
@@ -210,6 +210,6 @@
       "uei_duns_bridge_company_count": 1143
     }
   },
-  "run_date": "2026-08-11",
+  "run_date": "2026-08-12",
   "schema_version": 2
 }

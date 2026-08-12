@@ -1,7 +1,7 @@
 ---
 Type: Research Report
 Owner: research@project
-Last-Reviewed: 2026-08-11
+Last-Reviewed: 2026-08-12
 Status: draft
 ---
 
@@ -104,7 +104,7 @@ The machine-readable manifest is
 
 The SBIR.gov snapshot was retrieved on **2026-03-31** from the
 [bulk awards CSV](https://data.www.sbir.gov/mod_awarddatapublic/award_data.csv);
-this repaired run was executed on **2026-08-11**. The manifest records the
+this repaired run was executed on **2026-08-12**. The manifest records the
 headline result, the four horizon-sensitivity rows, identity coverage, and
 SHA-256 hashes for every generated output so the prose can be checked against
 the machine-readable run.
@@ -118,7 +118,7 @@ uv run --extra stack-dev python \
   --awards-csv data/raw/sbir/award_data.csv \
   --headline-vintage 2015-2019 \
   --graduation-horizon-years 5 \
-  --run-date 2026-08-11 \
+  --run-date 2026-08-12 \
   --awards-retrieved-at 2026-03-31 \
   --skip-download
 ```
