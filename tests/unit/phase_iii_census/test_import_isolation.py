@@ -66,6 +66,12 @@ assert assets.verify_materialization_gate()["materialization_allowed"] is True
 """
     env = os.environ.copy()
     env["PYTHONPATH"] = str(install_root)
+    # pytest-cov instruments subprocesses through these environment variables.
+    # This subprocess imports a copied installation tree, which must not be
+    # counted as a second copy of the repository in the coverage report.
+    for key in tuple(env):
+        if key.startswith("COV_CORE_"):
+            env.pop(key)
 
     result = subprocess.run(
         [sys.executable, "-c", script, str(install_root)],

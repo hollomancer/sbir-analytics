@@ -11,8 +11,6 @@ Usage:
 Scenarios:
     minimal     - Quick smoke tests (< 2 minutes)
     standard    - Full E2E validation (5-8 minutes)
-    large       - Performance testing (8-10 minutes)
-    edge-cases  - Robustness testing (3-5 minutes)
 """
 
 import argparse
@@ -34,33 +32,19 @@ def get_test_config(scenario: str) -> dict[str, Any]:
         "minimal": {
             "description": "Quick smoke tests for basic functionality",
             "timeout": 120,
-            "test_markers": "not slow and not large_dataset",
+            "test_markers": "not slow and not requires_api and not real_data",
             "expected_duration": "< 2 minutes",
             "memory_limit": "2GB",
         },
         "standard": {
-            "description": "Full E2E validation with representative data",
+            "description": "Hermetic E2E validation with representative data",
             "timeout": 480,
-            "test_markers": "not large_dataset",
+            "test_markers": "not requires_api and not real_data",
             "expected_duration": "5-8 minutes",
             "memory_limit": "4GB",
         },
-        "large": {
-            "description": "Performance testing with larger datasets",
-            "timeout": 600,
-            "test_markers": "",
-            "expected_duration": "8-10 minutes",
-            "memory_limit": "6GB",
-        },
-        "edge-cases": {
-            "description": "Robustness testing with edge cases",
-            "timeout": 300,
-            "test_markers": "edge_case",
-            "expected_duration": "3-5 minutes",
-            "memory_limit": "3GB",
-        },
     }
-    return configs.get(scenario, configs["standard"])
+    return configs[scenario]
 
 
 def check_environment() -> bool:
@@ -137,7 +121,7 @@ def run_e2e_tests(scenario: str, timeout: int) -> int:
 
     # Build pytest command
     pytest_args = [
-        "python",
+        sys.executable,
         "-m",
         "pytest",
         "tests/e2e/",
@@ -170,6 +154,7 @@ def run_e2e_tests(scenario: str, timeout: int) -> int:
                 "--cov=packages/sbir-analytics/sbir_analytics",
                 "--cov=packages/sbir-ml/sbir_ml",
                 "--cov=packages/sbir-graph/sbir_graph",
+                "--cov-branch",
                 "--cov-report=term-missing",
                 "--cov-report=html:/app/artifacts/htmlcov",
             ]
@@ -224,19 +209,16 @@ def main():
 Scenarios:
   minimal     Quick smoke tests (< 2 minutes)
   standard    Full E2E validation (5-8 minutes) [default]
-  large       Performance testing (8-10 minutes)
-  edge-cases  Robustness testing (3-5 minutes)
 
 Examples:
   python scripts/run_e2e_tests.py
   python scripts/run_e2e_tests.py --scenario minimal
-  python scripts/run_e2e_tests.py --scenario large --timeout 900
         """,
     )
 
     parser.add_argument(
         "--scenario",
-        choices=["minimal", "standard", "large", "edge-cases"],
+        choices=["minimal", "standard"],
         default=os.getenv("E2E_TEST_SCENARIO", "standard"),
         help="Test scenario to run (default: standard)",
     )
