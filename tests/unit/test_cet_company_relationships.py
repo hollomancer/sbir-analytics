@@ -220,14 +220,14 @@ def test_asset_neo4j_company_cet_relationships_invokes_loader(monkeypatch, tmp_p
     # Prepare fake input rows using the company profile artifact schema.
     rows = [
         {
-            "company_id": "COMPANY-1",
+            "company_uei": "ABCD1234EFGH",
             "dominant_cet": "artificial_intelligence",
             "specialization_score": 0.5,
             "award_count": 10,
             "total_funding": 1000000,
         },
         {
-            "company_id": "COMPANY-2",
+            "company_uei": "JKLM5678NPQR",
             "dominant_cet": "quantum_information_science",
             "specialization_score": 0.3,
             "award_count": 5,
@@ -253,10 +253,14 @@ def test_asset_neo4j_company_cet_relationships_invokes_loader(monkeypatch, tmp_p
 
         def create_company_cet_relationships(self, rows_in, *, key_property):
             """Match the production CETLoader API."""
-            assert key_property == "company_id"
+            assert key_property == "uei"
             self.rows_received = list(rows_in)
-            # Count relationships as the number of rows with dominant CET present
-            count = sum(1 for r in self.rows_received if r.get("dominant_cet"))
+            assert [row["uei"] for row in self.rows_received] == [
+                "ABCD1234EFGH",
+                "JKLM5678NPQR",
+            ]
+            # Count relationships as the production loader does after schema adaptation.
+            count = sum(1 for r in self.rows_received if r.get("cet_dominant_id"))
             return FakeMetrics(count)
 
         def close(self):

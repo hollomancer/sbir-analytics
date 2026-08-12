@@ -97,7 +97,7 @@ def test_company_profiles_return_real_ndjson_fallback(
     mock_save_parquet, mock_aggregator_class, monkeypatch, tmp_path
 ):
     mock_aggregator_class.return_value.to_dataframe.return_value = pd.DataFrame(
-        [{"company_id": "C-1", "company_name": "Example"}]
+        [{"company_id": "ABCD1234EFGH", "company_name": "Example"}]
     )
 
     def save_as_ndjson(df, path):
@@ -110,7 +110,7 @@ def test_company_profiles_return_real_ndjson_fallback(
     monkeypatch.chdir(tmp_path)
     source = tmp_path / "data/processed/cet_award_classifications.ndjson"
     source.parent.mkdir(parents=True)
-    source.write_text(json.dumps({"award_id": "A-1", "company_id": "C-1"}) + "\n")
+    source.write_text(json.dumps({"award_id": "A-1", "company_uei": "ABCD1234EFGH"}) + "\n")
 
     result = transformed_cet_company_profiles()
 
@@ -162,7 +162,7 @@ def test_company_profiles_reject_empty_aggregation(
     monkeypatch.chdir(tmp_path)
     source = tmp_path / "data/processed/cet_award_classifications.ndjson"
     source.parent.mkdir(parents=True)
-    source.write_text(json.dumps({"award_id": "A-1", "company_id": "C-1"}) + "\n")
+    source.write_text(json.dumps({"award_id": "A-1", "company_uei": "ABCD1234EFGH"}) + "\n")
 
     with pytest.raises(ValueError, match="produced no company profiles"):
         transformed_cet_company_profiles()

@@ -160,7 +160,7 @@ def _company_enrichments(profiles: list[dict]) -> list[dict]:
         cet_scores = row.get("cet_scores") or {}
         enrichments.append(
             {
-                "company_id": row["company_id"],
+                "uei": row["company_uei"],
                 "cet_dominant_id": row.get("dominant_cet"),
                 "cet_dominant_score": row.get("dominant_score"),
                 "cet_specialization_score": row.get("specialization_score"),
@@ -322,7 +322,7 @@ def loaded_company_cet_enrichment(
     batch_size = int(context.op_config.get("batch_size", 1000))
 
     # Read company profiles
-    expected_cols = ("company_id", "dominant_cet", "specialization_score")
+    expected_cols = ("company_uei", "dominant_cet", "specialization_score")
     profiles = _read_parquet_or_ndjson(
         company_profiles_parquet, company_profiles_json, expected_columns=expected_cols
     )
@@ -332,7 +332,7 @@ def loaded_company_cet_enrichment(
     try:
         loader = CETLoader(client, CETLoaderConfig(batch_size=batch_size))
         metrics = loader.upsert_company_cet_enrichment(
-            _company_enrichments(profiles), key_property="company_id"
+            _company_enrichments(profiles), key_property="uei"
         )
         return _complete_load(
             filename="neo4j_company_cet_enrichment.checks.json",
@@ -444,7 +444,7 @@ def loaded_company_cet_relationships(
     batch_size = int(context.op_config.get("batch_size", 1000))
 
     # Read company profiles
-    expected_cols = ("company_id", "dominant_cet", "specialization_score")
+    expected_cols = ("company_uei", "dominant_cet", "specialization_score")
     profiles = _read_parquet_or_ndjson(
         company_profiles_parquet, company_profiles_json, expected_columns=expected_cols
     )
@@ -453,7 +453,9 @@ def loaded_company_cet_relationships(
     client = _connected_client()
     try:
         loader = CETLoader(client, CETLoaderConfig(batch_size=batch_size))
-        metrics = loader.create_company_cet_relationships(profiles, key_property="company_id")
+        metrics = loader.create_company_cet_relationships(
+            _company_enrichments(profiles), key_property="uei"
+        )
         return _complete_load(
             filename="neo4j_company_cet_relationships.checks.json",
             operation="Company CET relationship loading",

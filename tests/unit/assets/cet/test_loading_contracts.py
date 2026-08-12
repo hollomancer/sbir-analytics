@@ -301,7 +301,7 @@ def test_company_enrichment_fails_when_no_organizations_match(
     source.write_text(
         json.dumps(
             {
-                "company_id": "C-1",
+                "company_uei": "ABCD1234EFGH",
                 "dominant_cet": "quantum",
                 "specialization_score": 0.8,
             }
@@ -319,6 +319,9 @@ def test_company_enrichment_fails_when_no_organizations_match(
     summary = mock_write_summary.call_args.args[1]
     assert summary["status"] == "error"
     assert summary["match_rate"] == 0.0
+    loader_call = mock_loader_class.return_value.upsert_company_cet_enrichment.call_args
+    assert loader_call.kwargs["key_property"] == "uei"
+    assert loader_call.args[0][0]["uei"] == "ABCD1234EFGH"
     mock_connected_client.return_value.close.assert_called_once_with()
 
 
@@ -340,7 +343,7 @@ def test_company_enrichment_maps_profile_schema():
     result = loading._company_enrichments(
         [
             {
-                "company_id": "C-1",
+                "company_uei": "ABCD1234EFGH",
                 "dominant_cet": "quantum",
                 "dominant_score": 0.8,
                 "specialization_score": 0.6,
@@ -350,6 +353,6 @@ def test_company_enrichment_maps_profile_schema():
         ]
     )
 
-    assert result[0]["company_id"] == "C-1"
+    assert result[0]["uei"] == "ABCD1234EFGH"
     assert result[0]["cet_dominant_id"] == "quantum"
     assert result[0]["cet_areas"] == ["quantum", "ai"]
