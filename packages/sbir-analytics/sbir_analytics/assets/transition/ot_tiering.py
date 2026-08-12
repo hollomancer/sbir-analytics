@@ -134,7 +134,7 @@ def ot_consortium_verification_tiers(
     # Evidence is a list-of-dicts; serialize for a stable parquet schema.
     if not df.empty and "evidence" in df.columns:
         df["evidence"] = df["evidence"].apply(json.dumps)
-    save_dataframe_parquet(df, out_path)
+    out_path = save_dataframe_parquet(df, out_path)
 
     by_tier = df["tier"].value_counts(dropna=False).to_dict() if not df.empty else {}
     unverifiable = (

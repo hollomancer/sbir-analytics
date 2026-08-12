@@ -1,5 +1,6 @@
 """Tests for CET-area agreement facts."""
 
+import logging
 from pathlib import Path
 
 from sbir_etl.reporting.procurement_transition.cet_vocabulary import (
@@ -56,3 +57,20 @@ def test_missing_taxonomy_degrades_to_empty():
         )
         is None
     )
+
+
+def test_structurally_invalid_taxonomy_degrades_and_warns(tmp_path, caplog):
+    """A non-mapping taxonomy is an authoring error, so it must not degrade silently.
+
+    The result is cached for the process lifetime, so a caller who misses the
+    warning gets no CET fact for the rest of the run with nothing to explain it.
+    """
+
+    taxonomy = tmp_path / "taxonomy.yaml"
+    taxonomy.write_text("- not\n- a\n- mapping\n", encoding="utf-8")
+
+    with caplog.at_level(logging.WARNING):
+        assert load_cet_vocabulary(str(taxonomy)) == {}
+
+    assert "degrading to no CET fact" in caplog.text
+    assert str(taxonomy) in caplog.text

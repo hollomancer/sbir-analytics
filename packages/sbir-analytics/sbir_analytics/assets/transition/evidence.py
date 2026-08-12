@@ -88,12 +88,17 @@ def transformed_transition_evidence(
             if float(row.get("score") or 0.0) >= float(threshold):
                 count_above += 1
 
+    transitions_path = Path("data/processed/transitions.parquet")
+    transitions_fallback = transitions_path.with_suffix(".ndjson")
+    if not transitions_path.exists() and transitions_fallback.exists():
+        transitions_path = transitions_fallback
+
     # Emit a lightweight validation summary for the MVP
     try:
         summary = {
             "generated_at": now_utc_iso(),
             "artifacts": {
-                "transitions": "data/processed/transitions.parquet",
+                "transitions": str(transitions_path),
                 "evidence": str(out_path),
                 "evidence_checks": str(out_path.with_suffix(".checks.json")),
                 "vendor_resolution_checks": "data/processed/vendor_resolution.checks.json",

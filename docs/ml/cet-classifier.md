@@ -65,7 +65,7 @@ This module avoids heavy NLP dependencies and only uses Python and `re`.
 - `PatentCETClassifier(pipelines: Dict[cet_id, pipeline])`
   - `classify(title, assignee=None, top_k=3) -> List[PatentClassification]`
   - `classify_batch(titles, assignees=None, batch_size=1000, top_k=3) -> List[List[PatentClassification]]`
-  - `train_from_dataframe(df, ... use_feature_extraction=True, feature_matrix_builder=None, ...)`
+  - `train_from_dataframe(df, ... feature_matrix_builder=None, ...)`
   - `save(path)`, `load(path)`, `get_metadata()`
 - `PatentFeatureExtractor(keywords_map=None, stopwords=None)`
   - `features_for_dataframe(df, title_col="title", assignee_col=None) -> (texts, feature_vectors)`
@@ -182,7 +182,8 @@ Store evaluation metrics in your artifact metadata by merging them into `config`
 
 ## Practical Tips
 
-- Start simple: use `use_feature_extraction=True` to feed normalized text to text-based pipelines (or `DummyPipeline` for CI).
+- Start simple: `train_from_dataframe` always feeds normalized extractor text to
+  text-based pipelines (or `DummyPipeline` for CI); no flag selects this.
 - To use numeric features, supply a caller-owned builder with `fit_transform`
   and, optionally, `get_feature_names`, then pass it to `train_from_dataframe`
   as `feature_matrix_builder`.

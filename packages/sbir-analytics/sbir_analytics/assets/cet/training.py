@@ -122,7 +122,6 @@ def train_cet_patent_classifier() -> Output:
             title_col="title",
             assignee_col="assignee" if "assignee" in df.columns else None,
             cet_label_col="cet_labels",
-            use_feature_extraction=True,
             keywords_map={k: list(v) for k, v in get_keywords_map().items()}
             if get_keywords_map()
             else None,  # type: ignore[arg-type]
@@ -208,18 +207,14 @@ def cet_award_training_dataset() -> Output:
                     "taxonomy_version",
                 ]
             )
-            save_dataframe_parquet(df_empty, output_path)
+            output_path = save_dataframe_parquet(df_empty, output_path)
         except Exception:
-            # Ensure a placeholder parquet file exists and write empty NDJSON
+            # Pandas itself may be unavailable; keep the empty artifact readable.
             out_json = output_path.with_suffix(".ndjson")
             out_json.parent.mkdir(parents=True, exist_ok=True)
             with open(out_json, "w", encoding="utf-8") as fh:
                 fh.write("")
-            try:
-                output_path.parent.mkdir(parents=True, exist_ok=True)
-                output_path.touch()
-            except Exception:
-                pass
+            output_path = out_json
 
         checks = {
             "ok": False,
@@ -279,17 +274,13 @@ def cet_award_training_dataset() -> Output:
                     "taxonomy_version",
                 ]
             )
-            save_dataframe_parquet(df_empty, output_path)
+            output_path = save_dataframe_parquet(df_empty, output_path)
         except Exception:
             out_json = output_path.with_suffix(".ndjson")
             out_json.parent.mkdir(parents=True, exist_ok=True)
             with open(out_json, "w", encoding="utf-8") as fh:
                 fh.write("")
-            try:
-                output_path.parent.mkdir(parents=True, exist_ok=True)
-                output_path.touch()
-            except Exception:
-                pass
+            output_path = out_json
 
         checks = {
             "ok": False,
@@ -334,17 +325,13 @@ def cet_award_training_dataset() -> Output:
                 }
             )
         df = pd.DataFrame(rows)
-        save_dataframe_parquet(df, output_path)
+        output_path = save_dataframe_parquet(df, output_path)
     except Exception:
         # Fallback to NDJSON using helper
         try:
             out_json = output_path.with_suffix(".ndjson")
             save_dataset_ndjson(dataset, out_json)
-            try:
-                output_path.parent.mkdir(parents=True, exist_ok=True)
-                output_path.touch()
-            except Exception:
-                pass
+            output_path = out_json
         except Exception:
             # As a last resort, write minimal NDJSON manually
             out_json = output_path.with_suffix(".ndjson")
@@ -361,11 +348,7 @@ def cet_award_training_dataset() -> Output:
                         )
                         + "\n"
                     )
-            try:
-                output_path.parent.mkdir(parents=True, exist_ok=True)
-                output_path.touch()
-            except Exception:
-                pass
+            output_path = out_json
 
     # Build checks JSON
     checks = {

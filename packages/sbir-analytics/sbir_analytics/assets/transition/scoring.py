@@ -233,7 +233,7 @@ def transformed_transition_scores(
         df_out = df_out.sort_values(
             by=["award_id", "score", "contract_id"], ascending=[True, False, True]
         ).reset_index(drop=True)
-    save_dataframe_parquet(df_out, out_path)
+    out_path = save_dataframe_parquet(df_out, out_path)
 
     checks = {
         "ok": True,

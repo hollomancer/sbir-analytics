@@ -564,12 +564,12 @@ class TestEdgeCases:
     @patch("sbir_analytics.assets.cet.classifications.Path")
     @patch("sbir_analytics.assets.cet.classifications.save_dataframe_parquet")
     @patch("builtins.open", new_callable=mock_open)
-    def test_award_classifications_save_failure(
+    def test_award_classifications_save_failure_propagates(
         self, mock_file, mock_save, mock_path_class, mock_taxonomy_loader
     ):
-        """Test asset handles save failure gracefully."""
+        """A helper failure means neither Parquet nor NDJSON could be written."""
         mock_taxonomy_loader.side_effect = Exception("Load failed")
-        mock_save.side_effect = Exception("Save failed")
+        mock_save.side_effect = OSError("Save failed")
 
         # Mock Path behaviors
         mock_path = Mock()
@@ -585,8 +585,8 @@ class TestEdgeCases:
         )
         mock_path_class.return_value = mock_path
 
-        # Should not raise, just log error
-        enriched_cet_award_classifications()
+        with pytest.raises(OSError, match="Save failed"):
+            enriched_cet_award_classifications()
 
     def test_quality_check_file_permission_error(self, tmp_path):
         """Test quality check handles file permission errors."""

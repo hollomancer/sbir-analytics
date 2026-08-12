@@ -17,6 +17,21 @@ CANONICAL_YAML_READERS = frozenset(
     }
 )
 IGNORED_PREFIXES = ("scripts/archive/", "tests/")
+# Every PyYAML entry point that parses a document. Matching only ``safe_load``
+# would let the pre-``safe_load`` idiom ``yaml.load(f, Loader=yaml.SafeLoader)``
+# through, which is the form most likely to be written from habit.
+PYYAML_READERS = frozenset(
+    {
+        "safe_load",
+        "safe_load_all",
+        "load",
+        "load_all",
+        "full_load",
+        "full_load_all",
+        "unsafe_load",
+        "unsafe_load_all",
+    }
+)
 
 
 @dataclass(frozen=True)
@@ -25,20 +40,21 @@ class ConfigBoundaryViolation:
 
     path: str
     line_number: int
+    function_name: str
 
     def format(self) -> str:
         return (
-            f"{self.path}:{self.line_number}: direct yaml.safe_load bypasses the "
+            f"{self.path}:{self.line_number}: direct yaml.{self.function_name} bypasses the "
             "configuration primitive; use sbir_etl.config.yaml_io.read_yaml_mapping "
             "or sbir_etl.config.get_config"
         )
 
 
-def _safe_load_aliases(tree: ast.AST) -> tuple[set[str], set[str]]:
-    """Return aliases for the yaml module and directly imported safe_load function."""
+def _reader_aliases(tree: ast.AST) -> tuple[set[str], dict[str, str]]:
+    """Return yaml module aliases and directly imported reader aliases by local name."""
 
     module_aliases: set[str] = set()
-    function_aliases: set[str] = set()
+    function_aliases: dict[str, str] = {}
     for node in ast.walk(tree):
         if isinstance(node, ast.Import):
             for alias in node.names:
@@ -46,49 +62,55 @@ def _safe_load_aliases(tree: ast.AST) -> tuple[set[str], set[str]]:
                     module_aliases.add(alias.asname or alias.name)
         elif isinstance(node, ast.ImportFrom) and node.module == "yaml":
             for alias in node.names:
-                if alias.name == "safe_load":
-                    function_aliases.add(alias.asname or alias.name)
+                if alias.name in PYYAML_READERS:
+                    function_aliases[alias.asname or alias.name] = alias.name
     return module_aliases, function_aliases
 
 
-def _is_safe_load_call(
+def _read_function_name(
     node: ast.Call,
     *,
     module_aliases: set[str],
-    function_aliases: set[str],
-) -> bool:
+    function_aliases: dict[str, str],
+) -> str | None:
+    """Return the PyYAML reader this call invokes, or None when it is not one."""
+
     function = node.func
     if isinstance(function, ast.Name):
-        return function.id in function_aliases
-    return (
+        return function_aliases.get(function.id)
+    if (
         isinstance(function, ast.Attribute)
-        and function.attr == "safe_load"
+        and function.attr in PYYAML_READERS
         and isinstance(function.value, ast.Name)
         and function.value.id in module_aliases
-    )
+    ):
+        return function.attr
+    return None
 
 
 def scan_file(
     path: Path, *, repository_root: Path = REPOSITORY_ROOT
 ) -> list[ConfigBoundaryViolation]:
-    """Find direct ``yaml.safe_load`` calls in one production Python file."""
+    """Find direct PyYAML document reads in one production Python file."""
 
     relative = path.resolve().relative_to(repository_root.resolve()).as_posix()
     if relative in CANONICAL_YAML_READERS or relative.startswith(IGNORED_PREFIXES):
         return []
 
     tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
-    module_aliases, function_aliases = _safe_load_aliases(tree)
-    return [
-        ConfigBoundaryViolation(relative, node.lineno)
-        for node in ast.walk(tree)
-        if isinstance(node, ast.Call)
-        and _is_safe_load_call(
+    module_aliases, function_aliases = _reader_aliases(tree)
+    violations: list[ConfigBoundaryViolation] = []
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Call):
+            continue
+        function_name = _read_function_name(
             node,
             module_aliases=module_aliases,
             function_aliases=function_aliases,
         )
-    ]
+        if function_name is not None:
+            violations.append(ConfigBoundaryViolation(relative, node.lineno, function_name))
+    return violations
 
 
 def tracked_python_files(*, repository_root: Path = REPOSITORY_ROOT) -> list[Path]:

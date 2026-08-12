@@ -193,7 +193,12 @@ class APICache:
 
             from sbir_etl.utils.data.file_io import save_dataframe_parquet
 
-            save_dataframe_parquet(df, cache_path, index=False)
+            save_dataframe_parquet(
+                df,
+                cache_path,
+                index=False,
+                fallback_to_ndjson=False,
+            )
 
             metadata_dict = {
                 "cached_at": datetime.now().isoformat(),

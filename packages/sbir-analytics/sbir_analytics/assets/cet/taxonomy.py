@@ -163,7 +163,7 @@ def raw_cet_taxonomy() -> Output:
 
     # Persist DataFrame to parquet
     output_path = DEFAULT_OUTPUT_PATH
-    save_dataframe_parquet(df, output_path)
+    output_path = save_dataframe_parquet(df, output_path)
 
     # Run completeness checks via the loader helper (non-fatal)
     completeness = {}

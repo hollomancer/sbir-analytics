@@ -220,6 +220,11 @@ def test_transition_scores_and_evidence(monkeypatch, tmp_path):
     # Run all outputs into a temp working directory
     monkeypatch.chdir(tmp_path)
 
+    def unavailable_parquet_engine(*args, **kwargs):
+        raise ImportError("Parquet engine unavailable")
+
+    monkeypatch.setattr(pd.DataFrame, "to_parquet", unavailable_parquet_engine)
+
     from sbir_analytics.assets.transition import (
         transformed_transition_evidence,
         transformed_transition_scores,
@@ -283,7 +288,7 @@ def test_transition_scores_and_evidence(monkeypatch, tmp_path):
         validated_contracts_sample=contracts_df,
         enriched_sbir_awards=awards_df,
     )
-    scores_df, _ = _unwrap_output(scores_out)
+    scores_df, scores_metadata = _unwrap_output(scores_out)
 
     # Expect 2 candidates (A1↔C1 via UEI, A2↔C2 via fuzzy)
     assert isinstance(scores_df, pd.DataFrame)
@@ -291,6 +296,13 @@ def test_transition_scores_and_evidence(monkeypatch, tmp_path):
         set(scores_df.columns)
     )
     assert len(scores_df) == 2
+
+    scores_path_value = scores_metadata["output_path"]
+    if hasattr(scores_path_value, "text"):
+        scores_path_value = scores_path_value.text
+    scores_path = Path(scores_path_value)
+    assert scores_path == Path("data/processed/transitions.ndjson")
+    assert scores_path.exists()
 
     s1 = scores_df.loc[(scores_df["award_id"] == "A1") & (scores_df["contract_id"] == "C1")].iloc[0]
     assert s1["method"] == "uei"
@@ -319,6 +331,11 @@ def test_transition_scores_and_evidence(monkeypatch, tmp_path):
     entry = json.loads(lines[0])
     for key in ["award_id", "contract_id", "score", "method", "matched_keys", "contract_snapshot"]:
         assert key in entry
+
+    manifest = json.loads(
+        Path("reports/validation/transition_mvp.json").read_text(encoding="utf-8")
+    )
+    assert manifest["artifacts"]["transitions"] == str(scores_path)
 
 
 def test_transition_detections_pipeline_generates_transition(monkeypatch, tmp_path):
@@ -469,3 +486,32 @@ def test_transition_detections_returns_empty_without_candidates(monkeypatch, tmp
     if hasattr(rows_value, "value"):
         rows_value = rows_value.value
     assert rows_value == 0
+
+
+def test_transition_detections_reports_ndjson_fallback_path(monkeypatch, tmp_path):
+    monkeypatch.chdir(tmp_path)
+    config_path = _write_detection_config(tmp_path)
+    monkeypatch.setenv("SBIR_ETL__TRANSITION__DETECTION_CONFIG", str(config_path))
+
+    def unavailable_parquet_engine(*args, **kwargs):
+        raise OSError("Parquet engine unavailable")
+
+    monkeypatch.setattr(pd.DataFrame, "to_parquet", unavailable_parquet_engine)
+
+    from sbir_analytics.assets.transition import transformed_transition_detections  # type: ignore
+
+    scores_df = pd.DataFrame(columns=["award_id", "contract_id", "score", "method", "computed_at"])
+    result = transformed_transition_detections(
+        context=build_asset_context(),
+        transformed_transition_scores=scores_df,
+    )
+
+    _, metadata = _unwrap_output(result)
+    output_path_value = metadata["output_path"]
+    if hasattr(output_path_value, "text"):
+        output_path_value = output_path_value.text
+    output_path = Path(output_path_value)
+
+    assert output_path.suffix == ".ndjson"
+    assert output_path.exists()
+    assert not output_path.with_suffix(".parquet").exists()

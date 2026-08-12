@@ -153,7 +153,12 @@ class BEAIOAdapter:
         try:
             from sbir_etl.utils.data.file_io import save_dataframe_parquet
 
-            save_dataframe_parquet(result_df, cache_file, index=False)
+            save_dataframe_parquet(
+                result_df,
+                cache_file,
+                index=False,
+                fallback_to_ndjson=False,
+            )
             logger.debug(f"Cached results to {cache_file}")
         except Exception as e:
             logger.warning(f"Failed to save cache file {cache_file}: {e}")

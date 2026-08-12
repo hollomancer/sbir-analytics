@@ -33,6 +33,29 @@ def test_direct_safe_load_import_is_rejected(tmp_path: Path) -> None:
     assert len(boundaries.scan_file(path, repository_root=tmp_path)) == 1
 
 
+def test_non_safe_load_readers_are_rejected(tmp_path: Path) -> None:
+    """``yaml.load(..., Loader=...)`` and friends bypass the primitive just as much.
+
+    Matching only ``safe_load`` left the pre-``safe_load`` idiom green, which is
+    the spelling most likely to be reached for from habit.
+    """
+
+    for source, expected in (
+        ("import yaml\npayload = yaml.load('k: v', Loader=yaml.SafeLoader)\n", "load"),
+        ("import yaml\npayload = yaml.full_load('k: v')\n", "full_load"),
+        ("import yaml\npayload = yaml.unsafe_load('k: v')\n", "unsafe_load"),
+        ("import yaml\npayload = list(yaml.safe_load_all('k: v'))\n", "safe_load_all"),
+        ("from yaml import load\npayload = load('k: v')\n", "load"),
+    ):
+        path = _write(tmp_path, "sbir_etl/example.py", source)
+
+        violations = boundaries.scan_file(path, repository_root=tmp_path)
+
+        assert len(violations) == 1, source
+        assert violations[0].function_name == expected
+        assert f"yaml.{expected}" in violations[0].format()
+
+
 def test_shared_reader_and_yaml_writes_are_allowed(tmp_path: Path) -> None:
     path = _write(
         tmp_path,

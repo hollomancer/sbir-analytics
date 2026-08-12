@@ -178,7 +178,7 @@ class NAICSEnricher:
             df = pd.DataFrame(columns=["key_type", "key", "naics_candidates"])
         from sbir_etl.utils.data.file_io import save_dataframe_parquet
 
-        save_dataframe_parquet(df, cache, index=False)
+        save_dataframe_parquet(df, cache, index=False, fallback_to_ndjson=False)
         logger.info("Persisted NAICS index to %s (rows=%d)", cache, len(df))
 
     def _process_line(self, line: str) -> None:

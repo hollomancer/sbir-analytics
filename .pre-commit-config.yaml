@@ -19,10 +19,9 @@ repos:
       - id: ruff-format
         files: ^(sbir_etl|packages/sbir-(analytics/sbir_analytics|ml/sbir_ml|graph/sbir_graph)|tests)/
 
-  # Type checking (matches blocking CI scope: sbir_etl only)
-  # CI equivalent: mypy sbir_etl
-  # Note: mypy is configured in pyproject.toml with exclude patterns for
-  # scripts/, tests/, and examples/ to match this scope
+  # Type checking (local subset of the blocking CI scope: sbir_etl only)
+  # CI equivalent: mypy sbir_etl packages/sbir-graph/sbir_graph packages/sbir-ml/sbir_ml
+  # The files filter keeps the local hook narrower than CI by design.
   - repo: https://github.com/pre-commit/mirrors-mypy
     rev: v1.18.2
     hooks:
@@ -50,25 +49,25 @@ repos:
         pass_filenames: false
         always_run: true
 
-# Security scanning (bandit and detect-secrets) is NOT automated anywhere. It
-# ran in weekly.yml's security-scan job until that workflow was retired, and it
-# is not a pre-commit hook. Run it by hand, or schedule it off GitHub Actions:
-# Run manually with: uv run bandit -r sbir_etl packages/sbir-analytics/sbir_analytics packages/sbir-ml/sbir_ml packages/sbir-graph/sbir_graph -c pyproject.toml
+# Security scanning is intentionally not a local pre-commit hook. CI runs both
+# commands in its blocking `security` / "Security Scan" job. To reproduce it:
+# Run manually with: uv run python -m bandit -r sbir_etl packages -c pyproject.toml
+# Install as CI does:  uv pip install detect-secrets
 # Run manually with: uv run detect-secrets scan --baseline .secrets.baseline
 
 # Configuration notes for maintainers:
 #
 # SCOPE ALIGNMENT WITH CI:
-#   This pre-commit configuration is designed to match the checks in
-#   .github/workflows/ci.yml (the `quality` job), which is the only workflow
-#   left. Both run on the same paths so local and CI results agree.
+#   This pre-commit configuration overlaps with, but does not duplicate, the
+#   blocking checks in .github/workflows/ci.yml. Ruff has the same scope in
+#   both places; CI deliberately has broader MyPy and security coverage.
 #
 #   Tool Scope Mapping:
 #   - Ruff (lint/format): all production package roots and tests
-#   - MyPy (type check):  sbir_etl/      [CI also checks sbir-graph]
-#   - Bandit (security):  all production package roots  [manual only]
+#   - MyPy (type check):  sbir_etl/      [CI also checks sbir-graph, sbir-ml]
+#   - Bandit (security):  no local hook  [CI checks sbir_etl/ and packages/]
 #   - Standard hooks:     all files       [good practice, not in CI]
-#   - Detect-secrets:     all files       [manual only]
+#   - Detect-secrets:     no local hook  [CI scans the working tree against the baseline]
 #
 # SETUP:
 #   Install pre-commit:
@@ -79,9 +78,9 @@ repos:
 #     pre-commit run --all-files
 #
 # TESTING:
-#   The detect-secrets hook uses .secrets.baseline for approved secrets.
+#   The CI detect-secrets scan uses .secrets.baseline for approved secrets.
 #   When the baseline is updated, commit it with your PR.
 #
 # CI ENFORCEMENT:
-#   For additional CI enforcement, run pre-commit via GitHub Actions.
-#   See .github/workflows/ci.yml for the complete set of checks.
+#   CI invokes the underlying tools directly rather than running pre-commit.
+#   See .github/workflows/ci.yml for its complete, broader set of checks.

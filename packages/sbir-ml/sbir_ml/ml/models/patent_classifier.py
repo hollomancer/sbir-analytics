@@ -216,7 +216,6 @@ class PatentCETClassifier:
         assignee_col: str | None = None,
         cet_label_col: str = "cet_labels",
         pipelines_factory: Any | None = None,
-        use_feature_extraction: bool = False,
         keywords_map: dict[str, list[str]] | None = None,
         feature_matrix_builder: Any | None = None,
     ) -> None:
@@ -258,6 +257,8 @@ class PatentCETClassifier:
         # Use PatentFeatureExtractor to derive training texts and feature vectors.
         # The pipelines consume text; the extractor normalizes titles and adds simple
         # assignee/keyword signals to the text so pipelines receive consistent inputs.
+        # Extraction is unconditional here. `build_training_inputs` in
+        # ml.train.patent_training is the helper that can fall back to raw titles.
         extractor = PatentFeatureExtractor(keywords_map=keywords_map)
         texts, feature_vectors = extractor.features_for_dataframe(
             df, title_col=title_col, assignee_col=assignee_col
