@@ -475,7 +475,7 @@ class VendorCrosswalk:
         path = Path(path)
         from sbir_etl.utils.data.file_io import save_dataframe_parquet
 
-        save_dataframe_parquet(df, path, index=False)
+        save_dataframe_parquet(df, path, index=False, fallback_to_ndjson=False)
         logger.info("VendorCrosswalk saved to parquet: %s", path)
 
     def save_jsonl(self, path: str | Path) -> None:

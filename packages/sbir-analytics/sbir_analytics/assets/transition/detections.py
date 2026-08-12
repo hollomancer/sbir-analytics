@@ -59,7 +59,7 @@ def transformed_transition_detections(
     )
 
     # Persist detections table
-    save_dataframe_parquet(df, out_path)
+    out_path = save_dataframe_parquet(df, out_path)
 
     # Log and return with metadata
     metrics = {

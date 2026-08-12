@@ -195,12 +195,7 @@ def enriched_cet_award_classifications() -> Output:
                 "taxonomy_version",
             ]
         )
-        try:
-            save_dataframe_parquet(df_empty, output_path)
-        except Exception:
-            out_json = output_path.with_suffix(".json")
-            with open(out_json, "w", encoding="utf-8") as fh:
-                fh.write("")
+        output_path = save_dataframe_parquet(df_empty, output_path)
         checks = {"ok": False, "reason": "taxonomy_load_failed", "num_awards": 0}
         checks_path.parent.mkdir(parents=True, exist_ok=True)
         with open(checks_path, "w", encoding="utf-8") as fh:
@@ -293,14 +288,7 @@ def enriched_cet_award_classifications() -> Output:
                 "taxonomy_version",
             ]
         )
-        # Use existing save helper for parquet/NDJSON fallback
-        try:
-            save_dataframe_parquet(df_empty, output_path)
-        except Exception:
-            # If save failed, attempt NDJSON write
-            out_json = output_path.with_suffix(".json")
-            with open(out_json, "w", encoding="utf-8") as fh:
-                fh.write("")
+        output_path = save_dataframe_parquet(df_empty, output_path)
 
         checks = {
             "ok": False,
@@ -340,7 +328,7 @@ def enriched_cet_award_classifications() -> Output:
                 "taxonomy_version",
             ]
         )
-        save_dataframe_parquet(df_empty, output_path)
+        output_path = save_dataframe_parquet(df_empty, output_path)
         checks = {"ok": False, "reason": "model_load_failed", "num_awards": len(awards)}
         checks_path.parent.mkdir(parents=True, exist_ok=True)
         with open(checks_path, "w", encoding="utf-8") as fh:
@@ -384,12 +372,7 @@ def enriched_cet_award_classifications() -> Output:
                 "taxonomy_version",
             ]
         )
-        try:
-            save_dataframe_parquet(df_empty, output_path)
-        except Exception:
-            out_json = output_path.with_suffix(".json")
-            with open(out_json, "w", encoding="utf-8") as fh:
-                fh.write("")
+        output_path = save_dataframe_parquet(df_empty, output_path)
         checks = {"ok": False, "reason": "no_awards_to_classify", "num_awards": len(awards)}
         checks_path.parent.mkdir(parents=True, exist_ok=True)
         with open(checks_path, "w", encoding="utf-8") as fh:
@@ -424,12 +407,7 @@ def enriched_cet_award_classifications() -> Output:
                 "taxonomy_version",
             ]
         )
-        try:
-            save_dataframe_parquet(df_empty, output_path)
-        except Exception:
-            out_json = output_path.with_suffix(".json")
-            with open(out_json, "w", encoding="utf-8") as fh:
-                fh.write("")
+        output_path = save_dataframe_parquet(df_empty, output_path)
         checks = {"ok": False, "reason": "classification_failed", "num_awards": len(awards)}
         checks_path.parent.mkdir(parents=True, exist_ok=True)
         with open(checks_path, "w", encoding="utf-8") as fh:
@@ -519,22 +497,8 @@ def enriched_cet_award_classifications() -> Output:
 
     df_out = pd.DataFrame(rows)
 
-    # Persist classifications (parquet preferred, NDJSON fallback)
-    try:
-        save_dataframe_parquet(df_out, output_path)
-    except Exception:
-        # Fallback: write NDJSON manually
-        json_out = output_path.with_suffix(".json")
-        json_out.parent.mkdir(parents=True, exist_ok=True)
-        with open(json_out, "w", encoding="utf-8") as fh:
-            for rec in rows:
-                fh.write(json.dumps(rec) + "\n")
-        # Touch parquet placeholder for consumers that assert its existence
-        try:
-            output_path.parent.mkdir(parents=True, exist_ok=True)
-            output_path.touch()
-        except Exception:
-            logger.exception("Failed to touch parquet placeholder file for classifications")
+    # Persist classifications (parquet preferred, NDJSON fallback).
+    output_path = save_dataframe_parquet(df_out, output_path)
 
     # Build checks: coverage, high-confidence rate, evidence coverage
     num_awards = len(rows)
@@ -786,14 +750,7 @@ def enriched_cet_patent_classifications() -> Output:
                 "taxonomy_version",
             ]
         )
-        # Use existing save helper for parquet/NDJSON fallback
-        try:
-            save_dataframe_parquet(df_empty, output_path)
-        except Exception:
-            # If save failed, attempt NDJSON write
-            out_json = output_path.with_suffix(".json")
-            with open(out_json, "w", encoding="utf-8") as fh:
-                fh.write("")
+        output_path = save_dataframe_parquet(df_empty, output_path)
 
         checks = {
             "ok": False,
@@ -832,7 +789,7 @@ def enriched_cet_patent_classifications() -> Output:
                 "taxonomy_version",
             ]
         )
-        save_dataframe_parquet(df_empty, output_path)
+        output_path = save_dataframe_parquet(df_empty, output_path)
         checks = {"ok": False, "reason": "model_load_failed", "num_patents": len(patents)}
         checks_path.parent.mkdir(parents=True, exist_ok=True)
         with open(checks_path, "w", encoding="utf-8") as fh:
@@ -933,22 +890,8 @@ def enriched_cet_patent_classifications() -> Output:
 
     df_out = pd.DataFrame(rows)
 
-    # Persist classifications (parquet preferred, NDJSON fallback)
-    try:
-        save_dataframe_parquet(df_out, output_path)
-    except Exception:
-        # Fallback: write NDJSON manually
-        json_out = output_path.with_suffix(".json")
-        json_out.parent.mkdir(parents=True, exist_ok=True)
-        with open(json_out, "w", encoding="utf-8") as fh:
-            for rec in rows:
-                fh.write(json.dumps(rec) + "\n")
-        # Touch parquet placeholder for consumers that assert its existence
-        try:
-            output_path.parent.mkdir(parents=True, exist_ok=True)
-            output_path.touch()
-        except Exception:
-            logger.exception("Failed to touch parquet placeholder file for patent classifications")
+    # Persist classifications (parquet preferred, NDJSON fallback).
+    output_path = save_dataframe_parquet(df_out, output_path)
 
     # Build checks: coverage and counts
     num_patents = len(rows)

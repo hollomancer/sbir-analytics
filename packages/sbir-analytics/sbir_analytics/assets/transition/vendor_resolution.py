@@ -95,7 +95,7 @@ def enriched_vendor_resolution(
             )
 
     df_out = pd.DataFrame(rows)
-    save_dataframe_parquet(df_out, out_path)
+    out_path = save_dataframe_parquet(df_out, out_path)
 
     # Checks
     total_contracts = len(df_out)

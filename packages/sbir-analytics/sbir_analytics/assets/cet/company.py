@@ -141,13 +141,7 @@ def transformed_cet_company_profiles() -> Output:
                     "cet_trend",
                 ]
             )
-            try:
-                save_dataframe_parquet(df_empty, output_path)
-            except Exception:
-                out_json = output_path.with_suffix(".json")
-                out_json.parent.mkdir(parents=True, exist_ok=True)
-                with open(out_json, "w", encoding="utf-8") as fh:
-                    fh.write("")
+            output_path = save_dataframe_parquet(df_empty, output_path)
         checks = {
             "ok": False,
             "reason": "missing_dependency",
@@ -292,22 +286,8 @@ def transformed_cet_company_profiles() -> Output:
             ]
         )
 
-    # Persist company profiles (parquet preferred, NDJSON fallback)
-    try:
-        save_dataframe_parquet(df_comp, output_path)
-    except Exception:
-        # Fallback: write NDJSON manually
-        json_out = output_path.with_suffix(".json")
-        json_out.parent.mkdir(parents=True, exist_ok=True)
-        with open(json_out, "w", encoding="utf-8") as fh:
-            for rec in df_comp.to_dict(orient="records"):
-                fh.write(json.dumps(rec) + "\n")
-        # Touch parquet placeholder for consumers that assert its existence
-        try:
-            output_path.parent.mkdir(parents=True, exist_ok=True)
-            output_path.touch()
-        except Exception:
-            logger.exception("Failed to touch parquet placeholder file for company profiles")
+    # Persist company profiles (parquet preferred, NDJSON fallback).
+    output_path = save_dataframe_parquet(df_comp, output_path)
 
     # Build checks
     num_companies = len(df_comp)
