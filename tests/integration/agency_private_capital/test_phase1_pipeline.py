@@ -82,7 +82,10 @@ def test_phase1_pipeline_produces_three_artifacts(tmp_path) -> None:
     assert (cohort["agency"].str.lower() != "department of defense").all()
     assert len(cohort) == 200 + 60
 
-    outcomes = OutcomeMetricsCalculator().compute(cohort)
+    federal_activity_companies = {f"uei:COMPANY{i:05d}" for i in range(36)}
+    outcomes = OutcomeMetricsCalculator(
+        federal_activity_companies=federal_activity_companies
+    ).compute(cohort)
     parquet_path = tmp_path / "agency_cohort_outcomes.parquet"
     outcomes.to_parquet(parquet_path, index=False)
     assert parquet_path.exists()
@@ -104,21 +107,21 @@ def test_phase1_pipeline_produces_three_artifacts(tmp_path) -> None:
     assert grad["rate"] == pytest.approx(0.30, abs=1e-6)
     assert grad["ci_low"] < 0.30 < grad["ci_high"]
 
-    # Verify gate-statement language for the NVCA pair
+    # Verify gate-statement language for the remaining numeric baseline pair.
     md_loaded = md_path.read_text(encoding="utf-8")
-    assert "NVCA seed -> Series A graduation rate reports 33%" in md_loaded
-    assert "NSF is 30.0% on vintage 2015-2019 Phase I" in md_loaded
-    assert "n=200" in md_loaded
+    assert "BLS Business Employment Dynamics 5-year survival reports 50%" in md_loaded
+    assert "NSF is 60.0% on vintage 2015-2019 Phase II" in md_loaded
+    assert "n=60" in md_loaded
     assert "Difference is attributable to" in md_loaded
 
     # JSON record shape spot-check
     payload = json.loads(json_path.read_text(encoding="utf-8"))
     by_id = {r["baseline_id"]: r for r in payload}
-    nvca = by_id["nvca_seed_to_series_a"]
-    assert nvca["cohort_rate"] == pytest.approx(0.30, abs=1e-6)
-    assert nvca["baseline_point_estimate"] == pytest.approx(0.33)
-    assert nvca["delta"] == pytest.approx(0.30 - 0.33, abs=1e-6)
-    assert nvca["cohort_available"] is True
+    bls = by_id["bls_bed_5yr_survival"]
+    assert bls["cohort_rate"] == pytest.approx(0.60, abs=1e-6)
+    assert bls["baseline_point_estimate"] == pytest.approx(0.50)
+    assert bls["delta"] == pytest.approx(0.10, abs=1e-6)
+    assert bls["cohort_available"] is True
 
 
 def test_phase1_pipeline_reproducible(tmp_path) -> None:

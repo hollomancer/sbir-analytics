@@ -915,15 +915,15 @@ the questions remain useful, but there is no active umbrella spec.
 
 ## F. Capital formation & entrepreneurial finance
 
-*Audience: NVCA, Kauffman Foundation, NBER entrepreneurship researchers, VC/PE
+*Audience: Kauffman Foundation and NBER entrepreneurship researchers, VC/PE
 analysts, and agencies (NSF, NIH) running founder-track programs. Does SBIR
 funding substitute for, complement, or seed private capital?*
 
 This area treats the SBIR awardee as a **firm with a capital history**, not as a
 federal-contract counterparty. Data comes from SEC EDGAR (Form D, 8-K), state
 UCC-1 financing-statement registries, and the unified capital-event timeline.
-The relevant literature is Lerner [L10], Howell [L11], Kortum & Lerner [L24], and
-the NVCA Yearbook [L25] — rather than NASEM and GAO.
+The relevant literature is Lerner [L10], Howell [L11], and Kortum & Lerner
+[L24] — rather than NASEM and GAO.
 
 ### F1. Descriptive (Tier 1)
 
@@ -981,10 +981,10 @@ the NVCA Yearbook [L25] — rather than NASEM and GAO.
   trending?
   *Deps: ER, M&A signals · Spec: [../specs/sbir_ma_match_rate_by_fy/](../specs/sbir_ma_match_rate_by_fy/) (PR #313)*
 
-- **Capital structure vs. NVCA cohort**
-  How does SBIR-firm capital structure benchmark against the NVCA Yearbook [L25]
-  cohort of comparable-stage VC-backed startups?
-  *Deps: ER, SEC EDGAR · Refs: [L25]*
+- **Capital structure vs. comparable startup cohort**
+  How does SBIR-firm capital structure benchmark against a matched cohort of
+  comparable-stage privately backed startups?
+  *Deps: ER, SEC EDGAR*
 
 ### F3. Inferential (Tier 3)
 
@@ -996,9 +996,9 @@ the NVCA Yearbook [L25] — rather than NASEM and GAO.
 
 - **Outcomes vs. private-capital baselines**
   For Phase II awardees of any agency, do follow-on funding and exit outcomes
-  match the published private-capital-backed-startup baselines from the NVCA
-  Yearbook [L25]?
-  *Deps: ER, SEC EDGAR · Refs: [L25] · Spec: (PR #321 merged, supersedes #311; agency-parameterized via the `agency_private_capital_baseline_comparison` asset in group `agency_private_capital`, with terminology changed from "VC" to "private capital")*
+  match published small-business and peer-reviewed entrepreneurial-finance
+  baselines?
+  *Deps: ER, SEC EDGAR · Refs: [L10], [L11], [L24] · Spec: (PR #321 merged, supersedes #311; agency-parameterized via the `agency_private_capital_baseline_comparison` asset in group `agency_private_capital`, with terminology changed from "VC" to "private capital")*
 
 - **Crowd-in vs. crowd-out**
   Does SBIR funding crowd in or crowd out subsequent private capital?
@@ -1089,7 +1089,7 @@ Migrating the missing audit behavior into the maintained CLI, with committed
 synthetic fixtures and validation checks, remains the coverage gap.
 
 **Pulls from:** B3 (transition effectiveness and the §638(qq) benchmark
-question), F1 (Form D investment signal), F2 (NVCA-baseline comparison).
+question), F1 (Form D investment signal), F2 (capital-structure comparison).
 
 ## Prior literature & benchmarks
 
@@ -1136,7 +1136,6 @@ Public studies this inventory draws from or benchmarks against.
 **Entrepreneurial-finance literature & benchmarks:**
 
 - **[L24]** Kortum, S. & Lerner, J. (2000). "Assessing the Contribution of Venture Capital to Innovation." *RAND Journal of Economics* 31(4), 674–692. Foundational study estimating VC's marginal contribution to patenting; reference point for SBIR-vs-VC innovation comparisons. <https://www.jstor.org/stable/2696354>
-- **[L25]** National Venture Capital Association. *NVCA Yearbook* (annual). Industry-standard benchmarks for VC fundraising, deployment, deal stage/size, and exit activity used as the non-SBIR cohort for capital-formation comparisons. <https://nvca.org/research/nvca-yearbook/>
 
 **Statute:**
 

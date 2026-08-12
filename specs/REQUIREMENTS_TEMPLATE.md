@@ -85,7 +85,7 @@ ACTOR TAXONOMY — use these labels (or close variants) in user stories:
   analyst                     resilience, concentration, and choke-point risk (Section A
                               vulnerability questions)
 
-  entrepreneurial finance     NVCA / Kauffman / NBER researchers and VC/PE analysts
+  entrepreneurial finance     Kauffman / NBER researchers and VC/PE analysts
   researcher                  benchmarking SBIR-firm capital formation (F-area questions)
 
   pipeline engineer           Internal developer maintaining the ETL pipeline

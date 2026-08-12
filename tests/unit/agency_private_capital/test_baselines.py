@@ -23,7 +23,6 @@ def test_default_registry_loads_and_contains_required_baselines() -> None:
     reg = PublishedBaselineRegistry.load(REPO_REGISTRY)
     ids = {b.id for b in reg}
     required = {
-        "nvca_seed_to_series_a",
         "bls_bed_5yr_survival",
         "lerner_growth_effect",
         "howell_followon_vc",
@@ -48,8 +47,7 @@ def test_for_metric_filters() -> None:
     reg = PublishedBaselineRegistry.load(REPO_REGISTRY)
     matches = reg.for_metric("phase_i_to_ii_graduation")
     ids = {b.id for b in matches}
-    assert "nvca_seed_to_series_a" in ids
-    assert "itif_seed_fund_framing" in ids
+    assert ids == {"itif_seed_fund_framing"}
 
 
 def test_load_rejects_entry_missing_required_keys(tmp_path) -> None:
