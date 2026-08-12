@@ -8,6 +8,7 @@ import pandas as pd
 import pytest
 
 from sbir_analytics.assets.agency_private_capital.cohort import AgencyCohortBuilder
+from sbir_analytics.assets.agency_private_capital.asset import AgencyPrivateCapitalConfig
 from sbir_analytics.assets.agency_private_capital.outcomes import (
     OutcomeMetricsCalculator,
     wilson_interval,
@@ -15,6 +16,13 @@ from sbir_analytics.assets.agency_private_capital.outcomes import (
 
 
 pytestmark = pytest.mark.fast
+
+
+def test_asset_config_exposes_graduation_horizon() -> None:
+    assert AgencyPrivateCapitalConfig().graduation_horizon_years == 5
+    assert (
+        AgencyPrivateCapitalConfig(graduation_horizon_years=None).graduation_horizon_years is None
+    )
 
 
 def test_wilson_interval_zero_denominator_yields_nan() -> None:
@@ -117,6 +125,147 @@ def test_phase_i_to_ii_graduation_uses_company_match() -> None:
     assert bool(row["available"]) is True
 
 
+def test_phase_i_to_ii_graduation_excludes_prior_phase_ii() -> None:
+    awards = pd.DataFrame(
+        [
+            {
+                "agency": "NSF",
+                "phase": "Phase II",
+                "award_year": 2014,
+                "uei": "AAA",
+            },
+            {
+                "agency": "NSF",
+                "phase": "Phase I",
+                "award_year": 2016,
+                "uei": "AAA",
+            },
+        ]
+    )
+    cohort = AgencyCohortBuilder(agency_code="NSF").build(awards)
+
+    outcomes = OutcomeMetricsCalculator().compute(cohort)
+    row = outcomes[outcomes["metric"] == "phase_i_to_ii_graduation"].iloc[0]
+
+    assert row["denominator"] == 1
+    assert row["numerator"] == 0
+
+
+def test_phase_i_to_ii_graduation_excludes_phase_ii_outside_horizon() -> None:
+    awards = pd.DataFrame(
+        [
+            {
+                "agency": "NSF",
+                "phase": "Phase I",
+                "award_year": 2015,
+                "uei": "AAA",
+            },
+            {
+                "agency": "NSF",
+                "phase": "Phase II",
+                "award_year": 2021,
+                "uei": "AAA",
+            },
+        ]
+    )
+    cohort = AgencyCohortBuilder(agency_code="NSF").build(awards)
+
+    default_outcomes = OutcomeMetricsCalculator().compute(cohort)
+    default_row = default_outcomes[default_outcomes["metric"] == "phase_i_to_ii_graduation"].iloc[0]
+    six_year_outcomes = OutcomeMetricsCalculator(graduation_horizon_years=6).compute(cohort)
+    six_year_row = six_year_outcomes[
+        six_year_outcomes["metric"] == "phase_i_to_ii_graduation"
+    ].iloc[0]
+
+    assert default_row["numerator"] == 0
+    assert six_year_row["numerator"] == 1
+
+
+def test_phase_i_to_ii_graduation_supports_unbounded_horizon() -> None:
+    awards = pd.DataFrame(
+        [
+            {"agency": "NSF", "phase": "Phase I", "award_year": 2015, "uei": "AAA"},
+            {"agency": "NSF", "phase": "Phase II", "award_year": 2025, "uei": "AAA"},
+        ]
+    )
+    cohort = AgencyCohortBuilder(agency_code="NSF").build(awards)
+
+    outcomes = OutcomeMetricsCalculator(graduation_horizon_years=None).compute(cohort)
+    row = outcomes[outcomes["metric"] == "phase_i_to_ii_graduation"].iloc[0]
+
+    assert row["numerator"] == 1
+    assert row["denominator"] == 1
+
+
+def test_phase_i_to_ii_graduation_crosswalks_mixed_uei_and_duns_rows() -> None:
+    awards = pd.DataFrame(
+        [
+            {
+                "agency": "NSF",
+                "phase": "Phase I",
+                "award_year": 2015,
+                "duns": "123456789",
+                "company_name": "Alpha Research, Inc.",
+            },
+            {
+                "agency": "NSF",
+                "phase": "Phase II",
+                "award_year": 2018,
+                "uei": "ALPHAUEI001",
+                "duns": "123456789",
+                "company_name": "Alpha Research Inc",
+            },
+        ]
+    )
+    cohort = AgencyCohortBuilder(agency_code="NSF").build(awards)
+
+    outcomes = OutcomeMetricsCalculator().compute(cohort)
+    row = outcomes[outcomes["metric"] == "phase_i_to_ii_graduation"].iloc[0]
+    coverage = OutcomeMetricsCalculator.identity_coverage(cohort)
+
+    assert row["numerator"] == 1
+    assert row["denominator"] == 1
+    assert coverage["company_count"] == 1
+    assert coverage["company_basis_counts"] == {"uei": 1, "duns": 0, "name": 0}
+    assert coverage["uei_duns_bridge_company_count"] == 1
+
+
+def test_phase_i_to_ii_graduation_crosswalk_is_transitive_across_aliases() -> None:
+    awards = pd.DataFrame(
+        [
+            {
+                "agency": "NSF",
+                "phase": "Phase I",
+                "award_year": 2015,
+                "duns": "123456789",
+                "company_name": "Alpha Research",
+            },
+            {
+                "agency": "NSF",
+                "phase": "Phase I",
+                "award_year": 2016,
+                "uei": "ALPHAUEI001",
+                "duns": "123456789",
+                "company_name": "Alpha Research",
+            },
+            {
+                "agency": "NSF",
+                "phase": "Phase II",
+                "award_year": 2019,
+                "uei": "ALPHAUEI001",
+                "company_name": "Alpha Research Labs",
+            },
+        ]
+    )
+    cohort = AgencyCohortBuilder(agency_code="NSF").build(awards)
+
+    outcomes = OutcomeMetricsCalculator().compute(cohort)
+    row = outcomes[outcomes["metric"] == "phase_i_to_ii_graduation"].iloc[0]
+
+    assert row["numerator"] == 1
+    assert row["denominator"] == 1
+
+
 def test_metrics_with_missing_inputs_marked_unavailable() -> None:
     cohort = AgencyCohortBuilder(agency_code="NSF").build(_nsf_awards())
     outcomes = OutcomeMetricsCalculator().compute(cohort)
@@ -128,6 +277,7 @@ def test_metrics_with_missing_inputs_marked_unavailable() -> None:
         rows = outcomes[outcomes["metric"] == metric]
         assert not rows.empty, metric
         assert (rows["available"] == False).all(), metric  # noqa: E712
+        assert rows["numerator"].isna().all(), metric
 
 
 def test_transition_rate_consumes_score_threshold() -> None:
@@ -168,6 +318,42 @@ def test_ma_exit_rate_joins_on_uei_keyed_cohort_via_name_fallback() -> None:
     rows = outcomes[outcomes["metric"] == "ma_exit_rate"]
     # Alpha has UEI AAA; with the name-key fallback, the match should succeed.
     phase_ii_row = rows[rows["phase_label"] == "II"].iloc[0]
+    assert phase_ii_row["numerator"] == 1
+
+
+def test_ma_exit_rate_matches_aliases_from_elsewhere_in_the_component() -> None:
+    """The join is component-wide, not row-wide.
+
+    The Phase II row carries only a UEI. The name that the M&A artifact is keyed on
+    reaches the same component through the Phase I row. Matching per row would miss
+    it and undercount the exit rate.
+    """
+    awards = pd.DataFrame(
+        [
+            {
+                "award_id": "I-X",
+                "agency": "NSF",
+                "phase": "Phase I",
+                "award_year": 2016,
+                "uei": "XXX",
+                "company_name": "Alpha",
+            },
+            {
+                "award_id": "II-X",
+                "agency": "NSF",
+                "phase": "Phase II",
+                "award_year": 2017,
+                "uei": "XXX",
+            },
+        ]
+    )
+    cohort = AgencyCohortBuilder(agency_code="NSF").build(awards)
+    outcomes = OutcomeMetricsCalculator(ma_event_companies={"name:alpha"}).compute(cohort)
+
+    phase_ii_row = outcomes[
+        (outcomes["metric"] == "ma_exit_rate") & (outcomes["phase_label"] == "II")
+    ].iloc[0]
+    assert phase_ii_row["denominator"] == 1
     assert phase_ii_row["numerator"] == 1
 
 
