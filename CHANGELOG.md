@@ -10,6 +10,15 @@ version.
 
 ## [Unreleased]
 
+## [0.5.1] — 2026-08-12
+
+### Added
+
+- A weekly comprehensive test and branch-coverage lane with a 70% floor, plus
+  hermetic end-to-end tests on every pull request (#602, #603).
+- Operated-path coverage for CET analytics and validation, weekly enrichment,
+  and congressional-district fiscal allocation (#605).
+
 ### Changed
 
 - Lint now runs over the whole repository, including exploratory `scripts/` and
@@ -20,6 +29,11 @@ version.
 - Normalized spec and document naming to kebab-case, and added an index for
   `examples/`.
 - Relocated the generated `pytest-split` timing file to `tests/.test_durations`.
+- Reclassified component-level tests into unit and integration suites, leaving
+  the E2E suite to execute two production Dagster workflows with hermetic inputs
+  and explicit network rejection (#604).
+- Removed environment-variable skips that silently prevented slow ML tests from
+  running in the comprehensive suite (#603).
 
 ## [0.5.0] — 2026-08-12
 
@@ -105,7 +119,8 @@ across the root project and the three packages under `packages/`.
 `vMAJOR.MINOR.PATCH` form it requires. Per that policy published tags are never
 moved or reused, so they remain as historical markers.
 
-[Unreleased]: https://github.com/hollomancer/sbir-analytics/compare/v0.5.0...HEAD
+[Unreleased]: https://github.com/hollomancer/sbir-analytics/compare/v0.5.1...HEAD
+[0.5.1]: https://github.com/hollomancer/sbir-analytics/compare/v0.5.0...v0.5.1
 [0.5.0]: https://github.com/hollomancer/sbir-analytics/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/hollomancer/sbir-analytics/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/hollomancer/sbir-analytics/compare/v0.2.0...v0.3.0
