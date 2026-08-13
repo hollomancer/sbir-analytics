@@ -63,6 +63,16 @@ MARKDOWN_REFERENCE_LINK_RE = re.compile(r"^\s*\[[^\]]+\]:\s*(\S+)")
 MARKDOWN_HEADING_RE = re.compile(r"^ {0,3}#{1,6}\s+(.+?)\s*#*\s*$")
 MARKDOWN_EXPLICIT_ANCHOR_RE = re.compile(r'<a\s+(?:[^>]*?\s)?(?:id|name)=["\']([^"\']+)["\']', re.I)
 SPEC_STATUS_ENTRY_RE = re.compile(r"^- \*\*`([^`]+)`\s+—", re.MULTILINE)
+# specs/REQUIREMENTS_TEMPLATE.md mandates a research-question anchor. Accepts the
+# anchoring form ("**Research question anchor:** A2 — ...") and the operational
+# form ("- **Research question:** none directly. Operational obligation: ...").
+SPEC_QUESTION_ANCHOR_RE = re.compile(
+    r"^[ \t]*(?:>[ \t]*)*(?:[-*][ \t]+)?"
+    r"\*\*Research question(?: anchors?)?:\*\*[ \t]*(?P<body>\S.*)$",
+    re.MULTILINE,
+)
+# The unfilled template placeholder, e.g. "[e.g., A3 — DoD leverage ratio]".
+TEMPLATE_PLACEHOLDER_RE = re.compile(r"^\[.*\]$")
 CODEX_AGENT_NAME_RE = re.compile(r'^name\s*=\s*"([^"]+)"\s*$', re.MULTILINE)
 CODEX_AGENT_INSTRUCTIONS_RE = re.compile(
     r'^developer_instructions\s*=\s*"""(.*?)"""\s*$', re.MULTILINE | re.DOTALL
@@ -368,6 +378,68 @@ def scan_spec_registry(*, root: Path = REPOSITORY_ROOT) -> list[Violation]:
     return violations
 
 
+def _spec_requirement_documents(specs_root: Path) -> list[tuple[str, Path]]:
+    """Return (spec name, requirements document) for every top-level feature spec."""
+    documents: list[tuple[str, Path]] = []
+    for path in sorted(specs_root.iterdir()):
+        if path.is_dir():
+            if path.name == "archive":
+                continue
+            documents.append((path.name, path / "requirements.md"))
+        elif path.suffix == ".md" and path.name not in {"REQUIREMENTS_TEMPLATE.md", "status.md"}:
+            documents.append((path.name, path))
+    return documents
+
+
+def scan_spec_question_anchors(*, root: Path = REPOSITORY_ROOT) -> list[Violation]:
+    """Require every top-level feature spec to declare its research-question anchor.
+
+    A spec with no research question must say so explicitly rather than stay
+    silent, so that an unanchored spec is a deliberate statement instead of an
+    omission. Without this, an area can only be inferred, and inference misreads
+    design labels as question ids.
+    """
+    specs_root = root / "specs"
+    if not specs_root.is_dir():
+        return []
+
+    violations: list[Violation] = []
+    for name, document in _spec_requirement_documents(specs_root):
+        relative = _relative_to_repository(document, root)
+        if not document.is_file():
+            violations.append(
+                Violation(relative, 1, f"spec is missing requirements.md: {name}", "")
+            )
+            continue
+
+        text = document.read_text(encoding="utf-8")
+        match = SPEC_QUESTION_ANCHOR_RE.search(text)
+        if match is None:
+            violations.append(
+                Violation(
+                    relative,
+                    1,
+                    "missing '**Research question anchor:**' declaration "
+                    "(use '**Research question:** none directly. Operational obligation: ...' "
+                    "when the spec answers no inventory question)",
+                    "",
+                )
+            )
+            continue
+
+        body = match.group("body").strip()
+        if TEMPLATE_PLACEHOLDER_RE.match(body):
+            violations.append(
+                Violation(
+                    relative,
+                    text[: match.start()].count("\n") + 1,
+                    "research-question anchor still holds the template placeholder",
+                    body,
+                )
+            )
+    return violations
+
+
 def scan_agent_definition_routes(*, root: Path = REPOSITORY_ROOT) -> list[Violation]:
     """Keep Codex wrappers and shared agent/skill instructions synchronized."""
     claude_agents = root / ".claude" / "agents"
@@ -481,6 +553,10 @@ def main() -> int:
         (
             "The specification status registry is incomplete:",
             scan_spec_registry(),
+        ),
+        (
+            "Specifications are missing a research-question anchor:",
+            scan_spec_question_anchors(),
         ),
         (
             "Agent definitions or skill copies are out of sync:",
