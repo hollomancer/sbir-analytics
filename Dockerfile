@@ -31,9 +31,12 @@ WORKDIR /app
 RUN apt-get update && apt-get install -y --no-install-recommends \
         ca-certificates \
         curl \
+        gosu \
         netcat-openbsd \
     && rm -rf /var/lib/apt/lists/* \
-    && python -m pip install "uv==${UV_VERSION}"
+    && python -m pip install "uv==${UV_VERSION}" \
+    && groupadd --system --gid 1001 sbir \
+    && useradd --system --uid 1001 --gid sbir --home-dir /app --no-create-home --shell /bin/sh sbir
 
 # Install locked dependencies before copying source. Workspace metadata is
 # enough for uv to select the `server` extra, while `--no-install-workspace`
@@ -58,21 +61,21 @@ RUN playwright install --with-deps chromium \
 # wheels. PYTHONPATH intentionally keeps the historical repo-root `sbir_etl`
 # import behavior; the three packages below resolve from the installed wheels
 # unless the development Compose profile explicitly mounts live source paths.
-COPY sbir_etl/ ./sbir_etl/
-COPY packages/ ./packages/
+COPY --chown=sbir:sbir sbir_etl/ ./sbir_etl/
+COPY --chown=sbir:sbir packages/ ./packages/
 
 RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --locked --no-dev --extra server --no-editable
 
-COPY scripts/ ./scripts/
-COPY config/ ./config/
-COPY specs/phase-iii-census/ ./specs/phase-iii-census/
-COPY specs/phase3-notice-corpus-fusion/ ./specs/phase3-notice-corpus-fusion/
-COPY studies/phase-iii-census/ ./studies/phase-iii-census/
-COPY workspace.server.yaml ./workspace.server.yaml
-COPY data/reference/ ./data/reference/
+COPY --chown=sbir:sbir scripts/ ./scripts/
+COPY --chown=sbir:sbir config/ ./config/
+COPY --chown=sbir:sbir specs/phase-iii-census/ ./specs/phase-iii-census/
+COPY --chown=sbir:sbir specs/phase3-notice-corpus-fusion/ ./specs/phase3-notice-corpus-fusion/
+COPY --chown=sbir:sbir studies/phase-iii-census/ ./studies/phase-iii-census/
+COPY --chown=sbir:sbir workspace.server.yaml ./workspace.server.yaml
+COPY --chown=sbir:sbir data/reference/ ./data/reference/
 
-RUN mkdir -p data logs reports artifacts dagster_home
+RUN install -d -o sbir -g sbir data logs reports artifacts dagster_home
 
 # Compose's CI profile adds test dependencies at image-build time. It never
 # mutates the environment when the test container starts.

@@ -609,7 +609,7 @@ server-rebuild: server-check ## Rebuild the locked app image and restart the sta
 	@$(call info,Rebuilding the application image from its pinned base and uv.lock)
 	$(call run,$(SERVER_COMPOSE) --profile server build --pull)
 	@$(call info,Restarting the stack on the new images)
-	$(call run,$(SERVER_COMPOSE) --profile server up -d --wait --wait-timeout 300)
+	$(call run,$(SERVER_COMPOSE) --profile server up -d --remove-orphans --wait --wait-timeout 300)
 	$(call run,$(SERVER_COMPOSE) --profile server ps)
 	@$(call success,Server stack rebuilt. Run 'docker image prune' to reclaim superseded layers)
 

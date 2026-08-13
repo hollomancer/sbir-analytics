@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 """Classify ownership of one Tailscale Serve route."""
 
+from __future__ import annotations
+
 import json
 import sys
 from typing import Any

@@ -390,6 +390,19 @@ jobs:
             sbir-analytics:ci-${{ github.sha }} \
             dagster definitions validate -m sbir_analytics.definitions
 
+          runtime_volume="sbir-runtime-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          docker volume create "$runtime_volume"
+          trap 'docker volume rm "$runtime_volume"' EXIT
+          docker run --rm -v "$runtime_volume:/app/reports" \
+            sbir-analytics:ci-${{ github.sha }} \
+            sh -c 'touch /app/reports/legacy && printf "999:999\n" > /app/reports/.sbir-runtime-owner-v1'
+          docker run --rm -v "$runtime_volume:/app/reports" \
+            sbir-analytics:ci-${{ github.sha }} \
+            sh /app/scripts/docker/entrypoint.sh true
+          docker run --rm -v "$runtime_volume:/app/reports" \
+            sbir-analytics:ci-${{ github.sha }} \
+            sh -c 'test "$(cat /app/reports/.sbir-runtime-owner-v1)" = "1001:1001" && test "$(stat -c %u:%g /app/reports/legacy)" = "1001:1001"'
+
   verify-setup-script:
     name: Verify Developer Setup Script
     needs: [detect-changes]

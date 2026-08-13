@@ -10,6 +10,16 @@ version.
 
 ## [Unreleased]
 
+### Fixed
+
+- Corrected the live-server health check to use production Neo4j variables and
+  dependencies instead of E2E-only assumptions.
+- Made the Tailscale route helper runnable with the macOS system Python used by
+  host preflight checks.
+- Made server rebuilds remove services retired from the Compose definition.
+- Restored the non-root `sbir` runtime contract for all three Dagster services,
+  including one-time ownership migration for existing persistent directories.
+
 ## [0.5.1] — 2026-08-12
 
 ### Added
