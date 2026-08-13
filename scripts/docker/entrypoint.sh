@@ -103,6 +103,25 @@ _make_exec_prefix() {
   printf '%s' "$exec_prefix"
 }
 
+# Existing deployments may have runtime files created by the historical root
+# process. Repair each mounted tree once before dropping privileges; the marker
+# avoids rescanning persistent datasets on every container restart.
+prepare_runtime_directories() {
+  [ "$(id -u)" = "0" ] || return 0
+  id sbir >/dev/null 2>&1 || return 0
+
+  for dir in /app/data /app/logs /app/reports /app/artifacts /app/dagster_home; do
+    [ -d "$dir" ] || continue
+    marker="$dir/.sbir-runtime-owner-v1"
+    if [ ! -f "$marker" ]; then
+      log "Preparing runtime ownership: $dir"
+      chown -R sbir:sbir "$dir"
+      touch "$marker"
+      chown sbir:sbir "$marker"
+    fi
+  done
+}
+
 probe_tcp() {
   host="$1"
   port="$2"
@@ -220,6 +239,8 @@ main() {
   # Load environment defaults and secrets
   load_env
 
+  prepare_runtime_directories
+
   # allow overriding arguments via SERVICE env var if no args provided
   if [ "$#" -eq 0 ]; then
     if [ -n "${SERVICE-}" ]; then
@@ -237,6 +258,21 @@ main() {
   EXEC_PREFIX="$(_make_exec_prefix)"
 
   case "$service" in
+    dagster-code-server)
+      log "Starting service: dagster-code-server"
+      if ! wait_for_neo4j; then
+        log "Failed dependency check: Neo4j not available"
+        exit 1
+      fi
+      CMD="${ENV_DAGSTER_CMD:-dagster api grpc --host 0.0.0.0 --port 4000 --module-name sbir_analytics.definitions --location-name sbir-analytics-production}"
+      log "Exec: ${EXEC_PREFIX} ${CMD}"
+      if [ -n "$EXEC_PREFIX" ]; then
+        eval "exec ${EXEC_PREFIX} sh -c '${CMD}'"
+      else
+        exec sh -c "${CMD}"
+      fi
+      ;;
+
     dagster-webserver)
       log "Starting service: dagster-webserver"
       # Ensure Neo4j is up before starting webserver (helps CI/flaky startup)

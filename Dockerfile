@@ -31,9 +31,12 @@ WORKDIR /app
 RUN apt-get update && apt-get install -y --no-install-recommends \
         ca-certificates \
         curl \
+        gosu \
         netcat-openbsd \
     && rm -rf /var/lib/apt/lists/* \
-    && python -m pip install "uv==${UV_VERSION}"
+    && python -m pip install "uv==${UV_VERSION}" \
+    && groupadd --system sbir \
+    && useradd --system --gid sbir --home-dir /app --no-create-home --shell /bin/sh sbir
 
 # Install locked dependencies before copying source. Workspace metadata is
 # enough for uv to select the `server` extra, while `--no-install-workspace`
@@ -72,7 +75,8 @@ COPY studies/phase-iii-census/ ./studies/phase-iii-census/
 COPY workspace.server.yaml ./workspace.server.yaml
 COPY data/reference/ ./data/reference/
 
-RUN mkdir -p data logs reports artifacts dagster_home
+RUN mkdir -p data logs reports artifacts dagster_home \
+    && chown -R sbir:sbir /app
 
 # Compose's CI profile adds test dependencies at image-build time. It never
 # mutates the environment when the test container starts.

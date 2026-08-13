@@ -147,19 +147,10 @@ services:
     container_name: ${DAGSTER_CODE_SERVER_CONTAINER_NAME:-sbir-server-dagster-code}
     profiles:
       - server
-    environment: *server-environment
-    command:
-      - dagster
-      - api
-      - grpc
-      - --host
-      - 0.0.0.0
-      - --port
-      - "4000"
-      - --module-name
-      - sbir_analytics.definitions
-      - --location-name
-      - sbir-analytics-production
+    environment:
+      <<: *server-environment
+      ENV_DAGSTER_CMD: dagster api grpc --host 0.0.0.0 --port 4000 --module-name sbir_analytics.definitions --location-name sbir-analytics-production
+    command: ["sh", "/app/scripts/docker/entrypoint.sh", "dagster-code-server"]
     volumes:
       - ./config:/app/config:rw
       - ${SERVER_REPORTS_DIR:-./reports}:/app/reports:rw

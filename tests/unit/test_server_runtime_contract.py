@@ -67,6 +67,18 @@ def test_dagster_uses_shared_internal_code_server():
     assert "grpc-health-check" in code_server
 
 
+def test_server_code_server_uses_privilege_dropping_entrypoint():
+    compose = SERVER_COMPOSE.read_text()
+    code_server = compose.split("  dagster-code-server:", 1)[1].split("\n  dagster-webserver:", 1)[
+        0
+    ]
+
+    assert 'command: ["sh", "/app/scripts/docker/entrypoint.sh", "dagster-code-server"]' in (
+        code_server
+    )
+    assert "ENV_DAGSTER_CMD: dagster api grpc" in code_server
+
+
 def test_docker_build_rejects_lock_drift_and_caches_dependency_layers():
     dockerfile = DOCKERFILE.read_text()
 
@@ -78,6 +90,15 @@ def test_docker_build_rejects_lock_drift_and_caches_dependency_layers():
     assert dockerfile.index("playwright install --with-deps chromium") < dockerfile.index(
         "COPY sbir_etl/"
     )
+
+
+def test_runtime_image_provides_non_root_account_and_privilege_drop_tool():
+    dockerfile = DOCKERFILE.read_text()
+
+    assert "gosu" in dockerfile
+    assert "groupadd --system sbir" in dockerfile
+    assert "useradd --system --gid sbir" in dockerfile
+    assert "chown -R sbir:sbir /app" in dockerfile
 
 
 def test_server_extra_locks_default_spacy_pipeline():
@@ -202,6 +223,17 @@ def test_entrypoint_only_drops_privileges_when_sbir_user_exists():
     prefix_function = entrypoint.split("_make_exec_prefix()", 1)[1].split("probe_tcp()", 1)[0]
     assert "id sbir" in prefix_function
     assert "continuing as root" in prefix_function
+
+
+def test_entrypoint_prepares_persistent_directories_before_privilege_drop():
+    entrypoint = ENTRYPOINT.read_text()
+    main = entrypoint.split("main() {", 1)[1]
+
+    assert main.index("prepare_runtime_directories") < main.index(
+        'EXEC_PREFIX="$(_make_exec_prefix)"'
+    )
+    assert "/app/dagster_home" in entrypoint
+    assert "chown -R sbir:sbir" in entrypoint
 
 
 def test_daemon_healthcheck_uses_heartbeat_liveness_without_procps(tmp_path):

@@ -15,6 +15,8 @@ pytestmark = [pytest.mark.fast, pytest.mark.unit]
 REPO_ROOT = Path(__file__).resolve().parents[2]
 BACKUP = REPO_ROOT / "scripts" / "server" / "backup.sh"
 TAILSCALE = REPO_ROOT / "scripts" / "server" / "tailscale-serve.sh"
+TAILSCALE_ROUTE_STATE = REPO_ROOT / "scripts" / "server" / "tailscale-route-state.py"
+MAKEFILE = REPO_ROOT / "Makefile"
 
 
 def _executable(path: Path, body: str) -> None:
@@ -90,6 +92,19 @@ def _install_fake_docker(bin_dir: Path) -> None:
 
 def _call_index(calls: list[list[str]], *tokens: str) -> int:
     return next(index for index, call in enumerate(calls) if all(token in call for token in tokens))
+
+
+def test_tailscale_route_helper_defers_annotations_for_host_python_compatibility():
+    source = TAILSCALE_ROUTE_STATE.read_text()
+
+    assert "from __future__ import annotations" in source
+
+
+def test_server_rebuild_removes_services_retired_from_compose():
+    makefile = MAKEFILE.read_text()
+    rebuild = makefile.split("server-rebuild:", 1)[1].split(".PHONY: server-up", 1)[0]
+
+    assert "up -d --remove-orphans --wait" in rebuild
 
 
 def test_backup_honors_env_directory_and_runs_offline(tmp_path):

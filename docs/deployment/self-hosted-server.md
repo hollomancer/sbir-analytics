@@ -179,6 +179,12 @@ Python image digest in `Dockerfile`, rather than an unreviewed mutable-tag pull.
 killed**. Check `make server-status` for active runs before using it, and
 prefer a quiet window.
 
+The first rebuild after adopting the non-root runtime recursively transfers the
+five application mount roots (`data`, `reports`, `logs`, `artifacts`, and
+`dagster_home`) to the container's `sbir` account. Each root receives a
+`.sbir-runtime-owner-v1` marker so later restarts do not rescan it. Plan the
+first restart for a quiet window when those trees are large.
+
 ## Tailscale grant (least privilege)
 
 Restrict who can reach the server. Tag the server node `tag:sbir-server`, grant
