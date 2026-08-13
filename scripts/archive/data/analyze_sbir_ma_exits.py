@@ -61,7 +61,7 @@ def main():
         print(f"  {t:>8s}: {tiers.get(t, 0):>5,}")
 
     # --- Overall exit rate ---
-    print(f"\n=== EXIT RATE ===")
+    print("\n=== EXIT RATE ===")
     print(f"  Total SBIR companies: {total_sbir:,}")
     print(f"  Companies with M&A event: {len(events):,}")
     print(f"  Overall exit rate: {len(events)/total_sbir*100:.1f}%")
@@ -71,7 +71,7 @@ def main():
     print(f"  Exit rate (high only): {len(high_only)/total_sbir*100:.1f}%")
 
     # --- By agency ---
-    print(f"\n=== EXIT RATE BY AGENCY ===")
+    print("\n=== EXIT RATE BY AGENCY ===")
     agency_events = defaultdict(lambda: {"high": 0, "medium": 0, "low": 0})
     for e in events:
         ctx = e.get("sbir_context")
@@ -90,7 +90,7 @@ def main():
         print(f"{agency:>45s} | {hm:>5,} | {h:>5,} | {total:>9,} | {hm/total*100:>7.1f}% | {h/total*100:>6.1f}%")
 
     # --- By year ---
-    print(f"\n=== EXIT EVENTS BY YEAR (H+M) ===")
+    print("\n=== EXIT EVENTS BY YEAR (H+M) ===")
     year_counts = Counter()
     for e in events:
         if e["confidence"] not in ("high", "medium"):
@@ -103,7 +103,7 @@ def main():
         print(f"  {y}: {year_counts[y]:>5,}")
 
     # --- Top acquirers ---
-    print(f"\n=== TOP ACQUIRERS (H+M, where identified) ===")
+    print("\n=== TOP ACQUIRERS (H+M, where identified) ===")
     acquirers = Counter()
     for e in events:
         if e["confidence"] not in ("high", "medium"):
@@ -116,7 +116,7 @@ def main():
         print(f"  {acq:>45s}: {ct:>3,}")
 
     # --- Time from first SBIR to exit ---
-    print(f"\n=== TIME FROM FIRST SBIR AWARD TO EXIT (H+M) ===")
+    print("\n=== TIME FROM FIRST SBIR AWARD TO EXIT (H+M) ===")
     gaps = []
     for e in events:
         if e["confidence"] not in ("high", "medium"):
@@ -139,7 +139,7 @@ def main():
               f"mean={arr.mean():.1f}yr")
 
     # --- Signal co-occurrence ---
-    print(f"\n=== SIGNAL CO-OCCURRENCE ===")
+    print("\n=== SIGNAL CO-OCCURRENCE ===")
     combos = Counter()
     for e in events:
         fired = sorted(k for k, v in e.get("signals", {}).items() if v)

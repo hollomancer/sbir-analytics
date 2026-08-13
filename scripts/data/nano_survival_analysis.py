@@ -75,7 +75,8 @@ def main(argv: list[str] | None = None) -> int:
 
     csv.field_size_limit(sys.maxsize)
     rows = list(csv.DictReader(open(fd_csv, newline="", encoding="utf-8")))
-    key = lambda r: (r["award_id"], r["company"], r["award_year"])
+    def key(r):
+        return (r["award_id"], r["company"], r["award_year"])
 
     ws1_first = {key(r): parse(r.get("first_evidence_date", ""))
                  for r in csv.DictReader(open(ws1_csv, newline="", encoding="utf-8"))
@@ -139,7 +140,7 @@ def main(argv: list[str] | None = None) -> int:
 
     def s_at(years: float) -> float:
         s = 1.0
-        for t, v in zip(km_t, km_s):
+        for t, v in zip(km_t, km_s, strict=False):
             if t <= years:
                 s = v
             else:

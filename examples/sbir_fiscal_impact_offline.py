@@ -7,7 +7,7 @@ This version uses hand-authored multipliers and produces illustrative,
 non-citable demo outputs without network access.
 
 Usage:
-    python examples/sbir_fiscal_impact_example_mock.py
+    python examples/sbir_fiscal_impact_offline.py
 """
 
 from pathlib import Path

@@ -276,12 +276,12 @@ def main(argv: list[str] | None = None) -> int:
     ax = axes[0]
     plot_types = [(t, n) for t, n in sorted(by_type.items(), key=lambda x: -x[1]) if t != "enriched_pipeline"]
     if plot_types:
-        labels, vals = zip(*plot_types)
+        labels, vals = zip(*plot_types, strict=False)
         pcts = [100 * v / total for v in vals]
         bars = ax.barh(labels, pcts, color="#2196F3", alpha=0.85)
         ax.set_xlabel("% of nanotech Phase II cohort", fontsize=10)
         ax.set_title("M&A signal types\n(firms may have multiple)", fontsize=10)
-        for bar, pct in zip(bars, pcts):
+        for bar, pct in zip(bars, pcts, strict=False):
             ax.text(pct + 0.05, bar.get_y() + bar.get_height() / 2,
                     f"{pct:.1f}%", va="center", fontsize=8)
 
@@ -301,7 +301,7 @@ def main(argv: list[str] | None = None) -> int:
         avg = 100 * with_signal / total
         ax2.axvline(avg, color="gray", linestyle="--", linewidth=1, label=f"Avg {avg:.1f}%")
         ax2.legend(fontsize=9)
-        for bar, rate in zip(bars2, ag_rates):
+        for bar, rate in zip(bars2, ag_rates, strict=False):
             ax2.text(rate + 0.1, bar.get_y() + bar.get_height() / 2,
                      f"{rate:.1f}%", va="center", fontsize=8)
 

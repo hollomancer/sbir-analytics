@@ -415,7 +415,7 @@ async def main() -> None:
     print(f"Errors:               {errors:,}")
     print(f"Server errors (5xx):  {server_errors:,} (rescan with --rescan-errors)")
     print(f"Output:               {output_path}")
-    print(f"Note: Form D sourced separately via fetch_form_d_index.py")
+    print("Note: Form D sourced separately via fetch_form_d_index.py")
 
     # Also write summary
     summary_path = output_path.with_suffix(".summary.json")

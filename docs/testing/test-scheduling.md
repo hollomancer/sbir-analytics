@@ -23,7 +23,7 @@ Every pull request runs:
 - The developer setup-script check only when `scripts/setup_dev.sh`, `uv.lock`, or
   `pyproject.toml` changes.
 
-The unit shards use `.test_durations` for balancing. Regenerate that file serially when timings
+The unit shards use `tests/.test_durations` for balancing. Regenerate that file serially when timings
 materially drift:
 
 ```bash
@@ -37,7 +37,7 @@ To reproduce one CI group locally, use the same `pytest-split` arguments. Groups
 uv run pytest tests/unit/ -m "not slow" \
   --splits 4 --group 1 \
   --splitting-algorithm least_duration \
-  --durations-path .test_durations
+  --durations-path tests/.test_durations
 ```
 
 `pytest-split` assigns tests using recorded duration; xdist may still parallelize within a group.

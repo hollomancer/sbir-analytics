@@ -378,7 +378,7 @@ def write_markdown(snapshot: dict[str, Any], path: Path) -> None:
     L.append(f"**Cohort:** {snapshot['cohort_size']} DoD high-tier Form D matched firms")
     L.append(f"**Firms queried:** {snapshot['firms_queried']}")
     L.append(f"**Year window:** {snapshot['year_min']}-{snapshot['year_max']}")
-    L.append(f"**Source:** USAspending public API (no auth)")
+    L.append("**Source:** USAspending public API (no auth)")
     L.append("")
 
     L.append("## Per-Branch follow-on FPDS vs Form D leverage")

@@ -307,7 +307,7 @@ class TestNeo4jConfig:
 class TestModernBertNeo4jConfig:
     """Tests for ModernBertNeo4jConfig — validates the config/base.yaml
     ml.modernbert.neo4j block ahead of the SIMILAR_TO edge-loading asset
-    (specs/modernbert_analysis_layer, task 2.1) landing."""
+    (specs/modernbert-analysis-layer, task 2.1) landing."""
 
     def test_defaults_match_base_yaml(self):
         config = ModernBertNeo4jConfig()

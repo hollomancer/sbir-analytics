@@ -19,7 +19,7 @@ Successfully migrated the SBIR ETL Pipeline project from OpenSpec to Kiro specif
 ## Generated Artifacts
 
 ### Kiro Specifications
-- `iterative_api_enrichment` - API refresh loop implementation
+- `iterative-api-enrichment` - API refresh loop implementation
 - `mcp_interface` - Model Context Protocol interface
 - `merger_acquisition_detection` - M&A detection system
 - `neo4j_backup_sync` - Database backup synchronization

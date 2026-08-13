@@ -3,7 +3,7 @@
 **Prepared for:** S&T policy leaders
 **Status:** Provisional; figures are bounded estimates, not final program rates
 **Data through:** FY2025 SBIR.gov awards, FY2024 USAspending records, SEC EDGAR scans, and the March 2026 PatentsView release
-**Technical appendix:** [`nanotech_sbir_transition_findings.md`](nanotech_sbir_transition_findings.md), [`nano_phase3_methodology.md`](../nano_phase3_methodology.md)
+**Technical appendix:** [`nanotech_sbir_transition_findings.md`](nanotech_sbir_transition_findings.md), [`nano-phase3-methodology.md`](../nano-phase3-methodology.md)
 
 ## Bottom line
 
@@ -119,4 +119,4 @@ Further compressions of this brief (briefing slides, press materials, follow-up 
 
 ---
 
-For per-agency breakdowns, dark-majority workstream detail (patent/trademark/subaward/alias/registry cross-referencing), the acquisition-timing analysis, capture-recapture bounds, and full reproducibility notes, see [`nanotech_sbir_transition_findings.md`](nanotech_sbir_transition_findings.md). For cohort construction and matching methodology, see [`nano_phase3_methodology.md`](../nano_phase3_methodology.md).
+For per-agency breakdowns, dark-majority workstream detail (patent/trademark/subaward/alias/registry cross-referencing), the acquisition-timing analysis, capture-recapture bounds, and full reproducibility notes, see [`nanotech_sbir_transition_findings.md`](nanotech_sbir_transition_findings.md). For cohort construction and matching methodology, see [`nano-phase3-methodology.md`](../nano-phase3-methodology.md).

@@ -113,6 +113,14 @@ skips = ["B101", "B601", "B608", "B110", "B112", "B603", "B404", "B405", "B314"]
 line-length = 100
 target-version = "py311"
 
+# `ruff check .` is expected to pass across the whole repository, including the
+# exploratory-tier code under `scripts/` and `notebooks/`. Formatting is a
+# different matter: per docs/steering/epistemic-tiers.md, exploratory work is
+# not held to a house format, so the formatter only governs the primitives- and
+# pipelines-tier trees that CI also type-checks.
+[tool.ruff.format]
+exclude = ["scripts/**", "notebooks/**", "examples/**"]
+
 [tool.ruff.lint]
 select = [
     "E",  # pycodestyle errors

@@ -7,7 +7,7 @@ They are integration aids, not validated economic findings.
 
 - `sbir_fiscal_impact_example.py` exercises the current Python implementation,
   which uses BEA input-output data when `BEA_API_KEY` is configured.
-- `sbir_fiscal_impact_example_mock.py` uses hand-authored multipliers so the data
+- `sbir_fiscal_impact_offline.py` uses hand-authored multipliers so the data
   flow can be inspected without network access. Its numerical outputs are
   illustrative and must not be cited.
 - `sbir_fiscal_impact_by_district_example.py` demonstrates how the mock output
@@ -22,7 +22,7 @@ From a development checkout:
 
 ```bash
 make install
-.venv/bin/python examples/sbir_fiscal_impact_example_mock.py
+.venv/bin/python examples/sbir_fiscal_impact_offline.py
 ```
 
 The mock implementation uses simplified sector multipliers and emits

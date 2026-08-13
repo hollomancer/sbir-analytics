@@ -10,9 +10,7 @@ Usage:
 """
 
 import json
-import sys
 from collections import Counter
-from pathlib import Path
 
 import numpy as np
 from sklearn.cluster import KMeans
@@ -53,7 +51,7 @@ def describe_cluster(
     """Compute descriptive stats for one cluster."""
     mask = labels == cluster_id
     subset = X[mask]
-    cluster_records = [r for r, m in zip(records, mask) if m]
+    cluster_records = [r for r, m in zip(records, mask, strict=False) if m]
 
     # Signal means
     means = {SIGNALS[j]: float(subset[:, j].mean()) for j in range(len(SIGNALS))}
@@ -161,7 +159,7 @@ def run_clustering(records, X, method, n_clusters):
 
     # Remap labels so cluster 0 = highest person score
     remap = {old: new for new, (old, _) in enumerate(cluster_means)}
-    labels = np.array([remap[l] for l in labels])
+    labels = np.array([remap[label] for label in labels])
 
     profiles = []
     for k in range(n_clusters):
@@ -178,8 +176,8 @@ def main():
     input_path = "data/form_d_details.jsonl"
     records, X = load_data(input_path)
     print(f"Loaded {len(records):,} records, {len(SIGNALS)} signals")
-    print(f"Missing values per signal:")
-    for j, sig in enumerate(SIGNALS):
+    print("Missing values per signal:")
+    for sig in SIGNALS:
         missing = sum(
             1 for r in records if r["match_confidence"].get(sig) is None
         )

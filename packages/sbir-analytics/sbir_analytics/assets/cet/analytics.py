@@ -64,7 +64,7 @@ def transformed_cet_analytics() -> Output:
                         df = df[cols]
                 return df
             except Exception:  # nosec B110
-                pass  # noqa: B110 - fallback to JSON
+                pass  # fallback to JSON
         if json_path.exists():
             try:
                 rows = []
@@ -216,7 +216,7 @@ def transformed_cet_analytics_aggregates() -> Output:
                         df = df[cols]
                 return df
             except Exception:  # nosec B110
-                pass  # noqa: B110 - fallback to JSON
+                pass  # fallback to JSON
         if json_path.exists():
             try:
                 rows = []

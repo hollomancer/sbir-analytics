@@ -72,12 +72,12 @@ bypassing lifecycle review; the status and rationale still require human judgmen
 - **`follow-on-multiplier-validation` — Active.** Design-only follow-up to the
   completed multiplier asset. Still called out as an immediate research-plan
   gap.
-- **`iterative_api_enrichment` — Maintenance.** USAspending refresh is live.
+- **`iterative-api-enrichment` — Maintenance.** USAspending refresh is live.
   Remaining source expansion should be split or scheduled intentionally.
 - **`ma-discovery-integration` — Deferred.** The design depends on an unmerged
   discovery toolkit and missing press-enrichment glue. Revisit only when M&A
   recall becomes a selected research priority.
-- **`modernbert_analysis_layer` — Maintenance.** Core embeddings and similarity
+- **`modernbert-analysis-layer` — Maintenance.** Core embeddings and similarity
   are implemented. Neo4j loading, quality metrics, and Bayesian routing remain
   scoped follow-ups.
 - **`naics-enricher-consolidation` — Maintenance.** Consolidation is largely
@@ -123,7 +123,7 @@ bypassing lifecycle review; the status and rationale still require human judgmen
 - **`procurement-transition-p1-remediation` — Active.** Award identity and path
   attribution landed. Cold-start bounds, source-normalization provenance, and
   ranking/auditability phases remain.
-- **`sbir_ma_match_rate_by_fy` — Gated backlog.** Analysis-only F2 follow-up on
+- **`sbir-ma-match-rate-by-fy` — Gated backlog.** Analysis-only F2 follow-up on
   completed M&A detection. Start only when FY match-rate reporting is requested.
 - **`state-local-tax-rates` — Maintenance.** Existing hardcoded 2024 provider
   works. Remaining work is data-file/provenance cleanup for fiscal v2.

@@ -11,7 +11,7 @@ Outputs:
   data/nano_cohort_keyword.csv
   data/nano_cohort_cet.csv
   data/nano_cohort_cpc.csv
-  docs/nano_phase3_methodology.md
+  docs/nano-phase3-methodology.md
   data/analysis/nano_cohort_overlap.png
   data/analysis/nano_transition_channels.png
 
@@ -32,8 +32,6 @@ import matplotlib
 
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
-import matplotlib.patches as mpatches
-import pandas as pd
 
 REPO = Path(__file__).resolve().parents[2]
 DATA = REPO / "data"
@@ -292,7 +290,7 @@ def build_cet_cohort(awards: list[dict]) -> list[dict]:
             rec["cet_method_note"] = (
                 "KEYWORD_HEURISTIC_NOT_TRAINED_CLASSIFIER; "
                 "no published precision/recall for nanotech; "
-                "see docs/nano_phase3_methodology.md §Method-B"
+                "see docs/nano-phase3-methodology.md §Method-B"
             )
             cohort.append(rec)
     return cohort
@@ -1299,7 +1297,7 @@ def main() -> int:
         kw_cohort, cet_cohort, cpc_cohort,
         kw_enriched, cet_enriched, cpc_enriched,
         kw_ext_ref, cet_ext_ref,
-        DOCS / "nano_phase3_methodology.md",
+        DOCS / "nano-phase3-methodology.md",
     )
 
     # Summary to stdout
@@ -1339,7 +1337,7 @@ def main() -> int:
     print("  data/nano_cohort_cpc.csv")
     print("  data/analysis/nano_cohort_overlap.png")
     print("  data/analysis/nano_transition_channels.png")
-    print("  docs/nano_phase3_methodology.md")
+    print("  docs/nano-phase3-methodology.md")
 
     return 0
 

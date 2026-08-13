@@ -134,10 +134,17 @@ script, preserve one canonical computation path and avoid notebook/script duplic
 
 ## Testing
 
+The test and lint dependencies live in the `stack-dev` extra. Install it once —
+bare `uv run pytest` fails on a fresh checkout because the core sync omits
+pytest, loguru, and the first-party packages.
+
 ```bash
+make install                           # uv sync --extra stack-dev (run this first)
+
 make test-unit                         # Unit tests
 uv run pytest -m integration           # Integration tests
 uv run pytest -n auto                  # Parallel execution
+make lint                              # Ruff check over the repository, MyPy over sbir_etl
 make lint-boundaries                   # Architecture, identity, and study guards
 make docs-check                        # Links, stale commands, and repository hygiene
 ```

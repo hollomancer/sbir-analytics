@@ -29,7 +29,7 @@ The
 shows a five-interest screening packet with award and candidate totals,
 an action queue, side-by-side technical evidence, technology-ecosystem tags,
 and potential acquisition transition lanes. Its
-[README](../examples/README_ARMY_PROCUREMENT_TRANSITION.md) includes
+[example README](../examples/army-procurement-transition.md) includes
 reproducible CSV inputs and the exact generation command.
 
 The optional candidate fields `interest_alignment`, `technology_ecosystem`,

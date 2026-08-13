@@ -409,7 +409,7 @@ class ModernBertNeo4jConfig(BaseModel):
     """Configuration for loading ModernBert similarity edges into Neo4j.
 
     Validates the pre-authored config/base.yaml block ahead of the
-    (Award)-[:SIMILAR_TO]->(Patent) loading asset landing (specs/modernbert_analysis_layer,
+    (Award)-[:SIMILAR_TO]->(Patent) loading asset landing (specs/modernbert-analysis-layer,
     task 2.1) — currently inert since nothing reads it yet.
     """
 

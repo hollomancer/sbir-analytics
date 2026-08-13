@@ -156,7 +156,7 @@ def analyze(records: list[dict], output_dir: Path) -> None:
     # Top gaps by size
     gaps.sort(key=lambda x: -x[1])
     print("  Largest score gaps (potential natural thresholds):")
-    for score, gap, db, da in gaps[:10]:
+    for score, gap, _db, _da in gaps[:10]:
         pct_below = sum(1 for s in composites if s <= score) / len(composites) * 100
         print(f"    score={score:.3f}  gap={gap:.4f}  {pct_below:.1f}% below")
 

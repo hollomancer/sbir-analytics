@@ -82,9 +82,13 @@ def main(paths: ReportPaths) -> int:
             return 1
 
     csv.field_size_limit(sys.maxsize)
-    load = lambda k: list(csv.DictReader(open(inputs[k], newline="", encoding="utf-8")))
+    def load(k):
+        return list(csv.DictReader(open(inputs[k], newline="", encoding="utf-8")))
+
     kw, fd, ws1, ws2, cpc = (load(k) for k in ("kw", "fd", "ws1", "ws2", "cpc"))
-    firm = lambda r: r["company"].strip().upper()
+
+    def firm(r):
+        return r["company"].strip().upper()
 
     firms = {firm(r) for r in kw}
     detect: dict[str, set[str]] = {c: set() for c in CHANNELS}
@@ -143,7 +147,7 @@ def main(paths: ReportPaths) -> int:
     print(f"Capture-count distribution (observed firms): {dict(sorted(capture_counts.items()))}")
 
     chao = s_obs + (f1 * f1) / (2 * f2) if f2 else float("inf")
-    print(f"\nChao lower bound on ever-detectable commercialized firms:")
+    print("\nChao lower bound on ever-detectable commercialized firms:")
     print(f"  N ≥ {s_obs} + {f1}²/(2×{f2}) = {chao:.0f}  → ≥ {100*chao/n_firms:.1f}% of cohort firms")
 
     print("\nPairwise overlaps and LP estimates (independence NOT credible — see docstring):")
@@ -165,7 +169,7 @@ def main(paths: ReportPaths) -> int:
     m = len(fpds & formd)
     if m:
         lp = len(fpds) * len(formd) / m
-        print(f"\nDefensible interval for truly-commercialized firms:")
+        print("\nDefensible interval for truly-commercialized firms:")
         print(f"  lower: {100*s_obs/n_firms:.1f}% (direct observation) — "
               f"{100*chao/n_firms:.1f}% (Chao, heterogeneity-robust)")
         print(f"  upper: ~{100*min(lp, n_firms)/n_firms:.0f}% (LP on FPDS×FormD; loose — "

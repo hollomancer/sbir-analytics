@@ -88,7 +88,6 @@ def generate_regression_summary(
 
 def output_github_pr_comment(summary: dict[str, Any], output_path: Path) -> None:
     """Write a GitHub-flavoured Markdown comment summarising the benchmark."""
-    emoji_map = {"PASS": "pass", "WARNING": "warning", "FAILURE": "x"}
     emoji = {"PASS": "✅", "WARNING": "⚠️", "FAILURE": "❌"}.get(summary["severity"], "ℹ️")
     current = summary["current_metrics"]
     baseline = summary.get("baseline_comparison")

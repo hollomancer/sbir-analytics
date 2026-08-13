@@ -228,7 +228,6 @@ def main(argv: list[str] | None = None) -> int:
     from collections import Counter
     by_source = Counter(e.source for e in out)
     by_rel = Counter(e.relation for e in out)
-    firms_with = len({e.firm_normalized for e in out} | {e.alias_normalized for e in out} & firms)
     print(f"  by source: {dict(by_source)}")
     print(f"  by relation: {dict(by_rel)}")
     print(f"  distinct cohort/dark firms with ≥1 alias: "

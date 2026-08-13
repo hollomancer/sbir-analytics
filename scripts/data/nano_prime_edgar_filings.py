@@ -34,7 +34,6 @@ import time
 from pathlib import Path
 from urllib.parse import quote_plus
 from urllib.request import Request, urlopen
-from urllib.error import HTTPError, URLError
 
 REPO = Path(__file__).resolve().parents[2]
 
@@ -179,7 +178,6 @@ def parse_accession(hit_id: str) -> tuple[str, str] | None:
 
 def extract_cik_from_accession(acc: str) -> str:
     """Extract the 10-digit CIK from the accession number prefix."""
-    parts = acc.replace("-", "").split("-")
     # accession format: XXXXXXXXXX-YY-NNNNNN (10-2-6 digits)
     return acc.replace("-", "")[:10].lstrip("0")
 
@@ -342,7 +340,7 @@ def main() -> int:
                 "score": 0,
                 "found": False,
                 "full_text_excerpt": "",
-                **{k: "" for k in ["price_mention", "multiple_mention", "revenue_mention", "rationale_snippet"]},
+                **dict.fromkeys(["price_mention", "multiple_mention", "revenue_mention", "rationale_snippet"], ""),
                 "text_length": 0,
             })
             continue
@@ -413,8 +411,7 @@ def main() -> int:
                 "filename": "",
                 "score": 0,
                 "found": False,
-                **{k: "" for k in ["price_mention", "multiple_mention", "revenue_mention",
-                                    "rationale_snippet", "full_text_excerpt"]},
+                **dict.fromkeys(["price_mention", "multiple_mention", "revenue_mention", "rationale_snippet", "full_text_excerpt"], ""),
                 "text_length": 0,
             })
 

@@ -140,4 +140,4 @@ are ingested without requiring manual re-runs.
 - CET classifier (`packages/sbir-ml/sbir_ml/ml/models/cet_classifier.py`) — EXISTS
 - Portfolio-metrics tools (`packages/sbir-analytics/sbir_analytics/tools/mission_a/`) — EXISTS
 - Full SBIR.gov award corpus — EXISTS (verify freshness before scheduling)
-- ModernBERT embeddings (`specs/modernbert_analysis_layer/`) — enhances clustering but not required
+- ModernBERT embeddings (`specs/modernbert-analysis-layer/`) — enhances clustering but not required

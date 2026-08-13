@@ -146,7 +146,7 @@ def main(argv: list[str] | None = None) -> int:
     coded = pd.read_parquet(args.coded)
     described = pd.read_parquet(args.described)
     children = json.loads(args.children.read_text())
-    a_keys = {coded_key(o, i) for o, i in zip(coded["order_piid"], coded["idv_piid"])}
+    a_keys = {coded_key(o, i) for o, i in zip(coded["order_piid"], coded["idv_piid"], strict=False)}
     gen_col = "gen_id" if "gen_id" in described.columns else "generated_internal_id"
     b_keys = {k for k in (described_key(g) for g in described[gen_col]) if k}
     c_keys = {(_nk(k["order"]), _nk(k["idv"])) for k in children if k.get("order")}
@@ -158,7 +158,8 @@ def main(argv: list[str] | None = None) -> int:
                                    "n2": int(units[units["standalone"]]["b"].sum()),
                                    "m": int((units[units["standalone"]]["a"] & units[units["standalone"]]["b"]).sum())},
               "task_order_cells": dict(zip(["ABC", "AB", "AC", "BC", "A", "B", "C"],
-                                           cell_counts(units[~units["standalone"]]).astype(int).tolist())),
+                                           cell_counts(units[~units["standalone"]]).astype(int).tolist(),
+                                           strict=False)),
               "models": {}}
     for terms in MODELS:
         fitted = stratified_dark(units, terms)

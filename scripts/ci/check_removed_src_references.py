@@ -22,6 +22,10 @@ EXCLUDED_SCAN_FILES = {
     "scripts/ci/check_config_boundaries.py",
     "scripts/ci/check_identity_boundaries.py",
     "tests/unit/scripts/test_repository_hygiene.py",
+    # Generated pytest-split timing data, not automation source. It records one
+    # line per test node, so it names archived test modules without depending on
+    # them.
+    "tests/.test_durations",
 }
 REMOVED_SRC_PATTERNS = (
     re.compile(r"--cov=src(?:\b|/)"),

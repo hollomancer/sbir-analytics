@@ -646,7 +646,7 @@ spending produce measurable new knowledge?*
 - **Semantic patent similarity**
   Which patents are semantically similar to specific SBIR awards
   (ModernBERT-Embed)?
-  *Deps: PATLINK · Spec: [../specs/modernbert_analysis_layer/](../specs/modernbert_analysis_layer/)*
+  *Deps: PATLINK · Spec: [../specs/modernbert-analysis-layer/](../specs/modernbert-analysis-layer/)*
 
 - **Award-contract technology alignment**
   Do SBIR awards and the contracts that result from them share the same
@@ -804,7 +804,7 @@ Foundational — most questions in A–D depend on work here.*
 - **Source freshness lag**
   What is the data-freshness lag for SBIR.gov, USAspending, USPTO, and BEA I-O
   sources?
-  *Deps: none · Spec: [../specs/iterative_api_enrichment/](../specs/iterative_api_enrichment/)*
+  *Deps: none · Spec: [../specs/iterative-api-enrichment/](../specs/iterative-api-enrichment/)*
 
 - **Missing critical fields**
   Which awards have missing or null critical fields (amount, dates, recipient)?
@@ -979,7 +979,7 @@ The relevant literature is Lerner [L10], Howell [L11], and Kortum & Lerner
 - **SBIR ↔ M&A match rate by fiscal year**
   What is the SBIR ↔ M&A-event match rate by fiscal year, and how is coverage
   trending?
-  *Deps: ER, M&A signals · Spec: [../specs/sbir_ma_match_rate_by_fy/](../specs/sbir_ma_match_rate_by_fy/) (PR #313)*
+  *Deps: ER, M&A signals · Spec: [../specs/sbir-ma-match-rate-by-fy/](../specs/sbir-ma-match-rate-by-fy/) (PR #313)*
 
 - **Capital structure vs. comparable startup cohort**
   How does SBIR-firm capital structure benchmark against a matched cohort of
