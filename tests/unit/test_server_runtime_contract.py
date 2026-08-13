@@ -112,7 +112,7 @@ def test_ci_smoke_tests_identity_aware_runtime_ownership_migration():
     workflow = CI_WORKFLOW.read_text()
 
     assert 'printf "999:999\\n" > /app/reports/.sbir-runtime-owner-v1' in workflow
-    assert "sh /app/scripts/docker/entrypoint.sh -- true" in workflow
+    assert "sh /app/scripts/docker/entrypoint.sh true" in workflow
     assert "cat /app/reports/.sbir-runtime-owner-v1" in workflow
     assert "stat -c %u:%g /app/reports/legacy" in workflow
 

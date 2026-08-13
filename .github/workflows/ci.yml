@@ -398,7 +398,7 @@ jobs:
             sh -c 'touch /app/reports/legacy && printf "999:999\n" > /app/reports/.sbir-runtime-owner-v1'
           docker run --rm -v "$runtime_volume:/app/reports" \
             sbir-analytics:ci-${{ github.sha }} \
-            sh /app/scripts/docker/entrypoint.sh -- true
+            sh /app/scripts/docker/entrypoint.sh true
           docker run --rm -v "$runtime_volume:/app/reports" \
             sbir-analytics:ci-${{ github.sha }} \
             sh -c 'test "$(cat /app/reports/.sbir-runtime-owner-v1)" = "1001:1001" && test "$(stat -c %u:%g /app/reports/legacy)" = "1001:1001"'
