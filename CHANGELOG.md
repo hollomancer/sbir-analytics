@@ -10,7 +10,34 @@ version.
 
 ## [Unreleased]
 
-Substantial work has landed since `v0.3.0` and is not yet released. The themes:
+### Changed
+
+- Lint now runs over the whole repository, including exploratory `scripts/` and
+  `notebooks/`; formatting remains scoped to the primitives and pipelines trees.
+  `make lint` runs the same three steps as the CI job.
+- Reframed the README around what is verifiable, promoted epistemic tiers into
+  the reading path, and added a "Verifying a checkout" gate list.
+- Normalized spec and document naming to kebab-case, and added an index for
+  `examples/`.
+- Relocated the generated `pytest-split` timing file to `tests/.test_durations`.
+
+## [0.5.0] — 2026-08-12
+
+### Added
+
+- NSF private-capital Phase 1 gate: a repaired, horizon-bounded Phase I→II
+  graduation estimand with connected-component identity resolution, and a
+  pinned exploratory review artifact with a deterministic manifest (#577).
+- Fail-closed FY M&A signal counts, replacing the incoherent match-rate spec
+  with a count diagnostic that refuses to publish without a real input (#588).
+
+### Fixed
+
+- Neo4j load summaries report canonical graph labels and distinguish rows
+  submitted from nodes written, so an idempotent re-run no longer reads as a
+  failure and a partial load no longer reads as a success (#574).
+
+## [0.4.0] — 2026-08-12
 
 ### Added
 
@@ -39,9 +66,6 @@ Substantial work has landed since `v0.3.0` and is not yet released. The themes:
   loader with an explicit `allow_empty` policy.
 - Declared `sbir-graph` loaders as `pipelines` tier and `sbir_etl` config,
   models, and company-name handling as `primitives` tier.
-- Lint now runs over the whole repository, including exploratory `scripts/` and
-  `notebooks/`; formatting remains scoped to the primitives and pipelines trees.
-- Relocated the generated `pytest-split` timing file to `tests/.test_durations`.
 
 ### Fixed
 
@@ -81,6 +105,8 @@ across the root project and the three packages under `packages/`.
 `vMAJOR.MINOR.PATCH` form it requires. Per that policy published tags are never
 moved or reused, so they remain as historical markers.
 
-[Unreleased]: https://github.com/hollomancer/sbir-analytics/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/hollomancer/sbir-analytics/compare/v0.5.0...HEAD
+[0.5.0]: https://github.com/hollomancer/sbir-analytics/compare/v0.4.0...v0.5.0
+[0.4.0]: https://github.com/hollomancer/sbir-analytics/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/hollomancer/sbir-analytics/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/hollomancer/sbir-analytics/releases/tag/v0.2.0
