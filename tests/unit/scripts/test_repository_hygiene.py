@@ -162,6 +162,60 @@ def test_spec_registry_requires_each_top_level_spec(tmp_path: Path):
     ]
 
 
+def test_spec_question_anchors_require_an_explicit_declaration(tmp_path: Path):
+    _write(
+        tmp_path,
+        "specs/anchored/requirements.md",
+        "# Anchored\n\n**Research question anchor:** A2 — OT consortium attribution\n",
+    )
+    _write(
+        tmp_path,
+        "specs/quoted-anchor/requirements.md",
+        "# Quoted\n\n> **Research question anchor:** F2 — M&A evidence by vintage\n",
+    )
+    _write(
+        tmp_path,
+        "specs/operational/requirements.md",
+        "# Operational\n\n- **Research question:** none directly. Operational obligation: CI.\n",
+    )
+    _write(tmp_path, "specs/unanchored/requirements.md", "# Unanchored\n\nNo anchor here.\n")
+    _write(tmp_path, "specs/no-requirements/design.md", "# Design only\n")
+    _write(
+        tmp_path,
+        "specs/placeholder/requirements.md",
+        "# Placeholder\n\n**Research question anchor:** [e.g., A3 — DoD leverage ratio]\n",
+    )
+    _write(tmp_path, "specs/standalone.md", "# Standalone\n\nNo anchor.\n")
+    _write(tmp_path, "specs/REQUIREMENTS_TEMPLATE.md", "# Template\n")
+    _write(tmp_path, "specs/status.md", "# Registry\n")
+    _write(tmp_path, "specs/archive/old/requirements.md", "# Archived\n")
+
+    violations = hygiene.scan_spec_question_anchors(root=tmp_path)
+
+    assert [(violation.path, violation.message) for violation in violations] == [
+        (
+            "specs/no-requirements/requirements.md",
+            "spec is missing requirements.md: no-requirements",
+        ),
+        (
+            "specs/placeholder/requirements.md",
+            "research-question anchor still holds the template placeholder",
+        ),
+        (
+            "specs/standalone.md",
+            "missing '**Research question anchor:**' declaration "
+            "(use '**Research question:** none directly. Operational obligation: ...' "
+            "when the spec answers no inventory question)",
+        ),
+        (
+            "specs/unanchored/requirements.md",
+            "missing '**Research question anchor:**' declaration "
+            "(use '**Research question:** none directly. Operational obligation: ...' "
+            "when the spec answers no inventory question)",
+        ),
+    ]
+
+
 def test_archive_guard_ignores_archive_scripts_and_flags_live_references(tmp_path: Path):
     live_code = _write(
         tmp_path,

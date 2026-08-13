@@ -2,6 +2,10 @@
 
 **Target epistemic tier:** `evidence`
 
+**Research question anchor:** B2 / B3 — award-to-contract transition and transition rate by
+technology area, for the Phase II cohort whose commercialization status is currently
+indeterminate rather than negative
+
 **Problem:** 82.6% of the nanotech Phase II cohort (2,352 of 2,849 awards) has indeterminate
 commercialization status. The findings report (`docs/research/nanotech_sbir_transition_findings.md`,
 Finding 3) shows this "dark majority" is measurement failure more than proven failure — but

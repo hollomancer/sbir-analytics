@@ -2,6 +2,9 @@
 
 **Target epistemic tier:** `evidence`
 
+**Research question anchor:** B3 / E1 — how much Phase III work goes unrecorded (protocol and
+current evidence limits), and Phase III identification
+
 Status: **research protocol / draft implementation**. Parent issue: #448.
 Foundation: PR #449 and issue #447. Production source lifecycle: issue #442.
 
