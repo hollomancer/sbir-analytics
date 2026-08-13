@@ -7,7 +7,7 @@ from unittest.mock import MagicMock
 import pytest
 
 
-pytestmark = [pytest.mark.e2e, pytest.mark.slow]
+pytestmark = pytest.mark.transition
 
 
 def _build_mock_queries():

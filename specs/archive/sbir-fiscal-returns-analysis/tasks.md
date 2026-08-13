@@ -166,4 +166,4 @@
     - Validate sensitivity analysis and uncertainty quantification methods
     - Test boundary conditions and edge cases
     - _Requirements: Economic validation_
-    - Implementation: `tests/validation/test_fiscal_reference_validation.py` (includes boundary conditions, reasonableness checks, numerical stability)
+    - Implementation: `tests/integration/fiscal/test_fiscal_reference_validation.py` (includes boundary conditions, reasonableness checks, numerical stability)

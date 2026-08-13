@@ -7,7 +7,7 @@ import pytest
 import sbir_analytics.assets.transition as transition_assets
 
 
-pytestmark = [pytest.mark.e2e, pytest.mark.slow]
+pytestmark = pytest.mark.transition
 
 
 def test_transition_assets_registered():

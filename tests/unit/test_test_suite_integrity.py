@@ -100,6 +100,32 @@ def test_test_modules_define_executable_tests_or_are_documented_scripts():
     )
 
 
+def test_e2e_modules_do_not_import_mock_helpers():
+    """Reserve mock helpers for lower layers; E2E may monkeypatch external I/O boundaries."""
+    violations = []
+    for path in sorted((REPOSITORY_ROOT / "tests/e2e").rglob("test_*.py")):
+        relative_path = _relative(path)
+        tree = ast.parse(path.read_text(encoding="utf-8"), filename=relative_path)
+        for node in ast.walk(tree):
+            imports_mock_helpers = (
+                isinstance(node, ast.Import)
+                and any(alias.name in {"unittest.mock", "pytest_mock"} for alias in node.names)
+            ) or (
+                isinstance(node, ast.ImportFrom)
+                and (
+                    node.module in {"unittest.mock", "pytest_mock"}
+                    or (
+                        node.module == "unittest"
+                        and any(alias.name == "mock" for alias in node.names)
+                    )
+                )
+            )
+            if imports_mock_helpers:
+                violations.append(f"{relative_path}:{node.lineno}")
+
+    assert not violations, "E2E modules importing mock helpers:\n" + "\n".join(violations)
+
+
 @pytest.mark.parametrize("path, reason", NON_PYTEST_VALIDATION_SCRIPTS.items())
 def test_documented_non_pytest_validation_scripts_remain_operator_programs(path: str, reason: str):
     """Keep zero-test exceptions narrow and documented rather than silently expanding them."""

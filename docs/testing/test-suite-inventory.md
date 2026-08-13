@@ -21,12 +21,13 @@ The directories have distinct purposes:
 
 | Directory | Purpose | Normal execution |
 | --- | --- | --- |
-| `tests/integration/` | Interactions among current components or a declared service | Full CI on `main`; focused local runs |
-| `tests/e2e/` | Pipeline scenarios spanning major boundaries, often with Neo4j | Full CI on `main`; Docker E2E locally |
-| `tests/validation/` | Numerical/reference checks and small operator validation programs | Full CI where collectable; explicit local runs |
+| `tests/integration/` | Interactions among current components or a declared service | Full CI; conditional PR lane; focused local runs |
+| `tests/e2e/` | Production Dagster jobs over persisted deterministic fixtures | Every PR; full CI; Docker E2E locally |
+| `tests/validation/` | Small operator validation programs | Explicit operator runs only |
 
-Pull-request CI currently runs fast unit-test shards, not these entire directories. See
-[Test Execution and Scheduling](test-scheduling.md) for the event matrix.
+Pull-request CI runs fast unit-test shards, the complete hermetic E2E directory, and conditional
+integration tests for relevant paths. See [Test Execution and Scheduling](test-scheduling.md) for
+the event matrix.
 
 ## Prerequisite classes
 
@@ -49,10 +50,12 @@ suites. Run them explicitly as scripts when their prerequisites are available.
 - `tests/integration/test_company_categorization_client_injection.py` covers categorization client
   boundaries.
 - `tests/integration/test_patent_etl_integration.py` covers the patent ETL chain with fixtures.
-- `tests/e2e/test_pipeline_validator.py` covers shared pipeline validation models and behavior.
-- `tests/e2e/transition/` covers transition assets, quality metrics, detection, and graph queries.
-- `tests/validation/test_fiscal_reference_validation.py` contains local numerical checks plus
-  reference-data cases that may skip when their external prerequisites are absent.
+- `tests/integration/fiscal/` covers fiscal calculations and reference checks.
+- `tests/integration/transition/` covers transition analytics, detection, and quality metrics.
+- `tests/e2e/test_enrichment_job.py` executes USAspending freshness selection through Dagster.
+- `tests/e2e/test_nsf_defense_lineage.py` replays pinned sources through release and graph products.
+- `tests/unit/test_pipeline_validator.py` and `tests/unit/transition/test_graph_queries.py` cover
+  test-support validation and mocked query contracts.
 
 This list is navigational, not exhaustive; collection is authoritative.
 
@@ -70,6 +73,6 @@ can execute it. A skip is not a substitute for a removed implementation or an ob
 
 ## CI relationship
 
-On pushes to `main` and manual runs, `.github/workflows/ci.yml` starts Neo4j and runs the complete
-`tests/` tree except `requires_api` cases and the named known-failure deselections recorded directly
-in the workflow. GitHub Actions does not mount production data and does not run live pipeline work.
+On pushes to `main`, weekly schedules, and manual runs, `.github/workflows/ci.yml` starts Neo4j and
+runs the complete discoverable `tests/` tree except `requires_api` cases. GitHub Actions does not
+mount production data or run live pipeline work.

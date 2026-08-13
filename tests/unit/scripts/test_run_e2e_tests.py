@@ -19,7 +19,7 @@ def test_supported_scenarios_are_distinct_and_hermetic() -> None:
     minimal = MODULE.get_test_config("minimal")
     standard = MODULE.get_test_config("standard")
 
-    assert minimal["test_markers"] == "not slow and not requires_api and not real_data"
+    assert minimal["test_markers"] == "smoke and not requires_api and not real_data"
     assert standard["test_markers"] == "not requires_api and not real_data"
     assert minimal["test_markers"] != standard["test_markers"]
 
@@ -41,5 +41,6 @@ def test_standard_scenario_uses_current_interpreter_and_branch_coverage(monkeypa
     assert isinstance(args, list)
     assert args[:3] == [sys.executable, "-m", "pytest"]
     assert "--cov-branch" in args
+    assert "--cov-report=html:artifacts/htmlcov" in args
     marker_index = args.index("-m", 3)
     assert args[marker_index + 1] == "not requires_api and not real_data"

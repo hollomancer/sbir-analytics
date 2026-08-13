@@ -8,8 +8,10 @@
 
 **Status**: Active
 
-End-to-end tests live in `tests/e2e/`. They exercise pipeline behavior across component boundaries,
-including scenarios that require Neo4j. The scenario runner is `scripts/run_e2e_tests.py`.
+End-to-end tests live in `tests/e2e/`. They execute production Dagster jobs from persisted,
+deterministic fixtures and validate their emitted products and asset checks. Mock-only checks and
+direct composition of helpers belong in unit or integration suites. The scenario runner is
+`scripts/run_e2e_tests.py`.
 
 ## Preferred Docker workflow
 
@@ -34,8 +36,9 @@ make docker-logs SERVICE=app
 make docker-e2e-clean
 ```
 
-The non-minimal scenario creates branch-aware HTML coverage under `/app/artifacts/htmlcov` in the test
-container. Use `make docker-e2e-debug` for an interactive shell in the same image.
+The non-minimal scenario creates branch-aware HTML coverage under `artifacts/htmlcov` (mounted as
+`/app/artifacts/htmlcov` in the test container). Use `make docker-e2e-debug` for an interactive shell
+in the same image. Override the host path with `E2E_ARTIFACT_DIR` when needed.
 
 ## Running the scenario runner directly
 
@@ -65,7 +68,7 @@ Supported scenarios are:
 
 | Scenario | Pytest selection |
 | --- | --- |
-| `minimal` | Excludes `slow`, `requires_api`, and `real_data` |
+| `minimal` | Selects the `smoke` job and excludes `requires_api` and `real_data` |
 | `standard` | Excludes `requires_api` and `real_data` |
 
 The descriptions and expected durations printed by the runner are planning estimates, not CI
@@ -74,12 +77,15 @@ installed it is also applied per test; the runner always enforces an overall sub
 
 ## Test structure
 
-Important shared helpers are intentionally small:
+The current hermetic scenarios are:
 
-- `tests/e2e/pipeline_validator.py` validates pipeline outputs and quality conditions.
-- `tests/e2e/validation_models.py` defines validation result models.
-- `tests/fixtures/enrichment_scenarios.json` contains enrichment scenarios.
-- `tests/e2e/transition/` covers the transition pipeline and graph queries.
+- `test_enrichment_job.py`: persisted freshness records and enriched awards through the production
+  USAspending freshness-selection job and asset check, with API construction prohibited.
+- `test_nsf_defense_lineage.py`: pinned CSV, JSON, and Parquet sources through the production
+  lineage job, release validation, static graph publication, and deterministic replay.
+
+Synthetic fiscal, multi-source enrichment, and transition chains live under `tests/integration/`.
+Mocked pipeline-validator and graph-query contracts live under `tests/unit/`.
 
 List the current tests rather than relying on a static count:
 

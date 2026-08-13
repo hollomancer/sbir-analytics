@@ -1,4 +1,4 @@
-"""Data models for E2E validation reporting.
+"""Data models for test-support pipeline validation reporting.
 
 This module provides comprehensive data models for validation results,
 test reports, and recommendations for E2E testing.
@@ -9,7 +9,7 @@ from datetime import datetime
 from enum import Enum
 from typing import Any
 
-from tests.e2e.pipeline_validator import (
+from tests.utils.pipeline_validator import (
     StageValidationResult,
     ValidationCheck,
     ValidationStage,

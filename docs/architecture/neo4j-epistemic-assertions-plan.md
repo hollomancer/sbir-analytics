@@ -84,7 +84,7 @@ Important test gaps are:
 
 - `tests/unit/loaders/neo4j/test_transitions.py` and `test_transitions_nodes.py` use hand-built
   frames, not the active Dagster adapter.
-- `tests/e2e/transition/test_graph_queries.py` mocks result shapes rather than exercising Neo4j
+- `tests/unit/transition/test_graph_queries.py` mocks result shapes rather than exercising Neo4j
   projection semantics.
 - `tests/unit/transition/test_transition_scores_stability.py` removes dynamic timestamps before
   comparison; it does not prove stable record identity.
@@ -1252,7 +1252,7 @@ Likely files:
 - `tests/unit/loaders/neo4j/test_assertions.py`
 - `tests/unit/loaders/neo4j/test_contracts.py`
 - `tests/integration/neo4j/test_assertion_projection.py`
-- `tests/e2e/transition/test_graph_queries.py`
+- `tests/unit/transition/test_graph_queries.py`
 - `tests/unit/assets/test_dagster_definitions.py`
 - `tests/unit/api/test_repository.py`
 - `tests/unit/api/test_analytics_api.py`
@@ -1269,7 +1269,7 @@ uv run pytest tests/unit/scripts/test_architecture_boundaries.py \
   tests/unit/api/test_repository.py tests/unit/api/test_analytics_api.py \
   tests/unit/scripts/test_migrate_transition_assertion_projection.py -q
 uv run pytest -m integration tests/integration/neo4j/test_assertion_projection.py -q
-uv run pytest tests/e2e/transition/test_graph_queries.py -q
+uv run pytest tests/unit/transition/test_graph_queries.py -q
 uv run ruff check packages/sbir-graph packages/sbir-analytics/sbir_analytics/assets/transition_assertions
 make lint-boundaries
 make docs-check

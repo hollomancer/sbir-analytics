@@ -1,4 +1,4 @@
-"""Shared fixtures for transition E2E tests."""
+"""Shared fixtures for transition integration tests."""
 
 from __future__ import annotations
 
