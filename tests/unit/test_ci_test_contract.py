@@ -16,10 +16,10 @@ def _workflow() -> dict:
 
 
 def test_ci_has_a_weekly_full_suite_schedule() -> None:
-    schedule = _workflow()["on"]["schedule"]
+    workflow = _workflow()
 
-    assert schedule
-    assert len(schedule[0]["cron"].split()) == 5
+    assert workflow["on"]["schedule"] == [{"cron": "17 8 * * 6"}]
+    assert workflow["jobs"]["test-full"]["if"] == "github.event_name != 'pull_request'"
 
 
 def test_pull_requests_run_the_hermetic_e2e_selection() -> None:
