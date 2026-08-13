@@ -13,6 +13,7 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 SERVER_COMPOSE = REPO_ROOT / "docker-compose.server.yml"
 SERVER_ENV_EXAMPLE = REPO_ROOT / ".env.server.example"
 DOCKERFILE = REPO_ROOT / "Dockerfile"
+CI_WORKFLOW = REPO_ROOT / ".github" / "workflows" / "ci.yml"
 SERVER_WORKSPACE = REPO_ROOT / "workspace.server.yaml"
 ROOT_PROJECT = REPO_ROOT / "pyproject.toml"
 DAGSTER_HEALTHCHECK = REPO_ROOT / "scripts" / "docker" / "healthcheck" / "dagster.sh"
@@ -61,7 +62,11 @@ def test_dagster_uses_shared_internal_code_server():
 
     assert "host: dagster-code-server" in workspace
     assert "port: 4000" in workspace
-    assert "COPY workspace.server.yaml ./workspace.server.yaml" in DOCKERFILE.read_text()
+    assert re.search(
+        r"^COPY --chown=sbir:sbir workspace\.server\.yaml ./workspace\.server\.yaml$",
+        DOCKERFILE.read_text(),
+        re.MULTILINE,
+    )
     assert "\n    ports:" not in code_server
     assert 'expose:\n      - "4000"' in code_server
     assert "grpc-health-check" in code_server
@@ -86,9 +91,10 @@ def test_docker_build_rejects_lock_drift_and_caches_dependency_layers():
     assert "uv sync --frozen" not in dockerfile
     assert "--no-install-project --no-install-workspace" in dockerfile
     assert dockerfile.count("--mount=type=cache,target=/root/.cache/uv") >= 2
-    assert dockerfile.index("--no-install-workspace") < dockerfile.index("COPY sbir_etl/")
+    source_copy = "COPY --chown=sbir:sbir sbir_etl/"
+    assert dockerfile.index("--no-install-workspace") < dockerfile.index(source_copy)
     assert dockerfile.index("playwright install --with-deps chromium") < dockerfile.index(
-        "COPY sbir_etl/"
+        source_copy
     )
 
 
@@ -96,9 +102,19 @@ def test_runtime_image_provides_non_root_account_and_privilege_drop_tool():
     dockerfile = DOCKERFILE.read_text()
 
     assert "gosu" in dockerfile
-    assert "groupadd --system sbir" in dockerfile
-    assert "useradd --system --gid sbir" in dockerfile
-    assert "chown -R sbir:sbir /app" in dockerfile
+    assert re.search(r"groupadd --system --gid 1001 sbir", dockerfile)
+    assert re.search(r"useradd --system --uid 1001 --gid sbir\b", dockerfile)
+    assert "COPY --chown=sbir:sbir sbir_etl/" in dockerfile
+    assert "chown -R sbir:sbir /app" not in dockerfile
+
+
+def test_ci_smoke_tests_identity_aware_runtime_ownership_migration():
+    workflow = CI_WORKFLOW.read_text()
+
+    assert 'printf "999:999\\n" > /app/reports/.sbir-runtime-owner-v1' in workflow
+    assert "sh /app/scripts/docker/entrypoint.sh -- true" in workflow
+    assert "cat /app/reports/.sbir-runtime-owner-v1" in workflow
+    assert "stat -c %u:%g /app/reports/legacy" in workflow
 
 
 def test_server_extra_locks_default_spacy_pipeline():
@@ -234,6 +250,9 @@ def test_entrypoint_prepares_persistent_directories_before_privilege_drop():
     )
     assert "/app/dagster_home" in entrypoint
     assert "chown -R sbir:sbir" in entrypoint
+    assert 'owner_identity="$(id -u sbir):$(id -g sbir)"' in entrypoint
+    assert 'recorded_identity" != "$owner_identity' in entrypoint
+    assert 'printf \'%s\\n\' "$owner_identity" > "$marker"' in entrypoint
 
 
 def test_daemon_healthcheck_uses_heartbeat_liveness_without_procps(tmp_path):

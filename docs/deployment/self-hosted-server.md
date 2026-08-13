@@ -181,9 +181,34 @@ prefer a quiet window.
 
 The first rebuild after adopting the non-root runtime recursively transfers the
 five application mount roots (`data`, `reports`, `logs`, `artifacts`, and
-`dagster_home`) to the container's `sbir` account. Each root receives a
-`.sbir-runtime-owner-v1` marker so later restarts do not rescan it. Plan the
-first restart for a quiet window when those trees are large.
+`dagster_home`) to the container's `sbir` account, whose UID and GID are both
+pinned to `1001`. The first four are host bind mounts, so this operation changes
+their ownership on the server filesystem too; direct access from the operator
+account may require `sudo` afterward. The `dagster_home` tree is a Docker named
+volume. Each root receives a `.sbir-runtime-owner-v1` marker containing the
+applied `UID:GID`; a missing or mismatched identity reruns the migration.
+
+Plan the first restart for a quiet window when those trees are large. The
+recursive ownership change can exceed `server-rebuild`'s 300-second wait and
+make the command report a timeout while the containers legitimately continue
+starting. Follow its progress, then rerun `make server-status`:
+
+```bash
+docker compose --env-file .env.server -f docker-compose.server.yml logs -f
+```
+
+If the migration was a mistake, stop the stack before restoring ownership. Use
+the real absolute bind-mount paths from `.env.server` (not the placeholders
+below), and set them back to the intended host account:
+
+```bash
+make server-down
+sudo chown -R "$(id -u):$(id -g)" /absolute/data /absolute/reports \
+  /absolute/logs /absolute/artifacts
+```
+
+The next container start will intentionally apply `1001:1001` again unless the
+non-root deployment change is reverted first.
 
 ## Tailscale grant (least privilege)
 

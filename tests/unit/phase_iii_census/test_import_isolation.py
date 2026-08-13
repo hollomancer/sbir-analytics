@@ -83,8 +83,8 @@ assert assets.verify_materialization_gate()["materialization_allowed"] is True
     )
 
     assert result.returncode == 0, result.stderr or result.stdout
-    docker_copy = "COPY specs/phase-iii-census/ ./specs/phase-iii-census/"
-    study_copy = "COPY studies/phase-iii-census/ ./studies/phase-iii-census/"
+    docker_copy = "COPY --chown=sbir:sbir specs/phase-iii-census/ ./specs/phase-iii-census/"
+    study_copy = "COPY --chown=sbir:sbir studies/phase-iii-census/ ./studies/phase-iii-census/"
     docker_text = (REPOSITORY_ROOT / "Dockerfile").read_text(encoding="utf-8")
     assert docker_copy in docker_text
     assert study_copy in docker_text

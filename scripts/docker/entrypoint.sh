@@ -78,8 +78,8 @@ _make_exec_prefix() {
   exec_prefix=""
   if [ "$(id -u)" = "0" ]; then
     if ! id sbir >/dev/null 2>&1; then
-      # The lightweight runtime image does not currently create this account.
-      # Do not select runuser solely because the binary happens to exist.
+      # Some development or downstream images may omit this account. Do not
+      # select runuser solely because the binary happens to exist.
       log "Warning: sbir user is unavailable; continuing as root" >&2
       printf '%s' "$exec_prefix"
       return 0
@@ -109,14 +109,19 @@ _make_exec_prefix() {
 prepare_runtime_directories() {
   [ "$(id -u)" = "0" ] || return 0
   id sbir >/dev/null 2>&1 || return 0
+  owner_identity="$(id -u sbir):$(id -g sbir)"
 
   for dir in /app/data /app/logs /app/reports /app/artifacts /app/dagster_home; do
     [ -d "$dir" ] || continue
     marker="$dir/.sbir-runtime-owner-v1"
-    if [ ! -f "$marker" ]; then
-      log "Preparing runtime ownership: $dir"
+    recorded_identity=""
+    if [ -f "$marker" ]; then
+      recorded_identity="$(sed -n '1p' "$marker")"
+    fi
+    if [ "$recorded_identity" != "$owner_identity" ]; then
+      log "Preparing runtime ownership for ${owner_identity}: $dir"
       chown -R sbir:sbir "$dir"
-      touch "$marker"
+      printf '%s\n' "$owner_identity" > "$marker"
       chown sbir:sbir "$marker"
     fi
   done
