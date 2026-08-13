@@ -175,7 +175,7 @@ doctor: ## Verify the local Python development environment
 .PHONY: test
 test: ## Run all tests
 	@$(call info,Running tests)
-	$(call run,uv run pytest -v --cov=sbir_etl --cov=packages/sbir-analytics/sbir_analytics --cov=packages/sbir-ml/sbir_ml --cov=packages/sbir-graph/sbir_graph)
+	$(call run,uv run pytest -v --cov=sbir_etl --cov=packages/sbir-analytics/sbir_analytics --cov=packages/sbir-ml/sbir_ml --cov=packages/sbir-graph/sbir_graph --cov-branch --cov-fail-under=70)
 
 .PHONY: test-unit
 test-unit: ## Run unit tests only
@@ -385,7 +385,7 @@ docker-test: env-check ## Run containerised CI tests (profile=ci)
 	 $(call info,Running containerised tests (profile: ci)); \
 	 $(call print-cmd,$(COMPOSE) --profile ci up --abort-on-container-exit --build); \
 	 STATUS=0; \
-	 if ! $(COMPOSE) --profile ci up --abort-on-container-exit --build; then STATUS=$$?; fi; \
+	 if $(COMPOSE) --profile ci up --abort-on-container-exit --build; then STATUS=0; else STATUS=$$?; fi; \
 	 $(call print-cmd,$(COMPOSE) --profile ci down --remove-orphans --volumes); \
 	 $(COMPOSE) --profile ci down --remove-orphans --volumes || true; \
 	 if [ $$STATUS -eq 0 ]; then \
@@ -402,7 +402,7 @@ docker-e2e: env-check ## Run full end-to-end test suite (profile=ci)
 	 $(call info,Running E2E tests (profile: ci)); \
 	 $(call print-cmd,$(COMPOSE) --profile ci up --build --abort-on-container-exit neo4j app); \
 	 STATUS=0; \
-	 if ! $(COMPOSE) --profile ci up --build --abort-on-container-exit neo4j app 2>&1; then STATUS=$$?; fi; \
+	 if $(COMPOSE) --profile ci up --build --abort-on-container-exit neo4j app 2>&1; then STATUS=0; else STATUS=$$?; fi; \
 	 if [ "$(QUIET)" != "1" ]; then printf "$(BLUE)➤$(RESET) E2E tests completed with exit code %s\n" "$$STATUS"; fi; \
 	 if [ $$STATUS -ne 0 ]; then \
 	   $(call failure,E2E tests failed with exit code $$STATUS); \
@@ -422,7 +422,7 @@ docker-e2e-clean: ## Tear down the E2E environment
 	 if [ "$(QUIET)" != "1" ]; then printf "$(BLUE)➤$(RESET) Cleaning up E2E test environment\n"; fi; \
 	 printf "$(GRAY)$ %s$(RESET)\n" "$(COMPOSE) --profile ci down --remove-orphans --volumes"; \
 	 STATUS=0; \
-	 if ! $(COMPOSE) --profile ci down --remove-orphans --volumes; then STATUS=$$?; fi; \
+	 if $(COMPOSE) --profile ci down --remove-orphans --volumes; then STATUS=0; else STATUS=$$?; fi; \
 	 if [ $$STATUS -eq 0 ]; then \
 	   if [ "$(QUIET)" != "1" ]; then printf "$(GREEN)✔$(RESET) %s\n" "E2E environment cleaned up successfully"; fi; \
 	 else \
@@ -439,16 +439,6 @@ docker-e2e-minimal: env-check ## Run the minimal (fast) E2E scenario
 docker-e2e-standard: env-check ## Run the standard E2E scenario
 	@$(call info,Running standard E2E scenario)
 	@E2E_TEST_SCENARIO=standard $(MAKE) docker-e2e
-
-.PHONY: docker-e2e-large
-docker-e2e-large: env-check ## Run the large dataset E2E scenario
-	@$(call info,Running large dataset E2E scenario)
-	@E2E_TEST_SCENARIO=large $(MAKE) docker-e2e
-
-.PHONY: docker-e2e-edge-cases
-docker-e2e-edge-cases: env-check ## Run the edge-case E2E scenario
-	@$(call info,Running edge-case E2E scenario)
-	@E2E_TEST_SCENARIO=edge-cases $(MAKE) docker-e2e
 
 .PHONY: docker-e2e-debug
 docker-e2e-debug: env-check ## Open an interactive shell in the CI test container

@@ -63,6 +63,7 @@ Prefer these targets over hand-written Compose commands:
 | `make docker-exec SERVICE=dagster-webserver CMD=sh` | Run a command in a service |
 | `make docker-test` | Run containerized tests through the `ci` profile |
 | `make docker-e2e-minimal` | Run the minimal E2E scenario |
+| `make docker-e2e-standard` | Run the hermetic E2E scenario |
 | `make docker-e2e-clean` | Remove the E2E environment and volumes |
 | `make neo4j-up` / `make neo4j-down` | Start or stop local Neo4j |
 | `make validate-config` | Validate the root compose and environment files |

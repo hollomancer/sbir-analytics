@@ -24,8 +24,6 @@ Then run a scenario through the Compose `ci` profile:
 ```bash
 make docker-e2e-minimal
 make docker-e2e-standard
-make docker-e2e-large
-make docker-e2e-edge-cases
 ```
 
 `make docker-e2e` uses `E2E_TEST_SCENARIO` directly and leaves containers running for inspection:
@@ -36,7 +34,7 @@ make docker-logs SERVICE=app
 make docker-e2e-clean
 ```
 
-The non-minimal scenarios create HTML coverage under `/app/artifacts/htmlcov` in the test
+The non-minimal scenario creates branch-aware HTML coverage under `/app/artifacts/htmlcov` in the test
 container. Use `make docker-e2e-debug` for an interactive shell in the same image.
 
 ## Running the scenario runner directly
@@ -67,10 +65,8 @@ Supported scenarios are:
 
 | Scenario | Pytest selection |
 | --- | --- |
-| `minimal` | Excludes `slow` and `large_dataset` |
-| `standard` | Excludes `large_dataset` |
-| `large` | Runs all E2E markers |
-| `edge-cases` | Selects `edge_case` |
+| `minimal` | Excludes `slow`, `requires_api`, and `real_data` |
+| `standard` | Excludes `requires_api` and `real_data` |
 
 The descriptions and expected durations printed by the runner are planning estimates, not CI
 service-level guarantees. The `--timeout` value defaults to 600 seconds. When `pytest-timeout` is

@@ -46,9 +46,10 @@ Do not use the retired `pytest-shard`, `--shard-id`, or zero-based shard numberi
 ## Pushes to `main` and manual runs
 
 Pushes to `main` and `workflow_dispatch` run the full `tests/` tree with a Neo4j service and
-coverage. The workflow excludes `requires_api` tests and documents a small number of explicit test
-deselections that represent known pre-existing failures. Read the workflow before changing those
-exceptions; delete a deselection when its underlying test is repaired.
+branch coverage. The combined first-party coverage report must remain at or above 70%. The workflow
+excludes `requires_api` tests and documents a small number of explicit test deselections that
+represent known pre-existing failures. Read the workflow before changing those exceptions; delete
+a deselection when its underlying test is repaired.
 
 Fast PR shards do not replace the full post-merge gate. This split keeps pull-request feedback short
 while still exercising integration, functional, E2E, golden, slow, and validation tests on `main`.
