@@ -39,6 +39,15 @@ As in Wave 1, these are companion views over the canonical artifacts — the scr
 the repeatable computation layer, and each notebook degrades to a "run the generator first"
 message when an artifact is absent.
 
+## Active explorations
+
+Question-driven work under `notebooks/explorations/`. These are not companions to a
+canonical generator; they stay `exploratory` and non-citable until explicitly promoted.
+
+| Investigation | Question | Notebook | Status |
+|---|---|---|---|
+| STTR partner-type × commercialization channels | B1 / B3 — among STTR Phase II firms, do observed Phase III / Form D / M&A rates differ by a coarse RI partner-type heuristic? | `explorations/b1_sttr_partner_type_commercialization.ipynb` | Active. Not RQ2; not the frozen partner-type classifier. |
+
 ## Keep automated — not notebook candidates
 
 - Downloads and external ingestion: `download_sbir.py`, `download_sam_gov.py`,

@@ -69,3 +69,13 @@ edges.
 
 RQ2 remains design-only in this spec (Requirement 4). Spinning it into its own
 spec is O-9 and is not a Phase 1 task here.
+
+## Workbench probe (not Phase 1, not RQ2)
+
+A notebook at
+[`notebooks/explorations/b1_sttr_partner_type_commercialization.ipynb`](../../notebooks/explorations/b1_sttr_partner_type_commercialization.ipynb)
+stratifies STTR Phase II firms by a coarse RI-name heuristic (`UNIVERSITY` /
+`FFRDC` / `COMMUNITY_COLLEGE` / `UNTYPED`) across existing Phase III / Form D /
+M&A artifacts. It is unmatched, exploratory, and non-citable. It does **not**
+implement the partner-type classifier, does **not** freeze criteria, and is
+**not** the RQ2 matched spinout-vs-subcontract comparison.
