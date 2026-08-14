@@ -79,13 +79,16 @@ treat the list as versioned and incomplete-by-construction.
 **curation protocol, not a source pick.** `NEW_MODEL_ORG` seed = Convergent Research's public FRO
 portfolio plus known independents (Arc Institute, Arcadia Science, Astera Institute, Speculative
 Technologies, and similar), each entry date-stamped with a source URL and **verified at capture**,
-treated as incomplete-by-construction. The **fiscal-sponsor list is the load-bearing piece** (the
-false-zero guard for the headline readout): seed = science-specific sponsors (Convergent Research,
+treated as incomplete-by-construction. The **fiscal-sponsor list is the load-bearing piece for the
+`NEW_MODEL_ORG` vs. `OTHER_NONPROFIT` breakdown** (it is what distinguishes a confirmed new-model
+org from one masked behind a sponsor's name): seed = science-specific sponsors (Convergent Research,
 Astera) plus generic 501(c)(3) fiscal sponsors used by science orgs (Players Philanthropy Fund,
 Hopewell Fund, Social Finance, Research Corporation for Science Advancement — verify each at
 capture). Scope note: this list only distinguishes `NEW_MODEL_ORG` from `OTHER_NONPROFIT`; the
-headline "non-university, non-FFRDC nonprofit" detection does **not** depend on it. Sources recorded
-in [`seed-list-provenance.md`](seed-list-provenance.md); data capture remains pending.
+headline "non-university, non-FFRDC nonprofit" detection does **not** depend on it — a
+sponsor-masked FRO still classifies as a nonprofit and counts toward the headline sum regardless of
+whether its sponsor is on this list. Sources recorded in
+[`seed-list-provenance.md`](seed-list-provenance.md); data capture remains pending.
 
 ## O-7 — Research-hospital list source
 
