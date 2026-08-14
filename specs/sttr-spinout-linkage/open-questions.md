@@ -153,16 +153,34 @@ is authorized here or before the Revision 1 freeze.
 
 - **NIH/interagency iEdison (now NIST-operated, transferred from NIH August 2022).** The system of
   record for Bayh-Dole subject-invention and utilization-report filings, used across NIH, NSF, DoD,
-  DOE, and ~30 other agencies. **Restricted, not public.** Access requires an organization-level
-  iEdison account and login.gov authentication ([NIST iEdison FAQ](https://www.nist.gov/iedison/iedison-frequently-asked-questions-faqs));
-  the [iEdison API](https://github.com/usnistgov/iEdison-API-Documentation) requires "Setting Up
-  Your API Account" — no anonymous or public endpoint is documented. **Verdict: Not public.** A
-  recent GAO report on iEdison data,
+  DOE, and ~30 other agencies. **Not obtainable even in principle, not merely account-gated.** Three
+  independent barriers stack:
+  1. **Statutory confidentiality.** The Bayh-Dole Act authorizes agencies to withhold
+     invention-disclosure data from the public, and utilization/licensing-effort information is
+     treated as commercial and financial information that is privileged, confidential, and not
+     subject to disclosure — this is a FOIA-exemption-grade bar, not just a login wall. A FOIA
+     request for licensee-level data would predictably be denied on this basis; see the SBIR/STTR
+     data-rights briefing on this point
+     ([Patent and Data Rights under SBIR/STTR Awards](https://www.orau.gov/2018SBIRPhase2/presentations/Mike_Dobbs_SBIR-STTR_Phase_I_PI_Meeting_Dec_2018.pdf)).
+  2. **Account access is organization-scoped, not query access.** Web access requires an
+     organization-level iEdison account with login.gov authentication
+     ([NIST iEdison FAQ](https://www.nist.gov/iedison/iedison-frequently-asked-questions-faqs)); an
+     authenticated user sees their own organization's filings, not a cross-agency corpus.
+  3. **The API is a system-to-system filer interface, not a research read endpoint.** The
+     [iEdison API](https://www.nist.gov/iedison/iedison-api) requires a system account and a
+     NIST-issued PKI client certificate
+     ([Setting up your API Account](https://www.nist.gov/iedison/setting-your-api-account)) — built
+     for an institution's own grants-management system to submit/query *its own* reports, not for
+     third-party bulk read access.
+
+  **Verdict: Not obtainable — a statutory and architectural dead end, not a temporary access
+  friction.** Even with credentials, there is no path from one organization's account to the
+  government-wide STTR population this cascade needs. A recent GAO report on iEdison data,
   [GAO-26-107971](https://files.gao.gov/reports/GAO-26-107971/index.html) ("Funding Recipients Keep
   Most Federally Funded Inventions, but Some Cited Reporting Challenges"), analyzes FY2020–2024
   iEdison filings across 30 agencies but publishes only **aggregate narrative statistics** (e.g.,
-  ~56% title-retention rate) — no individual-invention or license-level microdata release. It does
-  not name a licensee, so it would not help even if released.
+  ~56% title-retention rate) — no individual-invention or license-level microdata release, and it
+  does not name a licensee, so it would not help even if released.
 - **PatentsView / USPTO Open Data Portal `government_interest` extraction.** PatentsView runs an
   NER pipeline over the "GOVERNMENT INTERESTS" clause in granted-patent front matter, resolving
   matches against a list of 300+ U.S. government organizations
