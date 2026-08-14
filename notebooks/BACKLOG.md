@@ -47,6 +47,7 @@ canonical generator; they stay `exploratory` and non-citable until explicitly pr
 | Investigation | Question | Notebook | Status |
 |---|---|---|---|
 | STTR partner-type × commercialization channels | B1 / B3 — among STTR Phase II firms, do observed Phase III / Form D / M&A rates differ by a coarse RI partner-type heuristic? | `explorations/b1_sttr_partner_type_commercialization.ipynb` | Active. Not RQ2; not the frozen partner-type classifier. |
+| STTR spinout-vs-subcontract (RQ1) data availability | B2/RQ1 (spec-local anchor, distinct from the canonical B2) — is the public data the frozen classification cascade would consume actually present locally, independent of the `open-questions.md` freeze gate? | `explorations/sttr_rq1_data_availability.ipynb` | Active. Input-availability probe only; does not implement or run the cascade. |
 
 ## Keep automated — not notebook candidates
 
