@@ -148,9 +148,12 @@ list-based, **no ML**. Reuses `sbir_etl.identity` for organization-name matching
 **Seed lists** (each versioned, date-stamped, with sources recorded in
 [`seed-list-provenance.md`](seed-list-provenance.md)):
 - the official **FFRDC Master List** (NSF);
-- a curated **FRO / new-model-org** list (curation protocol is [O-6](open-questions.md));
+- a curated **FRO / new-model-org** list — seeded from Convergent Research's public FRO portfolio
+  plus known independents, verified at capture, incomplete-by-construction ([O-6](open-questions.md)
+  **resolved**: curation protocol, not a source pick);
 - **IPEDS** for community colleges and the university universe;
-- a **research-hospital** list (source is [O-7](open-questions.md)).
+- a **research-hospital** list — **NIH RePORTER** hospital-class grantees scoped to non-university
+  institutions, with **AAMC COTH** as a coverage cross-check ([O-7](open-questions.md) **resolved**).
 
 **Fiscal-sponsor masking.** New-model orgs operating under a fiscal sponsor may appear in award
 data under the sponsor's name. The classifier matches both org names and known sponsor names, and
@@ -158,11 +161,14 @@ the typed absence **distinguishes `NO_MATCH` from `POSSIBLY_MASKED_BY_SPONSOR`**
 coverage is [O-6](open-questions.md).
 
 **Precedence when lists overlap** (e.g., a university-administered FFRDC). Proposed default,
-pending owner decision ([O-5](open-questions.md)): **`FFRDC` > `RESEARCH_HOSPITAL` >
-`NEW_MODEL_ORG` > `UNIVERSITY` > `COMMUNITY_COLLEGE` > `NONPROFIT_INSTITUTE` > `OTHER_NONPROFIT`**.
-Rationale: the most specific, list-authoritative status (FFRDC by federal master list) wins over
-the broadest (a nonprofit tax status), and a university-administered FFRDC is reported as an FFRDC
-because that is its funding-instrument identity in award data.
+revised by the [O-7](open-questions.md) resolution and pending final ordering confirmation
+([O-5](open-questions.md)): **`FFRDC` > `NEW_MODEL_ORG` > `UNIVERSITY` > `RESEARCH_HOSPITAL` >
+`COMMUNITY_COLLEGE` > `NONPROFIT_INSTITUTE` > `OTHER_NONPROFIT`**. Rationale: the most specific,
+list-authoritative status (FFRDC by federal master list) wins over the broadest (a nonprofit tax
+status); a university-administered FFRDC is reported as an FFRDC because that is its
+funding-instrument identity in award data; and `UNIVERSITY > RESEARCH_HOSPITAL` keeps
+university-owned academic medical centers labeled `UNIVERSITY`, with the hospital list built to
+exclude them so the overlap rarely arises.
 
 **Headline readout:** *Has a non-university, non-FFRDC nonprofit (research hospital, independent
 institute, or new-model org) ever served as an STTR partner?* Report incidence by

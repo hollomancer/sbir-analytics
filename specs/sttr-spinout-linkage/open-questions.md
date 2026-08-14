@@ -60,8 +60,12 @@ future work, not v1. The lexicon version is part of the freeze.
 ## O-5 — Partner-type precedence order
 
 When seed lists overlap (e.g., a university-administered FFRDC), which label wins?
-**Proposed default:** `FFRDC > RESEARCH_HOSPITAL > NEW_MODEL_ORG > UNIVERSITY > COMMUNITY_COLLEGE >
-NONPROFIT_INSTITUTE > OTHER_NONPROFIT` (most list-authoritative status wins).
+**Proposed default (revised by O-7):** `FFRDC > NEW_MODEL_ORG > UNIVERSITY > RESEARCH_HOSPITAL >
+COMMUNITY_COLLEGE > NONPROFIT_INSTITUTE > OTHER_NONPROFIT`. The `UNIVERSITY > RESEARCH_HOSPITAL`
+direction is **fixed by the O-7 resolution** (university-owned academic medical centers stay
+`UNIVERSITY`; the hospital list is built to exclude them, so the two rarely overlap in practice).
+FFRDC (federal master list) remains most authoritative. **Still open:** owner confirmation of the
+full ordering.
 
 ## O-6 — FRO / new-model-org list curation and fiscal-sponsor coverage
 
@@ -71,12 +75,33 @@ and the coverage of the known-fiscal-sponsor name list used to detect `POSSIBLY_
 entry date-stamped with a source URL in [`seed-list-provenance.md`](seed-list-provenance.md);
 treat the list as versioned and incomplete-by-construction.
 
+**RESOLVED (2026-08-14):** No government master list for new-model orgs exists, so this is a
+**curation protocol, not a source pick.** `NEW_MODEL_ORG` seed = Convergent Research's public FRO
+portfolio plus known independents (Arc Institute, Arcadia Science, Astera Institute, Speculative
+Technologies, and similar), each entry date-stamped with a source URL and **verified at capture**,
+treated as incomplete-by-construction. The **fiscal-sponsor list is the load-bearing piece** (the
+false-zero guard for the headline readout): seed = science-specific sponsors (Convergent Research,
+Astera) plus generic 501(c)(3) fiscal sponsors used by science orgs (Players Philanthropy Fund,
+Hopewell Fund, Social Finance, Research Corporation for Science Advancement — verify each at
+capture). Scope note: this list only distinguishes `NEW_MODEL_ORG` from `OTHER_NONPROFIT`; the
+headline "non-university, non-FFRDC nonprofit" detection does **not** depend on it. Sources recorded
+in [`seed-list-provenance.md`](seed-list-provenance.md); data capture remains pending.
+
 ## O-7 — Research-hospital list source
 
 Which authoritative list defines `RESEARCH_HOSPITAL` (e.g., a teaching-hospital / AAMC-member set,
 or an NIH-grantee hospital set)?
 **Proposed default:** owner to name the authoritative source; record its version and date in the
 provenance file.
+
+**RESOLVED (2026-08-14):** `RESEARCH_HOSPITAL` is defined **narrowly** as a freestanding nonprofit
+research hospital that is **not** the degree-granting university. Spine source = **NIH RePORTER
+hospital-class grantees** (public, downloadable, versioned, research-active by construction), scoped
+to non-university institutions, with **AAMC COTH** as a coverage cross-check. Precedence is set
+`UNIVERSITY > RESEARCH_HOSPITAL` (university-owned academic medical centers stay `UNIVERSITY`), and
+the hospital list is **built to exclude university-owned AMCs** so no overlap needs arbitration.
+This resolution fixes the precedence direction in [O-5](#o-5--partner-type-precedence-order).
+Sources recorded in [`seed-list-provenance.md`](seed-list-provenance.md); data capture remains pending.
 
 ## O-8 — Bayh-Dole / licensing literature anchor
 
