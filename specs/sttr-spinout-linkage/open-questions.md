@@ -108,8 +108,10 @@ Sources recorded in [`seed-list-provenance.md`](seed-list-provenance.md); data c
 The literature map has no Bayh-Dole or licensing citation. D3 relies on Bayh-Dole
 government-interest statements.
 **Proposed default:** add a statutory Bayh-Dole anchor (35 U.S.C. §§ 200–212) and, if desired, a
-licensing citation, as a new `[L#]` (next free slot `[L49]`, currently conditionally reserved).
-Do not cite Bayh-Dole informally until the anchor is added.
+licensing citation, as a new `[L#]`. Do **not** take `[L49]`: that slot is conditionally
+reserved for an unverified Jones & Fearon deposit (see the literature-map audit note in
+[`docs/research-questions.md`](../../docs/research-questions.md)). The next unreserved slot
+is `[L50]`. Do not cite Bayh-Dole informally until the anchor is added.
 
 ## O-9 — Does RQ2 ship in this spec or its own?
 

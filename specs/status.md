@@ -129,11 +129,12 @@ bypassing lifecycle review; the status and rationale still require human judgmen
   works. Remaining work is data-file/provenance cleanup for fiscal v2.
 - **`sttr-spinout-linkage` — Gated backlog.** Phase 0 design only (exploratory,
   non-citable). Proposes a deterministic public-data classifier splitting each STTR
-  SBC↔RI relationship into spinout vs. subcontract (B2/B3/A2/C2), a list-based RI
-  partner-type classifier with a non-university/non-FFRDC-nonprofit incidence readout,
-  and a design-only matched outcome comparison (F1/F3/A4/B3). Criteria are **not frozen**:
-  implementation is blocked until the owner resolves `open-questions.md`, and citable
-  status is blocked until negative-control and blind-adjudication gates pass. The named
+  SBC↔RI relationship into spinout vs. subcontract (dedicated B2 inventory entry),
+  a list-based RI partner-type classifier with a non-university/non-FFRDC-nonprofit
+  incidence readout (dedicated B1 entry), and a design-only matched outcome comparison
+  (F1/F3/A4/B3). Criteria are **not frozen**: implementation is blocked until the
+  owner resolves `open-questions.md`, and citable status is blocked until
+  negative-control and blind-adjudication gates pass. The named
   `nih-commercialization-linkage` kernel it was to reuse does not exist and is proposed
   as new exploratory-tier code here.
 - **`tech-area-transition-report` — Maintenance.** The parameterized cohort and

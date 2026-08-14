@@ -27,3 +27,18 @@ of [`open-questions.md`](open-questions.md). Do not treat Revision 0 as a freeze
 - **Visibility at authoring:** Only documentation, source schemas, and the repository's existing
   primitives were consulted. **No STTR classification, incidence count, coverage count,
   negative-control result, or adjudication result had been computed or seen.**
+
+## Revision 0.1 — Dedicated inventory questions, tasks file, L49 correction; still NOT frozen
+
+- **Authority:** 2026-08-14 — Phase 0 draft continuation; no owner approval sought or given.
+- **Reason:** Record three Phase 0 corrections that do not freeze criteria: (1) dedicated
+  B1/B2 inventory questions so the spec is not stretched onto the existing B2
+  award-to-contract entries; (2) a `tasks.md` listing the freeze gate and blocked
+  Phase 1 work; (3) O-8 must not take `[L49]`, which is reserved for an unverified
+  Jones & Fearon deposit — next unreserved slot is `[L50]`.
+- **Criteria impact:** None. Cascade, lexicon, thresholds, and seed-list versions remain
+  provisional. O-6/O-7 source decisions from Revision 0 stand.
+- **Freeze status:** **NOT frozen.** Freezing remains blocked until the owner resolves
+  the remaining open questions.
+- **Visibility at authoring:** Same as Revision 0. **No classification result had been
+  computed or seen.**

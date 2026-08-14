@@ -6,15 +6,17 @@
 > The classification criteria are **not frozen**: freezing is blocked until the
 > repository owner resolves [open-questions.md](open-questions.md). Every artifact
 > this spec produces is **non-citable** (`citable: false`) until the negative-control
-> and adjudication gates in [design.md](design.md) pass. Supports inventory
-> questions **B2** (award-to-contract transition), **B3** (transition rate / latency),
-> **A2** (SBIR-to-prime supply network), and **C2** (patent–award linkage) for RQ1,
-> and **F1 / F3 / A4 / B3** for the RQ2 outcome design, in
+> and adjudication gates in [design.md](design.md) pass. Primary inventory
+> questions are **B2** (STTR spinout vs. subcontract relationship) and **B1**
+> (STTR research-institution partner types), with supporting dimensions **A2**
+> (subaward relationship) and **C2** (patent–award linkage) for RQ1, and
+> **F1 / F3 / A4 / B3** for the RQ2 outcome design, in
 > [docs/research-questions.md](../../docs/research-questions.md).
 
-**Research question anchor:** B2 / B3 / A2 / C2 — classify each STTR small-business↔research-institution
-relationship as spinout vs. subcontract using public data, and (design only) a matched
-outcome comparison anchored additionally on F1 / F3 / A4
+**Research question anchor:** B2 / B1 — classify each STTR small-business↔research-institution
+relationship as spinout vs. subcontract using public data, plus a list-based RI
+partner-type readout; supporting dimensions A2 / C2; design-only matched comparison
+on F1 / F3 / A4 / B3
 **Answers for:** SBIR program managers, policy analysts, entrepreneurial finance researchers
 **Complexity tier:** Relational → Inferential (Tier 2–3)
 

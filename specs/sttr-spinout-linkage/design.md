@@ -9,10 +9,11 @@ a headline cell, or any citable claim.
 
 **Design date:** 2026-08-14.
 
-**Research-question anchors:** B2 (award-to-contract transition), B3 (transition rate / Phase II→III latency),
-A2 (SBIR-to-prime supply network / subaward relationship), C2 (patent–award linkage) for RQ1;
-F1 (Form D fundraising, M&A exit rate), F3 (leverage ratio, private-capital-baseline outcomes),
-A4 (M&A effect on transition pathways), B3 (latency) for the RQ2 design. See
+**Research-question anchors:** dedicated **B2** (STTR spinout vs. subcontract relationship)
+and **B1** (STTR research-institution partner types); supporting dimensions A2 (subaward
+relationship) and C2 (patent–award linkage) for RQ1; F1 (Form D fundraising, M&A exit rate),
+F3 (leverage ratio, private-capital-baseline outcomes), A4 (M&A effect on transition
+pathways), B3 (Phase II→III latency) for the RQ2 design. See
 [Anchor verification](#anchor-verification-and-a-correction-to-the-brief).
 
 **Answerability label after Phase 1 implementation:** **[Deterministic public-data
@@ -77,7 +78,8 @@ The `[L#]` labels are the literature-map labels already used by
 **Missing anchor, do not invent:** the literature map carries **no Bayh-Dole statutory citation**
 and no dedicated licensing citation. D3 relies on Bayh-Dole government-interest statements, so a
 new statutory/legal anchor is needed. This design does **not** assign an `[L#]`; adding one is
-[open question O-8](open-questions.md). The next free slot is `[L49]` (conditionally reserved).
+[open question O-8](open-questions.md). Do **not** take `[L49]` (conditionally reserved
+for an unverified Jones & Fearon deposit); the next unreserved slot is `[L50]`.
 
 ---
 
@@ -297,14 +299,19 @@ The task brief specified a "B2/B3 + C2 cross-read." Verified against
 [`docs/research-questions.md`](../../docs/research-questions.md):
 - **B2, B3, C2 all exist** (as area+tier headings). **B2/B3 is a well-established anchor pair**
   across `phase-iii-census`, `dark-majority-resolution`, and others.
+- **The existing B2 questions are about award-to-contract transition, not STTR
+  relationship type.** Stretching those entries would make the inventory lie about
+  what this spec answers. This spec therefore adds two dedicated inventory
+  questions: **B2 STTR spinout vs. subcontract relationship** (RQ1) and **B1 STTR
+  research-institution partner types** (the partner-type readout).
 - **C2 is patent–award linkage**, which legitimately covers the **D3 IP trail** — so C2 is retained
-  as an RQ1 anchor for the IP dimension.
+  as a supporting RQ1 dimension, not as the primary question.
 - **Capital and M&A live in Section F, not C.** The RQ2 outcomes (Form D, leverage, M&A) anchor to
   **F1 / F3 / A4**, not C2. The closest existing matched-comparison precedent,
   [`agency-private-capital-comparison`](../agency-private-capital-comparison/requirements.md),
-  anchors **F3 / B2 / B3** — which this spec follows for RQ2. The "B2/B3 + C2" triple is not an
-  existing precedent; **A2** (SBIR-to-prime supply network / subaward relationship) is the better
-  fit for the subcontract-relationship framing and is added.
+  anchors **F3 / B2 / B3** — which this spec follows for RQ2. **A2** (SBIR-to-prime
+  supply network / subaward relationship) is the better fit for the subcontract-relationship
+  framing and is retained as a supporting dimension.
 
 The CI anchor check (`scripts/ci/check_removed_src_references.py::scan_spec_question_anchors`)
 validates that the anchor line exists and is non-placeholder; it does not resolve the IDs. The IDs

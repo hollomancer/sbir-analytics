@@ -7,9 +7,10 @@ identity input**: a source, a capture date, and a content hash. Output-changing 
 new version and a new [`amendments.md`](amendments.md) revision — never an edit in place — mirroring
 the `sbir_etl.identity` primitives contract.
 
-**Status:** scaffold. The lists below are **not yet captured**; sources and curation protocols are
-[open questions O-5, O-6, O-7](open-questions.md). Do not run the classifier until each `version`
-and `captured` field is populated and the owner has signed off on the sources.
+**Status:** scaffold. The lists below are **not yet captured**. O-6 (new-model orgs) and
+O-7 (research hospitals) name sources; O-5 (full precedence order) is still open; data
+capture remains pending. Do not run the classifier until each `version` and `captured`
+field is populated and the owner has signed off on the sources.
 
 ## Seed lists
 
