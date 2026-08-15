@@ -51,13 +51,30 @@ edges.
 
 - [ ] 1.1 Capture versioned seed lists (hash + date) per
       [`seed-list-provenance.md`](seed-list-provenance.md)
+  - 5 of 6 lists captured with real `version`/`captured`/`sha256`
+    (#624): `ffrdc_master`, `ipeds_institutions`, `new_model_orgs`,
+    `fiscal_sponsors`, `nonprofit_registry`. `research_hospitals` is
+    honestly left `_pending_` — both O-7-named sources (NIH RePORTER's
+    hospital filter, AAMC COTH) are dead ends; see
+    [`seed-list-provenance.md`](seed-list-provenance.md#capture-notes)
+    for the blocker and follow-up path. Two O-6-named entries flagged
+    for spec-owner review, not silently resolved: Arcadia Science
+    (for-profit, not nonprofit like the rest of `new_model_orgs`) and
+    Social Finance / RCSA (`fiscal_sponsors` — no public source
+    confirms either actually acts as a fiscal sponsor).
   - Verify: every list has `version`, `captured`, and `sha256`; the classifier
-    fails closed on an uncaptured list
+    fails closed on an uncaptured list — **still fails closed on
+    `research_hospitals`**, so this task is not fully done.
   - Requirements: 2.1
 
-- [ ] 1.2 Build the exploratory kernel (`resolve_identity`, `classify_linkage`,
+- [x] 1.2 Build the exploratory kernel (`resolve_identity`, `classify_linkage`,
       `generic_token_guard`, `signal_absent_reason`) on `sbir_etl.identity`
       primitives, or consume an upstream spec if O-0 chooses (b)
+  - `scripts/sttr_spinout_linkage/kernel.py` (#623). `classify_linkage`
+    implements the frozen Order 0-4 cascade *rule structure* only, over
+    caller-supplied pre-scored dimension evidence — it does not score
+    D1-D5 itself (that's the rest of task 1.3). `similarity_cutoff` is
+    a required parameter with no default, per O-3's deferral.
   - Verify: organization-name matching goes through `normalize_company_name` /
     `company_name_similarity`; no forked normalizer
   - Requirements: 1.4, O-0
