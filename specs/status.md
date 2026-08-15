@@ -141,6 +141,11 @@ bypassing lifecycle review; the status and rationale still require human judgmen
   only three frozen fuzzy-name routes, and appends CIK-local contact
   corroboration for a later blinded adjudication. Identity and every analytical
   gate remain closed.
+- **`sbir-form-d-identity-validation` — Active.** PR3a freezes and privately
+  materializes a 400-case, outcome-blind and route-masked organizational-identity
+  review instrument plus a fail-closed evaluator. PR3b remains gated on two
+  genuinely independent human reviews and third-party disagreement adjudication;
+  no route or downstream analytical gate is open.
 - **`sbir-form-d-identity-crosswalk` — Active.** Narrow M4 validation and repair
   for the private-capital identity seam. Its first phase freezes the expanded
   Form D identity evidence, builds a deterministic SBIR firm ledger, and emits

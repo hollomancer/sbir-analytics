@@ -1,0 +1,149 @@
+{
+  "artifact_role": "tracked_research_manifest",
+  "complete": true,
+  "complete_sbir_exclusion": false,
+  "counts": {
+    "candidate_pairs": 7787,
+    "either_fanout_pairs": 3560,
+    "eligible_pairs": 4208,
+    "eligible_pairs_by_exclusive_stratum": {
+      "exact_normalized_name": 3685,
+      "state_supported": 283,
+      "strong_name": 110,
+      "zip_supported": 130
+    },
+    "excluded_pairs": 3579,
+    "exclusion_reason_pair_counts": {
+      "cik_to_multiple_firms": 2533,
+      "firm_to_multiple_ciks": 2943,
+      "quarantined_conflict": 36
+    },
+    "population_pairs_by_exclusive_stratum": {
+      "exact_normalized_name": 4542,
+      "state_supported": 1162,
+      "strong_name": 271,
+      "zip_supported": 1812
+    },
+    "selected_pairs": 400,
+    "selected_pairs_by_exclusive_stratum": {
+      "exact_normalized_name": 100,
+      "state_supported": 100,
+      "strong_name": 100,
+      "zip_supported": 100
+    }
+  },
+  "covariates_ready": false,
+  "estimand": "same organization under frozen administrative evidence",
+  "exclusion_eligible": false,
+  "exclusion_recall": "unknown",
+  "exclusive_route_validation_passed": {
+    "exact_normalized_name": false,
+    "state_supported": false,
+    "strong_name": false,
+    "zip_supported": false
+  },
+  "human_labels_present": false,
+  "identity_accepted": false,
+  "identity_only": true,
+  "inputs": {
+    "broad_issuer_universe": {
+      "path": "form_d_issuer_universe.identity-staging.jsonl",
+      "row_count": 311809,
+      "sha256": "a7c2ba7c84cf10711a029fd9b2e9326bd1e9137af61146ee47385d8aa03b310b",
+      "size_bytes": 827044055
+    },
+    "candidate_manifest": {
+      "path": "sbir_form_d_identity_candidates.manifest.json",
+      "sha256": "adf9dc5219861f8ca144da46ead0038577b28e9fb5d122492c403a6a4955de32",
+      "size_bytes": 4670
+    },
+    "candidate_product": {
+      "path": "sbir_form_d_identity_candidates.v2.67779f952df4abb114488bbfcee3f3898758662f6898898ae6abd952bc71a1c7.jsonl",
+      "row_count": 7787,
+      "sha256": "67779f952df4abb114488bbfcee3f3898758662f6898898ae6abd952bc71a1c7",
+      "size_bytes": 25768887
+    },
+    "control_manifest": {
+      "path": "form_d_control_universe.manifest.json",
+      "sha256": "3ce34a04b592131dbd0aefdb8692c21c5ab72e46f90f5f81a2aeffb9dbaeeaaf",
+      "size_bytes": 231122
+    },
+    "crosswalk_manifest": {
+      "path": "sbir_form_d_identity_crosswalk.manifest.json",
+      "sha256": "71944c74dd7d6db05545757db85b812c56aa03fdb5cf25febdb23f13e50744c3",
+      "size_bytes": 3998
+    },
+    "firm_identity_ledger": {
+      "path": "sbir_firm_identity_ledger.v1.272d566a665aca6262f073c75c585dcca4d9ed61ff52bb7f8197e95f50b80508.jsonl",
+      "row_count": 34426,
+      "sha256": "272d566a665aca6262f073c75c585dcca4d9ed61ff52bb7f8197e95f50b80508",
+      "size_bytes": 62253221
+    },
+    "sbir_awards_csv": {
+      "path": "award_data.csv",
+      "row_count": 219500,
+      "sha256": "73d646fc6883ed93b36d19518b0d9442a9ebae94c5b49ad5a7fcd6d3c2b872dd",
+      "size_bytes": 394456822
+    }
+  },
+  "instrument_only": true,
+  "invariants": {
+    "case_ids_assigned_after_stratified_selection": true,
+    "degrees_computed_on_full_candidate_graph": true,
+    "downstream_gates_closed": true,
+    "histories_use_unique_identity_snapshots": true,
+    "packet_contains_no_forbidden_fields": true,
+    "packet_is_outcome_blind": true,
+    "packet_is_route_masked": true,
+    "packet_map_case_ids_reconcile": true
+  },
+  "matching_eligible": false,
+  "outputs": {
+    "private_case_map": {
+      "path": "sbir_form_d_identity_review_case_map.v1.f2fbf66bfb61d3b31f0fa297b7ad71df2e72593f41767286fb83f50e2caf126a.jsonl",
+      "row_count": 400,
+      "sha256": "f2fbf66bfb61d3b31f0fa297b7ad71df2e72593f41767286fb83f50e2caf126a",
+      "size_bytes": 387892
+    },
+    "private_review_packet": {
+      "path": "sbir_form_d_identity_review_packet.v1.15246841b62d0ed22823d9a013691c470c23e245822a7310f5b696ab07884695.jsonl",
+      "row_count": 400,
+      "sha256": "15246841b62d0ed22823d9a013691c470c23e245822a7310f5b696ab07884695",
+      "size_bytes": 522314
+    }
+  },
+  "parameters": {
+    "allowed_decisions": [
+      "same_organization",
+      "different_organization",
+      "insufficient_evidence"
+    ],
+    "case_map_contract": "sbir-form-d-organizational-identity-review-case-map-v1",
+    "exclusive_route_priority": [
+      "exact_normalized_name",
+      "strong_name",
+      "state_supported",
+      "zip_supported"
+    ],
+    "fanout_degree_basis": "full_pinned_candidate_graph_before_exclusions",
+    "packet_contract": "sbir-form-d-organizational-identity-review-packet-v1",
+    "pool_order_rank_domain": "sbir-form-d-review-pool-order-v1",
+    "review_rubric": {
+      "different_organization": "affirmative contradictory evidence",
+      "insufficient_evidence": "missing evidence or merely changed contact information",
+      "same_organization": "same organization under frozen administrative evidence"
+    },
+    "sample_per_exclusive_stratum": 100,
+    "selection_rank_domain": "sbir-form-d-review-selection-rank-v1"
+  },
+  "producer": {
+    "code_commit": "c8950ca18805899e345612b2bc284234f158bd4f",
+    "path": "scripts/data/build_sbir_form_d_identity_review_sample.py",
+    "sha256": "7e621ccb1ae47bf77f7663c7296b4c75a57cfa5db04e188e0e02fe7f80581738",
+    "size_bytes": 48492
+  },
+  "rate_eligible": false,
+  "ready_for_matching": false,
+  "recall": "unknown",
+  "schema_version": 1
+}
