@@ -1,9 +1,12 @@
 # STTR Spinout–Subcontract Linkage and Partner-Type Classification — Phase 0 Design
 
-**Status:** Phase 0 draft; **criteria NOT frozen.** Freezing is blocked until the
-repository owner resolves [`open-questions.md`](open-questions.md). This note describes
-the intended method before any run; it does not authorize implementation, materialization,
-a headline cell, or any citable claim.
+**Status:** **FROZEN as Revision 1** (see [`amendments.md`](amendments.md)). All open questions
+in [`open-questions.md`](open-questions.md) are resolved. This note describes the intended method;
+freezing the design does **not by itself** authorize implementation, materialization, a headline
+cell, or any citable claim — Phase 1 (`tasks.md`) is now unblocked to *begin*, but every task
+within it (seed-list capture, the kernel, the cascade run, the negative-control and adjudication
+gates) still has to complete before any result exists, and the tier stays `exploratory`
+/ non-citable throughout.
 
 **Target epistemic tier:** `exploratory` (declared in [`requirements.md`](requirements.md); non-citable).
 
@@ -96,7 +99,7 @@ see [O-0](open-questions.md)). **Missing or null data never stands in for one of
 | Dim | Name | Sources | Positive signal | Typed absence encodes |
 |-----|------|---------|-----------------|-----------------------|
 | **D1** | Award spine | SBIR.gov award data, `program = STTR` | SBC, RI, PI, agency, FY, abstract present (the join spine) | Missing RI/PI blocks scoring downstream; row is `INDETERMINATE` if D1 incomplete |
-| **D2** | Person trail | OpenAlex / PubMed authorship, ORCID | PI (and founders, if in scope — [O-1](open-questions.md)) matched to RI-affiliated authorship within ±N years of award (N default ±3, [O-2](open-questions.md)) | No RI-affiliated authorship found *after search* vs. person unresolvable (`generic_token_guard` fail) vs. source not queried |
+| **D2** | Person trail | OpenAlex / PubMed authorship, ORCID | PI and founders (founders = D4 Form-D-derived officer/director names only, no separate discovery pipeline — [O-1](open-questions.md), resolved) matched to RI-affiliated authorship within ±5 years of award ([O-2](open-questions.md), resolved) | No RI-affiliated authorship found *after search* vs. person unresolvable (`generic_token_guard` fail) vs. source not queried |
 | **D3** | IP trail | USPTO assignment data (local, confirmed — patent-assignment sub-signal only); **no confirmed public source for Bayh-Dole government-interest statements or a structured RI→SBC license record** ([O-12](open-questions.md)) | Patent assigned to the RI naming an SBC principal as inventor; **recorded license** RI→SBC | License **absence** → `NOT_MEASURABLE` (`LICENSE_RECORDS_SPARSE`), **never** `SUBCONTRACT` evidence |
 | **D4** | Money / paper trail | USASpending subawards; Form D officers/directors (existing pipeline) | RI subaward share on grant-based STTRs (a positive **subcontract** marker); Form D officer/director matched to RI-affiliated name (a positive **spinout** marker) | No subaward record vs. non-grant instrument (`NOT_APPLICABLE`) vs. Form D absent |
 | **D5** | Text trail | Deterministic phrase lexicon over award abstracts and firm text | "spun out of", "licensed from", "founded by Professor …" ([O-4](open-questions.md) fixes the v1 lexicon) | No phrase matched vs. no firm text available |
@@ -104,13 +107,16 @@ see [O-0](open-questions.md)). **Missing or null data never stands in for one of
 Discipline notes carried from the brief:
 - **D3 licenses are asymmetric evidence.** A recorded license is positive spinout evidence; its
   absence proves nothing and is encoded as typed absence, never as subcontract evidence.
-- **The `recorded_license_RI_to_SBC` sub-signal has no confirmed public data source.** iEdison
-  (the actual Bayh-Dole reporting system) is account-gated, not public; PatentsView/USPTO's
-  `government_interest` extraction captures the *funding agency and contract number* named in a
-  patent's front-matter clause, not license recipients. The only known proxy today is a free-text
-  search for "license" wording inside the `convey_text` field of the local USPTO assignment bulk
-  data — a weak, unvalidated signal, not a government-interest statement. See
-  [O-12](open-questions.md) for the full research record.
+- **The `recorded_license_RI_to_SBC` sub-signal has no confirmed public or paid data source** —
+  checked twice ([O-12](open-questions.md), resolved). iEdison is statutorily confidential, not
+  merely account-gated; PatentsView/USPTO's `government_interest` extraction and the local USPTO
+  `convey_text` `"confirmatory license"` proxy both capture *federal-funding nexus*
+  (contractor-to-government), not an RI→SBC license; AUTM's STATT (paid, aggregate-only) and
+  TransACT (paid, explicitly de-identified) don't help at any price. If this sub-signal ships in v1,
+  source it from the sharper `"confirmatory license"` search over `convey_text` (not generic
+  "license" wording) plus, optionally, a corroborating SEC EDGAR full-text-search pass over the
+  small subset of STTR firms that later became SEC filers — both weak, unvalidated, population-
+  partial proxies, never presented as a Bayh-Dole compliance record.
 - **`generic_token_guard` is mandatory on D2 person names** and on all organization-name matching
   (partner type). A name dominated by generic tokens cannot produce an accepted match.
 - **D4 has two directions.** The RI subaward share is a *subcontract* marker; a Form
@@ -121,10 +127,12 @@ Discipline notes carried from the brief:
 ## Classification cascade (RQ1)
 
 All string comparisons use the reused `sbir_etl.identity` normalization (a named
-`CompanyNameProfile`; person-name normalization is net-new, [O-0](open-questions.md)); blank,
-`None`, and `NaN` normalize to null; dates are parsed without imputation. The cascade is
-evaluated **in order**; the first matching rule assigns the label. Tier thresholds (what counts
-as "exact" vs. "fuzzy", the `company_name_similarity` cutoff) are [open question O-3](open-questions.md).
+`CompanyNameProfile`; person-name normalization is net-new, [O-0](open-questions.md), resolved);
+blank, `None`, and `NaN` normalize to null; dates are parsed without imputation. The cascade is
+evaluated **in order**; the first matching rule assigns the label. The exact-vs-fuzzy **method** is
+frozen by [O-3](open-questions.md) (`company_name_similarity` under `CompanyNameMetric.JARO_WINKLER`
+gated by `generic_token_guard`); the **numeric cutoff** is explicitly deferred to a post-task-1.4
+amendment, not a Revision 1 blocker — `SPINOUT_T2` scoring cannot run until that amendment lands.
 
 | Order | Label | Exact condition (frozen predicate, pending threshold decisions) |
 |-------|-------|------------------------------------------------------------------|
@@ -225,10 +233,16 @@ adjudication precision/recall is reviewed and signed off. Until then every artif
 enforcement + blocking asset checks + declared estimand), not a consequence of the numbers looking
 good.
 
-**Freeze mechanics** (pattern only; not executed here). Once the owner resolves the open questions,
-the cascade, the lexicon, the seed-list versions, and the tier thresholds are frozen at a commit
-SHA and recorded in [`amendments.md`](amendments.md); a materializing asset would verify the
-raw-byte SHA-256 of `design.md` and `amendments.md` before running and fail closed on mismatch.
+**Freeze mechanics — executed as Revision 1.** What Revision 1 actually freezes: the cascade
+structure and ordering (Order 0–4), the exact-vs-fuzzy **method** (not the O-3 numeric cutoff,
+explicitly deferred to a post-task-1.4 amendment), the evidence-dimension sourcing including the
+O-12 D3 findings, and the partner-type precedence order. What it does **not** freeze, because these
+are structurally Phase 1 deliverables, not Phase 0 decisions: the D5 lexicon's actual phrase list
+(O-4 — drafted and frozen at task 1.3), and the seed lists' actual captured versions/hashes
+(task 1.1 — `seed-list-provenance.md` stays `_pending_` until then). See
+[`amendments.md`](amendments.md) Revision 1 for the frozen raw-byte SHA-256 of this file. A future
+materializing asset must verify that hash before running and fail closed on mismatch; it must also
+verify each seed list's own hash from `seed-list-provenance.md` once task 1.1 populates them.
 
 ---
 
