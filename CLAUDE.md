@@ -144,10 +144,13 @@ make install                           # uv sync --extra stack-dev (run this fir
 make test-unit                         # Unit tests
 uv run pytest -m integration           # Integration tests
 uv run pytest -n auto                  # Parallel execution
-make lint                              # Ruff check over the repository, MyPy over sbir_etl
-make lint-boundaries                   # Architecture, identity, and study guards
-make docs-check                        # Links, stale commands, and repository hygiene
+make lint                              # Ruff over the repo, MyPy over sbir_etl + sbir-graph + sbir-ml
+make lint-boundaries                   # Same boundary/hygiene guards as CI (incl. identity + epistemic tiers)
+make docs-check                        # Hygiene subset only (also included in lint-boundaries)
 ```
+
+`make lint-boundaries` must stay aligned with the CI quality job's guard step. If
+Make and CI diverge, CI is authoritative and the Makefile is wrong.
 
 Transition scoring changes must maintain the ≥85% Phase III retrospective
 HIGH-precision benchmark. Enforcement today is a fixture-level canary
