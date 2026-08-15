@@ -42,3 +42,38 @@ of [`open-questions.md`](open-questions.md). Do not treat Revision 0 as a freeze
   the remaining open questions.
 - **Visibility at authoring:** Same as Revision 0. **No classification result had been
   computed or seen.**
+
+## Revision 0.2 — 10 of 12 open questions resolved; still NOT frozen
+
+- **Authority:** 2026-08-14 — owner resolved O-0 through O-5 and O-8 through O-11 in conversation;
+  recorded here as the numbered revision required by `open-questions.md`'s own header.
+- **Reason:** Record the owner's resolutions so `design.md` and `open-questions.md` stop describing
+  these as pending. Resolutions, several diverging from the proposed default:
+  - **O-0** (kernel): build here at exploratory tier — proposed default accepted.
+  - **O-1** (D2 scope): PI **and** founders in v1 — wider than the PI-only default. Founders are
+    scoped to D4 Form-D-derived officer/director names only; no new founder-discovery pipeline.
+  - **O-2** (D2 window): **±5 years** — wider than the proposed ±3. Sensitivity reporting
+    (±1/±2/±3/±5) remains required.
+  - **O-3** (tier thresholds): method frozen now (`company_name_similarity` under
+    `CompanyNameMetric.JARO_WINKLER` + `generic_token_guard`); **numeric cutoff explicitly deferred**
+    to a post-task-1.4 amendment to break the circular dependency on the adjudication sample.
+    `SPINOUT_T2` scoring cannot run until that follow-on amendment lands.
+  - **O-4** (D5 lexicon): ship a small hand-curated v1 lexicon — proposed default accepted; exact
+    phrase list drafted and frozen at task 1.3, not here.
+  - **O-5** (partner-type precedence): confirmed as stated — `FFRDC > NEW_MODEL_ORG > UNIVERSITY >
+    RESEARCH_HOSPITAL > COMMUNITY_COLLEGE > NONPROFIT_INSTITUTE > OTHER_NONPROFIT`.
+  - **O-8** (Bayh-Dole citation): add `[L50]` for 35 U.S.C. §§ 200–212 — proposed default accepted.
+  - **O-9** (RQ2 home): stay design-only here, spin off at implementation time — proposed default
+    accepted.
+  - **O-10** (RQ2 embedding): reuse existing ModernBERT-Embed path — proposed default accepted.
+  - **O-11** (partner-type home): ship in this spec — proposed default accepted.
+- **Criteria impact:** `design.md`'s D2 row and the classification-cascade method paragraph updated
+  to reflect O-1/O-2/O-3. Tier thresholds are now **partially** frozen (method, not cutoff). Founder
+  scope, D2 window, and precedence order are now fixed. Lexicon content and the O-3 numeric cutoff
+  remain open pending task 1.3 / task 1.4 respectively.
+- **Freeze status:** **Still NOT frozen.** [O-12](open-questions.md#o-12--bayh-dole-government-interest-statement-data-source)
+  (Bayh-Dole government-interest data source) is the sole remaining blocker on task 0.5 — the owner
+  requested a second research pass rather than accepting the first pass's structural-limitation
+  finding. Revision 1 cannot be recorded until O-12 resolves.
+- **Visibility at authoring:** Same as Revision 0. **No classification result had been computed or
+  seen.**

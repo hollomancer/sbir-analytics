@@ -96,7 +96,7 @@ see [O-0](open-questions.md)). **Missing or null data never stands in for one of
 | Dim | Name | Sources | Positive signal | Typed absence encodes |
 |-----|------|---------|-----------------|-----------------------|
 | **D1** | Award spine | SBIR.gov award data, `program = STTR` | SBC, RI, PI, agency, FY, abstract present (the join spine) | Missing RI/PI blocks scoring downstream; row is `INDETERMINATE` if D1 incomplete |
-| **D2** | Person trail | OpenAlex / PubMed authorship, ORCID | PI (and founders, if in scope — [O-1](open-questions.md)) matched to RI-affiliated authorship within ±N years of award (N default ±3, [O-2](open-questions.md)) | No RI-affiliated authorship found *after search* vs. person unresolvable (`generic_token_guard` fail) vs. source not queried |
+| **D2** | Person trail | OpenAlex / PubMed authorship, ORCID | PI and founders (founders = D4 Form-D-derived officer/director names only, no separate discovery pipeline — [O-1](open-questions.md), resolved) matched to RI-affiliated authorship within ±5 years of award ([O-2](open-questions.md), resolved) | No RI-affiliated authorship found *after search* vs. person unresolvable (`generic_token_guard` fail) vs. source not queried |
 | **D3** | IP trail | USPTO assignment data (local, confirmed — patent-assignment sub-signal only); **no confirmed public source for Bayh-Dole government-interest statements or a structured RI→SBC license record** ([O-12](open-questions.md)) | Patent assigned to the RI naming an SBC principal as inventor; **recorded license** RI→SBC | License **absence** → `NOT_MEASURABLE` (`LICENSE_RECORDS_SPARSE`), **never** `SUBCONTRACT` evidence |
 | **D4** | Money / paper trail | USASpending subawards; Form D officers/directors (existing pipeline) | RI subaward share on grant-based STTRs (a positive **subcontract** marker); Form D officer/director matched to RI-affiliated name (a positive **spinout** marker) | No subaward record vs. non-grant instrument (`NOT_APPLICABLE`) vs. Form D absent |
 | **D5** | Text trail | Deterministic phrase lexicon over award abstracts and firm text | "spun out of", "licensed from", "founded by Professor …" ([O-4](open-questions.md) fixes the v1 lexicon) | No phrase matched vs. no firm text available |
@@ -121,10 +121,12 @@ Discipline notes carried from the brief:
 ## Classification cascade (RQ1)
 
 All string comparisons use the reused `sbir_etl.identity` normalization (a named
-`CompanyNameProfile`; person-name normalization is net-new, [O-0](open-questions.md)); blank,
-`None`, and `NaN` normalize to null; dates are parsed without imputation. The cascade is
-evaluated **in order**; the first matching rule assigns the label. Tier thresholds (what counts
-as "exact" vs. "fuzzy", the `company_name_similarity` cutoff) are [open question O-3](open-questions.md).
+`CompanyNameProfile`; person-name normalization is net-new, [O-0](open-questions.md), resolved);
+blank, `None`, and `NaN` normalize to null; dates are parsed without imputation. The cascade is
+evaluated **in order**; the first matching rule assigns the label. The exact-vs-fuzzy **method** is
+frozen by [O-3](open-questions.md) (`company_name_similarity` under `CompanyNameMetric.JARO_WINKLER`
+gated by `generic_token_guard`); the **numeric cutoff** is explicitly deferred to a post-task-1.4
+amendment, not a Revision 1 blocker — `SPINOUT_T2` scoring cannot run until that amendment lands.
 
 | Order | Label | Exact condition (frozen predicate, pending threshold decisions) |
 |-------|-------|------------------------------------------------------------------|
