@@ -36,6 +36,7 @@ def _census_strategy(spec: AnalysisSpec) -> dict:
         load_award_data_csv,
         load_census_config,
         run_census,
+        write_census_artifacts,
     )
 
     cfg = load_census_config(spec.profile_id)
@@ -43,7 +44,15 @@ def _census_strategy(spec: AnalysisSpec) -> dict:
     awards = load_award_data_csv(spec.corpus.source_path)
     result = run_census(awards, compiled)
     out_dir = REPO / "data" / "tech_census" / spec.profile_id
-    out_dir.mkdir(parents=True, exist_ok=True)
+    # This CLI path does not apply FY/state filters the way build_tech_census.py
+    # can, so source and reporting row counts are the same corpus length here.
+    write_census_artifacts(
+        result,
+        out_dir,
+        awards_csv=spec.corpus.source_path,
+        source_row_count=len(awards),
+        reporting_row_count=len(awards),
+    )
     grand = result["grand_total"]
     return {
         "output_dir": str(out_dir),
@@ -63,7 +72,9 @@ def _cohort_strategy(spec: AnalysisSpec) -> dict:
     composition_path = report_dir / "composition.json"
     summary = json.loads(summary_path.read_text(encoding="utf-8")) if summary_path.exists() else {}
     composition = (
-        json.loads(composition_path.read_text(encoding="utf-8")) if composition_path.exists() else {}
+        json.loads(composition_path.read_text(encoding="utf-8"))
+        if composition_path.exists()
+        else {}
     )
     overlap = summary.get("overlap") or {}
     totals = composition.get("totals") or {}
@@ -96,7 +107,37 @@ def build_parser() -> argparse.ArgumentParser:
         help="Permit a run when methodology_version differs from a frozen snapshot",
     )
     parser.add_argument("--period", default="latest", help="Snapshot period label")
+    parser.add_argument(
+        "--frozen-snapshot",
+        default=None,
+        help=(
+            "Baseline snapshot to gate this run against; pass 'previous' to use the "
+            "existing snapshot for this profile and period. Without it there is no "
+            "baseline and no drift check."
+        ),
+    )
     return parser
+
+
+def _frozen_snapshot(args: argparse.Namespace, profile_id: str) -> Path | None:
+    """Resolve the drift baseline.
+
+    Opt-in rather than always-on: ``compare_snapshots`` also gates on
+    ``source_sha256``, so an implicit baseline would refuse every ordinary run
+    against refreshed award data, not just a methodology change. When the
+    operator does ask for a baseline, missing files fail fast rather than
+    silently disabling the gate.
+    """
+
+    if not args.frozen_snapshot:
+        return None
+    if args.frozen_snapshot == "previous":
+        path = SNAPSHOT_ROOT / profile_id / f"{args.period}.json"
+    else:
+        path = Path(args.frozen_snapshot)
+    if not path.is_file():
+        raise SystemExit(f"frozen snapshot not found: {path}")
+    return path
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -117,6 +158,7 @@ def main(argv: list[str] | None = None) -> int:
         strategy=strategy_for(entry.analysis_kind),
         snapshot_root=SNAPSHOT_ROOT,
         period=args.period,
+        frozen_snapshot=_frozen_snapshot(args, entry.profile_id),
     )
     print(json.dumps(run.to_snapshot_dict(), indent=2, sort_keys=True))
     return 0
