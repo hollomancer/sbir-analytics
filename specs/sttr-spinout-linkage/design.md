@@ -78,11 +78,10 @@ The `[L#]` labels are the literature-map labels already used by
 - [Rovito, Kamp & Etemadi 2025 [L47]](../../docs/research-questions.md) find Phase III receipt
   only weakly predictive of commercialization success — a required honesty input for RQ2.
 
-**Missing anchor, do not invent:** the literature map carries **no Bayh-Dole statutory citation**
-and no dedicated licensing citation. D3 relies on Bayh-Dole government-interest statements, so a
-new statutory/legal anchor is needed. This design does **not** assign an `[L#]`; adding one is
-[open question O-8](open-questions.md). Do **not** take `[L49]` (conditionally reserved
-for an unverified Jones & Fearon deposit); the next unreserved slot is `[L50]`.
+**Bayh-Dole statutory anchor:** [35 U.S.C. §§ 200–212 [L50]](../../docs/research-questions.md)
+([O-8](open-questions.md), resolved). This is the literature citation only — it does not supply a
+public government-interest or RI→SBC license data source ([O-12](open-questions.md)). Do **not**
+take `[L49]` (conditionally reserved for an unverified Jones & Fearon deposit).
 
 ---
 
@@ -134,7 +133,7 @@ frozen by [O-3](open-questions.md) (`company_name_similarity` under `CompanyName
 gated by `generic_token_guard`); the **numeric cutoff** is explicitly deferred to a post-task-1.4
 amendment, not a Revision 1 blocker — `SPINOUT_T2` scoring cannot run until that amendment lands.
 
-| Order | Label | Exact condition (frozen predicate, pending threshold decisions) |
+| Order | Label | Exact condition (frozen predicate; O-3 numeric cutoff still deferred) |
 |-------|-------|------------------------------------------------------------------|
 | 0 | `INDETERMINATE` | `D1` incomplete: RI or PI absent on the spine → cannot classify. |
 | 1 | `SPINOUT_T1` | `D2.status == MEASURED and D2.exact_person_ri_affiliation` **OR** `D3.status == MEASURED and (D3.patent_assigned_to_RI_with_SBC_inventor or D3.recorded_license_RI_to_SBC)`. One **exact** person or IP link with affiliation evidence. |

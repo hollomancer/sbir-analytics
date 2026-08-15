@@ -159,7 +159,10 @@ def _normalize_person_name(value: str) -> tuple[str, tuple[str, ...]]:
     Case-folds, strips diacritics and punctuation other than hyphens/
     apostrophes within a name, and reorders an explicit "Family, Given" input
     to given-then-family order so a trailing-token family-name assumption
-    holds consistently downstream.
+    holds consistently downstream. Titles and generational suffixes from
+    ``GENERIC_PERSON_TOKENS`` are stripped from the token list before the
+    given/family split so ``"Dr. Jane Smith"`` yields given ``jane`` /
+    family ``smith``, not ``dr jane`` / ``smith``.
     """
 
     text = unicodedata.normalize("NFKD", str(value).strip().lower())
@@ -168,7 +171,11 @@ def _normalize_person_name(value: str) -> tuple[str, tuple[str, ...]]:
         family_part, _, given_part = text.partition(",")
         text = f"{given_part.strip()} {family_part.strip()}"
     text = re.sub(r"[^a-z\s'-]", " ", text)
-    tokens = tuple(token for token in text.split() if token)
+    tokens = tuple(
+        token
+        for token in text.split()
+        if token and token not in GENERIC_PERSON_TOKENS
+    )
     return " ".join(tokens), tokens
 
 
@@ -444,6 +451,12 @@ def classify_linkage(
         )
 
     # Order 2: a fuzzy positive corroborated by a second, distinct dimension.
+    # Live corroboration paths are D4 Form-D officer affiliation and D5 phrase
+    # (when D5 is not itself the primary). The frozen table also lists D3 as a
+    # corroborator, but any measured D3 IP hit already returns SPINOUT_T1 at
+    # Order 1 above -- so the D3 branch below is structurally unreachable for a
+    # positive IP signal. Kept for table fidelity; task 1.3 should not build
+    # separate "weak D3" scoring just to feed it.
     d2_fuzzy_positive = d2.status is DimensionStatus.MEASURED and fuzzy_person
     d5_positive = d5.status is DimensionStatus.MEASURED and d5.spinout_phrase
     if d2_fuzzy_positive or d5_positive:

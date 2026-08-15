@@ -143,3 +143,21 @@ requires its own numbered amendment here, per the append-only rule above.
 - **Visibility at approval:** Same as Revision 0. **No classification result, incidence count,
   coverage count, negative-control result, or adjudication result had been computed or seen at the
   time of this freeze.**
+
+## Revision 2 — Doc-hygiene follow-up to Revision 1 (O-8 citation + stale freeze wording)
+
+- **Authority:** 2026-08-15 — address review nits on the Revision 1 freeze PR (#620) after merge.
+- **Reason:** Revision 1 resolved O-8 as "add `[L50]`" but left `design.md` still saying the
+  Bayh-Dole anchor was missing, and left the cascade-table header saying "pending threshold
+  decisions" after the method freeze. No classification criterion changed.
+- **Criteria impact:** None. Cascade Order 0–4 predicates, D1–D5 sourcing, similarity method,
+  partner-type precedence, and D2 scope/window are unchanged. `design.md` now cites
+  [L50](../../docs/research-questions.md) for 35 U.S.C. §§ 200–212 and the cascade-table header
+  clarifies that only the O-3 *numeric* cutoff remains deferred. Companion non-frozen docs
+  (`tasks.md` status header, `coverage-memo.md` O-12 second-pass language,
+  `docs/research-questions.md` `[L50]` entry) updated in the same change.
+- **Frozen file:** `design.md`, raw-byte **SHA-256:**
+  `8e754731f0d0841e5f48c425e269bc9db59191e761bcd8df7292032f9f78ff07`. Supersedes the Revision 1
+  digest for guard purposes; Revision 1 remains the freeze-authorization record.
+- **Freeze status:** Still **FROZEN** (this is a documented working-copy refresh, not a thaw).
+- **Visibility at authoring:** **No classification result had been computed or seen.**

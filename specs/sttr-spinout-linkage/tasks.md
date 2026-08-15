@@ -2,10 +2,10 @@
 
 **Target epistemic tier:** `exploratory`
 
-**Status:** Phase 0 design. Implementation is **not authorized** until the owner
-resolves [`open-questions.md`](open-questions.md) and Revision 1 freezes the
-criteria in [`amendments.md`](amendments.md). Exploratory-tier work: no tests or
-abstractions beyond what a single probe needs, and no citable numbers.
+**Status:** Phase 0 frozen as Revision 1; Phase 1 implementation is underway
+(exploratory-tier). Open questions are resolved in [`open-questions.md`](open-questions.md);
+criteria live in [`amendments.md`](amendments.md). No tests or abstractions beyond what a
+single probe needs, and no citable numbers until the task 1.4 gates pass.
 
 ## Phase 0 — Design (this spec)
 
@@ -43,9 +43,9 @@ abstractions beyond what a single probe needs, and no citable numbers.
     statement, and that no classification result had been seen
   - Requirements: freeze gate
 
-## Phase 1 — Implementation (blocked on 0.6)
+## Phase 1 — Implementation (unblocked; Revision 1 frozen)
 
-Do not start these tasks before Revision 1. Build at `exploratory` tier: no
+Do not silently promote past `exploratory`. Build at `exploratory` tier: no
 silent promotion, no research question marked answerable, no new causal graph
 edges.
 

@@ -1,11 +1,16 @@
-"""Freeze-hash guard for the STTR spinout-linkage design (Revision 1).
+"""Freeze-hash guard for the STTR spinout-linkage design.
 
-`specs/sttr-spinout-linkage/amendments.md`'s Revision 1 entry freezes
-`specs/sttr-spinout-linkage/design.md` at its raw-byte SHA-256 and requires
+`specs/sttr-spinout-linkage/amendments.md` freezes
+`specs/sttr-spinout-linkage/design.md` at a raw-byte SHA-256 and requires
 "a materializing asset [to] recompute this hash against the working copy
 before running and fail closed on any mismatch" -- including a mismatch
 caused by a well-intentioned edit to `design.md` that was never recorded as a
 further amendment. `verify_design_frozen` is that check.
+
+Revision 1 is the freeze-authorization record. Later numbered revisions may
+refresh the working-copy digest (doc hygiene, non-criteria wording) without
+thawing the cascade; the guard always checks against the **latest** digest
+recorded in `amendments.md`.
 
 Call it first, before touching any frozen criterion -- the cascade order, the
 D1-D5 evidence-dimension table, the similarity method, the partner-type
@@ -29,8 +34,8 @@ from pathlib import Path
 
 
 class DesignNotFrozenError(RuntimeError):
-    """`design.md`'s working-copy bytes no longer match the Revision 1 freeze
-    recorded in `amendments.md`."""
+    """`design.md`'s working-copy bytes no longer match the latest freeze
+    digest recorded in `amendments.md`."""
 
 
 def _find_repo_root(start: Path) -> Path:
@@ -42,18 +47,18 @@ def _find_repo_root(start: Path) -> Path:
 
 _REPO_ROOT = _find_repo_root(Path(__file__).resolve())
 DESIGN_PATH = _REPO_ROOT / "specs" / "sttr-spinout-linkage" / "design.md"
+AMENDMENTS_PATH = DESIGN_PATH.parent / "amendments.md"
 
-# specs/sttr-spinout-linkage/amendments.md, "## Revision 1 -- FREEZE", the
-# "Frozen file" bullet: raw-byte SHA-256 of design.md at freeze time
-# (2026-08-14). Do not hand-edit this constant on a design.md change --
+# Latest design.md digest recorded in amendments.md (Revision 2 as of
+# 2026-08-15). Do not hand-edit this constant on a design.md change --
 # amendments.md's append-only rule requires a new numbered revision first;
 # update both together. `test_freeze_guard.py` asserts this constant still
-# matches what is parseable out of amendments.md.
-FROZEN_DESIGN_SHA256 = "52d8b531d56f3b91e1d3b0946e1ac91dd6f5dfeab371e3d48f87dc5e6095ac49"
+# matches the latest SHA-256 parseable out of amendments.md.
+FROZEN_DESIGN_SHA256 = "8e754731f0d0841e5f48c425e269bc9db59191e761bcd8df7292032f9f78ff07"
 
 
 def verify_design_frozen(design_path: Path = DESIGN_PATH) -> str:
-    """Fail closed unless `design_path`'s raw bytes match the Revision 1 freeze.
+    """Fail closed unless `design_path`'s raw bytes match the latest freeze digest.
 
     Returns the verified SHA-256 hex digest on success.
     """
@@ -67,7 +72,7 @@ def verify_design_frozen(design_path: Path = DESIGN_PATH) -> str:
     actual = hashlib.sha256(content).hexdigest()
     if actual != FROZEN_DESIGN_SHA256:
         raise DesignNotFrozenError(
-            f"design.md has drifted from the Revision 1 freeze recorded in "
+            f"design.md has drifted from the freeze recorded in "
             f"amendments.md: expected SHA-256 {FROZEN_DESIGN_SHA256}, found {actual}. "
             "Record a new numbered amendment in amendments.md before proceeding."
         )

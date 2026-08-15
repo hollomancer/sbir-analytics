@@ -1213,14 +1213,17 @@ spot-checked against publisher records):
 - **[L46]** Link, A.N. & Swann, C.A. (2024). "SBIR mills and the U.S. Department of Defense." *The Journal of Technology Transfer* 49(6), 2306–2335. Characterizes "SBIR mill" firms in DoD SBIR — the academic treatment of the multiple-award-firm problem behind the §638(qq)(3) performance standards [L14]. <https://doi.org/10.1007/s10961-024-10144-z>
 - **[L47]** Rovito, S.M., Kamp, J., & Etemadi, A.H. (2025). "Exploring Department of the Navy SBIR Phase III awards and corresponding public sector commercialization success factors." *The Journal of Technology Transfer* 50(4), 1363–1395. Navy Phase III awards and the firm attributes predicting public-sector commercialization; finds Phase III receipt only weakly predictive of commercialization success. Relevant to the Section B transition questions and the [`phase3-transition-groundtruth`](../specs/phase3-transition-groundtruth/) spec. <https://doi.org/10.1007/s10961-024-10141-2>
 - **[L48]** NASEM (2026). *Review of the SBIR and STTR Programs at NASA.* National Academies Press. Fills the NASA gap in the [L1]–[L8] agency-review block, which otherwise covers DoD, NIH, NSF, and DOE. <https://doi.org/10.17226/29381>
+- **[L50]** Bayh-Dole Act, 35 U.S.C. §§ 200–212 (Patent Rights in Inventions Made with Federal Assistance). Statutory anchor for university/nonprofit patent ownership of federally funded subject inventions and the government's retained license — the legal backdrop for D3's government-interest / confirmatory-license discussion in [`specs/sttr-spinout-linkage/`](../specs/sttr-spinout-linkage/) ([O-8](../specs/sttr-spinout-linkage/open-questions.md#o-8--bayh-dole--licensing-literature-anchor)). Citation only; it does not itself provide a public license registry ([O-12](../specs/sttr-spinout-linkage/open-questions.md#o-12--bayh-dole-government-interest-statement-data-source)). <https://www.govinfo.gov/content/pkg/USCODE-2023-title35/html/USCODE-2023-title35-partII-chap18.htm>
 
 ---
 
 ## Maintenance
 
-**Last reviewed:** 2026-08-11. The 2026-08 citation audit added [L34]–[L48] from
-the 2019–2026 literature map and pinned [L1] to its published DOI. Git history
-preserves earlier editorial and section-consolidation notes.
+**Last reviewed:** 2026-08-15. The 2026-08 citation audit added [L34]–[L48] from
+the 2019–2026 literature map and pinned [L1] to its published DOI. [L50] added
+for the Bayh-Dole statutory anchor (O-8); [L49] remains reserved for the
+unverified Jones & Fearon deposit below. Git history preserves earlier editorial
+and section-consolidation notes.
 
 Open source-verification items:
 

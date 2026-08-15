@@ -1,10 +1,8 @@
-"""Probes for the Revision-1 freeze-hash guard.
+"""Probes for the STTR spinout-linkage freeze-hash guard.
 
-Exploratory tier: covers the guard's pass/fail behavior only, matching task
-1.2's kernel-test scope ("no tests or abstractions beyond what a single
-probe needs"). The fail-closed case runs against a modified copy of
-`design.md`, not the real file, so this test does not itself depend on
-`design.md` never changing.
+Exploratory tier: covers the guard's pass/fail behavior only. The fail-closed
+case runs against a modified copy of `design.md`, not the real file, so this
+test does not itself depend on `design.md` never changing.
 """
 
 from __future__ import annotations
@@ -27,14 +25,13 @@ pytestmark = pytest.mark.fast
 AMENDMENTS_PATH = DESIGN_PATH.parent / "amendments.md"
 
 
-def test_frozen_hash_constant_matches_the_hash_recorded_in_amendments_md() -> None:
-    """`FROZEN_DESIGN_SHA256` must not drift from amendments.md's Revision 1 entry."""
+def test_frozen_hash_constant_matches_the_latest_hash_in_amendments_md() -> None:
+    """`FROZEN_DESIGN_SHA256` must match the latest design.md digest in amendments.md."""
 
     text = AMENDMENTS_PATH.read_text(encoding="utf-8")
-    revision_1 = text.split("## Revision 1", 1)[1]
-    match = re.search(r"SHA-256:\*\*\s*`([0-9a-f]{64})`", revision_1)
-    assert match is not None, "Could not find a SHA-256 hash in amendments.md's Revision 1 entry"
-    assert match.group(1) == FROZEN_DESIGN_SHA256
+    matches = re.findall(r"SHA-256:\*\*\s*`([0-9a-f]{64})`", text)
+    assert matches, "Could not find any SHA-256 hash in amendments.md"
+    assert matches[-1] == FROZEN_DESIGN_SHA256
 
 
 def test_verify_design_frozen_passes_on_the_current_frozen_design_md() -> None:
@@ -46,7 +43,7 @@ def test_verify_design_frozen_fails_closed_on_a_modified_copy(tmp_path: Path) ->
     original = DESIGN_PATH.read_text(encoding="utf-8")
     modified.write_text(original + "\nunreviewed drift\n", encoding="utf-8")
 
-    with pytest.raises(DesignNotFrozenError, match="drifted from the Revision 1 freeze"):
+    with pytest.raises(DesignNotFrozenError, match="drifted from the freeze"):
         verify_design_frozen(modified)
 
 

@@ -105,6 +105,14 @@ class TestResolveIdentity:
         assert identity.given_name == "jane"
         assert identity.family_name == "smith"
 
+    def test_person_name_strips_titles_before_given_family_split(self):
+        identity = resolve_identity("Dr. Jane Smith", kind=IdentityKind.PERSON)
+        assert identity is not None
+        assert identity.given_name == "jane"
+        assert identity.family_name == "smith"
+        assert identity.normalized == "jane smith"
+        assert identity.guard_passed is True
+
     def test_person_name_guard_fails_on_title_and_suffix_only(self):
         identity = resolve_identity("Dr. Jr.", kind=IdentityKind.PERSON)
         assert identity is not None

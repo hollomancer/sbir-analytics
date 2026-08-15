@@ -14,7 +14,7 @@ for a typical STTR award at that agency.
 |-----------|-----|-----|-----|-------------|-------|
 | **D1** Award spine | High | High | High | High | SBIR.gov carries SBC, RI, PI, agency, FY, abstract for STTR rows. |
 | **D2** Person trail (OpenAlex/PubMed/ORCID) | High | High | **Low** | Medium | Biomedical/academic authorship is densely indexed; DoD PIs are under-indexed and abstracts are terse. |
-| **D3** IP trail (USPTO assignment; Bayh-Dole) | Medium | Medium | Medium | Medium | Patent assignment coverage is real but uneven; **license records are sparse everywhere, and no public Bayh-Dole government-interest source was found to supply them at all** ([O-12](open-questions.md) — iEdison is account-gated, PatentsView/ODP's government-interest field captures funding agency/contract number rather than licensee) (encoded as typed absence, never subcontract evidence). |
+| **D3** IP trail (USPTO assignment; Bayh-Dole) | Medium | Medium | Medium | Medium | Patent assignment coverage is real but uneven; **license records are sparse everywhere, and no public or paid source directly supplies a named RI→SBC license** ([O-12](open-questions.md), two research passes — iEdison confidential; PatentsView/`convey_text` `"confirmatory license"` = federal-funding nexus only; AUTM STATT/TransACT wrong grain; SEC EDGAR EFTS is a population-partial corroborator) (encoded as typed absence, never subcontract evidence). |
 | **D4** Money trail (USASpending subaward; Form D) | High (grant) | High (grant) | **N/A→Low** (contract) | Mixed | STTR at NIH/NSF is grant-instrument (subaward share observable); much of DoD STTR is contract-instrument, so the RI subaward share is `NOT_APPLICABLE`. Form D officer/director match is instrument-independent but low base rate. |
 | **D5** Text trail (phrase lexicon) | Medium | Medium | **Low** | Medium | Tracks abstract richness. Consistent with the repository's finding that DoD descriptions are frequently near-empty. |
 
@@ -29,10 +29,12 @@ for a typical STTR award at that agency.
   no subaward record fall to `INDETERMINATE`, not `SUBCONTRACT`, by construction.
 - **License sparsity is systemic, not agency-specific.** D3 will identify spinouts primarily through
   patent assignment (RI assignee + SBC-principal inventor), not through recorded licenses. Per
-  [O-12](open-questions.md), this is closer to a **structural ceiling** than a coverage gap: no
-  public source directly supplies a Bayh-Dole government-interest statement or an RI→SBC license
-  record; the only concrete proxy is a free-text search over the local USPTO assignment
-  `convey_text` field, which is unvalidated and expected to undercount.
+  [O-12](open-questions.md) (accepted after two research passes), this is closer to a **structural
+  ceiling** than a coverage gap: no public *or paid* source directly supplies a Bayh-Dole
+  government-interest statement or an RI→SBC license record. The sharper v1 proxies — local USPTO
+  `convey_text` `"confirmatory license"` (contractor→government, not RI→SBC) plus optional SEC
+  EDGAR full-text search over later SEC filers — are unvalidated, population-partial, and expected
+  to undercount.
 
 ## Partner-type incidence readout — table shape
 
