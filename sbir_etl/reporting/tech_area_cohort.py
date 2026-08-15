@@ -26,6 +26,7 @@ import sys
 from collections import Counter
 from pathlib import Path
 
+from sbir_etl.analysis.contracts import EvidenceChannelStage, unavailable_channel_label
 from sbir_etl.config.yaml_io import read_yaml_mapping
 from sbir_etl.extractors.sbir_public_awards import load_sbir_awards_csv
 
@@ -714,7 +715,10 @@ def render_policy_brief_stub(cfg: dict, summary: dict, composition: dict) -> str
             "",
             "| Channel artifact | Status |",
             "|---|---|",
-            *[f"| `{s}` | Not computed — not zero |" for s in signals_absent],
+            *[
+                f"| `{s}` | {unavailable_channel_label(EvidenceChannelStage.UNAVAILABLE)} |"
+                for s in signals_absent
+            ],
             "",
         ]
     else:

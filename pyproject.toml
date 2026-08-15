@@ -30,6 +30,7 @@ dependencies = [
 
 [project.scripts]
 refresh-state-rates = "sbir_etl.transformers.fiscal.refresh_state_rates:main"
+refresh-enrichment = "sbir_etl.enrichers.refresh_cli:main"
 
 [project.optional-dependencies]
 # UCC1 pilot — TLS-impersonating HTTP client for bizfileOnline (Imperva-fronted)

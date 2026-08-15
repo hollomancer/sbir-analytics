@@ -251,6 +251,30 @@ enrichment_refresh:
       cache_dir: "data/cache/sec_edgar"
       ttl_hours: 168  # 7 days - filings are relatively stable
 
+  nih_reporter:
+    # Disabled registry slot for issue #443. No client is implemented here.
+    enabled: false
+    cadence_days: 7
+    sla_staleness_days: 7
+    batch_size: 100
+    max_concurrent_requests: 2
+    rate_limit_per_minute: 30
+    enable_delta_detection: true
+    hash_algorithm: "sha256"
+    retry_attempts: 3
+    retry_backoff_seconds: 2
+    retry_backoff_multiplier: 2.0
+    timeout_seconds: 30
+    connection_timeout_seconds: 10
+    checkpoint_interval: 50
+    state_file: "data/state/nih_reporter_refresh_state.json"
+    enable_metrics: true
+    metrics_file: "reports/metrics/nih_reporter_freshness.json"
+    cache:
+      enabled: true
+      cache_dir: "data/cache/nih_reporter"
+      ttl_hours: 168
+
 
 extraction:
   sbir:

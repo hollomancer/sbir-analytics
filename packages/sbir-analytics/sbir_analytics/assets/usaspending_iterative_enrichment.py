@@ -4,7 +4,6 @@ Phase 1: USAspending API only. Other APIs (SAM.gov, NIH RePORTER, PatentsView, e
 will be evaluated in Phase 2+.
 """
 
-import asyncio
 from typing import Any
 
 import pandas as pd
@@ -13,20 +12,19 @@ from dagster import (
     AssetCheckSeverity,
     AssetExecutionContext,
     Config,
-    OpExecutionContext,
     Output,
     asset,
     asset_check,
-    op,
 )
 from loguru import logger
 from pydantic import Field
 
 from sbir_etl.config.loader import get_config
-from sbir_etl.enrichers.usaspending import USAspendingAPIClient
+from sbir_etl.enrichers.source_adapter import SourceAdapter, SourceRefreshRunner
+from sbir_etl.enrichers.usaspending import USAspendingSourceAdapter
 from sbir_etl.exceptions import ValidationError
-from sbir_etl.utils.async_tools import run_sync
-from sbir_etl.utils.enrichment.freshness import FreshnessStore, update_freshness_ledger
+from sbir_etl.utils.enrichment.checkpoints import CheckpointStore
+from sbir_etl.utils.enrichment.freshness import FreshnessStore
 from sbir_etl.utils.enrichment.metrics import EnrichmentMetricsCollector
 
 
@@ -151,42 +149,19 @@ def stale_usaspending_awards(
     )
 
 
-@op(
-    description="Refresh USAspending enrichment for a batch of awards",
-)
-def usaspending_refresh_batch(
-    context: OpExecutionContext,
-    stale_awards_batch: pd.DataFrame,
-) -> dict[str, Any]:
-    """Refresh USAspending enrichment for a batch of awards.
+def _first_present_column(frame: pd.DataFrame, candidates: list[str]) -> str | None:
+    for col in candidates:
+        if col in frame.columns:
+            return col
+    return None
 
-    Args:
-        stale_awards_batch: DataFrame of awards to refresh
 
-    Returns:
-        Refresh statistics
-    """
-    op_config = context.op_config
-    source = op_config.get("source", "usaspending")
-    batch_size = op_config.get("batch_size")
+def stale_awards_to_requests(stale_awards: pd.DataFrame) -> list[dict[str, Any]]:
+    """Map a stale-award frame to runner request dicts."""
 
-    config = get_config()
-    refresh_config = config.enrichment_refresh.usaspending
-    if batch_size is None:
-        batch_size = refresh_config.batch_size
-
-    # Initialize API client, freshness store, and metrics collector
-    api_client = USAspendingAPIClient()
-    store = FreshnessStore()
-    metrics_collector = EnrichmentMetricsCollector()
-
-    # Identify award ID and identifier columns
-    award_id_col = None
-    for col in ["award_id", "Award_ID", "id", "ID"]:
-        if col in stale_awards_batch.columns:
-            award_id_col = col
-            break
-
+    if stale_awards.empty:
+        return []
+    award_id_col = _first_present_column(stale_awards, ["award_id", "Award_ID", "id", "ID"])
     if not award_id_col:
         raise ValidationError(
             "Could not find award ID column",
@@ -194,141 +169,93 @@ def usaspending_refresh_batch(
             operation="enrich_stale_usaspending_records",
             details={
                 "expected_columns": ["award_id", "Award_ID", "id", "ID"],
-                "available_columns": list(stale_awards_batch.columns),
+                "available_columns": list(stale_awards.columns),
             },
         )
+    uei_col = _first_present_column(stale_awards, ["UEI", "uei", "company_uei", "recipient_uei"])
+    duns_col = _first_present_column(
+        stale_awards, ["Duns", "duns", "company_duns", "recipient_duns"]
+    )
+    cage_col = _first_present_column(
+        stale_awards, ["CAGE", "cage", "company_cage", "recipient_cage"]
+    )
+    contract_col = _first_present_column(
+        stale_awards, ["Contract", "contract", "contract_number", "piid"]
+    )
+    requests: list[dict[str, Any]] = []
+    for _, row in stale_awards.iterrows():
+        requests.append(
+            {
+                "award_id": str(row[award_id_col]),
+                "uei": row[uei_col] if uei_col else None,
+                "duns": row[duns_col] if duns_col else None,
+                "cage": row[cage_col] if cage_col else None,
+                "piid": row[contract_col] if contract_col else None,
+            }
+        )
+    return requests
 
-    uei_col = None
-    for col in ["UEI", "uei", "company_uei", "recipient_uei"]:
-        if col in stale_awards_batch.columns:
-            uei_col = col
-            break
 
-    duns_col = None
-    for col in ["Duns", "duns", "company_duns", "recipient_duns"]:
-        if col in stale_awards_batch.columns:
-            duns_col = col
-            break
+def build_usaspending_adapter(*, freshness: FreshnessStore) -> SourceAdapter:
+    """Factory so tests can inject a hermetic adapter without constructing the client."""
 
-    cage_col = None
-    for col in ["CAGE", "cage", "company_cage", "recipient_cage"]:
-        if col in stale_awards_batch.columns:
-            cage_col = col
-            break
+    return USAspendingSourceAdapter(freshness=freshness)
 
-    contract_col = None
-    for col in ["Contract", "contract", "contract_number", "piid"]:
-        if col in stale_awards_batch.columns:
-            contract_col = col
-            break
 
-    # Process awards in batch
-    stats: dict[str, int | list[str]] = {
-        "total": len(stale_awards_batch),
-        "success": 0,
-        "failed": 0,
-        "unchanged": 0,
-        "errors": [],
-    }
+@asset(
+    description="Refresh USAspending enrichment for stale awards via SourceRefreshRunner",
+    group_name="enrichment",
+    compute_kind="python",
+)
+def usaspending_refresh_batch(
+    context: AssetExecutionContext,
+    stale_usaspending_awards: pd.DataFrame,
+    config: EnrichmentRefreshConfig,
+) -> Output[dict[str, Any]]:
+    """Refresh USAspending enrichment for a batch of awards."""
 
-    async def process_award(row: pd.Series) -> None:
-        """Process a single award."""
-        award_id = str(row[award_id_col])
-        uei = str(row[uei_col]) if uei_col and pd.notna(row.get(uei_col)) else None
-        duns = str(row[duns_col]) if duns_col and pd.notna(row.get(duns_col)) else None
-        cage = str(row[cage_col]) if cage_col and pd.notna(row.get(cage_col)) else None
-        contract = (
-            str(row[contract_col]) if contract_col and pd.notna(row.get(contract_col)) else None
+    source = config.source or "usaspending"
+    store = FreshnessStore()
+    if stale_usaspending_awards.empty:
+        context.log.info("No stale awards — skipping refresh")
+        return Output(
+            value={
+                "total": 0,
+                "success": 0,
+                "failed": 0,
+                "unchanged": 0,
+                "skipped": 0,
+                "errors": [],
+            },
+            metadata={"stale_count": 0, "reason": "no_stale_awards"},
         )
 
-        # Load existing freshness record
-        freshness_record = store.get_record(award_id, source)
+    requests = stale_awards_to_requests(stale_usaspending_awards)
+    refresh_config = get_config().enrichment_refresh.usaspending
+    batch_size = config.batch_size or refresh_config.batch_size
+    requests = requests[:batch_size]
 
-        try:
-            # Enrich award
-            result = await api_client.enrich_award(
-                award_id=award_id,
-                uei=uei,
-                duns=duns,
-                cage=cage,
-                piid=contract,
-                freshness_record=freshness_record,
-            )
-
-            # Record API call for metrics
-            metrics_collector.record_api_call(source, error=not result["success"])
-
-            # Update freshness ledger
-            update_freshness_ledger(
-                store=store,
-                award_id=award_id,
-                source=source,
-                success=result["success"],
-                payload_hash=result.get("payload_hash"),
-                metadata=result.get("metadata", {}),
-                error_message=result.get("error"),
-            )
-
-            if result["success"]:
-                if result.get("delta_detected", True):
-                    success_val = stats["success"]
-                    stats["success"] = (success_val if isinstance(success_val, int) else 0) + 1
-                else:
-                    unchanged_val = stats["unchanged"]
-                    stats["unchanged"] = (
-                        unchanged_val if isinstance(unchanged_val, int) else 0
-                    ) + 1
-            else:
-                failed_val = stats["failed"]
-                stats["failed"] = (failed_val if isinstance(failed_val, int) else 0) + 1
-                errors = stats.get("errors")
-                if not isinstance(errors, list):
-                    errors = []
-                    stats["errors"] = errors
-                errors.append(f"{award_id}: {result.get('error', 'Unknown error')}")
-
-        except Exception as e:
-            logger.error(f"Failed to refresh award {award_id}: {e}")
-            failed_val = stats["failed"]
-            stats["failed"] = (failed_val if isinstance(failed_val, int) else 0) + 1
-            errors = stats.get("errors")
-            if not isinstance(errors, list):
-                errors = []
-                stats["errors"] = errors
-            errors.append(f"{award_id}: {str(e)}")
-
-            # Record API error
-            metrics_collector.record_api_call(source, error=True)
-
-            # Update freshness record with failure
-            update_freshness_ledger(
-                store=store,
-                award_id=award_id,
-                source=source,
-                success=False,
-                error_message=str(e),
-            )
-
-    # Process awards asynchronously (respecting rate limits via client)
-    async def process_batch() -> None:
-        tasks = [process_award(row) for _, row in stale_awards_batch.iterrows()]
-        await asyncio.gather(*tasks)
-
-    run_sync(process_batch())
+    adapter = build_usaspending_adapter(freshness=store)
+    metrics_collector = EnrichmentMetricsCollector()
+    runner = SourceRefreshRunner(
+        freshness=store,
+        checkpoints=CheckpointStore(),
+        metrics=metrics_collector,
+        partition_id="usaspending-default",
+    )
+    stats = runner.refresh_records(adapter, requests).as_dict()
 
     context.log.info(
         f"Refresh complete: {stats['success']} success, "
         f"{stats['unchanged']} unchanged, {stats['failed']} failed"
     )
-
-    # Emit freshness metrics
     try:
         metrics_path = metrics_collector.emit_metrics(source)
         context.log.info(f"Emitted freshness metrics to {metrics_path}")
     except Exception as e:
         logger.warning(f"Failed to emit metrics: {e}")
 
-    return stats
+    return Output(value=stats, metadata={k: v for k, v in stats.items() if k != "errors"})
 
 
 @asset_check(

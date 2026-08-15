@@ -72,11 +72,19 @@ bypassing lifecycle review; the status and rationale still require human judgmen
 - **`follow-on-multiplier-validation` — Active.** Design-only follow-up to the
   completed multiplier asset. Still called out as an immediate research-plan
   gap.
-- **`iterative-api-enrichment` — Maintenance.** USAspending refresh is live.
-  Remaining source expansion should be split or scheduled intentionally.
+- **`iterative-api-enrichment` — Maintenance.** Issue #442 closed the
+  shared lifecycle: `SourceAdapter` + `SourceRefreshRunner`, USAspending
+  as the reference adapter, and `usaspending_refresh_batch` on the job.
+  Per-source adapters stay split (#443 NIH RePORTER, then SAM/PatentsView).
+  Tasks 6.1–6.2 remain optional Phase 2 expansion.
 - **`ma-discovery-integration` — Deferred.** The design depends on an unmerged
   discovery toolkit and missing press-enrichment glue. Revisit only when M&A
   recall becomes a selected research priority.
+- **`modular-analysis-platform` — Maintenance.** Pipelines-tier contracts
+  and registry so a new tech-census or transition-cohort profile is
+  YAML-only (issue #441). HTTP is out of scope per ADR-004. Weekly awards
+  stay on their existing builder. Census and cohort classifiers remain
+  exploratory.
 - **`modernbert-analysis-layer` — Maintenance.** Core embeddings and similarity
   are implemented. Neo4j loading, quality metrics, and Bayesian routing remain
   scoped follow-ups.
