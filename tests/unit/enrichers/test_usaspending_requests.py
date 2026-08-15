@@ -9,6 +9,7 @@ import pytest
 from sbir_etl.enrichers.usaspending.requests import (
     filter_by_window,
     has_identifier,
+    load_enriched_awards,
     stale_awards_to_requests,
 )
 from sbir_etl.exceptions import ValidationError
@@ -53,6 +54,18 @@ def test_missing_award_id_column_raises() -> None:
 
 def test_empty_frame_returns_no_requests() -> None:
     assert stale_awards_to_requests(pd.DataFrame()) == []
+
+
+def test_load_enriched_awards_returns_none_when_missing(tmp_path) -> None:
+    assert load_enriched_awards(tmp_path / "missing.parquet") is None
+
+
+def test_load_enriched_awards_raises_when_corrupt(tmp_path) -> None:
+    path = tmp_path / "broken.parquet"
+    path.write_text("not a parquet file", encoding="utf-8")
+
+    with pytest.raises(ValidationError, match="could not be read"):
+        load_enriched_awards(path)
 
 
 def test_filter_by_window_restricts_to_the_requested_range() -> None:

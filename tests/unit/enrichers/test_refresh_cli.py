@@ -185,3 +185,15 @@ def test_disabled_source_is_refused(tmp_path, monkeypatch) -> None:
 
     with pytest.raises(SystemExit, match="disabled"):
         run_refresh(source="usaspending", adapter=_Adapter(), runner=_runner(tmp_path, store))
+
+
+def test_stale_ids_absent_from_enriched_are_reported(tmp_path, monkeypatch, capsys) -> None:
+    store = _stale_store(tmp_path, award_id="AW-MISSING")
+    _patch_cli(monkeypatch, store, pd.DataFrame([{"award_id": "AW-OTHER", "UEI": "ABC123456789"}]))
+    adapter = _Adapter()
+
+    stats = run_refresh(source="usaspending", adapter=adapter, runner=_runner(tmp_path, store))
+
+    assert adapter.requests == []
+    assert stats["total"] == 0
+    assert "absent from enriched awards" in capsys.readouterr().err

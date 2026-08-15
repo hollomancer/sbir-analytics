@@ -67,7 +67,10 @@ def _requests_for_source(
     # The ledger stores award ids only. Identifiers (UEI / DUNS / CAGE / PIID) live
     # on the enriched award frame, and enrich_award cannot match an award without
     # at least one of them, so join rather than sending bare ids.
-    enriched = load_enriched_awards()
+    try:
+        enriched = load_enriched_awards()
+    except Exception as exc:
+        raise SystemExit(f"failed to load enriched awards: {exc}") from exc
     if enriched is None or enriched.empty:
         raise SystemExit(
             f"{enriched_awards_path()} is unavailable; refresh needs enriched awards "
@@ -78,7 +81,15 @@ def _requests_for_source(
         raise SystemExit(
             f"no award id column on {enriched_awards_path()}; expected one of {AWARD_ID_COLUMNS}"
         )
-    stale_frame = enriched.loc[enriched[award_id_col].astype(str).isin(set(stale))].copy()
+    stale_ids = {str(award_id) for award_id in stale}
+    stale_frame = enriched.loc[enriched[award_id_col].astype(str).isin(stale_ids)].copy()
+    matched_ids = set(stale_frame[award_id_col].astype(str))
+    missing_from_enriched = len(stale_ids - matched_ids)
+    if missing_from_enriched:
+        print(
+            f"skipping {missing_from_enriched} stale award(s) absent from enriched awards",
+            file=sys.stderr,
+        )
     if window:
         stale_frame = filter_by_window(stale_frame, window)
 

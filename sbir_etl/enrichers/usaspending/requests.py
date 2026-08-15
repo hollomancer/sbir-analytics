@@ -45,15 +45,25 @@ def enriched_awards_path() -> Path:
 
 
 def load_enriched_awards(path: Path | None = None) -> pd.DataFrame | None:
-    """Load the enriched award parquet, or ``None`` when it is unavailable."""
+    """Load the enriched award parquet, or ``None`` when the file is missing.
+
+    Distinguishes a missing file (``None``) from a corrupt/unreadable one
+    (raises ``ValidationError``) so operators are not told to rematerialize
+    when the path exists but cannot be parsed.
+    """
 
     src = path or enriched_awards_path()
     if not src.is_file():
         return None
     try:
         return pd.read_parquet(src)
-    except Exception:
-        return None
+    except Exception as exc:
+        raise ValidationError(
+            f"enriched awards at {src} exist but could not be read",
+            component="enrichers.usaspending.requests",
+            operation="load_enriched_awards",
+            details={"path": str(src), "error": str(exc)},
+        ) from exc
 
 
 def _identifier(row: pd.Series, column: str | None) -> str | None:
