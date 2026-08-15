@@ -9,9 +9,10 @@
 > SBIR exclusion and no validated NAICS-2 covariate. A shared date-aware
 > event/coverage contract and a CIK-native Form D business-combination filing
 > proxy now exist. A synthetic-only, fail-closed PatentsView source contract
-> also exists, but no real patent release, accepted identity bridge, coverage,
-> or outcome projection does. FPDS, patent-outcome, and verified-M&A inputs
-> remain missing. Do not materialize or publish Phase 2
+> and an arm-neutral USAspending contract-action source contract also exist,
+> but no real patent or federal-contract release, accepted identity bridge,
+> firm coverage, or outcome projection does. FPDS-outcome, patent-outcome, and
+> verified-M&A inputs remain missing. Do not materialize or publish Phase 2
 > before the Phase 1, identity, covariate, and outcome gates are satisfied.
 > Supports inventory questions **F3** (private-capital comparison), **B2** (commercialization outcomes), **B3** (transition rates) in [docs/research-questions.md](../../docs/research-questions.md).
 
@@ -92,6 +93,16 @@ field names in the official
 PatentsView is a research dataset rather than the official patent record, so a
 later real-data acquisition must pin the release and preserve that limitation;
 see the [USPTO PatentsView description](https://www.uspto.gov/ip-policy/economic-research/patentsview).
+
+The federal-contract source boundary uses USAspending all-agency
+`All_Contracts_Full` Award Data Archives. The official monthly-files API
+returns the current versions of generated archives, so closed fiscal-year files
+remain mutable upstream and each observed local release must be content-pinned;
+see the [USAspending monthly-files contract](https://github.com/fedspendingtransparency/usaspending-api/blob/master/usaspending_api/api_contracts/contracts/v2/bulk_download/list_monthly_files.md).
+USAspending transaction history distinguishes action date, action type,
+modification, and amount. A source action is therefore not automatically a new
+contract or commercialization transition; see the
+[USAspending transactions contract](https://github.com/fedspendingtransparency/usaspending-api/blob/master/usaspending_api/api_contracts/contracts/v2/transactions.md).
 
 ## Phasing
 
@@ -235,6 +246,22 @@ provisional identity staging only.
     contract SHALL NOT accept a link or turn missing patent evidence into zero.
     Real acquisition, identity adjudication, coverage, and outcome projection
     remain later gates.
+
+    Federal-contract staging SHALL likewise begin with an arm-neutral,
+    fail-closed USAspending source contract. It SHALL verify a contiguous set of
+    closed-fiscal-year all-agency `All_Contracts_Full` archives by archive hash,
+    byte size, official filename and URL, and exact CSV member size, CRC, and
+    ordered headers. Its native grain is
+    `(source_release_id, contract_transaction_unique_key)` and its neutral event
+    type is `usaspending_prime_contract_action`. It SHALL preserve action date,
+    action fiscal year, award grouping key, modification, signed obligation,
+    AWARD-versus-IDV flag, and native UEI/DUNS identifiers without emitting a
+    CIK, firm key, cohort arm, transition classification, availability flag,
+    denominator, or rate. The archive fiscal-year window is source-level
+    temporal provenance only; it is not firm coverage and cannot make missing
+    CIK-to-UEI/DUNS identity evidence an observed zero. Real acquisition,
+    identity adjudication, coverage, new-award classification, and outcome
+    projection remain later gates.
 11. **SHALL** publish a threats-to-validity section before any headline
     finding. Required entries: SAFE/convertible undercount, late-stage Form
     D inclusion, unknown exact-name exclusion recall, alias/rename/acquisition
@@ -262,6 +289,9 @@ not sufficient to evaluate it.
 - NSF identification (ALN 47.041 / 47.084) — `sbir_etl/models/sbir_identification.py` (EXISTS)
 - Transition detection (≥85% precision) — `packages/sbir-ml/sbir_ml/transition/` (EXISTS)
 - Entity resolution cascade — UEI/DUNS/CAGE/fuzzy-name (EXISTS)
+- Phase 2 federal-contract linkage — native synthetic USAspending action source
+  contract EXISTS; a real closed-year release, accepted CIK-to-UEI/DUNS bridge,
+  firm coverage, and FPDS outcome input are NOT WIRED
 - Phase 2 patent linkage — native synthetic source contract EXISTS; a real
   release, accepted CIK-to-assignee bridge, coverage, and PATLINK outcome input
   are NOT WIRED
@@ -276,7 +306,8 @@ not sufficient to evaluate it.
 - Shared date-aware event/coverage evaluator — EXISTS
 - Symmetric CIK-native Form D business-combination filing proxy — EXISTS;
   matched-risk-set integration remains gated
-- Symmetric FPDS, patent, and verified M&A outcome inputs — MISSING
+- Symmetric FPDS, patent, and verified M&A outcome inputs — MISSING; their
+  native synthetic source contracts do not satisfy identity or coverage gates
 
 ## Out of Scope
 

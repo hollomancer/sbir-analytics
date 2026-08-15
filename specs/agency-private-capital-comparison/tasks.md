@@ -19,7 +19,11 @@
 > candidates for review without changing the provisional controls or the open
 > identity gate. A synthetic-only PatentsView contract now proves pinned source
 > validation and assignee-native grant reduction, but real patent acquisition,
-> identity adjudication, coverage, and outcome projection remain open.
+> identity adjudication, coverage, and outcome projection remain open. A
+> synthetic-only USAspending contract now proves arm-neutral, content-pinned
+> contract-action staging, but real acquisition, CIK-to-UEI/DUNS linkage,
+> per-firm coverage, new-award semantics, and FPDS outcome projection remain
+> open.
 
 Tasks are grouped by phase. Phase 1 ships independently of PR #286. Phase 2 is
 gated on Phase 1 sign-off and its missing real-data input contracts.
@@ -153,7 +157,13 @@ on a pinned real-data run.
   patent, and application archives, reduces them to assignee-native grant
   events, and keeps CIK-to-assignee name evidence candidate-only. It performs
   no real bulk acquisition or identity adjudication and cannot emit patent
-  coverage or a rate, so the patent portion of this task remains open.
+  coverage or a rate, so the patent portion of this task remains open. A
+  parallel contract-only USAspending follow-on validates synthetic contiguous
+  closed-year `All_Contracts_Full` archives and emits arm-neutral prime-contract
+  actions at transaction grain. It does not acquire a real archive set, bridge
+  Form D CIKs to UEI/DUNS identifiers, establish firm coverage, classify new
+  awards, or emit an FPDS rate, so the federal-contract portion also remains
+  open.
 - [ ] 2.5 Complete the `ThreatsToValidity` gate — required entries: SAFE/convertible
   undercount, late-stage Form D inclusion, incomplete SBIR-CIK exclusion,
   SIC-to-NAICS-2 mapping validity, technical-merit vs. lawyer-access selection
