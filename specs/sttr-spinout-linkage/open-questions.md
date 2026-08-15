@@ -29,6 +29,11 @@ normalization net-new); **or** (b) split the kernel into its own upstream spec (
 **Proposed default:** (a) — build here at exploratory tier; promote to a shared primitive later if
 a second consumer appears. Do not block RQ1 on a primitive-promotion project.
 
+**RESOLVED (2026-08-14):** (a). Build `resolve_identity`, `classify_linkage`, `generic_token_guard`,
+and `signal_absent_reason` as new `exploratory`-tier code in this spec, grounded in
+`sbir_etl.identity` primitives as scoped above. Promote to a shared primitive later only if a
+second consumer appears outside this spec.
+
 ## O-1 — Are founders in scope for D2, or only the PI?
 
 The person trail (D2) can match the PI alone, or the PI plus named founders/officers. Founders
@@ -37,10 +42,22 @@ data-sourcing cost.
 **Proposed default:** PI in v1; founders as a labeled extension after the adjudication sample shows
 the PI-only recall floor.
 
+**RESOLVED (2026-08-14):** PI **and** founders in scope for v1 — wider than the proposed default,
+accepting the higher false-positive risk for higher recall. **Scope constraint:** this is not a new
+founder-discovery pipeline. "Founders" means officer/director names already surfaced by D4's
+existing Form D match; there is no separate founder-sourcing effort in v1. An award whose firm has
+no Form-D-derived officer/director name falls back to PI-only D2 matching for that award — this is
+a scope decision, not a promise that founder identification exists everywhere.
+
 ## O-2 — The ±N-year authorship window for D2
 
 How many years around the award date may an RI-affiliated authorship record fall and still count?
 **Proposed default:** ±3 years. Report ±1 / ±2 / ±3 / ±5 sensitivity in the review artifact.
+
+**RESOLVED (2026-08-14):** ±5 years — looser than the proposed default, for higher recall at the
+cost of more false-positive risk on the D2 side. The ±1 / ±2 / ±3 / ±5 sensitivity report in the
+review artifact remains required regardless, so ±5 is not locked in without visibility into the
+narrower alternatives.
 
 ## O-3 — Tier thresholds (what is "exact" vs. "fuzzy")
 
@@ -50,12 +67,28 @@ the corroboration rule for T2 (which dimension pairs count as "independent").
 UEI↔RI); fuzzy = `company_name_similarity ≥ [cutoff]` under `CompanyNameMetric.JARO_WINKLER` with
 `generic_token_guard` passing. Cutoff to be set from the adjudication sample, not guessed.
 
+**RESOLVED (2026-08-14):** **Freeze the method now; explicitly defer the numeric cutoff.** This
+question has a circular dependency as originally framed: the proposed default says the cutoff comes
+from the task 1.4 adjudication sample, but task 1.4 is Phase 1, gated behind this same Revision 1
+freeze. Resolution: Revision 1 freezes the **method** —
+`company_name_similarity` under `CompanyNameMetric.JARO_WINKLER`, gated by `generic_token_guard` —
+and the T1/T2 exact-vs-fuzzy split (exact = normalized-equality or verified identifier match).
+The **numeric cutoff itself is explicitly out of scope for Revision 1** and is instead calibrated
+from the task 1.4 adjudication sample and recorded as its own numbered amendment once that sample
+exists — not a Revision-1 blocker. Task 1.3 cannot run `SPINOUT_T2` scoring until that follow-on
+amendment lands.
+
 ## O-4 — The v1 phrase lexicon (D5)
 
 The exact deterministic phrase list ("spun out of", "licensed from", "founded by Professor …", and
 variants) and whether it ships in v1 at all.
 **Proposed default:** ship a small, frozen, hand-curated lexicon in v1; an ML text classifier is
 future work, not v1. The lexicon version is part of the freeze.
+
+**RESOLVED (2026-08-14):** Yes, ship a small, frozen, hand-curated v1 lexicon. The exact phrase list
+is not fixed by this resolution — it is drafted as part of task 1.3 implementation and frozen at
+that point (its own version, per the `seed-list-provenance.md`-style discipline), not decided here.
+An ML text classifier remains explicitly future work, not v1.
 
 ## O-5 — Partner-type precedence order
 
@@ -66,6 +99,10 @@ direction is **fixed by the O-7 resolution** (university-owned academic medical 
 `UNIVERSITY`; the hospital list is built to exclude them, so the two rarely overlap in practice).
 FFRDC (federal master list) remains most authoritative. **Still open:** owner confirmation of the
 full ordering.
+
+**RESOLVED (2026-08-14):** Confirmed as stated: `FFRDC > NEW_MODEL_ORG > UNIVERSITY >
+RESEARCH_HOSPITAL > COMMUNITY_COLLEGE > NONPROFIT_INSTITUTE > OTHER_NONPROFIT`. Full ordering, not
+just the `UNIVERSITY > RESEARCH_HOSPITAL` direction fixed by O-7, is now owner-confirmed.
 
 ## O-6 — FRO / new-model-org list curation and fiscal-sponsor coverage
 
@@ -116,6 +153,11 @@ reserved for an unverified Jones & Fearon deposit (see the literature-map audit 
 [`docs/research-questions.md`](../../docs/research-questions.md)). The next unreserved slot
 is `[L50]`. Do not cite Bayh-Dole informally until the anchor is added.
 
+**RESOLVED (2026-08-14):** Add `[L50]` for the statutory Bayh-Dole anchor (35 U.S.C. §§ 200–212) to
+`docs/research-questions.md`. This resolves only the **literature citation**; it does not bear on
+[O-12](#o-12--bayh-dole-government-interest-statement-data-source)'s separate finding that the
+underlying government-interest/license compliance data has no accessible public source.
+
 ## O-9 — Does RQ2 ship in this spec or its own?
 
 The matched outcome comparison (design in [`design.md`](design.md#rq2--matched-outcome-comparison-design-only))
@@ -124,6 +166,9 @@ exist and are validated.
 **Proposed default:** keep RQ2 as a design section here; spin it into its own spec at
 implementation time, so this spec stays scoped to classification.
 
+**RESOLVED (2026-08-14):** Keep RQ2 as a design-only section in this spec; spin it into its own
+spec once RQ1 labels exist and are validated. This spec stays scoped to classification.
+
 ## O-10 — Embedding choice for RQ2 topic-similarity matching
 
 Which embedding produces the topic-similarity matching key (e.g., the repository's
@@ -131,13 +176,27 @@ ModernBERT-Embed used elsewhere, or another).
 **Proposed default:** reuse the existing ModernBERT-Embed path used by the analysis layer, for
 consistency with prior transition work; decide at RQ2 implementation, not now.
 
+**RESOLVED (2026-08-14):** Reuse the existing ModernBERT-Embed path for RQ2's topic-similarity
+matching key, consistent with prior transition work. Frozen now to avoid re-litigating at RQ2
+implementation time; only takes effect once RQ2 (design-only per O-9) is actually implemented.
+
 ## O-11 — Partner-type: this spec or its own primitive?
 
 Partner-type classification shares the D1 spine with RQ1 but is conceptually independent.
 **Proposed default (from the addendum):** ship it in this spec — it shares the spine. Promote to
 its own primitive only if a second consumer appears.
 
+**RESOLVED (2026-08-14):** Ship partner-type classification in this spec; it shares the D1 spine
+with RQ1. Promote to its own primitive only if a second consumer appears outside this spec.
+
 ## O-12 — Bayh-Dole government-interest statement data source
+
+**NOT YET RESOLVED — owner requested further research (2026-08-14).** The candidate sources
+researched below (iEdison, PatentsView/USPTO ODP, local USPTO assignment data, DOE VIPS, NASA
+e-NTR) were judged exhaustive of the obvious candidates by the first research pass, but the owner
+is not yet satisfied the search was complete. Do not treat the "Recommended default" at the end of
+this section as accepted; it remains a recommendation pending a second research pass. **This
+question, alone among O-0 through O-11, still blocks the task 0.5 / Revision 1 freeze.**
 
 **The gap.** The [D3 evidence-dimension row](design.md#evidence-dimensions) names "Bayh-Dole
 government-interest statements" as a source, and the [Order-1 cascade

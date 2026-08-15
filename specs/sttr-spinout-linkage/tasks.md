@@ -28,6 +28,10 @@ abstractions beyond what a single probe needs, and no citable numbers.
 
 - [ ] 0.5 Owner resolves remaining open questions (O-0 through O-5, O-8 through
       O-12)
+  - Progress: O-0 through O-5 and O-8 through O-11 resolved, recorded as
+    `amendments.md` Revision 0.2. **O-12 is the sole remaining blocker** — a
+    second research pass was requested rather than accepting the first
+    pass's structural-limitation finding.
   - Verify: each resolution is a numbered revision in `amendments.md`
   - Requirements: freeze gate
 
