@@ -19,13 +19,25 @@ bug O-12 caught for D3's PatentsView `government_interest` field):
    RI-affiliated name, via the same `kernel.resolve_identity` /
    `identity_similarity` person-matching machinery D2 uses.
 
-**Which name is "RI-affiliated" for direction 2?** Not the PI. The PI's
-employer election (RI employee vs. SBC employee) is exactly the unresolved
-fact this whole classifier exists to proxy for (design.md, "Coverage and the
-documented gap") -- treating the PI as known-RI-affiliated would be circular.
-The award spine's "RI POC Name" column (the research institution's own named
-point of contact on the award, distinct from the PI) is unambiguously
-RI-affiliated by construction and is what this module uses.
+**Which name is "RI-affiliated" for direction 2?** Originally this module
+matched Form D officers/directors against the award's "RI POC Name" only,
+reasoning that the PI's employer election (RI employee vs. SBC employee) is
+exactly the unresolved fact this classifier exists to proxy for, so matching
+the PI would be circular. That reasoning did not hold up against the data:
+checked against the real award population, "RI POC Name" and "PI Name" are
+the same person only 2.77% of the time -- RI POC is overwhelmingly a
+different, apparently administrative contact, not the PI. D2 (scholarly
+authorship) and D4 (SEC officer filings) are independently-scored dimensions
+per design.md's own rule precisely *because* they check the same underlying
+fact -- is this person tied to the RI? -- through different data sources; a
+PI name that also turns up as a Form D officer/director is independent
+corroboration from a second, distinct source, exactly the pattern the
+Order-2 cascade rule in design.md is built to reward, not circular
+reasoning. This module therefore checks Form D officer/director names
+against **both** the award's "RI POC Name" and its "PI Name", treating a
+match against either as a positive `form_d_officer_ri_affiliated` -- RI-POC
+matching stays (a real, if rare, additional check on its own), PI-name
+matching is added alongside it rather than replacing it.
 
 **Grant vs. contract instrument.** Neither `kernel.D1Spine` nor
 `d1_spine.build_d1_spine_frame` carries the raw SBIR.gov "Contract" field (the
@@ -92,6 +104,7 @@ from .kernel import (
     D4MoneyTrail,
     DimensionStatus,
     IdentityKind,
+    ResolvedIdentity,
     SignalAbsentReason,
     resolve_identity,
 )
@@ -305,9 +318,20 @@ def score_form_d_officer_ri_affiliated(
     *,
     company_name: object,
     ri_poc_name: object,
+    pi_name: object,
     form_d_index: dict[str, tuple[str, ...]] | None,
 ) -> tuple[DimensionStatus, bool, SignalAbsentReason | None]:
-    """Score direction 2: a Form D officer/director matched to the RI POC name.
+    """Score direction 2: a Form D officer/director matched to the RI POC name
+    or the PI name.
+
+    Two independent name signals -- the award's RI POC name and its PI name --
+    are each checked against the same Form D officer/director index; a match
+    against **either** is sufficient positive spinout evidence (module
+    docstring's "Which name is 'RI-affiliated'" section), so the returned
+    boolean does not distinguish which of the two fired. Follows the same
+    multi-candidate-name pattern `d2_person_scorer.score_d2_person_trail` uses
+    for PI + Form-D founder names: blank names are dropped, each remaining
+    name is resolved once and deduplicated by its normalized identity.
 
     Exact normalized-name match only (via `kernel.resolve_identity` /
     `IdentityKind.PERSON`, `generic_token_guard`-gated) -- no fuzzy cutoff.
@@ -318,10 +342,21 @@ def score_form_d_officer_ri_affiliated(
     discipline as D5's lexicon), a stated limitation, not an oversight.
     """
 
-    if _blank(ri_poc_name):
+    candidate_names = [name for name in (ri_poc_name, pi_name) if not _blank(name)]
+    if not candidate_names:
         return DimensionStatus.NOT_MEASURABLE, False, SignalAbsentReason.SOURCE_FIELD_UNAVAILABLE
-    poc_identity = resolve_identity(ri_poc_name, kind=IdentityKind.PERSON)
-    if poc_identity is None or not poc_identity.guard_passed:
+
+    candidates: list[ResolvedIdentity] = []
+    seen_normalized: set[str] = set()
+    for raw_name in candidate_names:
+        identity = resolve_identity(raw_name, kind=IdentityKind.PERSON)
+        if identity is None or not identity.guard_passed:
+            continue
+        if identity.normalized in seen_normalized:
+            continue
+        seen_normalized.add(identity.normalized)
+        candidates.append(identity)
+    if not candidates:
         return (
             DimensionStatus.NOT_MEASURABLE,
             False,
@@ -341,7 +376,16 @@ def score_form_d_officer_ri_affiliated(
         officer_identity = resolve_identity(officer_name, kind=IdentityKind.PERSON)
         if officer_identity is None or not officer_identity.guard_passed:
             continue
-        if officer_identity.normalized == poc_identity.normalized:
+        matched_candidate = next(
+            (c for c in candidates if c.normalized == officer_identity.normalized), None
+        )
+        if matched_candidate is not None:
+            logger.debug(
+                "D4 Form D officer match: {!r} matched officer {!r} (company {!r})",
+                matched_candidate.raw,
+                officer_identity.raw,
+                company_name,
+            )
             return DimensionStatus.MEASURED, True, None
     return DimensionStatus.MEASURED, False, None
 
@@ -519,6 +563,7 @@ def score_d4_money_trail(
     company_name: object,
     contract_number: object,
     ri_poc_name: object,
+    pi_name: object,
     subaward_client: SubawardClient | None = None,
     form_d_index: dict[str, tuple[str, ...]] | None = None,
 ) -> D4MoneyTrail:
@@ -557,6 +602,7 @@ def score_d4_money_trail(
     form_d_status, officer_match, form_d_reason = score_form_d_officer_ri_affiliated(
         company_name=company_name,
         ri_poc_name=ri_poc_name,
+        pi_name=pi_name,
         form_d_index=form_d_index,
     )
 

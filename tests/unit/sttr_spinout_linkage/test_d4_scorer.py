@@ -163,9 +163,9 @@ class TestLoadFormDOfficerIndex:
 
 
 class TestScoreFormDOfficerRiAffiliated:
-    def test_blank_ri_poc_name_is_not_measurable(self) -> None:
+    def test_blank_ri_poc_and_pi_name_is_not_measurable(self) -> None:
         status, matched, reason = score_form_d_officer_ri_affiliated(
-            company_name="Acme Robotics Inc.", ri_poc_name=None, form_d_index={}
+            company_name="Acme Robotics Inc.", ri_poc_name=None, pi_name=None, form_d_index={}
         )
         assert status is DimensionStatus.NOT_MEASURABLE
         assert matched is False
@@ -173,14 +173,24 @@ class TestScoreFormDOfficerRiAffiliated:
 
     def test_generic_token_ri_poc_name_fails_guard(self) -> None:
         status, matched, reason = score_form_d_officer_ri_affiliated(
-            company_name="Acme Robotics Inc.", ri_poc_name="Dr.", form_d_index={}
+            company_name="Acme Robotics Inc.", ri_poc_name="Dr.", pi_name=None, form_d_index={}
+        )
+        assert status is DimensionStatus.NOT_MEASURABLE
+        assert reason is SignalAbsentReason.NAME_GENERIC_TOKEN_GUARD_FAILED
+
+    def test_both_names_generic_token_fails_guard(self) -> None:
+        status, matched, reason = score_form_d_officer_ri_affiliated(
+            company_name="Acme Robotics Inc.", ri_poc_name="Dr.", pi_name="Mr.", form_d_index={}
         )
         assert status is DimensionStatus.NOT_MEASURABLE
         assert reason is SignalAbsentReason.NAME_GENERIC_TOKEN_GUARD_FAILED
 
     def test_no_index_provided_is_not_evaluated(self) -> None:
         status, matched, reason = score_form_d_officer_ri_affiliated(
-            company_name="Acme Robotics Inc.", ri_poc_name="Jane Smith", form_d_index=None
+            company_name="Acme Robotics Inc.",
+            ri_poc_name="Jane Smith",
+            pi_name=None,
+            form_d_index=None,
         )
         assert status is DimensionStatus.NOT_EVALUATED
         assert reason is SignalAbsentReason.SOURCE_NOT_QUERIED
@@ -189,13 +199,14 @@ class TestScoreFormDOfficerRiAffiliated:
         status, matched, reason = score_form_d_officer_ri_affiliated(
             company_name="Unlisted Firm LLC",
             ri_poc_name="Jane Smith",
+            pi_name=None,
             form_d_index={"acme robotics": ("John Doe",)},
         )
         assert status is DimensionStatus.MEASURED
         assert matched is False
         assert reason is None
 
-    def test_officer_name_match_is_measured_positive(self) -> None:
+    def test_ri_poc_name_only_match_is_measured_positive(self) -> None:
         from sbir_etl.identity import CompanyNameProfile, normalize_company_name
 
         key = normalize_company_name(
@@ -204,10 +215,59 @@ class TestScoreFormDOfficerRiAffiliated:
         status, matched, reason = score_form_d_officer_ri_affiliated(
             company_name="Acme Robotics Inc.",
             ri_poc_name="Jane Q. Smith",
+            pi_name="Someone Else",
             form_d_index={key: ("Jane Q. Smith",)},
         )
         assert status is DimensionStatus.MEASURED
         assert matched is True
+
+    def test_pi_name_only_match_is_measured_positive(self) -> None:
+        """The classic 'professor founds the company' pattern: the RI POC is a
+        different, administrative contact, but the PI is a Form D officer."""
+        from sbir_etl.identity import CompanyNameProfile, normalize_company_name
+
+        key = normalize_company_name(
+            "Acme Robotics Inc.", profile=CompanyNameProfile.FORM_D_JOIN_V1
+        )
+        status, matched, reason = score_form_d_officer_ri_affiliated(
+            company_name="Acme Robotics Inc.",
+            ri_poc_name="Grants Administrator",
+            pi_name="Frances Arnold",
+            form_d_index={key: ("Frances Arnold",)},
+        )
+        assert status is DimensionStatus.MEASURED
+        assert matched is True
+
+    def test_both_names_match_is_measured_positive(self) -> None:
+        from sbir_etl.identity import CompanyNameProfile, normalize_company_name
+
+        key = normalize_company_name(
+            "Acme Robotics Inc.", profile=CompanyNameProfile.FORM_D_JOIN_V1
+        )
+        status, matched, reason = score_form_d_officer_ri_affiliated(
+            company_name="Acme Robotics Inc.",
+            ri_poc_name="Jane Q. Smith",
+            pi_name="Frances Arnold",
+            form_d_index={key: ("Jane Q. Smith", "Frances Arnold")},
+        )
+        assert status is DimensionStatus.MEASURED
+        assert matched is True
+
+    def test_neither_name_matches_is_measured_negative(self) -> None:
+        from sbir_etl.identity import CompanyNameProfile, normalize_company_name
+
+        key = normalize_company_name(
+            "Acme Robotics Inc.", profile=CompanyNameProfile.FORM_D_JOIN_V1
+        )
+        status, matched, reason = score_form_d_officer_ri_affiliated(
+            company_name="Acme Robotics Inc.",
+            ri_poc_name="Jane Q. Smith",
+            pi_name="Frances Arnold",
+            form_d_index={key: ("John Doe",)},
+        )
+        assert status is DimensionStatus.MEASURED
+        assert matched is False
+        assert reason is None
 
 
 class TestScoreRiSubawardShare:
@@ -316,12 +376,35 @@ class TestScoreD4MoneyTrail:
             company_name="Acme Robotics Inc.",
             contract_number="DE-AR0001314",
             ri_poc_name="Jane Smith",
+            pi_name=None,
             subaward_client=client,
             form_d_index={key: ("Jane Smith",)},
         )
         assert trail.status is DimensionStatus.MEASURED
         assert trail.ri_subaward_share == 1.0
         assert trail.form_d_officer_ri_affiliated is True
+
+    def test_pi_name_only_match_drives_the_combined_trail(self) -> None:
+        """A contract-instrument award where only the PI (not the RI POC)
+        shows up as a Form D officer -- the classic professor-founder pattern
+        this direction was extended to catch."""
+        from sbir_etl.identity import CompanyNameProfile, normalize_company_name
+
+        key = normalize_company_name(
+            "Acme Robotics Inc.", profile=CompanyNameProfile.FORM_D_JOIN_V1
+        )
+        trail = score_d4_money_trail(
+            ri_name="University of North Dakota",
+            company_name="Acme Robotics Inc.",
+            contract_number="N68335-26-C-0080",  # contract instrument
+            ri_poc_name="Grants Administrator",
+            pi_name="Frances Arnold",
+            subaward_client=FakeSubawardClient(),
+            form_d_index={key: ("Frances Arnold",)},
+        )
+        assert trail.status is DimensionStatus.MEASURED
+        assert trail.form_d_officer_ri_affiliated is True
+        assert trail.ri_subaward_share is None
 
     def test_contract_instrument_with_form_d_match_is_measured_not_suppressed(self) -> None:
         """The directional bug this module exists to avoid: a contract-instrument
@@ -337,6 +420,7 @@ class TestScoreD4MoneyTrail:
             company_name="Acme Robotics Inc.",
             contract_number="N68335-26-C-0080",  # contract instrument
             ri_poc_name="Jane Smith",
+            pi_name=None,
             subaward_client=FakeSubawardClient(),
             form_d_index={key: ("Jane Smith",)},
         )
@@ -350,6 +434,7 @@ class TestScoreD4MoneyTrail:
             company_name="Unlisted Firm LLC",
             contract_number="N68335-26-C-0080",
             ri_poc_name="Jane Smith",
+            pi_name=None,
             subaward_client=FakeSubawardClient(),
             form_d_index={},
         )
@@ -362,6 +447,7 @@ class TestScoreD4MoneyTrail:
             company_name="Unlisted Firm LLC",
             contract_number="DE-AR0001314",
             ri_poc_name=None,
+            pi_name=None,
             subaward_client=FakeSubawardClient(raise_on_find=True),
             form_d_index={},
         )
@@ -373,6 +459,7 @@ class TestScoreD4MoneyTrail:
             company_name="Unlisted Firm LLC",
             contract_number="DE-AR0001314",
             ri_poc_name=None,  # NOT_MEASURABLE / SOURCE_FIELD_UNAVAILABLE
+            pi_name=None,  # NOT_MEASURABLE / SOURCE_FIELD_UNAVAILABLE
             subaward_client=None,  # NOT_EVALUATED / SOURCE_NOT_QUERIED
             form_d_index={},
         )
