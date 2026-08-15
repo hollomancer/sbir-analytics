@@ -191,12 +191,15 @@ with RQ1. Promote to its own primitive only if a second consumer appears outside
 
 ## O-12 — Bayh-Dole government-interest statement data source
 
-**NOT YET RESOLVED — owner requested further research (2026-08-14).** The candidate sources
-researched below (iEdison, PatentsView/USPTO ODP, local USPTO assignment data, DOE VIPS, NASA
-e-NTR) were judged exhaustive of the obvious candidates by the first research pass, but the owner
-is not yet satisfied the search was complete. Do not treat the "Recommended default" at the end of
-this section as accepted; it remains a recommendation pending a second research pass. **This
-question, alone among O-0 through O-11, still blocks the task 0.5 / Revision 1 freeze.**
+**NOT YET RESOLVED — second research pass complete (2026-08-14), pending owner acceptance.** The
+first pass (iEdison, PatentsView/USPTO ODP, local USPTO assignment data, DOE VIPS, NASA e-NTR) is
+below; a second pass (AUTM STATT/TransACT, UCC-1, SEC EDGAR full-text search, and a re-check of the
+local USPTO data for the actual Bayh-Dole regulatory term rather than generic "license" wording)
+follows it and is recorded separately below. The second pass surfaces one genuinely new candidate
+(SEC EDGAR full-text search) and sharpens the local-data proxy, but **does not overturn the
+structural-limitation verdict**: no source found in either pass directly supplies a named RI→SBC
+license record. **This question, alone among O-0 through O-11, still blocks the task 0.5 /
+Revision 1 freeze**, pending the owner's read of the second pass.
 
 **The gap.** The [D3 evidence-dimension row](design.md#evidence-dimensions) names "Bayh-Dole
 government-interest statements" as a source, and the [Order-1 cascade
@@ -284,15 +287,77 @@ is authorized here or before the Revision 1 freeze.
   the university/RI population that dominates STTR partners. NASA's system is internal, not public.
   **Verdict: Not applicable** to the general D3 case; noted for completeness only.
 
-**Recommended default.** No public source directly supplies "a recorded license from the RI to the
-SBC" as declared. Treat this as a **structural limitation of D3, not a temporary sourcing gap**:
+**Second-pass candidate sources researched (2026-08-14):**
+
+- **AUTM STATT database.** AUTM's licensing-metrics database (30+ years of technology-transfer
+  survey data across US/Canadian universities, hospitals, and research institutions). **Ruled out
+  on two independent grounds:** (1) **paid**, not public — annual subscriptions run $525–$975
+  ([AUTM STATT product page](https://imis.autm.net/itemdetail?iProductCode=STATT_ANNUAL)); (2) even
+  behind that paywall, the data is university-level **benchmarking aggregates** ("search more than
+  60 variables to benchmark your office against peer institutions"), not individual named-licensee
+  records. **Verdict: Not public, and wrong grain even if it were.**
+- **AUTM TransACT database.** A companion AUTM product specifically for deal-level licensing terms
+  ($2,995/year). This looked more promising on grain — until checking the description: it is
+  explicitly **"a full record of de-identified licensing agreements."** De-identified means no
+  named licensor or licensee, at any subscription tier. **Verdict: Wrong grain by design — would
+  not answer "which RI licensed to which SBC" even as a paying subscriber.**
+- **UCC-1 financing-statement filings.** The repo already has a working UCC-1 pipeline
+  (`specs/archive/completed-features/ucc1-financing-analysis/`, CA-only, 100% matcher precision on
+  its pilot). UCC-1 filings can list intellectual property as loan collateral, which raised the
+  question of whether a pledged-patent record could reveal a licensing relationship. Two problems:
+  (1) that pipeline's own requirements explicitly scoped **"IP-collateral text parsing (patent /
+  trademark pledges)"** as **out of pilot scope**, so nothing usable exists yet; (2) even if built,
+  a UCC-1 records the SBC's *own* IP pledged as loan collateral to a lender — a fundamentally
+  different transaction from an *inbound* RI→SBC license. **Verdict: Not built, and the wrong
+  transaction type even if it were.**
+- **SEC EDGAR full-text search (EFTS) — genuinely new candidate.** The repo already has a working
+  client for this: `sbir_etl/enrichers/sec_edgar/client.py`'s `search_filing_mentions()` searches
+  the full text of SEC filings (all form types, exhibits included) for a quoted company-name phrase
+  — built for the M&A-detection pipeline's "private SBIR company mentioned in a public acquirer's
+  8-K" pattern. EDGAR's full-text search indexes **filings since 2001, including attached exhibits**
+  — critically, **EX-10 "material contract" exhibits**, which is exactly where a company would file
+  an executed license agreement with a research institution if it later became SEC-reporting.
+  Verified query syntax directly: EFTS supports **multiple quoted phrases with an implied AND** (no
+  OR, no parenthetical grouping), so a query like `"University of Wyoming" "license agreement"` is
+  a real, supported search — not currently how `search_filing_mentions()` is called (it wraps its
+  single argument in one phrase), so using it this way needs a small parameter change, not a new
+  client. **Two honest caveats:** (a) coverage is limited to the STTR firms that later filed with
+  the SEC (IPO, direct listing, or a Reg A+/S-1 offering) — a small, success-biased subset of the
+  population, not close to comprehensive; (b) a hit is a *mention*, not a structured license
+  record — confirming an actual license still requires reading the matched exhibit. **Verdict:
+  Feasible now with a small client change, real positive evidence when it fires, but low
+  population coverage and requires manual confirmation per hit — a corroborating tool, not a bulk
+  channel.**
+- **Re-checked the local USPTO `convey_text` field for the actual Bayh-Dole term of art.** The first
+  pass searched for generic "LICENSE" wording (≈0.5% of records). Directly queried the local
+  `assignment.csv.zip` (10,531,897 total rows, confirmed by direct count — matches the first pass's
+  figure) for **"confirmatory license"** specifically — the actual regulatory term from 37 CFR
+  401.14, the license a Bayh-Dole contractor grants confirming the government's retained rights.
+  Result: **12,946 hits in a 3,000,001-row sample** (≈0.43%, extrapolating to roughly 45,000 records
+  repo-wide) — real, verified examples on file (e.g. *"ASSIGNS THE ENTIRE INTEREST, SUBJECT TO THE
+  RIGHTS RESERVED IN ATTACHED STATEMENT OF CONSIDERATIONS AND CONFIRMATORY LICENSE"*). This is a
+  **more specific, higher-confidence proxy than the generic-"license" search** the first pass used —
+  but it does **not change the directional problem**: a confirmatory license runs from the
+  contractor (assignee — could be the RI or the SBC) **to the U.S. Government**, confirming
+  retained government rights, not from the RI **to the SBC**. It answers the same question
+  PatentsView's `government_interest` field answers (federal-funding nexus on this patent), via a
+  different already-local source. **Verdict: Real, present, and a legitimate upgrade to the D3
+  proxy's precision — but corroborates federal-funding nexus, not an RI→SBC license, same as the
+  first pass's `convey_text` finding, just on a sharper term.**
+
+**Recommended default (revised after the second pass).** No source found in either research pass —
+public or paid, first-pass or second-pass — directly supplies "a recorded license from the RI to
+the SBC" as declared. Treat this as a **structural limitation of D3, not a temporary sourcing gap**:
 (a) drop "Bayh-Dole government-interest statements" from D3's declared sources (done — see the
 `design.md` amendment accompanying this entry) since no accessible source of that name exists; (b)
 keep `D3.patent_assigned_to_RI_with_SBC_inventor` as the real, confirmed-available D3 signal
 (USPTO assignment data, already local); (c) if `D3.recorded_license_RI_to_SBC` ships at all in v1,
-source it only from the `convey_text` free-text proxy above, labeled explicitly as low-recall and
-unvalidated, never presented as a Bayh-Dole compliance record. This **corroborates and sharpens**
-`coverage-memo.md`'s existing D3 row ("license records are sparse everywhere"): the records are not
-merely sparse, they are close to **structurally unobservable** from any public Bayh-Dole compliance
-channel — the sparsity is a source-availability ceiling, not a coverage artifact that more querying
-would fix.
+source it from the sharper **`"confirmatory license"`** free-text search (not generic "license"
+wording) over the already-local `convey_text` field, plus, if task 1.3 budget allows, a
+**corroborating** SEC EDGAR full-text-search pass (`search_filing_mentions()`, minor parameter
+change) over the subset of STTR firms that later became SEC filers — both labeled explicitly as
+low-recall, population-partial, and unvalidated, never presented as a Bayh-Dole compliance record
+or a structured license database. This **corroborates and sharpens** `coverage-memo.md`'s existing
+D3 row ("license records are sparse everywhere"): the records are not merely sparse, they are close
+to **structurally unobservable** from any public *or paid* Bayh-Dole compliance channel — the
+sparsity is a source-availability ceiling, not a coverage artifact that more querying would fix.
