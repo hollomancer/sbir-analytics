@@ -107,8 +107,6 @@ def test_frozen_snapshot_defaults_to_no_baseline() -> None:
 def test_frozen_snapshot_accepts_an_explicit_path(tmp_path) -> None:
     cli = _load_cli()
     baseline = tmp_path / "frozen.json"
-    args = cli.build_parser().parse_args(
-        ["--profile", "dummy", "--frozen-snapshot", str(baseline)]
-    )
+    args = cli.build_parser().parse_args(["--profile", "dummy", "--frozen-snapshot", str(baseline)])
 
     assert cli._frozen_snapshot(args, "dummy") == baseline
