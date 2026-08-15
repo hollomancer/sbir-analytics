@@ -86,15 +86,20 @@ def test_census_strategy_writes_artifacts(tmp_path, monkeypatch) -> None:
     assert summary["provenance"]["sha256"]
 
 
-def test_frozen_snapshot_flag_resolves_previous(tmp_path) -> None:
+def test_frozen_snapshot_flag_resolves_previous(tmp_path, monkeypatch) -> None:
     cli = _load_cli()
+    snapshot_root = tmp_path / "snapshots"
+    previous = snapshot_root / "dummy" / "fy2024.json"
+    previous.parent.mkdir(parents=True)
+    previous.write_text("{}", encoding="utf-8")
+    monkeypatch.setattr(cli, "SNAPSHOT_ROOT", snapshot_root)
     args = cli.build_parser().parse_args(
         ["--profile", "dummy", "--frozen-snapshot", "previous", "--period", "fy2024"]
     )
 
     resolved = cli._frozen_snapshot(args, "dummy")
 
-    assert resolved == cli.SNAPSHOT_ROOT / "dummy" / "fy2024.json"
+    assert resolved == previous
 
 
 def test_frozen_snapshot_defaults_to_no_baseline() -> None:
@@ -107,6 +112,16 @@ def test_frozen_snapshot_defaults_to_no_baseline() -> None:
 def test_frozen_snapshot_accepts_an_explicit_path(tmp_path) -> None:
     cli = _load_cli()
     baseline = tmp_path / "frozen.json"
+    baseline.write_text("{}", encoding="utf-8")
     args = cli.build_parser().parse_args(["--profile", "dummy", "--frozen-snapshot", str(baseline)])
 
     assert cli._frozen_snapshot(args, "dummy") == baseline
+
+
+def test_frozen_snapshot_fails_fast_when_missing(tmp_path) -> None:
+    cli = _load_cli()
+    missing = tmp_path / "missing.json"
+    args = cli.build_parser().parse_args(["--profile", "dummy", "--frozen-snapshot", str(missing)])
+
+    with pytest.raises(SystemExit, match="frozen snapshot not found"):
+        cli._frozen_snapshot(args, "dummy")

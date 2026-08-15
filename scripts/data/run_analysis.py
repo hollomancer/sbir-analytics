@@ -44,6 +44,8 @@ def _census_strategy(spec: AnalysisSpec) -> dict:
     awards = load_award_data_csv(spec.corpus.source_path)
     result = run_census(awards, compiled)
     out_dir = REPO / "data" / "tech_census" / spec.profile_id
+    # This CLI path does not apply FY/state filters the way build_tech_census.py
+    # can, so source and reporting row counts are the same corpus length here.
     write_census_artifacts(
         result,
         out_dir,
@@ -70,7 +72,9 @@ def _cohort_strategy(spec: AnalysisSpec) -> dict:
     composition_path = report_dir / "composition.json"
     summary = json.loads(summary_path.read_text(encoding="utf-8")) if summary_path.exists() else {}
     composition = (
-        json.loads(composition_path.read_text(encoding="utf-8")) if composition_path.exists() else {}
+        json.loads(composition_path.read_text(encoding="utf-8"))
+        if composition_path.exists()
+        else {}
     )
     overlap = summary.get("overlap") or {}
     totals = composition.get("totals") or {}
@@ -120,14 +124,20 @@ def _frozen_snapshot(args: argparse.Namespace, profile_id: str) -> Path | None:
 
     Opt-in rather than always-on: ``compare_snapshots`` also gates on
     ``source_sha256``, so an implicit baseline would refuse every ordinary run
-    against refreshed award data, not just a methodology change.
+    against refreshed award data, not just a methodology change. When the
+    operator does ask for a baseline, missing files fail fast rather than
+    silently disabling the gate.
     """
 
     if not args.frozen_snapshot:
         return None
     if args.frozen_snapshot == "previous":
-        return SNAPSHOT_ROOT / profile_id / f"{args.period}.json"
-    return Path(args.frozen_snapshot)
+        path = SNAPSHOT_ROOT / profile_id / f"{args.period}.json"
+    else:
+        path = Path(args.frozen_snapshot)
+    if not path.is_file():
+        raise SystemExit(f"frozen snapshot not found: {path}")
+    return path
 
 
 def main(argv: list[str] | None = None) -> int:
