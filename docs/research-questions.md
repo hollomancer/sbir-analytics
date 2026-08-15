@@ -515,15 +515,18 @@ statutory goal is Phase III commercialization.*
   matching rules, the agency, and the time window?
   *Method:* the matching rules were written down and frozen before the counts
   were run, so the result cannot be tuned after the fact.
-  **Status:** Reproducible and falsification-tested, but not validated or citable,
-  for the frozen audit estimand. The complete census, matched negative-control,
-  and fixed-seed placebo tables were materialized from provenance-verified
-  February inputs. The actual frame exceeds the cross-firm date placebo on every
-  final-stage metric and in all six sensitivity cells, so the temporal link changes
-  the proxy under the preregistered placebo. Within the limited exact-match common-
-  support subset, however, treated and control firm distributions still overlap
-  substantially. Hand-labelled validation remains unresolved, so this is an uncoded
-  follow-on proxy rather than proof of statutory Phase III.
+  **Status:** We can produce this count, and it holds up under a scrambled-dates
+  check designed before the counts were run, though matched control firms still
+  look substantially similar — and no one has yet hand-verified a sample of the
+  matches, so the result is a follow-on proxy:
+  not validated, not citable, and not proof of statutory Phase III. In method
+  terms: reproducible and falsification-tested for the frozen audit estimand.
+  The complete census, matched negative-control, and fixed-seed placebo tables
+  were materialized from provenance-verified February inputs. The actual frame
+  exceeds the cross-firm date placebo on every final-stage metric and in all six
+  sensitivity cells, so the temporal link changes the proxy under the
+  preregistered placebo. Within the limited exact-match common-support subset,
+  however, treated and control firm distributions still overlap substantially.
   *Deps: ER, ID, NAICS/PSC · Spec: [../specs/phase-iii-census/](../specs/phase-iii-census/) · Audits: [February 2026 data-cut materialization](../studies/phase-iii-census/materialization-2026-02-06.md), [matched negative-control outcomes](../studies/phase-iii-census/negative-control-outcomes-2026-08-03.md), [full-census placebo](../studies/phase-iii-census/placebo-results-2026-08-03.md)*
 
 - **Research-to-procurement transitions**
@@ -571,14 +574,18 @@ statutory goal is Phase III commercialization.*
   Corroborated by GAO [L14] and NASEM [L1], [L3]. The protocol depends on
   award-grade identity and record granularity (issue #447 / PR #449); production
   source lifecycle belongs to issue #442.
-  **Status:** Partially computable. The deterministic census, sensitivity
-  diagnostic, matched negative-control comparison, and fixed-seed placebo are
-  materialized. The placebo does not reproduce the actual final-stage totals, so
-  the temporal link contributes to this proxy under the frozen perturbation. The
-  controls still show substantial distribution overlap within a narrow common-
-  support subset. Before the proxy can be called an undercount, it still needs a
-  hand-labelled sample; one cyclic placebo is not labeled validation or an
-  inferential permutation distribution.
+  **Status:** Partially computable. We can count the contracts that look like
+  uncoded Phase III work, and the timing pattern does not disappear under a
+  preregistered scrambled-dates check — but that one check is not proof the
+  pattern is real, and until a person verifies a hand-labelled sample, the
+  count is a proxy and cannot be called an undercount. In method
+  terms: the deterministic census, sensitivity diagnostic, matched
+  negative-control comparison, and fixed-seed placebo are materialized. The
+  placebo does not reproduce the actual final-stage totals, so the temporal link
+  contributes to this proxy under the frozen perturbation, while the controls
+  still show substantial distribution overlap within a narrow common-support
+  subset. One cyclic placebo is not labeled validation or an inferential
+  permutation distribution.
   *Deps: ID · Refs: [L14], [L1], [L3] · Audits: [February 2026 data-cut census materialization](../studies/phase-iii-census/materialization-2026-02-06.md), [matched negative-control outcomes](../studies/phase-iii-census/negative-control-outcomes-2026-08-03.md), [full-census placebo](../studies/phase-iii-census/placebo-results-2026-08-03.md) · Spec: [../specs/phase3-match-benchmark/](../specs/phase3-match-benchmark/) (protocol and current evidence limits), [../specs/phase-3-solicitation-alerts/](../specs/phase-3-solicitation-alerts/) (solicitation monitoring)*
 
 - **Categorization vs. transition likelihood**
@@ -753,11 +760,14 @@ Foundational — most questions in A–D depend on work here.*
   Which federal awards are SBIR/STTR versus non-SBIR, and with what confidence?
   A three-tier classifier: FPDS research field (1.0) → ALN (0.8–1.0) →
   description parsing (0.5–0.7).
-  **Status:** Partially computable. The negative-control study now provides a
-  conservative entity-level screened-negative table using exact identifiers and
-  fail-closed collision quarantine across the available award history. Confirmed
-  and indeterminate possible SBIR entities are excluded; it does not supply the
-  requested award-level confidence classifier or make every candidate screenable.
+  **Status:** Partially computable. We can now say with confidence which firms
+  are *not* SBIR firms: any firm with a confirmed or even possible SBIR history
+  is kept out of that list, and ambiguous identifier matches are set aside
+  rather than guessed. What we cannot yet do is score each individual award
+  with a confidence level, or screen every candidate. In method terms: the
+  negative-control study provides a conservative entity-level screened-negative
+  table using exact identifiers and fail-closed collision quarantine across the
+  available award history.
   *Deps: none · Refs: [L15], [L14] · Audit: [identity and eligibility](../studies/phase-iii-census/identity-eligibility-audit-2026-08-03.md) · Spec: [sbir-identification-methodology.md](sbir-identification-methodology.md), [../specs/archive/completed-features/sbir-identification/](../specs/archive/completed-features/sbir-identification/)*
 
 - **Shared-ALN false positives**
@@ -767,11 +777,15 @@ Foundational — most questions in A–D depend on work here.*
 
 - **SBIR.gov ↔ USAspending/FPDS reconciliation**
   How does SBIR.gov data reconcile with federal USAspending/FPDS records?
-  **Status:** Partially computable. The census input path verified the complete
-  available SBIR.gov v2 snapshot and the generated-award Phase II collapse
-  against the selected February USAspending/FPDS snapshot. It reconciles only
-  exact normalized raw PIID/source identifiers and fails closed on ambiguity or
-  taxonomy conflict; broader cross-source completeness remains unvalidated.
+  **Status:** Partially computable. Where the two systems carry exactly the
+  same contract identifier and nothing about the records conflicts, we can tie
+  them together; anything ambiguous or conflicting is set aside rather than
+  guessed, and whether the two sources cover the same universe of awards
+  remains unvalidated. In method
+  terms: the census input path verified the complete available SBIR.gov v2
+  snapshot and the generated-award Phase II collapse against the selected
+  February USAspending/FPDS snapshot, reconciling only exact normalized raw
+  PIID/source identifiers and failing closed on ambiguity or taxonomy conflict.
   *Deps: none · Refs: [L14], [L1], [L3] (tracking-data limits)*
 
 ### E2. Entity resolution (foundation, Tier 1–2)
@@ -868,9 +882,10 @@ the questions remain useful, but there is no active umbrella spec.
   Candidate program/timing or text links must remain separate from exact source
   identifiers, and solicitation similarity does not establish award use or a
   supply-chain dependency.
-  **Status:** Initial award-linkage coverage is measured from the full SBIR.gov
-  bulk award snapshot. Source-native solicitation text, revisions, and attachment
-  coverage remain open.
+  **Status:** We have measured how many awards can be tied back to the
+  solicitation that produced them, using the full SBIR.gov bulk award snapshot.
+  Retrieving the solicitation documents themselves — requirement text,
+  revisions, and attachments — remains open.
   *Deps: E3, CET · Plan: [solicitation document evidence](research/solicitation_document_evidence_plan.md) · Evidence: [bulk linkage coverage](research/solicitation_source_coverage_status.md)*
 
 - **FSCPSC NAICS prediction**

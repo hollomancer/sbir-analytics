@@ -1,21 +1,24 @@
 # SBIR Federal Spending vs Form D Private Capital (2009-2024)
 
+**Audience:** F-area analysts, investor researchers, and policy staff studying
+program-wide private-capital leverage.
+**Evidence status:** dated analysis; not approved for citation
 **Date:** 2026-04-23
 **Methodology commit:** `f65abb89` (rule-based two-signal tiering + ZIP address matching)
 **Field reference:** [form-d-data-dictionary.md](form-d-data-dictionary.md)
 **DoD branch-level analysis:** [dod-form-d-leverage.md](dod-form-d-leverage.md)
 
-> **Methodology appendices.** This doc folds in two methodology supplements that were previously separate companion notes: [Appendix A — Bootstrap confidence intervals](#appendix-a--bootstrap-confidence-intervals-pr-338) and [Appendix B — Pooled Investment Fund cross-link integrity audit](#appendix-b--pooled-investment-fund-cross-link-integrity-audit-pr-340).
+**What this measures:** how much private capital SBIR companies raised through
+SEC-registered Regulation D offerings, compared against federal SBIR spending
+over the same period.
 
-## Methodology revision history
-
-**2026-04-23 — commit [`f65abb89`](https://github.com/hollomancer/sbir-analytics/commit/f65abb89):**
-
-- **What changed:** Replaced the weighted-composite confidence score with **rule-based two-signal tiering** (high = person ≥ 0.7 OR ZIP match; medium = state match; low = neither). Added ZIP-address matching as a parallel confirmation signal (motivation in the "HHS/NIH and Address Matching" section below). Added `EXCLUDED_INDUSTRY_GROUPS` (Pooled Investment Fund, Insurance, Restaurants, etc.) for false-positive prevention.
-- **Net cohort impact (v1 → current):** High **2,212 → 3,640 (+65%)** · Medium 3,310 → 1,120 (−66%) · Low 4,883 → 5,645 (+16%). 2,844 records (27% of 10,405) changed tier under the new rule.
-- **Address-signal-specific contribution:** 1,620 of the current high-tier records have ZIP as the deciding signal — i.e., they would have been medium or low under the new rule without the ZIP component. Detailed breakdown in the "HHS/NIH and Address Matching" section below.
-- **Reproducibility:** The pre-change snapshot is preserved locally as `data/form_d_details_v1.jsonl` for verifying the methodology change. The file is gitignored under `/data/` (raw analysis output) and is regenerable by reverting `sbir_etl/enrichers/sec_edgar/form_d_scoring.py` to its pre-`f65abb89` state and re-running `scripts/archive/data/fetch_form_d_details.py`.
-- **Findings below are computed against the post-change (current) cohort.**
+> **Methodology appendices.** This doc folds in two methodology supplements that
+> were previously separate companion notes: [Appendix A — Bootstrap confidence
+> intervals](#appendix-a--bootstrap-confidence-intervals-pr-338) and [Appendix B
+> — Pooled Investment Fund cross-link integrity audit](#appendix-b--pooled-investment-fund-cross-link-integrity-audit-pr-340).
+> The [methodology revision history](#methodology-revision-history) precedes the
+> Methodology section; all findings are computed against the post-change
+> (current) cohort.
 
 ## Summary
 
@@ -43,6 +46,16 @@ The 1.82x headline uses *total federal SBIR program spending* ($50.98B) as the d
 - **9.48x** ≈ "For SBIR awardees who go on to attract private capital, what's their leverage per SBIR dollar received?" (per-firm leverage framing.)
 
 The denominator gap explains the 5× difference: the program total includes ~$42B going to SBIR firms with no Form D activity at all. See [Appendix A](#appendix-a--bootstrap-confidence-intervals-pr-338) for the full methodology comparison.
+
+## Methodology revision history
+
+**2026-04-23 — commit [`f65abb89`](https://github.com/hollomancer/sbir-analytics/commit/f65abb89):**
+
+- **What changed:** Replaced the weighted-composite confidence score with **rule-based two-signal tiering** (high = person ≥ 0.7 OR ZIP match; medium = state match; low = neither). Added ZIP-address matching as a parallel confirmation signal (motivation in the "HHS/NIH and Address Matching" section below). Added `EXCLUDED_INDUSTRY_GROUPS` (Pooled Investment Fund, Insurance, Restaurants, etc.) for false-positive prevention.
+- **Net cohort impact (v1 → current):** High **2,212 → 3,640 (+65%)** · Medium 3,310 → 1,120 (−66%) · Low 4,883 → 5,645 (+16%). 2,844 records (27% of 10,405) changed tier under the new rule.
+- **Address-signal-specific contribution:** 1,620 of the current high-tier records have ZIP as the deciding signal — i.e., they would have been medium or low under the new rule without the ZIP component. Detailed breakdown in the "HHS/NIH and Address Matching" section below.
+- **Reproducibility:** The pre-change snapshot is preserved locally as `data/form_d_details_v1.jsonl` for verifying the methodology change. The file is gitignored under `/data/` (raw analysis output) and is regenerable by reverting `sbir_etl/enrichers/sec_edgar/form_d_scoring.py` to its pre-`f65abb89` state and re-running `scripts/archive/data/fetch_form_d_details.py`.
+- **All findings in this document are computed against the post-change (current) cohort.**
 
 ## Methodology
 

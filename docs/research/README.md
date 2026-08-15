@@ -16,6 +16,13 @@ Do not cite an output as a validated finding unless its linked
 report may still be early research. See [evidence levels](../steering/epistemic-tiers.md)
 and [study requirements](../../studies/README.md) for the review rules.
 
+Every document in this directory should open by declaring its reader — a
+`**Prepared for:**` or `**Audience:**` header line. A doc addressed to policy
+staff or program officers is signed up for plain language and findings-first
+ordering (the policy briefs are the model); a doc declared for maintainers may
+be as technical as it needs to be. Technical appendices linked from a plain
+brief count as maintainer-facing.
+
 ## Capital formation, exits, and firm pathways
 
 | Output | Questions | Evidence status | Data covered |
