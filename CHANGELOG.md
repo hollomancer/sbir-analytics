@@ -10,15 +10,36 @@ version.
 
 ## [Unreleased]
 
+## [0.6.0] — 2026-08-15
+
+### Added
+
+- OpenAlex and PubMed enricher clients with sync facades and mocked unit tests
+  (#616).
+- STTR spinout–subcontract linkage Phase 0 spec (exploratory, gated), dedicated
+  B1/B2 inventory questions, and an exploratory partner-type commercialization
+  notebook (#615).
+- Bayh-Dole / D3 license-source research as O-12: no public microdata for
+  research-institution-to-SBC licenses (#617).
+- A blocking hygiene check that every top-level spec declares a
+  research-question anchor (#612).
+
+### Changed
+
+- Outside-reader Status lines and Form D / Massachusetts report leads now use
+  plain language while staying inside study boundaries (#613).
+
 ### Fixed
 
 - Corrected the live-server health check to use production Neo4j variables and
-  dependencies instead of E2E-only assumptions.
+  dependencies instead of E2E-only assumptions (#611).
 - Made the Tailscale route helper runnable with the macOS system Python used by
-  host preflight checks.
-- Made server rebuilds remove services retired from the Compose definition.
+  host preflight checks (#611).
+- Made server rebuilds remove services retired from the Compose definition
+  (#611).
 - Restored the non-root `sbir` runtime contract for all three Dagster services,
-  including one-time ownership migration for existing persistent directories.
+  including one-time ownership migration for existing persistent directories
+  (#611).
 
 ## [0.5.1] — 2026-08-12
 
@@ -129,7 +150,8 @@ across the root project and the three packages under `packages/`.
 `vMAJOR.MINOR.PATCH` form it requires. Per that policy published tags are never
 moved or reused, so they remain as historical markers.
 
-[Unreleased]: https://github.com/hollomancer/sbir-analytics/compare/v0.5.1...HEAD
+[Unreleased]: https://github.com/hollomancer/sbir-analytics/compare/v0.6.0...HEAD
+[0.6.0]: https://github.com/hollomancer/sbir-analytics/compare/v0.5.1...v0.6.0
 [0.5.1]: https://github.com/hollomancer/sbir-analytics/compare/v0.5.0...v0.5.1
 [0.5.0]: https://github.com/hollomancer/sbir-analytics/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/hollomancer/sbir-analytics/compare/v0.3.0...v0.4.0
