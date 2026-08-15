@@ -38,6 +38,32 @@ BOUNDARY_FISCAL_YEARS = frozenset({2009, 2025})
 SHA256_RE = re.compile(r"[0-9a-f]{64}")
 CIK_RE = re.compile(r"[1-9][0-9]{0,9}")
 
+NAME_STATUS_COMPLETE = "proxy_observed_in_complete_fiscal_year_window_on_exact_name_candidate_link"
+NAME_STATUS_BOUNDARY = (
+    "proxy_observed_only_in_incomplete_boundary_fiscal_years_on_exact_name_candidate_link"
+)
+NAME_STATUS_COVERED_ZERO = "no_proxy_observed_on_exact_name_candidate_link_in_bounded_source"
+NAME_STATUS_NO_LINK = "no_exact_name_candidate_link"
+NAME_OBSERVATION_STATUSES = (
+    NAME_STATUS_COMPLETE,
+    NAME_STATUS_BOUNDARY,
+    NAME_STATUS_COVERED_ZERO,
+    NAME_STATUS_NO_LINK,
+)
+NAME_LINK_UNIQUE = "unique_exact_name_candidate_link"
+NAME_LINK_AMBIGUOUS = "ambiguous_exact_name_candidate_link"
+NAME_LINK_NONE = "no_exact_name_candidate_link"
+NAME_LINK_CLASSES = (NAME_LINK_UNIQUE, NAME_LINK_AMBIGUOUS, NAME_LINK_NONE)
+NAME_OBSERVATION_FIELDS = {
+    "boundary_proxy_accessions",
+    "candidate_ciks",
+    "complete_fy_proxy_accessions",
+    "exact_name_candidate_link_class",
+    "normalized_sbir_name",
+    "observation_status",
+    "raw_sbir_names",
+}
+
 AGENCY_TAG_BY_NAME = {
     "Department of Agriculture": "USDA",
     "Department of Commerce": "DOC",
@@ -202,7 +228,8 @@ def _validate_manifests(
         label="candidate-exclusion product",
     )
     exclusion = _mapping(control.get("exclusion"), label="control exclusion metadata")
-    awards_ref = _product_reference(exclusion.get("awards_csv"), label="control awards snapshot")
+    awards_snapshot = _mapping(exclusion.get("awards_csv"), label="control awards snapshot")
+    awards_ref = _product_reference(awards_snapshot, label="control awards snapshot")
     exact_match = _mapping(exclusion.get("exact_match"), label="control exact-match metadata")
     identity_contract = {
         "candidate_cik_count": _positive_int(
@@ -215,6 +242,10 @@ def _validate_manifests(
         "ambiguous_normalized_name_count": _non_negative_int(
             exact_match.get("normalized_names_mapping_to_multiple_ciks"),
             label="ambiguous normalized-name count",
+        ),
+        "award_normalized_name_count": _positive_int(
+            awards_snapshot.get("unique_normalized_company_names"),
+            label="award normalized-name count",
         ),
     }
     if exact_match.get("normalizer_version") != NORMALIZER.value:
@@ -350,12 +381,14 @@ def _load_agency_tags(
     path: Path,
     *,
     expected_rows: int,
+    expected_normalized_names: int,
     candidates: Mapping[str, Mapping[str, Any]],
-) -> dict[str, list[str]]:
+) -> tuple[dict[str, list[str]], dict[str, list[str]]]:
     relevant_names = {
         name for candidate in candidates.values() for name in candidate["matched_normalized_names"]
     }
     tags_by_name: dict[str, set[str]] = defaultdict(set)
+    raw_names_by_name: dict[str, set[str]] = defaultdict(set)
     row_count = 0
     with path.open(encoding="utf-8-sig", errors="strict", newline="") as handle:
         reader = csv.DictReader(handle)
@@ -366,9 +399,10 @@ def _load_agency_tags(
             raise AuditError("Awards CSV must contain Company and Agency columns")
         for row in reader:
             row_count += 1
-            normalized = normalize_company_name(
-                str(row.get(company_column) or "").strip(), profile=NORMALIZER
-            )
+            raw_name = str(row.get(company_column) or "").strip()
+            normalized = normalize_company_name(raw_name, profile=NORMALIZER)
+            if normalized:
+                raw_names_by_name[normalized].add(raw_name)
             if not normalized or normalized not in relevant_names:
                 continue
             agency_name = str(row.get(agency_column) or "").strip()
@@ -378,6 +412,8 @@ def _load_agency_tags(
             tags_by_name[normalized].add(tag)
     if row_count != expected_rows:
         raise AuditError("Awards CSV row count does not match the control manifest")
+    if len(raw_names_by_name) != expected_normalized_names:
+        raise AuditError("Awards CSV normalized-name count does not match the control manifest")
     missing_names = sorted(relevant_names - set(tags_by_name))
     if missing_names:
         raise AuditError("Exact-name evidence is absent from the pinned awards snapshot")
@@ -389,7 +425,10 @@ def _load_agency_tags(
         if not tags:
             raise AuditError(f"Candidate CIK {cik} has no agency tag")
         tags_by_cik[cik] = tags
-    return tags_by_cik
+    return tags_by_cik, {
+        normalized_name: sorted(raw_names)
+        for normalized_name, raw_names in raw_names_by_name.items()
+    }
 
 
 def _validate_coverage(
@@ -505,8 +544,11 @@ def _audit_events(
     candidates: Mapping[str, Mapping[str, Any]],
     agency_tags: Mapping[str, list[str]],
     source_snapshot_id: str,
-) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+) -> tuple[list[dict[str, Any]], dict[str, Any], dict[str, dict[str, list[str]]]]:
     output_rows: list[dict[str, Any]] = []
+    candidate_events: dict[str, dict[str, list[str]]] = defaultdict(
+        lambda: {"boundary": [], "complete_fy": []}
+    )
     seen_accessions: set[str] = set()
     seen_event_ids: set[str] = set()
     full_join_ciks: set[str] = set()
@@ -529,6 +571,7 @@ def _audit_events(
         full_join_ciks.add(cik)
         fiscal_year = federal_fiscal_year(filing_date)
         if fiscal_year in BOUNDARY_FISCAL_YEARS:
+            candidate_events[cik]["boundary"].append(accession)
             boundary_filings[fiscal_year] += 1
             boundary_ciks[fiscal_year].add(cik)
             continue
@@ -565,6 +608,7 @@ def _audit_events(
                 "submission_type": row["submission_type"],
             }
         )
+        candidate_events[cik]["complete_fy"].append(accession)
     if row_count != expected_rows:
         raise AuditError("Proxy-event JSONL row count does not match its manifest")
     output_rows.sort(key=lambda item: (item["filing_date"], item["accession_number"]))
@@ -581,7 +625,14 @@ def _audit_events(
             for fy in sorted(BOUNDARY_FISCAL_YEARS)
         },
     }
-    return output_rows, diagnostics
+    normalized_events = {
+        cik: {
+            "boundary": sorted(set(groups["boundary"])),
+            "complete_fy": sorted(set(groups["complete_fy"])),
+        }
+        for cik, groups in candidate_events.items()
+    }
+    return output_rows, diagnostics, normalized_events
 
 
 def _counts(rows: list[dict[str, Any]], diagnostics: Mapping[str, Any]) -> dict[str, Any]:
@@ -629,11 +680,118 @@ def _counts(rows: list[dict[str, Any]], diagnostics: Mapping[str, Any]) -> dict[
     }
 
 
+def _name_observation_rows(
+    candidates: Mapping[str, Mapping[str, Any]],
+    award_names: Mapping[str, list[str]],
+    candidate_events: Mapping[str, Mapping[str, list[str]]],
+) -> list[dict[str, Any]]:
+    ciks_by_name: dict[str, set[str]] = defaultdict(set)
+    for cik, candidate in candidates.items():
+        for normalized_name in candidate["matched_normalized_names"]:
+            ciks_by_name[str(normalized_name)].add(cik)
+
+    rows: list[dict[str, Any]] = []
+    for normalized_name, raw_names in sorted(award_names.items()):
+        candidate_ciks = sorted(ciks_by_name.get(normalized_name, set()))
+        if not candidate_ciks:
+            link_class = NAME_LINK_NONE
+            status = NAME_STATUS_NO_LINK
+            complete_accessions: list[str] | None = None
+            boundary_accessions: list[str] | None = None
+        else:
+            link_class = NAME_LINK_AMBIGUOUS if len(candidate_ciks) > 1 else NAME_LINK_UNIQUE
+            complete_accessions = sorted(
+                {
+                    accession
+                    for cik in candidate_ciks
+                    for accession in candidate_events.get(cik, {}).get("complete_fy", [])
+                }
+            )
+            boundary_accessions = sorted(
+                {
+                    accession
+                    for cik in candidate_ciks
+                    for accession in candidate_events.get(cik, {}).get("boundary", [])
+                }
+            )
+            if complete_accessions:
+                status = NAME_STATUS_COMPLETE
+            elif boundary_accessions:
+                status = NAME_STATUS_BOUNDARY
+            else:
+                status = NAME_STATUS_COVERED_ZERO
+        rows.append(
+            {
+                "boundary_proxy_accessions": boundary_accessions,
+                "candidate_ciks": candidate_ciks,
+                "complete_fy_proxy_accessions": complete_accessions,
+                "exact_name_candidate_link_class": link_class,
+                "normalized_sbir_name": normalized_name,
+                "observation_status": status,
+                "raw_sbir_names": raw_names,
+            }
+        )
+    return rows
+
+
+def _name_observation_counts(
+    rows: list[dict[str, Any]],
+    candidates: Mapping[str, Mapping[str, Any]],
+    candidate_events: Mapping[str, Mapping[str, list[str]]],
+) -> dict[str, Any]:
+    statuses = Counter(str(row["observation_status"]) for row in rows)
+    link_classes = Counter(str(row["exact_name_candidate_link_class"]) for row in rows)
+    proxy_ciks = {
+        cik
+        for cik, groups in candidate_events.items()
+        if groups.get("complete_fy") or groups.get("boundary")
+    }
+    complete_fy_ciks = {
+        cik for cik, groups in candidate_events.items() if groups.get("complete_fy")
+    }
+    observed_rows = [
+        row
+        for row in rows
+        if row["observation_status"] in {NAME_STATUS_COMPLETE, NAME_STATUS_BOUNDARY}
+    ]
+    return {
+        "exact_name_candidate_link_classes": {
+            label: link_classes.get(label, 0) for label in NAME_LINK_CLASSES
+        },
+        "observation_statuses": {
+            label: statuses.get(label, 0) for label in NAME_OBSERVATION_STATUSES
+        },
+        "proxy_cik_to_name_grain_reconciliation": {
+            "bounded_source_proxy_bearing_candidate_ciks": len(proxy_ciks),
+            "bounded_source_proxy_observed_linked_normalized_names": len(observed_rows),
+            "complete_fy_proxy_bearing_candidate_ciks": len(complete_fy_ciks),
+            "complete_fy_proxy_observed_linked_normalized_names": statuses.get(
+                NAME_STATUS_COMPLETE, 0
+            ),
+            "incomplete_boundary_only_proxy_observed_linked_normalized_names": statuses.get(
+                NAME_STATUS_BOUNDARY, 0
+            ),
+            "name_grain_minus_cik_grain_observed_difference": len(observed_rows) - len(proxy_ciks),
+            "observed_normalized_names_linked_to_multiple_proxy_bearing_ciks": sum(
+                len(proxy_ciks & set(row["candidate_ciks"])) > 1 for row in observed_rows
+            ),
+            "proxy_bearing_cik_name_memberships": sum(
+                len(candidates[cik]["matched_normalized_names"]) for cik in proxy_ciks
+            ),
+            "proxy_bearing_ciks_linked_to_multiple_normalized_names": sum(
+                len(candidates[cik]["matched_normalized_names"]) > 1 for cik in proxy_ciks
+            ),
+        },
+        "rows": len(rows),
+    }
+
+
 def _write_jsonl_product(
     output_dir: Path,
     rows: list[dict[str, Any]],
     *,
     forbidden_paths: set[Path],
+    product_name: str,
 ) -> tuple[dict[str, Any], Path, bool]:
     output_dir.mkdir(parents=True, exist_ok=True)
     if not output_dir.is_dir() or output_dir.is_symlink():
@@ -643,7 +801,7 @@ def _write_jsonl_product(
     temp_path: Path | None = None
     try:
         with tempfile.NamedTemporaryFile(
-            dir=output_dir, prefix=".sbir-form-d-proxy-audit.", delete=False
+            dir=output_dir, prefix=f".{product_name}.", delete=False
         ) as handle:
             temp_path = Path(handle.name)
             for row in rows:
@@ -655,7 +813,7 @@ def _write_jsonl_product(
                 digest.update(data)
                 size_bytes += len(data)
         sha = digest.hexdigest()
-        destination = output_dir / f"sbir_form_d_proxy_audit.{sha}.jsonl"
+        destination = output_dir / f"{product_name}.{sha}.jsonl"
         if destination.resolve() in forbidden_paths:
             raise AuditError("Content-addressed output must not alias an input or manifest")
         destination_preexisted = destination.exists()
@@ -727,8 +885,11 @@ def build(args: argparse.Namespace) -> dict[str, Any]:
         expected_rows=candidate_ref["row_count"],
         identity_contract=identity_contract,
     )
-    agency_tags = _load_agency_tags(
-        input_paths[5], expected_rows=awards_ref["row_count"], candidates=candidates
+    agency_tags, award_names = _load_agency_tags(
+        input_paths[5],
+        expected_rows=awards_ref["row_count"],
+        expected_normalized_names=identity_contract["award_normalized_name_count"],
+        candidates=candidates,
     )
     proxy_source = _mapping(proxy["source"], label="proxy source")
     source_snapshot_id = str(proxy_source["source_snapshot_id"])
@@ -738,7 +899,7 @@ def build(args: argparse.Namespace) -> dict[str, Any]:
         candidates=candidates,
         source_snapshot_id=source_snapshot_id,
     )
-    rows, diagnostics = _audit_events(
+    rows, diagnostics, candidate_events = _audit_events(
         input_paths[3],
         expected_rows=event_ref["row_count"],
         candidates=candidates,
@@ -747,11 +908,71 @@ def build(args: argparse.Namespace) -> dict[str, Any]:
     )
     counts = _counts(rows, diagnostics)
     counts["candidate_ciks"] = len(candidates)
-    product, product_path, product_preexisted = _write_jsonl_product(
-        Path(args.output_dir),
-        rows,
-        forbidden_paths={path.resolve() for path in [*input_paths, audit_manifest_path]},
-    )
+    name_rows = _name_observation_rows(candidates, award_names, candidate_events)
+    name_counts = _name_observation_counts(name_rows, candidates, candidate_events)
+    counts["normalized_name_observation"] = name_counts
+
+    expected_product_paths = {path.resolve() for path in [*input_paths, audit_manifest_path]}
+    published_products: list[Path] = []
+    try:
+        product, product_path, product_preexisted = _write_jsonl_product(
+            Path(args.output_dir),
+            rows,
+            forbidden_paths=expected_product_paths,
+            product_name="sbir_form_d_proxy_audit",
+        )
+        if not product_preexisted:
+            published_products.append(product_path)
+        name_product, name_product_path, name_product_preexisted = _write_jsonl_product(
+            Path(args.output_dir),
+            name_rows,
+            forbidden_paths=expected_product_paths | {product_path.resolve()},
+            product_name="sbir_form_d_proxy_observation",
+        )
+        if not name_product_preexisted:
+            published_products.append(name_product_path)
+    except Exception:
+        for path in published_products:
+            path.unlink(missing_ok=True)
+        raise
+
+    name_statuses = name_counts["observation_statuses"]
+    name_invariants = {
+        "compact_name_observation_schema": all(
+            set(row) == NAME_OBSERVATION_FIELDS for row in name_rows
+        ),
+        "name_observation_content_addressed": name_product["path"]
+        == f"sbir_form_d_proxy_observation.{name_product['sha256']}.jsonl",
+        "name_observation_rows_sorted_and_unique": [
+            row["normalized_sbir_name"] for row in name_rows
+        ]
+        == sorted({row["normalized_sbir_name"] for row in name_rows}),
+        "name_observation_statuses_exhaustive": sum(name_statuses.values()) == len(name_rows),
+        "no_link_proxy_observations_are_unknown": all(
+            row["candidate_ciks"] == []
+            and row["complete_fy_proxy_accessions"] is None
+            and row["boundary_proxy_accessions"] is None
+            for row in name_rows
+            if row["observation_status"] == NAME_STATUS_NO_LINK
+        ),
+        "linked_proxy_accessions_are_unique": all(
+            row["complete_fy_proxy_accessions"] is not None
+            and row["boundary_proxy_accessions"] is not None
+            and len(row["complete_fy_proxy_accessions"])
+            == len(set(row["complete_fy_proxy_accessions"]))
+            and len(row["boundary_proxy_accessions"]) == len(set(row["boundary_proxy_accessions"]))
+            and not (
+                set(row["complete_fy_proxy_accessions"]) & set(row["boundary_proxy_accessions"])
+            )
+            for row in name_rows
+            if row["observation_status"] != NAME_STATUS_NO_LINK
+        ),
+        "proxy_observed_name_timing_partition_reconciles": name_statuses[NAME_STATUS_COMPLETE]
+        + name_statuses[NAME_STATUS_BOUNDARY]
+        == name_counts["proxy_cik_to_name_grain_reconciliation"][
+            "bounded_source_proxy_observed_linked_normalized_names"
+        ],
+    }
 
     invariants = {
         "agency_tags_nonempty_and_sorted": all(
@@ -776,6 +997,7 @@ def build(args: argparse.Namespace) -> dict[str, Any]:
             item["proxy_filings"] for item in counts["filing_fiscal_years"].values()
         )
         == len(rows),
+        **name_invariants,
     }
     try:
         if not all(invariants.values()):
@@ -783,6 +1005,9 @@ def build(args: argparse.Namespace) -> dict[str, Any]:
 
         manifest = {
             "caveats": [
+                "The name ledger is normalized-name grain, not verified firm grain.",
+                "Boundary-only proxy evidence is separate from complete-fiscal-year evidence.",
+                "No exact-name candidate link is outcome-unobserved, not a binary zero.",
                 "Exact-name candidate identities are not verified SBIR identities.",
                 "Exact-name identity recall is unknown.",
                 "The event is a filer-supplied Form D filing proxy, not a verified legal event.",
@@ -797,6 +1022,8 @@ def build(args: argparse.Namespace) -> dict[str, Any]:
             "counts": counts,
             "covariates_ready": False,
             "exclusion_recall": "unknown",
+            "filer_nonfiler_ready": False,
+            "identity_recall": "unknown",
             "identity_status": "exact_name_candidate",
             "inputs": {
                 "awards_snapshot": awards_meta,
@@ -807,8 +1034,20 @@ def build(args: argparse.Namespace) -> dict[str, Any]:
                 "proxy_manifest": proxy_meta,
             },
             "invariants": invariants,
+            "name_observation_contract": {
+                "exact_name_candidate_link_classes": list(NAME_LINK_CLASSES),
+                "fields": sorted(NAME_OBSERVATION_FIELDS),
+                "grain": "normalized_historical_sbir_name",
+                "normalizer_version": NORMALIZER.value,
+                "observation_statuses": list(NAME_OBSERVATION_STATUSES),
+            },
             "outcome_kind": "filing_proxy",
-            "outputs": {"filing_evidence_audit": product},
+            "outputs": {
+                "filing_evidence_audit": product,
+                "normalized_name_observation": name_product,
+            },
+            "post_award": False,
+            "rate_ready": False,
             "ready_for_matching": False,
             "schema_version": OUTPUT_SCHEMA_VERSION,
             "source": {
@@ -819,6 +1058,7 @@ def build(args: argparse.Namespace) -> dict[str, Any]:
                 "source": SOURCE,
                 "source_snapshot_id": source_snapshot_id,
             },
+            "verified_identity": False,
             "verified_ma": False,
             "window": {
                 "complete_filing_fiscal_years": list(
@@ -830,8 +1070,8 @@ def build(args: argparse.Namespace) -> dict[str, Any]:
         manifest_data = (json.dumps(manifest, indent=2, sort_keys=True) + "\n").encode("utf-8")
         _atomic_write(audit_manifest_path, manifest_data)
     except Exception:
-        if not product_preexisted:
-            product_path.unlink(missing_ok=True)
+        for path in published_products:
+            path.unlink(missing_ok=True)
         raise
     return manifest
 
