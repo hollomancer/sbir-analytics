@@ -57,9 +57,7 @@ def test_all_valid_tiers_are_accepted(tmp_path: Path) -> None:
         spec = tmp_path / "specs" / tier
         body = f"# {tier}\n\n**Target epistemic tier:** `{tier}`\n"
         if tier == "evidence":
-            body += (
-                "\n**Declared estimand:** unit-test placeholder estimand.\n"
-            )
+            body += "\n**Declared estimand:** unit-test placeholder estimand.\n"
             _write(
                 tmp_path,
                 f"specs/{tier}/amendments.md",
