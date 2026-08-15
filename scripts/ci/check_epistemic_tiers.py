@@ -1,5 +1,13 @@
 #!/usr/bin/env python3
-"""Require every active specification to declare a valid epistemic target tier."""
+"""Require every active specification to declare a valid epistemic target tier.
+
+Evidence-tier specs must also satisfy a minimal paperwork contract: an
+amendments log that records SHA-256 freeze enforcement (a 64-hex digest and/or
+explicit raw-byte freeze language), and an explicit estimand field in
+requirements.md. This gate does not prove runtime SHA or blocking asset-check
+enforcement. Specs that only want the label without the contract should declare
+``pipelines`` or ``exploratory`` instead.
+"""
 
 import re
 from dataclasses import dataclass
@@ -12,6 +20,17 @@ VALID_TIERS = frozenset({"primitives", "pipelines", "evidence", "exploratory"})
 TIER_DECLARATION = re.compile(
     r"^\*\*Target epistemic tier:\*\*\s*`?([A-Za-z]+)`?\s*$",
     flags=re.MULTILINE,
+)
+ESTIMAND_DECLARATION = re.compile(
+    r"^\*\*(?:Declared )?Estimand:\*\*\s+\S",
+    flags=re.MULTILINE | re.IGNORECASE,
+)
+SHA256_DIGEST = re.compile(r"\b[0-9a-f]{64}\b", flags=re.IGNORECASE)
+# Census-style freezes compile expected digests into the asset and intentionally
+# omit embedding them in amendments.md (self-hashing). Accept that paperwork form.
+SHA256_FREEZE_LANGUAGE = re.compile(
+    r"(?:raw-byte\s+SHA-256|SHA-256[^\n.]{0,80}(?:freeze|verif))",
+    flags=re.IGNORECASE,
 )
 FENCE = re.compile(r"^[ \t]*(?P<fence>`{3,}|~{3,})(?P<suffix>.*)$")
 EXCLUDED_SPEC_DIRECTORIES = frozenset({"archive"})
@@ -63,6 +82,49 @@ def _outside_fenced_code(markdown: str) -> str:
     return "\n".join(retained)
 
 
+def _evidence_contract_violations(
+    spec_directory: Path,
+    *,
+    repository_root: Path,
+) -> list[TierDeclarationViolation]:
+    """Minimal evidence-tier paperwork: amendments SHA language + declared estimand."""
+
+    violations: list[TierDeclarationViolation] = []
+    requirements = spec_directory / "requirements.md"
+    relative_req = requirements.relative_to(repository_root).as_posix()
+    amendments = spec_directory / "amendments.md"
+    relative_amd = (spec_directory / "amendments.md").relative_to(repository_root).as_posix()
+
+    if not amendments.is_file():
+        violations.append(
+            TierDeclarationViolation(
+                relative_amd,
+                "evidence-tier specs require amendments.md with SHA-256 freeze paperwork",
+            )
+        )
+    else:
+        amd_text = amendments.read_text(encoding="utf-8")
+        if not (SHA256_DIGEST.search(amd_text) or SHA256_FREEZE_LANGUAGE.search(amd_text)):
+            violations.append(
+                TierDeclarationViolation(
+                    relative_amd,
+                    "evidence-tier amendments.md must record a SHA-256 freeze digest "
+                    "or explicit raw-byte SHA-256 freeze verification language",
+                )
+            )
+
+    req_text = _outside_fenced_code(requirements.read_text(encoding="utf-8"))
+    if not ESTIMAND_DECLARATION.search(req_text):
+        violations.append(
+            TierDeclarationViolation(
+                relative_req,
+                "evidence-tier specs require '**Declared estimand:** …' "
+                "(or '**Estimand:** …')",
+            )
+        )
+    return violations
+
+
 def validate_spec_directory(
     spec_directory: Path,
     *,
@@ -101,6 +163,9 @@ def validate_spec_directory(
                 f"invalid target tier {tier!r}; expected one of: {choices}",
             )
         ]
+
+    if tier == "evidence":
+        return _evidence_contract_violations(spec_directory, repository_root=repository_root)
     return []
 
 

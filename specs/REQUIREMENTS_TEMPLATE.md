@@ -3,9 +3,19 @@
 > **Status:** [Not yet started | In progress | Partially implemented | Complete]
 > Anchors inventory question(s) **[RQ IDs]** in [docs/research-questions.md](../docs/research-questions.md).
 
+**Target epistemic tier:** [`primitives` | `pipelines` | `evidence` | `exploratory`]
+
 **Research question anchor:** [e.g., A3 — DoD leverage ratio]
 **Answers for:** [audiences from the RQ inventory — e.g., policy analysts, SBIR program managers]
 **Complexity tier:** [Descriptive | Relational | Inferential | Predictive]
+
+<!--
+Evidence-tier only — omit for other tiers. Required when Target epistemic tier is `evidence`:
+**Declared estimand:** [what quantity is estimated, and what would make it wrong]
+Plus an amendments.md freeze log with a SHA-256 digest and/or raw-byte freeze language.
+See docs/steering/epistemic-tiers.md. Default to pipelines or exploratory when the
+four-item evidence contract is not yet in place.
+-->
 
 ---
 
