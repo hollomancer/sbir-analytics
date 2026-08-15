@@ -2,6 +2,7 @@
 
 **Audience:** F-area analysts, investor researchers, and policy staff studying
 program-wide private-capital leverage.
+**Evidence status:** dated analysis; not approved for citation
 **Date:** 2026-04-23
 **Methodology commit:** `f65abb89` (rule-based two-signal tiering + ZIP address matching)
 **Field reference:** [form-d-data-dictionary.md](form-d-data-dictionary.md)
@@ -11,8 +12,11 @@ program-wide private-capital leverage.
 SEC-registered Regulation D offerings, compared against federal SBIR spending
 over the same period.
 
-> **Methodology appendices.** This doc folds in two methodology supplements that were previously separate companion notes: [Appendix A — Bootstrap confidence intervals](#appendix-a--bootstrap-confidence-intervals-pr-338) and [Appendix B — Pooled Investment Fund cross-link integrity audit](#appendix-b--pooled-investment-fund-cross-link-integrity-audit-pr-340). The
-> [methodology revision history](#methodology-revision-history) precedes the
+> **Methodology appendices.** This doc folds in two methodology supplements that
+> were previously separate companion notes: [Appendix A — Bootstrap confidence
+> intervals](#appendix-a--bootstrap-confidence-intervals-pr-338) and [Appendix B
+> — Pooled Investment Fund cross-link integrity audit](#appendix-b--pooled-investment-fund-cross-link-integrity-audit-pr-340).
+> The [methodology revision history](#methodology-revision-history) precedes the
 > Methodology section; all findings are computed against the post-change
 > (current) cohort.
 

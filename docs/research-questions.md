@@ -515,9 +515,10 @@ statutory goal is Phase III commercialization.*
   matching rules, the agency, and the time window?
   *Method:* the matching rules were written down and frozen before the counts
   were run, so the result cannot be tuned after the fact.
-  **Status:** We can produce this count, and it survives the falsification
-  checks that were designed before the counts were run — but no one has yet
-  hand-verified a sample of the matches, so the result is a follow-on proxy:
+  **Status:** We can produce this count, and it holds up under a scrambled-dates
+  check designed before the counts were run, though matched control firms still
+  look substantially similar — and no one has yet hand-verified a sample of the
+  matches, so the result is a follow-on proxy:
   not validated, not citable, and not proof of statutory Phase III. In method
   terms: reproducible and falsification-tested for the frozen audit estimand.
   The complete census, matched negative-control, and fixed-seed placebo tables
@@ -574,9 +575,10 @@ statutory goal is Phase III commercialization.*
   award-grade identity and record granularity (issue #447 / PR #449); production
   source lifecycle belongs to issue #442.
   **Status:** Partially computable. We can count the contracts that look like
-  uncoded Phase III work, and a scrambled-dates check shows the timing pattern
-  is real rather than an artifact — but until a person verifies a hand-labelled
-  sample, the count is a proxy and cannot be called an undercount. In method
+  uncoded Phase III work, and the timing pattern does not disappear under a
+  preregistered scrambled-dates check — but that one check is not proof the
+  pattern is real, and until a person verifies a hand-labelled sample, the
+  count is a proxy and cannot be called an undercount. In method
   terms: the deterministic census, sensitivity diagnostic, matched
   negative-control comparison, and fixed-seed placebo are materialized. The
   placebo does not reproduce the actual final-stage totals, so the temporal link
@@ -776,9 +778,10 @@ Foundational — most questions in A–D depend on work here.*
 - **SBIR.gov ↔ USAspending/FPDS reconciliation**
   How does SBIR.gov data reconcile with federal USAspending/FPDS records?
   **Status:** Partially computable. Where the two systems carry exactly the
-  same contract identifier, we have verified that their records agree; anything
-  short of an exact match is set aside rather than guessed, and whether the two
-  sources cover the same universe of awards remains unvalidated. In method
+  same contract identifier and nothing about the records conflicts, we can tie
+  them together; anything ambiguous or conflicting is set aside rather than
+  guessed, and whether the two sources cover the same universe of awards
+  remains unvalidated. In method
   terms: the census input path verified the complete available SBIR.gov v2
   snapshot and the generated-award Phase II collapse against the selected
   February USAspending/FPDS snapshot, reconciling only exact normalized raw
