@@ -39,6 +39,17 @@ As in Wave 1, these are companion views over the canonical artifacts — the scr
 the repeatable computation layer, and each notebook degrades to a "run the generator first"
 message when an artifact is absent.
 
+## Active explorations
+
+Question-driven work under `notebooks/explorations/`. These are not companions to a
+canonical generator; they stay `exploratory` and non-citable until explicitly promoted.
+
+| Investigation | Question | Notebook | Status |
+|---|---|---|---|
+| Negative-control screen coverage | B2 — do identifier-poor SAM candidates pass the Phase III negative-control screen unscreened? | `explorations/b2_control_screen_unscreenable_candidates.ipynb` | Active. Feeds a possible amendment to the frozen `phase-iii-census` spec; not itself a census number. |
+| STTR partner-type × commercialization channels | B1 / B3 — among STTR Phase II firms, do observed Phase III / Form D / M&A rates differ by a coarse RI partner-type heuristic? | `explorations/b1_sttr_partner_type_commercialization.ipynb` | Active. Not RQ2; not the frozen partner-type classifier. |
+| STTR spinout-vs-subcontract (RQ1) data availability | B2/RQ1 (spec-local anchor, distinct from the canonical B2) — is the public data the frozen classification cascade would consume actually present locally, independent of the `open-questions.md` freeze gate? | `explorations/sttr_rq1_data_availability.ipynb` | Active. Input-availability probe only; does not implement or run the cascade. |
+
 ## Keep automated — not notebook candidates
 
 - Downloads and external ingestion: `download_sbir.py`, `download_sam_gov.py`,

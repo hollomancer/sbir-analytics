@@ -502,11 +502,33 @@ statutory goal is Phase III commercialization.*
   Lerner [L10] found growth concentrated in high-VC zip codes.
   *Deps: ER · Refs: [L10] · Spec: [queries/transition-queries.md](queries/transition-queries.md)*
 
+- **STTR research-institution partner types**
+  Of STTR awards, what types of research institutions appear as partners —
+  universities, FFRDCs, research hospitals, independent institutes, new-model
+  research organizations — and has a non-university, non-FFRDC nonprofit ever
+  served as an STTR partner?
+  **Status:** Not computable. Phase 0 design only (`exploratory`, non-citable);
+  classification criteria are not frozen.
+  *Deps: ER · Refs: [L7] · Spec: [../specs/sttr-spinout-linkage/](../specs/sttr-spinout-linkage/)*
+
 ### B2. Relational (Tier 2)
 
 - **Award-to-contract transition**
   Did this SBIR-funded research result in a federal contract?
   *Deps: ER, ID · Refs: [L1], [L2] (NASEM DoD), [L12] (Link & Scott, ~50% commercialization probability), [L3], [L4], [L6] (NASEM program reviews) · Spec: [transition/overview.md](transition/overview.md), [../specs/archive/completed-features/transition_detection/](../specs/archive/completed-features/transition_detection/)*
+
+- **STTR spinout vs. subcontract relationship**
+  Of STTR awards, what share of small-business↔research-institution relationships
+  can public data classify as a founding-or-licensing spinout versus an
+  arm's-length subcontract?
+  Caveat — this is a public-evidence classifiability rate, not true spinout
+  prevalence. The PI employer election and the allocation-of-rights agreement
+  live in non-public agency award files.
+  **Status:** Not computable. Phase 0 design only (`exploratory`, non-citable).
+  Implementation is blocked until open questions are resolved; any citable claim
+  is blocked until negative-control and blind-adjudication gates pass. This
+  split has not been measured before.
+  *Deps: ER, PATLINK, SEC EDGAR · Refs: [L7], [L36], [L38] · Spec: [../specs/sttr-spinout-linkage/](../specs/sttr-spinout-linkage/)*
 
 - **Follow-on contracts that were never labelled Phase III**
   When a firm wins a federal contract after its SBIR award ends — the same firm
@@ -550,7 +572,7 @@ statutory goal is Phase III commercialization.*
   GAO documents the newer §638(qq)(3) performance-standard framework and notes
   that commercialization progress is measured from multiple SBA data sources
   [L14].
-  *Deps: ER, ID · Refs: [L14] · Spec: [phase-transition-latency.md](phase-transition-latency.md)*
+  *Deps: ER, ID · Refs: [L14] · Spec: [phase-transition-latency.md](phase-transition-latency.md), [../specs/sttr-spinout-linkage/](../specs/sttr-spinout-linkage/) (design-only spinout vs. subcontract contrast; not run)*
 
 - **Phase II → III survival probability**
   What is the probability that a Phase II awardee wins Phase III work within a
