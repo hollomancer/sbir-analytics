@@ -208,7 +208,9 @@ ORDER BY a.record_date ASC
 
 Performance configuration and memory management details are covered in **[pipeline-orchestration.md](pipeline-orchestration.md)**.
 
-## Safety Checklist (Before Large Loads)
+## Recommended practices before large loads
+
+Convention / ops guidance — **not a CI gate**.
 
 - Create unique constraints first (Organization.organization_id, FinancialTransaction.transaction_id, Patent.grant_doc_num).
 - Ensure indexes needed by MERGE patterns exist prior to loading.

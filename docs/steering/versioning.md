@@ -66,12 +66,17 @@ Do not rename, move, or delete those published tags. All subsequent release tags
 
 ## Release checklist
 
-1. Review user-visible changes since the latest release and choose the required increment.
+**Required (CI / `check_versioning.py`, see `.github/workflows/versioning.yml`):**
+
 2. Update all four `pyproject.toml` versions, `sbir_etl.__version__`, and
    `config/base.yaml`'s `pipeline.version` to the same `MAJOR.MINOR.PATCH` value.
 3. Run `uv lock` to update the four local-package entries in `uv.lock`; runtime defaults and
    User-Agents derive from `sbir_etl.__version__` and do not need separate edits.
 4. Run `uv run python scripts/ci/check_versioning.py --tag vMAJOR.MINOR.PATCH`.
+
+**Operator guidance (not machine-gated):**
+
+1. Review user-visible changes since the latest release and choose the required increment.
 5. Confirm the relevant test and quality checks are green.
 6. Commit the release preparation before creating an annotated tag:
 

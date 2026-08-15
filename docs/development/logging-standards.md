@@ -33,7 +33,11 @@ The SBIR ETL pipeline uses **loguru** for structured, consistent logging across 
 - Structured data that needs to be parsed
 - Production monitoring and alerting
 
-### ✅ Use `console.print()` for
+### Prefer / avoid (no lint rule)
+
+There is no Ruff or CI ban on `print()` or stdlib `logging`. Prefer the patterns above.
+
+**Prefer** `console.print()` for:
 
 - User-facing CLI output
 - Progress bars and status updates
@@ -41,11 +45,11 @@ The SBIR ETL pipeline uses **loguru** for structured, consistent logging across 
 - Interactive prompts and responses
 - Final command results
 
-### ❌ Never use
+**Avoid** in library / Dagster paths:
 
-- `print()` for application logic (only in CLI utilities writing to stdout)
+- `print()` for application logic (CLI utilities writing to stdout are fine)
 - `print()` in library code or Dagster assets
-- `logging` stdlib (use `loguru` instead)
+- stdlib `logging` (prefer `loguru`)
 
 ---
 
