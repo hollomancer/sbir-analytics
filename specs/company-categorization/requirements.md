@@ -29,19 +29,16 @@
 
 ## Glossary
 
-- **System**: The Company Categorization System
-- **PSC**: Product Service Code - a federal classification code (numeric codes indicate products, alphabetic codes indicate services)
-- **Contract Type**: The type of contract (e.g., CPFF, Cost-Type, T&M, FFP)
-- **Award**: A single federal contract or grant from USAspending
-- **SBIR Award**: A Small Business Innovation Research or STTR award
-- **Company**: An SBIR award recipient identified by UEI
-- **USAspending**: Federal spending database containing all federal contracts and grants
-- **Contract Portfolio**: The complete set of federal contracts from USAspending for a given company
-- **Product Award**: An award classified as product-oriented based on PSC and other indicators
-- **Service Award**: An award classified as service-oriented based on PSC and other indicators
-- **R&D Award**: An award classified as research and development
-- **Confidence Level**: Classification reliability based on number of awards (Low: <2, Medium: 2-5, High: >5)
-- **PSC Family**: The first character or digit grouping of a PSC code
+Feature-local terms only. Confidence bands for this classifier live in
+`config/base.yaml` (`company_categorization.low_max_awards` /
+`medium_max_awards`) — not in the steering glossary.
+
+- **PSC** — Product Service Code (numeric → products; alphabetic → services in
+  federal usage; first character/digit is the PSC family).
+- **Contract portfolio** — All USAspending contracts for a company UEI (SBIR and
+  non-SBIR), used as the classification input.
+- **Product / Service / R&D award** — Per-award orientation from PSC and
+  contract-type indicators before company-level aggregation.
 
 ---
 

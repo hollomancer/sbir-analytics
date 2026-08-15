@@ -14,14 +14,9 @@ Providing an MCP server gives every developer a consistent, secure interface tha
 
 ## Glossary
 
-- **MCP_Server**: Python-based Model Context Protocol server implementation
-- **SBIR_ETL_System**: The existing SBIR analytics ETL pipeline system
-- **Dagster_Assets**: Pipeline assets managed by Dagster orchestration
-- **Neo4j_Database**: Graph database storing SBIR analytics data
-- **AI_Copilot**: MCP-enabled AI assistants like Claude Desktop or Cursor
-- **Authentication_Token**: Security token for MCP server access control
-- **Asset_Materialization**: Dagster operation to execute and update pipeline assets
-- **Pipeline_Health**: Status information about ETL pipeline operations and data quality
+> Archived. Boilerplate system/component glossary removed. Feature terms lived
+> in the MCP server design; see [glossary.md](../../../../docs/steering/glossary.md)
+> for current enrichment/ops vocabulary.
 
 ## Requirements
 

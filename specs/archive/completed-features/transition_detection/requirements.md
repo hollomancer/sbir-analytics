@@ -18,15 +18,17 @@ The system implements multi-signal scoring, vendor resolution across datasets, a
 
 ## Glossary
 
-- **Transition_Detection_System**: The SBIR transition detection module that identifies technology transitions from awards to contracts
-- **Vendor_Resolution_Engine**: Component that matches vendors across datasets using UEI, CAGE, DUNS, and fuzzy name matching
-- **Multi_Signal_Scorer**: Component that calculates transition likelihood using agency, timing, competition, patent, and CET signals
-- **Evidence_Bundle**: Structured audit trail containing all supporting evidence for a detected transition
-- **Confidence_Level**: Classification of transition detection quality (High ≥0.85, Likely ≥0.65, Possible <0.65)
-- **Technology_Transition**: Event where SBIR-funded research leads to follow-on contracts, products, or adoption
-- **Patent_Signal**: Indicator of technology transfer based on patent filings between award completion and contract start
-- **CET_Area**: Critical and Emerging Technology classification for technology alignment analysis
-- **Transition_Profile**: Company-level aggregation of transition success metrics and effectiveness measures
+> Archived. Confidence labels for transition scoring are owned by
+> `config/transition/detection.yaml` and
+> [detection-algorithm.md](../../../../docs/transition/detection-algorithm.md) —
+> not by this glossary. See [glossary.md](../../../../docs/steering/glossary.md).
+
+- **Evidence_Bundle** — Structured audit trail of supporting evidence for a
+  detected transition.
+- **Multi_Signal_Scorer** — Combines agency, timing, competition, patent, and CET
+  signals into a transition score.
+- **Vendor_Resolution_Engine** — Matches vendors across datasets (UEI, CAGE, DUNS,
+  fuzzy name).
 
 ## Requirements
 
