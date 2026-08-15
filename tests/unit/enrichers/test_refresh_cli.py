@@ -95,9 +95,7 @@ def test_run_refresh_mocked(tmp_path, monkeypatch) -> None:
     enriched = pd.DataFrame([{"award_id": "AW-CLI", "UEI": "ABC123456789"}])
     _patch_cli(monkeypatch, store, enriched)
 
-    stats = run_refresh(
-        source="usaspending", adapter=_Adapter(), runner=_runner(tmp_path, store)
-    )
+    stats = run_refresh(source="usaspending", adapter=_Adapter(), runner=_runner(tmp_path, store))
 
     assert stats["success"] == 1
     assert stats["failed"] == 0
