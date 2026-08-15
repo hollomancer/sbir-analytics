@@ -27,7 +27,7 @@ abstractions beyond what a single probe needs, and no citable numbers.
   - Requirements: header
 
 - [ ] 0.5 Owner resolves remaining open questions (O-0 through O-5, O-8 through
-      O-11)
+      O-12)
   - Verify: each resolution is a numbered revision in `amendments.md`
   - Requirements: freeze gate
 

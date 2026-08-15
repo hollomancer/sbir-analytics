@@ -97,13 +97,20 @@ see [O-0](open-questions.md)). **Missing or null data never stands in for one of
 |-----|------|---------|-----------------|-----------------------|
 | **D1** | Award spine | SBIR.gov award data, `program = STTR` | SBC, RI, PI, agency, FY, abstract present (the join spine) | Missing RI/PI blocks scoring downstream; row is `INDETERMINATE` if D1 incomplete |
 | **D2** | Person trail | OpenAlex / PubMed authorship, ORCID | PI (and founders, if in scope — [O-1](open-questions.md)) matched to RI-affiliated authorship within ±N years of award (N default ±3, [O-2](open-questions.md)) | No RI-affiliated authorship found *after search* vs. person unresolvable (`generic_token_guard` fail) vs. source not queried |
-| **D3** | IP trail | USPTO assignment data; Bayh-Dole government-interest statements | Patent assigned to the RI naming an SBC principal as inventor; **recorded license** RI→SBC | License **absence** → `NOT_MEASURABLE` (`LICENSE_RECORDS_SPARSE`), **never** `SUBCONTRACT` evidence |
+| **D3** | IP trail | USPTO assignment data (local, confirmed — patent-assignment sub-signal only); **no confirmed public source for Bayh-Dole government-interest statements or a structured RI→SBC license record** ([O-12](open-questions.md)) | Patent assigned to the RI naming an SBC principal as inventor; **recorded license** RI→SBC | License **absence** → `NOT_MEASURABLE` (`LICENSE_RECORDS_SPARSE`), **never** `SUBCONTRACT` evidence |
 | **D4** | Money / paper trail | USASpending subawards; Form D officers/directors (existing pipeline) | RI subaward share on grant-based STTRs (a positive **subcontract** marker); Form D officer/director matched to RI-affiliated name (a positive **spinout** marker) | No subaward record vs. non-grant instrument (`NOT_APPLICABLE`) vs. Form D absent |
 | **D5** | Text trail | Deterministic phrase lexicon over award abstracts and firm text | "spun out of", "licensed from", "founded by Professor …" ([O-4](open-questions.md) fixes the v1 lexicon) | No phrase matched vs. no firm text available |
 
 Discipline notes carried from the brief:
 - **D3 licenses are asymmetric evidence.** A recorded license is positive spinout evidence; its
   absence proves nothing and is encoded as typed absence, never as subcontract evidence.
+- **The `recorded_license_RI_to_SBC` sub-signal has no confirmed public data source.** iEdison
+  (the actual Bayh-Dole reporting system) is account-gated, not public; PatentsView/USPTO's
+  `government_interest` extraction captures the *funding agency and contract number* named in a
+  patent's front-matter clause, not license recipients. The only known proxy today is a free-text
+  search for "license" wording inside the `convey_text` field of the local USPTO assignment bulk
+  data — a weak, unvalidated signal, not a government-interest statement. See
+  [O-12](open-questions.md) for the full research record.
 - **`generic_token_guard` is mandatory on D2 person names** and on all organization-name matching
   (partner type). A name dominated by generic tokens cannot produce an accepted match.
 - **D4 has two directions.** The RI subaward share is a *subcontract* marker; a Form
