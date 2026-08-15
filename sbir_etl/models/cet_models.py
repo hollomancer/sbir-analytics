@@ -9,12 +9,12 @@ These models represent:
 """
 
 from datetime import datetime
-from enum import Enum
+from enum import StrEnum
 
 from pydantic import BaseModel, Field, field_validator
 
 
-class ClassificationLevel(str, Enum):
+class ClassificationLevel(StrEnum):
     """Classification confidence levels based on score thresholds."""
 
     HIGH = "High"  # Score ≥ 70

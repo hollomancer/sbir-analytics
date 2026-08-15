@@ -58,6 +58,7 @@ The scopes below are the current contract, including intentional differences:
 |------|------------|----------|---------------|-------|
 | **Ruff** (lint) | Four production roots + `tests/` | Whole repository (`ruff check .`) | `.pre-commit-config.yaml` + `pyproject.toml` | Local hook is narrower; use `make lint` for CI parity |
 | **Ruff** (format) | Four production roots + `tests/` | Whole repository (`ruff format --check .`) | `.pre-commit-config.yaml` + `pyproject.toml` | Same intentional gap as lint |
+| **Ruff** (UP042 / StrEnum) | No hook | `sbir_etl` + `packages` + `tests` via `--preview --select UP042` | `Makefile` `lint` + `ci.yml` | Preview rule; targeted so other preview lints stay off |
 | **MyPy** (types) | `sbir_etl/` | `sbir_etl/`, `sbir-graph`, `sbir-ml` | `.pre-commit-config.yaml` + `pyproject.toml` | CI is deliberately broader |
 | **Boundary guards** | No hook; `make lint-boundaries` | Same scripts as Make | `Makefile` + `ci.yml` | Must stay identical |
 | **Bandit** (security) | No hook | `sbir_etl/` and `packages/` | `ci.yml` + `pyproject.toml` | Blocking `security` job |

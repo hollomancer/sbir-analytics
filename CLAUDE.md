@@ -175,9 +175,9 @@ PR; the full benchmark against the S3 corpus is run manually via
 ## Code Standards
 
 - Line length: 100
-- Target: Python 3.11
+- Target: Python 3.11–3.12 (`requires-python >=3.11,<3.13`)
 - Ruff rules: E, W, F, I, B, C4, UP
-- Use `StrEnum` not `str, Enum`
+- Use `StrEnum` not `str, Enum` (UP042 via `ruff --preview --select UP042` in `make lint` / CI)
 - Use `datetime.UTC` not `timezone.utc`
 - Do not postpone annotations on a Dagster-decorated function whose context type
   Dagster must inspect at runtime. Follow the local pattern in

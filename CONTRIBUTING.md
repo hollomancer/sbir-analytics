@@ -14,7 +14,7 @@ document under `docs/steering/` or `specs/`.
 
 ## Set Up a Development Environment
 
-The supported Python versions are 3.11 and 3.12. From the repository root:
+The supported Python versions are 3.11 and 3.12 (`requires-python >=3.11,<3.13`). From the repository root:
 
 ```bash
 make install

@@ -225,6 +225,9 @@ lint: ## Run linting and type checking
 	@$(call info,Running linting and type checking)
 	$(call run,uv run ruff check .)
 	$(call run,uv run ruff format --check .)
+	# UP042 is still a preview rule; run it targeted so we do not opt into every
+	# unstable preview lint. Prefer StrEnum over (str, Enum) in production code.
+	$(call run,uv run ruff check sbir_etl packages tests --preview --select UP042)
 	$(call run,uv run mypy sbir_etl packages/sbir-graph/sbir_graph packages/sbir-ml/sbir_ml)
 
 .PHONY: lint-boundaries
