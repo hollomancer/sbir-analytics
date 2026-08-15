@@ -1,0 +1,137 @@
+{
+  "list_name": "new_model_orgs",
+  "version": "2026-08-14",
+  "captured": "2026-08-14",
+  "purpose": "STTR partner-type classifier seed list -> NEW_MODEL_ORG label (specs/sttr-spinout-linkage/design.md#partner-type-classification)",
+  "curation_protocol": "O-6 RESOLVED (specs/sttr-spinout-linkage/open-questions.md): no government master list for new-model/focused-research organizations exists, so this is a curated allowlist, not a bulk-download source pick. Seed = Convergent Research's public FRO portfolio, plus known independents explicitly named in the O-6 resolution (Arc Institute, Arcadia Science, Astera Institute, Speculative Technologies). Each entry is date-stamped with a source URL and was verified (organization is real, and is an FRO/new-model research org) at capture time on 2026-08-14. Incomplete by construction: an RI absent from this list is not NEW_MODEL_ORG by default (classifies OTHER_NONPROFIT or UNRESOLVED per the design's precedence rules), and no fuzzy 'new-model-ness' heuristic is used to add entries.",
+  "entries": [
+    {
+      "name": "CHI-FRO",
+      "category": "Convergent Research FRO portfolio",
+      "description": "Building field-wide standard machine-executable models of the human mind that explain the workings of the brain.",
+      "source_url": "https://www.convergentresearch.org/ecosystem",
+      "verified_at": "2026-08-14",
+      "verification_note": "Listed on Convergent Research's public ecosystem/portfolio page as a current FRO."
+    },
+    {
+      "name": "Cultivarium",
+      "category": "Convergent Research FRO portfolio",
+      "description": "Making the world's diverse microorganisms accessible via an organism portal of actionable data, protocols, and community notes.",
+      "source_url": "https://www.convergentresearch.org/ecosystem",
+      "verified_at": "2026-08-14",
+      "verification_note": "Listed on Convergent Research's public ecosystem/portfolio page as a current FRO."
+    },
+    {
+      "name": "[C]Worthy",
+      "category": "Convergent Research FRO portfolio",
+      "description": "Building open-source, science-backed tools to support trustworthy, scalable ocean-based carbon dioxide removal (CDR).",
+      "source_url": "https://www.convergentresearch.org/ecosystem",
+      "verified_at": "2026-08-14",
+      "verification_note": "Listed on Convergent Research's public ecosystem/portfolio page as a current FRO."
+    },
+    {
+      "name": "Dragonfly",
+      "category": "Convergent Research FRO portfolio",
+      "description": "Revealing the brighter pockets of the cosmic web (astrophysics FRO).",
+      "source_url": "https://www.convergentresearch.org/ecosystem",
+      "verified_at": "2026-08-14",
+      "verification_note": "Listed on Convergent Research's public ecosystem/portfolio page as a current FRO."
+    },
+    {
+      "name": "E11 Bio",
+      "category": "Convergent Research FRO portfolio",
+      "description": "Scaling brain circuit mapping of whole mammalian brains via PRISM, a self-correcting neuron-tracing platform.",
+      "source_url": "https://www.convergentresearch.org/ecosystem",
+      "verified_at": "2026-08-14",
+      "verification_note": "Listed on Convergent Research's public ecosystem/portfolio page as a current FRO."
+    },
+    {
+      "name": "Echo Labs",
+      "category": "Convergent Research FRO portfolio",
+      "description": "Providing ecosystems with a language we can understand (climate FRO).",
+      "source_url": "https://www.convergentresearch.org/ecosystem",
+      "verified_at": "2026-08-14",
+      "verification_note": "Listed on Convergent Research's public ecosystem/portfolio page as a current FRO."
+    },
+    {
+      "name": "EvE Bio",
+      "category": "Convergent Research FRO portfolio",
+      "description": "Mapping the pharmome via a public dataset of drug-target assay results.",
+      "source_url": "https://www.convergentresearch.org/ecosystem",
+      "verified_at": "2026-08-14",
+      "verification_note": "Listed on Convergent Research's public ecosystem/portfolio page as a current FRO."
+    },
+    {
+      "name": "Forest Neurotech",
+      "category": "Convergent Research FRO portfolio",
+      "description": "Ultrasound technology for whole-brain health; developed the Forest 1 wearable whole-brain ultrasound interface.",
+      "source_url": "https://www.convergentresearch.org/ecosystem",
+      "verified_at": "2026-08-14",
+      "verification_note": "Listed on Convergent Research's public ecosystem/portfolio page as a current FRO."
+    },
+    {
+      "name": "Imprint",
+      "category": "Convergent Research FRO portfolio",
+      "description": "Decoding immune memory to identify hidden causes of chronic disease.",
+      "source_url": "https://www.convergentresearch.org/ecosystem",
+      "verified_at": "2026-08-14",
+      "verification_note": "Listed on Convergent Research's public ecosystem/portfolio page as a current FRO."
+    },
+    {
+      "name": "Lean FRO",
+      "category": "Convergent Research FRO portfolio",
+      "description": "Building the future of formal mathematics and verification; released Lean Use Cases.",
+      "source_url": "https://www.convergentresearch.org/ecosystem",
+      "verified_at": "2026-08-14",
+      "verification_note": "Listed on Convergent Research's public ecosystem/portfolio page as a current FRO."
+    },
+    {
+      "name": "Meridial",
+      "category": "Convergent Research FRO portfolio",
+      "description": "From static snapshots to dynamic circuit maps (neuroscience FRO).",
+      "source_url": "https://www.convergentresearch.org/ecosystem",
+      "verified_at": "2026-08-14",
+      "verification_note": "Listed on Convergent Research's public ecosystem/portfolio page as a current FRO."
+    },
+    {
+      "name": "Parallel Squared Technology Institute",
+      "category": "Convergent Research FRO portfolio",
+      "description": "Unlocking a new scale of protein analysis; developed plexDIA, a multiplexing method for proteomics.",
+      "source_url": "https://www.convergentresearch.org/ecosystem",
+      "verified_at": "2026-08-14",
+      "verification_note": "Listed on Convergent Research's public ecosystem/portfolio page as a current FRO."
+    },
+    {
+      "name": "Arc Institute",
+      "category": "known independent (O-6 named)",
+      "description": "Nonprofit research organization (Palo Alto, CA) partnered with Stanford, UC Berkeley, and UCSF; provides multi-year, curiosity-driven funding to scientists outside the traditional grant cycle.",
+      "source_url": "https://arcinstitute.org/about",
+      "verified_at": "2026-08-14",
+      "verification_note": "Confirmed as a real 501(c)(3)-model nonprofit research organization explicitly built as an alternative institutional model; matches FRO/new-model scoping."
+    },
+    {
+      "name": "Arcadia Science",
+      "category": "known independent (O-6 named)",
+      "description": "Research and development institute using evolutionary biology as a discovery platform; publishes an open, continuous research model outside traditional academic/nonprofit structures.",
+      "source_url": "https://www.arcadiascience.com/about",
+      "verified_at": "2026-08-14",
+      "verification_note": "CAVEAT: multiple independent public sources (Crunchbase, PitchBook, a founder Medium post) describe Arcadia Science as a for-profit institute/incubator, not a 501(c)(3) nonprofit -- unlike every other entry on this list. It is real and is a genuine 'new research model' organization matching the O-6 description, but its for-profit structure is a mismatch with the nonprofit-institution framing used elsewhere in the RI partner-type vocabulary (NONPROFIT_INSTITUTE, OTHER_NONPROFIT). Retained per the explicit O-6 naming (a frozen resolution is not re-litigated here), but flagged for the spec owner: confirm whether a for-profit RI can legally be the STTR non-federal RI partner before this entry is used to award NEW_MODEL_ORG on a live award."
+    },
+    {
+      "name": "Astera Institute",
+      "category": "known independent (O-6 named)",
+      "description": "501(c)(3) nonprofit that funds, incubates, and sometimes directly runs high-impact fundamental scientific research; hosts pre-spinout projects (e.g. via its residency program) before they become independent nonprofits, for-profits, or public-domain outputs.",
+      "source_url": "https://astera.org/mission-and-vision/",
+      "verified_at": "2026-08-14",
+      "verification_note": "Confirmed as a real 501(c)(3) nonprofit operating a new-model research/incubation structure; also listed separately in fiscal_sponsors.json for its sponsor/incubator role over other projects (dual role permitted by O-6)."
+    },
+    {
+      "name": "Speculative Technologies",
+      "category": "known independent (O-6 named)",
+      "description": "Nonprofit that runs coordinated, ARPA-model research programs on materials and manufacturing that are too speculative for a startup and too coordination-heavy for a single academic lab; self-describes as a Focused Research Organization.",
+      "source_url": "https://spec.tech/",
+      "verified_at": "2026-08-14",
+      "verification_note": "Confirmed as a real nonprofit FRO; matches scoping directly."
+    }
+  ]
+}

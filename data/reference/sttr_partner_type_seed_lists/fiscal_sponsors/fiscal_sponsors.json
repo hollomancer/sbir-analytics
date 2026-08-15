@@ -1,0 +1,57 @@
+{
+  "list_name": "fiscal_sponsors",
+  "version": "2026-08-14",
+  "captured": "2026-08-14",
+  "purpose": "STTR partner-type classifier seed list -> sponsor-name masking, POSSIBLY_MASKED_BY_SPONSOR (specs/sttr-spinout-linkage/design.md#partner-type-classification, specs/sttr-spinout-linkage/seed-list-provenance.md 'How NEW_MODEL_ORG is determined', Path B).",
+  "curation_protocol": "O-6 RESOLVED (specs/sttr-spinout-linkage/open-questions.md): this list is the load-bearing piece for the NEW_MODEL_ORG vs. OTHER_NONPROFIT breakdown -- it is what distinguishes a confirmed new-model org from one masked behind a sponsor's name. Seed = science-specific sponsors (Convergent Research, Astera) plus generic 501(c)(3) fiscal sponsors used by science orgs (Players Philanthropy Fund, Hopewell Fund, Social Finance, Research Corporation for Science Advancement), each verified at capture on 2026-08-14. Scope note (O-6): this list only distinguishes NEW_MODEL_ORG from OTHER_NONPROFIT; a sponsor-masked FRO still classifies as a nonprofit and counts toward the headline 'non-university, non-FFRDC nonprofit' sum regardless of whether its sponsor is on this list. A match against this list does not itself yield NEW_MODEL_ORG -- it yields typed absence (POSSIBLY_MASKED_BY_SPONSOR), per seed-list-provenance.md Path B.",
+  "entries": [
+    {
+      "name": "Convergent Research",
+      "category": "science-specific sponsor (O-6 named)",
+      "description": "Delaware nonprofit, non-stock corporation (funded by the Schmidt Sciences Network and Ken Griffin) that identifies high-impact R&D fields and incubates them as Focused Research Organizations (FROs) before spinout.",
+      "source_url": "https://www.convergentresearch.org/",
+      "verified_at": "2026-08-14",
+      "verification_note": "Confirmed as a real 501(c)(3) nonprofit whose stated charitable purpose is incubating (functionally fiscally sponsoring) FRO research projects prior to their independent spinout. Also listed in new_model_orgs.json is NOT applicable to Convergent Research itself -- it is the incubator/sponsor, not an FRO; only the FROs it incubates (CHI-FRO, Cultivarium, etc.) are new_model_orgs entries."
+    },
+    {
+      "name": "Astera Institute",
+      "category": "science-specific sponsor (O-6 named)",
+      "description": "501(c)(3) nonprofit that hosts early-stage research projects (e.g., via its residency program) before it is known whether they will become independent nonprofits, for-profits, or public-domain outputs.",
+      "source_url": "https://astera.org/mission-and-vision/",
+      "verified_at": "2026-08-14",
+      "verification_note": "Confirmed real 501(c)(3); public reporting explicitly describes it hosting projects pre-spinout, matching the fiscal-sponsor / masking role this list exists to detect. Also listed in new_model_orgs.json for its own dual role as a new-model org in its own right (O-6 permits this)."
+    },
+    {
+      "name": "Players Philanthropy Fund",
+      "category": "generic 501(c)(3) fiscal sponsor (O-6 named)",
+      "description": "501(c)(3) public charity (EIN 27-6601178) that provides turnkey fiscal sponsorship / back-office administration to charitable projects that are not independently incorporated.",
+      "source_url": "https://ppf.org/fiscal-sponsorship/",
+      "verified_at": "2026-08-14",
+      "verification_note": "Confirmed real 501(c)(3) public charity whose core service is fiscal sponsorship (GuideStar/ProPublica profile EIN 27-6601178). General-purpose sponsor, not science-specific; used per O-6 as a generic-sponsor catch."
+    },
+    {
+      "name": "Hopewell Fund",
+      "category": "generic 501(c)(3) fiscal sponsor (O-6 named)",
+      "description": "501(c)(3) public charity (EIN 47-3681860, Washington DC, managed by Arabella Advisors) that provides fiscal sponsorship and project incubation to social-change and charitable initiatives that lack independent nonprofit status.",
+      "source_url": "https://www.guidestar.org/profile/47-3681860",
+      "verified_at": "2026-08-14",
+      "verification_note": "Confirmed real 501(c)(3) whose core service is fiscal sponsorship (EIN 47-3681860). General-purpose sponsor, not science-specific."
+    },
+    {
+      "name": "Social Finance",
+      "category": "generic 501(c)(3) fiscal sponsor (O-6 named)",
+      "description": "Boston-based 501(c)(3) nonprofit known primarily for impact investing, Pay for Success financing, and outcomes funds.",
+      "source_url": "https://socialfinance.org",
+      "verified_at": "2026-08-14",
+      "verification_note": "PARTIAL VERIFICATION: confirmed real, and a 501(c)(3) nonprofit (per Influence Watch and its own site), but public sources describe its core activity as impact investing / outcomes-based finance, not fiscal sponsorship -- no public source found at capture documenting a specific project fiscally sponsored by Social Finance. Retained per the explicit O-6 naming (a frozen resolution is not re-litigated here); flagged for the spec owner to confirm the fiscal-sponsor role directly (e.g. via Social Finance's own program documentation or a specific sponsored project's Form 990) before this entry is relied on to detect POSSIBLY_MASKED_BY_SPONSOR on a live award."
+    },
+    {
+      "name": "Research Corporation for Science Advancement",
+      "category": "generic 501(c)(3) fiscal sponsor (O-6 named)",
+      "description": "Private operating foundation (EIN 13-1963407, Tucson, AZ, est. 1912) that funds basic research in the physical sciences at US and Canadian universities via programs such as Cottrell Scholars and Scialog.",
+      "source_url": "https://rescorp.org/rcsa/",
+      "verified_at": "2026-08-14",
+      "verification_note": "PARTIAL VERIFICATION: confirmed real, and a 501(c)(3) foundation (EIN 13-1963407), but its own site and public reporting describe it as a grant-making foundation, not a fiscal sponsor -- no public source found at capture documenting a specific project fiscally sponsored by RCSA. Retained per the explicit O-6 naming (a frozen resolution is not re-litigated here); flagged for the spec owner to confirm the fiscal-sponsor role directly before this entry is relied on to detect POSSIBLY_MASKED_BY_SPONSOR on a live award."
+    }
+  ]
+}
