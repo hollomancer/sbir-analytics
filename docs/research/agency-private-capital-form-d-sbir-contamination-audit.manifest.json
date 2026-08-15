@@ -1,0 +1,85 @@
+{
+  "applied_exclusion_count": 0,
+  "candidate_only": true,
+  "code_commit": "bca87c5696c87290337464ec4f15c68e0619aea0",
+  "complete": true,
+  "complete_sbir_exclusion": false,
+  "counts": {
+    "candidate_ciks": 1568,
+    "candidate_pairs": 2588,
+    "eligible_sbir_normalized_names": 32603,
+    "exact_exclusion_ciks": 4465,
+    "provisional_control_ciks": 307344,
+    "routes": {
+      "state_supported": 982,
+      "strong_name": 230,
+      "zip_supported": 1464
+    },
+    "sbir_award_rows": 219500
+  },
+  "covariates_ready": false,
+  "exclusion_recall": "unknown",
+  "identity_only": true,
+  "inputs": {
+    "awards_csv": {
+      "path": "award_data.csv",
+      "row_count": 219500,
+      "sha256": "73d646fc6883ed93b36d19518b0d9442a9ebae94c5b49ad5a7fcd6d3c2b872dd",
+      "size_bytes": 394456822
+    },
+    "exact_exclusions": {
+      "path": "sbir_cik_exclusion_candidates.identity-staging.jsonl",
+      "row_count": 4465,
+      "sha256": "94cb5bc0eae682675f6e0015cc2c21b48411aba6429b6ef5e4cccfe769af38d3",
+      "size_bytes": 2276095
+    },
+    "provisional_controls": {
+      "path": "form_d_control_identity_universe.provisional.jsonl",
+      "row_count": 307344,
+      "sha256": "aaffebbda1ef3d2b1fe04e211b6973a027181d6840b03c12d4329a1649f31c75",
+      "size_bytes": 710168771
+    },
+    "source_manifest": {
+      "path": "agency-private-capital-form-d-control-universe.manifest.json",
+      "sha256": "1777119114c4f7385dd09d6b60c603f2c5c59db765311255440513190d94b331",
+      "size_bytes": 247889
+    }
+  },
+  "invariants": {
+    "all_candidates_unreviewed": true,
+    "candidate_ciks_disjoint_exact_exclusions": true,
+    "candidate_ciks_subset_provisional_controls": true,
+    "candidate_ids_unique": true,
+    "content_addressed_output": true,
+    "no_automatic_exclusions": true,
+    "source_inputs_hash_rows_bytes_verified": true
+  },
+  "outputs": {
+    "possible_sbir_contamination_candidates": {
+      "path": "form_d_possible_sbir_contamination_candidates.f7a10a24e7e55405508539466feb638debead67293e0724c39bb28315b9e09fd.jsonl",
+      "row_count": 2588,
+      "sha256": "f7a10a24e7e55405508539466feb638debead67293e0724c39bb28315b9e09fd",
+      "size_bytes": 2390117
+    }
+  },
+  "parameters": {
+    "candidate_contract_version": "form-d-sbir-exclusion-candidate-v1",
+    "geography_profile": "us-jurisdiction-strict-v1",
+    "minimum_normalized_name_length": 6,
+    "name_metrics": [
+      "ratio",
+      "token-sort",
+      "token-set"
+    ],
+    "name_normalizer": "organization-key-v1",
+    "prefix_length": 2,
+    "retrieval_is_exhaustive_within_declared_rules": true,
+    "thresholds": {
+      "state_supported_ratio": 0.85,
+      "strong_name_ratio": 0.95,
+      "zip_supported_ratio": 0.8
+    }
+  },
+  "ready_for_matching": false,
+  "schema_version": 1
+}

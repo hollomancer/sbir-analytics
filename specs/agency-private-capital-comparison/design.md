@@ -129,6 +129,16 @@ eligible controls                         configured-agency treated cohort
    group, not NAICS. The producer performs no NAICS inference and states
    `covariates_ready=false`. Component 6 remains open until a higher-recall
    authoritative CIK/alias union and validated SIC-to-NAICS-2 strategy exist.
+
+   A separate possible-contamination audit screens the provisional retained CIKs
+   against every historical SBIR name and the Form D alias/location evidence.
+   Its frozen retrieval rules combine near-exact name similarity with state or
+   ZIP corroboration and emit a compact review queue. Those rows are candidates,
+   not identity decisions: the audit applies no automatic exclusion, preserves
+   the original controls, and keeps `complete_sbir_exclusion=false`,
+   `exclusion_recall="unknown"`, and `ready_for_matching=false`. Fuzzy evidence
+   can prioritize adjudication but cannot establish that a retained firm has no
+   SBIR exposure.
 7. **`CohortMatcher`** — Coarsened-exact matching on (vintage-year,
    validated NAICS-2, state). Reports cohort balance and unmatched residuals.
    No propensity scoring in v1. The existing asset must reject component 6's
