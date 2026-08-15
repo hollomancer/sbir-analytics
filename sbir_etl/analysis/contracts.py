@@ -30,18 +30,6 @@ class EvidenceChannelStage(StrEnum):
     NOT_APPLICABLE = "not_applicable"
 
 
-METRIC_CLAIM_IDS = (
-    "method_a_awards",
-    "method_b_awards",
-    "intersection",
-    "jaccard",
-    "phase2_dollars_m",
-    "unique_firms",
-    "grand_total_n",
-    "grand_total_usd",
-)
-
-
 def unavailable_channel_label(
     stage: EvidenceChannelStage = EvidenceChannelStage.UNAVAILABLE,
 ) -> str:
