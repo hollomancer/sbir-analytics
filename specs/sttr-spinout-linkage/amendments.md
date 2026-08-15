@@ -77,3 +77,34 @@ of [`open-questions.md`](open-questions.md). Do not treat Revision 0 as a freeze
   finding. Revision 1 cannot be recorded until O-12 resolves.
 - **Visibility at authoring:** Same as Revision 0. **No classification result had been computed or
   seen.**
+
+## Revision 0.3 — O-12 resolved after a second research pass; task 0.5 complete, still NOT frozen
+
+- **Authority:** 2026-08-14 — owner declined to accept the first research pass's verdict outright,
+  requested a second pass, then accepted the combined findings ("Satisfied").
+- **Reason:** Record the second Bayh-Dole-sourcing research pass and its acceptance, completing
+  task 0.5 (all of O-0 through O-12 now resolved).
+- **Second-pass findings:** AUTM STATT (paid, aggregate-only — ruled out on two independent
+  grounds) and AUTM TransACT (paid, explicitly de-identified — wrong grain at any price) both
+  ruled out; UCC-1 filings ruled out (IP-collateral parsing was explicitly out of scope for the
+  repo's existing UCC-1 pilot, and a UCC-1 records the SBC's own IP as loan collateral, not an
+  inbound RI license, regardless). One genuinely new candidate surfaced: **SEC EDGAR full-text
+  search** — the repo's existing `sec_edgar` client can search filing exhibits (EX-10 material
+  contracts) since 2001 via a verified multi-phrase query; real positive evidence when it fires,
+  but coverage is limited to STTR firms that later became SEC filers and each hit needs manual
+  confirmation. The local USPTO `convey_text` proxy was sharpened from a generic "license" search
+  (first pass) to the actual Bayh-Dole regulatory term **"confirmatory license"** (37 CFR 401.14):
+  12,946 hits directly verified in a 3,000,001-row sample of the local `assignment.csv.zip`
+  (~45,000 extrapolated repo-wide) — a materially more specific proxy, though it still answers
+  federal-funding nexus (contractor-to-government), not an RI-to-SBC license.
+- **Criteria impact:** `design.md`'s D3 discipline note updated to fold in both second-pass proxies
+  (sharper `convey_text` term, optional corroborating EDGAR search) as the v1 sourcing plan for
+  `D3.recorded_license_RI_to_SBC`, should it ship at all. No change to the Order-1/Order-3 cascade
+  predicates themselves — this question only ever concerned D3's *source*, not its scoring logic.
+- **Freeze status:** **Still NOT frozen — task 0.5 is now complete; task 0.6 (Revision 1 freeze) is
+  unblocked but has not been authorized.** Freezing is a separate, higher-stakes action (locks the
+  cascade, the lexicon, and the seed-list versions at a commit SHA and unlocks Phase 1
+  implementation) and requires its own explicit go-ahead, not an automatic consequence of O-12
+  resolving.
+- **Visibility at authoring:** Same as Revision 0. **No classification result had been computed or
+  seen.**

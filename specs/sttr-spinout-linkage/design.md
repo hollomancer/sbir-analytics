@@ -104,13 +104,16 @@ see [O-0](open-questions.md)). **Missing or null data never stands in for one of
 Discipline notes carried from the brief:
 - **D3 licenses are asymmetric evidence.** A recorded license is positive spinout evidence; its
   absence proves nothing and is encoded as typed absence, never as subcontract evidence.
-- **The `recorded_license_RI_to_SBC` sub-signal has no confirmed public data source.** iEdison
-  (the actual Bayh-Dole reporting system) is account-gated, not public; PatentsView/USPTO's
-  `government_interest` extraction captures the *funding agency and contract number* named in a
-  patent's front-matter clause, not license recipients. The only known proxy today is a free-text
-  search for "license" wording inside the `convey_text` field of the local USPTO assignment bulk
-  data — a weak, unvalidated signal, not a government-interest statement. See
-  [O-12](open-questions.md) for the full research record.
+- **The `recorded_license_RI_to_SBC` sub-signal has no confirmed public or paid data source** —
+  checked twice ([O-12](open-questions.md), resolved). iEdison is statutorily confidential, not
+  merely account-gated; PatentsView/USPTO's `government_interest` extraction and the local USPTO
+  `convey_text` `"confirmatory license"` proxy both capture *federal-funding nexus*
+  (contractor-to-government), not an RI→SBC license; AUTM's STATT (paid, aggregate-only) and
+  TransACT (paid, explicitly de-identified) don't help at any price. If this sub-signal ships in v1,
+  source it from the sharper `"confirmatory license"` search over `convey_text` (not generic
+  "license" wording) plus, optionally, a corroborating SEC EDGAR full-text-search pass over the
+  small subset of STTR firms that later became SEC filers — both weak, unvalidated, population-
+  partial proxies, never presented as a Bayh-Dole compliance record.
 - **`generic_token_guard` is mandatory on D2 person names** and on all organization-name matching
   (partner type). A name dominated by generic tokens cannot produce an accepted match.
 - **D4 has two directions.** The RI subaward share is a *subcontract* marker; a Form

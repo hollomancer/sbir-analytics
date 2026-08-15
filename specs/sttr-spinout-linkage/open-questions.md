@@ -191,15 +191,16 @@ with RQ1. Promote to its own primitive only if a second consumer appears outside
 
 ## O-12 — Bayh-Dole government-interest statement data source
 
-**NOT YET RESOLVED — second research pass complete (2026-08-14), pending owner acceptance.** The
-first pass (iEdison, PatentsView/USPTO ODP, local USPTO assignment data, DOE VIPS, NASA e-NTR) is
-below; a second pass (AUTM STATT/TransACT, UCC-1, SEC EDGAR full-text search, and a re-check of the
-local USPTO data for the actual Bayh-Dole regulatory term rather than generic "license" wording)
-follows it and is recorded separately below. The second pass surfaces one genuinely new candidate
-(SEC EDGAR full-text search) and sharpens the local-data proxy, but **does not overturn the
-structural-limitation verdict**: no source found in either pass directly supplies a named RI→SBC
-license record. **This question, alone among O-0 through O-11, still blocks the task 0.5 /
-Revision 1 freeze**, pending the owner's read of the second pass.
+**RESOLVED (2026-08-14), after two research passes.** The first pass (iEdison, PatentsView/USPTO
+ODP, local USPTO assignment data, DOE VIPS, NASA e-NTR) is below; a second pass, requested by the
+owner rather than accepting the first pass's verdict outright, added AUTM STATT/TransACT, UCC-1,
+and SEC EDGAR full-text search, plus a re-check of the local USPTO data for the actual Bayh-Dole
+regulatory term rather than generic "license" wording. The second pass surfaced one genuinely new
+candidate (SEC EDGAR full-text search) and sharpened the local-data proxy, but did not overturn the
+structural-limitation verdict: **no source found in either pass, public or paid, directly supplies
+a named RI→SBC license record.** The owner accepted this as final. **This resolves the last of
+O-0 through O-12 — task 0.5 is complete; task 0.6 (Revision 1 freeze) is now unblocked, pending its
+own separate authorization.**
 
 **The gap.** The [D3 evidence-dimension row](design.md#evidence-dimensions) names "Bayh-Dole
 government-interest statements" as a source, and the [Order-1 cascade
@@ -345,7 +346,7 @@ is authorized here or before the Revision 1 freeze.
   proxy's precision — but corroborates federal-funding nexus, not an RI→SBC license, same as the
   first pass's `convey_text` finding, just on a sharper term.**
 
-**Recommended default (revised after the second pass).** No source found in either research pass —
+**Accepted resolution (owner-confirmed after the second pass).** No source found in either research pass —
 public or paid, first-pass or second-pass — directly supplies "a recorded license from the RI to
 the SBC" as declared. Treat this as a **structural limitation of D3, not a temporary sourcing gap**:
 (a) drop "Bayh-Dole government-interest statements" from D3's declared sources (done — see the
