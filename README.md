@@ -200,8 +200,8 @@ fresh clone and are the same gates CI enforces:
 make install          # uv sync --extra stack-dev
 make test-unit        # ~5,800 unit tests, under a minute
 make lint             # Ruff lint + format across the repo, MyPy over sbir_etl and the packages
-make lint-boundaries  # architecture, epistemic-tier, config, and study guards
-make docs-check       # dead doc links, stale commands, spec-registry coverage
+make lint-boundaries  # same architecture / epistemic-tier / identity / config / hygiene / study guards as CI
+make docs-check       # hygiene subset only (links, stale commands, spec registry; also run by lint-boundaries)
 ```
 
 The remaining suites need services: `uv run pytest -m integration` expects a
