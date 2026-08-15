@@ -1,7 +1,7 @@
 # SBIR/STTR Commercialization Analytics
 
 [![CI](https://github.com/hollomancer/sbir-analytics/actions/workflows/ci.yml/badge.svg)](https://github.com/hollomancer/sbir-analytics/actions/workflows/ci.yml)
-[![Python 3.11](https://img.shields.io/badge/python-3.11-blue.svg)](https://www.python.org/downloads/)
+[![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
 A research project linking federal SBIR/STTR award data to
@@ -163,7 +163,7 @@ repository, start with these documents in order:
 
 ## Running it
 
-The project targets **Python 3.11** and uses
+The project targets **Python 3.11–3.12** (`requires-python >=3.11,<3.13`) and uses
 [`uv`](https://github.com/astral-sh/uv) for
 dependency management. There is intentionally no `requirements.txt` — the
 dependency set is defined by `pyproject.toml` and pinned in `uv.lock`. (If you

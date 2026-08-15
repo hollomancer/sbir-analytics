@@ -12,7 +12,7 @@ testing, configuration, or deployment commands; use the linked operational refer
 
 ## Supported stack
 
-- Python 3.11 or 3.12, managed as a uv workspace.
+- Python 3.11–3.12 (`requires-python >=3.11,<3.13`), managed as a uv workspace.
 - pandas, DuckDB, and PyArrow for tabular processing and interchange.
 - Pydantic plus YAML for typed configuration.
 - Dagster for assets, jobs, schedules, sensors, and run metadata.
