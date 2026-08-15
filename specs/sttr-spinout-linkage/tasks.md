@@ -35,7 +35,10 @@ abstractions beyond what a single probe needs, and no citable numbers.
   - Verify: each resolution is a numbered revision in `amendments.md`
   - Requirements: freeze gate
 
-- [ ] 0.6 Freeze criteria as Revision 1 at a commit SHA
+- [x] 0.6 Freeze criteria as Revision 1 at a commit SHA
+  - `amendments.md` Revision 1 records the design.md SHA-256, the visibility
+    statement, and that no classification result had been seen. Phase 1 is
+    now unblocked to begin.
   - Verify: `amendments.md` Revision 1 records the SHA, the visibility
     statement, and that no classification result had been seen
   - Requirements: freeze gate

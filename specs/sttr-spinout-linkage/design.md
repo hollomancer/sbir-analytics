@@ -1,9 +1,12 @@
 # STTR Spinout–Subcontract Linkage and Partner-Type Classification — Phase 0 Design
 
-**Status:** Phase 0 draft; **criteria NOT frozen.** Freezing is blocked until the
-repository owner resolves [`open-questions.md`](open-questions.md). This note describes
-the intended method before any run; it does not authorize implementation, materialization,
-a headline cell, or any citable claim.
+**Status:** **FROZEN as Revision 1** (see [`amendments.md`](amendments.md)). All open questions
+in [`open-questions.md`](open-questions.md) are resolved. This note describes the intended method;
+freezing the design does **not by itself** authorize implementation, materialization, a headline
+cell, or any citable claim — Phase 1 (`tasks.md`) is now unblocked to *begin*, but every task
+within it (seed-list capture, the kernel, the cascade run, the negative-control and adjudication
+gates) still has to complete before any result exists, and the tier stays `exploratory`
+/ non-citable throughout.
 
 **Target epistemic tier:** `exploratory` (declared in [`requirements.md`](requirements.md); non-citable).
 
@@ -230,10 +233,16 @@ adjudication precision/recall is reviewed and signed off. Until then every artif
 enforcement + blocking asset checks + declared estimand), not a consequence of the numbers looking
 good.
 
-**Freeze mechanics** (pattern only; not executed here). Once the owner resolves the open questions,
-the cascade, the lexicon, the seed-list versions, and the tier thresholds are frozen at a commit
-SHA and recorded in [`amendments.md`](amendments.md); a materializing asset would verify the
-raw-byte SHA-256 of `design.md` and `amendments.md` before running and fail closed on mismatch.
+**Freeze mechanics — executed as Revision 1.** What Revision 1 actually freezes: the cascade
+structure and ordering (Order 0–4), the exact-vs-fuzzy **method** (not the O-3 numeric cutoff,
+explicitly deferred to a post-task-1.4 amendment), the evidence-dimension sourcing including the
+O-12 D3 findings, and the partner-type precedence order. What it does **not** freeze, because these
+are structurally Phase 1 deliverables, not Phase 0 decisions: the D5 lexicon's actual phrase list
+(O-4 — drafted and frozen at task 1.3), and the seed lists' actual captured versions/hashes
+(task 1.1 — `seed-list-provenance.md` stays `_pending_` until then). See
+[`amendments.md`](amendments.md) Revision 1 for the frozen raw-byte SHA-256 of this file. A future
+materializing asset must verify that hash before running and fail closed on mismatch; it must also
+verify each seed list's own hash from `seed-list-provenance.md` once task 1.1 populates them.
 
 ---
 

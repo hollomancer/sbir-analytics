@@ -7,8 +7,9 @@ each prior version; a materializing asset (when one is authorized) would verify 
 raw-byte SHA-256 of `design.md` and this file before running.
 
 The pattern mirrors [`specs/phase-iii-census/amendments.md`](../phase-iii-census/amendments.md).
-Unlike that spec, **no freeze has occurred**: the criteria remain in draft pending owner resolution
-of [`open-questions.md`](open-questions.md). Do not treat Revision 0 as a freeze.
+**Frozen as of Revision 1** (2026-08-14). Revisions 0 through 0.3 are the pre-freeze draft history
+and are not themselves freezes — only Revision 1 is. Any change to `design.md` after Revision 1
+requires its own numbered amendment here, per the append-only rule above.
 
 ## Revision 0 — Phase 0 draft created; NOT frozen
 
@@ -108,3 +109,37 @@ of [`open-questions.md`](open-questions.md). Do not treat Revision 0 as a freeze
   resolving.
 - **Visibility at authoring:** Same as Revision 0. **No classification result had been computed or
   seen.**
+
+## Revision 1 — FREEZE
+
+- **Approved:** 2026-08-14 — repository owner authorized the freeze explicitly ("Yes, freeze it"),
+  after accepting all 12 open-question resolutions (Revisions 0.2 and 0.3).
+- **Frozen file:** `design.md`, raw-byte **SHA-256:**
+  `52d8b531d56f3b91e1d3b0946e1ac91dd6f5dfeab371e3d48f87dc5e6095ac49`. A materializing asset (task
+  1.3+) must recompute this hash against the working copy before running and fail closed on any
+  mismatch — including a mismatch caused by a well-intentioned edit to `design.md` that was never
+  recorded as a further amendment here.
+- **Git-history anchor:** the commit that introduces this Revision 1 entry is the approval-record
+  anchor for `amendments.md` itself; its identifier is intentionally not embedded in the content it
+  would hash, mirroring the convention already used in
+  [`specs/phase-iii-census/amendments.md`](../phase-iii-census/amendments.md) Revision 10.
+- **What is frozen:** the classification cascade structure and ordering (Order 0–4, D1–D5 evidence
+  dimensions and their sourcing, including the O-12 D3 findings); the exact-vs-fuzzy similarity
+  **method** (`CompanyNameMetric.JARO_WINKLER` + `generic_token_guard`); the partner-type precedence
+  order (`FFRDC > NEW_MODEL_ORG > UNIVERSITY > RESEARCH_HOSPITAL > COMMUNITY_COLLEGE >
+  NONPROFIT_INSTITUTE > OTHER_NONPROFIT`); the D2 scope (PI + Form-D-derived founders, ±5-year
+  window); the D4/D5 sourcing as designed; the RQ2 design-only status (O-9) and its embedding choice
+  (O-10, not yet exercised).
+- **What remains explicitly open, by design, not oversight:** the O-3 numeric similarity cutoff
+  (deferred to a post-task-1.4 amendment, calibrated from the adjudication sample); the D5 phrase
+  lexicon's actual content (task 1.3); the six partner-type seed lists' actual captured
+  versions/hashes (task 1.1, `seed-list-provenance.md` still all `_pending_`). None of these block
+  Phase 1 from *starting*; they block specific Phase 1 sub-steps from *completing*.
+- **Criteria impact:** This is the freeze itself — see Revisions 0.2 and 0.3 for the substance of
+  every resolved question. No classification cascade has been coded or run as of this revision.
+- **Freeze status:** **FROZEN.** Phase 1 (`tasks.md`) is unblocked to begin. This does not authorize
+  materialization, a headline cell, or any citable claim — those remain gated on the negative-control
+  and adjudication results (task 1.4) per `design.md`'s validation-and-gates section.
+- **Visibility at approval:** Same as Revision 0. **No classification result, incidence count,
+  coverage count, negative-control result, or adjudication result had been computed or seen at the
+  time of this freeze.**
