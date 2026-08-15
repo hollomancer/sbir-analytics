@@ -52,6 +52,14 @@ def _source_timestamp(path: Path) -> str:
 
 
 def main() -> int:
+    import warnings
+
+    warnings.warn(
+        "build_tech_census.py is a compatibility shim; prefer "
+        "scripts/data/run_analysis.py --profile <area_id>",
+        DeprecationWarning,
+        stacklevel=2,
+    )
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--area", required=True, help="area_id under config/tech_census/")
     parser.add_argument(

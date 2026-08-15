@@ -840,7 +840,8 @@ Foundational — most questions in A–D depend on work here.*
 - **Source freshness lag**
   What is the data-freshness lag for SBIR.gov, USAspending, USPTO, and BEA I-O
   sources?
-  *Deps: none · Spec: [../specs/iterative-api-enrichment/](../specs/iterative-api-enrichment/)*
+  *Deps: none · Spec: [../specs/iterative-api-enrichment/](../specs/iterative-api-enrichment/)
+  (shared `SourceAdapter` lifecycle, issue #442)*
 
 - **Missing critical fields**
   Which awards have missing or null critical fields (amount, dates, recipient)?

@@ -21,6 +21,8 @@ import json
 from pathlib import Path
 from typing import Any
 
+from sbir_etl.analysis.contracts import AnalysisKind
+from sbir_etl.analysis.registry import load_registry
 from sbir_etl.reporting.tech_area_cohort import materialize_tech_area_cohort
 
 # ---------------------------------------------------------------------------
@@ -72,13 +74,9 @@ except Exception:  # pragma: no cover - exercised only without Dagster
             self.metadata = metadata or {}
 
 
-# Areas defined under config/transition_reports/. Add a factory call at the
-# bottom of this module to wire a new one.
-TECH_AREAS = (
-    "nanotechnology",
-    "quantum_information_science",
-    "hypersonics",
-)
+# Areas come from config/analysis_profiles/registry.yaml (dagster_asset: true).
+# Add a registry row to wire a new profile; do not edit this tuple by hand.
+TECH_AREAS = load_registry().ids_for(AnalysisKind.TRANSITION_COHORT, dagster_asset=True)
 EPISTEMIC_TIER = "exploratory"
 
 

@@ -8,11 +8,47 @@ import pandas as pd
 import pytest
 
 from sbir_analytics.assets import usaspending_iterative_enrichment as enrichment_assets
+from sbir_etl.enrichers.source_adapter import QualityResult, RawPage, SourceProvenance
 from sbir_etl.models.enrichment import EnrichmentFreshnessRecord, EnrichmentStatus
+from sbir_etl.utils.enrichment.checkpoints import CheckpointStore
 from sbir_etl.utils.enrichment.freshness import FreshnessStore
 
 
 pytestmark = [pytest.mark.e2e, pytest.mark.smoke]
+
+
+class HermeticAdapter:
+    source_id = "usaspending"
+
+    def fetch_page(self, request, cursor):
+        del cursor
+        return RawPage(
+            payload={"success": True, "payload_hash": "hermetic", "delta_detected": True},
+            record_id=str(request["award_id"]),
+        )
+
+    def normalize(self, raw):
+        return [
+            {
+                "award_id": raw.record_id,
+                "success": True,
+                "payload_hash": "hermetic",
+                "delta_detected": True,
+                "metadata": {},
+            }
+        ]
+
+    def validate(self, records):
+        del records
+        return QualityResult(ok=True)
+
+    def provenance(self, raw):
+        return SourceProvenance(
+            source_id=self.source_id,
+            retrieved_at=datetime.now(),
+            content_hash="hermetic",
+            citation_url="https://example.test",
+        )
 
 
 def test_usaspending_enrichment_job_smoke(tmp_path, monkeypatch):
@@ -51,11 +87,16 @@ def test_usaspending_enrichment_job_smoke(tmp_path, monkeypatch):
 
     monkeypatch.setenv("SBIR_ETL__PATHS__DATA_ROOT", str(data_root))
     monkeypatch.setattr(enrichment_assets, "FreshnessStore", lambda: store)
-
-    def reject_api_client(*_args, **_kwargs):
-        raise AssertionError("freshness-selection job attempted to construct an API client")
-
-    monkeypatch.setattr(enrichment_assets, "USAspendingAPIClient", reject_api_client)
+    monkeypatch.setattr(
+        enrichment_assets,
+        "CheckpointStore",
+        lambda: CheckpointStore(tmp_path / "checkpoints.parquet"),
+    )
+    monkeypatch.setattr(
+        enrichment_assets,
+        "build_usaspending_adapter",
+        lambda **_kwargs: HermeticAdapter(),
+    )
 
     job = defs.resolve_job_def("usaspending_iterative_enrichment_job")
     result = job.execute_in_process()
@@ -63,8 +104,10 @@ def test_usaspending_enrichment_job_smoke(tmp_path, monkeypatch):
     assert result.success
     ledger = result.output_for_node("usaspending_freshness_ledger")
     stale = result.output_for_node("stale_usaspending_awards")
+    refresh = result.output_for_node("usaspending_refresh_batch")
     assert set(ledger["award_id"]) == {"AWARD-STALE", "AWARD-FRESH"}
     assert stale["award_id"].tolist() == ["AWARD-STALE"]
+    assert refresh["success"] == 1
     evaluations = result.get_asset_check_evaluations()
     assert len(evaluations) == 1
     assert evaluations[0].check_name == "stale_awards_threshold_check"

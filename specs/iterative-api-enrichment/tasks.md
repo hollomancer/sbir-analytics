@@ -65,3 +65,18 @@
 
 - [x] 6.3 Extend `config/base.yaml` with optional `enrichment_refresh` entries for each evaluated API, including feature flags so environments can opt-in once legal/data-sharing reviews are completed.
   - Notes: Added `enabled` feature flag to `EnrichmentSourceConfig` schema (`sbir_etl/config/schemas/domain.py`). Environments opt-in via env var (e.g., `SBIR_ETL__ENRICHMENT_REFRESH__SEC_EDGAR__ENABLED=true`). Drift note (2026-07-02): current `config/base.yaml` and `EnrichmentRefreshConfig` carry only `usaspending` and `sec_edgar` (disabled by default); the `opencorporates`/`dla_cage` entries originally added have since been removed.
+
+## Issue #442 — shared source lifecycle
+
+Optional Phase 2 expansion (6.1, 6.2) is **not** required to close #442.
+
+- [x] 7.1 Add `SourceAdapter`, `SourceProvenance`, and `SourceRefreshRunner` in `sbir_etl/enrichers/source_adapter.py`.
+  - Verify: mock-adapter contract test covers fetch → normalize → validate → freshness → checkpoint
+- [x] 7.2 Wrap `USAspendingAPIClient` as `USAspendingSourceAdapter`.
+  - Verify: unit test with a fake client, no network
+- [x] 7.3 Convert `usaspending_refresh_batch` to an asset in `usaspending_iterative_enrichment_job` and call `CheckpointStore`.
+  - Verify: job selection includes the refresh asset; hermetic e2e with a mocked adapter
+- [x] 7.4 Restore `uv run refresh-enrichment --source usaspending`.
+  - Verify: CLI `--help` and a mocked dry-run
+- [x] 7.5 Update `docs/enrichment/usaspending-iterative-refresh.md`.
+  - Verify: `make docs-check`

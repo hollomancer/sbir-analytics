@@ -1,0 +1,38 @@
+# Analysis profile registry (#441). Add a YAML row here; do not add a Python enum.
+profiles:
+  - profile_id: drone_manufacturing
+    analysis_kind: tech_census
+    config_path: config/tech_census/drone_manufacturing.yaml
+    taxonomy_version: "2.0.0"
+    methodology_version: tech-census-v1
+    dagster_asset: false
+  - profile_id: uas_relevance
+    analysis_kind: tech_census
+    config_path: config/tech_census/uas_relevance.yaml
+    taxonomy_version: "1.0.0"
+    methodology_version: tech-census-v1
+    dagster_asset: false
+  - profile_id: unmanned_systems_manufacturing
+    analysis_kind: tech_census
+    config_path: config/tech_census/unmanned_systems_manufacturing.yaml
+    taxonomy_version: "1.0.0"
+    methodology_version: tech-census-v1
+    dagster_asset: false
+  - profile_id: nanotechnology
+    analysis_kind: transition_cohort
+    config_path: config/transition_reports/nanotechnology.yaml
+    taxonomy_version: tech-area-cohort-v1
+    methodology_version: tech-area-cohort-v1
+    dagster_asset: true
+  - profile_id: quantum_information_science
+    analysis_kind: transition_cohort
+    config_path: config/transition_reports/quantum_information_science.yaml
+    taxonomy_version: tech-area-cohort-v1
+    methodology_version: tech-area-cohort-v1
+    dagster_asset: true
+  - profile_id: hypersonics
+    analysis_kind: transition_cohort
+    config_path: config/transition_reports/hypersonics.yaml
+    taxonomy_version: tech-area-cohort-v1
+    methodology_version: tech-area-cohort-v1
+    dagster_asset: true

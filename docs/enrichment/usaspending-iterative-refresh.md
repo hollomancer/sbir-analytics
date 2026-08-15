@@ -4,39 +4,46 @@
 
 The USAspending iterative enrichment system automatically refreshes enrichment data for SBIR awards on a configurable cadence, tracking freshness metadata and detecting changes via payload hashing. This ensures that enrichment data stays current without requiring full pipeline re-runs.
 
-**Phase 1: USAspending API only.** Other APIs (SAM.gov, NIH RePORTER, PatentsView, etc.) will be evaluated in Phase 2+.
+**Phase 1 close (#442):** USAspending is the reference `SourceAdapter`. Other
+APIs (SAM.gov, NIH RePORTER, PatentsView) register in `enrichment_refresh`
+but do not copy this request loop.
 
 ## Architecture
 
 ### Components
 
-1. **USAspending Package** (`sbir_etl/enrichers/usaspending/client.py`, `sbir_etl/enrichers/usaspending/enricher.py`, `sbir_etl/enrichers/usaspending/index.py`)
+1. **Source adapter lifecycle** (`sbir_etl/enrichers/source_adapter.py`)
+   - `SourceAdapter` protocol: `fetch_page` / `normalize` / `validate` / `provenance`
+   - `SourceRefreshRunner` writes `FreshnessStore` and `CheckpointStore`
+   - `USAspendingSourceAdapter` wraps `USAspendingAPIClient` without copying the loop
+
+2. **USAspending Package** (`sbir_etl/enrichers/usaspending/client.py`, `sbir_etl/enrichers/usaspending/enricher.py`, `sbir_etl/enrichers/usaspending/index.py`)
    - `USAspendingAPIClient` async HTTP client with rate limiting and retry logic
    - `enrich_sbir_with_usaspending` batch enrichment helper
    - `parse_toc_table_dat_map` and `extract_table_sample` helpers for USAspending bulk download indexes
    - Delta detection via payload hashing
    - State management for cursors/ETags
 
-2. **Freshness Store** (`sbir_etl/utils/enrichment/freshness.py`)
+3. **Freshness Store** (`sbir_etl/utils/enrichment/freshness.py`)
    - `FreshnessStore` persists enrichment freshness records to Parquet
    - Tracks `last_attempt_at`, `last_success_at`, `payload_hash`, and `status` per award/source
    - Identifies stale records based on SLA thresholds
 
-3. **Checkpoint Store** (`sbir_etl/utils/enrichment/checkpoints.py`)
+4. **Checkpoint Store** (`sbir_etl/utils/enrichment/checkpoints.py`)
    - `CheckpointStore` and `EnrichmentCheckpoint` enable resume functionality for interrupted refresh runs
    - Tracks partition progress and last processed award ID
 
-4. **Metrics Collector** (`sbir_etl/utils/enrichment/metrics.py`)
+5. **Metrics Collector** (`sbir_etl/utils/enrichment/metrics.py`)
    - `EnrichmentMetricsCollector` and `EnrichmentFreshnessMetrics` emit freshness coverage metrics
    - Tracks success rates, error rates, and SLA compliance
    - Logs to `reports/metrics/enrichment_freshness.json`
 
-5. **Dagster Assets** (`packages/sbir-analytics/sbir_analytics/assets/usaspending_iterative_enrichment.py`)
+6. **Dagster Assets** (`packages/sbir-analytics/sbir_analytics/assets/usaspending_iterative_enrichment.py`)
    - `usaspending_freshness_ledger`: Tracks all freshness records
    - `stale_usaspending_awards`: Identifies awards needing refresh
-   - `usaspending_refresh_batch`: Performs refresh operations
+   - `usaspending_refresh_batch`: Runs `SourceRefreshRunner` for stale awards
 
-6. **Dagster Sensor** (`packages/sbir-analytics/sbir_analytics/assets/sensors/usaspending_refresh_sensor.py`)
+7. **Dagster Sensor** (`packages/sbir-analytics/sbir_analytics/assets/sensors/usaspending_refresh_sensor.py`)
    - Triggers refresh job after bulk enrichment completes
    - Checks for stale awards before triggering
 
@@ -81,12 +88,17 @@ enrichment_refresh:
      - Records API calls for metrics
 5. Emits freshness metrics
 
-### Manual Refresh (Dagster job)
+### Manual Refresh
 
-Refresh is orchestrated by the `usaspending_iterative_enrichment_job` Dagster job
+```bash
+uv run refresh-enrichment --source usaspending
+uv run refresh-enrichment --source usaspending --award-id AWD-1
+```
+
+Refresh is also orchestrated by the `usaspending_iterative_enrichment_job` Dagster job
 (assets `usaspending_freshness_ledger` → `stale_usaspending_awards` →
 `usaspending_refresh_batch`), normally triggered by `usaspending_refresh_sensor`.
-For an ad-hoc run:
+For an ad-hoc Dagster run:
 
 ```bash
 ## Run the full iterative-refresh job
