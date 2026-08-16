@@ -1,8 +1,10 @@
 """Probes for the D4 money/paper-trail scorer.
 
-Exploratory tier: covers instrument-type classification, the two D4
-directions independently, and the `D4MoneyTrail` combining policy -- not a
-comprehensive matrix over every real-world `Contract` field format. No
+Exploratory tier: covers instrument-type classification and the two D4
+directions independently, including that each direction reports its own
+status and absence reason without either suppressing or borrowing from the
+other -- not a comprehensive matrix over every real-world `Contract` field
+format. No
 network call: `score_ri_subaward_share` / `score_d4_money_trail` are always
 exercised against a fake `SubawardClient`, never `UsaspendingSubawardClient`.
 """
@@ -380,11 +382,12 @@ class TestScoreD4MoneyTrail:
             subaward_client=client,
             form_d_index={key: ("Jane Smith",)},
         )
-        assert trail.status is DimensionStatus.MEASURED
+        assert trail.subaward_status is DimensionStatus.MEASURED
+        assert trail.form_d_status is DimensionStatus.MEASURED
         assert trail.ri_subaward_share == 1.0
         assert trail.form_d_officer_ri_affiliated is True
 
-    def test_pi_name_only_match_drives_the_combined_trail(self) -> None:
+    def test_pi_name_only_match_is_measured_on_the_form_d_direction(self) -> None:
         """A contract-instrument award where only the PI (not the RI POC)
         shows up as a Form D officer -- the classic professor-founder pattern
         this direction was extended to catch."""
@@ -402,8 +405,10 @@ class TestScoreD4MoneyTrail:
             subaward_client=FakeSubawardClient(),
             form_d_index={key: ("Frances Arnold",)},
         )
-        assert trail.status is DimensionStatus.MEASURED
+        assert trail.form_d_status is DimensionStatus.MEASURED
         assert trail.form_d_officer_ri_affiliated is True
+        assert trail.subaward_status is DimensionStatus.NOT_APPLICABLE
+        assert trail.subaward_reason is SignalAbsentReason.NON_GRANT_INSTRUMENT
         assert trail.ri_subaward_share is None
 
     def test_contract_instrument_with_form_d_match_is_measured_not_suppressed(self) -> None:
@@ -424,8 +429,9 @@ class TestScoreD4MoneyTrail:
             subaward_client=FakeSubawardClient(),
             form_d_index={key: ("Jane Smith",)},
         )
-        assert trail.status is DimensionStatus.MEASURED
+        assert trail.form_d_status is DimensionStatus.MEASURED
         assert trail.form_d_officer_ri_affiliated is True
+        assert trail.subaward_status is DimensionStatus.NOT_APPLICABLE
         assert trail.ri_subaward_share is None
 
     def test_contract_instrument_with_no_form_d_match_is_not_applicable(self) -> None:
@@ -438,8 +444,10 @@ class TestScoreD4MoneyTrail:
             subaward_client=FakeSubawardClient(),
             form_d_index={},
         )
-        assert trail.status is DimensionStatus.NOT_APPLICABLE
-        assert trail.reason is SignalAbsentReason.NON_GRANT_INSTRUMENT
+        assert trail.subaward_status is DimensionStatus.NOT_APPLICABLE
+        assert trail.subaward_reason is SignalAbsentReason.NON_GRANT_INSTRUMENT
+        assert trail.form_d_status is DimensionStatus.NOT_EVALUATED
+        assert trail.form_d_reason is SignalAbsentReason.SOURCE_NOT_QUERIED
 
     def test_evaluation_failure_propagates(self) -> None:
         trail = score_d4_money_trail(
@@ -451,9 +459,11 @@ class TestScoreD4MoneyTrail:
             subaward_client=FakeSubawardClient(raise_on_find=True),
             form_d_index={},
         )
-        assert trail.status is DimensionStatus.EVALUATION_FAILED
+        assert trail.subaward_status is DimensionStatus.EVALUATION_FAILED
+        assert trail.form_d_status is DimensionStatus.NOT_MEASURABLE
+        assert trail.form_d_reason is SignalAbsentReason.SOURCE_FIELD_UNAVAILABLE
 
-    def test_neither_direction_evaluated_prefers_the_more_specific_status(self) -> None:
+    def test_each_direction_reports_its_own_typed_absence(self) -> None:
         trail = score_d4_money_trail(
             ri_name="University of North Dakota",
             company_name="Unlisted Firm LLC",
@@ -463,5 +473,7 @@ class TestScoreD4MoneyTrail:
             subaward_client=None,  # NOT_EVALUATED / SOURCE_NOT_QUERIED
             form_d_index={},
         )
-        assert trail.status is DimensionStatus.NOT_MEASURABLE
-        assert trail.reason is SignalAbsentReason.SOURCE_FIELD_UNAVAILABLE
+        assert trail.subaward_status is DimensionStatus.NOT_EVALUATED
+        assert trail.subaward_reason is SignalAbsentReason.SOURCE_NOT_QUERIED
+        assert trail.form_d_status is DimensionStatus.NOT_MEASURABLE
+        assert trail.form_d_reason is SignalAbsentReason.SOURCE_FIELD_UNAVAILABLE

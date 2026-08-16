@@ -567,31 +567,23 @@ def score_d4_money_trail(
     subaward_client: SubawardClient | None = None,
     form_d_index: dict[str, tuple[str, ...]] | None = None,
 ) -> D4MoneyTrail:
-    """Score both D4 directions and combine them into one `D4MoneyTrail`.
+    """Score both D4 directions and report each one on its own status.
 
-    `kernel.D4MoneyTrail` (prerequisite code, not modified by this PR) has a
-    single `status`/`reason` pair covering both directions, but
-    `kernel.classify_linkage` reads each direction's own field
-    (`ri_subaward_share`, `form_d_officer_ri_affiliated`) independently --
-    Order 3 checks `status == MEASURED and ri_subaward_share > 0`, Order 2's
-    corroboration checks `status == MEASURED and form_d_officer_ri_affiliated`.
-    Setting the shared `status` from only one direction would wrongly block
-    the cascade from crediting the *other* direction's real result (e.g. a
-    contract-instrument award, correctly `NOT_APPLICABLE` for the subaward
-    share, must not also suppress a real Form D officer match) -- exactly
-    the class of directional bug this module's docstring opens with.
+    `kernel.D4MoneyTrail` carries a separate status and absence reason per
+    direction, and `kernel.classify_linkage` reads them independently:
+    Order 2's corroboration checks `form_d_status is MEASURED and
+    form_d_officer_ri_affiliated`, Order 3 checks `subaward_status is
+    MEASURED and ri_subaward_share > 0`. Each direction is therefore passed
+    straight through, with no attempt to reconcile the two into a single
+    shared status.
 
-    Combining policy, in priority order:
-    1. `MEASURED` if **either** direction produced a real measured value --
-       the other direction's own field already defaults to a safe negative
-       (`False` / `None`), so this never manufactures a false positive.
-    2. `NOT_APPLICABLE` if the subaward direction confirmed a non-grant
-       instrument (the more specific, more informative state).
-    3. `EVALUATION_FAILED` if either direction hit an unexpected runtime
-       error (as opposed to a typed absence).
-    4. Otherwise, the more specific of the two directions' typed-absence
-       states (preferring a status that is not `NOT_EVALUATED`, since
-       "not yet queried" is the least informative outcome to report).
+    That reconciliation is precisely what the dataclass split removed. A
+    contract-instrument award is correctly `NOT_APPLICABLE` on the subaward
+    side while saying nothing about whether a Form D officer is
+    RI-affiliated; collapsing both into one status let either direction's
+    typed absence suppress the other's measured signal, or -- in the
+    opposite direction -- let one direction's `MEASURED` advertise a
+    measurement the other never made.
     """
 
     subaward_status, share, subaward_reason = score_ri_subaward_share(
@@ -606,27 +598,11 @@ def score_d4_money_trail(
         form_d_index=form_d_index,
     )
 
-    if subaward_status is DimensionStatus.MEASURED or form_d_status is DimensionStatus.MEASURED:
-        return D4MoneyTrail(
-            status=DimensionStatus.MEASURED,
-            ri_subaward_share=share,
-            form_d_officer_ri_affiliated=officer_match,
-        )
-    if subaward_status is DimensionStatus.NOT_APPLICABLE:
-        return D4MoneyTrail(
-            status=DimensionStatus.NOT_APPLICABLE,
-            ri_subaward_share=share,
-            form_d_officer_ri_affiliated=officer_match,
-            reason=subaward_reason,
-        )
-    if (
-        subaward_status is DimensionStatus.EVALUATION_FAILED
-        or form_d_status is DimensionStatus.EVALUATION_FAILED
-    ):
-        return D4MoneyTrail(status=DimensionStatus.EVALUATION_FAILED)
-
-    if subaward_status is DimensionStatus.NOT_EVALUATED and form_d_status is not (
-        DimensionStatus.NOT_EVALUATED
-    ):
-        return D4MoneyTrail(status=form_d_status, reason=form_d_reason)
-    return D4MoneyTrail(status=subaward_status, reason=subaward_reason)
+    return D4MoneyTrail(
+        subaward_status=subaward_status,
+        form_d_status=form_d_status,
+        ri_subaward_share=share,
+        form_d_officer_ri_affiliated=officer_match,
+        subaward_reason=subaward_reason,
+        form_d_reason=form_d_reason,
+    )
