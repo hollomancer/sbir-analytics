@@ -1,0 +1,203 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="description"
+      content="Exploratory prototype for an evidence-aware SBIR program decision terminal."
+    />
+    <title>SBIR Program Terminal</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="rail">
+        <a class="brand" href="#" aria-label="SBIR Program Terminal home">
+          <span class="brand-mark">S</span>
+          <span class="brand-copy">SBIR<br /><small>TERMINAL</small></span>
+        </a>
+        <nav aria-label="Primary">
+          <a class="nav-item active" href="#overview" aria-current="page">
+            <span aria-hidden="true">⌂</span><span>Overview</span>
+          </a>
+          <a class="nav-item" href="#organizations">
+            <span aria-hidden="true">◎</span><span>Organizations</span>
+          </a>
+          <a class="nav-item" href="#portfolio">
+            <span aria-hidden="true">▥</span><span>Portfolio</span>
+          </a>
+          <a class="nav-item" href="#signals">
+            <span aria-hidden="true">⌁</span><span>Signals</span>
+          </a>
+        </nav>
+        <div class="rail-footer">
+          <span class="status-dot"></span>
+          <span>Demo dataset</span>
+        </div>
+      </aside>
+
+      <div class="main-shell">
+        <header class="topbar">
+          <div>
+            <p class="breadcrumb">UNITED STATES · SBIR/STTR</p>
+            <h1>Program intelligence</h1>
+          </div>
+          <form id="search-form" class="global-search" role="search">
+            <label class="sr-only" for="global-search">Search the terminal</label>
+            <span aria-hidden="true">⌕</span>
+            <input
+              id="global-search"
+              type="search"
+              autocomplete="off"
+              placeholder="Search firms, awards, agencies, technologies"
+              aria-describedby="search-hint"
+            />
+            <kbd id="search-hint">/</kbd>
+            <div id="search-results" class="search-results" hidden></div>
+          </form>
+          <div class="as-of">
+            <span>DATA CUT</span>
+            <strong id="data-cut">—</strong>
+          </div>
+        </header>
+
+        <div class="disclosure" role="note">
+          <strong>EXPLORATORY PROTOTYPE</strong>
+          <span>
+            All displayed records are synthetic. Layout and interactions are for product evaluation
+            only.
+          </span>
+        </div>
+
+        <main id="overview">
+          <section class="section-heading">
+            <div>
+              <p class="eyebrow">Program pulse</p>
+              <h2>SBIR portfolio overview</h2>
+            </div>
+            <div class="segmented-control" aria-label="Time range">
+              <button type="button" data-period="1y">1Y</button>
+              <button type="button" data-period="3y">3Y</button>
+              <button class="active" type="button" data-period="5y">5Y</button>
+            </div>
+          </section>
+
+          <section id="metric-grid" class="metric-grid" aria-label="Program metrics"></section>
+
+          <section class="dashboard-grid">
+            <article class="panel technology-panel" id="portfolio">
+              <div class="panel-header">
+                <div>
+                  <p class="eyebrow">Portfolio composition</p>
+                  <h3>Technology areas</h3>
+                </div>
+                <label>
+                  <span class="sr-only">Technology ranking metric</span>
+                  <select id="technology-lens">
+                    <option value="obligations">Obligations</option>
+                    <option value="organizations">Organizations</option>
+                    <option value="transition_rate">Transition rate</option>
+                  </select>
+                </label>
+              </div>
+              <div id="technology-chart" class="technology-chart"></div>
+            </article>
+
+            <article class="panel signal-panel" id="signals">
+              <div class="panel-header">
+                <div>
+                  <p class="eyebrow">Review queue</p>
+                  <h3>Signals requiring attention</h3>
+                </div>
+                <span id="signal-count" class="count-badge">0</span>
+              </div>
+              <div id="signal-list" class="signal-list"></div>
+              <p class="panel-footnote">
+                Signals prioritize review. They are not findings of risk, fraud, or program failure.
+              </p>
+            </article>
+          </section>
+
+          <section class="panel screener-panel" id="organizations">
+            <div class="panel-header screener-header">
+              <div>
+                <p class="eyebrow">Organization screener</p>
+                <h3>Active awardees</h3>
+              </div>
+              <div class="filters">
+                <label>
+                  <span>Agency</span>
+                  <select id="agency-filter"><option value="all">All agencies</option></select>
+                </label>
+                <label>
+                  <span>Technology</span>
+                  <select id="technology-filter">
+                    <option value="all">All technologies</option>
+                  </select>
+                </label>
+              </div>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th scope="col">Organization</th>
+                    <th scope="col">Primary agency</th>
+                    <th scope="col">Technology</th>
+                    <th scope="col">SBIR awards</th>
+                    <th scope="col">Obligations</th>
+                    <th scope="col">Transition</th>
+                    <th scope="col">Latest activity</th>
+                  </tr>
+                </thead>
+                <tbody id="firm-rows"></tbody>
+              </table>
+            </div>
+          </section>
+
+          <section class="lower-grid">
+            <article class="panel">
+              <div class="panel-header">
+                <div>
+                  <p class="eyebrow">Observed events</p>
+                  <h3>Recent program activity</h3>
+                </div>
+              </div>
+              <div id="activity-list" class="activity-list"></div>
+            </article>
+            <article class="panel provenance-panel">
+              <p class="eyebrow">Trust layer</p>
+              <h3>Metric provenance</h3>
+              <p>
+                Every production value should carry its data cut, source, computation status, and
+                permitted interpretation.
+              </p>
+              <dl id="provenance-list"></dl>
+            </article>
+          </section>
+        </main>
+      </div>
+    </div>
+
+    <dialog id="firm-dialog" class="firm-dialog" aria-labelledby="firm-name">
+      <button id="close-dialog" class="dialog-close" type="button" aria-label="Close profile">×</button>
+      <div id="firm-profile"></div>
+    </dialog>
+
+    <template id="metric-template">
+      <article class="metric-card">
+        <div class="metric-topline">
+          <span class="metric-label"></span>
+          <span class="metric-status"></span>
+        </div>
+        <strong class="metric-value"></strong>
+        <span class="metric-change"></span>
+        <div class="sparkline" aria-hidden="true"></div>
+        <button class="source-button" type="button"></button>
+      </article>
+    </template>
+
+    <script src="app.js"></script>
+  </body>
+</html>
