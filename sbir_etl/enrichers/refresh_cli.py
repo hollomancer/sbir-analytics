@@ -16,6 +16,7 @@ from sbir_etl.enrichers.nih_reporter.keys import parse_refresh_window
 from sbir_etl.enrichers.nih_reporter.requests import (
     build_nih_reporter_requests,
     load_sbir_award_frame,
+    nih_ids_needing_refresh,
     sbir_awards_path,
 )
 from sbir_etl.enrichers.source_adapter import SourceRefreshRunner
@@ -170,31 +171,12 @@ def _nih_reporter_requests(
             )
         requests = [request for request in requests if request["award_id"] in wanted]
 
-    selected = _nih_ids_needing_refresh(
+    selected = nih_ids_needing_refresh(
         FreshnessStore(),
         [request["award_id"] for request in requests],
         sla,
     )
     return [request for request in requests if request["award_id"] in selected]
-
-
-def _nih_ids_needing_refresh(
-    store: FreshnessStore,
-    eligible_ids: Sequence[str],
-    sla: int,
-) -> set[str]:
-    """First run includes every eligible id; later runs add unseen + stale."""
-
-    wanted = {str(award_id) for award_id in eligible_ids}
-    if not wanted:
-        return set()
-    ledger = store.load_all()
-    if ledger.empty or "source" not in ledger.columns:
-        return wanted
-    nih = ledger.loc[ledger["source"].astype(str) == "nih_reporter"]
-    known = set(nih["award_id"].astype(str)) if not nih.empty else set()
-    stale = set(store.get_awards_needing_refresh("nih_reporter", sla, list(wanted)))
-    return stale | (wanted - known)
 
 
 def run_refresh(

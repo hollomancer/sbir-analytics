@@ -8,7 +8,7 @@ award-date filter. Company name is never a join key.
 from __future__ import annotations
 
 from pathlib import Path
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from typing import Any
 
 import pandas as pd
@@ -21,6 +21,7 @@ from sbir_etl.enrichers.nih_reporter.keys import (
 )
 from sbir_etl.extractors.sbir_public_awards import load_sbir_awards_csv
 from sbir_etl.utils.cloud_storage import find_latest_sbir_awards
+from sbir_etl.utils.enrichment.freshness import FreshnessStore
 
 
 EPISTEMIC_TIER = "pipelines"
@@ -178,6 +179,55 @@ def build_nih_reporter_requests(
             request["window"] = f"{parsed.from_date}:{parsed.to_date}"
         requests.append(request)
     return requests, skipped
+
+
+def nih_ids_needing_refresh(
+    store: FreshnessStore,
+    eligible_ids: Sequence[str],
+    sla: int,
+) -> set[str]:
+    """First run includes every eligible id; later runs add unseen + stale."""
+
+    wanted = {str(award_id) for award_id in eligible_ids}
+    if not wanted:
+        return set()
+    ledger = store.load_all()
+    if ledger.empty or "source" not in ledger.columns:
+        return wanted
+    nih = ledger.loc[ledger["source"].astype(str) == "nih_reporter"]
+    known = set(nih["award_id"].astype(str)) if not nih.empty else set()
+    stale = set(store.get_awards_needing_refresh("nih_reporter", sla, list(wanted)))
+    return stale | (wanted - known)
+
+
+def frame_to_nih_requests(frame: pd.DataFrame) -> list[dict[str, Any]]:
+    """Rebuild runner requests from a stale-award frame."""
+
+    if frame.empty:
+        return []
+    requests: list[dict[str, Any]] = []
+    for _, row in frame.iterrows():
+        project_num = row.get("project_num")
+        raw_nums = row.get("project_nums")
+        if isinstance(raw_nums, Sequence) and not isinstance(raw_nums, (str, bytes)):
+            project_nums = [str(item) for item in raw_nums if str(item).strip()]
+        else:
+            project_nums = [str(project_num)] if pd.notna(project_num) else []
+        year = four_digit_award_year(row.get("award_year"))
+        award_id = row.get("award_id")
+        if award_id is None or not project_nums or year is None:
+            continue
+        request: dict[str, Any] = {
+            "award_id": str(award_id),
+            "project_num": project_nums[0],
+            "project_nums": project_nums,
+            "award_year": year,
+        }
+        window = row.get("window") if "window" in frame.columns else None
+        if window is not None and pd.notna(window) and str(window).strip():
+            request["window"] = str(window)
+        requests.append(request)
+    return requests
 
 
 def _token(value: Any) -> str:

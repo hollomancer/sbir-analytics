@@ -102,9 +102,14 @@ rewriting the Phase III urllib extractor.
     ledger as "all eligible NIH/HHS awards." Persist grain is `appl_id` at
     `data/derived/nih_reporter_awards.parquet`. `enabled: false` until a hand
     run succeeds.
-- [ ] 8.3 Dagster ledger / stale set / refresh batch and job. No sensor.
+- [x] 8.3 Dagster ledger / stale set / refresh batch and job. No sensor.
       Keep `enabled: false`.
   - Verify: job selection includes the refresh asset; hermetic fake adapter
+  - Notes: `nih_reporter_iterative_enrichment_job` selects
+    `nih_reporter_freshness_ledger`, `stale_nih_reporter_awards`, and
+    `nih_reporter_refresh_batch`. First-run / stale selection is shared with
+    the CLI (`nih_ids_needing_refresh`). Refresh no-ops while
+    `enabled: false`. No sensor and no schedule.
 - [ ] 8.4 Docs (`docs/enrichment/nih-reporter-refresh.md`) and E3 freshness
       mention only after a hand run has written a freshness row.
   - Verify: `make docs-check`
