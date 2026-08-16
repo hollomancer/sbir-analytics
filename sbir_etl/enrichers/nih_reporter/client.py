@@ -277,14 +277,23 @@ class NIHReporterAPIClient(BaseAsyncAPIClient):
         project_nums: Sequence[str],
         fiscal_year: int,
         *,
+        window: str | NIHSearchWindow | None = None,
         limit: int = NIH_PAGE_SIZE,
         retrieved_at: datetime | None = None,
     ) -> list[NIHReporterRecord]:
-        """Exact ``project_nums`` + FY lookup, still scoped to SBIR/STTR codes."""
+        """Exact ``project_nums`` + FY lookup, still scoped to SBIR/STTR codes.
 
+        A date window becomes ``project_start_date`` criteria. A ``fy:`` window
+        is rejected here because ``fiscal_year`` already sets ``fiscal_years``.
+        """
+
+        parsed = window if isinstance(window, NIHSearchWindow) else parse_refresh_window(window)
+        if parsed.kind is NIHWindowKind.FISCAL_YEARS:
+            raise ValueError("lookup_projects takes fiscal_year; do not also pass a fy: window")
         return await self.search_projects(
             project_nums=project_nums,
             fiscal_years=[fiscal_year],
+            window=window if parsed.kind is NIHWindowKind.PROJECT_START_DATE else None,
             activity_codes=NIH_ACTIVITY_CODES,
             limit=limit,
             retrieved_at=retrieved_at,

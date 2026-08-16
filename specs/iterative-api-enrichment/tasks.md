@@ -94,8 +94,14 @@ rewriting the Phase III urllib extractor.
       Phase III re-exports it.
   - Verify: `tests/unit/enrichers/nih_reporter/` (pagination, windows,
     duplicates, retries) and `tests/unit/phase_iii_negative_controls/test_nih_reporter.py`
-- [ ] 8.2 Adapter + SBIR.gov request builder + `refresh-enrichment --source nih_reporter`.
+- [x] 8.2 Adapter + SBIR.gov request builder + `refresh-enrichment --source nih_reporter`.
   - Verify: mocked CLI dry-run; disabled source exits; no USAspending parquet dependency
+  - Notes: `NIHReporterSourceAdapter` + `requests.py` build exact-key lookups
+    from the SBIR.gov award frame. `--window` is RePORTER criteria (date or
+    `fy:`), not a local award-date filter. First run treats an empty freshness
+    ledger as "all eligible NIH/HHS awards." Persist grain is `appl_id` at
+    `data/derived/nih_reporter_awards.parquet`. `enabled: false` until a hand
+    run succeeds.
 - [ ] 8.3 Dagster ledger / stale set / refresh batch and job. No sensor.
       Keep `enabled: false`.
   - Verify: job selection includes the refresh asset; hermetic fake adapter

@@ -234,6 +234,38 @@ async def test_server_error_then_success_is_retried(tmp_path: Path) -> None:
 
 
 @pytest.mark.asyncio
+async def test_lookup_date_window_is_api_criteria(tmp_path: Path) -> None:
+    captured: list[dict[str, Any]] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        captured.append(json.loads(request.content))
+        return httpx.Response(200, content=FIXTURE.read_bytes())
+
+    await _client(handler, tmp_path).lookup_projects(
+        ["1R43AI123456-01"],
+        2024,
+        window="2024-01-01:2024-12-31",
+    )
+    criteria = captured[0]["criteria"]
+    assert criteria["project_nums"] == ["1R43AI123456-01"]
+    assert criteria["fiscal_years"] == [2024]
+    assert criteria["project_start_date"] == {"from_date": "2024-01-01", "to_date": "2024-12-31"}
+
+
+@pytest.mark.asyncio
+async def test_lookup_rejects_fy_window(tmp_path: Path) -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, content=FIXTURE.read_bytes())
+
+    with pytest.raises(ValueError, match="fy: window"):
+        await _client(handler, tmp_path).lookup_projects(
+            ["1R43AI123456-01"],
+            2024,
+            window="fy:2024-2024",
+        )
+
+
+@pytest.mark.asyncio
 async def test_client_error_is_not_retried(tmp_path: Path) -> None:
     attempts = {"count": 0}
 
