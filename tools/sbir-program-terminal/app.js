@@ -3,30 +3,33 @@
 
   const elements = {
     dataCut: document.getElementById("data-cut"),
+    interpretation: document.getElementById("interpretation"),
+    message: document.getElementById("terminal-message"),
+    content: document.getElementById("terminal-content"),
+    datasetLabel: document.getElementById("dataset-label"),
     metricGrid: document.getElementById("metric-grid"),
     metricTemplate: document.getElementById("metric-template"),
-    technologyChart: document.getElementById("technology-chart"),
-    technologyLens: document.getElementById("technology-lens"),
-    signalList: document.getElementById("signal-list"),
-    signalCount: document.getElementById("signal-count"),
-    agencyFilter: document.getElementById("agency-filter"),
-    technologyFilter: document.getElementById("technology-filter"),
-    firmRows: document.getElementById("firm-rows"),
-    activityList: document.getElementById("activity-list"),
+    firmCount: document.getElementById("firm-count"),
+    firmList: document.getElementById("firm-list"),
+    emptyDossier: document.getElementById("empty-dossier"),
+    selectedDossier: document.getElementById("selected-dossier"),
+    firmName: document.getElementById("firm-name"),
+    firmMetrics: document.getElementById("firm-metrics"),
+    eventFilter: document.getElementById("event-filter"),
+    firmTimeline: document.getElementById("firm-timeline"),
     provenanceList: document.getElementById("provenance-list"),
+    tierBadge: document.getElementById("tier-badge"),
     searchForm: document.getElementById("search-form"),
     searchInput: document.getElementById("global-search"),
     searchResults: document.getElementById("search-results"),
-    firmDialog: document.getElementById("firm-dialog"),
-    firmProfile: document.getElementById("firm-profile"),
-    closeDialog: document.getElementById("close-dialog"),
   };
 
   const state = {
     payload: null,
-    period: "5y",
+    selectedFirmId: null,
   };
 
+  const numberFormatter = new Intl.NumberFormat("en-US");
   const moneyFormatter = new Intl.NumberFormat("en-US", {
     style: "currency",
     currency: "USD",
@@ -34,7 +37,14 @@
     maximumFractionDigits: 1,
   });
 
-  const numberFormatter = new Intl.NumberFormat("en-US");
+  const eventLabels = {
+    sbir_award: "SBIR award",
+    form_d_filing: "Form D filing",
+    ma_event: "M&A event",
+    usaspending_contract: "Federal contract",
+    patent_grant: "Patent grant",
+    ucc_filing: "UCC filing",
+  };
 
   function createElement(tag, className, text) {
     const element = document.createElement(tag);
@@ -47,13 +57,20 @@
     return moneyFormatter.format(Number(value || 0));
   }
 
+  function formatMetric(metric) {
+    return metric.format === "currency"
+      ? formatMoney(metric.value)
+      : numberFormatter.format(metric.value);
+  }
+
   function formatDate(value) {
+    if (!value) return "Date unavailable";
     return new Intl.DateTimeFormat("en-US", {
       month: "short",
       day: "numeric",
       year: "numeric",
       timeZone: "UTC",
-    }).format(new Date(`${value}T00:00:00Z`));
+    }).format(new Date(`${String(value).slice(0, 10)}T00:00:00Z`));
   }
 
   function renderMetrics() {
@@ -61,174 +78,178 @@
       const card = elements.metricTemplate.content.firstElementChild.cloneNode(true);
       card.querySelector(".metric-label").textContent = metric.label;
       card.querySelector(".metric-status").textContent = metric.status;
-      card.querySelector(".metric-value").textContent = metric.values[state.period];
-      const change = card.querySelector(".metric-change");
-      change.textContent = metric.changes[state.period];
-      if (String(metric.changes[state.period]).startsWith("+")) change.classList.add("positive");
-      const sparkline = card.querySelector(".sparkline");
-      const maximum = Math.max(...metric.trend);
-      metric.trend.forEach((value) => {
-        const bar = document.createElement("i");
-        bar.style.height = `${Math.max(10, (value / maximum) * 100)}%`;
-        sparkline.appendChild(bar);
-      });
+      card.querySelector(".metric-value").textContent = formatMetric(metric);
+      card.querySelector(".metric-change").textContent =
+        metric.status === "lower bound" ? "Public-disclosure lower bound" : "Observed in snapshot";
       const source = card.querySelector(".source-button");
       source.textContent = `Source · ${metric.source}`;
-      source.title = `As of ${state.payload.dataset.as_of}; ${metric.status}`;
+      source.title = `Latest observed event ${state.payload.dataset.as_of || "undated"}`;
       return card;
     });
     elements.metricGrid.replaceChildren(...cards);
   }
 
-  function technologyValue(technology, lens) {
-    if (lens === "obligations") return formatMoney(technology[lens]);
-    if (lens === "transition_rate") return `${technology[lens].toFixed(1)}%`;
-    return numberFormatter.format(technology[lens]);
+  function firmButton(firm) {
+    const button = createElement("button", "firm-index-button");
+    button.type = "button";
+    button.dataset.firmId = firm.id;
+    button.setAttribute("aria-pressed", String(firm.id === state.selectedFirmId));
+    button.append(
+      createElement("strong", null, firm.name),
+      createElement(
+        "span",
+        null,
+        `${numberFormatter.format(firm.event_count)} observed events · ${
+          firm.latest_activity ? formatDate(firm.latest_activity) : "no dated events"
+        }`,
+      ),
+    );
+    button.addEventListener("click", () => selectFirm(firm.id));
+    return button;
   }
 
-  function renderTechnologies() {
-    const lens = elements.technologyLens.value;
-    const technologies = state.payload.technologies
-      .slice()
-      .sort((left, right) => right[lens] - left[lens]);
-    const maximum = Math.max(...technologies.map((technology) => technology[lens]));
-    const rows = technologies.map((technology, index) => {
-      const row = createElement("div", "technology-row");
-      const label = createElement("div", "technology-label");
-      label.append(
-        createElement("strong", null, technology.label),
-        createElement("small", null, `Rank ${index + 1} · synthetic portfolio`),
-      );
-      const track = createElement("div", "technology-track");
-      const bar = createElement("div", "technology-bar");
-      bar.style.width = `${(technology[lens] / maximum) * 100}%`;
-      track.appendChild(bar);
-      row.append(
-        label,
-        track,
-        createElement("span", "technology-value", technologyValue(technology, lens)),
-      );
-      return row;
-    });
-    elements.technologyChart.replaceChildren(...rows);
-  }
-
-  function renderSignals() {
-    elements.signalCount.textContent = state.payload.signals.length;
-    const signals = state.payload.signals.map((signal) => {
-      const row = createElement("div", `signal ${signal.severity}`);
-      row.appendChild(createElement("span", "signal-icon", signal.severity === "high" ? "!" : "i"));
-      const copy = createElement("div");
-      copy.append(
-        createElement("strong", null, signal.title),
-        createElement("small", null, signal.detail),
-      );
-      row.appendChild(copy);
-      return row;
-    });
-    elements.signalList.replaceChildren(...signals);
-  }
-
-  function appendOptions(select, values) {
-    values.forEach((value) => {
-      const option = document.createElement("option");
-      option.value = value;
-      option.textContent = value;
-      select.appendChild(option);
-    });
-  }
-
-  function populateFilters() {
-    const agencies = [...new Set(state.payload.firms.map((firm) => firm.agency))].sort();
-    const technologies = [...new Set(state.payload.firms.map((firm) => firm.technology))].sort();
-    appendOptions(elements.agencyFilter, agencies);
-    appendOptions(elements.technologyFilter, technologies);
-  }
-
-  function transitionLabel(firm) {
-    return firm.transition === "observed" ? "Observed" : "Not observed";
-  }
-
-  function filteredFirms() {
-    return state.payload.firms.filter(
-      (firm) =>
-        (elements.agencyFilter.value === "all" ||
-          firm.agency === elements.agencyFilter.value) &&
-        (elements.technologyFilter.value === "all" ||
-          firm.technology === elements.technologyFilter.value),
+  function renderFirmList() {
+    elements.firmCount.textContent = numberFormatter.format(state.payload.firms.length);
+    elements.firmList.replaceChildren(
+      ...state.payload.firms.map((firm) => firmButton(firm)),
     );
   }
 
-  function renderFirms() {
-    const firms = filteredFirms();
-    if (!firms.length) {
-      const row = document.createElement("tr");
-      const cell = createElement("td", "empty-row", "No synthetic firms match these filters.");
-      cell.colSpan = 7;
-      row.appendChild(cell);
-      elements.firmRows.replaceChildren(row);
-      return;
-    }
-
-    const rows = firms
-      .slice()
-      .sort((left, right) => right.obligations - left.obligations)
-      .map((firm) => {
-        const row = document.createElement("tr");
-        row.tabIndex = 0;
-        row.setAttribute("aria-label", `Open profile for ${firm.name}`);
-        const firmCell = createElement("td", "firm-cell");
-        firmCell.append(
-          createElement("strong", null, firm.name),
-          createElement("small", null, `${firm.uei} · ${firm.location}`),
-        );
-        const transitionCell = document.createElement("td");
-        transitionCell.appendChild(
-          createElement(
-            "span",
-            `transition-tag ${firm.transition === "observed" ? "" : "unobserved"}`,
-            transitionLabel(firm),
-          ),
-        );
-        [
-          firmCell,
-          createElement("td", null, firm.agency_short),
-          createElement("td", null, firm.technology),
-          createElement("td", null, numberFormatter.format(firm.awards)),
-          createElement("td", null, formatMoney(firm.obligations)),
-          transitionCell,
-          createElement("td", null, formatDate(firm.latest_activity)),
-        ].forEach((cell) => row.appendChild(cell));
-        row.addEventListener("click", () => openFirm(firm.id));
-        row.addEventListener("keydown", (event) => {
-          if (event.key === "Enter" || event.key === " ") {
-            event.preventDefault();
-            openFirm(firm.id);
-          }
-        });
-        return row;
-      });
-    elements.firmRows.replaceChildren(...rows);
+  function profileMetric(label, value, status) {
+    const metric = createElement("div", "profile-metric");
+    metric.append(
+      createElement("span", null, label),
+      createElement("strong", null, value),
+      createElement("small", null, status),
+    );
+    return metric;
   }
 
-  function renderActivity() {
-    const activity = state.payload.activity.map((event) => {
-      const row = createElement("div", "activity");
-      const time = createElement("time", null, formatDate(event.date));
-      time.dateTime = event.date;
-      const copy = createElement("p");
-      copy.append(
-        createElement("strong", null, event.title),
-        document.createTextNode(event.detail),
+  function observedCount(value) {
+    return Number(value || 0) === 0 ? "None observed" : numberFormatter.format(value);
+  }
+
+  function observedMoney(value) {
+    return Number(value || 0) === 0 ? "None observed" : formatMoney(value);
+  }
+
+  function eventDescription(event) {
+    const parts = [];
+    if (event.subtype) parts.push(String(event.subtype).replaceAll("_", " "));
+    if (event.amount !== null && event.amount !== undefined) {
+      parts.push(formatMoney(event.amount));
+    }
+    if (event.counterparty) parts.push(String(event.counterparty));
+    return parts.join(" · ") || "No additional structured detail";
+  }
+
+  function renderTimeline(firm) {
+    const eventType = elements.eventFilter.value;
+    const events = firm.events.filter(
+      (event) => eventType === "all" || event.type === eventType,
+    );
+    if (!events.length) {
+      elements.firmTimeline.replaceChildren(
+        createElement("p", "empty-row", "No observed events match this filter."),
       );
-      row.append(time, createElement("span", "activity-dot"), copy);
+      return;
+    }
+    const rows = events.map((event) => {
+      const row = createElement("div", "profile-event");
+      const time = createElement("time", null, formatDate(event.date));
+      if (event.date) time.dateTime = String(event.date);
+      const copy = createElement("div");
+      copy.append(
+        createElement("strong", null, eventLabels[event.type] || event.type),
+        createElement("small", null, eventDescription(event)),
+      );
+      if (event.source_id) {
+        copy.append(createElement("code", "source-id", `Source · ${event.source_id}`));
+      }
+      row.append(time, copy);
       return row;
     });
-    elements.activityList.replaceChildren(...activity);
+    elements.firmTimeline.replaceChildren(...rows);
+  }
+
+  function populateEventFilter(firm) {
+    const current = elements.eventFilter.value;
+    const types = [...new Set(firm.events.map((event) => event.type))].sort();
+    const options = [createElement("option", null, "All observed events")];
+    options[0].value = "all";
+    types.forEach((type) => {
+      const option = createElement("option", null, eventLabels[type] || type);
+      option.value = type;
+      options.push(option);
+    });
+    elements.eventFilter.replaceChildren(...options);
+    elements.eventFilter.value = types.includes(current) ? current : "all";
+  }
+
+  function selectedFirm() {
+    return state.payload?.firms.find((firm) => firm.id === state.selectedFirmId) || null;
+  }
+
+  function selectFirm(firmId) {
+    const firm = state.payload.firms.find((candidate) => candidate.id === firmId);
+    if (!firm) return;
+    state.selectedFirmId = firmId;
+    elements.emptyDossier.hidden = true;
+    elements.selectedDossier.hidden = false;
+    elements.firmName.textContent = firm.name;
+    elements.firmMetrics.replaceChildren(
+      profileMetric(
+        "SBIR awards",
+        observedCount(firm.sbir_award_count),
+        firm.statuses.sbir_awards,
+      ),
+      profileMetric(
+        "SBIR amount",
+        observedMoney(firm.total_sbir_amount),
+        firm.statuses.sbir_awards,
+      ),
+      profileMetric(
+        "Disclosed capital",
+        observedMoney(firm.total_form_d_raised),
+        firm.statuses.private_capital,
+      ),
+      profileMetric(
+        "Observed contracts",
+        observedCount(firm.usaspending_contract_count),
+        firm.statuses.contracts,
+      ),
+      profileMetric(
+        "Patents",
+        observedCount(firm.patent_count),
+        firm.statuses.patents,
+      ),
+      profileMetric(
+        "M&A records",
+        observedCount(firm.ma_event_count),
+        firm.statuses.ma_events,
+      ),
+    );
+    populateEventFilter(firm);
+    renderTimeline(firm);
+    elements.firmList.querySelectorAll(".firm-index-button").forEach((button) => {
+      const active = button.dataset.firmId === firmId;
+      button.classList.toggle("active", active);
+      button.setAttribute("aria-pressed", String(active));
+    });
   }
 
   function renderProvenance() {
-    const rows = Object.entries(state.payload.provenance).map(([label, value]) => {
+    const dataset = state.payload.dataset;
+    const rows = [
+      ["Research question", dataset.research_question],
+      ["Latest observed event", dataset.as_of || "No dated events"],
+      ["Generated", dataset.generated_at],
+      ["Evidence status", `${dataset.tier} · non-citable`],
+      ...dataset.sources.map((source) => [
+        source.role,
+        `${source.path} · SHA-256 ${source.sha256}`,
+      ]),
+    ].map(([label, value]) => {
       const row = document.createElement("div");
       row.append(createElement("dt", null, label), createElement("dd", null, value));
       return row;
@@ -236,153 +257,60 @@
     elements.provenanceList.replaceChildren(...rows);
   }
 
-  function profileMetric(label, value) {
-    const metric = createElement("div", "profile-metric");
-    metric.append(createElement("span", null, label), createElement("strong", null, value));
-    return metric;
-  }
-
-  function openFirm(firmId) {
-    const firm = state.payload.firms.find((candidate) => candidate.id === firmId);
-    if (!firm) return;
-
-    const header = createElement("header", "profile-header");
-    header.append(
-      createElement("p", "eyebrow", "Synthetic organization profile"),
-      createElement("h2", null, firm.name),
-      createElement("p", null, `${firm.uei} · ${firm.location} · ${firm.agency}`),
-    );
-
-    const body = createElement("div", "profile-body");
-    const metrics = createElement("div", "profile-metrics");
-    metrics.append(
-      profileMetric("SBIR awards", numberFormatter.format(firm.awards)),
-      profileMetric("Obligations", formatMoney(firm.obligations)),
-      profileMetric("Transition", transitionLabel(firm)),
-    );
-    body.append(metrics, createElement("p", null, firm.description));
-
-    const technology = createElement("section", "profile-section");
-    technology.append(
-      createElement("h3", null, "Portfolio classification"),
-      createElement("p", null, `${firm.technology} · primary agency ${firm.agency_short}`),
-    );
-
-    const timeline = createElement("section", "profile-section");
-    timeline.appendChild(createElement("h3", null, "Observed event timeline"));
-    const timelineRows = createElement("div", "profile-timeline");
-    firm.events.forEach((event) => {
-      const row = createElement("div", "profile-event");
-      const time = createElement("time", null, formatDate(event.date));
-      time.dateTime = event.date;
-      const copy = createElement("div");
-      copy.append(
-        createElement("strong", null, event.title),
-        createElement("small", null, event.detail),
-      );
-      row.append(time, copy);
-      timelineRows.appendChild(row);
-    });
-    timeline.appendChild(timelineRows);
-
-    const evidence = createElement("section", "profile-section");
-    evidence.append(
-      createElement("h3", null, "Evidence boundary"),
-      createElement(
-        "div",
-        "evidence-note",
-        "This profile contains invented demonstration records. In production, each event must link to a source record and carry match confidence, data cut, and permitted interpretation.",
-      ),
-    );
-
-    body.append(technology, timeline, evidence);
-    elements.firmProfile.replaceChildren(header, body);
-    elements.firmDialog.showModal();
-  }
-
-  function searchIndex() {
-    const firms = state.payload.firms.map((firm) => ({
-      id: firm.id,
-      type: "organization",
-      label: firm.name,
-      meta: `${firm.uei} · ${firm.technology}`,
-      searchable: [firm.name, firm.uei, firm.agency, firm.technology, firm.location].join(" "),
-      firmId: firm.id,
-    }));
-    const awards = state.payload.awards.map((award) => ({
-      id: award.id,
-      type: "award",
-      label: award.title,
-      meta: `${award.award_id} · ${award.agency}`,
-      searchable: [award.title, award.award_id, award.agency, award.technology].join(" "),
-      firmId: award.firm_id,
-    }));
-    const technologies = state.payload.technologies.map((technology) => ({
-      id: technology.id,
-      type: "technology",
-      label: technology.label,
-      meta: `${numberFormatter.format(technology.organizations)} synthetic organizations`,
-      searchable: technology.label,
-      technology: technology.label,
-    }));
-    return [...firms, ...awards, ...technologies];
-  }
-
   function closeSearchResults() {
     elements.searchResults.hidden = true;
     elements.searchResults.replaceChildren();
   }
 
-  function chooseSearchResult(result) {
-    closeSearchResults();
-    elements.searchInput.value = result.label;
-    if (result.firmId) {
-      openFirm(result.firmId);
-      return;
-    }
-    if (result.technology) {
-      elements.technologyFilter.value = result.technology;
-      renderFirms();
-      document.getElementById("organizations").scrollIntoView({ behavior: "smooth" });
-    }
-  }
-
   function renderSearchResults() {
     const query = elements.searchInput.value.trim().toLocaleLowerCase();
-    if (!query) {
+    if (!query || !state.payload) {
       closeSearchResults();
       return;
     }
-    const results = searchIndex()
-      .filter((entry) => entry.searchable.toLocaleLowerCase().includes(query))
-      .slice(0, 6);
-    if (!results.length) {
+    const matches = state.payload.firms
+      .filter((firm) =>
+        [firm.name, ...firm.source_ids]
+          .filter(Boolean)
+          .some((value) => String(value).toLocaleLowerCase().includes(query)),
+      )
+      .slice(0, 8);
+    if (!matches.length) {
       const empty = createElement("div", "search-result");
       empty.append(
         createElement("span", "search-result-icon", "—"),
-        createElement("span", null, "No synthetic records matched"),
+        createElement("span", null, "No firm or source record matched"),
       );
       elements.searchResults.replaceChildren(empty);
       elements.searchResults.hidden = false;
       return;
     }
-    const buttons = results.map((result) => {
+    const results = matches.map((firm) => {
       const button = createElement("button", "search-result");
       button.type = "button";
       const copy = createElement("span");
       copy.append(
-        createElement("strong", null, result.label),
-        createElement("small", null, result.meta),
+        createElement("strong", null, firm.name),
+        createElement(
+          "small",
+          null,
+          `${numberFormatter.format(firm.event_count)} observed events`,
+        ),
       );
       button.append(
-        createElement("span", "search-result-icon", result.type.charAt(0).toUpperCase()),
+        createElement("span", "search-result-icon", "F"),
         copy,
-        createElement("span", "search-result-type", result.type),
+        createElement("span", "search-result-type", "firm"),
       );
-      button.addEventListener("click", () => chooseSearchResult(result));
+      button.addEventListener("click", () => {
+        selectFirm(firm.id);
+        elements.searchInput.value = firm.name;
+        closeSearchResults();
+        document.getElementById("dossiers").scrollIntoView({ behavior: "smooth" });
+      });
       return button;
     });
-    elements.searchResults.replaceChildren(...buttons);
+    elements.searchResults.replaceChildren(...results);
     elements.searchResults.hidden = false;
   }
 
@@ -399,34 +327,18 @@
   function bindEvents() {
     window.addEventListener("hashchange", syncNavigation);
     syncNavigation();
-    document.querySelectorAll("[data-period]").forEach((button) => {
-      button.addEventListener("click", () => {
-        document.querySelectorAll("[data-period]").forEach((candidate) => {
-          candidate.classList.toggle("active", candidate === button);
-        });
-        state.period = button.dataset.period;
-        renderMetrics();
-      });
+    elements.eventFilter.addEventListener("change", () => {
+      const firm = selectedFirm();
+      if (firm) renderTimeline(firm);
     });
-    elements.technologyLens.addEventListener("change", renderTechnologies);
-    elements.agencyFilter.addEventListener("change", renderFirms);
-    elements.technologyFilter.addEventListener("change", renderFirms);
     elements.searchInput.addEventListener("input", renderSearchResults);
     elements.searchForm.addEventListener("submit", (event) => {
       event.preventDefault();
       const first = elements.searchResults.querySelector("button");
       if (first) first.click();
     });
-    elements.closeDialog.addEventListener("click", () => elements.firmDialog.close());
-    elements.firmDialog.addEventListener("click", (event) => {
-      if (event.target === elements.firmDialog) elements.firmDialog.close();
-    });
     document.addEventListener("keydown", (event) => {
-      if (
-        event.key === "/" &&
-        document.activeElement !== elements.searchInput &&
-        !elements.firmDialog.open
-      ) {
+      if (event.key === "/" && document.activeElement !== elements.searchInput) {
         event.preventDefault();
         elements.searchInput.focus();
       }
@@ -437,44 +349,67 @@
     });
   }
 
+  function showUnavailable(error) {
+    elements.dataCut.textContent = "UNAVAILABLE";
+    const title = createElement("h2", null, "No local snapshot is available");
+    const explanation = createElement(
+      "p",
+      null,
+      "The terminal fails closed and displays no metrics until canonical capital-event artifacts are exported.",
+    );
+    const command = createElement(
+      "code",
+      "materialization-command",
+      "uv run python scripts/data/build_capital_events.py\nuv run python scripts/data/export_sbir_program_terminal.py",
+    );
+    const detail = createElement(
+      "p",
+      "load-detail",
+      `Load detail: ${error instanceof Error ? error.message : "unknown error"}`,
+    );
+    elements.message.replaceChildren(
+      createElement("p", "eyebrow", "Local snapshot required"),
+      title,
+      explanation,
+      command,
+      detail,
+    );
+    elements.message.hidden = false;
+    elements.content.hidden = true;
+  }
+
   function render() {
-    elements.dataCut.textContent = state.payload.dataset.as_of;
+    const dataset = state.payload.dataset;
+    elements.dataCut.textContent = dataset.as_of || "UNDATED";
+    elements.interpretation.textContent = dataset.interpretation;
+    elements.datasetLabel.textContent = dataset.label;
+    elements.tierBadge.textContent = dataset.tier;
     renderMetrics();
-    renderTechnologies();
-    renderSignals();
-    populateFilters();
-    renderFirms();
-    renderActivity();
+    renderFirmList();
     renderProvenance();
+    elements.message.hidden = true;
+    elements.content.hidden = false;
   }
 
   async function loadTerminal() {
+    bindEvents();
     try {
-      const response = await fetch("data/demo.json", { cache: "no-store" });
-      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const response = await fetch("data/terminal.json", { cache: "no-store" });
+      if (!response.ok) throw new Error(`data/terminal.json returned HTTP ${response.status}`);
       const payload = await response.json();
       if (
-        !payload.dataset ||
+        payload.dataset?.tier !== "exploratory" ||
+        payload.dataset?.citable !== false ||
         !Array.isArray(payload.metrics) ||
         !Array.isArray(payload.firms)
       ) {
-        throw new Error("Invalid terminal payload");
-      }
-      if (payload.dataset.citable !== false || payload.dataset.tier !== "exploratory") {
-        throw new Error("Demo payload must remain explicitly exploratory and non-citable");
+        throw new Error("snapshot contract is invalid or does not declare its evidence boundary");
       }
       state.payload = payload;
       render();
-      bindEvents();
     } catch (error) {
-      elements.dataCut.textContent = "UNAVAILABLE";
-      const failure = createElement(
-        "p",
-        "empty-row",
-        "Demo data unavailable. Run this directory through a local HTTP server.",
-      );
-      elements.metricGrid.replaceChildren(failure);
-      console.error("Unable to load SBIR terminal prototype", error);
+      showUnavailable(error);
+      console.info("SBIR terminal snapshot unavailable", error);
     }
   }
 
