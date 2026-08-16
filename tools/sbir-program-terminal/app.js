@@ -386,17 +386,19 @@
     elements.searchResults.hidden = false;
   }
 
-  function bindEvents() {
+  function syncNavigation() {
+    const hash = window.location.hash || "#overview";
     document.querySelectorAll(".nav-item").forEach((link) => {
-      link.addEventListener("click", () => {
-        document.querySelectorAll(".nav-item").forEach((candidate) => {
-          const active = candidate === link;
-          candidate.classList.toggle("active", active);
-          if (active) candidate.setAttribute("aria-current", "page");
-          else candidate.removeAttribute("aria-current");
-        });
-      });
+      const active = link.getAttribute("href") === hash;
+      link.classList.toggle("active", active);
+      if (active) link.setAttribute("aria-current", "page");
+      else link.removeAttribute("aria-current");
     });
+  }
+
+  function bindEvents() {
+    window.addEventListener("hashchange", syncNavigation);
+    syncNavigation();
     document.querySelectorAll("[data-period]").forEach((button) => {
       button.addEventListener("click", () => {
         document.querySelectorAll("[data-period]").forEach((candidate) => {
