@@ -14,7 +14,7 @@ def test_terminal_exposes_accessible_search_screener_and_profile() -> None:
     assert '<label class="sr-only" for="global-search">' in html
     assert 'aria-label="Program metrics"' in html
     assert 'aria-labelledby="firm-name"' in html
-    assert "<th scope=\"col\">Organization</th>" in html
+    assert '<th scope="col">Organization</th>' in html
     assert 'href="favicon.svg"' in html
 
 
@@ -35,7 +35,7 @@ def test_terminal_preserves_evidence_and_provenance_boundaries() -> None:
     app = (TERMINAL / "app.js").read_text(encoding="utf-8")
     readme = (TERMINAL / "README.md").read_text(encoding="utf-8")
 
-    assert 'payload.dataset.citable !== false' in app
+    assert "payload.dataset.citable !== false" in app
     assert 'payload.dataset.tier !== "exploratory"' in app
     assert "metric.source" in app
     assert "metric.status" in app
@@ -43,4 +43,3 @@ def test_terminal_preserves_evidence_and_provenance_boundaries() -> None:
     assert "synthetic demonstration data" in readme.lower()
     assert "not wired" in readme.lower()
     assert "`tools/style-guide/`" in readme
-
