@@ -28,7 +28,7 @@ def test_terminal_preserves_evidence_and_provenance_boundaries() -> None:
     app = (TERMINAL / "app.js").read_text(encoding="utf-8")
     readme = (TERMINAL / "README.md").read_text(encoding="utf-8")
 
-    assert 'payload.dataset?.citable !== false' in app
+    assert "payload.dataset?.citable !== false" in app
     assert 'payload.dataset?.tier !== "exploratory"' in app
     assert "metric.source" in app
     assert "metric.status" in app

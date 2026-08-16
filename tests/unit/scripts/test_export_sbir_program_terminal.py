@@ -121,4 +121,3 @@ def test_export_terminal_fails_closed_when_artifacts_are_missing(tmp_path: Path)
             tmp_path / "missing-summary.parquet",
             tmp_path / "terminal.json",
         )
-
