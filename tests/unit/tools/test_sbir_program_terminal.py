@@ -15,6 +15,7 @@ def test_terminal_exposes_accessible_search_screener_and_profile() -> None:
     assert 'aria-label="Program metrics"' in html
     assert 'aria-labelledby="firm-name"' in html
     assert "<th scope=\"col\">Organization</th>" in html
+    assert 'href="favicon.svg"' in html
 
 
 def test_terminal_demo_payload_is_explicitly_non_citable() -> None:
@@ -38,6 +39,8 @@ def test_terminal_preserves_evidence_and_provenance_boundaries() -> None:
     assert 'payload.dataset.tier !== "exploratory"' in app
     assert "metric.source" in app
     assert "metric.status" in app
+    assert 'window.addEventListener("hashchange", syncNavigation)' in app
     assert "synthetic demonstration data" in readme.lower()
     assert "not wired" in readme.lower()
+    assert "`tools/style-guide/`" in readme
 

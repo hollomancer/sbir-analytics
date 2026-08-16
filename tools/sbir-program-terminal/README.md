@@ -11,6 +11,11 @@ The prototype demonstrates a compact interaction model for:
 - organization profiles and event timelines; and
 - visible provenance and evidence-status boundaries.
 
+Its base colors reuse the conventional token values documented by
+`tools/style-guide/` and implemented by `tools/sbir-dib-network-explorer/`.
+That reuse does not promote those values to enforced house style; the style
+guide records their standing and open conflicts.
+
 ## Data status
 
 The committed payload at `data/demo.json` is **synthetic demonstration data**.
