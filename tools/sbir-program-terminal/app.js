@@ -387,6 +387,16 @@
   }
 
   function bindEvents() {
+    document.querySelectorAll(".nav-item").forEach((link) => {
+      link.addEventListener("click", () => {
+        document.querySelectorAll(".nav-item").forEach((candidate) => {
+          const active = candidate === link;
+          candidate.classList.toggle("active", active);
+          if (active) candidate.setAttribute("aria-current", "page");
+          else candidate.removeAttribute("aria-current");
+        });
+      });
+    });
     document.querySelectorAll("[data-period]").forEach((button) => {
       button.addEventListener("click", () => {
         document.querySelectorAll("[data-period]").forEach((candidate) => {
