@@ -71,9 +71,15 @@ separate copies.
 | `test-fixer` | Failing tests, broken coverage, test diagnostics | sonnet |
 | `quality-sweep` | Lint/type errors, code cleanup after large changes | sonnet |
 | `scope-guard` | Before large implementations — challenges scope creep | opus |
+| `evidence-auditor` | Evidence promotion, study contracts, and citable claims | opus |
+| `deployment-safety-reviewer` | Read-only review before live operations and materialization | opus |
 
 For **spec work**: scope-guard → spec-implementer → test-fixer → quality-sweep.
 For **bug fixes**: skip to test-fixer or quality-sweep directly.
+For **evidence promotion or externally reportable claims**: run evidence-auditor
+before changing study status or presenting the result as validated or citable.
+For **live deployment or materialization**: run deployment-safety-reviewer
+before the separately authorized operation; the reviewer never executes live mutations.
 
 Each agent reads the tier from the spec and holds to it: `scope-guard` checks the
 declared tier against the contract and can return `RETIER`, `spec-implementer`
