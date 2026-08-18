@@ -6,12 +6,15 @@ are **not** CI gates.
 
 ## CI-enforced contracts
 
+`make lint-boundaries` and the CI quality job must run the same boundary/hygiene
+scripts. If they diverge, CI is authoritative and the Makefile is wrong.
+
 | Contract | Gate |
 |---|---|
-| [Epistemic tiers](epistemic-tiers.md) | `check_epistemic_tiers.py` |
-| [Company identity](company-identity.md) | `check_identity_boundaries.py` |
-| [Repository structure](structure.md) | `check_architecture_boundaries.py` |
-| [Versioning and releases](versioning.md) | `check_versioning.py` (+ release workflow) |
+| [Epistemic tiers](epistemic-tiers.md) | `check_epistemic_tiers.py` + `check_tier_boundaries.py` (Make + CI) |
+| [Company identity](company-identity.md) | `check_identity_boundaries.py` (Make + CI) |
+| [Repository structure](structure.md) | `check_architecture_boundaries.py` (Make + CI) |
+| [Versioning and releases](versioning.md) | `check_versioning.py` (versioning workflow) |
 | [Data quality](data-quality.md) | Dagster asset checks |
 
 ## Guidance (not CI)

@@ -1,7 +1,7 @@
 # SBIR/STTR Commercialization Analytics
 
 [![CI](https://github.com/hollomancer/sbir-analytics/actions/workflows/ci.yml/badge.svg)](https://github.com/hollomancer/sbir-analytics/actions/workflows/ci.yml)
-[![Python 3.11](https://img.shields.io/badge/python-3.11-blue.svg)](https://www.python.org/downloads/)
+[![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
 A research project linking federal SBIR/STTR award data to
@@ -163,7 +163,7 @@ repository, start with these documents in order:
 
 ## Running it
 
-The project targets **Python 3.11** and uses
+The project targets **Python 3.11–3.12** (`requires-python >=3.11,<3.13`) and uses
 [`uv`](https://github.com/astral-sh/uv) for
 dependency management. There is intentionally no `requirements.txt` — the
 dependency set is defined by `pyproject.toml` and pinned in `uv.lock`. (If you
@@ -200,8 +200,8 @@ fresh clone and are the same gates CI enforces:
 make install          # uv sync --extra stack-dev
 make test-unit        # ~5,800 unit tests, under a minute
 make lint             # Ruff lint + format across the repo, MyPy over sbir_etl and the packages
-make lint-boundaries  # architecture, epistemic-tier, config, and study guards
-make docs-check       # dead doc links, stale commands, spec-registry coverage
+make lint-boundaries  # same architecture / epistemic-tier / identity / config / hygiene / study guards as CI
+make docs-check       # hygiene subset only (links, stale commands, spec registry; also run by lint-boundaries)
 ```
 
 The remaining suites need services: `uv run pytest -m integration` expects a

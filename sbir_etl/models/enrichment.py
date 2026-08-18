@@ -8,13 +8,13 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import datetime
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field, field_serializer
 
 
-class EnrichmentStatus(str, Enum):
+class EnrichmentStatus(StrEnum):
     """Status of an enrichment operation."""
 
     SUCCESS = "success"

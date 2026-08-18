@@ -16,10 +16,6 @@ from sbir_etl.utils.path_utils import ensure_parent_dir
 EPISTEMIC_TIER = "pipelines"
 
 
-def snapshot_path(root: Path, profile_id: str, period: str) -> Path:
-    return root / "analysis_snapshots" / profile_id / f"{period}.json"
-
-
 def write_snapshot(run: AnalysisRun, path: Path) -> Path:
     ensure_parent_dir(path)
     path.write_text(

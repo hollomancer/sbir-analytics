@@ -21,8 +21,10 @@ import json
 from pathlib import Path
 from typing import Any
 
+from loguru import logger
+
 from sbir_etl.analysis.contracts import AnalysisKind
-from sbir_etl.analysis.registry import load_registry
+from sbir_etl.analysis.registry import default_registry_path, load_registry
 from sbir_etl.reporting.tech_area_cohort import materialize_tech_area_cohort
 
 # ---------------------------------------------------------------------------
@@ -74,9 +76,28 @@ except Exception:  # pragma: no cover - exercised only without Dagster
             self.metadata = metadata or {}
 
 
+def _load_tech_areas() -> tuple[str, ...]:
+    """Read the cohort profiles this module generates assets for.
+
+    Runs at import because the asset factory loop below needs the ids. A broken
+    or missing registry is contained to these assets: raising here would abort
+    the whole definitions load and take every unrelated asset in the deployment
+    down with it.
+    """
+
+    try:
+        return load_registry().ids_for(AnalysisKind.TRANSITION_COHORT, dagster_asset=True)
+    except Exception as exc:  # pragma: no cover - deployment misconfiguration
+        logger.error(
+            f"Could not load analysis profile registry ({default_registry_path()}): {exc}. "
+            "No transition-report cohort assets will be generated."
+        )
+        return ()
+
+
 # Areas come from config/analysis_profiles/registry.yaml (dagster_asset: true).
 # Add a registry row to wire a new profile; do not edit this tuple by hand.
-TECH_AREAS = load_registry().ids_for(AnalysisKind.TRANSITION_COHORT, dagster_asset=True)
+TECH_AREAS = _load_tech_areas()
 EPISTEMIC_TIER = "exploratory"
 
 
@@ -195,7 +216,10 @@ def _make_cohort_check(area_id: str) -> Any:
 # One asset + one non-empty check per area, generated from TECH_AREAS (single
 # source of truth). Bound to module globals so Dagster's load_assets_from_modules
 # / load_asset_checks_from_modules discover them.
-for _area in TECH_AREAS:
-    globals()[f"tech_area_cohort_{_area}"] = _make_cohort_asset(_area)
-    globals()[f"tech_area_cohort_{_area}_nonempty"] = _make_cohort_check(_area)
-del _area
+def _generate_cohort_assets() -> None:
+    for area in TECH_AREAS:
+        globals()[f"tech_area_cohort_{area}"] = _make_cohort_asset(area)
+        globals()[f"tech_area_cohort_{area}_nonempty"] = _make_cohort_check(area)
+
+
+_generate_cohort_assets()
