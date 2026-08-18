@@ -7,12 +7,12 @@ and extracted financial data used to enrich SBIR company analysis.
 from __future__ import annotations
 
 from datetime import date, datetime
-from enum import Enum
+from enum import StrEnum
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
-class FilingType(str, Enum):
+class FilingType(StrEnum):
     """SEC filing types relevant to SBIR analysis."""
 
     FORM_10K = "10-K"
@@ -25,7 +25,7 @@ class FilingType(str, Enum):
     FORM_20F = "20-F"
 
 
-class MAAcquisitionType(str, Enum):
+class MAAcquisitionType(StrEnum):
     """Types of M&A events detected from 8-K filings."""
 
     ACQUISITION = "acquisition"

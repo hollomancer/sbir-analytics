@@ -225,20 +225,33 @@ lint: ## Run linting and type checking
 	@$(call info,Running linting and type checking)
 	$(call run,uv run ruff check .)
 	$(call run,uv run ruff format --check .)
+	# UP042 is still a preview rule; run it targeted so we do not opt into every
+	# unstable preview lint. Prefer StrEnum over (str, Enum) in production code.
+	$(call run,uv run ruff check sbir_etl packages tests --preview --select UP042)
 	$(call run,uv run mypy sbir_etl packages/sbir-graph/sbir_graph packages/sbir-ml/sbir_ml)
 
 .PHONY: lint-boundaries
-lint-boundaries: ## Enforce package and archive dependency boundaries
-	@$(call info,Checking architecture boundaries)
+# Keep this list identical to the "Run architecture, documentation, and
+# repository hygiene guards" step in .github/workflows/ci.yml. Local green and
+# CI green must mean the same set of boundary checks; if they diverge, CI wins
+# and this target is a bug.
+lint-boundaries: ## Architecture, epistemic-tier, identity, config, hygiene, and study guards (matches CI)
+	@$(call info,Checking architecture, tier, identity, and repository hygiene guards)
 	$(call run,uv run python scripts/ci/check_architecture_boundaries.py)
+	$(call run,uv run python scripts/ci/check_epistemic_tiers.py)
 	$(call run,uv run python scripts/ci/check_tier_boundaries.py)
 	$(call run,uv run python scripts/ci/check_file_sizes.py)
 	$(call run,uv run python scripts/ci/check_config_boundaries.py)
 	$(call run,uv run python scripts/ci/check_removed_src_references.py)
 	$(call run,uv run python scripts/ci/validate_study_manifests.py)
+	$(call run,uv run python scripts/ci/check_identity_boundaries.py)
 
 .PHONY: docs-check
-docs-check: ## Check docs, agent files, spec registry and question anchors, stale commands, and old code references
+# Thin alias for the hygiene script only. Full boundary coverage lives in
+# `make lint-boundaries` (which also runs this script). Prefer lint-boundaries
+# when checking a PR locally; keep docs-check for callers that only need
+# registry/link/stale-command scans.
+docs-check: ## Hygiene only: doc links, stale commands, spec registry, agent/skill mirrors
 	@$(call info,Running repository hygiene checks)
 	$(call run,uv run python scripts/ci/check_removed_src_references.py)
 

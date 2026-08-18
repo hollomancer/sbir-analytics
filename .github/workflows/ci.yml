@@ -50,6 +50,11 @@ jobs:
       - name: Run Ruff lint
         run: uv run python -m ruff check .
 
+      # UP042 (StrEnum) is still preview; keep it targeted so the main lint does
+      # not opt into every unstable preview rule.
+      - name: Run Ruff StrEnum check (UP042 preview)
+        run: uv run python -m ruff check sbir_etl packages tests --preview --select UP042
+
       # Formatting is scoped to the primitives/pipelines trees; `[tool.ruff.format]`
       # in pyproject.toml excludes the exploratory-tier directories.
       - name: Run Ruff format check

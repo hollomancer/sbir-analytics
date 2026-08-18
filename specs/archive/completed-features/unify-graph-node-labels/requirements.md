@@ -41,6 +41,9 @@ failure mode. Other legacy labels are explicitly deferred (see Non-Goals).
 
 ## Glossary
 
+> Archived. Graph label-migration terms; no confidence bands. See
+> [glossary.md](../../../../docs/steering/glossary.md).
+
 - **Unified label**: `:FinancialTransaction` / `:Organization` / `:Individual` —
   the labels the authoritative SBIR loader writes.
 - **Legacy label**: `:Award` (and, out of scope here, `:Company` / `:Contract` /

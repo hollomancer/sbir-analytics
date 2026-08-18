@@ -22,7 +22,7 @@ from pydantic import Field
 from sbir_etl.config.loader import get_config
 from sbir_etl.enrichers.source_adapter import SourceAdapter, SourceRefreshRunner
 from sbir_etl.enrichers.usaspending import USAspendingSourceAdapter
-from sbir_etl.exceptions import ValidationError
+from sbir_etl.enrichers.usaspending.requests import has_identifier, stale_awards_to_requests
 from sbir_etl.utils.enrichment.checkpoints import CheckpointStore
 from sbir_etl.utils.enrichment.freshness import FreshnessStore
 from sbir_etl.utils.enrichment.metrics import EnrichmentMetricsCollector
@@ -71,9 +71,9 @@ def usaspending_freshness_ledger(context: AssetExecutionContext) -> Output[pd.Da
 
 def _load_enriched_awards(context: AssetExecutionContext) -> pd.DataFrame | None:
     """Load enriched SBIR awards written by sbir_usaspending_enrichment."""
-    from sbir_etl.utils.cloud_storage import get_data_root
+    from sbir_etl.enrichers.usaspending.requests import enriched_awards_path
 
-    src = get_data_root() / "processed" / "enriched" / "sbir_awards.parquet"
+    src = enriched_awards_path()
     if not src.is_file():
         context.log.info(f"No enriched awards at {src}")
         return None
@@ -149,53 +149,6 @@ def stale_usaspending_awards(
     )
 
 
-def _first_present_column(frame: pd.DataFrame, candidates: list[str]) -> str | None:
-    for col in candidates:
-        if col in frame.columns:
-            return col
-    return None
-
-
-def stale_awards_to_requests(stale_awards: pd.DataFrame) -> list[dict[str, Any]]:
-    """Map a stale-award frame to runner request dicts."""
-
-    if stale_awards.empty:
-        return []
-    award_id_col = _first_present_column(stale_awards, ["award_id", "Award_ID", "id", "ID"])
-    if not award_id_col:
-        raise ValidationError(
-            "Could not find award ID column",
-            component="assets.usaspending_iterative_enrichment",
-            operation="enrich_stale_usaspending_records",
-            details={
-                "expected_columns": ["award_id", "Award_ID", "id", "ID"],
-                "available_columns": list(stale_awards.columns),
-            },
-        )
-    uei_col = _first_present_column(stale_awards, ["UEI", "uei", "company_uei", "recipient_uei"])
-    duns_col = _first_present_column(
-        stale_awards, ["Duns", "duns", "company_duns", "recipient_duns"]
-    )
-    cage_col = _first_present_column(
-        stale_awards, ["CAGE", "cage", "company_cage", "recipient_cage"]
-    )
-    contract_col = _first_present_column(
-        stale_awards, ["Contract", "contract", "contract_number", "piid"]
-    )
-    requests: list[dict[str, Any]] = []
-    for _, row in stale_awards.iterrows():
-        requests.append(
-            {
-                "award_id": str(row[award_id_col]),
-                "uei": row[uei_col] if uei_col else None,
-                "duns": row[duns_col] if duns_col else None,
-                "cage": row[cage_col] if cage_col else None,
-                "piid": row[contract_col] if contract_col else None,
-            }
-        )
-    return requests
-
-
 def build_usaspending_adapter(*, freshness: FreshnessStore) -> SourceAdapter:
     """Factory so tests can inject a hermetic adapter without constructing the client."""
 
@@ -231,9 +184,15 @@ def usaspending_refresh_batch(
         )
 
     requests = stale_awards_to_requests(stale_usaspending_awards)
+    usable = [request for request in requests if has_identifier(request)]
+    unusable = len(requests) - len(usable)
+    if unusable:
+        context.log.warning(
+            f"Skipping {unusable} stale award(s) with no UEI/DUNS/CAGE/PIID to look up"
+        )
     refresh_config = get_config().enrichment_refresh.usaspending
     batch_size = config.batch_size or refresh_config.batch_size
-    requests = requests[:batch_size]
+    requests = usable[:batch_size]
 
     adapter = build_usaspending_adapter(freshness=store)
     metrics_collector = EnrichmentMetricsCollector()
@@ -242,6 +201,7 @@ def usaspending_refresh_batch(
         checkpoints=CheckpointStore(),
         metrics=metrics_collector,
         partition_id="usaspending-default",
+        checkpoint_interval=refresh_config.checkpoint_interval,
     )
     stats = runner.refresh_records(adapter, requests).as_dict()
 

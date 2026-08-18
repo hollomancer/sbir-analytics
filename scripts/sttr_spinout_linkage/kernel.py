@@ -106,6 +106,38 @@ GENERIC_PERSON_TOKENS: frozenset[str] = frozenset(
 )
 
 
+# SUFFIX_TOKENS carries a few multi-word / punctuated spellings ("l l c",
+# "l.l.c") that can never equal a whitespace-split token, so a name spelled
+# "L.L.C." would slip past a per-token check. Normalize them the way
+# normalize_company_name normalizes a name, and match them as contiguous runs.
+ORG_GENERIC_PHRASES: tuple[tuple[str, ...], ...] = tuple(
+    sorted(
+        (
+            tuple(re.sub(r"[^a-z0-9\s]", " ", token).split())
+            for token in ORG_GENERIC_TOKENS
+            if len(re.sub(r"[^a-z0-9\s]", " ", token).split()) > 1
+        ),
+        key=len,
+        reverse=True,
+    )
+)
+
+
+def _strip_generic_org_phrases(tokens: tuple[str, ...]) -> tuple[str, ...]:
+    """Remove contiguous runs matching a multi-token generic suffix."""
+
+    remaining = list(tokens)
+    for phrase in ORG_GENERIC_PHRASES:
+        width = len(phrase)
+        index = 0
+        while index + width <= len(remaining):
+            if tuple(remaining[index : index + width]) == phrase:
+                del remaining[index : index + width]
+            else:
+                index += 1
+    return tuple(remaining)
+
+
 def generic_token_guard(tokens: Iterable[str], *, generic_tokens: frozenset[str]) -> bool:
     """Return ``True`` (guard passes) iff at least one non-generic token remains.
 
@@ -153,22 +185,42 @@ class ResolvedIdentity:
     family_name: str | None = None
 
 
+def _strip_generic_person_tokens(tokens: tuple[str, ...]) -> tuple[str, ...]:
+    """Drop titles, generational suffixes, and post-nominals from a name.
+
+    Kept separate from `generic_token_guard`, which only *detects* a name made
+    entirely of these. Stripping is what keeps "Dr. Jane Smith" and "Jane
+    Smith" comparable; a name that reduces to nothing is returned unchanged so
+    the guard can reject it rather than a caller comparing an empty string.
+    """
+
+    kept = tuple(token for token in tokens if token not in GENERIC_PERSON_TOKENS)
+    return kept or tokens
+
+
 def _normalize_person_name(value: str) -> tuple[str, tuple[str, ...]]:
     """Net-new person-name normalization: no existing primitive covers this.
 
     Case-folds, strips diacritics and punctuation other than hyphens/
-    apostrophes within a name, and reorders an explicit "Family, Given" input
-    to given-then-family order so a trailing-token family-name assumption
-    holds consistently downstream.
+    apostrophes within a name, removes titles and post-nominals, and reorders
+    an explicit "Family, Given" input to given-then-family order so a
+    trailing-token family-name assumption holds consistently downstream.
+
+    The comma is only treated as a "Family, Given" separator when what follows
+    it is not purely credentials: "Smith, Jane" reorders, while "Jane Smith,
+    PhD" does not — reordering the latter would strand the credential at the
+    front and push a real pair below any sane similarity cutoff.
     """
 
     text = unicodedata.normalize("NFKD", str(value).strip().lower())
     text = "".join(ch for ch in text if not unicodedata.combining(ch))
     if "," in text:
         family_part, _, given_part = text.partition(",")
-        text = f"{given_part.strip()} {family_part.strip()}"
+        given_tokens = re.sub(r"[^a-z\s'-]", " ", given_part).split()
+        if given_tokens and any(token not in GENERIC_PERSON_TOKENS for token in given_tokens):
+            text = f"{given_part.strip()} {family_part.strip()}"
     text = re.sub(r"[^a-z\s'-]", " ", text)
-    tokens = tuple(token for token in text.split() if token)
+    tokens = _strip_generic_person_tokens(tuple(token for token in text.split() if token))
     return " ".join(tokens), tokens
 
 
@@ -203,7 +255,9 @@ def resolve_identity(
     if kind is IdentityKind.ORGANIZATION:
         normalized = normalize_company_name(raw, profile=organization_profile)
         tokens = tuple(normalized.split())
-        guard_passed = generic_token_guard(tokens, generic_tokens=ORG_GENERIC_TOKENS)
+        guard_passed = generic_token_guard(
+            _strip_generic_org_phrases(tokens), generic_tokens=ORG_GENERIC_TOKENS
+        )
         return ResolvedIdentity(
             kind=kind,
             raw=raw,
@@ -239,6 +293,10 @@ def identity_similarity(left: ResolvedIdentity | None, right: ResolvedIdentity |
     """
 
     if left is None or right is None:
+        return 0.0
+    if left.kind is not right.kind:
+        # An organization and a person are never the same entity, however
+        # similar their strings ("Smith Robotics" the firm vs. Smith the PI).
         return 0.0
     return company_name_similarity(
         left.normalized,
@@ -354,12 +412,22 @@ class D3IpTrail:
 @dataclass(frozen=True)
 class D4MoneyTrail:
     """D4: money / paper trail. Two independent directions -- `ri_subaward_share`
-    is a subcontract marker, `form_d_officer_ri_affiliated` is a spinout marker."""
+    is a subcontract marker, `form_d_officer_ri_affiliated` is a spinout marker.
 
-    status: DimensionStatus
+    The two directions carry their own status and absence reason because
+    design.md scores them separately: a contract-instrument STTR makes the
+    subaward side `NOT_APPLICABLE` (`NON_GRANT_INSTRUMENT`) while saying
+    nothing about whether a Form D officer is RI-affiliated. A single shared
+    status would let one direction's typed absence suppress the other's
+    measured signal.
+    """
+
+    subaward_status: DimensionStatus
+    form_d_status: DimensionStatus
     ri_subaward_share: float | None = None
     form_d_officer_ri_affiliated: bool = False
-    reason: SignalAbsentReason | None = None
+    subaward_reason: SignalAbsentReason | None = None
+    form_d_reason: SignalAbsentReason | None = None
 
 
 @dataclass(frozen=True)
@@ -411,7 +479,23 @@ def classify_linkage(
     - **License absence cannot create a SUBCONTRACT.** D3's status must be
       `MEASURED` at Order 3; a `NOT_MEASURABLE` D3 (license sparsity, O-12)
       never satisfies that clause on its own.
+    - **The generic-token guard applies to every D2 person comparison**, exact
+      and fuzzy alike, and a guard failure is an unresolvable person rather
+      than a measured negative.
+
+    Raises:
+        ValueError: if ``similarity_cutoff`` is outside ``(0.0, 1.0]``. Because
+            the parameter is deliberately defaultless, a placeholder ``0.0`` is
+            the likely caller slip, and it would otherwise turn a measured 0.0
+            similarity into a qualifying fuzzy positive.
     """
+
+    if not 0.0 < similarity_cutoff <= 1.0:
+        raise ValueError(
+            f"similarity_cutoff must be in (0.0, 1.0]; got {similarity_cutoff!r}. "
+            "O-3 defers the value to a post-task-1.4 amendment; pass the "
+            "amended cutoff rather than a placeholder."
+        )
 
     # Order 0: the join spine itself is incomplete.
     if not (d1.ri_present and d1.pi_present):
@@ -421,16 +505,26 @@ def classify_linkage(
             rationale="D1 spine incomplete: RI or PI absent",
         )
 
+    # The guard is mandatory on every D2 person-name comparison, exact included:
+    # a name that reduces to generic tokens identifies nobody, however it matched.
+    person_resolvable = d2.person_guard_passed
+    exact_person = d2.exact_person_ri_affiliation and person_resolvable
     fuzzy_person = (
         d2.person_similarity is not None
         and d2.person_similarity >= similarity_cutoff
-        and d2.person_guard_passed
+        and person_resolvable
     )
-    any_person_link = d2.exact_person_ri_affiliation or fuzzy_person
+    any_person_link = exact_person or fuzzy_person
     any_ip_link = d3.patent_assigned_to_ri_with_sbc_inventor or d3.recorded_license_ri_to_sbc
 
+    # A guard failure means the person is *unresolvable*, not that a search came
+    # back empty, so D2 cannot serve as a measured negative at Order 3 either.
+    d2_measured_negative = (
+        d2.status is DimensionStatus.MEASURED and person_resolvable and not any_person_link
+    )
+
     # Order 1: one exact person or IP link with affiliation evidence.
-    if d2.status is DimensionStatus.MEASURED and d2.exact_person_ri_affiliation:
+    if d2.status is DimensionStatus.MEASURED and exact_person:
         return LinkageDecision(
             LinkageLabel.SPINOUT_T1,
             cascade_order=1,
@@ -444,15 +538,15 @@ def classify_linkage(
         )
 
     # Order 2: a fuzzy positive corroborated by a second, distinct dimension.
+    # D3 is absent from the corroborator set on purpose: a MEASURED D3 with any
+    # IP link already returned SPINOUT_T1 above, so it can never corroborate here.
     d2_fuzzy_positive = d2.status is DimensionStatus.MEASURED and fuzzy_person
     d5_positive = d5.status is DimensionStatus.MEASURED and d5.spinout_phrase
     if d2_fuzzy_positive or d5_positive:
         primary = "D2" if d2_fuzzy_positive else "D5"
         corroborated = (
-            (primary != "D3" and d3.status is DimensionStatus.MEASURED and any_ip_link)
-            or (d4.status is DimensionStatus.MEASURED and d4.form_d_officer_ri_affiliated)
-            or (primary != "D5" and d5.status is DimensionStatus.MEASURED and d5.spinout_phrase)
-        )
+            d4.form_d_status is DimensionStatus.MEASURED and d4.form_d_officer_ri_affiliated
+        ) or (primary != "D5" and d5.status is DimensionStatus.MEASURED and d5.spinout_phrase)
         if corroborated:
             return LinkageDecision(
                 LinkageLabel.SPINOUT_T2,
@@ -462,11 +556,10 @@ def classify_linkage(
 
     # Order 3: spinout-bearing dimensions measured and negative, subaward positive.
     if (
-        d4.status is DimensionStatus.MEASURED
+        d4.subaward_status is DimensionStatus.MEASURED
         and d4.ri_subaward_share is not None
         and d4.ri_subaward_share > 0
-        and d2.status is DimensionStatus.MEASURED
-        and not any_person_link
+        and d2_measured_negative
         and d3.status is DimensionStatus.MEASURED
         and not any_ip_link
         and d5.status is DimensionStatus.MEASURED

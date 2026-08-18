@@ -61,9 +61,10 @@ by hand with the inputs available on this host.
 
 ## Agents
 
-Full role instructions live in `.claude/agents/`. The `.Codex/agents/` files
-route Codex agents to the same instructions so the two runtimes do not maintain
-separate copies.
+Full role instructions live in `.claude/agents/`. Those files are **role-only**
+(workflows, verdicts, tier-scaled effort); shared conventions stay here in
+CLAUDE.md. The `.Codex/agents/` files route Codex agents to the same
+instructions so the two runtimes do not maintain separate copies.
 
 | Agent | When to Use | Model |
 |-------|-------------|-------|
@@ -71,9 +72,15 @@ separate copies.
 | `test-fixer` | Failing tests, broken coverage, test diagnostics | sonnet |
 | `quality-sweep` | Lint/type errors, code cleanup after large changes | sonnet |
 | `scope-guard` | Before large implementations — challenges scope creep | opus |
+| `evidence-auditor` | Evidence promotion, study contracts, and citable claims | opus |
+| `deployment-safety-reviewer` | Read-only review before live operations and materialization | opus |
 
 For **spec work**: scope-guard → spec-implementer → test-fixer → quality-sweep.
 For **bug fixes**: skip to test-fixer or quality-sweep directly.
+For **evidence promotion or externally reportable claims**: run evidence-auditor
+before changing study status or presenting the result as validated or citable.
+For **live deployment or materialization**: run deployment-safety-reviewer
+before the separately authorized operation; the reviewer never executes live mutations.
 
 Each agent reads the tier from the spec and holds to it: `scope-guard` checks the
 declared tier against the contract and can return `RETIER`, `spec-implementer`
@@ -144,10 +151,13 @@ make install                           # uv sync --extra stack-dev (run this fir
 make test-unit                         # Unit tests
 uv run pytest -m integration           # Integration tests
 uv run pytest -n auto                  # Parallel execution
-make lint                              # Ruff check over the repository, MyPy over sbir_etl
-make lint-boundaries                   # Architecture, identity, and study guards
-make docs-check                        # Links, stale commands, and repository hygiene
+make lint                              # Ruff over the repo, MyPy over sbir_etl + sbir-graph + sbir-ml
+make lint-boundaries                   # Same boundary/hygiene guards as CI (incl. identity + epistemic tiers)
+make docs-check                        # Hygiene subset only (also included in lint-boundaries)
 ```
+
+`make lint-boundaries` must stay aligned with the CI quality job's guard step. If
+Make and CI diverge, CI is authoritative and the Makefile is wrong.
 
 Transition scoring changes must maintain the ≥85% Phase III retrospective
 HIGH-precision benchmark. Enforcement today is a fixture-level canary
@@ -172,9 +182,9 @@ PR; the full benchmark against the S3 corpus is run manually via
 ## Code Standards
 
 - Line length: 100
-- Target: Python 3.11
+- Target: Python 3.11–3.12 (`requires-python >=3.11,<3.13`)
 - Ruff rules: E, W, F, I, B, C4, UP
-- Use `StrEnum` not `str, Enum`
+- Use `StrEnum` not `str, Enum` (UP042 via `ruff --preview --select UP042` in `make lint` / CI)
 - Use `datetime.UTC` not `timezone.utc`
 - Do not postpone annotations on a Dagster-decorated function whose context type
   Dagster must inspect at runtime. Follow the local pattern in

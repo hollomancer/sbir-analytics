@@ -100,18 +100,26 @@ class SourceRefreshRunner:
         checkpoints: CheckpointStore,
         metrics: EnrichmentMetricsCollector | None = None,
         partition_id: str = "default",
+        checkpoint_interval: int = 50,
     ) -> None:
         self.freshness = freshness
         self.checkpoints = checkpoints
         self.metrics = metrics or EnrichmentMetricsCollector()
         self.partition_id = partition_id
+        self.checkpoint_interval = max(1, checkpoint_interval)
 
     def refresh_records(
         self,
         adapter: SourceAdapter,
         records: Sequence[Mapping[str, Any]],
     ) -> RefreshStats:
-        """Refresh each record through the adapter. Resume from checkpoint."""
+        """Refresh each record through the adapter.
+
+        Resumes from an in-progress checkpoint left by a crashed pass, then clears
+        it once the pass completes so the next SLA-driven run re-refreshes the same
+        awards. Only successes are recorded as processed; a failed award is retried
+        on resume rather than being skipped forever.
+        """
 
         stats = RefreshStats(total=len(records))
         existing = self.checkpoints.load_checkpoint(self.partition_id, adapter.source_id)
@@ -119,6 +127,7 @@ class SourceRefreshRunner:
         if existing and isinstance(existing.metadata, dict):
             raw_ids = existing.metadata.get("processed_ids") or []
             processed_ids = {str(item) for item in raw_ids}
+        since_checkpoint = 0
 
         for request in records:
             award_id = str(request.get("award_id") or "")
@@ -163,6 +172,7 @@ class SourceRefreshRunner:
                 else:
                     stats.failed += 1
                     stats.errors.append(f"{award_id}: {error}")
+                record_succeeded = success
             except Exception as exc:
                 stats.failed += 1
                 stats.errors.append(f"{award_id}: {exc}")
@@ -174,20 +184,38 @@ class SourceRefreshRunner:
                     success=False,
                     error_message=str(exc),
                 )
+                record_succeeded = False
 
-            processed_ids.add(award_id)
-            self.checkpoints.save_checkpoint(
-                EnrichmentCheckpoint(
-                    partition_id=self.partition_id,
-                    source=adapter.source_id,
-                    last_processed_award_id=award_id,
-                    last_success_timestamp=datetime.now(UTC),
-                    records_processed=stats.success + stats.unchanged,
-                    records_failed=stats.failed,
-                    records_total=stats.total,
-                    checkpoint_timestamp=datetime.now(UTC),
-                    metadata={"processed_ids": sorted(processed_ids)},
-                )
-            )
+            if record_succeeded:
+                processed_ids.add(award_id)
+            since_checkpoint += 1
+            if since_checkpoint >= self.checkpoint_interval:
+                self._save_checkpoint(adapter, award_id, stats, processed_ids)
+                since_checkpoint = 0
 
+        self.checkpoints.delete_checkpoint(self.partition_id, adapter.source_id)
         return stats
+
+    def _save_checkpoint(
+        self,
+        adapter: SourceAdapter,
+        award_id: str,
+        stats: RefreshStats,
+        processed_ids: set[str],
+    ) -> None:
+        """Persist resume state for an in-progress pass."""
+
+        now = datetime.now(UTC)
+        self.checkpoints.save_checkpoint(
+            EnrichmentCheckpoint(
+                partition_id=self.partition_id,
+                source=adapter.source_id,
+                last_processed_award_id=award_id,
+                last_success_timestamp=now,
+                records_processed=stats.success + stats.unchanged,
+                records_failed=stats.failed,
+                records_total=stats.total,
+                checkpoint_timestamp=now,
+                metadata={"processed_ids": sorted(processed_ids)},
+            )
+        )

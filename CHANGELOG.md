@@ -10,6 +10,75 @@ version.
 
 ## [Unreleased]
 
+## [0.7.0] — 2026-08-18
+
+### Added
+
+- `SourceAdapter` protocol and `SourceRefreshRunner`, with `USAspendingAPIClient`
+  wrapped as the reference adapter, restoring `uv run refresh-enrichment
+  --source usaspending` (#619).
+- Pipelines-tier `AnalysisSpec` / `AnalysisRun` platform with a registry-driven
+  runner, snapshot compare, and `scripts/data/run_analysis.py --profile`; the
+  prior hard-coded tech-area builder CLIs remain as deprecated shims (#619).
+- STTR spinout-linkage exploratory kernel: identity resolution, generic-token
+  guard, typed dimension-absence reasons, and the frozen Order 0–4 linkage
+  cascade (#623), its D1 award-spine loader and design freeze-hash guard
+  (#627), and a D4 money/paper-trail scorer scoring the subcontract and
+  spinout signals as two independent directions (#632).
+- STTR spinout-linkage partner-type seed lists: FFRDC, IPEDS, new-model-org,
+  fiscal-sponsor, and IRS nonprofit-registry data captured; the
+  research-hospitals list is left honestly pending on two dead-end sources
+  (#624).
+- `evidence-auditor` and `deployment-safety-reviewer` specialist review
+  agents, cross-checked against the actual evidence-tier contract and
+  self-hosted server runbook they enforce (#646).
+- A crosswalk from the canonical 21-area CET taxonomy to the 14 national
+  security CET areas in Appendix A of the August 2026 National Security
+  Science and Technology Strategy, with Appendix B's priority-need alignment
+  and a `docs/nssts-2026-alignment.md` explainer of what the strategy does
+  and does not license (#647).
+
+### Changed
+
+- `specs/sttr-spinout-linkage` frozen as Revision 1: all 12 open design
+  questions resolved, including a second research pass confirming no public
+  or paid source directly supplies Bayh-Dole research-institution-to-SBC
+  license records (#620, #626).
+- `make lint-boundaries` now runs the same eight guard scripts as the CI
+  quality job, including two that were previously CI-only (#633).
+- Remaining `(str, Enum)` classes migrated to `StrEnum`, enforced by a
+  targeted `UP042` check in `make lint` and CI; Python version wording
+  unified to 3.11–3.12 throughout (#634).
+- CLAUDE.md and agent role instructions deduplicated behind a single shared
+  pointer (#636).
+- The steering glossary and requirements template point confidence bands at
+  their owning config or doc instead of restating them, and disambiguate
+  enrichment "evidence" from the epistemic `evidence` tier (#637).
+- Steering checklists that read as CI gates but were not enforced anywhere
+  are relabeled as guidance, with the genuinely CI-enforced contracts kept
+  in their own table (#638).
+- Per-spec glossaries scrubbed of confidence bands they never owned;
+  archived specs keep only glossary terms still used in their own
+  requirements text (#639).
+
+### Fixed
+
+- The USAspending refresh pipeline: requests carried only `award_id` and
+  could never match an award, the runner checkpoint was never cleared so an
+  award refreshed once was skipped forever, and NaN identifiers reached the
+  API as the literal string `"nan"` (#621).
+- The analysis platform: `run_analysis.py --profile` wrote no census
+  artifacts, the calibration-drift gate was unreachable from the CLI, and a
+  malformed analysis registry could crash the entire Dagster definitions
+  load instead of just the affected cohort assets (#622).
+- The STTR linkage kernel: a generic-token guard bypass on the exact-match
+  identity path, a guard failure that collapsed into a measured negative
+  instead of blocking the label, `D4MoneyTrail`'s single shared status
+  letting one direction's typed absence suppress the other's real signal,
+  and an unreachable cascade branch (#628).
+- `D4MoneyTrail` construction after the kernel's status-field split, which
+  had been failing `Fast Tests` on every open pull request (#647).
+
 ## [0.6.0] — 2026-08-15
 
 ### Added
@@ -150,7 +219,8 @@ across the root project and the three packages under `packages/`.
 `vMAJOR.MINOR.PATCH` form it requires. Per that policy published tags are never
 moved or reused, so they remain as historical markers.
 
-[Unreleased]: https://github.com/hollomancer/sbir-analytics/compare/v0.6.0...HEAD
+[Unreleased]: https://github.com/hollomancer/sbir-analytics/compare/v0.7.0...HEAD
+[0.7.0]: https://github.com/hollomancer/sbir-analytics/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/hollomancer/sbir-analytics/compare/v0.5.1...v0.6.0
 [0.5.1]: https://github.com/hollomancer/sbir-analytics/compare/v0.5.0...v0.5.1
 [0.5.0]: https://github.com/hollomancer/sbir-analytics/compare/v0.4.0...v0.5.0

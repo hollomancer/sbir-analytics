@@ -37,29 +37,19 @@ This specification implements an iterative API enrichment refresh loop to keep c
 
 ## Glossary
 
-- **PatentsView**: Technical component or system: PatentsView
-- **API**: System component or technology referenced in the implementation
-- **SBIR**: System component or technology referenced in the implementation
-- **SAM**: System component or technology referenced in the implementation
-- **NIH**: System component or technology referenced in the implementation
-- **UEI**: System component or technology referenced in the implementation
-- **DUNS**: System component or technology referenced in the implementation
-- **CET**: System component or technology referenced in the implementation
-- **SLA**: System component or technology referenced in the implementation
-- **CLI**: System component or technology referenced in the implementation
-- **iterative_enrichment_refresh_job**: Code component or file: iterative_enrichment_refresh_job
-- **last_attempt_at**: Code component or file: last_attempt_at
-- **last_success_at**: Code component or file: last_success_at
-- **PipelineConfig.enrichment_refresh**: Code component or file: sbir_etl/config/schemas/pipeline.py — the actual config namespace for iterative-refresh settings (e.g., `config.enrichment_refresh.usaspending.*`).
-- **data/derived/enrichment_freshness.parquet**: Code component or file: the Parquet ledger where per-source freshness metrics are persisted.
-- **data/state/enrichment_refresh_state.json**: Code component or file: the JSON state file tracking per-source last-attempt / last-success timestamps.
-- **uv run refresh-enrichment --source usaspending**: Operator CLI for the shared runner.
-- **docs/enrichment/iterative-refresh.md**: Code component or file: docs/enrichment/iterative-refresh.md
-- **Iterative enrichment scheduler**: Key concept: Iterative enrichment scheduler
-- **Per-source refresh policies**: Key concept: Per-source refresh policies
-- **Connector + delta upgrades**: Key concept: Connector + delta upgrades
-- **Freshness telemetry + remediation**: Key concept: Freshness telemetry + remediation
-- **Operator tooling & docs**: Key concept: Operator tooling & docs
+Feature-local terms only. Do not redefine enrichment confidence bands here —
+see [glossary.md](../../docs/steering/glossary.md).
+
+- **`PipelineConfig.enrichment_refresh`** — Config namespace for iterative-refresh
+  settings (`sbir_etl/config/schemas/pipeline.py`), e.g.
+  `config.enrichment_refresh.usaspending.*`.
+- **Freshness ledger** — `data/derived/enrichment_freshness.parquet` (per-source
+  freshness metrics).
+- **Refresh state** — `data/state/enrichment_refresh_state.json` (per-source
+  last-attempt / last-success timestamps).
+- **Operator CLI** — `uv run refresh-enrichment --source usaspending` (shared
+  runner entry point).
+- **Operator docs** — `docs/enrichment/iterative-refresh.md`.
 
 ## Requirements
 
