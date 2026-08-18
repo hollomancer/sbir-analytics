@@ -55,12 +55,68 @@ def test_invalid_or_duplicate_declarations_are_rejected(tmp_path: Path) -> None:
 def test_all_valid_tiers_are_accepted(tmp_path: Path) -> None:
     for tier in sorted(tiers.VALID_TIERS):
         spec = tmp_path / "specs" / tier
-        _write(
-            tmp_path,
-            f"specs/{tier}/requirements.md",
-            f"# {tier}\n\n**Target epistemic tier:** `{tier}`\n",
-        )
+        body = f"# {tier}\n\n**Target epistemic tier:** `{tier}`\n"
+        if tier == "evidence":
+            body += "\n**Declared estimand:** unit-test placeholder estimand.\n"
+            _write(
+                tmp_path,
+                f"specs/{tier}/amendments.md",
+                "# Amendments\n\n"
+                "SHA-256: `aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa`\n",
+            )
+        _write(tmp_path, f"specs/{tier}/requirements.md", body)
         assert not tiers.validate_spec_directory(spec, repository_root=tmp_path)
+
+
+def test_evidence_tier_requires_amendments_sha_and_estimand(tmp_path: Path) -> None:
+    spec = tmp_path / "specs" / "example"
+    _write(
+        tmp_path,
+        "specs/example/requirements.md",
+        "# Example\n\n**Target epistemic tier:** evidence\n",
+    )
+
+    violations = tiers.validate_spec_directory(spec, repository_root=tmp_path)
+    messages = " ".join(v.message for v in violations)
+    assert "amendments.md" in messages
+    assert "Declared estimand" in messages or "Estimand" in messages
+
+
+def test_evidence_tier_accepts_complete_contract(tmp_path: Path) -> None:
+    spec = tmp_path / "specs" / "example"
+    _write(
+        tmp_path,
+        "specs/example/requirements.md",
+        "# Example\n\n**Target epistemic tier:** evidence\n\n"
+        "**Declared estimand:** the unit-test estimand.\n",
+    )
+    _write(
+        tmp_path,
+        "specs/example/amendments.md",
+        "Frozen file SHA-256: `bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb`\n",
+    )
+
+    assert not tiers.validate_spec_directory(spec, repository_root=tmp_path)
+
+
+def test_evidence_tier_accepts_raw_byte_freeze_language_without_hex(tmp_path: Path) -> None:
+    """Census-style freezes compile digests into the asset, not amendments.md."""
+
+    spec = tmp_path / "specs" / "example"
+    _write(
+        tmp_path,
+        "specs/example/requirements.md",
+        "# Example\n\n**Target epistemic tier:** evidence\n\n"
+        "**Declared estimand:** the unit-test estimand.\n",
+    )
+    _write(
+        tmp_path,
+        "specs/example/amendments.md",
+        "The census asset verifies and records the raw-byte SHA-256 of both files "
+        "before materialization.\n",
+    )
+
+    assert not tiers.validate_spec_directory(spec, repository_root=tmp_path)
 
 
 def test_current_repository_spec_declarations_are_valid() -> None:

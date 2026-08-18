@@ -80,3 +80,36 @@ Optional Phase 2 expansion (6.1, 6.2) is **not** required to close #442.
   - Verify: CLI `--help` and a mocked dry-run
 - [x] 7.5 Update `docs/enrichment/usaspending-iterative-refresh.md`.
   - Verify: `make docs-check`
+
+## Issue #443 — NIH RePORTER source adapter
+
+Per-source adapter for R43/R44/R41/R42. Shared lifecycle stays in
+`SourceAdapter` / `SourceRefreshRunner`. Grain: exact `project_num` /
+`core_project_num` + FY on known SBIR.gov NIH/HHS awards; windows become
+RePORTER criteria. Out of scope: STTR `research_hospitals`, live schedule,
+rewriting the Phase III urllib extractor.
+
+- [x] 8.1 Add `sbir_etl/enrichers/nih_reporter/` client, key canonicalizer,
+      and normalized record schema. Move `canonicalize_nih_query_key` here;
+      Phase III re-exports it.
+  - Verify: `tests/unit/enrichers/nih_reporter/` (pagination, windows,
+    duplicates, retries) and `tests/unit/phase_iii_negative_controls/test_nih_reporter.py`
+- [x] 8.2 Adapter + SBIR.gov request builder + `refresh-enrichment --source nih_reporter`.
+  - Verify: mocked CLI dry-run; disabled source exits; no USAspending parquet dependency
+  - Notes: `NIHReporterSourceAdapter` + `requests.py` build exact-key lookups
+    from the SBIR.gov award frame. `--window` is RePORTER criteria (date or
+    `fy:`), not a local award-date filter. First run treats an empty freshness
+    ledger as "all eligible NIH/HHS awards." Persist grain is `appl_id` at
+    `data/derived/nih_reporter_awards.parquet`. `enabled: false` until a hand
+    run succeeds.
+- [x] 8.3 Dagster ledger / stale set / refresh batch and job. No sensor.
+      Keep `enabled: false`.
+  - Verify: job selection includes the refresh asset; hermetic fake adapter
+  - Notes: `nih_reporter_iterative_enrichment_job` selects
+    `nih_reporter_freshness_ledger`, `stale_nih_reporter_awards`, and
+    `nih_reporter_refresh_batch`. First-run / stale selection is shared with
+    the CLI (`nih_ids_needing_refresh`). Refresh no-ops while
+    `enabled: false`. No sensor and no schedule.
+- [ ] 8.4 Docs (`docs/enrichment/nih-reporter-refresh.md`) and E3 freshness
+      mention only after a hand run has written a freshness row.
+  - Verify: `make docs-check`

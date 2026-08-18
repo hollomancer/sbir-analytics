@@ -47,7 +47,8 @@ bypassing lifecycle review; the status and rationale still require human judgmen
 - **`cross-agency-taxonomy` — Gated backlog.** M3 research target. Prerequisite
   classifier/tools exist, but this spec's batch run, report, and Dagster wiring
   are not implemented.
-- **`dark-majority-resolution` — Maintenance.** Core contract, identity,
+- **`dark-majority-resolution` — Maintenance.** Retiered `evidence` → `pipelines`
+  (2026-08-15): no four-item evidence contract yet. Core contract, identity,
   liveness, and recovery work is implemented. Remaining work is a bounded web
   liveness sweep plus blocked/deferred external-registry checks.
 - **`data-imputation` — Gated backlog.** Foundational E4 work, but zero
@@ -74,9 +75,9 @@ bypassing lifecycle review; the status and rationale still require human judgmen
   ordinary upkeep of declarations as modules are added.
 - **`fiscal-tax-impact-v2.md` — Gated backlog.** Valid D2 methodology upgrade.
   Leave inactive until fiscal-model refresh is selected.
-- **`follow-on-multiplier-validation` — Active.** Design-only follow-up to the
-  completed multiplier asset. Still called out as an immediate research-plan
-  gap.
+- **`follow-on-multiplier-validation` — Active.** Retiered `evidence` →
+  `exploratory` (2026-08-15): design-only follow-up without an evidence contract.
+  Still called out as an immediate research-plan gap.
 - **`iterative-api-enrichment` — Maintenance.** Issue #442 closed the
   shared lifecycle: `SourceAdapter` + `SourceRefreshRunner`, USAspending
   as the reference adapter, and `usaspending_refresh_batch` on the job.
@@ -101,7 +102,8 @@ bypassing lifecycle review; the status and rationale still require human judgmen
 - **`patent-cost-spillover` — Gated backlog.** M2 analytical layer remains
   missing. Implement only when patent cost/spillover becomes the selected
   sprint.
-- **`phase-3-solicitation-alerts` — Maintenance.** Retrospective S1 work is
+- **`phase-3-solicitation-alerts` — Maintenance.** Retiered `evidence` →
+  `pipelines` (2026-08-15). Retrospective S1 work is
   implemented. SAM.gov Opportunities S2/S3 paths remain backlog.
 - **`phase-iii-census` — Active.** Phase 1 is implemented and materialized under
   a reproducible study contract; the control-identity eligibility gate, the
@@ -116,14 +118,17 @@ bypassing lifecycle review; the status and rationale still require human judgmen
 - **`phase-iii-hand-label-validation` — Gated backlog.** Design and estimand
   are written but the spec is not yet frozen. Do not implement until the design
   is approved and frozen per the evidence-tier contract.
-- **`phase3-candidate-enrichment` — Active.** The source-coverage gate stopped
+- **`phase3-candidate-enrichment` — Active.** Retiered `evidence` → `exploratory`
+  (2026-08-15). The source-coverage gate stopped
   the text assembler, while the firm-ranking/lineage experiment found a useful
   but hand-weighted lift. Learned weights and a larger independent validation set
   remain before production use.
-- **`phase3-match-benchmark` — Maintenance.** Corrected estimator and cohort
+- **`phase3-match-benchmark` — Maintenance.** Retiered `evidence` → `pipelines`
+  (2026-08-15). Corrected estimator and cohort
   rules are implemented; empirical reruns remain blocked on the required inputs.
   Its results remain provisional portfolio-linkage evidence.
-- **`phase3-notice-corpus-fusion` — Maintenance.** Award-grain recovery,
+- **`phase3-notice-corpus-fusion` — Maintenance.** Retiered `evidence` →
+  `pipelines` (2026-08-15). Award-grain recovery,
   reproduction, frozen coefficients, and packet integration landed. Reconcile
   the remaining documentation task and the explicitly missing second label channel.
 - **`phase3-transition-groundtruth` — Maintenance.** The independent corpus,
@@ -133,7 +138,8 @@ bypassing lifecycle review; the status and rationale still require human judgmen
 - **`phase3-undercount-extension` — Gated backlog.** Valid B3 follow-up, but it
   depends on reusable resolution/self-label components and must keep contract
   undercount separate from provisional non-contract vehicle counts.
-- **`procurement-transition-p1-remediation` — Active.** Award identity and path
+- **`procurement-transition-p1-remediation` — Active.** Retiered `evidence` →
+  `pipelines` (2026-08-15). Award identity and path
   attribution landed. Cold-start bounds, source-normalization provenance, and
   ranking/auditability phases remain.
 - **`sbir-ma-match-rate-by-fy` — Gated backlog.** Analysis-only F2 follow-up on
@@ -153,7 +159,8 @@ bypassing lifecycle review; the status and rationale still require human judgmen
 - **`tech-area-transition-report` — Maintenance.** The parameterized cohort and
   report pattern is implemented across nanotechnology, QIS, and hypersonics.
   The remaining task is to add richer headline channels when their evidence exists.
-- **`transition-coverage-expansion` — Active.** Initial access and coverage
+- **`transition-coverage-expansion` — Active.** Retiered `evidence` →
+  `exploratory` (2026-08-15). Initial access and coverage
   spikes are recorded. Credible grant/subaward attribution, OT resolution, and a
   channel-by-channel wire-in decision remain.
 - **`transition-precision-benchmark` — Active.** Automates the full-corpus

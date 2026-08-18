@@ -21,7 +21,7 @@ much weight it can carry. Full contracts:
 |------|----------|-------------|
 | `primitives` | One implementation per concept, versioned behavior, comprehensive tests | `sbir_etl/identity/`, `sbir_etl/config/`, `sbir_etl/models/` |
 | `pipelines` | Deterministic, reproducible from a declared data cut, no inference | `sbir_etl/`, `packages/` |
-| `evidence` | Frozen spec + SHA enforcement + blocking asset checks + declared estimand — all four | Phase III census |
+| `evidence` | Frozen spec + SHA enforcement + blocking asset checks + declared estimand — all four | Phase III census (`check_epistemic_tiers.py` enforces amendments SHA paperwork + declared estimand; not full runtime gates) |
 | `exploratory` | Labeled non-citable. Nothing else required. | most of `scripts/` |
 
 Three rules:
@@ -61,9 +61,10 @@ by hand with the inputs available on this host.
 
 ## Agents
 
-Full role instructions live in `.claude/agents/`. The `.Codex/agents/` files
-route Codex agents to the same instructions so the two runtimes do not maintain
-separate copies.
+Full role instructions live in `.claude/agents/`. Those files are **role-only**
+(workflows, verdicts, tier-scaled effort); shared conventions stay here in
+CLAUDE.md. The `.Codex/agents/` files route Codex agents to the same
+instructions so the two runtimes do not maintain separate copies.
 
 | Agent | When to Use | Model |
 |-------|-------------|-------|
@@ -71,9 +72,15 @@ separate copies.
 | `test-fixer` | Failing tests, broken coverage, test diagnostics | sonnet |
 | `quality-sweep` | Lint/type errors, code cleanup after large changes | sonnet |
 | `scope-guard` | Before large implementations — challenges scope creep | opus |
+| `evidence-auditor` | Evidence promotion, study contracts, and citable claims | opus |
+| `deployment-safety-reviewer` | Read-only review before live operations and materialization | opus |
 
 For **spec work**: scope-guard → spec-implementer → test-fixer → quality-sweep.
 For **bug fixes**: skip to test-fixer or quality-sweep directly.
+For **evidence promotion or externally reportable claims**: run evidence-auditor
+before changing study status or presenting the result as validated or citable.
+For **live deployment or materialization**: run deployment-safety-reviewer
+before the separately authorized operation; the reviewer never executes live mutations.
 
 Each agent reads the tier from the spec and holds to it: `scope-guard` checks the
 declared tier against the contract and can return `RETIER`, `spec-implementer`
