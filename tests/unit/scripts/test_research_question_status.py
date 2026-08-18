@@ -175,6 +175,60 @@ def test_repository_inventory_matches_live_studies() -> None:
     assert guard.validate_repository() == []
 
 
+def test_start_here_requires_explicit_anchor_and_legal_status() -> None:
+    markdown = """
+### Start here
+
+- See [leverage](#f3-form-d-leverage) and [watchlist](#a-cp13).
+
+### F3. Inferential
+
+- <a id="f3-form-d-leverage"></a>**Leverage**
+  **Status:** Computable as a Form D lower bound.
+  *Deps: ER*
+"""
+
+    violations = guard.validate_start_here(markdown)
+
+    assert any("a-cp13" in item.message and "no explicit" in item.message for item in violations)
+    assert not any("f3-form-d-leverage" in item.message for item in violations)
+
+
+def test_start_here_rejects_research_target_status() -> None:
+    markdown = """
+### Start here
+
+- [Watchlist](#a-cp13)
+
+### A4. Risk
+
+- <a id="a-cp13"></a>**Watchlist**
+  **Status:** Research target — not yet scoped.
+  *Deps: CET*
+"""
+
+    violations = guard.validate_start_here(markdown)
+
+    assert violations
+    assert "reserved Status" in violations[0].message
+
+
+def test_start_here_allows_not_estimable_refusal() -> None:
+    markdown = """
+### Start here
+
+- [Crowd-in](#f3-crowd-in-vs-crowd-out)
+
+### F3. Inferential
+
+- <a id="f3-crowd-in-vs-crowd-out"></a>**Crowd-in**
+  **Status:** Not estimable from the Form D study design.
+  *Deps: ER*
+"""
+
+    assert guard.validate_start_here(markdown) == []
+
+
 def test_load_question_study_ranks_reads_census() -> None:
     ranks = guard.load_question_study_ranks(repository_root=Path(__file__).resolve().parents[3])
 

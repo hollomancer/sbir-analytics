@@ -9,9 +9,14 @@ not per question bullet: a study listing ``B2`` authorizes every reserved-rank
 Status under ``### B2``.
 
 Negations (``not computable``, ``never computable``, ``not yet validated``,
-``no citable claim``, ``non-citable``) are refusals, not ranks, and do not need
-a study. The negation has to lead — a rank word with nothing negating it in
-front reads as a claim. The verb ``validates`` is not the ``validated`` rank.
+``no citable claim``, ``non-citable``, ``not estimable``) are refusals, not
+ranks, and do not need a study. The negation has to lead — a rank word with
+nothing negating it in front reads as a claim. The verb ``validates`` is not
+the ``validated`` rank.
+
+The ``### Start here`` audience box may link only to an explicit question
+anchor whose Status is a reserved rank or a refusal. Section headings and
+research-target questions are not start-here targets.
 
 This is admission control for the inventory, not proof that a study's result
 is correct. Exploratory studies do not authorize ``computable``.
@@ -35,6 +40,11 @@ SECTION_HEADING = re.compile(r"^(#{2,4})\s+([A-F]\d+)\b")
 ANY_HEADING = re.compile(r"^(#{1,6})\s")
 STATUS_MARKER = re.compile(r"\*\*Status:\*\*")
 STATUS_END = re.compile(r"^(\s*\*Deps:|#{1,6}\s|-\s+\*\*)")
+START_HERE_HEADING = re.compile(r"^### Start here\b", re.IGNORECASE)
+START_HERE_END = re.compile(r"^#{2,3}\s+")
+START_HERE_LINK = re.compile(r"\]\(#([^)]+)\)")
+EXPLICIT_ANCHOR = re.compile(r'<a\s+(?:[^>]*?\s)?id=["\']([^"\']+)["\']', re.I)
+REFUSAL_STATUS = re.compile(r"\bnot\s+(?:computable|estimable)\b", re.IGNORECASE)
 
 # Only the past-participle rank word counts. ``validates`` is the ordinary verb
 # ("the review validates the cohort component") and is not a rank claim.
@@ -257,6 +267,112 @@ def validate_inventory(
     return violations
 
 
+def iter_start_here_fragments(markdown: str) -> list[tuple[int, str]]:
+    """Return ``(line_number, fragment)`` for links in the Start here box."""
+
+    fragments: list[tuple[int, str]] = []
+    in_box = False
+    for line_number, line in enumerate(markdown.splitlines(), start=1):
+        if START_HERE_HEADING.match(line):
+            in_box = True
+            continue
+        if in_box and START_HERE_END.match(line) and not START_HERE_HEADING.match(line):
+            break
+        if not in_box:
+            continue
+        fragments.extend((line_number, match.group(1)) for match in START_HERE_LINK.finditer(line))
+    return fragments
+
+
+def _anchor_line_numbers(markdown: str) -> dict[str, int]:
+    found: dict[str, int] = {}
+    for line_number, line in enumerate(markdown.splitlines(), start=1):
+        for match in EXPLICIT_ANCHOR.finditer(line):
+            found.setdefault(match.group(1), line_number)
+    return found
+
+
+def _status_after(markdown: str, start_line: int) -> str | None:
+    """Return the next Status block after ``start_line``, if it belongs to that question."""
+
+    lines = markdown.splitlines()
+    index = start_line - 1
+    while index < len(lines):
+        line = lines[index]
+        if index > start_line - 1 and (line.startswith("#") or line.startswith("- **")):
+            return None
+        marker = STATUS_MARKER.search(line)
+        if marker is None:
+            index += 1
+            continue
+        block = [line[marker.end() :]]
+        index += 1
+        while index < len(lines):
+            nxt = lines[index]
+            if STATUS_MARKER.search(nxt) or STATUS_END.match(nxt):
+                break
+            block.append(nxt)
+            index += 1
+        return " ".join(part.strip() for part in block if part.strip())
+    return None
+
+
+def start_here_status_is_allowed(status_text: str) -> bool:
+    """Start-here Status must be a reserved rank or an explicit refusal."""
+
+    return bool(claimed_ranks(status_text) or REFUSAL_STATUS.search(status_text))
+
+
+def validate_start_here(
+    markdown: str, *, path: str = INVENTORY_PATH.as_posix()
+) -> list[StatusViolation]:
+    """Require Start here links to land on a question with a legal Status."""
+
+    anchors = _anchor_line_numbers(markdown)
+    violations: list[StatusViolation] = []
+    for line_number, fragment in iter_start_here_fragments(markdown):
+        target = anchors.get(fragment)
+        if target is None:
+            violations.append(
+                StatusViolation(
+                    path=path,
+                    line_number=line_number,
+                    message=(
+                        f"Start here link #{fragment} has no explicit "
+                        f'<a id="{fragment}"> question anchor'
+                    ),
+                )
+            )
+            continue
+        status = _status_after(markdown, target)
+        if status is None:
+            violations.append(
+                StatusViolation(
+                    path=path,
+                    line_number=line_number,
+                    message=(f"Start here link #{fragment} has no Status on the anchored question"),
+                )
+            )
+            continue
+        if start_here_status_is_allowed(status):
+            continue
+        excerpt = re.sub(r"\s+", " ", status).strip()
+        if len(excerpt) > 160:
+            excerpt = excerpt[:157] + "..."
+        violations.append(
+            StatusViolation(
+                path=path,
+                line_number=line_number,
+                message=(
+                    f"Start here link #{fragment} must target a reserved Status "
+                    f"rank or an explicit refusal (Not computable / Not estimable): "
+                    f"{excerpt}"
+                ),
+            )
+        )
+    return violations
+
+
 def validate_repository(*, repository_root: Path = REPOSITORY_ROOT) -> list[StatusViolation]:
     """Validate the tracked inventory against live study manifests."""
 
@@ -272,7 +388,10 @@ def validate_repository(*, repository_root: Path = REPOSITORY_ROOT) -> list[Stat
                 message=f"cannot load inventory or study manifests: {exc}",
             )
         ]
-    return validate_inventory(markdown, ranks, path=INVENTORY_PATH.as_posix())
+    return [
+        *validate_inventory(markdown, ranks, path=INVENTORY_PATH.as_posix()),
+        *validate_start_here(markdown, path=INVENTORY_PATH.as_posix()),
+    ]
 
 
 def main() -> int:
