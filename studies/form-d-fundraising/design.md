@@ -12,8 +12,9 @@ lower-bound private-to-SBIR leverage ratios from SEC Form D
 1. **Program-level ratio.** Numerator: Form D dollars from matched firms
    after year and industry-group filters. Denominator: all SBIR.gov award
    dollars in the same window, including firms with no Form D match.
-2. **Per-matched-firm ratio.** Same numerator. Denominator: SBIR.gov award
-   dollars only for matched firms that have at least one in-window award.
+2. **Per-matched-firm ratio.** Numerator: Form D dollars from the subset
+   of matched firms that have at least one in-window SBIR award.
+   Denominator: SBIR.gov award dollars for that same subset.
 
 Each ratio is reported at two match-confidence filters: high only, and
 high + medium. Uncertainty is a firm-level percentile bootstrap (1,000
@@ -30,7 +31,7 @@ federal-contract leverage and are not comparable to it.
 - Form D match records at `data/form_d_details.jsonl`, scored by
   `compute_form_d_confidence` under the 2026-04-23 two-signal rule
   (high = PI–executive name score ≥ 0.7 or ZIP match; medium = state
-  match only).
+  match *or* missing state evidence; a state mismatch is low).
 - Industry groups excluded at offering grain: Insurance, Lodging and
   Conventions, Other Travel, Pooled Investment Fund, Restaurants,
   Retailing, Tourism and Travel Services.

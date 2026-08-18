@@ -3,22 +3,22 @@ study_id: form-d-fundraising
 title: SBIR federal spending vs Form D private capital, 2009–2024
 evidence_status: reproducible
 research_questions:
-  - F1
   - F3
 estimand: >-
   Among SBIR/STTR awardees in calendar years 2009–2024, estimate two
   lower-bound private-to-SBIR leverage ratios from SEC Form D
   totalAmountSold after year and excluded-industry-group filters: (1)
   program-level, Form D dollars from matched firms divided by all SBIR.gov
-  award dollars in the window; (2) per-matched-firm, the same numerator
-  divided by SBIR.gov dollars only for matched firms with an in-window
-  award. Report each ratio at the high and high-plus-medium match-confidence
-  filters, with a firm-level percentile bootstrap (1,000 iterations, seed
-  42). Non-detection is not proof of zero private capital. The ratios are
-  not NASEM's DoD follow-on federal-contract leverage.
+  award dollars in the window; (2) per-matched-firm, Form D dollars from
+  the subset of matched firms that have at least one in-window SBIR award,
+  divided by SBIR.gov dollars for that same subset. Report each ratio at
+  the high and high-plus-medium match-confidence filters, with a firm-level
+  percentile bootstrap (1,000 iterations, seed 42). Non-detection is not
+  proof of zero private capital. The ratios are not NASEM's DoD follow-on
+  federal-contract leverage.
 frozen_artifacts:
   - path: studies/form-d-fundraising/design.md
-    sha256: 4ddf27ba84da18b21b00a567d4909b57ea115f9f6c3b6680e15547311bff56e2
+    sha256: 5459e2eea7b689b8f5e5e4ea0803b991328e488c32703eb7a730409bc2e99f2b
 implementation:
   - path: scripts/data/bootstrap_form_d_leverage_ci.py
     symbol: main
@@ -30,8 +30,9 @@ identity_policy:
   strategy: >-
     Ratio join is uppercase stripped company name. Match-confidence tiers
     come from compute_form_d_confidence (high = PI-to-executive name score
-    ≥ 0.7 or ZIP match; medium = state match only). The ratio script does
-    not use CompanyNameProfile.FORM_D_JOIN_V1.
+    ≥ 0.7 or ZIP match; medium = state match or missing state evidence; a
+    state mismatch is low). The ratio script does not use
+    CompanyNameProfile.FORM_D_JOIN_V1.
   version: two-signal tiering, methodology commit f65abb89
   negative_evidence_allowed: false
 materialization:
@@ -41,10 +42,6 @@ permitted_claims:
   - Given the frozen design and a 2009–2024 SBIR.gov plus Form D details
     cut, the two leverage ratios and their seed-42 bootstrap intervals are
     deterministic.
-  - On the dated 2026-04-23 cut recorded in
-    docs/research/sbir-form-d-fundraising-analysis.md, the high-only
-    program-level point estimate is 1.82x [1.65, 2.02] and the
-    high-plus-medium estimate is 2.37x [2.10, 2.67].
   - Those ratios measure disclosed Regulation D capital, not follow-on
     federal contracts, and are not a NASEM 4:1 reproduction.
 limitations:
