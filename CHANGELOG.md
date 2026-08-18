@@ -10,6 +10,32 @@ version.
 
 ## [Unreleased]
 
+## [0.7.1] — 2026-08-18
+
+### Added
+
+- Hermetic end-to-end coverage for `core_refresh_job` (#649).
+- Job-level execution tests for `phase_transition_latency_job`,
+  `cet_full_pipeline_job`, and `cet_drift_job` (#650).
+- Unit tests for the previously untested Neo4j categorization, SEC EDGAR,
+  organization, and patent-loading paths, plus weekly-report LLM digest
+  builders (#651).
+
+### Changed
+
+- Specs that declared `evidence` without the four-item contract were
+  retiered; `phase-iii-census` remains the only evidence target, and CI now
+  requires amendments SHA paperwork plus a declared estimand (#635).
+- The evidence-tier checker fence-strips `amendments.md` before the SHA
+  scan. The new job tests pin `core_refresh_job` membership, the production
+  `cet_drift_job` selection, and the CET pipeline skip path (#652).
+
+### Fixed
+
+- `OrganizationLoader.create_subsidiary_relationships` kept an invalid pair
+  (with a `None` child) and dropped a later valid pair when a mixed batch
+  contained a hole (#652).
+
 ## [0.7.0] — 2026-08-18
 
 ### Added
@@ -219,7 +245,8 @@ across the root project and the three packages under `packages/`.
 `vMAJOR.MINOR.PATCH` form it requires. Per that policy published tags are never
 moved or reused, so they remain as historical markers.
 
-[Unreleased]: https://github.com/hollomancer/sbir-analytics/compare/v0.7.0...HEAD
+[Unreleased]: https://github.com/hollomancer/sbir-analytics/compare/v0.7.1...HEAD
+[0.7.1]: https://github.com/hollomancer/sbir-analytics/compare/v0.7.0...v0.7.1
 [0.7.0]: https://github.com/hollomancer/sbir-analytics/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/hollomancer/sbir-analytics/compare/v0.5.1...v0.6.0
 [0.5.1]: https://github.com/hollomancer/sbir-analytics/compare/v0.5.0...v0.5.1
