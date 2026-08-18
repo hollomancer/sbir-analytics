@@ -101,7 +101,7 @@ outside reader only when a study contract stands behind them.
   ([B2](#b2-relational-tier-2)) and unrecorded Phase III
   ([B3](#b3-inferential-tier-3)) — the only questions whose Status is backed
   by a study contract — then **[F3](#f3-inferential-tier-3)** (private-to-SBIR
-  leverage; dated Form D analysis, no study contract yet). The DoD follow-on
+  leverage; Form D study is `reproducible`, not validated or citable). The DoD follow-on
   multiplier ([A3](#a3-inferential-tier-3)) and Treasury ROI
   ([D2](#d2-relational-tier-2)) stay inventory targets until they have
   study-backed Status lines.
@@ -999,7 +999,9 @@ The relevant literature is Lerner [L10], Howell [L11], and Kortum & Lerner
 - **Form D fundraising profile**
   What is the Form D [L23] private-placement fundraising profile of SBIR
   awardees?
-  *Deps: ER, SEC EDGAR · Spec: [../specs/archive/completed-features/form-d-pipeline/](../specs/archive/completed-features/form-d-pipeline/) (PR #286 merged)*
+  **Status:** Computable as a lower-bound disclosed-Reg-D profile under the
+  `form-d-fundraising` study (`reproducible`, not validated, not citable).
+  *Deps: ER, SEC EDGAR · Spec: [../specs/archive/completed-features/form-d-pipeline/](../specs/archive/completed-features/form-d-pipeline/) (PR #286 merged) · Study: [form-d-fundraising](../studies/form-d-fundraising/study.yaml)*
 
 - **Debt vs. equity composition**
   In SBIR-firm Form D filings, how much of the money raised is debt versus
@@ -1061,7 +1063,12 @@ The relevant literature is Lerner [L10], Howell [L11], and Kortum & Lerner
   What is the private-to-SBIR leverage ratio (private capital raised ÷ SBIR
   funding) by agency, vintage, and firm size?
   The private-side mirror of NASEM's 4:1 DoD follow-on funding multiplier [L1].
-  *Deps: ER, ID, SEC EDGAR · Refs: [L1] · Spec: [../specs/archive/completed-features/form-d-pipeline/](../specs/archive/completed-features/form-d-pipeline/), [../specs/agency-private-capital-comparison/](../specs/agency-private-capital-comparison/)*
+  **Status:** Computable as a Form D lower bound under the
+  `form-d-fundraising` study (`reproducible`, not validated, not citable).
+  The 1.82×–2.37× program-level ratios measure disclosed Regulation D
+  capital, not NASEM's federal-contract leverage, and are not a 4:1
+  reproduction.
+  *Deps: ER, ID, SEC EDGAR · Refs: [L1] · Spec: [../specs/archive/completed-features/form-d-pipeline/](../specs/archive/completed-features/form-d-pipeline/), [../specs/agency-private-capital-comparison/](../specs/agency-private-capital-comparison/) · Study: [form-d-fundraising](../studies/form-d-fundraising/study.yaml)*
 
 - **Outcomes vs. private-capital baselines**
   For Phase II awardees of any agency, do follow-on funding and exit outcomes
@@ -1125,16 +1132,18 @@ M&A). Classified-work exposure remains a manual political-sensitivity vetting
 factor, not an automated pipeline screen — there is no vulnerability signal for
 it.
 
-### Form D fundraising analysis (published)
+### Form D fundraising analysis (reproducible study, not citable)
 
 **Audience:** F-area analysts, investor researchers, and policy staff studying
 program-wide private-capital leverage.
 
 **Format:**
 
-- `docs/research/sbir-form-d-fundraising-analysis.md` — canonical, on `main`.
-  Includes Appendix A (firm-level bootstrap CIs, PR #338) and Appendix B (PIF
-  cross-link integrity audit, PR #341).
+- `docs/research/sbir-form-d-fundraising-analysis.md` — findings record, on
+  `main`. Includes Appendix A (firm-level bootstrap CIs, PR #338) and Appendix B
+  (PIF cross-link integrity audit, PR #341).
+- [`studies/form-d-fundraising/study.yaml`](../studies/form-d-fundraising/study.yaml)
+  — study contract (`reproducible`, not citable).
 - `docs/research/dod-form-d-leverage.md` — DoD Branch decomposition, per-firm and
   time-series and acquirer-type follow-ups, and the Form D vs. FPDS substitution
   test (PRs #342 / #343 / #350).
@@ -1252,7 +1261,8 @@ spot-checked against publisher records):
 **Last reviewed:** 2026-08-18. Reserved Status ranks (`Computable`,
 `Validated`, `Citable`) now require a matching `studies/*/study.yaml`. A3 and
 D2 were removed from the policymaker start-here box until they have
-study-backed Status. The 2026-08-11 citation audit added [L34]–[L48] from
+study-backed Status. `form-d-fundraising` is the second study contract
+(`reproducible` on F1/F3). The 2026-08-11 citation audit added [L34]–[L48] from
 the 2019–2026 literature map and pinned [L1] to its published DOI. Git history
 preserves earlier editorial and section-consolidation notes.
 
