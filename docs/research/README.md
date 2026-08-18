@@ -1,7 +1,7 @@
 ---
 Type: Overview
 Maintainer: Conrad Hollomon
-Last-Reviewed: 2026-08-03
+Last-Reviewed: 2026-08-18
 Status: active
 ---
 
@@ -50,12 +50,30 @@ brief count as maintainer-facing.
 | [Commercialization benchmark method](../commercialization-benchmark-methodology.md) | B3 | Method is documented; this repository cannot recreate the local audit | FY2026 local audit described in the document |
 | [Monthly procurement-transition report](../procurement-transition-report.md) | B4, E6 | Instructions for producing a report; not research evidence | Current public-source pipeline |
 
-The Phase III census has its own formal study record: the
-[study file](../../studies/phase-iii-census/study.yaml),
-[February 2026 data-build review](../../studies/phase-iii-census/materialization-2026-02-06.md),
-and [August 2026 control-group identity review](../../studies/phase-iii-census/identity-eligibility-audit-2026-08-03.md).
-The work can be repeated, but it is not yet approved for citation. The comparison
-group, matching, and placebo test are not finished.
+The Phase III census has its own formal study record. The
+[study file](../../studies/phase-iii-census/study.yaml) is the clock:
+`reproducible`, not validated or citable. The
+[February 2026 data-build record](../../studies/phase-iii-census/materialization-2026-02-06.md)
+holds the census ladder, the sensitivity grid, and the blocking one-factor check. The
+2026-08-03
+[identity-eligibility](../../studies/phase-iii-census/identity-eligibility-audit-2026-08-03.md),
+[exact-match balance](../../studies/phase-iii-census/control-matching-audit-2026-08-03.md),
+and [fixed-seed placebo](../../studies/phase-iii-census/placebo-results-2026-08-03.md)
+audits are recorded. [Matched negative-control outcomes](../../studies/phase-iii-census/negative-control-outcomes-2026-08-03.md)
+are descriptive only, and only within the frozen exact-match common-support subset: SBIR
+firms clear the full criteria set about 2.10× as often as controls, with a 0.853 overlap
+coefficient, computed on 712 of 12,042 exact-UEI SBIR firms (5.91%) and 1,029 of 843,777
+screened-negative controls — 4,827 of the 5,539 match-eligible treated firms matched zero
+controls. That ratio is not a population-wide rate. The placebo is one preregistered
+falsification, not labeled validation.
+
+The study file records four standing limitations, not one. The materialized placebo is a
+single non-uniform cyclic derangement rather than an inferential permutation distribution,
+and labeled validation remains unresolved, so no headline census cell, undercount claim, or
+statutory Phase III interpretation is authorized. Negative-control inference is restricted
+to the frozen exact-match common-support subset and does not generalize to unmatched Phase
+II firms. Exact UEI matching misses acquisitions, successors, and UEI changes. And an
+uncoded lineage proxy is not proof of a statutory Phase III award.
 
 ## Economic and fiscal methods
 
