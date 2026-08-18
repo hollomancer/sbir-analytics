@@ -997,9 +997,10 @@ The relevant literature is Lerner [L10], Howell [L11], and Kortum & Lerner
 - **Form D fundraising profile**
   What is the Form D [L23] private-placement fundraising profile of SBIR
   awardees?
-  **Status:** Computable as a lower-bound disclosed-Reg-D profile under the
-  `form-d-fundraising` study (`reproducible`, not validated, not citable).
-  *Deps: ER, SEC EDGAR · Spec: [../specs/archive/completed-features/form-d-pipeline/](../specs/archive/completed-features/form-d-pipeline/) (PR #286 merged) · Study: [form-d-fundraising](../studies/form-d-fundraising/study.yaml)*
+  **Status:** Exploratory description; no study produces a fundraising
+  profile (debt/equity/fill rate). The leverage ratios computed from
+  matched filers are under F3 / `form-d-fundraising`.
+  *Deps: ER, SEC EDGAR · Spec: [../specs/archive/completed-features/form-d-pipeline/](../specs/archive/completed-features/form-d-pipeline/)*
 
 - **Debt vs. equity composition**
   In SBIR-firm Form D filings, how much of the money raised is debt versus
@@ -1259,8 +1260,8 @@ spot-checked against publisher records):
 **Last reviewed:** 2026-08-18. Reserved Status ranks (`Computable`,
 `Validated`, `Citable`) now require a matching `studies/*/study.yaml`. A3 and
 D2 were removed from the policymaker start-here box until they have
-study-backed Status. `form-d-fundraising` is the second study contract
-(`reproducible` on F1/F3). The 2026-08-11 citation audit added [L34]–[L48] from
+study-backed Status. `form-d-fundraising` is the third study contract and the
+second at `reproducible` (on F3). The 2026-08-11 citation audit added [L34]–[L48] from
 the 2019–2026 literature map and pinned [L1] to its published DOI. Git history
 preserves earlier editorial and section-consolidation notes.
 
