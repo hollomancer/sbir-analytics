@@ -39,6 +39,10 @@ area, firm experience, and time trend).
 
 ## Glossary
 
+> Archived. Spec-local terms only; do not treat archived glossaries as current
+> confidence or enrichment standards. See
+> [glossary.md](../../../../docs/steering/glossary.md).
+
 - **Follow-on funding multiplier** (a.k.a. NASEM's *leverage ratio*) — Non-SBIR DoD
   obligations ÷ SBIR/STTR obligations for the set of firms that received at least one
   SBIR/STTR award in the measurement window.

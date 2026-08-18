@@ -10,16 +10,8 @@ This specification implements Evaluate Web Search-Based Enrichment Providers.
 
 ## Glossary
 
-- **API**: System component or technology referenced in the implementation
-- **SBIR**: System component or technology referenced in the implementation
-- **CLI**: System component or technology referenced in the implementation
-- **JSON**: System component or technology referenced in the implementation
-- **PII**: System component or technology referenced in the implementation
-- **poetry run evaluate_search_enrichers**: Code component or file: poetry run evaluate_search_enrichers
-- **reports/search_enrichment_benchmark.md**: Code component or file: reports/search_enrichment_benchmark.md
-- **Discovery & benchmarking**: Key concept: Discovery & benchmarking
-- **Evaluator tooling**: Key concept: Evaluator tooling
-- **Integration decision gates**: Key concept: Integration decision gates
+> Archived auto-generated placeholder glossary removed. See
+> [glossary.md](../../../../docs/steering/glossary.md) for current terms.
 
 ## Requirements
 

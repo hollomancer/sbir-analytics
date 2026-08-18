@@ -48,6 +48,9 @@ nothing to re-home, making this strictly simpler than Phase 1.
 
 ## Glossary
 
+> Archived. Graph label-migration terms; no confidence bands. See
+> [glossary.md](../../../../docs/steering/glossary.md).
+
 - **`:Organization`**: canonical firm/agency/institution node; key `organization_id`
   (`org_company_<uei>` or `org_company_DUNS:<duns>`); stores `uei`/`duns`; indexed
   on `uei`.
