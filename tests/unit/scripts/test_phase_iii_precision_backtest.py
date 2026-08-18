@@ -1,11 +1,16 @@
-"""PR-time precision canary for the Phase III retrospective backtest.
+"""PR-time polarity and wiring checks for the Phase III retrospective backtest.
 
-The full ≥0.85 HIGH-precision benchmark runs against the S3 corpus by invoking
-``scripts/phase_iii_precision_backtest.py`` manually; that full run is not yet
-automated in CI. These tests keep the benchmark exercised on every PR with a
-small deterministic fixture: obvious true-positive pairs must clear the
-threshold, obvious non-transitions must not, and the data-missing sentinel must
-fail loudly in ``--strict`` mode.
+These fixtures are not the repository's ≥85% HIGH-precision benchmark.
+That number is measured only by a manual run of
+``scripts/phase_iii_precision_backtest.py`` against the S3 corpus.
+
+What this module does enforce on every PR:
+
+* slam-dunk same-office Phase III pairs still score HIGH
+* obvious non-transitions still score below the HIGH threshold
+* ``--strict`` fails when inputs are missing
+* mixed-signal pairs keep their current HIGH / not-HIGH polarity, so a
+  weight swap or threshold inversion cannot land silently
 """
 
 import sys
@@ -13,6 +18,13 @@ from pathlib import Path
 
 import pandas as pd
 import pytest
+
+from sbir_analytics.assets.phase_iii_candidates.assets import (
+    WEIGHTS_RETROSPECTIVE,
+    _score_pair,
+    _scorer_config,
+)
+from sbir_ml.transition.detection.scoring import TransitionScorer
 
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "scripts"))
@@ -98,6 +110,46 @@ def _weak_contract_row(i: int, uei: str) -> dict:
     }
 
 
+HIGH_THRESHOLD = DEFAULT_PRECISION_THRESHOLD
+
+
+def _pair_row(**overrides: object) -> pd.Series:
+    base = {
+        "prior_award_id": "PHII-000",
+        "prior_recipient_uei": "UEI000",
+        "prior_agency": "DEPT OF DEFENSE",
+        "prior_sub_agency": "DEPT OF THE NAVY",
+        "prior_office": "NAVAL AIR SYSTEMS COMMAND",
+        "prior_naics_code": "541715",
+        "prior_psc_code": "AC13",
+        "prior_title": "AUV navigation",
+        "prior_abstract": "Phase II AUV navigation",
+        "prior_period_of_performance_end": "2021-06-30",
+        "prior_cet": "autonomy",
+        "target_id": "CTR-000",
+        "target_recipient_uei": "UEI000",
+        "target_agency": "DEPT OF DEFENSE",
+        "target_sub_agency": "DEPT OF THE NAVY",
+        "target_office": "NAVAL AIR SYSTEMS COMMAND",
+        "target_naics_code": "541715",
+        "target_psc_code": "AC13",
+        "target_description": "Vendor production contract for navigation hardware.",
+        "target_action_date": "2022-03-15",
+        "target_competition_type": "SOLE SOURCE (FAR 6.302)",
+        "target_obligated_amount": 2_500_000.0,
+        "target_cet": "autonomy",
+        "agency_match_level": "office",
+    }
+    base.update(overrides)
+    return pd.Series(base)
+
+
+def _composite(row: pd.Series, *, text_similarity: float, weights: dict | None = None) -> float:
+    scorer = TransitionScorer(_scorer_config(weights or WEIGHTS_RETROSPECTIVE))
+    score, _subs, _topical = _score_pair(scorer, row, text_similarity=text_similarity)
+    return float(score)
+
+
 @pytest.fixture
 def golden_frames() -> tuple[pd.DataFrame, pd.DataFrame]:
     ueis = [f"UEI{i:017d}" for i in range(10)]
@@ -106,12 +158,10 @@ def golden_frames() -> tuple[pd.DataFrame, pd.DataFrame]:
     return contracts, phase_ii
 
 
-def test_golden_positives_meet_precision_benchmark(golden_frames):
-    """CLAUDE.md's ≥85% precision benchmark, exercised on every PR.
+def test_obvious_transitions_score_high(golden_frames):
+    """Slam-dunk same-office Phase III pairs must still clear the HIGH threshold.
 
-    If a scoring/weight change drops unambiguous transitions below the HIGH
-    threshold, the production backtest would fail the same way — fix the
-    regression or consciously retune the weights and this fixture together.
+    This is a polarity smoke test, not the S3-corpus ≥85% precision benchmark.
     """
     contracts, phase_ii = golden_frames
     report = run_backtest(
@@ -169,3 +219,41 @@ def test_default_mode_writes_sentinel_and_exits_zero(tmp_path, monkeypatch):
     )
     assert main() == 0
     assert report_path.exists()
+
+
+def test_office_sole_cet_full_text_without_lineage_is_exactly_high():
+    """0.25+0.15+0.20+0.15+0.10 = 0.85. Lineage off, still HIGH at the floor."""
+    score = _composite(_pair_row(), text_similarity=1.0)
+    assert score == pytest.approx(0.85, abs=0.02)
+    assert score >= HIGH_THRESHOLD
+
+
+def test_same_office_sole_source_without_cet_or_lineage_stays_below_high():
+    """0.25+0.15+0.20 + 0.02 text = 0.62. Must not be HIGH."""
+    # _score_pair routes text_similarity through topical similarity (NAICS+PSC+text).
+    # Clear codes so taxonomy matches cannot inflate the text term; topical then
+    # equals 0.5 * text_similarity, so 0.4 yields the 0.02 text contribution below.
+    row = _pair_row(
+        prior_cet=None,
+        target_cet=None,
+        prior_naics_code=None,
+        prior_psc_code=None,
+        target_naics_code=None,
+        target_psc_code=None,
+    )
+    score = _composite(row, text_similarity=0.4)
+    assert score == pytest.approx(0.62, abs=0.02)
+    assert score < HIGH_THRESHOLD
+
+
+def test_weight_swap_flips_the_borderline_high_pair():
+    """Cartoon TPs stay HIGH under almost any weights. This pair must not."""
+    swapped = dict(WEIGHTS_RETROSPECTIVE)
+    swapped["agency_continuity"], swapped["patent_signal"] = (
+        swapped["patent_signal"],
+        swapped["agency_continuity"],
+    )
+    row = _pair_row()
+    assert _composite(row, text_similarity=1.0) >= HIGH_THRESHOLD
+    # agency now 0.05 * 1.0; patent still 0 (no patent input) → ~0.65
+    assert _composite(row, text_similarity=1.0, weights=swapped) < HIGH_THRESHOLD

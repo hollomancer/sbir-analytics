@@ -159,11 +159,14 @@ make docs-check                        # Hygiene subset only (also included in l
 `make lint-boundaries` must stay aligned with the CI quality job's guard step. If
 Make and CI diverge, CI is authoritative and the Makefile is wrong.
 
-Transition scoring changes must maintain the ≥85% Phase III retrospective
-HIGH-precision benchmark. Enforcement today is a fixture-level canary
-(`tests/unit/scripts/test_phase_iii_precision_backtest.py`) that runs on every
-PR; the full benchmark against the S3 corpus is run manually via
-`scripts/phase_iii_precision_backtest.py` and is not yet automated in CI.
+Transition scoring changes must not silently invert HIGH-threshold polarity.
+Every PR runs `tests/unit/scripts/test_phase_iii_precision_backtest.py`:
+obvious transitions stay HIGH, obvious non-transitions stay below the
+threshold, and a small mixed-signal slice fails if current retrospective
+weights are swapped. That file is not the ≥85% HIGH-precision benchmark.
+The ≥85% number is measured only by a manual run of
+`scripts/phase_iii_precision_backtest.py` against the S3 corpus and is not
+a CI gate.
 
 ## Releases and versioning
 
