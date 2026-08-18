@@ -4,7 +4,7 @@
 
 pipeline:
   name: "sbir-analytics"
-  version: "0.7.0"
+  version: "0.7.1"
   environment: "development" # overridden by environment
 
 # File system paths configuration
