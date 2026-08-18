@@ -9,22 +9,6 @@ downstream commercialization signals (federal contracts,
 patents, private financing, and acquisitions) to better
 understand what happens after a small business wins an SBIR award.
 
-## My role and use of AI
-
-- Defined the research agenda and functional requirements, starting with the
-  policy questions in [docs/research-questions.md](docs/research-questions.md).
-- Selected public data sources and specified the entity-linkage, analytical,
-  and reporting methods used to investigate those questions.
-- Set evidence and validation boundaries, including what the outputs can and
-  cannot support.
-- Used Claude and Codex extensively to implement and iterate on the software,
-  then reviewed the work through tests, reproducibility checks, and documented
-  evidence limits.
-
-This is independent research software developed on personal time. It is not an
-agency product or a production service, and its findings do not represent the
-position of any agency.
-
 ## See it work
 
 The fastest end-to-end example is a deterministic Army procurement-transition
@@ -47,15 +31,6 @@ and compare the result with the committed
 [expected report](examples/army_science_technology_report.md). Every company,
 award, opportunity, and judgment in this example is synthetic; it demonstrates
 the workflow and evidence trail, not live acquisition intelligence.
-
-The repository separates software capability from evidentiary maturity:
-
-| Capability | Current status | Evidence or boundary |
-| --- | --- | --- |
-| Procurement-transition reporting | Exploratory; runnable synthetic demonstration | [Synthetic example and expected output](examples/army-procurement-transition.md) |
-| Award ingestion, entity resolution, and graph loading | Implemented; real-data setup required | Operational capability, not an evidence claim; see the [getting-started guide](docs/getting-started/README.md) and [architecture](docs/architecture/detailed-overview.md) |
-| Phase III outcome analysis | Reproducible; not validated or approved for citation | [Phase III census study record](studies/phase-iii-census/study.yaml) |
-| Private-capital, M&A, and fiscal analyses | Exploratory and data-dependent | [Research output status index](docs/research/README.md) and the limitations below |
 
 ## Questions I'm trying to answer
 
