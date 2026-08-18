@@ -82,6 +82,64 @@ def test_evidence_tier_requires_amendments_sha_and_estimand(tmp_path: Path) -> N
     assert "Declared estimand" in messages or "Estimand" in messages
 
 
+def test_evidence_tier_rejects_amendments_without_sha_language(tmp_path: Path) -> None:
+    spec = tmp_path / "specs" / "example"
+    _write(
+        tmp_path,
+        "specs/example/requirements.md",
+        "# Example\n\n**Target epistemic tier:** evidence\n\n"
+        "**Declared estimand:** the unit-test estimand.\n",
+    )
+    _write(tmp_path, "specs/example/amendments.md", "# Amendments\n\nNo freeze recorded.\n")
+
+    violations = tiers.validate_spec_directory(spec, repository_root=tmp_path)
+
+    assert len(violations) == 1
+    assert "SHA-256 freeze digest" in violations[0].message
+
+
+def test_evidence_tier_rejects_missing_estimand_when_sha_present(tmp_path: Path) -> None:
+    spec = tmp_path / "specs" / "example"
+    _write(
+        tmp_path,
+        "specs/example/requirements.md",
+        "# Example\n\n**Target epistemic tier:** evidence\n",
+    )
+    _write(
+        tmp_path,
+        "specs/example/amendments.md",
+        "Frozen file SHA-256: `cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc`\n",
+    )
+
+    violations = tiers.validate_spec_directory(spec, repository_root=tmp_path)
+
+    assert len(violations) == 1
+    assert "Declared estimand" in violations[0].message or "Estimand" in violations[0].message
+
+
+def test_evidence_tier_ignores_fenced_sha_digest(tmp_path: Path) -> None:
+    spec = tmp_path / "specs" / "example"
+    _write(
+        tmp_path,
+        "specs/example/requirements.md",
+        "# Example\n\n**Target epistemic tier:** evidence\n\n"
+        "**Declared estimand:** the unit-test estimand.\n",
+    )
+    _write(
+        tmp_path,
+        "specs/example/amendments.md",
+        "# Amendments\n\n"
+        "```\n"
+        "SHA-256: `dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd`\n"
+        "```\n",
+    )
+
+    violations = tiers.validate_spec_directory(spec, repository_root=tmp_path)
+
+    assert len(violations) == 1
+    assert "SHA-256 freeze digest" in violations[0].message
+
+
 def test_evidence_tier_accepts_complete_contract(tmp_path: Path) -> None:
     spec = tmp_path / "specs" / "example"
     _write(

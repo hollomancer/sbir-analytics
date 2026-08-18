@@ -21,10 +21,8 @@ its own lazy numpy/pandas imports inside the function body and its module
 (``sbir_analytics.assets.cet.validation``) only imports the lightweight
 ``.utils`` shim at import time -- so importing it directly and wrapping it in
 an equivalent job keeps this test both fast and representative of what
-``cet_drift_job`` actually runs. If the selection in definitions.py ever
-drifts from this, ``tests/unit/assets/test_asset_discovery.py`` and
-``tests/unit/test_server_schedule_gating.py`` already assert the job is
-discovered/scheduled by name.
+``cet_drift_job`` actually runs. The production job's selection is pinned
+separately in ``tests/unit/assets/test_dagster_definitions.py``.
 
 The asset itself is hermetic by construction: with no
 ``data/processed/cet_award_classifications.{parquet,ndjson}`` present, it

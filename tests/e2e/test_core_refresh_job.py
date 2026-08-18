@@ -14,11 +14,12 @@ fixture story.
 This module instead provides two complementary, honestly-scoped guarantees:
 
 1. ``test_core_refresh_job_selection_excludes_heavy_assets_and_resolves`` is a *structural*
-   test. It proves the job is wired correctly against the production ``Definitions`` object:
-   the selection resolves without a ``DagsterInvalidSubsetError`` (no missing dependencies or
-   cycles), it selects exactly "all loaded assets minus the heavy ones" (nothing is
-   accidentally included or excluded), and no heavy asset key leaks into the job. It does
-   **not** prove any asset actually executes correctly.
+   test. It pins the advertised all-minus-heavy complement: the job resolves against the
+   production ``Definitions`` object and its executable keys equal
+   ``all_assets - _heavy_keys``. That catches a silent rewrite to ``AssetSelection.all()``
+   or a hardcoded subset. It does **not** independently inventory
+   ``HEAVY_ASSET_PREFIXES``, and missing-dep / cycle failures for an ``all() - heavy``
+   job are already covered by ``Definitions.validate_loadable``.
 
 2. ``test_core_refresh_job_executes_sbir_ingestion_subgraph`` executes a real, connected
    slice of the actual ``core_refresh_job`` object (not a reconstructed copy) end to end via
@@ -34,7 +35,6 @@ This module instead provides two complementary, honestly-scoped guarantees:
 
 from __future__ import annotations
 
-import os
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -57,7 +57,6 @@ def test_core_refresh_job_selection_excludes_heavy_assets_and_resolves():
 
     assert selected_keys, "core_refresh_job selected no assets"
     assert selected_keys == expected_keys
-    assert selected_keys.isdisjoint(defs_module._heavy_keys)
 
 
 def test_core_refresh_job_executes_sbir_ingestion_subgraph(
@@ -93,13 +92,14 @@ def test_core_refresh_job_executes_sbir_ingestion_subgraph(
     monkeypatch.chdir(tmp_path)
 
     job = defs_module.defs.resolve_job_def("core_refresh_job")
-    result = job.execute_in_process(
-        asset_selection=[
-            AssetKey("raw_sbir_awards"),
-            AssetKey("validated_sbir_awards"),
-            AssetKey("sbir_validation_report"),
-        ]
-    )
+    ingestion_keys = [
+        AssetKey("raw_sbir_awards"),
+        AssetKey("validated_sbir_awards"),
+        AssetKey("sbir_validation_report"),
+    ]
+    assert job.asset_layer.executable_asset_keys.issuperset(ingestion_keys)
+
+    result = job.execute_in_process(asset_selection=ingestion_keys)
 
     assert result.success
     raw_df = result.output_for_node("raw_sbir_awards")
@@ -119,4 +119,3 @@ def test_core_refresh_job_executes_sbir_ingestion_subgraph(
     report_json = tmp_path / "data" / "validated" / "sbir_validation_report.json"
     assert validated_parquet.is_file()
     assert report_json.is_file()
-    assert os.getenv("SBIR_ETL__PATHS__DATA_ROOT") == str(data_root)

@@ -103,7 +103,7 @@ def _evidence_contract_violations(
             )
         )
     else:
-        amd_text = amendments.read_text(encoding="utf-8")
+        amd_text = _outside_fenced_code(amendments.read_text(encoding="utf-8"))
         if not (SHA256_DIGEST.search(amd_text) or SHA256_FREEZE_LANGUAGE.search(amd_text)):
             violations.append(
                 TierDeclarationViolation(
@@ -118,8 +118,7 @@ def _evidence_contract_violations(
         violations.append(
             TierDeclarationViolation(
                 relative_req,
-                "evidence-tier specs require '**Declared estimand:** …' "
-                "(or '**Estimand:** …')",
+                "evidence-tier specs require '**Declared estimand:** …' (or '**Estimand:** …')",
             )
         )
     return violations
