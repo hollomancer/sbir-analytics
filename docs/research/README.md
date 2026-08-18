@@ -27,7 +27,7 @@ brief count as maintainer-facing.
 
 | Output | Questions | Evidence status | Data covered |
 | --- | --- | --- | --- |
-| [Form D fundraising analysis](sbir-form-d-fundraising-analysis.md) | F1, F3 | Dated analysis; not approved for citation | Form D and SBIR spending, 2009–2024; method revised 2026-04-23 |
+| [Form D fundraising analysis](sbir-form-d-fundraising-analysis.md) | F1, F3 | Reproducible study (`studies/form-d-fundraising`); not approved for citation | Form D and SBIR spending, 2009–2024; method revised 2026-04-23 |
 | [DoD Form D leverage](dod-form-d-leverage.md) | A3, A4, F3 | Dated breakdown and follow-up analysis | Combined 2026-06-21 |
 | [Form D data dictionary](form-d-data-dictionary.md) | F1, F3 | Reference for fields and confidence levels | Form D files currently produced by the pipeline |
 | [NSF Phase I to Phase II baseline comparison](agency-private-capital-phase1-nsf.md) | B2, B3, F3 | Exploratory Phase 1 review; non-citable with incomplete outcomes | Pinned SBIR.gov snapshot (219,500 rows); NSF Phase I firms, 2015–2019 |

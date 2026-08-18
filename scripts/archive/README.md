@@ -10,7 +10,10 @@ Archived 2026-07-02 as part of the scripts/ triage:
 
 - `data/` — Form D / DoD leverage cluster, M&A exit analyses, Phase III
   universe builders, USAspending lookups, benchmark dataset generators.
-  Their published outputs live in `docs/research/`.
+  Their published outputs live in `docs/research/`. The Form D leverage
+  bootstrap (`bootstrap_form_d_leverage_ci.py`) was restored to
+  `scripts/data/` when `studies/form-d-fundraising` entered
+  `reproducible`.
 - `validation/` — manual spot-check validators referenced only by archived
   docs.
 - Top level — `extract_federal_contracts.py` (superseded extraction path),
