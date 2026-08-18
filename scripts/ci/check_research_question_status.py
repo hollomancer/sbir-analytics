@@ -8,9 +8,10 @@ at the matching ``evidence_status`` (or higher). Authorization is per section,
 not per question bullet: a study listing ``B2`` authorizes every reserved-rank
 Status under ``### B2``.
 
-Negations (``not computable``, ``never computable``, ``non-citable``) are
-refusals, not ranks, and do not need a study. The verb ``validates`` is not
-the ``validated`` rank.
+Negations (``not computable``, ``never computable``, ``not yet validated``,
+``no citable claim``, ``non-citable``) are refusals, not ranks, and do not need
+a study. The negation has to lead — a rank word with nothing negating it in
+front reads as a claim. The verb ``validates`` is not the ``validated`` rank.
 
 This is admission control for the inventory, not proof that a study's result
 is correct. Exploratory studies do not authorize ``computable``.
@@ -30,30 +31,36 @@ from sbir_etl.quality.study_manifest import EvidenceStatus, load_study_manifest
 REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
 INVENTORY_PATH = Path("docs/research-questions.md")
 
-ANY_HEADING = re.compile(r"^#{2,4}\s+")
-SECTION_HEADING = re.compile(r"^#{2,4}\s+([A-F]\d+)\b")
+SECTION_HEADING = re.compile(r"^(#{2,4})\s+([A-F]\d+)\b")
+ANY_HEADING = re.compile(r"^(#{1,6})\s")
 STATUS_MARKER = re.compile(r"\*\*Status:\*\*")
 STATUS_END = re.compile(r"^(\s*\*Deps:|#{1,6}\s|-\s+\*\*)")
 
-# Strip these before looking for a positive rank so denials do not count.
-# A short negation window covers "not currently computable" / "never
-# computable" without exempting the noun phrase "citable claim".
-DENIAL_PHRASES = (
-    re.compile(
-        r"\b(?:not|no|never|cannot)\W+(?:\w+\W+){0,3}?(?:computable|validated|citable)\b",
-        re.IGNORECASE,
-    ),
-    re.compile(r"\bnon-(?:computable|validated|citable)\b", re.IGNORECASE),
-    re.compile(r"\bunvalidated\b", re.IGNORECASE),
-    re.compile(r"\bnot\s+approved\s+for\s+citation\b", re.IGNORECASE),
-    re.compile(r"\bany\b[^.]*\bcitable\b[^.]*\bblocked\b", re.IGNORECASE),
-)
-
+# Only the past-participle rank word counts. ``validates`` is the ordinary verb
+# ("the review validates the cohort component") and is not a rank claim.
 RANK_PATTERNS: tuple[tuple[str, re.Pattern[str]], ...] = (
     ("computable", re.compile(r"\bcomputable\b", re.IGNORECASE)),
     ("validated", re.compile(r"\bvalidated\b", re.IGNORECASE)),
     ("citable", re.compile(r"\bcitable\b", re.IGNORECASE)),
 )
+
+# Negation is read compositionally rather than from a phrase list: a rank word
+# is a refusal when a negating token leads it within the same clause ("not yet
+# computable", "no longer computable", "never computable", "cannot be
+# validated", "no citable claim") or when a negating prefix is attached
+# ("non-citable"). ``unvalidated`` needs no rule — the rank patterns are
+# word-bounded, so they never match inside it.
+NEGATION_TOKEN = re.compile(
+    r"\b(?:not|no|never|none|nor|neither|without|cannot|absent|lack(?:s|ed|ing)?"
+    r"|[\w']+n't)\b",
+    re.IGNORECASE,
+)
+NEGATING_PREFIX = re.compile(r"\bnon-\s*$", re.IGNORECASE)
+CLAUSE_BREAK = re.compile(r"[.;:!?]")
+WORD = re.compile(r"[\w'’]+")
+
+# Words that may sit between the negating token and the rank word it governs.
+NEGATION_WINDOW_WORDS = 4
 
 # Minimum study evidence_status that authorizes each reserved inventory rank.
 REQUIRED_STUDY_STATUS: dict[str, EvidenceStatus] = {
@@ -93,15 +100,24 @@ class StatusViolation:
         return f"{self.path}:{self.line_number}: {self.message}"
 
 
-def claimed_ranks(status_text: str) -> tuple[str, ...]:
-    """Return reserved ranks asserted after denial phrases are removed."""
+def is_negated(text: str, rank_start: int) -> bool:
+    """Return whether a negation leads the rank word beginning at ``rank_start``."""
 
-    remainder = status_text
-    for pattern in DENIAL_PHRASES:
-        remainder = pattern.sub(" ", remainder)
+    prefix = text[:rank_start]
+    if NEGATING_PREFIX.search(prefix):
+        return True
+    clause = CLAUSE_BREAK.split(prefix)[-1]
+    window = WORD.findall(clause)[-NEGATION_WINDOW_WORDS:]
+    return any(NEGATION_TOKEN.fullmatch(word) for word in window)
+
+
+def claimed_ranks(status_text: str) -> tuple[str, ...]:
+    """Return reserved ranks asserted positively, ignoring negated mentions."""
+
     found: list[str] = []
     for rank, pattern in RANK_PATTERNS:
-        if pattern.search(remainder):
+        mentions = pattern.finditer(status_text)
+        if any(not is_negated(status_text, mention.start()) for mention in mentions):
             found.append(rank)
     return tuple(found)
 
@@ -110,13 +126,21 @@ def iter_status_blocks(markdown: str) -> Iterable[tuple[int, str | None, str]]:
     """Yield ``(line_number, section_id, status_text)`` for each Status block."""
 
     section_id: str | None = None
+    section_level = 0
     lines = markdown.splitlines()
     index = 0
     while index < len(lines):
         line = lines[index]
-        if ANY_HEADING.match(line):
-            heading = SECTION_HEADING.match(line)
-            section_id = heading.group(1).upper() if heading else None
+        heading = SECTION_HEADING.match(line)
+        other_heading = ANY_HEADING.match(line)
+        if heading:
+            section_id = heading.group(2).upper()
+            section_level = len(heading.group(1))
+        elif other_heading is not None and len(other_heading.group(1)) <= section_level:
+            # A sibling or shallower heading that carries no A–F ID ends the
+            # section. Deeper sub-headings (#### inside a ### section) stay in.
+            section_id = None
+            section_level = 0
         marker = STATUS_MARKER.search(line)
         if marker is None:
             index += 1
@@ -189,7 +213,16 @@ def validate_inventory(
     *,
     path: str = INVENTORY_PATH.as_posix(),
 ) -> list[StatusViolation]:
-    """Return Status claims that lack a study at the required rank."""
+    """Return Status claims that lack a study at the required rank.
+
+    Known limitation: authorization binds to the section ID, and a section
+    holds several distinct question bullets. A study listing ``B2`` therefore
+    authorizes a reserved rank on every B2 bullet, not only the bullet the
+    study actually covers. The sharper rule is to bind each claim to the bullet
+    that makes it, which needs stable per-bullet IDs in the inventory and a
+    ``research_questions`` schema in ``study.yaml`` that can name them; both are
+    out of scope here.
+    """
 
     violations: list[StatusViolation] = []
     for claim in collect_status_claims(markdown):

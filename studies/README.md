@@ -25,9 +25,11 @@ An exploratory study does not authorize `Computable`. CI
 (`scripts/ci/check_research_question_status.py`) rejects a reserved Status
 claim whose *section* ID is missing from every live manifest or whose highest
 matching study is below the required rank. Authorization is per section
-(`B2`, `F3`), not per question bullet. Negations (`Not computable`,
-`never computable`, `non-citable`) are refusals and do not need a study. The
-verb `validates` is not the `validated` rank.
+(`B2`, `F3`), not per question bullet. Negations (`Not computable`, `never
+computable`, `not yet validated`, `no citable claim`, `non-citable`) are
+refusals and do not need a study; the negating word has to come before the rank
+word, so `Citable claim: …` still reads as a claim. The verb `validates` is not
+the `validated` rank.
 
 Promotion changes the manifest only after the study meets the next status's requirements.
 A manifest does not make an analysis citable by itself, and a closed materialization gate

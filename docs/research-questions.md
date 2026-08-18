@@ -47,8 +47,10 @@ matching `evidence_status` (or higher). CI enforces the pairing
 | `Citable` | `citable` | Approved for the claims listed in that study's manifest. |
 
 `Computable` is not a finding. An exploratory study does not authorize it.
-Negations (`Not computable`, `not validated`, `non-citable`) are refusals, not
-ranks, and do not need a study.
+Negations are refusals, not ranks, and do not need a study — but the negation
+has to lead: `Not computable`, `not yet validated`, `no citable claim`,
+`non-citable`. A rank word with nothing negating it in front of it reads as a
+claim, so `Citable claim: …` is a claim.
 
 Free-prose Status is still allowed when it avoids those three ranks:
 `Research target`, `Inventory target`, `Exploratory`, `Partial`, and similar.
@@ -550,8 +552,8 @@ statutory goal is Phase III commercialization.*
   prevalence. The PI employer election and the allocation-of-rights agreement
   live in non-public agency award files.
   **Status:** Not computable. Phase 0 design only (`exploratory`, non-citable).
-  Implementation is blocked until open questions are resolved; any citable claim
-  is blocked until negative-control and blind-adjudication gates pass. This
+  Implementation is blocked until open questions are resolved; no citable claim
+  is authorized until negative-control and blind-adjudication gates pass. This
   split has not been measured before.
   *Deps: ER, PATLINK, SEC EDGAR · Refs: [L7], [L36], [L38] · Spec: [../specs/sttr-spinout-linkage/](../specs/sttr-spinout-linkage/)*
 
@@ -1065,7 +1067,7 @@ The relevant literature is Lerner [L10], Howell [L11], and Kortum & Lerner
   For Phase II awardees of any agency, do follow-on funding and exit outcomes
   match published small-business and peer-reviewed entrepreneurial-finance
   baselines?
-  **Status:** Partial and non-citable. The Phase 1 NSF review reports the
+  **Status:** Partial and non-citable. The Phase 1 NSF review validates the
   Phase I→II cohort component: 672 of 1,502 firms in the 2015–2019 vintage
   (44.7%, 95% Wilson interval 42.2%–47.3%). It does not yet answer this
   question because transition, survival, M&A, and patent channels were
