@@ -153,6 +153,7 @@ uv run pytest -m integration           # Integration tests
 uv run pytest -n auto                  # Parallel execution
 make lint                              # Ruff over the repo, MyPy over sbir_etl + sbir-graph + sbir-ml
 make lint-boundaries                   # Same boundary/hygiene guards as CI (incl. identity + epistemic tiers)
+make ci-local                         # PR analog: lint, guards, Bandit, detect-secrets, unit -m "not slow", hermetic e2e
 make docs-check                        # Hygiene subset only (also included in lint-boundaries)
 ```
 

@@ -44,9 +44,9 @@ Ruff and MyPy scope, and adds blocking security, boundary, and workflow checks.
 Use `make lint` and `make lint-boundaries` before pushing when you need the
 CI-equivalent local run.
 
-**Intentional local gaps:** Bandit and detect-secrets are not pre-commit hooks.
-Both run in CI's blocking `security` / "Security Scan" job. The local
-reproduction commands are documented at the foot of `.pre-commit-config.yaml`.
+**Intentional local gaps:** Bandit and detect-secrets are still not pre-commit
+hooks; `make ci-local` now runs the same Bandit and
+`detect-secrets scan --baseline` commands as the `security` job.
 
 ---
 
@@ -228,7 +228,8 @@ Local hook environments and CI select tool versions independently:
 - `.pre-commit-config.yaml` pins local hook repository revisions.
 - `uv.lock` pins the tools installed by CI's locked environment sync.
 - `pyproject.toml` constrains CI dependencies and holds shared tool settings.
-- detect-secrets is currently installed without a version pin in `ci.yml`.
+- detect-secrets is pinned in the `dev` extra (`pyproject.toml` / `uv.lock`) and
+  run via `uv run detect-secrets` in CI and `make ci-local`.
 
 **Update process:**
 
@@ -268,7 +269,7 @@ Local hook environments and CI select tool versions independently:
 | Ruff | v0.14.4 | 0.14.5 | `.pre-commit-config.yaml`; `uv.lock` |
 | MyPy | v1.18.2 | 1.18.2 | `.pre-commit-config.yaml`; `uv.lock` |
 | Bandit | No hook | 1.8.6 | `uv.lock` |
-| Detect-secrets | No hook | Not pinned | `uv pip install detect-secrets` in `ci.yml` |
+| Detect-secrets | No hook | pinned via `dev` extra | `pyproject.toml`; `uv.lock` |
 
 ### Configuration Locations
 
@@ -359,7 +360,6 @@ Some hooks auto-fix issues:
 2. Install and rerun the scanner exactly as CI does:
 
    ```bash
-   uv pip install detect-secrets
    uv run detect-secrets scan --baseline .secrets.baseline
    ```
 

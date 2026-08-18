@@ -688,18 +688,21 @@ server-validate-config: server-env-check ## Validate docker-compose.server.yml
 	 $(call success,$(SERVER_COMPOSE_FILE) is valid)
 
 .PHONY: ci-local
-ci-local: ## Run CI checks locally (mimics GitHub Actions)
-	@$(call info,Running CI checks locally)
-	@set -euo pipefail; \
-	 $(MAKE) validate; \
-	 $(call info,Running secret scan); \
-	 if command -v python3 >/dev/null 2>&1; then \
-	   python3 scripts/ci/scan_secrets.py || exit_code=$$?; \
-	   if [ "$${exit_code:-0}" != "0" ]; then \
-	     $(call failure,Secret scan failed); \
-	     exit $$exit_code; \
-	   fi; \
-	 else \
-	   $(call warn,Python3 not found, skipping secret scan); \
-	 fi; \
-	 $(call success,CI checks completed)
+ci-local: ## Reproduce pull-request CI locally (not the post-merge full suite)
+	@$(call info,Running pull-request CI checks locally)
+	@$(MAKE) lint
+	@$(MAKE) lint-boundaries
+	@$(call info,Validating Dagster definitions)
+	@uv run python -c "from dagster import Definitions; from sbir_analytics.definitions import defs; Definitions.validate_loadable(defs)"
+	@$(call info,Validating compose files)
+	@docker compose -f docker-compose.yml config -q
+	@docker compose -f docker-compose.server.yml --env-file .env.server.example config -q
+	@$(call info,Running Bandit)
+	@uv run python -m bandit -r sbir_etl packages -c pyproject.toml
+	@$(call info,Running detect-secrets)
+	@uv run detect-secrets scan --baseline .secrets.baseline
+	@$(call info,Running PR unit shards locally)
+	@uv run pytest tests/unit/ -m "not slow"
+	@$(call info,Running hermetic E2E)
+	@uv run pytest tests/e2e/ -m "not requires_api and not real_data"
+	@$(call success,Pull-request CI checks completed)

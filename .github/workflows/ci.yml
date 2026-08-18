@@ -137,9 +137,7 @@ jobs:
       # ran nowhere after weekly.yml was retired; a non-blocking version would
       # reproduce the state it is meant to fix.
       - name: Run detect-secrets
-        run: |
-          uv pip install detect-secrets
-          uv run detect-secrets scan --baseline .secrets.baseline
+        run: uv run detect-secrets scan --baseline .secrets.baseline
 
   test-fast:
     name: Fast Tests (${{ matrix.shard }}/4)

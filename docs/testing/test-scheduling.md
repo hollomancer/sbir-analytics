@@ -70,6 +70,15 @@ make test-modernbert
 make test
 ```
 
+`make ci-local` is the local analog of a pull-request run: `make lint`,
+`make lint-boundaries`, Dagster definition validation, compose `config -q`,
+Bandit, `detect-secrets scan --baseline`, `pytest tests/unit/ -m "not slow"`,
+and hermetic `tests/e2e/`. It does not run actionlint, Neo4j integration,
+the Docker image build, or the post-merge 70% coverage suite.
+
+`make validate` (`lint` + `make test`) remains the local analog of
+`test-full`: the whole `tests/` tree with `--cov-fail-under=70`.
+
 For E2E scenario selection, use the commands in [End-to-End Testing](e2e-testing.md).
 
 ## Scheduled operational work
