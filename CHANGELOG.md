@@ -10,6 +10,27 @@ version.
 
 ## [Unreleased]
 
+## [0.8.0] — 2026-08-18
+
+### Added
+
+- Reserved inventory Status ranks (`Computable`, `Validated`, `Citable`) now
+  require a matching `studies/*/study.yaml`. CI enforces the pairing
+  (`scripts/ci/check_research_question_status.py`) (#654, #657).
+- `studies/form-d-fundraising` at `reproducible`: frozen Form D leverage
+  estimand, restored `scripts/data/bootstrap_form_d_leverage_ci.py`, and
+  F3 Status may say Computable. Not validated or citable (#658).
+
+### Changed
+
+- Audience start-here lists only reserved Status ranks or explicit refusals.
+  F3 is split into the Form D leverage estimand and causal questions that
+  design cannot answer. E4–E6 are marked operational. Unbacked F1 M&A point
+  estimates were removed from the inventory (#657).
+- Phase III census research-outputs index now treats `study.yaml` as the
+  clock: August identity, matching, outcomes, and placebo memos are
+  recorded; hand-labeled validation remains open (#656).
+
 ## [0.7.1] — 2026-08-18
 
 ### Added
@@ -245,7 +266,8 @@ across the root project and the three packages under `packages/`.
 `vMAJOR.MINOR.PATCH` form it requires. Per that policy published tags are never
 moved or reused, so they remain as historical markers.
 
-[Unreleased]: https://github.com/hollomancer/sbir-analytics/compare/v0.7.1...HEAD
+[Unreleased]: https://github.com/hollomancer/sbir-analytics/compare/v0.8.0...HEAD
+[0.8.0]: https://github.com/hollomancer/sbir-analytics/compare/v0.7.1...v0.8.0
 [0.7.1]: https://github.com/hollomancer/sbir-analytics/compare/v0.7.0...v0.7.1
 [0.7.0]: https://github.com/hollomancer/sbir-analytics/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/hollomancer/sbir-analytics/compare/v0.5.1...v0.6.0
