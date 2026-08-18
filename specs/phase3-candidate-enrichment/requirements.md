@@ -1,10 +1,12 @@
 # Phase III Candidate-Text Enrichment — Requirements
 
-**Target epistemic tier:** `evidence`
+**Target epistemic tier:** `exploratory`
 
+> Retiered from `evidence` (2026-08-15): the four-item evidence contract (frozen spec + SHA enforcement + blocking asset checks + declared estimand) is not in place here. Re-promote only with an explicit amendments freeze and estimand declaration.
 > **Status:** Draft spec. No implementation. Follow-on to the ground-truth validation
 > (#481), which measured *why* the fusion ranker underperforms.
 > Supports inventory questions **B2 / E1** in [docs/research-questions.md](../../docs/research-questions.md).
+
 
 **Research question anchor:** B2 (did SBIR research transition to a federal contract), E1 (Phase III identification)
 **Answers for:** Whoever decides whether fusion can move from a top-3 aid toward ordering the packet

@@ -1,6 +1,8 @@
 # Phase III match benchmark: requirements
 
-**Target epistemic tier:** `evidence`
+**Target epistemic tier:** `pipelines`
+
+> Retiered from `evidence` (2026-08-15): the four-item evidence contract (frozen spec + SHA enforcement + blocking asset checks + declared estimand) is not in place here. Re-promote only with an explicit amendments freeze and estimand declaration.
 
 **Research question anchor:** B3 / E1 — how much Phase III work goes unrecorded (protocol and
 current evidence limits), and Phase III identification

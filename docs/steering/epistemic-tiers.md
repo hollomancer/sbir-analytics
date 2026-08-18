@@ -217,7 +217,11 @@ What already holds:
   and the CI quality job.
 - Active specs declare a target tier in `requirements.md`;
   `scripts/ci/check_epistemic_tiers.py` rejects missing, duplicate, and
-  invalid declarations in `make lint-boundaries` and CI.
+  invalid declarations in `make lint-boundaries` and CI. Specs that declare
+  `evidence` must also carry paperwork for SHA-256 freeze enforcement (a
+  recorded digest or explicit raw-byte freeze language in `amendments.md`)
+  plus a `**Declared estimand:**` field. That gate is paperwork-only; it does
+  not prove runtime SHA or blocking asset-check enforcement.
 - The tier dependency lattice is executable: `scripts/ci/check_tier_boundaries.py`
   (in `make lint-boundaries` and CI) resolves each module's effective tier and
   blocks imports below it. Its `TIER_IMPORT_ALLOWLIST` is empty — every seeded

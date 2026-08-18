@@ -21,7 +21,7 @@ much weight it can carry. Full contracts:
 |------|----------|-------------|
 | `primitives` | One implementation per concept, versioned behavior, comprehensive tests | `sbir_etl/identity/`, `sbir_etl/config/`, `sbir_etl/models/` |
 | `pipelines` | Deterministic, reproducible from a declared data cut, no inference | `sbir_etl/`, `packages/` |
-| `evidence` | Frozen spec + SHA enforcement + blocking asset checks + declared estimand — all four | Phase III census |
+| `evidence` | Frozen spec + SHA enforcement + blocking asset checks + declared estimand — all four | Phase III census (`check_epistemic_tiers.py` enforces amendments SHA paperwork + declared estimand; not full runtime gates) |
 | `exploratory` | Labeled non-citable. Nothing else required. | most of `scripts/` |
 
 Three rules:
