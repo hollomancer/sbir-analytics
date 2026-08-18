@@ -8,19 +8,31 @@ from scripts.ci import check_research_question_status as guard
 def test_denial_phrases_are_not_status_claims() -> None:
     text = (
         "Not computable. Phase 0 design only (exploratory, non-citable); "
-        "not validated, and not approved for citation. A citable study "
-        "manifest is absent."
+        "not validated, and not approved for citation. Any citable claim "
+        "is blocked until the gates pass."
     )
 
     assert guard.claimed_ranks(text) == ()
+    assert guard.claimed_ranks("Not currently computable.") == ()
+    assert guard.claimed_ranks("Never computable from public data.") == ()
+    assert guard.claimed_ranks("Cannot be validated without a hand-labelled sample.") == ()
+    assert guard.claimed_ranks("This is not yet a citable result.") == ()
 
 
-def test_partially_computable_and_validates_are_claims() -> None:
-    assert guard.claimed_ranks("Partially computable for the classified subset.") == ("computable",)
-    assert guard.claimed_ranks("The Phase 1 review validates the cohort component.") == (
-        "validated",
+def test_citable_claim_and_citable_study_are_rank_claims() -> None:
+    assert guard.claimed_ranks("Citable claim: the DoD follow-on multiplier is 4.1:1.") == (
+        "citable",
     )
+    assert guard.claimed_ranks("Citable study result approved for external reporting.") == (
+        "citable",
+    )
+
+
+def test_partially_computable_is_a_claim_but_validates_is_not() -> None:
+    assert guard.claimed_ranks("Partially computable for the classified subset.") == ("computable",)
+    assert guard.claimed_ranks("The Phase 1 review validates the cohort component.") == ()
     assert guard.claimed_ranks("Citable under the approved study contract.") == ("citable",)
+    assert guard.claimed_ranks("Validated under the approved study contract.") == ("validated",)
 
 
 def test_iter_status_blocks_tracks_section_headings() -> None:
@@ -89,6 +101,21 @@ def test_claim_outside_numbered_section_is_rejected() -> None:
 
     assert violations
     assert "outside a numbered A–F section" in violations[0].message
+
+
+def test_non_question_heading_clears_inherited_section_id() -> None:
+    markdown = (
+        "### F4. Predictive (Tier 4)\n\n"
+        "## Output products & audiences\n\n"
+        "### Form D fundraising analysis (published)\n\n"
+        "**Status:** Citable for the 2024 vintage.\n"
+    )
+
+    blocks = list(guard.iter_status_blocks(markdown))
+    violations = guard.validate_inventory(markdown, {"F4": EvidenceStatus.REPRODUCIBLE})
+
+    assert blocks[0][1] is None
+    assert violations and "outside a numbered A–F section" in violations[0].message
 
 
 def test_repository_inventory_matches_live_studies() -> None:

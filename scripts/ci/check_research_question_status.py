@@ -3,9 +3,14 @@
 
 ``docs/research-questions.md`` is a public API. The reserved ranks
 ``computable``, ``validated``, and ``citable`` may appear as Status claims only
-when a ``studies/*/study.yaml`` lists that question at the matching
-``evidence_status`` (or higher). Negations (``not computable``, ``non-citable``)
-are allowed without a study: they are refusals, not ranks.
+when a ``studies/*/study.yaml`` lists that *section* ID (``B2``, ``F3``, …)
+at the matching ``evidence_status`` (or higher). Authorization is per section,
+not per question bullet: a study listing ``B2`` authorizes every reserved-rank
+Status under ``### B2``.
+
+Negations (``not computable``, ``never computable``, ``non-citable``) are
+refusals, not ranks, and do not need a study. The verb ``validates`` is not
+the ``validated`` rank.
 
 This is admission control for the inventory, not proof that a study's result
 is correct. Exploratory studies do not authorize ``computable``.
@@ -24,31 +29,29 @@ from sbir_etl.quality.study_manifest import EvidenceStatus, load_study_manifest
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
 INVENTORY_PATH = Path("docs/research-questions.md")
-STUDIES_ROOT = REPOSITORY_ROOT / "studies"
 
+ANY_HEADING = re.compile(r"^#{2,4}\s+")
 SECTION_HEADING = re.compile(r"^#{2,4}\s+([A-F]\d+)\b")
 STATUS_MARKER = re.compile(r"\*\*Status:\*\*")
 STATUS_END = re.compile(r"^(\s*\*Deps:|#{1,6}\s|-\s+\*\*)")
 
 # Strip these before looking for a positive rank so denials do not count.
+# A short negation window covers "not currently computable" / "never
+# computable" without exempting the noun phrase "citable claim".
 DENIAL_PHRASES = (
-    re.compile(r"\bnot\s+yet\s+computable\b", re.IGNORECASE),
-    re.compile(r"\bnot\s+computable\b", re.IGNORECASE),
-    re.compile(r"\bnon-computable\b", re.IGNORECASE),
-    re.compile(r"\bnot\s+yet\s+validated\b", re.IGNORECASE),
-    re.compile(r"\bnot\s+validated\b", re.IGNORECASE),
+    re.compile(
+        r"\b(?:not|no|never|cannot)\W+(?:\w+\W+){0,3}?(?:computable|validated|citable)\b",
+        re.IGNORECASE,
+    ),
+    re.compile(r"\bnon-(?:computable|validated|citable)\b", re.IGNORECASE),
     re.compile(r"\bunvalidated\b", re.IGNORECASE),
-    re.compile(r"\bremains\s+unvalidated\b", re.IGNORECASE),
     re.compile(r"\bnot\s+approved\s+for\s+citation\b", re.IGNORECASE),
-    re.compile(r"\bnot\s+citable\b", re.IGNORECASE),
-    re.compile(r"\bnon-citable\b", re.IGNORECASE),
-    re.compile(r"\bcitable\s+study(?:\s+contract|\s+manifest)?\b", re.IGNORECASE),
-    re.compile(r"\bcitable\s+claim\b", re.IGNORECASE),
+    re.compile(r"\bany\b[^.]*\bcitable\b[^.]*\bblocked\b", re.IGNORECASE),
 )
 
 RANK_PATTERNS: tuple[tuple[str, re.Pattern[str]], ...] = (
     ("computable", re.compile(r"\bcomputable\b", re.IGNORECASE)),
-    ("validated", re.compile(r"\bvalidat(?:ed|es)\b", re.IGNORECASE)),
+    ("validated", re.compile(r"\bvalidated\b", re.IGNORECASE)),
     ("citable", re.compile(r"\bcitable\b", re.IGNORECASE)),
 )
 
@@ -111,9 +114,9 @@ def iter_status_blocks(markdown: str) -> Iterable[tuple[int, str | None, str]]:
     index = 0
     while index < len(lines):
         line = lines[index]
-        heading = SECTION_HEADING.match(line)
-        if heading:
-            section_id = heading.group(1).upper()
+        if ANY_HEADING.match(line):
+            heading = SECTION_HEADING.match(line)
+            section_id = heading.group(1).upper() if heading else None
         marker = STATUS_MARKER.search(line)
         if marker is None:
             index += 1
@@ -153,7 +156,11 @@ def collect_status_claims(markdown: str) -> list[StatusClaim]:
 def load_question_study_ranks(
     *, repository_root: Path = REPOSITORY_ROOT
 ) -> dict[str, EvidenceStatus]:
-    """Map each study-listed question ID to the highest live evidence status."""
+    """Map each study-listed section ID to the highest live evidence status.
+
+    A study that lists ``B2`` authorizes reserved ranks for every Status
+    block under ``### B2``, not only the bullet whose estimand it covers.
+    """
 
     best: dict[str, EvidenceStatus] = {}
     for path in sorted((repository_root / "studies").glob("*/study.yaml")):
