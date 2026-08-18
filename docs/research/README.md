@@ -1,7 +1,7 @@
 ---
 Type: Overview
 Maintainer: Conrad Hollomon
-Last-Reviewed: 2026-08-03
+Last-Reviewed: 2026-08-18
 Status: active
 ---
 
@@ -50,12 +50,16 @@ brief count as maintainer-facing.
 | [Commercialization benchmark method](../commercialization-benchmark-methodology.md) | B3 | Method is documented; this repository cannot recreate the local audit | FY2026 local audit described in the document |
 | [Monthly procurement-transition report](../procurement-transition-report.md) | B4, E6 | Instructions for producing a report; not research evidence | Current public-source pipeline |
 
-The Phase III census has its own formal study record: the
-[study file](../../studies/phase-iii-census/study.yaml),
-[February 2026 data-build review](../../studies/phase-iii-census/materialization-2026-02-06.md),
-and [August 2026 control-group identity review](../../studies/phase-iii-census/identity-eligibility-audit-2026-08-03.md).
-The work can be repeated, but it is not yet approved for citation. The comparison
-group, matching, and placebo test are not finished.
+The Phase III census has its own formal study record. The
+[study file](../../studies/phase-iii-census/study.yaml) is the clock:
+`reproducible`, not validated or citable. The 2026-08-03
+[identity-eligibility](../../studies/phase-iii-census/identity-eligibility-audit-2026-08-03.md),
+[exact-match balance](../../studies/phase-iii-census/control-matching-audit-2026-08-03.md),
+and [fixed-seed placebo](../../studies/phase-iii-census/placebo-results-2026-08-03.md)
+audits are recorded. [Matched negative-control outcomes](../../studies/phase-iii-census/negative-control-outcomes-2026-08-03.md)
+are descriptive only (about 2.10× clearing with 0.853 overlap). The placebo is
+one preregistered falsification, not labeled validation. Hand-labeled
+validation remains the open gate.
 
 ## Economic and fiscal methods
 

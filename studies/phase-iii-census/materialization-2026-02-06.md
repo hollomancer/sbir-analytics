@@ -4,9 +4,15 @@
 
 This is the complete Phase 1 deterministic census audit, not a validated count of
 statutory Phase III awards. Every row and sensitivity cell is reported; no cell is a
-headline result. The matched negative-control study, placebo test, and labeled validation
-remain unresolved, so this record does not establish that the frozen proxy discriminates
-Phase III work from ordinary follow-on federal contracting.
+headline result. As of this February run, the matched negative-control study, placebo
+test, and labeled validation were not part of the materialization, so this record does
+not establish that the frozen proxy discriminates Phase III work from ordinary follow-on
+federal contracting.
+
+Later record (do not back-date this run): the 2026-08-03 identity, matching, outcomes,
+and placebo memos, and the [study file](study.yaml), supersede the "remain unresolved"
+clause for those three audits. Labeled validation is still unresolved. The study file is
+the clock.
 
 ## Run and freeze record
 
