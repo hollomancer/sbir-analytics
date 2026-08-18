@@ -12,6 +12,21 @@ The status vocabulary is intentionally small:
 - `citable`: approved for the claims listed in its manifest;
 - `retired`: retained for provenance but superseded or no longer supported.
 
+These ranks are the only backing for reserved **Status** words in
+[`docs/research-questions.md`](../docs/research-questions.md):
+
+| Inventory Status | Required `evidence_status` |
+|---|---|
+| `Computable` / `Partially computable` | `reproducible` or higher |
+| `Validated` | `validated` or higher |
+| `Citable` | `citable` |
+
+An exploratory study does not authorize `Computable`. CI
+(`scripts/ci/check_research_question_status.py`) rejects a reserved Status
+claim whose question ID is missing from every live manifest or whose highest
+matching study is below the required rank. Negations (`Not computable`,
+`non-citable`) are refusals and do not need a study.
+
 Promotion changes the manifest only after the study meets the next status's requirements.
 A manifest does not make an analysis citable by itself, and a closed materialization gate
 must name the unresolved blocker.
