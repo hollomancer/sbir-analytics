@@ -115,14 +115,6 @@ class TestCreateSubsidiaryRelationships:
         assert "relationships" not in captured
 
     def test_mixed_valid_and_invalid_pairs(self):
-        # NOTE: the source's `full_relationships` construction re-derives which
-        # pairs to include from `len(relationships)` (the count of *valid*
-        # pairs) rather than re-checking validity per index. With one invalid
-        # pair in the middle, this causes the loop to emit the first N pairs
-        # by position (including the invalid one, with a None value) and drop
-        # a later valid pair. This test pins that existing, surprising
-        # behavior rather than the originally-intended one; it is not a test
-        # bug, and fixing the loader logic is out of scope for a coverage PR.
         mock_client, captured = _create_mock_client_with_capture()
         loader = OrganizationLoader(mock_client)
 
@@ -139,10 +131,8 @@ class TestCreateSubsidiaryRelationships:
         assert len(rels) == 2
         assert rels[0][2] == "CHILD-1"
         assert rels[0][5] == "PARENT-1"
-        # The invalid pair is included with a None source value rather than
-        # being dropped, and the trailing valid pair (CHILD-3) is lost.
-        assert rels[1][2] is None
-        assert rels[1][5] == "PARENT-2"
+        assert rels[1][2] == "CHILD-3"
+        assert rels[1][5] == "PARENT-3"
 
     def test_empty_input_returns_metrics_without_client_call(self):
         mock_client, _captured = _create_mock_client_with_capture()

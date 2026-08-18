@@ -37,6 +37,8 @@ trained model or a real Neo4j instance.
 
 from __future__ import annotations
 
+from unittest.mock import patch
+
 import pytest
 from dagster import Definitions, Output, asset
 
@@ -85,8 +87,11 @@ def _defs(*, award_classifications_asset=_fake_cet_award_classifications):
     )
 
 
-def test_job_wires_all_eight_ops_and_succeeds_with_neo4j_skipped(monkeypatch):
+def test_job_wires_all_eight_ops_and_succeeds_with_neo4j_skipped(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
     monkeypatch.setenv("SKIP_NEO4J_LOADING", "true")
+
+    from sbir_analytics.assets.cet import loading
 
     job = _defs().resolve_job_def("cet_full_pipeline_job")
     node_names = {node.name for node in job.nodes}
@@ -103,9 +108,11 @@ def test_job_wires_all_eight_ops_and_succeeds_with_neo4j_skipped(monkeypatch):
         "loaded_company_cet_relationships",
     }
 
-    result = job.execute_in_process()
+    with patch.object(loading, "_connected_client") as mock_client:
+        result = job.execute_in_process()
 
     assert result.success
+    mock_client.assert_not_called()
     for neo4j_op in (
         "loaded_cet_areas",
         "loaded_award_cet_enrichment",
@@ -119,8 +126,9 @@ def test_job_wires_all_eight_ops_and_succeeds_with_neo4j_skipped(monkeypatch):
         }
 
 
-def test_job_fails_when_an_upstream_compute_asset_fails(monkeypatch):
+def test_job_fails_when_an_upstream_compute_asset_fails(tmp_path, monkeypatch):
     """A failure in the classification stage must fail the whole job, not just skip onward."""
+    monkeypatch.chdir(tmp_path)
     monkeypatch.setenv("SKIP_NEO4J_LOADING", "true")
 
     job = _defs(award_classifications_asset=_failing_cet_award_classifications).resolve_job_def(

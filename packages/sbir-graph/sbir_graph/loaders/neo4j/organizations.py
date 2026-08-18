@@ -1,5 +1,6 @@
 """Neo4j loader for Organization relationships."""
 
+from datetime import UTC, datetime
 from typing import Any
 
 from loguru import logger
@@ -52,9 +53,13 @@ class OrganizationLoader(BaseNeo4jLoader):
             f"(source: {source})"
         )
 
-        # Build relationship list in simplified format
-        relationships: list[tuple[Any, Any, dict[str, Any] | None]] = []
-        for _child_key, child_value, _parent_key, parent_value in subsidiary_pairs:
+        # Source and target may use different keys (e.g. child by organization_id,
+        # parent by UEI), so build the client tuple directly rather than going
+        # through the same-key base helper.
+        full_relationships: list[
+            tuple[str, str, Any, str, str, Any, str, dict[str, Any] | None]
+        ] = []
+        for child_key, child_value, parent_key, parent_value in subsidiary_pairs:
             if not child_value or not parent_value:
                 logger.warning(
                     f"Skipping SUBSIDIARY_OF relationship with missing values: "
@@ -63,47 +68,24 @@ class OrganizationLoader(BaseNeo4jLoader):
                 self.metrics.errors += 1
                 continue
 
-            # Note: We're creating relationships between organizations potentially
-            # matched on different keys (e.g., child by organization_id, parent by UEI)
-            # This requires a more complex query than the base method supports
-            # So we'll use the client directly for this special case
-            from datetime import datetime
-
-            relationships.append(
+            full_relationships.append(
                 (
+                    "Organization",
+                    child_key,
                     str(child_value).strip(),
+                    "Organization",
+                    parent_key,
                     str(parent_value).strip(),
+                    "SUBSIDIARY_OF",
                     {
                         "source": source,
-                        "created_at": datetime.utcnow().isoformat(),
+                        "created_at": datetime.now(UTC).isoformat(),
                     },
                 )
             )
 
-        if not relationships:
+        if not full_relationships:
             return self.metrics
-
-        # For this special case where source and target might use different keys,
-        # we need to use a custom query instead of the base class method
-        full_relationships: list[
-            tuple[str, str, Any, str, str, Any, str, dict[str, Any] | None]
-        ] = []
-
-        for i, (child_key, child_value, parent_key, parent_value) in enumerate(subsidiary_pairs):
-            if i < len(relationships):  # Only include valid relationships
-                _, _, properties = relationships[i - (len(subsidiary_pairs) - len(relationships))]
-                full_relationships.append(
-                    (
-                        "Organization",
-                        child_key,
-                        str(child_value).strip() if child_value else None,
-                        "Organization",
-                        parent_key,
-                        str(parent_value).strip() if parent_value else None,
-                        "SUBSIDIARY_OF",
-                        properties,
-                    )
-                )
 
         # Use client directly for complex relationship creation
         self.metrics = self.client.batch_create_relationships(
