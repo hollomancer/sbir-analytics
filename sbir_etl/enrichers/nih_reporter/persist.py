@@ -75,7 +75,4 @@ def upsert_nih_reporter_awards(
 def _load_existing(path: Path) -> pd.DataFrame:
     if not path.is_file():
         return pd.DataFrame()
-    try:
-        return pd.read_parquet(path)
-    except Exception:
-        return pd.DataFrame()
+    return pd.read_parquet(path)

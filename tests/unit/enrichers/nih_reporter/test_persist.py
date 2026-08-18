@@ -46,3 +46,15 @@ def test_empty_records_do_not_write(tmp_path: Path) -> None:
     dest = tmp_path / "nih_reporter_awards.parquet"
     assert upsert_nih_reporter_awards([], award_id="AW-1", path=dest) is None
     assert not dest.exists()
+
+
+def test_unreadable_existing_file_raises_instead_of_silently_wiping(tmp_path: Path) -> None:
+    """A corrupt/unreadable prior file must fail loudly, not be treated as
+
+    empty -- silently swallowing the read error would replace `dest` with
+    only the current batch, discarding every previously persisted row.
+    """
+    dest = tmp_path / "nih_reporter_awards.parquet"
+    dest.write_text("not a parquet file")
+    with pytest.raises(Exception):  # noqa: B017 - pandas' parquet engine error type
+        upsert_nih_reporter_awards([_record("99")], award_id="AW-1", path=dest)
