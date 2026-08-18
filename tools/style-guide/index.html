@@ -1,3 +1,8 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Evidence-Gated Visual Language</title>
 <style>
   /* ============================================================
@@ -8,7 +13,7 @@
   :root {
     --bg: #f5f7f8;
     --surface: #ffffff;
-    --raised: #ffffff;
+    --surface-raised: #ffffff;
     --text: #16202a;
     --muted: #5a6975;
     --border: #d9e0e5;
@@ -39,7 +44,7 @@
     :root:not([data-theme="light"]) {
       --bg: #0c1117;
       --surface: #151c24;
-      --raised: #1b2530;
+      --surface-raised: #1b2530;
       --text: #edf3f7;
       --muted: #9dabb6;
       --border: #2b3945;
@@ -67,7 +72,7 @@
   :root[data-theme="dark"] {
     --bg: #0c1117;
     --surface: #151c24;
-    --raised: #1b2530;
+    --surface-raised: #1b2530;
     --text: #edf3f7;
     --muted: #9dabb6;
     --border: #2b3945;
@@ -318,7 +323,7 @@
     gap: 0.75rem 1.1rem;
     padding: 0.75rem 1rem;
     border-top: 1px solid var(--border);
-    background: var(--raised);
+    background: var(--surface-raised);
   }
 
   .ctl { display: inline-flex; align-items: center; gap: 0.45rem; color: var(--muted); font-size: 0.78rem; font-weight: 650; }
@@ -349,7 +354,7 @@
     cursor: pointer;
   }
 
-  .tok:hover { background: var(--raised); }
+  .tok:hover { background: var(--surface-raised); }
 
   .tok-head {
     padding: 0 0.6rem 0.45rem;
@@ -431,7 +436,7 @@
     padding: 0.45rem 0.55rem;
     border: 1px solid var(--border);
     border-radius: 7px;
-    background: var(--raised);
+    background: var(--surface-raised);
     box-shadow: 0 8px 24px var(--shadow);
     font-size: 0.78rem;
   }
@@ -443,7 +448,7 @@
     overflow-x: auto;
     border: 1px solid var(--border);
     border-radius: 9px;
-    background: var(--raised);
+    background: var(--surface-raised);
     color: var(--text);
     font-family: var(--mono);
     font-size: 0.745rem;
@@ -473,7 +478,7 @@
   }
 
   .rung:hover { border-color: var(--muted); }
-  .rung[aria-expanded="true"] { background: var(--raised); }
+  .rung[aria-expanded="true"] { background: var(--surface-raised); }
   .rung-name { font-family: var(--mono); font-size: 0.83rem; font-weight: 700; }
   .rung-weight { color: var(--muted); font-family: var(--mono); font-size: 0.63rem; letter-spacing: 0.08em; text-transform: uppercase; }
   .rung-body { display: grid; gap: 0.5rem; margin-top: 0.5rem; padding: 0 1rem 0.9rem; font-size: 0.84rem; }
@@ -568,6 +573,8 @@
     .tok .meaning, .tok-head span:nth-child(5) { display: none; }
   }
 </style>
+</head>
+<body>
 
 <div class="shell">
   <aside class="rail">
@@ -778,9 +785,14 @@
       <div class="section-head">
         <h2>Interface tokens</h2>
         <p>
-          Defined once with the native <code>light-dark()</code> function under
-          <code>color-scheme: light dark</code>. Both values are listed whatever theme you are in,
-          because the pair is the unit of design. Select a row to copy its <code>var()</code> reference.
+          In the explorer stylesheet each token is declared once, as
+          <code>light-dark(light, dark)</code> under <code>color-scheme: light dark</code>. This page
+          restates the same tokens across three blocks — <code>:root</code> for the light values,
+          <code>@media (prefers-color-scheme: dark)</code> for the OS-dark values, and
+          <code>:root[data-theme="dark"]</code> so the rail's toggle can override the OS. Only values
+          are redefined in the dark blocks; no component is styled inside them. Both values are
+          listed whatever theme you are in, because the pair is the unit of design. Select a row to
+          copy its <code>var()</code> reference.
         </p>
       </div>
 
@@ -1670,3 +1682,6 @@
     window.requestAnimationFrame(drawLineage);
   })();
 </script>
+
+</body>
+</html>
