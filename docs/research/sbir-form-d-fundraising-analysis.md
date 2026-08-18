@@ -2,7 +2,7 @@
 
 **Audience:** F-area analysts, investor researchers, and policy staff studying
 program-wide private-capital leverage.
-**Evidence status:** dated analysis; not approved for citation
+**Evidence status:** reproducible under `studies/form-d-fundraising/study.yaml`; not approved for citation
 **Date:** 2026-04-23
 **Methodology commit:** `f65abb89` (rule-based two-signal tiering + ZIP address matching)
 **Field reference:** [form-d-data-dictionary.md](form-d-data-dictionary.md)
@@ -315,7 +315,7 @@ a large bucket of unconfirmed matches.
 ## Appendix A — Bootstrap confidence intervals (PR #338)
 
 **Date:** 2026-06-20
-**Script:** [`scripts/archive/data/bootstrap_form_d_leverage_ci.py`](../../scripts/archive/data/bootstrap_form_d_leverage_ci.py)
+**Script:** [`scripts/data/bootstrap_form_d_leverage_ci.py`](../../scripts/data/bootstrap_form_d_leverage_ci.py)
 
 This appendix folds in the methodology supplement (previously `form-d-leverage-bootstrap-findings.md`) that adds **95% bootstrap confidence intervals at the firm level** to the headline ratios above, reproduces both headline numbers exactly, and surfaces two findings that change how readers should interpret the headline:
 
@@ -399,7 +399,7 @@ CIs quantify **sampling uncertainty only**. They do NOT capture: measurement err
 ### Reproducibility
 
 ```bash
-.venv/bin/python scripts/archive/data/bootstrap_form_d_leverage_ci.py
+uv run python scripts/data/bootstrap_form_d_leverage_ci.py
 ```
 
 Default config: 1,000 iterations, seed 42, window 2009-2024, inputs `data/form_d_details.jsonl` + `data/raw/sbir/award_data.csv`. Outputs to `reports/ml/form_d_leverage_ci.{json,md}` (gitignored). Self-contained, numpy only, runs in ~5 seconds.
