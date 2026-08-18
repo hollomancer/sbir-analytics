@@ -61,9 +61,10 @@ by hand with the inputs available on this host.
 
 ## Agents
 
-Full role instructions live in `.claude/agents/`. The `.Codex/agents/` files
-route Codex agents to the same instructions so the two runtimes do not maintain
-separate copies.
+Full role instructions live in `.claude/agents/`. Those files are **role-only**
+(workflows, verdicts, tier-scaled effort); shared conventions stay here in
+CLAUDE.md. The `.Codex/agents/` files route Codex agents to the same
+instructions so the two runtimes do not maintain separate copies.
 
 | Agent | When to Use | Model |
 |-------|-------------|-------|
