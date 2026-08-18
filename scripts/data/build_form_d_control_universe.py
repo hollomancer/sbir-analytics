@@ -359,7 +359,15 @@ def _first_nonblank(rows: Iterable[Mapping[str, Any]], key: str) -> Any:
 
 
 def parse_quarter(path: Path, *, quarter: str) -> tuple[list[dict[str, Any]], dict[str, Any]]:
-    counters: Counter[str] = Counter()
+    counters: Counter[str] = Counter(
+        {
+            "selected_business_combination_filings": 0,
+            "selected_non_business_combination_filings": 0,
+            "emitted_business_combination_filings": 0,
+            "omitted_business_combination_filings": 0,
+            "invalid_business_combination_flags": 0,
+        }
+    )
     with zipfile.ZipFile(path) as archive:
         members = _zip_members(archive, quarter=quarter)
         tables: dict[str, list[dict[str, str]]] = {}
@@ -427,14 +435,32 @@ def parse_quarter(path: Path, *, quarter: str) -> tuple[list[dict[str, Any]], di
         submission = submissions[accession]
         issuer = primary_issuers[accession]
         offering = offerings[accession]
+        business_combination_raw = (
+            str(offering.get("ISBUSINESSCOMBINATIONTRANS") or "").strip().lower()
+        )
+        if business_combination_raw not in {"true", "false"}:
+            counters["invalid_business_combination_flags"] += 1
+            raise BuildError(
+                f"{quarter} accession {accession} has invalid "
+                f"ISBUSINESSCOMBINATIONTRANS={business_combination_raw!r}"
+            )
+        is_business_combination = business_combination_raw == "true"
+        if is_business_combination:
+            counters["selected_business_combination_filings"] += 1
+        else:
+            counters["selected_non_business_combination_filings"] += 1
         cik = normalize_cik(issuer.get("CIK"))
         if cik is None:
             counters["invalid_cik_filings"] += 1
+            if is_business_combination:
+                counters["omitted_business_combination_filings"] += 1
             continue
         aliases = _aliases(issuer)
         issuer_name = str(issuer.get("ENTITYNAME") or "").strip()
         if not issuer_name or not normalize_company_name(issuer_name, profile=NORMALIZER):
             counters["invalid_issuer_name_filings"] += 1
+            if is_business_combination:
+                counters["omitted_business_combination_filings"] += 1
             continue
         filing_date = parse_date(
             submission.get("FILING_DATE"), field="filing date", accession=accession
@@ -465,7 +491,7 @@ def parse_quarter(path: Path, *, quarter: str) -> tuple[list[dict[str, Any]], di
                 "filing_date": filing_date,
                 "industry_group": str(offering.get("INDUSTRYGROUPTYPE") or "").strip() or None,
                 "is_amendment": _truthy(offering.get("ISAMENDMENT")),
-                "is_business_combination": _truthy(offering.get("ISBUSINESSCOMBINATIONTRANS")),
+                "is_business_combination": is_business_combination,
                 "issuer_name": issuer_name,
                 "issuer_name_aliases": aliases,
                 "previous_accession_number": str(
@@ -498,6 +524,8 @@ def parse_quarter(path: Path, *, quarter: str) -> tuple[list[dict[str, Any]], di
             }
         )
         counters["emitted_filings"] += 1
+        if is_business_combination:
+            counters["emitted_business_combination_filings"] += 1
 
     metadata = {
         "archive": {

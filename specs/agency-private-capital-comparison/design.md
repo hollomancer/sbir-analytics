@@ -98,7 +98,8 @@ eligible controls                         configured-agency treated cohort
               symmetric outcome contracts:
                 - federal-contract presence (both sides; not yet wired)
                 - patent presence (both sides; not yet wired)
-                - M&A exit rate (both sides; control evidence absent)
+                - Form D business-combination filing proxy (CIK-native adapter)
+                - verified M&A exit rate (both sides; evidence absent)
                 - Phase graduation / survival (agency only, control N/A)
                         ↓
               cohort-vs-cohort delta + threats-to-validity
@@ -132,11 +133,24 @@ eligible controls                         configured-agency treated cohort
    validated NAICS-2, state). Reports cohort balance and unmatched residuals.
    No propensity scoring in v1. The existing asset must reject component 6's
    staging output while either manifest gate is false.
-8. **`MatchedCohortOutcomes`** — Eventually joins both cohorts to symmetric
-   federal-contract, patent, and M&A evidence and emits per-cohort rates with
-   Wilson CIs. Today the scaffold has no real FPDS or patent input, and #286's
-   M&A artifact is SBIR-only. Missing inputs are unavailable, not zero; symmetric
-   outcome sources belong in separate follow-on PRs.
+8. **Symmetric outcome contract** —
+   `symmetric_event_coverage.evaluate_event_presence` applies one date-aware
+   evaluator to both arms. Every risk-set firm has an exact namespaced identity
+   and index date; every source supplies traceable dated events plus an explicit
+   coverage interval and snapshot. A covered firm with no event in the inclusive
+   horizon is an observed zero. Missing identity, missing/incomplete source
+   coverage, and insufficient follow-up are unavailable and stay out of the
+   denominator.
+
+   The first adapter, `scripts/data/build_form_d_business_combination_events.py`,
+   reads the audited DERA issuer universe and emits CIK-native evidence for the
+   exact metric `form_d_business_combination_filing_proxy`. It preserves filing
+   accession, filing date, quarter, and amendment lineage. This is a lower-bound
+   filing proxy for offerings associated with a business-combination transaction;
+   it is not a verified acquisition or M&A-exit event. FPDS, patent, and verified
+   M&A adapters remain separate follow-ons. The matched asset continues to mark
+   the proxy unavailable until an eligible matched risk set and the symmetric
+   event/coverage artifacts are supplied.
 9. **`ThreatsToValidity`** — Emits the structured caveats record. Required
    entries:
    - SAFE/convertible undercount (Form D weak on these)
@@ -208,8 +222,10 @@ union before it may call an issuer SBIR-excluded. Whether that union extends
 - **Covariate incompatibility**: DERA has SIC and Form D industry group, not
   NAICS. A convenient unvalidated mapping would change the match estimand. Keep
   `covariates_ready=false` until the SIC-to-NAICS-2 strategy passes validation.
-- **Outcome asymmetry**: FPDS and patent inputs are absent, and #286's M&A events
-  cover the SBIR side only. Missing evidence must remain unavailable, not zero.
+- **Outcome asymmetry**: FPDS, patent, and verified M&A inputs are absent. The
+  CIK-native Form D filing proxy has symmetric source coverage only for firms
+  resolved to Form D CIKs and must not be relabeled as acquisition or exit.
+  Missing evidence or incomplete follow-up must remain unavailable, not zero.
 - **NSF cohort size**: NSF SBIR is smaller than DoD; vintage-stratified
   Wilson intervals may be wide. Pre-register minimum cohort size (n=50
   per stratum) before reporting stratified rates.

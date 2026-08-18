@@ -1,12 +1,11 @@
 {
-  "artifact_role": "tracked_research_manifest",
   "caveats": [
     "Exact normalized-name exclusion has unknown recall.",
     "Aliases, renames, spelling variation, acquisitions, and unmatched CIKs can remain.",
     "A retained issuer means only not exact-name-matched to the observed SBIR history.",
     "SEC Form D supplies SIC and industry group, not NAICS."
   ],
-  "code_commit": "053ce78a3a19f0004ee3eba7857104b9ab4580f8",
+  "code_commit": "fc691b397f851fc77ce17e25243014292c5bc805",
   "complete": true,
   "complete_sbir_exclusion": false,
   "covariates_ready": false,
@@ -46,12 +45,17 @@
           ]
         },
         "counters": {
+          "emitted_business_combination_filings": 47,
           "emitted_filings": 4113,
+          "invalid_business_combination_flags": 0,
           "issuer_rows": 4128,
           "live_submissions": 4113,
           "non_primary_issuers": 15,
           "offering_rows": 4113,
+          "omitted_business_combination_filings": 0,
           "primary_issuers": 4113,
+          "selected_business_combination_filings": 47,
+          "selected_non_business_combination_filings": 4066,
           "selected_submissions": 4113,
           "submission_rows": 4113
         },
@@ -154,12 +158,17 @@
           ]
         },
         "counters": {
+          "emitted_business_combination_filings": 152,
           "emitted_filings": 5254,
+          "invalid_business_combination_flags": 0,
           "issuer_rows": 5583,
           "live_submissions": 5254,
           "non_primary_issuers": 329,
           "offering_rows": 5254,
+          "omitted_business_combination_filings": 0,
           "primary_issuers": 5254,
+          "selected_business_combination_filings": 152,
+          "selected_non_business_combination_filings": 5102,
           "selected_submissions": 5254,
           "submission_rows": 5254
         },
@@ -262,12 +271,17 @@
           ]
         },
         "counters": {
+          "emitted_business_combination_filings": 186,
           "emitted_filings": 5756,
+          "invalid_business_combination_flags": 0,
           "issuer_rows": 5865,
           "live_submissions": 5756,
           "non_primary_issuers": 109,
           "offering_rows": 5756,
+          "omitted_business_combination_filings": 0,
           "primary_issuers": 5756,
+          "selected_business_combination_filings": 186,
+          "selected_non_business_combination_filings": 5570,
           "selected_submissions": 5756,
           "submission_rows": 5756
         },
@@ -370,12 +384,17 @@
           ]
         },
         "counters": {
+          "emitted_business_combination_filings": 223,
           "emitted_filings": 5720,
+          "invalid_business_combination_flags": 0,
           "issuer_rows": 5825,
           "live_submissions": 5720,
           "non_primary_issuers": 105,
           "offering_rows": 5720,
+          "omitted_business_combination_filings": 0,
           "primary_issuers": 5720,
+          "selected_business_combination_filings": 223,
+          "selected_non_business_combination_filings": 5497,
           "selected_submissions": 5720,
           "submission_rows": 5720
         },
@@ -478,12 +497,17 @@
           ]
         },
         "counters": {
+          "emitted_business_combination_filings": 215,
           "emitted_filings": 10524,
+          "invalid_business_combination_flags": 0,
           "issuer_rows": 10606,
           "live_submissions": 10524,
           "non_primary_issuers": 82,
           "offering_rows": 10524,
+          "omitted_business_combination_filings": 0,
           "primary_issuers": 10524,
+          "selected_business_combination_filings": 215,
+          "selected_non_business_combination_filings": 10309,
           "selected_submissions": 10524,
           "submission_rows": 10524
         },
@@ -586,12 +610,17 @@
           ]
         },
         "counters": {
+          "emitted_business_combination_filings": 209,
           "emitted_filings": 6449,
+          "invalid_business_combination_flags": 0,
           "issuer_rows": 6491,
           "live_submissions": 6449,
           "non_primary_issuers": 42,
           "offering_rows": 6449,
+          "omitted_business_combination_filings": 0,
           "primary_issuers": 6449,
+          "selected_business_combination_filings": 209,
+          "selected_non_business_combination_filings": 6240,
           "selected_submissions": 6449,
           "submission_rows": 6449
         },
@@ -694,12 +723,17 @@
           ]
         },
         "counters": {
+          "emitted_business_combination_filings": 196,
           "emitted_filings": 6100,
+          "invalid_business_combination_flags": 0,
           "issuer_rows": 6185,
           "live_submissions": 6100,
           "non_primary_issuers": 85,
           "offering_rows": 6100,
+          "omitted_business_combination_filings": 0,
           "primary_issuers": 6100,
+          "selected_business_combination_filings": 196,
+          "selected_non_business_combination_filings": 5904,
           "selected_submissions": 6100,
           "submission_rows": 6100
         },
@@ -802,12 +836,17 @@
           ]
         },
         "counters": {
+          "emitted_business_combination_filings": 233,
           "emitted_filings": 6374,
+          "invalid_business_combination_flags": 0,
           "issuer_rows": 6519,
           "live_submissions": 6374,
           "non_primary_issuers": 145,
           "offering_rows": 6374,
+          "omitted_business_combination_filings": 0,
           "primary_issuers": 6374,
+          "selected_business_combination_filings": 233,
+          "selected_non_business_combination_filings": 6141,
           "selected_submissions": 6374,
           "submission_rows": 6374
         },
@@ -910,12 +949,17 @@
           ]
         },
         "counters": {
+          "emitted_business_combination_filings": 274,
           "emitted_filings": 10510,
+          "invalid_business_combination_flags": 0,
           "issuer_rows": 10606,
           "live_submissions": 10510,
           "non_primary_issuers": 96,
           "offering_rows": 10510,
+          "omitted_business_combination_filings": 0,
           "primary_issuers": 10510,
+          "selected_business_combination_filings": 274,
+          "selected_non_business_combination_filings": 10236,
           "selected_submissions": 10510,
           "submission_rows": 10510
         },
@@ -1018,12 +1062,17 @@
           ]
         },
         "counters": {
+          "emitted_business_combination_filings": 221,
           "emitted_filings": 6892,
+          "invalid_business_combination_flags": 0,
           "issuer_rows": 6944,
           "live_submissions": 6892,
           "non_primary_issuers": 52,
           "offering_rows": 6892,
+          "omitted_business_combination_filings": 0,
           "primary_issuers": 6892,
+          "selected_business_combination_filings": 221,
+          "selected_non_business_combination_filings": 6671,
           "selected_submissions": 6892,
           "submission_rows": 6892
         },
@@ -1126,12 +1175,17 @@
           ]
         },
         "counters": {
+          "emitted_business_combination_filings": 247,
           "emitted_filings": 6708,
+          "invalid_business_combination_flags": 0,
           "issuer_rows": 6809,
           "live_submissions": 6708,
           "non_primary_issuers": 101,
           "offering_rows": 6708,
+          "omitted_business_combination_filings": 0,
           "primary_issuers": 6708,
+          "selected_business_combination_filings": 247,
+          "selected_non_business_combination_filings": 6461,
           "selected_submissions": 6708,
           "submission_rows": 6708
         },
@@ -1234,12 +1288,17 @@
           ]
         },
         "counters": {
+          "emitted_business_combination_filings": 201,
           "emitted_filings": 6601,
+          "invalid_business_combination_flags": 0,
           "issuer_rows": 6661,
           "live_submissions": 6601,
           "non_primary_issuers": 60,
           "offering_rows": 6601,
+          "omitted_business_combination_filings": 0,
           "primary_issuers": 6601,
+          "selected_business_combination_filings": 201,
+          "selected_non_business_combination_filings": 6400,
           "selected_submissions": 6601,
           "submission_rows": 6601
         },
@@ -1342,12 +1401,17 @@
           ]
         },
         "counters": {
+          "emitted_business_combination_filings": 190,
           "emitted_filings": 10503,
+          "invalid_business_combination_flags": 0,
           "issuer_rows": 10586,
           "live_submissions": 10503,
           "non_primary_issuers": 83,
           "offering_rows": 10503,
+          "omitted_business_combination_filings": 0,
           "primary_issuers": 10503,
+          "selected_business_combination_filings": 190,
+          "selected_non_business_combination_filings": 10313,
           "selected_submissions": 10503,
           "submission_rows": 10503
         },
@@ -1450,12 +1514,17 @@
           ]
         },
         "counters": {
+          "emitted_business_combination_filings": 214,
           "emitted_filings": 7510,
+          "invalid_business_combination_flags": 0,
           "issuer_rows": 7624,
           "live_submissions": 7510,
           "non_primary_issuers": 114,
           "offering_rows": 7510,
+          "omitted_business_combination_filings": 0,
           "primary_issuers": 7510,
+          "selected_business_combination_filings": 214,
+          "selected_non_business_combination_filings": 7296,
           "selected_submissions": 7510,
           "submission_rows": 7510
         },
@@ -1558,12 +1627,17 @@
           ]
         },
         "counters": {
+          "emitted_business_combination_filings": 192,
           "emitted_filings": 6610,
+          "invalid_business_combination_flags": 0,
           "issuer_rows": 6686,
           "live_submissions": 6610,
           "non_primary_issuers": 76,
           "offering_rows": 6610,
+          "omitted_business_combination_filings": 0,
           "primary_issuers": 6610,
+          "selected_business_combination_filings": 192,
+          "selected_non_business_combination_filings": 6418,
           "selected_submissions": 6610,
           "submission_rows": 6610
         },
@@ -1666,12 +1740,17 @@
           ]
         },
         "counters": {
+          "emitted_business_combination_filings": 229,
           "emitted_filings": 6847,
+          "invalid_business_combination_flags": 0,
           "issuer_rows": 6933,
           "live_submissions": 6847,
           "non_primary_issuers": 86,
           "offering_rows": 6847,
+          "omitted_business_combination_filings": 0,
           "primary_issuers": 6847,
+          "selected_business_combination_filings": 229,
+          "selected_non_business_combination_filings": 6618,
           "selected_submissions": 6847,
           "submission_rows": 6847
         },
@@ -1774,12 +1853,17 @@
           ]
         },
         "counters": {
+          "emitted_business_combination_filings": 238,
           "emitted_filings": 10653,
+          "invalid_business_combination_flags": 0,
           "issuer_rows": 10738,
           "live_submissions": 10653,
           "non_primary_issuers": 85,
           "offering_rows": 10653,
+          "omitted_business_combination_filings": 0,
           "primary_issuers": 10653,
+          "selected_business_combination_filings": 238,
+          "selected_non_business_combination_filings": 10415,
           "selected_submissions": 10653,
           "submission_rows": 10653
         },
@@ -1882,12 +1966,17 @@
           ]
         },
         "counters": {
+          "emitted_business_combination_filings": 164,
           "emitted_filings": 7700,
+          "invalid_business_combination_flags": 0,
           "issuer_rows": 7814,
           "live_submissions": 7700,
           "non_primary_issuers": 114,
           "offering_rows": 7700,
+          "omitted_business_combination_filings": 0,
           "primary_issuers": 7700,
+          "selected_business_combination_filings": 164,
+          "selected_non_business_combination_filings": 7536,
           "selected_submissions": 7700,
           "submission_rows": 7700
         },
@@ -1990,12 +2079,17 @@
           ]
         },
         "counters": {
+          "emitted_business_combination_filings": 214,
           "emitted_filings": 7721,
+          "invalid_business_combination_flags": 0,
           "issuer_rows": 7842,
           "live_submissions": 7721,
           "non_primary_issuers": 121,
           "offering_rows": 7721,
+          "omitted_business_combination_filings": 0,
           "primary_issuers": 7721,
+          "selected_business_combination_filings": 214,
+          "selected_non_business_combination_filings": 7507,
           "selected_submissions": 7721,
           "submission_rows": 7721
         },
@@ -2098,12 +2192,17 @@
           ]
         },
         "counters": {
+          "emitted_business_combination_filings": 217,
           "emitted_filings": 8309,
+          "invalid_business_combination_flags": 0,
           "issuer_rows": 8443,
           "live_submissions": 8309,
           "non_primary_issuers": 134,
           "offering_rows": 8309,
+          "omitted_business_combination_filings": 0,
           "primary_issuers": 8309,
+          "selected_business_combination_filings": 217,
+          "selected_non_business_combination_filings": 8092,
           "selected_submissions": 8309,
           "submission_rows": 8309
         },
@@ -2206,12 +2305,17 @@
           ]
         },
         "counters": {
+          "emitted_business_combination_filings": 235,
           "emitted_filings": 11259,
+          "invalid_business_combination_flags": 0,
           "issuer_rows": 11343,
           "live_submissions": 11259,
           "non_primary_issuers": 84,
           "offering_rows": 11259,
+          "omitted_business_combination_filings": 0,
           "primary_issuers": 11259,
+          "selected_business_combination_filings": 235,
+          "selected_non_business_combination_filings": 11024,
           "selected_submissions": 11259,
           "submission_rows": 11259
         },
@@ -2314,12 +2418,17 @@
           ]
         },
         "counters": {
+          "emitted_business_combination_filings": 222,
           "emitted_filings": 8971,
+          "invalid_business_combination_flags": 0,
           "issuer_rows": 9048,
           "live_submissions": 8971,
           "non_primary_issuers": 77,
           "offering_rows": 8971,
+          "omitted_business_combination_filings": 0,
           "primary_issuers": 8971,
+          "selected_business_combination_filings": 222,
+          "selected_non_business_combination_filings": 8749,
           "selected_submissions": 8971,
           "submission_rows": 8971
         },
@@ -2422,12 +2531,17 @@
           ]
         },
         "counters": {
+          "emitted_business_combination_filings": 239,
           "emitted_filings": 8680,
+          "invalid_business_combination_flags": 0,
           "issuer_rows": 8802,
           "live_submissions": 8680,
           "non_primary_issuers": 122,
           "offering_rows": 8680,
+          "omitted_business_combination_filings": 0,
           "primary_issuers": 8680,
+          "selected_business_combination_filings": 239,
+          "selected_non_business_combination_filings": 8441,
           "selected_submissions": 8680,
           "submission_rows": 8680
         },
@@ -2530,12 +2644,17 @@
           ]
         },
         "counters": {
+          "emitted_business_combination_filings": 200,
           "emitted_filings": 9074,
+          "invalid_business_combination_flags": 0,
           "issuer_rows": 9232,
           "live_submissions": 9074,
           "non_primary_issuers": 158,
           "offering_rows": 9074,
+          "omitted_business_combination_filings": 0,
           "primary_issuers": 9074,
+          "selected_business_combination_filings": 200,
+          "selected_non_business_combination_filings": 8874,
           "selected_submissions": 9074,
           "submission_rows": 9074
         },
@@ -2638,12 +2757,17 @@
           ]
         },
         "counters": {
+          "emitted_business_combination_filings": 220,
           "emitted_filings": 11436,
+          "invalid_business_combination_flags": 0,
           "issuer_rows": 11611,
           "live_submissions": 11436,
           "non_primary_issuers": 175,
           "offering_rows": 11436,
+          "omitted_business_combination_filings": 0,
           "primary_issuers": 11436,
+          "selected_business_combination_filings": 220,
+          "selected_non_business_combination_filings": 11216,
           "selected_submissions": 11436,
           "submission_rows": 11436
         },
@@ -2746,12 +2870,17 @@
           ]
         },
         "counters": {
+          "emitted_business_combination_filings": 261,
           "emitted_filings": 9371,
+          "invalid_business_combination_flags": 0,
           "issuer_rows": 9513,
           "live_submissions": 9371,
           "non_primary_issuers": 142,
           "offering_rows": 9371,
+          "omitted_business_combination_filings": 0,
           "primary_issuers": 9371,
+          "selected_business_combination_filings": 261,
+          "selected_non_business_combination_filings": 9110,
           "selected_submissions": 9371,
           "submission_rows": 9371
         },
@@ -2854,12 +2983,17 @@
           ]
         },
         "counters": {
+          "emitted_business_combination_filings": 230,
           "emitted_filings": 9036,
+          "invalid_business_combination_flags": 0,
           "issuer_rows": 9136,
           "live_submissions": 9036,
           "non_primary_issuers": 100,
           "offering_rows": 9036,
+          "omitted_business_combination_filings": 0,
           "primary_issuers": 9036,
+          "selected_business_combination_filings": 230,
+          "selected_non_business_combination_filings": 8806,
           "selected_submissions": 9036,
           "submission_rows": 9036
         },
@@ -2962,12 +3096,17 @@
           ]
         },
         "counters": {
+          "emitted_business_combination_filings": 213,
           "emitted_filings": 9123,
+          "invalid_business_combination_flags": 0,
           "issuer_rows": 9320,
           "live_submissions": 9123,
           "non_primary_issuers": 197,
           "offering_rows": 9123,
+          "omitted_business_combination_filings": 0,
           "primary_issuers": 9123,
+          "selected_business_combination_filings": 213,
+          "selected_non_business_combination_filings": 8910,
           "selected_submissions": 9123,
           "submission_rows": 9123
         },
@@ -3070,12 +3209,17 @@
           ]
         },
         "counters": {
+          "emitted_business_combination_filings": 218,
           "emitted_filings": 11764,
+          "invalid_business_combination_flags": 0,
           "issuer_rows": 11905,
           "live_submissions": 11764,
           "non_primary_issuers": 141,
           "offering_rows": 11764,
+          "omitted_business_combination_filings": 0,
           "primary_issuers": 11764,
+          "selected_business_combination_filings": 218,
+          "selected_non_business_combination_filings": 11546,
           "selected_submissions": 11764,
           "submission_rows": 11764
         },
@@ -3178,12 +3322,17 @@
           ]
         },
         "counters": {
+          "emitted_business_combination_filings": 217,
           "emitted_filings": 9625,
+          "invalid_business_combination_flags": 0,
           "issuer_rows": 9716,
           "live_submissions": 9625,
           "non_primary_issuers": 91,
           "offering_rows": 9625,
+          "omitted_business_combination_filings": 0,
           "primary_issuers": 9625,
+          "selected_business_combination_filings": 217,
+          "selected_non_business_combination_filings": 9408,
           "selected_submissions": 9625,
           "submission_rows": 9625
         },
@@ -3286,12 +3435,17 @@
           ]
         },
         "counters": {
+          "emitted_business_combination_filings": 220,
           "emitted_filings": 9084,
+          "invalid_business_combination_flags": 0,
           "issuer_rows": 9178,
           "live_submissions": 9084,
           "non_primary_issuers": 94,
           "offering_rows": 9084,
+          "omitted_business_combination_filings": 0,
           "primary_issuers": 9084,
+          "selected_business_combination_filings": 220,
+          "selected_non_business_combination_filings": 8864,
           "selected_submissions": 9084,
           "submission_rows": 9084
         },
@@ -3394,12 +3548,17 @@
           ]
         },
         "counters": {
+          "emitted_business_combination_filings": 176,
           "emitted_filings": 9313,
+          "invalid_business_combination_flags": 0,
           "issuer_rows": 9402,
           "live_submissions": 9313,
           "non_primary_issuers": 89,
           "offering_rows": 9313,
+          "omitted_business_combination_filings": 0,
           "primary_issuers": 9313,
+          "selected_business_combination_filings": 176,
+          "selected_non_business_combination_filings": 9137,
           "selected_submissions": 9313,
           "submission_rows": 9313
         },
@@ -3502,12 +3661,17 @@
           ]
         },
         "counters": {
+          "emitted_business_combination_filings": 199,
           "emitted_filings": 12065,
+          "invalid_business_combination_flags": 0,
           "issuer_rows": 12251,
           "live_submissions": 12065,
           "non_primary_issuers": 186,
           "offering_rows": 12065,
+          "omitted_business_combination_filings": 0,
           "primary_issuers": 12065,
+          "selected_business_combination_filings": 199,
+          "selected_non_business_combination_filings": 11866,
           "selected_submissions": 12065,
           "submission_rows": 12065
         },
@@ -3610,12 +3774,17 @@
           ]
         },
         "counters": {
+          "emitted_business_combination_filings": 189,
           "emitted_filings": 10269,
+          "invalid_business_combination_flags": 0,
           "issuer_rows": 10358,
           "live_submissions": 10269,
           "non_primary_issuers": 89,
           "offering_rows": 10269,
+          "omitted_business_combination_filings": 0,
           "primary_issuers": 10269,
+          "selected_business_combination_filings": 189,
+          "selected_non_business_combination_filings": 10080,
           "selected_submissions": 10269,
           "submission_rows": 10269
         },
@@ -3718,12 +3887,17 @@
           ]
         },
         "counters": {
+          "emitted_business_combination_filings": 217,
           "emitted_filings": 9667,
+          "invalid_business_combination_flags": 0,
           "issuer_rows": 9801,
           "live_submissions": 9667,
           "non_primary_issuers": 134,
           "offering_rows": 9667,
+          "omitted_business_combination_filings": 0,
           "primary_issuers": 9667,
+          "selected_business_combination_filings": 217,
+          "selected_non_business_combination_filings": 9450,
           "selected_submissions": 9667,
           "submission_rows": 9667
         },
@@ -3826,12 +4000,17 @@
           ]
         },
         "counters": {
+          "emitted_business_combination_filings": 227,
           "emitted_filings": 9940,
+          "invalid_business_combination_flags": 0,
           "issuer_rows": 10059,
           "live_submissions": 9940,
           "non_primary_issuers": 119,
           "offering_rows": 9940,
+          "omitted_business_combination_filings": 0,
           "primary_issuers": 9940,
+          "selected_business_combination_filings": 227,
+          "selected_non_business_combination_filings": 9713,
           "selected_submissions": 9940,
           "submission_rows": 9940
         },
@@ -3934,12 +4113,17 @@
           ]
         },
         "counters": {
+          "emitted_business_combination_filings": 242,
           "emitted_filings": 12542,
+          "invalid_business_combination_flags": 0,
           "issuer_rows": 12682,
           "live_submissions": 12542,
           "non_primary_issuers": 140,
           "offering_rows": 12542,
+          "omitted_business_combination_filings": 0,
           "primary_issuers": 12542,
+          "selected_business_combination_filings": 242,
+          "selected_non_business_combination_filings": 12300,
           "selected_submissions": 12542,
           "submission_rows": 12542
         },
@@ -4042,12 +4226,17 @@
           ]
         },
         "counters": {
+          "emitted_business_combination_filings": 255,
           "emitted_filings": 10928,
+          "invalid_business_combination_flags": 0,
           "issuer_rows": 11144,
           "live_submissions": 10928,
           "non_primary_issuers": 216,
           "offering_rows": 10928,
+          "omitted_business_combination_filings": 0,
           "primary_issuers": 10928,
+          "selected_business_combination_filings": 255,
+          "selected_non_business_combination_filings": 10673,
           "selected_submissions": 10928,
           "submission_rows": 10928
         },
@@ -4150,12 +4339,17 @@
           ]
         },
         "counters": {
+          "emitted_business_combination_filings": 252,
           "emitted_filings": 10446,
+          "invalid_business_combination_flags": 0,
           "issuer_rows": 10588,
           "live_submissions": 10446,
           "non_primary_issuers": 142,
           "offering_rows": 10446,
+          "omitted_business_combination_filings": 0,
           "primary_issuers": 10446,
+          "selected_business_combination_filings": 252,
+          "selected_non_business_combination_filings": 10194,
           "selected_submissions": 10446,
           "submission_rows": 10446
         },
@@ -4258,12 +4452,17 @@
           ]
         },
         "counters": {
+          "emitted_business_combination_filings": 256,
           "emitted_filings": 10769,
+          "invalid_business_combination_flags": 0,
           "issuer_rows": 10904,
           "live_submissions": 10769,
           "non_primary_issuers": 135,
           "offering_rows": 10769,
+          "omitted_business_combination_filings": 0,
           "primary_issuers": 10769,
+          "selected_business_combination_filings": 256,
+          "selected_non_business_combination_filings": 10513,
           "selected_submissions": 10769,
           "submission_rows": 10769
         },
@@ -4366,12 +4565,17 @@
           ]
         },
         "counters": {
+          "emitted_business_combination_filings": 218,
           "emitted_filings": 12242,
+          "invalid_business_combination_flags": 0,
           "issuer_rows": 12369,
           "live_submissions": 12242,
           "non_primary_issuers": 127,
           "offering_rows": 12242,
+          "omitted_business_combination_filings": 0,
           "primary_issuers": 12242,
+          "selected_business_combination_filings": 218,
+          "selected_non_business_combination_filings": 12024,
           "selected_submissions": 12242,
           "submission_rows": 12242
         },
@@ -4474,12 +4678,17 @@
           ]
         },
         "counters": {
+          "emitted_business_combination_filings": 279,
           "emitted_filings": 11679,
+          "invalid_business_combination_flags": 0,
           "issuer_rows": 11800,
           "live_submissions": 11679,
           "non_primary_issuers": 121,
           "offering_rows": 11679,
+          "omitted_business_combination_filings": 0,
           "primary_issuers": 11679,
+          "selected_business_combination_filings": 279,
+          "selected_non_business_combination_filings": 11400,
           "selected_submissions": 11679,
           "submission_rows": 11679
         },
@@ -4582,12 +4791,17 @@
           ]
         },
         "counters": {
+          "emitted_business_combination_filings": 231,
           "emitted_filings": 10906,
+          "invalid_business_combination_flags": 0,
           "issuer_rows": 11026,
           "live_submissions": 10906,
           "non_primary_issuers": 120,
           "offering_rows": 10906,
+          "omitted_business_combination_filings": 0,
           "primary_issuers": 10906,
+          "selected_business_combination_filings": 231,
+          "selected_non_business_combination_filings": 10675,
           "selected_submissions": 10906,
           "submission_rows": 10906
         },
@@ -4690,12 +4904,17 @@
           ]
         },
         "counters": {
+          "emitted_business_combination_filings": 213,
           "emitted_filings": 10977,
+          "invalid_business_combination_flags": 0,
           "issuer_rows": 11104,
           "live_submissions": 10977,
           "non_primary_issuers": 127,
           "offering_rows": 10977,
+          "omitted_business_combination_filings": 0,
           "primary_issuers": 10977,
+          "selected_business_combination_filings": 213,
+          "selected_non_business_combination_filings": 10764,
           "selected_submissions": 10977,
           "submission_rows": 10977
         },
@@ -4798,12 +5017,17 @@
           ]
         },
         "counters": {
+          "emitted_business_combination_filings": 238,
           "emitted_filings": 12703,
+          "invalid_business_combination_flags": 0,
           "issuer_rows": 12870,
           "live_submissions": 12703,
           "non_primary_issuers": 167,
           "offering_rows": 12703,
+          "omitted_business_combination_filings": 0,
           "primary_issuers": 12703,
+          "selected_business_combination_filings": 238,
+          "selected_non_business_combination_filings": 12465,
           "selected_submissions": 12703,
           "submission_rows": 12703
         },
@@ -4906,12 +5130,17 @@
           ]
         },
         "counters": {
+          "emitted_business_combination_filings": 178,
           "emitted_filings": 10202,
+          "invalid_business_combination_flags": 0,
           "issuer_rows": 10331,
           "live_submissions": 10202,
           "non_primary_issuers": 129,
           "offering_rows": 10202,
+          "omitted_business_combination_filings": 0,
           "primary_issuers": 10202,
+          "selected_business_combination_filings": 178,
+          "selected_non_business_combination_filings": 10024,
           "selected_submissions": 10202,
           "submission_rows": 10202
         },
@@ -5014,12 +5243,17 @@
           ]
         },
         "counters": {
+          "emitted_business_combination_filings": 191,
           "emitted_filings": 10856,
+          "invalid_business_combination_flags": 0,
           "issuer_rows": 10996,
           "live_submissions": 10856,
           "non_primary_issuers": 140,
           "offering_rows": 10856,
+          "omitted_business_combination_filings": 0,
           "primary_issuers": 10856,
+          "selected_business_combination_filings": 191,
+          "selected_non_business_combination_filings": 10665,
           "selected_submissions": 10856,
           "submission_rows": 10856
         },
@@ -5122,13 +5356,18 @@
           ]
         },
         "counters": {
+          "emitted_business_combination_filings": 281,
           "emitted_filings": 12327,
+          "invalid_business_combination_flags": 0,
           "invalid_issuer_name_filings": 1,
           "issuer_rows": 12539,
           "live_submissions": 12328,
           "non_primary_issuers": 211,
           "offering_rows": 12328,
+          "omitted_business_combination_filings": 0,
           "primary_issuers": 12328,
+          "selected_business_combination_filings": 281,
+          "selected_non_business_combination_filings": 12047,
           "selected_submissions": 12328,
           "submission_rows": 12328
         },
@@ -5231,13 +5470,18 @@
           ]
         },
         "counters": {
+          "emitted_business_combination_filings": 307,
           "emitted_filings": 14873,
+          "invalid_business_combination_flags": 0,
           "invalid_issuer_name_filings": 7,
           "issuer_rows": 15075,
           "live_submissions": 14880,
           "non_primary_issuers": 195,
           "offering_rows": 14880,
+          "omitted_business_combination_filings": 0,
           "primary_issuers": 14880,
+          "selected_business_combination_filings": 307,
+          "selected_non_business_combination_filings": 14573,
           "selected_submissions": 14880,
           "submission_rows": 14880
         },
@@ -5340,13 +5584,18 @@
           ]
         },
         "counters": {
+          "emitted_business_combination_filings": 270,
           "emitted_filings": 15114,
+          "invalid_business_combination_flags": 0,
           "invalid_issuer_name_filings": 1,
           "issuer_rows": 15270,
           "live_submissions": 15115,
           "non_primary_issuers": 155,
           "offering_rows": 15115,
+          "omitted_business_combination_filings": 0,
           "primary_issuers": 15115,
+          "selected_business_combination_filings": 270,
+          "selected_non_business_combination_filings": 14845,
           "selected_submissions": 15115,
           "submission_rows": 15115
         },
@@ -5449,12 +5698,17 @@
           ]
         },
         "counters": {
+          "emitted_business_combination_filings": 325,
           "emitted_filings": 14843,
+          "invalid_business_combination_flags": 0,
           "issuer_rows": 14993,
           "live_submissions": 14843,
           "non_primary_issuers": 150,
           "offering_rows": 14843,
+          "omitted_business_combination_filings": 0,
           "primary_issuers": 14843,
+          "selected_business_combination_filings": 325,
+          "selected_non_business_combination_filings": 14518,
           "selected_submissions": 14843,
           "submission_rows": 14843
         },
@@ -5557,13 +5811,18 @@
           ]
         },
         "counters": {
+          "emitted_business_combination_filings": 342,
           "emitted_filings": 16577,
+          "invalid_business_combination_flags": 0,
           "invalid_issuer_name_filings": 6,
           "issuer_rows": 16762,
           "live_submissions": 16583,
           "non_primary_issuers": 179,
           "offering_rows": 16583,
+          "omitted_business_combination_filings": 0,
           "primary_issuers": 16583,
+          "selected_business_combination_filings": 342,
+          "selected_non_business_combination_filings": 16241,
           "selected_submissions": 16583,
           "submission_rows": 16583
         },
@@ -5666,13 +5925,18 @@
           ]
         },
         "counters": {
+          "emitted_business_combination_filings": 307,
           "emitted_filings": 18557,
+          "invalid_business_combination_flags": 0,
           "invalid_issuer_name_filings": 1,
           "issuer_rows": 18839,
           "live_submissions": 18558,
           "non_primary_issuers": 281,
           "offering_rows": 18558,
+          "omitted_business_combination_filings": 0,
           "primary_issuers": 18558,
+          "selected_business_combination_filings": 307,
+          "selected_non_business_combination_filings": 18251,
           "selected_submissions": 18558,
           "submission_rows": 18558
         },
@@ -5775,12 +6039,17 @@
           ]
         },
         "counters": {
+          "emitted_business_combination_filings": 268,
           "emitted_filings": 16124,
+          "invalid_business_combination_flags": 0,
           "issuer_rows": 16319,
           "live_submissions": 16124,
           "non_primary_issuers": 195,
           "offering_rows": 16124,
+          "omitted_business_combination_filings": 0,
           "primary_issuers": 16124,
+          "selected_business_combination_filings": 268,
+          "selected_non_business_combination_filings": 15856,
           "selected_submissions": 16124,
           "submission_rows": 16124
         },
@@ -5883,13 +6152,18 @@
           ]
         },
         "counters": {
+          "emitted_business_combination_filings": 217,
           "emitted_filings": 14181,
+          "invalid_business_combination_flags": 0,
           "invalid_issuer_name_filings": 6,
           "issuer_rows": 14389,
           "live_submissions": 14187,
           "non_primary_issuers": 202,
           "offering_rows": 14187,
+          "omitted_business_combination_filings": 0,
           "primary_issuers": 14187,
+          "selected_business_combination_filings": 217,
+          "selected_non_business_combination_filings": 13970,
           "selected_submissions": 14187,
           "submission_rows": 14187
         },
@@ -5992,13 +6266,18 @@
           ]
         },
         "counters": {
+          "emitted_business_combination_filings": 240,
           "emitted_filings": 13570,
+          "invalid_business_combination_flags": 0,
           "invalid_issuer_name_filings": 1,
           "issuer_rows": 13934,
           "live_submissions": 13571,
           "non_primary_issuers": 363,
           "offering_rows": 13571,
+          "omitted_business_combination_filings": 0,
           "primary_issuers": 13571,
+          "selected_business_combination_filings": 240,
+          "selected_non_business_combination_filings": 13331,
           "selected_submissions": 13571,
           "submission_rows": 13571
         },
@@ -6101,12 +6380,17 @@
           ]
         },
         "counters": {
+          "emitted_business_combination_filings": 237,
           "emitted_filings": 14227,
+          "invalid_business_combination_flags": 0,
           "issuer_rows": 14779,
           "live_submissions": 14227,
           "non_primary_issuers": 552,
           "offering_rows": 14227,
+          "omitted_business_combination_filings": 0,
           "primary_issuers": 14227,
+          "selected_business_combination_filings": 237,
+          "selected_non_business_combination_filings": 13990,
           "selected_submissions": 14227,
           "submission_rows": 14227
         },
@@ -6209,12 +6493,17 @@
           ]
         },
         "counters": {
+          "emitted_business_combination_filings": 237,
           "emitted_filings": 13783,
+          "invalid_business_combination_flags": 0,
           "issuer_rows": 14346,
           "live_submissions": 13783,
           "non_primary_issuers": 563,
           "offering_rows": 13783,
+          "omitted_business_combination_filings": 0,
           "primary_issuers": 13783,
+          "selected_business_combination_filings": 237,
+          "selected_non_business_combination_filings": 13546,
           "selected_submissions": 13783,
           "submission_rows": 13783
         },
@@ -6317,12 +6606,17 @@
           ]
         },
         "counters": {
+          "emitted_business_combination_filings": 196,
           "emitted_filings": 12678,
+          "invalid_business_combination_flags": 0,
           "issuer_rows": 13127,
           "live_submissions": 12678,
           "non_primary_issuers": 449,
           "offering_rows": 12678,
+          "omitted_business_combination_filings": 0,
           "primary_issuers": 12678,
+          "selected_business_combination_filings": 196,
+          "selected_non_business_combination_filings": 12482,
           "selected_submissions": 12678,
           "submission_rows": 12678
         },
@@ -6425,12 +6719,17 @@
           ]
         },
         "counters": {
+          "emitted_business_combination_filings": 237,
           "emitted_filings": 12281,
+          "invalid_business_combination_flags": 0,
           "issuer_rows": 12619,
           "live_submissions": 12281,
           "non_primary_issuers": 338,
           "offering_rows": 12281,
+          "omitted_business_combination_filings": 0,
           "primary_issuers": 12281,
+          "selected_business_combination_filings": 237,
+          "selected_non_business_combination_filings": 12044,
           "selected_submissions": 12281,
           "submission_rows": 12281
         },
@@ -6533,12 +6832,17 @@
           ]
         },
         "counters": {
+          "emitted_business_combination_filings": 210,
           "emitted_filings": 14208,
+          "invalid_business_combination_flags": 0,
           "issuer_rows": 14530,
           "live_submissions": 14208,
           "non_primary_issuers": 322,
           "offering_rows": 14208,
+          "omitted_business_combination_filings": 0,
           "primary_issuers": 14208,
+          "selected_business_combination_filings": 210,
+          "selected_non_business_combination_filings": 13998,
           "selected_submissions": 14208,
           "submission_rows": 14208
         },
@@ -6641,12 +6945,17 @@
           ]
         },
         "counters": {
+          "emitted_business_combination_filings": 208,
           "emitted_filings": 13699,
+          "invalid_business_combination_flags": 0,
           "issuer_rows": 13889,
           "live_submissions": 13699,
           "non_primary_issuers": 190,
           "offering_rows": 13699,
+          "omitted_business_combination_filings": 0,
           "primary_issuers": 13699,
+          "selected_business_combination_filings": 208,
+          "selected_non_business_combination_filings": 13491,
           "selected_submissions": 13699,
           "submission_rows": 13699
         },
@@ -6749,12 +7058,17 @@
           ]
         },
         "counters": {
+          "emitted_business_combination_filings": 215,
           "emitted_filings": 13222,
+          "invalid_business_combination_flags": 0,
           "issuer_rows": 13439,
           "live_submissions": 13222,
           "non_primary_issuers": 217,
           "offering_rows": 13222,
+          "omitted_business_combination_filings": 0,
           "primary_issuers": 13222,
+          "selected_business_combination_filings": 215,
+          "selected_non_business_combination_filings": 13007,
           "selected_submissions": 13222,
           "submission_rows": 13222
         },
@@ -6857,12 +7171,17 @@
           ]
         },
         "counters": {
+          "emitted_business_combination_filings": 213,
           "emitted_filings": 13611,
+          "invalid_business_combination_flags": 0,
           "issuer_rows": 13879,
           "live_submissions": 13611,
           "non_primary_issuers": 268,
           "offering_rows": 13611,
+          "omitted_business_combination_filings": 0,
           "primary_issuers": 13611,
+          "selected_business_combination_filings": 213,
+          "selected_non_business_combination_filings": 13398,
           "selected_submissions": 13611,
           "submission_rows": 13611
         },
@@ -7063,13 +7382,18 @@
     ]
   },
   "quality_counts": {
+    "emitted_business_combination_filings": 14408,
     "emitted_filings": 673656,
+    "invalid_business_combination_flags": 0,
     "invalid_issuer_name_filings": 23,
     "issuer_rows": 684105,
     "live_submissions": 673679,
     "non_primary_issuers": 10426,
     "offering_rows": 673679,
+    "omitted_business_combination_filings": 0,
     "primary_issuers": 673679,
+    "selected_business_combination_filings": 14408,
+    "selected_non_business_combination_filings": 659271,
     "selected_submissions": 673679,
     "submission_rows": 673679
   },

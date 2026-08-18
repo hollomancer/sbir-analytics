@@ -250,6 +250,11 @@ def test_parse_quarter_filters_and_normalizes(tmp_path: Path) -> None:
     assert rows[1]["security_types"] == ["debt", "equity"]
     assert rows[1]["previous_accession_number"] == "0001"
     assert metadata["counters"]["test_submissions"] == 1
+    assert metadata["counters"]["selected_business_combination_filings"] == 1
+    assert metadata["counters"]["selected_non_business_combination_filings"] == 1
+    assert metadata["counters"]["emitted_business_combination_filings"] == 1
+    assert metadata["counters"]["omitted_business_combination_filings"] == 0
+    assert metadata["counters"]["invalid_business_combination_flags"] == 0
 
     issuers_out = producer.aggregate_issuers(rows)
     assert len(issuers_out) == 1
@@ -257,6 +262,57 @@ def test_parse_quarter_filters_and_normalizes(tmp_path: Path) -> None:
     assert issuers_out[0]["first_accession_number"] == "0001"
     assert "Legacy Acme LLC" in issuers_out[0]["issuer_name_aliases"]
     assert producer.aggregate_issuers(reversed(rows)) == issuers_out
+
+
+def test_parse_quarter_counts_flagged_filings_omitted_from_identity_universe(
+    tmp_path: Path,
+) -> None:
+    archive = tmp_path / "quarter.zip"
+    issuers = [
+        {
+            "ACCESSIONNUMBER": "0001",
+            "IS_PRIMARYISSUER_FLAG": "true",
+            "CIK": "00000123",
+            "ENTITYNAME": "",
+            "STATEORCOUNTRY": "CA",
+            "ZIPCODE": "94105",
+            "ENTITYTYPE": "Corporation",
+            "YEAROFINC_TIMESPAN_CHOICE": "Within Five Years",
+            "YEAROFINC_VALUE_ENTERED": "2020",
+        }
+    ]
+    offerings = [
+        {
+            "ACCESSIONNUMBER": "0001",
+            "INDUSTRYGROUPTYPE": "Technology",
+            "ISAMENDMENT": "false",
+            "ISBUSINESSCOMBINATIONTRANS": "true",
+        }
+    ]
+    _write_archive(archive, issuers=issuers, offerings=offerings)
+
+    rows, metadata = producer.parse_quarter(archive, quarter="2024Q4")
+
+    assert rows == []
+    assert metadata["counters"]["selected_business_combination_filings"] == 1
+    assert metadata["counters"]["emitted_business_combination_filings"] == 0
+    assert metadata["counters"]["omitted_business_combination_filings"] == 1
+
+
+def test_parse_quarter_rejects_unknown_business_combination_flag(tmp_path: Path) -> None:
+    archive = tmp_path / "quarter.zip"
+    offerings = [
+        {
+            "ACCESSIONNUMBER": "0001",
+            "INDUSTRYGROUPTYPE": "Technology",
+            "ISAMENDMENT": "false",
+            "ISBUSINESSCOMBINATIONTRANS": "unknown",
+        }
+    ]
+    _write_archive(archive, offerings=offerings)
+
+    with pytest.raises(producer.BuildError, match="invalid ISBUSINESSCOMBINATIONTRANS"):
+        producer.parse_quarter(archive, quarter="2024Q4")
 
 
 def test_parse_quarter_counts_malformed_cik(tmp_path: Path) -> None:

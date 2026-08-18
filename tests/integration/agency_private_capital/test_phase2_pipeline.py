@@ -84,13 +84,15 @@ def test_phase2_pipeline_produces_pairs_outcomes_and_threats(tmp_path) -> None:
     treated = AgencyAwardeeFilter(agency_code="NSF").build(awards, matches)
     controls = PrivateCapitalControlCohortBuilder().build(controls_universe)
     pairs, balance = CohortMatcher().match(treated, controls)
-    outcomes = MatchedCohortOutcomes(ma_event_keys={"name:acme corp"}).compute(pairs)
+    outcomes = MatchedCohortOutcomes().compute(pairs)
     threats = ThreatsToValidity().validate()
 
     assert len(pairs) == 1
     assert balance["match_rate"] == pytest.approx(1.0)
-    ma_treated = outcomes[
-        (outcomes["cohort"] == "agency_sbir") & (outcomes["metric"] == "ma_exit_rate")
+    proxy_treated = outcomes[
+        (outcomes["cohort"] == "agency_sbir")
+        & (outcomes["metric"] == "form_d_business_combination_filing_proxy")
     ].iloc[0]
-    assert ma_treated["numerator"] == 1
+    assert bool(proxy_treated["available"]) is False
+    assert pd.isna(proxy_treated["rate"])
     assert threats["passed"] is True

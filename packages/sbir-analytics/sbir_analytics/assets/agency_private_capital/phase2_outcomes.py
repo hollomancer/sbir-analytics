@@ -1,44 +1,11 @@
 """Outcome calculations for matched agency-vs-Form-D control cohorts."""
 
-from __future__ import annotations
-
 from dataclasses import dataclass
 from typing import Any
 
 import pandas as pd
 
 from .outcomes import wilson_interval
-
-
-def keys_from_ma_events(path: str | None) -> set[str] | None:
-    """Load M&A event keys from JSONL, supporting company-name and CIK fields."""
-
-    if not path:
-        return None
-    from pathlib import Path
-
-    import json
-
-    p = Path(path)
-    if not p.exists():
-        return None
-    keys: set[str] = set()
-    with p.open(encoding="utf-8") as fh:
-        for line in fh:
-            line = line.strip()
-            if not line:
-                continue
-            try:
-                row = json.loads(line)
-            except json.JSONDecodeError:
-                continue
-            name = row.get("company_name") or row.get("issuer_name") or row.get("entity_name")
-            if name:
-                keys.add(f"name:{str(name).strip().lower()}")
-            cik = row.get("form_d_cik") or row.get("cik") or row.get("target_cik")
-            if cik:
-                keys.add(f"cik:{str(cik).lstrip('0')}")
-    return keys
 
 
 @dataclass(frozen=True)
@@ -52,7 +19,6 @@ class MatchedCohortOutcomes:
 
     federal_contract_keys: set[str] | None = None
     patent_keys: set[str] | None = None
-    ma_event_keys: set[str] | None = None
 
     def compute(self, pairs: pd.DataFrame) -> pd.DataFrame:
         if pairs.empty:
@@ -66,7 +32,16 @@ class MatchedCohortOutcomes:
             )
         )
         rows.extend(self._metric(pairs, metric="patent_presence", keys=self.patent_keys))
-        rows.extend(self._metric(pairs, metric="ma_exit_rate", keys=self.ma_event_keys))
+        # The historical SBIR-only M&A file cannot establish control-side
+        # coverage. Keep this proxy unavailable until the matched asset accepts
+        # the symmetric date-aware event and coverage contract.
+        rows.extend(
+            self._metric(
+                pairs,
+                metric="form_d_business_combination_filing_proxy",
+                keys=None,
+            )
+        )
         return _outcome_frame(rows)
 
     def _metric(

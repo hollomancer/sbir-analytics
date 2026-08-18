@@ -1043,8 +1043,12 @@ The relevant literature is Lerner [L10], Howell [L11], and Kortum & Lerner
   unavailable in that run. A reproducible 2009Q1–2024Q4 Form D identity audit
   now materializes 311,809 issuer CIKs and 307,344
   provisional retained identities, but exact-name SBIR exclusion has unknown
-  recall and the source has no NAICS; the controls are not match-ready.
-  *Deps: ER, SEC EDGAR · Refs: [L10], [L11], [L24] · Reports: [NSF Phase I baseline review](research/agency-private-capital-phase1-nsf.md), [Form D control-identity audit](research/agency-private-capital-form-d-control-universe.md) · Spec: [../specs/agency-private-capital-comparison/](../specs/agency-private-capital-comparison/) (PR #321 merged, supersedes #311; agency-parameterized via the `agency_private_capital_baseline_comparison` asset in group `agency_private_capital`, with terminology changed from "VC" to "private capital")*
+  recall and the source has no NAICS; the controls are not match-ready. A
+  symmetric exact-CIK adapter now materializes 14,408 Form D filings carrying
+  the business-combination flag across 10,224 issuers, with explicit date and
+  coverage rules. This is a transaction-financing filing proxy, not a verified
+  M&A exit rate, and no cohort comparison has been computed.
+  *Deps: ER, SEC EDGAR · Refs: [L10], [L11], [L24] · Reports: [NSF Phase I baseline review](research/agency-private-capital-phase1-nsf.md), [Form D control-identity audit](research/agency-private-capital-form-d-control-universe.md), [symmetric Form D filing-proxy audit](research/agency-private-capital-form-d-business-combination-proxy.md) · Spec: [../specs/agency-private-capital-comparison/](../specs/agency-private-capital-comparison/) (PR #321 merged, supersedes #311; agency-parameterized via the `agency_private_capital_baseline_comparison` asset in group `agency_private_capital`, with terminology changed from "VC" to "private capital")*
 
 - **Crowd-in vs. crowd-out**
   Does SBIR funding crowd in or crowd out subsequent private capital?
