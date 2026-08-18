@@ -156,6 +156,22 @@ def test_claim_outside_numbered_section_is_rejected() -> None:
     assert "outside a numbered A–F section" in violations[0].message
 
 
+def test_subsubsection_heading_keeps_parent_section_id() -> None:
+    markdown = (
+        "### F3. Inferential\n\n"
+        "#### Disclosed Form D leverage\n\n"
+        "- **Ratio**\n"
+        "  **Status:** Computable as a Form D lower bound.\n"
+        "  *Deps: ER*\n"
+    )
+
+    blocks = list(guard.iter_status_blocks(markdown))
+    violations = guard.validate_inventory(markdown, {"F3": EvidenceStatus.REPRODUCIBLE})
+
+    assert blocks[0][1] == "F3"
+    assert violations == []
+
+
 def test_non_question_heading_clears_inherited_section_id() -> None:
     markdown = (
         "### F4. Predictive (Tier 4)\n\n"
