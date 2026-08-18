@@ -1,0 +1,113 @@
+{
+  "artifact_role": "tracked_research_manifest",
+  "candidate_only": true,
+  "caveats": [
+    "Exact normalized-name equality is candidate generation, not legal-entity proof.",
+    "Parent, subsidiary, acquirer, successor, fund, and shared-person relationships are not identity.",
+    "Unresolved and quarantined pairs remain unknown and cannot support exclusion or rates."
+  ],
+  "complete": true,
+  "complete_sbir_exclusion": false,
+  "counts": {
+    "award_rows": 219500,
+    "award_rows_with_malformed_identifier": 1864,
+    "award_rows_with_valid_identifier": 182000,
+    "candidate_ciks": 4465,
+    "candidate_edges": 4542,
+    "candidate_firms": 4450,
+    "candidate_normalized_names": 4423,
+    "component_status_counts": {
+      "identifier_consistent": 23456,
+      "name_only": 10736,
+      "quarantined_conflict": 234
+    },
+    "firm_components": 34426,
+    "firms_with_multiple_candidate_ciks": 90,
+    "form_d_ciks_with_multiple_candidate_firms": 74,
+    "identifier_components": 23519,
+    "name_only_components": 10907,
+    "normalized_name_count": 34287,
+    "quarantined_components": 234
+  },
+  "covariates_ready": false,
+  "decision_contract": {
+    "decision": "candidate_unreviewed",
+    "same_legal_entity": "unknown"
+  },
+  "exclusion_eligible": false,
+  "exclusion_recall": "unknown",
+  "identity_accepted": false,
+  "identity_only": true,
+  "inputs": {
+    "broad_issuer_universe": {
+      "path": "form_d_issuer_universe.identity-staging.jsonl",
+      "row_count": 311809,
+      "sha256": "a7c2ba7c84cf10711a029fd9b2e9326bd1e9137af61146ee47385d8aa03b310b",
+      "size_bytes": 827044055
+    },
+    "control_manifest": {
+      "path": "form_d_control_universe.manifest.json",
+      "sha256": "3ce34a04b592131dbd0aefdb8692c21c5ab72e46f90f5f81a2aeffb9dbaeeaaf",
+      "size_bytes": 231122
+    },
+    "sbir_awards_csv": {
+      "path": "award_data.csv",
+      "row_count": 219500,
+      "sha256": "73d646fc6883ed93b36d19518b0d9442a9ebae94c5b49ad5a7fcd6d3c2b872dd",
+      "size_bytes": 394456822,
+      "unique_normalized_company_names": 34287
+    }
+  },
+  "invariants": {
+    "all_edges_atomic_by_sbir_firm_and_cik": true,
+    "all_edges_candidate_unreviewed": true,
+    "all_edges_have_closed_downstream_gates": true,
+    "all_form_d_evidence_is_cik_local": true,
+    "all_sbir_source_records_preserved_once": true,
+    "candidate_ciks_reconcile_to_upstream_exact_stage": true,
+    "candidate_names_reconcile_to_upstream_exact_stage": true,
+    "firm_ids_unique": true,
+    "pair_ids_unique": true,
+    "pairs_unique": true
+  },
+  "matching_eligible": false,
+  "normalizer_version": "organization-key-v1",
+  "outputs": {
+    "candidate_edges": {
+      "path": "sbir_form_d_candidate_edges.v1.5677ffe3b96b8d103312a7cc99b1ef9d12d3a7ebf95032b5e24e4c53fbbc193a.jsonl",
+      "row_count": 4542,
+      "sha256": "5677ffe3b96b8d103312a7cc99b1ef9d12d3a7ebf95032b5e24e4c53fbbc193a",
+      "size_bytes": 6578060
+    },
+    "firm_identity_ledger": {
+      "path": "sbir_firm_identity_ledger.v1.272d566a665aca6262f073c75c585dcca4d9ed61ff52bb7f8197e95f50b80508.jsonl",
+      "row_count": 34426,
+      "sha256": "272d566a665aca6262f073c75c585dcca4d9ed61ff52bb7f8197e95f50b80508",
+      "size_bytes": 62253221
+    }
+  },
+  "producer": {
+    "code_commit": "84cd4db9bd04be23bf61d30d8b9405d08ab95c73",
+    "path": "scripts/data/build_sbir_form_d_identity_crosswalk.py",
+    "sha256": "c2c8835b26ed17e8baa0de2b67cfb7d6074bfa0451afac9529f933cf4e9a3619",
+    "size_bytes": 40895
+  },
+  "rate_eligible": false,
+  "ready_for_matching": false,
+  "schema_version": 1,
+  "source_validation": {
+    "form_d": {
+      "filing_rows_validated": 673656,
+      "matched_form_d_ciks": 4465,
+      "matched_normalized_names": 4423,
+      "row_count": 311809,
+      "sha256": "a7c2ba7c84cf10711a029fd9b2e9326bd1e9137af61146ee47385d8aa03b310b",
+      "size_bytes": 827044055
+    },
+    "sbir_awards": {
+      "row_count": 219500,
+      "sha256": "73d646fc6883ed93b36d19518b0d9442a9ebae94c5b49ad5a7fcd6d3c2b872dd",
+      "size_bytes": 394456822
+    }
+  }
+}

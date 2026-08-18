@@ -100,7 +100,7 @@ on a pinned real-data run.
   agency CIK and UEI sets with provenance; do not treat PR #286's heuristic
   matches as a complete resolved set.
 - [ ] 2.2 Complete `PrivateCapitalControlCohortBuilder` — **OPEN / PARTIAL
-  (2026-08-09).** The maintained CLI now consumes the official SEC DERA
+  (2026-08-10).** The maintained CLI now consumes the official SEC DERA
   quarterly bulk ZIPs for the pinned 2009Q1–2024Q4 window and emits: (a) the
   broad issuer universe; (b) candidate SBIR-CIK exclusion evidence from exact
   equality of every historical name present in the SBIR award history and issuer
@@ -114,6 +114,10 @@ on a pinned real-data run.
   [real-data identity audit](../../docs/research/agency-private-capital-form-d-control-universe.md)
   materialized 311,809 issuer CIKs and 307,344 provisional retained identities;
   those are audit counts, not a matched cohort.
+  The focused
+  [identity-crosswalk spec](../sbir-form-d-identity-crosswalk/) now defines the
+  atomic awardee-CIK candidate prerequisite. Its exact-name edges remain
+  unreviewed and do not yet close this task.
 - [ ] 2.3 Complete and validate `CohortMatcher` — coarsened-exact matching on (vintage,
   validated NAICS-2, state). Report balance and unmatched residuals. Document
   matching ratio (agency firm : k matched controls) in the output. The existing

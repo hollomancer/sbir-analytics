@@ -6,7 +6,7 @@
     "A retained issuer means only not exact-name-matched to the observed SBIR history.",
     "SEC Form D supplies SIC and industry group, not NAICS."
   ],
-  "code_commit": "053ce78a3a19f0004ee3eba7857104b9ab4580f8",
+  "code_commit": "84cd4db9bd04be23bf61d30d8b9405d08ab95c73",
   "complete": true,
   "complete_sbir_exclusion": false,
   "covariates_ready": false,
@@ -27,6 +27,53 @@
     "explicit_cik_inputs": []
   },
   "exclusion_recall": "unknown",
+  "identity_evidence_contract": {
+    "fields": [
+      "issuer_name",
+      "street1",
+      "street2",
+      "city",
+      "state",
+      "zip_code",
+      "issuer_phone",
+      "jurisdiction_of_incorporation",
+      "year_of_incorporation"
+    ],
+    "grain": "form_d_filing_accession",
+    "historical_aliases_retained": true,
+    "source_table": "ISSUERS.tsv"
+  },
+  "identity_field_coverage": {
+    "cik_grain": {
+      "rows": 311809,
+      "with_field": {
+        "city": 311809,
+        "historical_alias_beyond_filing_name": 47746,
+        "issuer_name": 311809,
+        "issuer_phone": 311807,
+        "jurisdiction_of_incorporation": 311576,
+        "state": 311807,
+        "street1": 311809,
+        "street2": 166051,
+        "year_of_incorporation": 284729,
+        "zip_code": 311792
+      }
+    },
+    "filing_grain": {
+      "rows": 673656,
+      "with_field": {
+        "city": 673656,
+        "issuer_name": 673656,
+        "issuer_phone": 673647,
+        "jurisdiction_of_incorporation": 672956,
+        "state": 673652,
+        "street1": 673656,
+        "street2": 362117,
+        "year_of_incorporation": 486831,
+        "zip_code": 673530
+      }
+    }
+  },
   "identity_only": true,
   "inputs": {
     "catalog": {
@@ -6969,8 +7016,8 @@
     "broad_issuer_universe": {
       "path": "form_d_issuer_universe.identity-staging.jsonl",
       "row_count": 311809,
-      "sha256": "28bb167e0281bca00652444600b6635c4c0b60b0103817715df34a98f67e3fe5",
-      "size_bytes": 725072925
+      "sha256": "a7c2ba7c84cf10711a029fd9b2e9326bd1e9137af61146ee47385d8aa03b310b",
+      "size_bytes": 827044055
     },
     "candidate_sbir_cik_exclusions": {
       "path": "sbir_cik_exclusion_candidates.identity-staging.jsonl",
@@ -6981,8 +7028,8 @@
     "provisional_control_identity_universe": {
       "path": "form_d_control_identity_universe.provisional.jsonl",
       "row_count": 307344,
-      "sha256": "aaffebbda1ef3d2b1fe04e211b6973a027181d6840b03c12d4329a1649f31c75",
-      "size_bytes": 710168771
+      "sha256": "eedbca2caac1fb87c2526822c75caaf6bc846568ba7805c769dd9afbaf6d48f0",
+      "size_bytes": 809915557
     }
   },
   "parameters": {

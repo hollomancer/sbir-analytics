@@ -35,8 +35,13 @@ ISSUER_HEADERS = [
     "IS_PRIMARYISSUER_FLAG",
     "CIK",
     "ENTITYNAME",
+    "STREET1",
+    "STREET2",
+    "CITY",
     "STATEORCOUNTRY",
     "ZIPCODE",
+    "ISSUERPHONENUMBER",
+    "JURISDICTIONOFINC",
     "ENTITYTYPE",
     "YEAROFINC_TIMESPAN_CHOICE",
     "YEAROFINC_VALUE_ENTERED",
@@ -107,8 +112,13 @@ def _write_archive(
             "IS_PRIMARYISSUER_FLAG": "true",
             "CIK": "00000123",
             "ENTITYNAME": "Acme, Inc.",
+            "STREET1": "1 Market Street",
+            "STREET2": "Suite 200",
+            "CITY": "San Francisco",
             "STATEORCOUNTRY": "CA",
             "ZIPCODE": "94105",
+            "ISSUERPHONENUMBER": "415-555-0100",
+            "JURISDICTIONOFINC": "DE",
             "ENTITYTYPE": "Corporation",
             "YEAROFINC_TIMESPAN_CHOICE": "Within Five Years",
             "YEAROFINC_VALUE_ENTERED": "2020",
@@ -208,8 +218,13 @@ def test_parse_quarter_filters_and_normalizes(tmp_path: Path) -> None:
             "CIK": "00000123",
             "ENTITYNAME": name,
             "ISSUER_PREVIOUSNAME_1": "Legacy Acme LLC" if accession == "0002" else "",
+            "STREET1": "1 Market Street",
+            "STREET2": "Suite 200",
+            "CITY": "San Francisco",
             "STATEORCOUNTRY": "CA",
             "ZIPCODE": "94105",
+            "ISSUERPHONENUMBER": "415-555-0100",
+            "JURISDICTIONOFINC": "DE",
             "ENTITYTYPE": "Corporation",
             "YEAROFINC_TIMESPAN_CHOICE": "Within Five Years",
             "YEAROFINC_VALUE_ENTERED": "2020",
@@ -249,6 +264,11 @@ def test_parse_quarter_filters_and_normalizes(tmp_path: Path) -> None:
     assert rows[1]["is_business_combination"] is True
     assert rows[1]["security_types"] == ["debt", "equity"]
     assert rows[1]["previous_accession_number"] == "0001"
+    assert rows[1]["street1"] == "1 Market Street"
+    assert rows[1]["street2"] == "Suite 200"
+    assert rows[1]["city"] == "San Francisco"
+    assert rows[1]["issuer_phone"] == "415-555-0100"
+    assert rows[1]["jurisdiction_of_incorporation"] == "DE"
     assert metadata["counters"]["test_submissions"] == 1
 
     issuers_out = producer.aggregate_issuers(rows)
@@ -473,6 +493,53 @@ def test_complete_build_is_deterministic_and_identity_only(tmp_path: Path) -> No
     assert manifest["ready_for_matching"] is False
     assert manifest["invariants"]["ready_for_matching_is_false"] is True
     assert manifest["invariants"]["control_exclusion_overlap_count"] == 0
+    assert manifest["identity_evidence_contract"] == {
+        "fields": [
+            "issuer_name",
+            "street1",
+            "street2",
+            "city",
+            "state",
+            "zip_code",
+            "issuer_phone",
+            "jurisdiction_of_incorporation",
+            "year_of_incorporation",
+        ],
+        "grain": "form_d_filing_accession",
+        "historical_aliases_retained": True,
+        "source_table": "ISSUERS.tsv",
+    }
+    assert manifest["identity_field_coverage"] == {
+        "cik_grain": {
+            "rows": 1,
+            "with_field": {
+                "city": 1,
+                "historical_alias_beyond_filing_name": 0,
+                "issuer_name": 1,
+                "issuer_phone": 1,
+                "jurisdiction_of_incorporation": 1,
+                "state": 1,
+                "street1": 1,
+                "street2": 1,
+                "year_of_incorporation": 1,
+                "zip_code": 1,
+            },
+        },
+        "filing_grain": {
+            "rows": 1,
+            "with_field": {
+                "city": 1,
+                "issuer_name": 1,
+                "issuer_phone": 1,
+                "jurisdiction_of_incorporation": 1,
+                "state": 1,
+                "street1": 1,
+                "street2": 1,
+                "year_of_incorporation": 1,
+                "zip_code": 1,
+            },
+        },
+    }
     assert manifest["source_counts"] == {
         "excluded_broad_ciks": 1,
         "filings": 1,

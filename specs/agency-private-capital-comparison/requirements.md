@@ -81,6 +81,11 @@ for the closed 2009Q1–2024Q4 window and pins sources and products in determini
 manifests. The [official Form D](https://www.sec.gov/files/Form_D.pdf) and DERA
 files provide SIC and Form D industry group, not NAICS.
 
+The focused [SBIR ↔ Form D identity crosswalk](../sbir-form-d-identity-crosswalk/)
+is the next identity prerequisite. Its first release atomizes exact-name evidence
+at `(sbir_firm_id, CIK)` grain and preserves collisions for review. Those edges
+remain candidates: they do not establish legal identity or close the exclusion gate.
+
 ## Phasing
 
 This spec ships in two sequential phases, each independently useful.
@@ -171,6 +176,9 @@ provisional identity staging only.
    and filtered disjoint identity-only controls. Exact comparison SHALL use every
    historical name present in the SBIR award history and
    `CompanyNameProfile.ORGANIZATION_KEY_V1`.
+   The atomic crosswalk SHALL preserve every exact pair rather than selecting a
+   first or preferred CIK, and SHALL keep legal-entity identity unknown until a
+   separately validated rule or human decision exists.
    While exclusion recall is unknown, the manifest SHALL state
    `complete_sbir_exclusion=false`; retained means only not exact-name-matched to
    observed SBIR history, not "never SBIR." Requirement 8 remains open until a
