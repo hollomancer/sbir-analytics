@@ -244,6 +244,7 @@ lint-boundaries: ## Architecture, epistemic-tier, identity, config, hygiene, and
 	$(call run,uv run python scripts/ci/check_config_boundaries.py)
 	$(call run,uv run python scripts/ci/check_removed_src_references.py)
 	$(call run,uv run python scripts/ci/validate_study_manifests.py)
+	$(call run,uv run python scripts/ci/check_research_question_status.py)
 	$(call run,uv run python scripts/ci/check_identity_boundaries.py)
 
 .PHONY: docs-check

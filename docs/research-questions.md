@@ -24,7 +24,7 @@ Each question is written in a fixed shape:
 - **Short title** (lens tags, legacy IDs)
   The question itself, as a question.
   Caveat — a stated limit on what the answer can support, when one applies.
-  Status: whether it is computable, validated, or citable today.
+  Status: reserved ranks only when a study.yaml exists at that rank.
   Deps / Refs / Spec: what it needs, what it benchmarks against, where it is specified.
 ```
 
@@ -35,11 +35,27 @@ language. The *Deps*, *Spec*, and implementation notes are for maintainers and
 may use pipeline shorthand freely.
 
 **Status** appears where implementation or evidence maturity needs explanation.
-`Computable` means the repository can produce a bounded result; it does not mean
-the interpretation is validated or externally citable. `Validated` and
-`citable` require a matching [study contract](../studies/README.md) at that
-status. A question with no status line is an inventory target, not an implicit
-claim that it is implemented.
+Three ranks are reserved and are a public API. Each may be used only when a
+[`studies/<id>/study.yaml`](../studies/README.md) lists that question at the
+matching `evidence_status` (or higher). CI enforces the pairing
+(`scripts/ci/check_research_question_status.py`).
+
+| Status rank | Required study `evidence_status` | Meaning |
+|---|---|---|
+| `Computable` (including `Partially computable`) | `reproducible`, `validated`, or `citable` | The repository can emit a bounded result from the named study. |
+| `Validated` | `validated` or `citable` | The study's stated validation design has passed. |
+| `Citable` | `citable` | Approved for the claims listed in that study's manifest. |
+
+`Computable` is not a finding. An exploratory study does not authorize it.
+Negations are refusals, not ranks, and do not need a study — but the negation
+has to lead: `Not computable`, `not yet validated`, `no citable claim`,
+`non-citable`. A rank word with nothing negating it in front of it reads as a
+claim, so `Citable claim: …` is a claim.
+
+Free-prose Status is still allowed when it avoids those three ranks:
+`Research target`, `Inventory target`, `Exploratory`, `Partial`, and similar.
+A question with no status line is an inventory target, not an implicit claim
+that it is implemented.
 
 **Lower-bound proxy** marks a question whose answer can only ever undercount.
 It appears wherever we detect ownership or capital through public filings: SEC
@@ -76,15 +92,19 @@ treated as current specs; retain them in git history or a dated research note.
 ## Where to start, by audience
 
 Every pointer below lands in a section that mixes implemented and spec-only
-work. Use the per-question *Status* and *Spec* slots to tell what is answerable
-today from what is still a research target.
+work. Use the per-question *Status* slot to tell what is answerable today.
+Reserved ranks (`Computable`, `Validated`, `Citable`) are trustworthy for an
+outside reader only when a study contract stands behind them.
 
 - **Policymakers** — Congress, OMB, agency leadership, congressional defense
-  committees. Start with the **DoD follow-on funding multiplier** ([A3](#a3-inferential-tier-3);
-  reproduces NASEM's ~4:1 benchmark, which NASEM calls the *leverage ratio*),
-  then **[D2](#d2-relational-tier-2)** (Treasury ROI and tax receipts from SBIR
-  spending) and **[F3](#f3-inferential-tier-3)** (private-to-SBIR leverage, the
-  private-side mirror of the DoD multiplier).
+  committees. Start with unlabeled follow-on contracts
+  ([B2](#b2-relational-tier-2)) and unrecorded Phase III
+  ([B3](#b3-inferential-tier-3)) — the only questions whose Status is backed
+  by a study contract — then **[F3](#f3-inferential-tier-3)** (private-to-SBIR
+  leverage; dated Form D analysis, no study contract yet). The DoD follow-on
+  multiplier ([A3](#a3-inferential-tier-3)) and Treasury ROI
+  ([D2](#d2-relational-tier-2)) stay inventory targets until they have
+  study-backed Status lines.
 - **SBIR program managers** — NSF, NIH, DoD, DOE, SBA program offices. Start
   with **[B](#b-technology-commercialization--entrepreneurship)** (transitions,
   Phase II→III latency, company performance), **[C1](#c1-descriptive-tier-1)**
@@ -157,14 +177,15 @@ perspective, see [F. Capital formation & entrepreneurial finance](#f-capital-for
   are clustered in one part of the country. GAO's program-wide Phase II HHI of
   ~11 [L14] is the diffuse baseline that area-level concentration is measured
   against.
-  **Status:** Computable for the classified DoD subset; not yet backed by a citable study manifest.
-  *Deps: CET, ER, NAICS · Refs: [L14], [L16], [L29] · Spec: [dod_supply_chain_initial_analysis.md](research/dod_supply_chain_initial_analysis.md) (reproducible baseline and its limitations)*
+  **Status:** Exploratory baseline for the classified DoD subset exists as a
+  research note. No study contract.
+  *Deps: CET, ER, NAICS · Refs: [L14], [L16], [L29] · Spec: [dod_supply_chain_initial_analysis.md](research/dod_supply_chain_initial_analysis.md) (research-note baseline and its limitations)*
 
 - **Coverage gaps** (cap) (house shorthand: *whitespace*)
   Which CET subfields does DoD appear to want work in, but few SBIR awards
   cover?
   Found by semantic search over award and solicitation text.
-  **Status:** Partially computable as an exploratory analysis. The SBIR.gov bulk
+  **Status:** Exploratory analysis. The SBIR.gov bulk
   award snapshot supplies exact solicitation/topic identifiers for 49.1% of all
   award rows and 99.9% of NSF award rows from 2022 onward, but it does not supply
   solicitation or attachment text. Results remain source-coverage bounded and
@@ -182,8 +203,8 @@ perspective, see [F. Capital formation & entrepreneurial finance](#f-capital-for
   disclosed foreign ownership, control, or influence, when screened against the
   eight Pub. L. 119-83 restricted-entity lists?
   *Lower-bound proxy* — ownership is read from EDGAR Exhibit 21 and 8-K filings.
-  **Status:** Computable for the SEC-filer subset; the private majority needs
-  data acquisition.
+  **Status:** Exploratory lower bound for the SEC-filer subset; the private
+  majority needs data acquisition. No study contract.
   *Deps: ER, SEC EDGAR, M&A signals · Refs: [L26] (screening lists), [L30] (foreign-supplier dependence), [L17] (foreign-acquisition risk)*
 
 ### A2. Relational (Tier 2)
@@ -205,17 +226,18 @@ perspective, see [F. Capital formation & entrepreneurial finance](#f-capital-for
   NSF-funded work was used on a DoD award or that a supplier is critical or
   irreplaceable. DoD-14/NDIS-8 policy mapping remains deferred, and FOCI is not
   in this analysis.
-  **Status:** Computable as a manifest-pinned public-data lower bound with
-  signed prime/subaward ledgers, evidence tables, quality gates, and an analyst
-  graph; not a BoM or dependency claim.
+  **Status:** Exploratory pinned public-data lower bound with signed
+  prime/subaward ledgers, evidence tables, quality gates, and an analyst graph.
+  Not a study contract, and not a BoM or dependency claim.
   *Deps: ER, direct NSF awards, USAspending FPDS/FABS, USAspending subawards, CET · Spec: [nsf_sbir_defense_funding_plan.md](research/nsf_sbir_defense_funding_plan.md)*
 
 - **DIB integration** (cap)
   What is the Phase II→III transition rate per CET area via FPDS, and how do
   SAM.gov subaward links connect awardees to prime contractors?
   Aligns with NASEM's "knowledge transfer to primes" finding [L1].
-  **Status:** Computable with moderate confidence — FPDS Phase III tagging is
-  historically incomplete [L14].
+  **Status:** Exploratory. FPDS Phase III tagging is historically incomplete
+  [L14]. The OT-consortium spec is gated pending a coverage probe. No study
+  contract.
   *Deps: ER, ID, CET, transitions · Refs: [L1], [L14] · Spec: [../specs/ot-consortium-subaward-attribution/](../specs/ot-consortium-subaward-attribution/) (FFATA/FSRS sub-award T1 recovery)*
 
 - **Awardees that control the key patents** (cap/vuln) (A-CP6)
@@ -252,7 +274,8 @@ perspective, see [F. Capital formation & entrepreneurial finance](#f-capital-for
   complete retained FY2012+ DoD award history. It cannot see earlier activity, so
   a firm that first won in 2009 can still look like a new entrant
   (*left-censoring*).
-  **Status:** Partially computable for the classified DoD subset.
+  **Status:** Exploratory baseline for the classified DoD subset (research
+  note). No study contract.
   *Deps: ER, ID, CET · Refs: [L32] · Spec: [dod_supply_chain_initial_analysis.md](research/dod_supply_chain_initial_analysis.md)*
 
 *The SBIR-vs-non-SBIR identification question and the underlying patent-to-award
@@ -270,6 +293,9 @@ NASEM calls this quantity the *leverage ratio*.
   What is the aggregate follow-on funding multiplier — non-SBIR DoD obligations
   ÷ SBIR/STTR obligations — for DoD SBIR firms?
   **Target:** reproduce NASEM's ~4:1 for 2012–2020.
+  **Status:** Inventory target. No study contract. The NASEM ~4:1 figure is a
+  literature benchmark to reproduce, not a repository result. Attribution
+  verification against [L1] is still open (see Maintenance).
   *Deps: ER, ID · Refs: [L1], [L2] · Spec: [../specs/archive/completed-features/follow-on-multiplier-analysis/](../specs/archive/completed-features/follow-on-multiplier-analysis/), [../specs/archive/completed-features/load-contract-nodes/](../specs/archive/completed-features/load-contract-nodes/) (FPDS contract-node ingestion)*
 
 - **Multiplier stratification**
@@ -298,7 +324,8 @@ NASEM calls this quantity the *leverage ratio*.
   and including areas whose suppliers sit in one part of the country.
   *Caveat:* the DoD classified-subset baseline supports concentration screening
   but not physical sole-source conclusions.
-  **Status:** Computable for the classified DoD subset; not yet backed by a citable study manifest.
+  **Status:** Exploratory baseline for the classified DoD subset exists as a
+  research note. No study contract.
   *Deps: ER, CET · Spec: [dod_supply_chain_initial_analysis.md](research/dod_supply_chain_initial_analysis.md)*
 
 - **Areas fragile on every measure at once** (vuln) (A-CP10)
@@ -525,8 +552,8 @@ statutory goal is Phase III commercialization.*
   prevalence. The PI employer election and the allocation-of-rights agreement
   live in non-public agency award files.
   **Status:** Not computable. Phase 0 design only (`exploratory`, non-citable).
-  Implementation is blocked until open questions are resolved; any citable claim
-  is blocked until negative-control and blind-adjudication gates pass. This
+  Implementation is blocked until open questions are resolved; no citable claim
+  is authorized until negative-control and blind-adjudication gates pass. This
   split has not been measured before.
   *Deps: ER, PATLINK, SEC EDGAR · Refs: [L7], [L36], [L38] · Spec: [../specs/sttr-spinout-linkage/](../specs/sttr-spinout-linkage/)*
 
@@ -537,12 +564,13 @@ statutory goal is Phase III commercialization.*
   matching rules, the agency, and the time window?
   *Method:* the matching rules were written down and frozen before the counts
   were run, so the result cannot be tuned after the fact.
-  **Status:** We can produce this count, and it holds up under a scrambled-dates
-  check designed before the counts were run, though matched control firms still
-  look substantially similar — and no one has yet hand-verified a sample of the
-  matches, so the result is a follow-on proxy:
-  not validated, not citable, and not proof of statutory Phase III. In method
-  terms: reproducible and falsification-tested for the frozen audit estimand.
+  **Status:** Computable as a follow-on proxy under the `phase-iii-census`
+  study (`reproducible`, not validated, not citable). The count holds up under
+  a scrambled-dates check designed before the counts were run, though matched
+  control firms still look substantially similar — and no one has yet
+  hand-verified a sample of the matches, so the result is not proof of
+  statutory Phase III. In method terms: reproducible and falsification-tested
+  for the frozen audit estimand.
   The complete census, matched negative-control, and fixed-seed placebo tables
   were materialized from provenance-verified February inputs. The actual frame
   exceeds the cross-firm date placebo on every final-stage metric and in all six
@@ -728,6 +756,9 @@ dollar return on the SBIR program?*
   TechLink's DoD-wide 1995–2018 study reports ~22:1 total-output ROI, 8.4:1 sales
   ROI, and $39.4B in tax revenue; Air Force ~12:1 and Navy ~19.5:1 [L19]. NCI
   published a separate economic-impact study [L20].
+  **Status:** Inventory target. No study contract. The TechLink and NCI figures
+  are external literature, not outputs of this repository. The fiscal-v2 spec
+  is gated.
   *Deps: ER, ID, NAICS, BEA I-O · Refs: [L19], [L20] · Spec: [fiscal/](fiscal/), [../specs/fiscal-tax-impact-v2.md](../specs/fiscal-tax-impact-v2.md)*
 
 - **Employment and income impacts**
@@ -1218,7 +1249,10 @@ spot-checked against publisher records):
 
 ## Maintenance
 
-**Last reviewed:** 2026-08-11. The 2026-08 citation audit added [L34]–[L48] from
+**Last reviewed:** 2026-08-18. Reserved Status ranks (`Computable`,
+`Validated`, `Citable`) now require a matching `studies/*/study.yaml`. A3 and
+D2 were removed from the policymaker start-here box until they have
+study-backed Status. The 2026-08-11 citation audit added [L34]–[L48] from
 the 2019–2026 literature map and pinned [L1] to its published DOI. Git history
 preserves earlier editorial and section-consolidation notes.
 
