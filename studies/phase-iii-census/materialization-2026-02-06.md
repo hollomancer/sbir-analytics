@@ -4,15 +4,22 @@
 
 This is the complete Phase 1 deterministic census audit, not a validated count of
 statutory Phase III awards. Every row and sensitivity cell is reported; no cell is a
-headline result. As of this February run, the matched negative-control study, placebo
-test, and labeled validation were not part of the materialization, so this record does
-not establish that the frozen proxy discriminates Phase III work from ordinary follow-on
-federal contracting.
+headline result. The matched negative-control study, placebo test, and labeled validation
+remain unresolved, so this record does not establish that the frozen proxy discriminates
+Phase III work from ordinary follow-on federal contracting.
 
-Later record (do not back-date this run): the 2026-08-03 identity, matching, outcomes,
-and placebo memos, and the [study file](study.yaml), supersede the "remain unresolved"
-clause for those three audits. Labeled validation is still unresolved. The study file is
-the clock.
+**Later record, added 2026-08-18 — do not back-date this run.** The paragraph above stands
+as written on 2026-02-06. Two of the three items it lists as unresolved have since been run
+and recorded outside this materialization: the matched negative-control study
+([matching audit](control-matching-audit-2026-08-03.md),
+[outcomes](negative-control-outcomes-2026-08-03.md)) and the
+[placebo test](placebo-results-2026-08-03.md), both dated 2026-08-03. Labeled validation is
+not in that set and remains unresolved. Those later memos are descriptive: the placebo is
+one non-uniform cyclic derangement, not an inferential permutation distribution, and
+negative-control inference is restricted to the frozen exact-match common-support subset.
+They therefore do not establish the discrimination this February record declines to claim.
+The [study file](study.yaml) is the clock, and it records the study as `reproducible` —
+not validated, not citable.
 
 ## Run and freeze record
 

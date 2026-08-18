@@ -52,14 +52,28 @@ brief count as maintainer-facing.
 
 The Phase III census has its own formal study record. The
 [study file](../../studies/phase-iii-census/study.yaml) is the clock:
-`reproducible`, not validated or citable. The 2026-08-03
+`reproducible`, not validated or citable. The
+[February 2026 data-build record](../../studies/phase-iii-census/materialization-2026-02-06.md)
+holds the census ladder, the sensitivity grid, and the blocking one-factor check. The
+2026-08-03
 [identity-eligibility](../../studies/phase-iii-census/identity-eligibility-audit-2026-08-03.md),
 [exact-match balance](../../studies/phase-iii-census/control-matching-audit-2026-08-03.md),
 and [fixed-seed placebo](../../studies/phase-iii-census/placebo-results-2026-08-03.md)
 audits are recorded. [Matched negative-control outcomes](../../studies/phase-iii-census/negative-control-outcomes-2026-08-03.md)
-are descriptive only (about 2.10× clearing with 0.853 overlap). The placebo is
-one preregistered falsification, not labeled validation. Hand-labeled
-validation remains the open gate.
+are descriptive only, and only within the frozen exact-match common-support subset: SBIR
+firms clear the full criteria set about 2.10× as often as controls, with a 0.853 overlap
+coefficient, computed on 712 of 12,042 exact-UEI SBIR firms (5.91%) and 1,029 of 843,777
+screened-negative controls — 4,827 of the 5,539 match-eligible treated firms matched zero
+controls. That ratio is not a population-wide rate. The placebo is one preregistered
+falsification, not labeled validation.
+
+The study file records four standing limitations, not one. The materialized placebo is a
+single non-uniform cyclic derangement rather than an inferential permutation distribution,
+and labeled validation remains unresolved, so no headline census cell, undercount claim, or
+statutory Phase III interpretation is authorized. Negative-control inference is restricted
+to the frozen exact-match common-support subset and does not generalize to unmatched Phase
+II firms. Exact UEI matching misses acquisitions, successors, and UEI changes. And an
+uncoded lineage proxy is not proof of a statutory Phase III award.
 
 ## Economic and fiscal methods
 
