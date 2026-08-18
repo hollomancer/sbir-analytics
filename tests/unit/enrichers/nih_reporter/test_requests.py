@@ -9,9 +9,13 @@ import pytest
 
 from sbir_etl.enrichers.nih_reporter.requests import (
     build_nih_reporter_requests,
+    frame_to_nih_requests,
     is_nih_reporter_agency,
     load_sbir_award_frame,
+    nih_ids_needing_refresh,
 )
+from sbir_etl.models.enrichment import EnrichmentFreshnessRecord, EnrichmentStatus
+from sbir_etl.utils.enrichment.freshness import FreshnessStore
 
 
 pytestmark = pytest.mark.fast
@@ -116,3 +120,27 @@ def test_agency_allowlist(agency: str | None, branch: str | None, expected: bool
 def test_missing_sbir_frame_fails_clearly(tmp_path: Path) -> None:
     with pytest.raises(FileNotFoundError, match="SBIR.gov award CSV"):
         load_sbir_award_frame(tmp_path / "missing.csv")
+
+
+def test_empty_ledger_selects_every_eligible_id(tmp_path: Path) -> None:
+    store = FreshnessStore(tmp_path / "freshness.parquet")
+    assert nih_ids_needing_refresh(store, ["AW-1", "AW-2"], sla=7) == {"AW-1", "AW-2"}
+
+
+def test_fresh_ledger_row_is_skipped_unseen_is_kept(tmp_path: Path) -> None:
+    store = FreshnessStore(tmp_path / "freshness.parquet")
+    store.save_record(
+        EnrichmentFreshnessRecord(
+            award_id="AW-1",
+            source="nih_reporter",
+            last_attempt_at=pd.Timestamp.now().to_pydatetime(),
+            last_success_at=pd.Timestamp.now().to_pydatetime(),
+            status=EnrichmentStatus.SUCCESS,
+        )
+    )
+    assert nih_ids_needing_refresh(store, ["AW-1", "AW-2"], sla=7) == {"AW-2"}
+
+
+def test_frame_round_trip_preserves_project_keys() -> None:
+    requests, _skipped = build_nih_reporter_requests(pd.DataFrame([_award()]))
+    assert frame_to_nih_requests(pd.DataFrame(requests)) == requests

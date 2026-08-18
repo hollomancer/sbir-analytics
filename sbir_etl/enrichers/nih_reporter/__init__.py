@@ -26,7 +26,9 @@ from sbir_etl.enrichers.nih_reporter.persist import (
 )
 from sbir_etl.enrichers.nih_reporter.requests import (
     build_nih_reporter_requests,
+    frame_to_nih_requests,
     load_sbir_award_frame,
+    nih_ids_needing_refresh,
 )
 from sbir_etl.enrichers.nih_reporter.schema import NIHReporterRecord, normalize_reporter_result
 
@@ -46,7 +48,9 @@ __all__ = [
     "NIHWindowKind",
     "build_nih_reporter_requests",
     "canonicalize_nih_query_key",
+    "frame_to_nih_requests",
     "load_sbir_award_frame",
+    "nih_ids_needing_refresh",
     "nih_reporter_awards_path",
     "normalize_reporter_result",
     "parse_refresh_window",
