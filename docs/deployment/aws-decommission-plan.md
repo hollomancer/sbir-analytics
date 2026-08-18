@@ -194,7 +194,7 @@ Delete outright:
 Trim S3 cases from `tests/unit/utils/test_cloud_storage.py` (352),
 `tests/unit/extractors/test_sam_gov_extractor.py`,
 `tests/unit/assets/test_sam_gov_ingestion.py`,
-`tests/integration/test_uspto_download.py`.
+`tests/unit/scripts/test_download_uspto.py`.
 
 Remove the `requires_aws` marker (`pyproject.toml:221`) and the `aws_credentials`
 fixture (`tests/conftest.py:433-450`).
