@@ -27,6 +27,10 @@ The system implements multi-signal scoring, vendor resolution across datasets, a
   detected transition.
 - **Multi_Signal_Scorer** — Combines agency, timing, competition, patent, and CET
   signals into a transition score.
+- **Transition_Detection_System** — The module that detects technology
+  transitions from SBIR awards to follow-on contracts and generates
+  evidence-backed scores; the primary actor referenced throughout this
+  document's acceptance criteria.
 - **Vendor_Resolution_Engine** — Matches vendors across datasets (UEI, CAGE, DUNS,
   fuzzy name).
 
