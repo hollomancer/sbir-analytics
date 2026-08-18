@@ -50,9 +50,10 @@ tractable. Cite the relevant RQ section. Do not repeat the glossary or the requi
 
 ## Glossary
 
-[Optional. Define only terms that are ambiguous in context or that have project-specific
-meanings. Omit standard terms like "award" or "agency". Do not redefine confidence bands —
-link the owning config or doc from [glossary.md](../docs/steering/glossary.md).]
+[Optional. Define only terms that are ambiguous in *this* spec or that have
+project-specific meanings here. Omit standard terms like "award", "agency",
+"API", or "CLI". Do **not** redefine confidence bands — link the owning config
+or doc from [glossary.md](../docs/steering/glossary.md).]
 
 ---
 

@@ -2,7 +2,9 @@
 
 Short definitions for recurring pipeline and enrichment terms. Method-specific
 thresholds and tier contracts live in their owner docs — do not treat this file
-as a universal scoring standard.
+as a universal scoring standard. Spec `## Glossary` sections define only
+feature-local terms; they must not redefine confidence bands from this file or
+from another subsystem.
 
 ## Confidence (method-scoped)
 
@@ -19,7 +21,7 @@ Owners (read the config or doc; do not copy numbers here):
 | Transition HIGH / LIKELY / POSSIBLE | `config/transition/detection.yaml`, [detection-algorithm.md](../transition/detection-algorithm.md) |
 | CET High / Medium / Low | `config/cet/classification.yaml` |
 | Form D confidence tiers | [form-d-data-dictionary.md](../research/form-d-data-dictionary.md) |
-| Company-categorization bands | `config/base.yaml` (award-count knobs) |
+| Company-categorization bands | `config/base.yaml` (`company_categorization.low_max_awards` / `medium_max_awards`) |
 
 ## Key Terms
 

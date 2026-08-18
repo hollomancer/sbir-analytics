@@ -6,12 +6,14 @@ Define the behavioral requirements for automatically downloading USPTO patent da
 
 ## Glossary
 
-- **PatentsView** – Comprehensive patent dataset with 40+ years of data, available via API and bulk downloads
-- **Patent Assignment Dataset** – USPTO dataset containing patent transfers, assignments, licenses, and conveyances
-- **AI Patent Dataset** – USPTO dataset identifying patents containing AI technologies
-- **Lambda Function** – AWS Lambda function that downloads data from USPTO sources and uploads to S3
-- **GitHub Actions Workflow** – Scheduled workflow that invokes Lambda functions to download USPTO data
-- **S3 Storage** – AWS S3 bucket where downloaded datasets are stored with date-based prefixes
+> Archived. USPTO download dataset names; no confidence bands.
+
+- **PatentsView** – Patent dataset via API and bulk downloads
+- **Patent Assignment Dataset** – USPTO transfers/assignments/licenses
+- **AI Patent Dataset** – USPTO AI-tagged patents
+- **Lambda Function** – Downloads USPTO sources to S3
+- **GitHub Actions Workflow** – Scheduled Lambda invocation
+- **S3 Storage** – Date-prefixed dataset storage
 
 ## Functional Requirements (EARS)
 

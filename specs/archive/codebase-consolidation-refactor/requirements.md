@@ -6,16 +6,8 @@ This document outlines the requirements for consolidating, refactoring, and stre
 
 ## Glossary
 
-- **Asset_Consolidation**: The process of merging similar Dagster assets and reducing redundant asset definitions
-- **Configuration_Unification**: Standardizing configuration management across all pipeline components using a single, consistent approach
-- **Testing_Framework**: A unified testing infrastructure that provides consistent patterns for unit, integration, and E2E tests
-- **Performance_Monitoring**: Centralized system for tracking pipeline performance metrics and resource usage
-- **Code_Quality_Gates**: Automated checks that enforce coding standards, type safety, and architectural compliance
-- **Docker_Consolidation**: The process of merging redundant Docker configuration files and standardizing container management
-- **Model_Consolidation**: The process of merging similar Pydantic models and consolidating validation logic
-- **Utility_Consolidation**: The process of merging duplicate utility functions into a centralized library
-- **Pipeline_Orchestration**: The unified system for managing Dagster asset dependencies and pipeline execution
-- **Documentation_Consolidation**: The process of merging scattered documentation into coherent developer guides
+> Archived. Consolidation jargon glossary removed; not a live standard. See
+> [glossary.md](../../../docs/steering/glossary.md).
 
 ## Requirements
 
