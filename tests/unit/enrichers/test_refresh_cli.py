@@ -59,6 +59,8 @@ def test_parser_help_lists_source() -> None:
     help_text = parser.format_help()
     assert "--source" in help_text
     assert "--window" in help_text
+    assert "nih_reporter" in help_text
+    assert "fy:YYYY-YYYY" in help_text
 
 
 def _stale_store(tmp_path, award_id: str = "AW-CLI") -> FreshnessStore:
@@ -197,3 +199,166 @@ def test_stale_ids_absent_from_enriched_are_reported(tmp_path, monkeypatch, caps
     assert adapter.requests == []
     assert stats["total"] == 0
     assert "absent from enriched awards" in capsys.readouterr().err
+
+
+class _NIHAdapter:
+    source_id = "nih_reporter"
+
+    def __init__(self) -> None:
+        self.requests: list[dict] = []
+
+    def fetch_page(self, request, cursor):
+        del cursor
+        self.requests.append(dict(request))
+        return RawPage(
+            payload={"success": True, "payload_hash": "x"}, record_id=request["award_id"]
+        )
+
+    def normalize(self, raw):
+        return [
+            {"award_id": raw.record_id, "success": True, "delta_detected": True, "metadata": {}}
+        ]
+
+    def validate(self, records):
+        del records
+        return QualityResult(ok=True)
+
+    def provenance(self, raw):
+        return SourceProvenance(
+            source_id=self.source_id,
+            retrieved_at=datetime.now(),
+            content_hash="x",
+            citation_url="https://api.reporter.nih.gov/",
+        )
+
+
+def _nih_awards() -> pd.DataFrame:
+    return pd.DataFrame(
+        [
+            {
+                "award_id": "AW-NIH-1",
+                "agency": "HHS",
+                "branch": "NIAID",
+                "contract_number": "1R43AI123456-01",
+                "agency_tracking_number": None,
+                "award_year": 2024,
+            },
+            {
+                "award_id": "AW-NIH-OLD",
+                "agency": "NIH",
+                "branch": None,
+                "contract_number": "1R44CA000001-01",
+                "agency_tracking_number": None,
+                "award_year": 2019,
+            },
+        ]
+    )
+
+
+def _enable_nih(monkeypatch) -> None:
+    config = get_config()
+    monkeypatch.setattr(config.enrichment_refresh.nih_reporter, "enabled", True)
+    monkeypatch.setattr("sbir_etl.enrichers.refresh_cli.get_config", lambda: config)
+
+
+def _patch_nih_cli(monkeypatch, store: FreshnessStore, awards: pd.DataFrame) -> None:
+    _enable_nih(monkeypatch)
+    monkeypatch.setattr("sbir_etl.enrichers.refresh_cli.FreshnessStore", lambda: store)
+    monkeypatch.setattr(
+        "sbir_etl.enrichers.refresh_cli.load_sbir_award_frame", lambda *a, **k: awards
+    )
+    monkeypatch.setattr(
+        "sbir_etl.enrichers.refresh_cli.load_enriched_awards",
+        lambda *a, **k: (_ for _ in ()).throw(AssertionError("NIH must not load USAspending")),
+    )
+
+
+def test_nih_help_and_disabled_source_exits(tmp_path, monkeypatch) -> None:
+    store = FreshnessStore(tmp_path / "freshness.parquet")
+    monkeypatch.setattr("sbir_etl.enrichers.refresh_cli.FreshnessStore", lambda: store)
+    with pytest.raises(SystemExit, match="disabled"):
+        run_refresh(source="nih_reporter", adapter=_NIHAdapter(), runner=_runner(tmp_path, store))
+
+
+def test_nih_first_run_refreshes_all_eligible_awards(tmp_path, monkeypatch) -> None:
+    store = FreshnessStore(tmp_path / "freshness.parquet")
+    _patch_nih_cli(monkeypatch, store, _nih_awards())
+    adapter = _NIHAdapter()
+
+    stats = run_refresh(source="nih_reporter", adapter=adapter, runner=_runner(tmp_path, store))
+
+    assert [request["award_id"] for request in adapter.requests] == ["AW-NIH-1", "AW-NIH-OLD"]
+    assert stats["success"] == 2
+
+
+def test_nih_date_window_is_criteria_not_a_local_date_filter(tmp_path, monkeypatch) -> None:
+    store = FreshnessStore(tmp_path / "freshness.parquet")
+    _patch_nih_cli(monkeypatch, store, _nih_awards())
+    adapter = _NIHAdapter()
+
+    run_refresh(
+        source="nih_reporter",
+        window="2024-01-01:2024-12-31",
+        adapter=adapter,
+        runner=_runner(tmp_path, store),
+    )
+
+    assert [request["award_id"] for request in adapter.requests] == ["AW-NIH-1", "AW-NIH-OLD"]
+    assert all(request["window"] == "2024-01-01:2024-12-31" for request in adapter.requests)
+
+
+def test_nih_missing_sbir_frame_fails_fast(tmp_path, monkeypatch) -> None:
+    store = FreshnessStore(tmp_path / "freshness.parquet")
+    _enable_nih(monkeypatch)
+    monkeypatch.setattr("sbir_etl.enrichers.refresh_cli.FreshnessStore", lambda: store)
+
+    def _missing(*_args, **_kwargs):
+        raise FileNotFoundError("SBIR.gov award CSV is unavailable")
+
+    monkeypatch.setattr("sbir_etl.enrichers.refresh_cli.load_sbir_award_frame", _missing)
+
+    with pytest.raises(SystemExit, match="SBIR.gov award CSV"):
+        run_refresh(source="nih_reporter", adapter=_NIHAdapter(), runner=_runner(tmp_path, store))
+
+
+def test_nih_skips_fresh_ledger_rows_but_includes_unseen(tmp_path, monkeypatch) -> None:
+    store = FreshnessStore(tmp_path / "freshness.parquet")
+    store.save_record(
+        EnrichmentFreshnessRecord(
+            award_id="AW-NIH-1",
+            source="nih_reporter",
+            last_attempt_at=datetime.now(),
+            last_success_at=datetime.now(),
+            status=EnrichmentStatus.SUCCESS,
+        )
+    )
+    _patch_nih_cli(monkeypatch, store, _nih_awards())
+    adapter = _NIHAdapter()
+
+    run_refresh(source="nih_reporter", adapter=adapter, runner=_runner(tmp_path, store))
+
+    assert [request["award_id"] for request in adapter.requests] == ["AW-NIH-OLD"]
+
+
+def test_nih_rows_without_project_key_are_reported(tmp_path, monkeypatch, capsys) -> None:
+    store = FreshnessStore(tmp_path / "freshness.parquet")
+    awards = pd.DataFrame(
+        [
+            {
+                "award_id": "AW-NO-KEY",
+                "agency": "HHS",
+                "branch": "NIH",
+                "contract_number": None,
+                "agency_tracking_number": None,
+                "award_year": 2024,
+            }
+        ]
+    )
+    _patch_nih_cli(monkeypatch, store, awards)
+    adapter = _NIHAdapter()
+
+    stats = run_refresh(source="nih_reporter", adapter=adapter, runner=_runner(tmp_path, store))
+
+    assert adapter.requests == []
+    assert stats["total"] == 0
+    assert "no usable project key" in capsys.readouterr().err

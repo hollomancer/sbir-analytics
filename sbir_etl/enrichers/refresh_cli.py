@@ -11,6 +11,13 @@ from collections.abc import Sequence
 from typing import Any
 
 from sbir_etl.config.loader import get_config
+from sbir_etl.enrichers.nih_reporter.adapter import NIHReporterSourceAdapter
+from sbir_etl.enrichers.nih_reporter.keys import parse_refresh_window
+from sbir_etl.enrichers.nih_reporter.requests import (
+    build_nih_reporter_requests,
+    load_sbir_award_frame,
+    sbir_awards_path,
+)
 from sbir_etl.enrichers.source_adapter import SourceRefreshRunner
 from sbir_etl.enrichers.usaspending.adapter import USAspendingSourceAdapter
 from sbir_etl.enrichers.usaspending.requests import (
@@ -28,14 +35,24 @@ from sbir_etl.utils.enrichment.freshness import FreshnessStore
 
 EPISTEMIC_TIER = "pipelines"
 
+REGISTERED_SOURCES = ("usaspending", "nih_reporter")
+
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Refresh one enrichment source")
-    parser.add_argument("--source", required=True, help="Registered enrichment source id")
+    parser.add_argument(
+        "--source",
+        required=True,
+        help="Registered enrichment source id (usaspending, nih_reporter)",
+    )
     parser.add_argument(
         "--window",
         default=None,
-        help="Optional START:END window (ISO dates) applied to the award date column.",
+        help=(
+            "Optional refresh window. USAspending: START:END ISO dates on the "
+            "award date column. NIH RePORTER: START:END becomes project_start_date "
+            "criteria, or fy:YYYY-YYYY for fiscal years — not a post-fetch filter."
+        ),
     )
     parser.add_argument(
         "--award-id",
@@ -47,20 +64,38 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
-def _requests_for_source(
-    source: str,
-    award_ids: Sequence[str] | None,
-    window: str | None = None,
-) -> list[dict[str, Any]]:
+def _source_config(source: str) -> Any:
     config = get_config()
     source_config = getattr(config.enrichment_refresh, source, None)
     if source_config is None:
         raise SystemExit(f"unknown enrichment source: {source}")
     if not source_config.enabled:
         raise SystemExit(f"enrichment source {source} is disabled")
+    return source_config
+
+
+def _requests_for_source(
+    source: str,
+    award_ids: Sequence[str] | None,
+    window: str | None = None,
+) -> list[dict[str, Any]]:
+    source_config = _source_config(source)
+    if source == "nih_reporter":
+        return _nih_reporter_requests(award_ids, window, source_config.sla_staleness_days)
+    if source != "usaspending":
+        raise SystemExit(f"unknown enrichment source: {source}")
+    return _usaspending_requests(award_ids, window, source_config.sla_staleness_days)
+
+
+def _usaspending_requests(
+    award_ids: Sequence[str] | None,
+    window: str | None,
+    sla: int,
+) -> list[dict[str, Any]]:
     store = FreshnessStore()
-    sla = source_config.sla_staleness_days
-    stale = store.get_awards_needing_refresh(source, sla, list(award_ids) if award_ids else None)
+    stale = store.get_awards_needing_refresh(
+        "usaspending", sla, list(award_ids) if award_ids else None
+    )
     if not stale:
         return []
 
@@ -101,6 +136,67 @@ def _requests_for_source(
     return usable
 
 
+def _nih_reporter_requests(
+    award_ids: Sequence[str] | None,
+    window: str | None,
+    sla: int,
+) -> list[dict[str, Any]]:
+    try:
+        parse_refresh_window(window)
+    except ValueError as exc:
+        raise SystemExit(f"invalid NIH refresh window: {exc}") from exc
+    try:
+        awards = load_sbir_award_frame()
+    except FileNotFoundError as exc:
+        raise SystemExit(str(exc)) from exc
+    except Exception as exc:
+        location = sbir_awards_path()
+        raise SystemExit(f"failed to load SBIR.gov awards from {location}: {exc}") from exc
+
+    requests, skipped = build_nih_reporter_requests(awards, window=window)
+    if skipped:
+        print(
+            f"skipping {skipped} NIH/HHS award(s) with no usable project key or year",
+            file=sys.stderr,
+        )
+    if award_ids:
+        wanted = {str(award_id) for award_id in award_ids}
+        eligible = {request["award_id"] for request in requests}
+        missing = wanted - eligible
+        if missing:
+            print(
+                f"skipping {len(missing)} award(s) absent from the SBIR.gov NIH/HHS frame",
+                file=sys.stderr,
+            )
+        requests = [request for request in requests if request["award_id"] in wanted]
+
+    selected = _nih_ids_needing_refresh(
+        FreshnessStore(),
+        [request["award_id"] for request in requests],
+        sla,
+    )
+    return [request for request in requests if request["award_id"] in selected]
+
+
+def _nih_ids_needing_refresh(
+    store: FreshnessStore,
+    eligible_ids: Sequence[str],
+    sla: int,
+) -> set[str]:
+    """First run includes every eligible id; later runs add unseen + stale."""
+
+    wanted = {str(award_id) for award_id in eligible_ids}
+    if not wanted:
+        return set()
+    ledger = store.load_all()
+    if ledger.empty or "source" not in ledger.columns:
+        return wanted
+    nih = ledger.loc[ledger["source"].astype(str) == "nih_reporter"]
+    known = set(nih["award_id"].astype(str)) if not nih.empty else set()
+    stale = set(store.get_awards_needing_refresh("nih_reporter", sla, list(wanted)))
+    return stale | (wanted - known)
+
+
 def run_refresh(
     *,
     source: str,
@@ -109,18 +205,24 @@ def run_refresh(
     runner: SourceRefreshRunner | None = None,
     adapter: Any = None,
 ) -> dict[str, Any]:
-    if source != "usaspending":
+    if source not in REGISTERED_SOURCES:
         raise SystemExit(
             f"source {source!r} has no adapter yet; implement SourceAdapter to join the runner"
         )
     requests = _requests_for_source(source, award_ids, window)
     freshness = FreshnessStore()
-    active_adapter = adapter or USAspendingSourceAdapter(freshness=freshness)
+    source_config = getattr(get_config().enrichment_refresh, source)
+    if adapter is not None:
+        active_adapter = adapter
+    elif source == "nih_reporter":
+        active_adapter = NIHReporterSourceAdapter(freshness=freshness)
+    else:
+        active_adapter = USAspendingSourceAdapter(freshness=freshness)
     active_runner = runner or SourceRefreshRunner(
         freshness=freshness,
         checkpoints=CheckpointStore(),
         partition_id=f"{source}-cli",
-        checkpoint_interval=get_config().enrichment_refresh.usaspending.checkpoint_interval,
+        checkpoint_interval=source_config.checkpoint_interval,
     )
     return active_runner.refresh_records(active_adapter, requests).as_dict()
 
