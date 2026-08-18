@@ -66,22 +66,26 @@ Do not rename, move, or delete those published tags. All subsequent release tags
 
 ## Release checklist
 
-1. Review user-visible changes since the latest release and choose the required increment.
-2. Update all four `pyproject.toml` versions, `sbir_etl.__version__`, and
+Steps run in this order. Each is labeled with whether it is machine-gated
+(`check_versioning.py`, see `.github/workflows/versioning.yml`) or operator judgment.
+
+1. **(Operator)** Review user-visible changes since the latest release and choose the required
+   increment.
+2. **(Required — CI)** Update all four `pyproject.toml` versions, `sbir_etl.__version__`, and
    `config/base.yaml`'s `pipeline.version` to the same `MAJOR.MINOR.PATCH` value.
-3. Run `uv lock` to update the four local-package entries in `uv.lock`; runtime defaults and
-   User-Agents derive from `sbir_etl.__version__` and do not need separate edits.
-4. Run `uv run python scripts/ci/check_versioning.py --tag vMAJOR.MINOR.PATCH`.
-5. Confirm the relevant test and quality checks are green.
-6. Commit the release preparation before creating an annotated tag:
+3. **(Required — CI)** Run `uv lock` to update the four local-package entries in `uv.lock`; runtime
+   defaults and User-Agents derive from `sbir_etl.__version__` and do not need separate edits.
+4. **(Required — CI)** Run `uv run python scripts/ci/check_versioning.py --tag vMAJOR.MINOR.PATCH`.
+5. **(Operator)** Confirm the relevant test and quality checks are green.
+6. **(Operator)** Commit the release preparation before creating an annotated tag:
 
    ```bash
    git tag -a vMAJOR.MINOR.PATCH -m "Release vMAJOR.MINOR.PATCH"
    git push origin vMAJOR.MINOR.PATCH
    ```
 
-7. Create the GitHub release from that tag and include highlights, compatibility notes, and a full
-   changelog link.
+7. **(Operator)** Create the GitHub release from that tag and include highlights, compatibility
+   notes, and a full changelog link.
 
 Published versions are immutable. If release notes or artifacts expose a defect, publish the fix
 under a new version instead of changing the tagged contents.
