@@ -161,7 +161,9 @@ def _d1(*, ri: bool = True, pi: bool = True) -> D1Spine:
 
 
 def _measured_empty_d2() -> D2PersonTrail:
-    return D2PersonTrail(status=DimensionStatus.MEASURED)
+    # A measured-negative D2 means the person resolved and no RI-affiliated
+    # authorship was found, so the guard must have passed.
+    return D2PersonTrail(status=DimensionStatus.MEASURED, person_guard_passed=True)
 
 
 def _measured_empty_d3() -> D3IpTrail:
@@ -169,7 +171,11 @@ def _measured_empty_d3() -> D3IpTrail:
 
 
 def _measured_empty_d4() -> D4MoneyTrail:
-    return D4MoneyTrail(status=DimensionStatus.MEASURED, ri_subaward_share=0.0)
+    return D4MoneyTrail(
+        subaward_status=DimensionStatus.MEASURED,
+        form_d_status=DimensionStatus.MEASURED,
+        ri_subaward_share=0.0,
+    )
 
 
 def _measured_empty_d5() -> D5TextTrail:
@@ -206,7 +212,11 @@ class TestClassifyLinkage:
     def test_order_1_spinout_t1_on_exact_person_affiliation(self):
         decision = classify_linkage(
             d1=_d1(),
-            d2=D2PersonTrail(status=DimensionStatus.MEASURED, exact_person_ri_affiliation=True),
+            d2=D2PersonTrail(
+                status=DimensionStatus.MEASURED,
+                exact_person_ri_affiliation=True,
+                person_guard_passed=True,
+            ),
             d3=_measured_empty_d3(),
             d4=_measured_empty_d4(),
             d5=_measured_empty_d5(),
@@ -250,7 +260,8 @@ class TestClassifyLinkage:
             ),
             d3=_measured_empty_d3(),
             d4=D4MoneyTrail(
-                status=DimensionStatus.MEASURED,
+                subaward_status=DimensionStatus.MEASURED,
+                form_d_status=DimensionStatus.MEASURED,
                 ri_subaward_share=0.0,
                 form_d_officer_ri_affiliated=True,
             ),
@@ -270,7 +281,8 @@ class TestClassifyLinkage:
             ),
             d3=_measured_empty_d3(),
             d4=D4MoneyTrail(
-                status=DimensionStatus.MEASURED,
+                subaward_status=DimensionStatus.MEASURED,
+                form_d_status=DimensionStatus.MEASURED,
                 ri_subaward_share=0.0,
                 form_d_officer_ri_affiliated=True,
             ),
@@ -289,7 +301,8 @@ class TestClassifyLinkage:
             ),
             d3=_measured_empty_d3(),
             d4=D4MoneyTrail(
-                status=DimensionStatus.MEASURED,
+                subaward_status=DimensionStatus.MEASURED,
+                form_d_status=DimensionStatus.MEASURED,
                 ri_subaward_share=0.0,
                 form_d_officer_ri_affiliated=True,
             ),
@@ -313,7 +326,7 @@ class TestClassifyLinkage:
         assert decision.label is not LinkageLabel.SPINOUT_T2
         assert decision.label is LinkageLabel.INDETERMINATE
 
-    def test_order_2_d5_phrase_corroborated_by_d3_ip_link(self):
+    def test_order_2_d5_phrase_not_corroborated_by_unmeasurable_d3(self):
         decision = classify_linkage(
             d1=_d1(),
             d2=_measured_empty_d2(),
@@ -326,7 +339,9 @@ class TestClassifyLinkage:
             similarity_cutoff=self.CUTOFF,
         )
         # D3 is NOT_MEASURABLE here (license sparsity) so it cannot corroborate;
-        # falls through to INDETERMINATE, not a false T2.
+        # falls through to INDETERMINATE, not a false T2. Note a *measured* D3
+        # with an IP link cannot reach Order 2 either -- it returns SPINOUT_T1
+        # at Order 1 -- which is why D3 is not in the corroborator set at all.
         assert decision.label is LinkageLabel.INDETERMINATE
 
     def test_order_3_subcontract_on_measured_negative_dims_and_subaward(self):
@@ -334,7 +349,11 @@ class TestClassifyLinkage:
             d1=_d1(),
             d2=_measured_empty_d2(),
             d3=_measured_empty_d3(),
-            d4=D4MoneyTrail(status=DimensionStatus.MEASURED, ri_subaward_share=0.3),
+            d4=D4MoneyTrail(
+                subaward_status=DimensionStatus.MEASURED,
+                form_d_status=DimensionStatus.MEASURED,
+                ri_subaward_share=0.3,
+            ),
             d5=_measured_empty_d5(),
             similarity_cutoff=self.CUTOFF,
         )
@@ -351,7 +370,11 @@ class TestClassifyLinkage:
                 status=DimensionStatus.NOT_MEASURABLE,
                 reason=SignalAbsentReason.LICENSE_RECORDS_SPARSE,
             ),
-            d4=D4MoneyTrail(status=DimensionStatus.MEASURED, ri_subaward_share=0.3),
+            d4=D4MoneyTrail(
+                subaward_status=DimensionStatus.MEASURED,
+                form_d_status=DimensionStatus.MEASURED,
+                ri_subaward_share=0.3,
+            ),
             d5=_measured_empty_d5(),
             similarity_cutoff=self.CUTOFF,
         )
@@ -370,7 +393,11 @@ class TestClassifyLinkage:
                 status=DimensionStatus.NOT_MEASURABLE,
                 reason=SignalAbsentReason.LICENSE_RECORDS_SPARSE,
             ),
-            d4=D4MoneyTrail(status=DimensionStatus.MEASURED, ri_subaward_share=1.0),
+            d4=D4MoneyTrail(
+                subaward_status=DimensionStatus.MEASURED,
+                form_d_status=DimensionStatus.MEASURED,
+                ri_subaward_share=1.0,
+            ),
             d5=D5TextTrail(status=DimensionStatus.NOT_EVALUATED),
             similarity_cutoff=self.CUTOFF,
         )
@@ -382,8 +409,9 @@ class TestClassifyLinkage:
             d2=_measured_empty_d2(),
             d3=_measured_empty_d3(),
             d4=D4MoneyTrail(
-                status=DimensionStatus.NOT_APPLICABLE,
-                reason=SignalAbsentReason.NON_GRANT_INSTRUMENT,
+                subaward_status=DimensionStatus.NOT_APPLICABLE,
+                form_d_status=DimensionStatus.MEASURED,
+                subaward_reason=SignalAbsentReason.NON_GRANT_INSTRUMENT,
             ),
             d5=_measured_empty_d5(),
             similarity_cutoff=self.CUTOFF,
@@ -396,3 +424,128 @@ class TestClassifyLinkage:
 
         signature = inspect.signature(classify_linkage)
         assert signature.parameters["similarity_cutoff"].default is inspect.Parameter.empty
+
+
+class TestGuardAndCutoffRegressions:
+    """Regressions for defects found reviewing the initial kernel."""
+
+    CUTOFF = 0.9
+
+    def test_exact_person_failing_guard_does_not_advance_to_t1(self):
+        # The guard is mandatory on every D2 person comparison, not just fuzzy;
+        # a name that reduces to generic tokens identifies nobody.
+        decision = classify_linkage(
+            d1=_d1(),
+            d2=D2PersonTrail(
+                status=DimensionStatus.MEASURED,
+                exact_person_ri_affiliation=True,
+                person_guard_passed=False,
+            ),
+            d3=_measured_empty_d3(),
+            d4=_measured_empty_d4(),
+            d5=_measured_empty_d5(),
+            similarity_cutoff=self.CUTOFF,
+        )
+        assert decision.label is not LinkageLabel.SPINOUT_T1
+
+    def test_guard_failure_is_not_a_measured_negative(self):
+        # A strong similarity that fails only the guard means "unresolvable",
+        # not "searched and found nothing", so it cannot support SUBCONTRACT.
+        decision = classify_linkage(
+            d1=_d1(),
+            d2=D2PersonTrail(
+                status=DimensionStatus.MEASURED,
+                person_similarity=0.99,
+                person_guard_passed=False,
+            ),
+            d3=_measured_empty_d3(),
+            d4=D4MoneyTrail(
+                subaward_status=DimensionStatus.MEASURED,
+                form_d_status=DimensionStatus.MEASURED,
+                ri_subaward_share=0.3,
+            ),
+            d5=_measured_empty_d5(),
+            similarity_cutoff=self.CUTOFF,
+        )
+        assert decision.label is LinkageLabel.INDETERMINATE
+        assert decision.cascade_order == 4
+
+    def test_non_grant_instrument_does_not_suppress_form_d_signal(self):
+        # D4's two directions are scored separately: a contract instrument makes
+        # the subaward side NOT_APPLICABLE but says nothing about Form D.
+        decision = classify_linkage(
+            d1=_d1(),
+            d2=D2PersonTrail(
+                status=DimensionStatus.MEASURED,
+                person_similarity=0.97,
+                person_guard_passed=True,
+            ),
+            d3=_measured_empty_d3(),
+            d4=D4MoneyTrail(
+                subaward_status=DimensionStatus.NOT_APPLICABLE,
+                form_d_status=DimensionStatus.MEASURED,
+                subaward_reason=SignalAbsentReason.NON_GRANT_INSTRUMENT,
+                form_d_officer_ri_affiliated=True,
+            ),
+            d5=_measured_empty_d5(),
+            similarity_cutoff=self.CUTOFF,
+        )
+        assert decision.label is LinkageLabel.SPINOUT_T2
+        assert decision.cascade_order == 2
+
+    def test_absent_form_d_does_not_corroborate(self):
+        decision = classify_linkage(
+            d1=_d1(),
+            d2=D2PersonTrail(
+                status=DimensionStatus.MEASURED,
+                person_similarity=0.97,
+                person_guard_passed=True,
+            ),
+            d3=_measured_empty_d3(),
+            d4=D4MoneyTrail(
+                subaward_status=DimensionStatus.MEASURED,
+                form_d_status=DimensionStatus.NOT_MEASURABLE,
+                ri_subaward_share=0.0,
+                form_d_reason=SignalAbsentReason.SOURCE_FIELD_UNAVAILABLE,
+                form_d_officer_ri_affiliated=True,
+            ),
+            d5=_measured_empty_d5(),
+            similarity_cutoff=self.CUTOFF,
+        )
+        assert decision.label is not LinkageLabel.SPINOUT_T2
+
+    @pytest.mark.parametrize("cutoff", [0.0, -0.1, 1.5])
+    def test_cutoff_outside_the_unit_interval_is_rejected(self, cutoff):
+        # O-3 leaves the cutoff defaultless; a placeholder 0.0 would otherwise
+        # promote a measured 0.0 similarity into a fuzzy positive.
+        with pytest.raises(ValueError, match="similarity_cutoff"):
+            classify_linkage(
+                d1=_d1(),
+                d2=_measured_empty_d2(),
+                d3=_measured_empty_d3(),
+                d4=_measured_empty_d4(),
+                d5=_measured_empty_d5(),
+                similarity_cutoff=cutoff,
+            )
+
+    def test_credentialed_person_name_still_matches_the_bare_name(self):
+        left = resolve_identity("Jane Smith, PhD", kind=IdentityKind.PERSON)
+        right = resolve_identity("Jane Smith", kind=IdentityKind.PERSON)
+        assert identity_similarity(left, right) == 1.0
+
+    def test_titles_and_generational_suffixes_are_stripped(self):
+        assert resolve_identity("Dr. Jane Smith", kind=IdentityKind.PERSON).given_name == "jane"
+        assert resolve_identity("John Smith Jr.", kind=IdentityKind.PERSON).family_name == "smith"
+
+    def test_family_given_order_still_reorders(self):
+        resolved = resolve_identity("Smith, Jane", kind=IdentityKind.PERSON)
+        assert resolved.normalized == "jane smith"
+        assert resolved.family_name == "smith"
+
+    def test_punctuated_legal_suffix_alone_fails_the_guard(self):
+        assert resolve_identity("L.L.C.", kind=IdentityKind.ORGANIZATION).guard_passed is False
+
+    def test_organization_and_person_never_compare_equal(self):
+        org = resolve_identity("Smith Robotics", kind=IdentityKind.ORGANIZATION)
+        person = resolve_identity("Smith Robotics", kind=IdentityKind.PERSON)
+        assert identity_similarity(org, person) == 0.0

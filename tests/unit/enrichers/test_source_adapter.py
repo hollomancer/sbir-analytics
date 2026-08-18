@@ -75,6 +75,7 @@ def test_runner_fetch_normalize_validate_freshness_checkpoint(tmp_path) -> None:
         freshness=freshness,
         checkpoints=checkpoints,
         partition_id="part-1",
+        checkpoint_interval=1,
     )
 
     stats = runner.refresh_records(adapter, [{"award_id": "A1"}, {"award_id": "A2"}])
@@ -82,13 +83,92 @@ def test_runner_fetch_normalize_validate_freshness_checkpoint(tmp_path) -> None:
     assert stats.as_dict()["success"] == 2
     assert adapter.fetched == ["A1", "A2"]
     assert freshness.get_record("A1", "usaspending") is not None
+    # A completed pass clears its checkpoint so the next SLA-driven run refreshes again.
+    assert checkpoints.load_checkpoint("part-1", "usaspending") is None
+
+
+def test_completed_pass_does_not_skip_awards_on_the_next_run(tmp_path) -> None:
+    """A finished pass must not permanently suppress re-refresh (regression)."""
+
+    freshness = FreshnessStore(tmp_path / "freshness.parquet")
+    checkpoints = CheckpointStore(tmp_path / "checkpoints.parquet")
+    adapter = FakeAdapter()
+    runner = SourceRefreshRunner(
+        freshness=freshness,
+        checkpoints=checkpoints,
+        partition_id="part-1",
+        checkpoint_interval=1,
+    )
+    records = [{"award_id": "A1"}, {"award_id": "A2"}]
+
+    runner.refresh_records(adapter, records)
+    second = runner.refresh_records(adapter, records)
+
+    assert second.skipped == 0
+    assert second.success == 2
+    assert adapter.fetched == ["A1", "A2", "A1", "A2"]
+
+
+def test_resume_skips_succeeded_and_retries_failed(tmp_path) -> None:
+    """A crashed pass leaves a checkpoint; only successes are skipped on resume."""
+
+    freshness = FreshnessStore(tmp_path / "freshness.parquet")
+    checkpoints = CheckpointStore(tmp_path / "checkpoints.parquet")
+    runner = SourceRefreshRunner(
+        freshness=freshness,
+        checkpoints=checkpoints,
+        partition_id="part-1",
+        checkpoint_interval=1,
+    )
+
+    class _CrashingAdapter(FakeAdapter):
+        def fetch_page(self, request: Mapping[str, Any], cursor: str | None) -> RawPage:
+            award_id = str(request["award_id"])
+            if award_id == "A2":
+                self.fetched.append(award_id)
+                raise RuntimeError("transient network error")
+            if award_id == "A3":
+                raise KeyboardInterrupt("operator stopped the run")
+            return super().fetch_page(request, cursor)
+
+    crashing = _CrashingAdapter()
+    records = [{"award_id": "A1"}, {"award_id": "A2"}, {"award_id": "A3"}]
+    with pytest.raises(KeyboardInterrupt):
+        runner.refresh_records(crashing, records)
+
     checkpoint = checkpoints.load_checkpoint("part-1", "usaspending")
     assert checkpoint is not None
-    assert set(checkpoint.metadata["processed_ids"]) == {"A1", "A2"}
+    # A1 succeeded; A2 failed and must not be recorded as processed.
+    assert set(checkpoint.metadata["processed_ids"]) == {"A1"}
 
-    second = runner.refresh_records(adapter, [{"award_id": "A1"}, {"award_id": "A2"}])
-    assert second.skipped == 2
-    assert adapter.fetched == ["A1", "A2"]
+    resumed = FakeAdapter()
+    stats = runner.refresh_records(resumed, records)
+    assert stats.skipped == 1
+    assert resumed.fetched == ["A2", "A3"]
+
+
+def test_checkpoint_interval_limits_writes(tmp_path) -> None:
+    freshness = FreshnessStore(tmp_path / "freshness.parquet")
+    checkpoints = CheckpointStore(tmp_path / "checkpoints.parquet")
+    saves: list[str] = []
+    original = checkpoints.save_checkpoint
+
+    def _counting_save(checkpoint):
+        saves.append(checkpoint.last_processed_award_id)
+        return original(checkpoint)
+
+    checkpoints.save_checkpoint = _counting_save  # type: ignore[method-assign]
+    runner = SourceRefreshRunner(
+        freshness=freshness,
+        checkpoints=checkpoints,
+        partition_id="part-1",
+        checkpoint_interval=5,
+    )
+
+    runner.refresh_records(FakeAdapter(), [{"award_id": f"A{i}"} for i in range(12)])
+
+    # 12 records at interval 5 → writes after the 5th and 10th, not once per record.
+    assert saves == ["A4", "A9"]
 
 
 class _FakeClient:

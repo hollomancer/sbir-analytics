@@ -213,10 +213,11 @@ What already holds:
 - `sbir_etl/` is a clean foundation layer — 141 imports inbound from
   `packages/`, zero outbound.
 - `sbir_etl/identity/` meets the `primitives` contract, with a boundary checker
-  at `scripts/ci/check_identity_boundaries.py` enforced by the CI quality job.
+  at `scripts/ci/check_identity_boundaries.py` enforced by `make lint-boundaries`
+  and the CI quality job.
 - Active specs declare a target tier in `requirements.md`;
   `scripts/ci/check_epistemic_tiers.py` rejects missing, duplicate, and
-  invalid declarations in CI.
+  invalid declarations in `make lint-boundaries` and CI.
 - The tier dependency lattice is executable: `scripts/ci/check_tier_boundaries.py`
   (in `make lint-boundaries` and CI) resolves each module's effective tier and
   blocks imports below it. Its `TIER_IMPORT_ALLOWLIST` is empty — every seeded

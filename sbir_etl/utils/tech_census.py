@@ -12,10 +12,14 @@ non-citable.
 
 from __future__ import annotations
 
+import csv
+import hashlib
+import json
 import math
 import re
 from collections import defaultdict
 from collections.abc import Iterable
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, TypedDict
 
@@ -611,3 +615,105 @@ def load_award_data_csv(path: Path) -> list[CensusAward]:
             }
         )
     return awards
+
+
+CENSUS_AWARD_COLUMNS = [
+    "company",
+    "city",
+    "state",
+    "uei",
+    "duns",
+    "title",
+    "agency",
+    "program",
+    "phase",
+    "year",
+    "amount",
+    "subset",
+    "scope_class",
+    "agency_tracking_number",
+    "contract",
+    "source_row",
+    "gate_evidence",
+    "physical_evidence",
+    "subset_evidence",
+    "scope_evidence",
+    "classification_source",
+    "override_reason",
+]
+
+
+def _sha256(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        while chunk := handle.read(1024 * 1024):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def _source_timestamp(path: Path) -> str:
+    return datetime.fromtimestamp(path.stat().st_mtime, UTC).isoformat()
+
+
+def write_census_artifacts(
+    result: dict[str, Any],
+    out_dir: Path,
+    *,
+    awards_csv: Path,
+    source_row_count: int,
+    reporting_row_count: int,
+    data_vintage: str | None = None,
+    selected_fys: list[int] | None = None,
+    selected_states: tuple[str, ...] | None = None,
+) -> dict[str, Path]:
+    """Write ``classified_awards.csv`` and ``summary.json`` for one census run.
+
+    Shared by ``build_tech_census.py`` and the ``run_analysis.py`` census
+    strategy so both emit the same artifacts from the same ``run_census``
+    result. Returns the written paths keyed by artifact name.
+    """
+
+    out_dir.mkdir(parents=True, exist_ok=True)
+    rows = result["classified_awards"]
+
+    awards_path = out_dir / "classified_awards.csv"
+    extra_columns = [key for row in rows for key in row if key not in CENSUS_AWARD_COLUMNS]
+    cols = list(dict.fromkeys(CENSUS_AWARD_COLUMNS + extra_columns))
+    with awards_path.open("w", newline="", encoding="utf-8") as handle:
+        writer = csv.DictWriter(handle, fieldnames=cols, extrasaction="ignore")
+        writer.writeheader()
+        writer.writerows(rows)
+
+    summary_path = out_dir / "summary.json"
+    json_safe = {
+        "_epistemic": result["_epistemic"],
+        "area_id": result["area_id"],
+        "display_name": result["display_name"],
+        "grand_total": result["grand_total"],
+        "fy_totals": {str(k): v for k, v in result["fy_totals"].items()},
+        "subset_totals": result["subset_totals"],
+        "by_fy_subset": {f"{fy}|{subset}": v for (fy, subset), v in result["by_fy_subset"].items()},
+        "exclusion_counts": result["exclusion_counts"],
+        "adjacent_counts": result["adjacent_counts"],
+        "program_exclusion_counts": result["program_exclusion_counts"],
+        "rejection_counts": result["rejection_counts"],
+        "config_version": result["config_version"],
+        "override_version": result["override_version"],
+        "programs": result["programs"],
+        "scope_totals": result["scope_totals"],
+        "reporting_window": {
+            "fiscal_years": selected_fys or None,
+            "states": list(selected_states or ()) or None,
+            "programs": result["programs"],
+        },
+        "provenance": {
+            "source_path": str(awards_csv.resolve()),
+            "sha256": _sha256(awards_csv),
+            "source_timestamp": _source_timestamp(awards_csv),
+            "data_vintage": data_vintage,
+            "source_row_count": source_row_count,
+            "reporting_row_count": reporting_row_count,
+        },
+    }
+    summary_path.write_text(json.dumps(json_safe, indent=2) + "\n", encoding="utf-8")
+    return {"classified_awards": awards_path, "summary": summary_path}

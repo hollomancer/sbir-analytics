@@ -278,6 +278,8 @@ def build_initial_analysis_markdown(
             "entrant_firm_share",
             "dod_cta14",
             "dod_sc8",
+            "nssts_cet14",
+            "nssts_mission_needs",
         },
         "metrics",
     )
@@ -331,6 +333,8 @@ def build_initial_analysis_markdown(
 
     dod_cta14 = _crosswalk_rollup(latest, "dod_cta14", latest_dollars)
     dod_sc8 = _crosswalk_rollup(latest, "dod_sc8", latest_dollars)
+    nssts_cet14 = _crosswalk_rollup(latest, "nssts_cet14", latest_dollars)
+    nssts_missions = _crosswalk_rollup(latest, "nssts_mission_needs", latest_dollars)
 
     annual = (
         facts.groupby("fiscal_year", as_index=False)
@@ -416,6 +420,24 @@ as entrants when their first retained award occurs later.
 
 {_markdown_table(dod_sc8, [("target", "Repository target"), ("cet_areas", "Mapped CET areas"), ("dollars", "Associated dollars"), ("portfolio_share", "Associated share")])}
 
+### 2026 NSSTS national-security CET areas
+
+{_markdown_table(nssts_cet14, [("target", "NSSTS area"), ("cet_areas", "Mapped CET areas"), ("dollars", "Associated dollars"), ("portfolio_share", "Associated share")])}
+
+### 2026 NSSTS priority national security needs
+
+{_markdown_table(nssts_missions, [("target", "Priority need"), ("cet_areas", "Mapped CET areas"), ("dollars", "Associated dollars"), ("portfolio_share", "Associated share")])}
+
+Mission needs come from NSSTS Appendix B, which publishes alignment against the strategy's
+own 14 CET areas rather than this repository's canonical 21. A canonical CET inherits a
+mission profile only through a `direct` mapping, so `partial` and `enabling` relationships
+contribute to the NSSTS-area rollup above but not to this one. Renewable energy generation
+and storage reaches no NSSTS area at all: the 2026 list drops it, though `DOD-CTA-14-2022`
+retained it. Four further canonical areas map only partially or as enablers and so carry no
+mission profile: advanced gas turbine engine technologies, financial technologies,
+human-machine interfaces, and integrated sensing and cyber. Dollars in those five areas are
+absent from the mission-need table but present in the CET tables above.
+
 These are many-to-many contextual overlays. Dollar amounts are repeated when a CET maps to
 multiple targets, so rows are **not additive** and are not funding allocations. Mapping
 strengths include direct, partial, and enabling relationships. `DOD-SC-8-2022` is a
@@ -434,7 +456,8 @@ an estimate of causal program effects.
 - CET portfolio composition and time trends in the classified subset.
 - Award-dollar and award-count concentration, top-firm shares, and observed base thickness.
 - Geographic concentration screens and first-observed entrant participation.
-- Exploratory rollups through the cited DoD-14 and defense supply-chain crosswalk.
+- Exploratory rollups through the cited DoD-14, defense supply-chain, and 2026 NSSTS
+  crosswalks, including NSSTS Appendix B priority national security needs.
 
 ## What it cannot yet support
 
@@ -444,6 +467,8 @@ an estimate of causal program effects.
   or import exposure.
 - Official DoD policy mappings. `DOD-SC-8-2022` is a repository label for an analyst
   crosswalk, not an official NDIS taxonomy.
+- Any claim that NSSTS endorses, prioritizes, or evaluates SBIR/STTR. The strategy does
+  not mention the programs; the crosswalk aligns technology areas only.
 - Causal, predictive, FOCI, beneficial-ownership, M&A, UCC, patent-citation, or subaward claims.
 - A definitive assertion that an observed dominant awardee is a sole-source supplier.
 

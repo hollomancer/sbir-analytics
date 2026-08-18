@@ -6,7 +6,7 @@ including extraction, enrichment, and Neo4j graph validation.
 
 from dataclasses import dataclass, field
 from datetime import datetime
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 
 import pandas as pd
@@ -17,7 +17,7 @@ from sbir_graph.loaders import Neo4jClient
 from sbir_etl.models.quality import QualitySeverity
 
 
-class ValidationStage(str, Enum):
+class ValidationStage(StrEnum):
     """Pipeline stages that can be validated."""
 
     EXTRACTION = "extraction"
@@ -27,7 +27,7 @@ class ValidationStage(str, Enum):
     LOADING = "loading"
 
 
-class ValidationStatus(str, Enum):
+class ValidationStatus(StrEnum):
     """Validation result status."""
 
     PASSED = "passed"

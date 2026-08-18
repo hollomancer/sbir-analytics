@@ -6,7 +6,7 @@ CI is authoritative and deliberately runs checks that have no local hook.
 
 **Document Type:** Explanation
 **Owner:** @hollomancer
-**Last-Reviewed:** 2026-08-09
+**Last-Reviewed:** 2026-08-15
 **Status:** Active
 
 ## Overview
@@ -21,7 +21,9 @@ Developers should not encounter an *undocumented* difference where:
 
 This document explains the differences. The executable configurations remain
 the source of truth: `.pre-commit-config.yaml` for local hooks and
-`.github/workflows/ci.yml` for CI.
+`.github/workflows/ci.yml` for CI. For architecture / epistemic-tier / identity /
+config / hygiene / study guards, `make lint-boundaries` must match the CI quality
+job's guard step; if they diverge, CI is authoritative.
 
 ### Architecture
 
@@ -29,16 +31,18 @@ the source of truth: `.pre-commit-config.yaml` for local hooks and
 Local pre-commit hook            Runs in CI as
 ─────────────────────            ──────────────
 Standard file checks       →     (local only)
-Ruff (lint/format)         →     ci.yml · quality job
+Ruff (prod roots + tests)  →     ci.yml · quality job (whole repo via `ruff check .`)
 MyPy (sbir_etl only)       →     ci.yml · quality job (also sbir-graph + sbir-ml)
+(no local hook)            →     make lint-boundaries / ci.yml quality guards
 (no local hook)            →     ci.yml · security job (Bandit)
 (no local hook)            →     ci.yml · security job (detect-secrets)
 (no local hook)            →     ci.yml · quality job (actionlint)
 ```
 
-**Key Principle:** Pre-commit provides fast local feedback. CI repeats Ruff,
-supersets the local MyPy scope, and adds blocking security, architecture, and
-workflow checks.
+**Key Principle:** Pre-commit provides fast local feedback. CI supersets local
+Ruff and MyPy scope, and adds blocking security, boundary, and workflow checks.
+Use `make lint` and `make lint-boundaries` before pushing when you need the
+CI-equivalent local run.
 
 **Intentional local gaps:** Bandit and detect-secrets are not pre-commit hooks.
 Both run in CI's blocking `security` / "Security Scan" job. The local
@@ -52,9 +56,11 @@ The scopes below are the current contract, including intentional differences:
 
 | Tool | Local Scope | CI Scope | Configuration | Notes |
 |------|------------|----------|---------------|-------|
-| **Ruff** (lint) | Four production roots + `tests/` | Same | `.pre-commit-config.yaml` + `pyproject.toml` | Local hook fixes; CI only checks |
-| **Ruff** (format) | Four production roots + `tests/` | Same | `.pre-commit-config.yaml` + `pyproject.toml` | Local hook formats; CI only checks |
+| **Ruff** (lint) | Four production roots + `tests/` | Whole repository (`ruff check .`) | `.pre-commit-config.yaml` + `pyproject.toml` | Local hook is narrower; use `make lint` for CI parity |
+| **Ruff** (format) | Four production roots + `tests/` | Whole repository (`ruff format --check .`) | `.pre-commit-config.yaml` + `pyproject.toml` | Same intentional gap as lint |
+| **Ruff** (UP042 / StrEnum) | No hook | `sbir_etl` + `packages` + `tests` via `--preview --select UP042` | `Makefile` `lint` + `ci.yml` | Preview rule; targeted so other preview lints stay off |
 | **MyPy** (types) | `sbir_etl/` | `sbir_etl/`, `sbir-graph`, `sbir-ml` | `.pre-commit-config.yaml` + `pyproject.toml` | CI is deliberately broader |
+| **Boundary guards** | No hook; `make lint-boundaries` | Same scripts as Make | `Makefile` + `ci.yml` | Must stay identical |
 | **Bandit** (security) | No hook | `sbir_etl/` and `packages/` | `ci.yml` + `pyproject.toml` | Blocking `security` job |
 | **Standard hooks** | All files | N/A | `.pre-commit-config.yaml` | YAML validation, EOL, trailing whitespace (local only) |
 | **Detect-secrets** | No hook | Working tree against `.secrets.baseline` | `ci.yml` + `.secrets.baseline` | Blocking `security` job |
@@ -74,11 +80,12 @@ The scopes below are the current contract, including intentional differences:
 - Bandit's `pyproject.toml` configuration excludes tests
 - Avoiding a local hook keeps pre-commit focused on fast checks
 
-**Why production packages + `tests/` for Ruff?**
+**Why is local Ruff narrower than CI?**
 
-- Tests should follow the same code style as production code
-- Ruff is fast and catches important issues (unused imports, naming)
-- Consistent formatting improves readability
+- Pre-commit stays fast on the production packages and tests most PRs touch
+- CI / `make lint` run `ruff check .` so exploratory `scripts/` and notebooks
+  cannot silently drift outside the formatter/linter contract
+- Use `make lint` before pushing when you edited scripts or notebooks
 
 **Why all files for standard hooks?**
 
@@ -162,10 +169,12 @@ Some rule failed
 
 **Common issues:**
 
-- **Ruff errors:** Run `ruff check sbir_etl packages/sbir-analytics/sbir_analytics packages/sbir-ml/sbir_ml packages/sbir-graph/sbir_graph tests --fix` to auto-fix many issues
+- **Ruff errors:** Run `make format` or `uv run ruff check . --fix` for CI-parity
+  fixes; the pre-commit hook only auto-fixes production roots + tests
 - **MyPy errors:** Read the error message and add type hints or `# type: ignore` comments
 - **CI Bandit alerts:** Review and fix security issues, or add a justified `# nosec` for a false positive
 - **CI detect-secrets alerts:** Review the secret, or update `.secrets.baseline` if approved
+- **Boundary / hygiene failures:** Run `make lint-boundaries` locally (same scripts as CI)
 
 ---
 
@@ -181,9 +190,10 @@ This workflow runs on:
 **Jobs (in parallel/sequence):**
 
 1. **quality** ("Lint, Types, and Guards")
-   - Runs: `ruff check`, `ruff format --check`, `mypy sbir_etl packages/sbir-graph/sbir_graph packages/sbir-ml/sbir_ml`, Dagster definition validation, the architecture/documentation/hygiene guards, compose-file validation, and actionlint.
-   - Purpose: Pull-request and push quality gate. Ruff mirrors the local scope;
-     MyPy adds `sbir-graph` and `sbir-ml` to the local `sbir_etl` scope.
+   - Runs: `ruff check .`, `ruff format --check .`, `mypy sbir_etl packages/sbir-graph/sbir_graph packages/sbir-ml/sbir_ml`, Dagster definition validation, the architecture/documentation/hygiene guards (same scripts as `make lint-boundaries`), compose-file validation, and actionlint.
+   - Purpose: Pull-request and push quality gate. Ruff covers the whole repository
+     (broader than the local pre-commit hook); MyPy adds `sbir-graph` and `sbir-ml`
+     to the local `sbir_etl` scope.
    - Time: ~5-10 minutes.
 
    There is no separate package-type-check job: all three type-checked roots are
@@ -264,10 +274,11 @@ Local hook environments and CI select tool versions independently:
 
 | Item | Local | CI | Notes |
 |------|-------|----|----|
-| Ruff scope | `.pre-commit-config.yaml` | `ci.yml` | Both: all production roots plus `tests` |
+| Ruff scope | `.pre-commit-config.yaml` | `ci.yml` | Local: production roots + tests. CI / `make lint`: whole repo |
 | Ruff config | `pyproject.toml` | `pyproject.toml` | Identical |
 | MyPy scope | `pyproject.toml` + `.pre-commit-config.yaml` | `ci.yml` | Local: `sbir_etl`. CI: `sbir_etl` **plus** `sbir-graph` and `sbir-ml`, all in the `quality` job |
 | MyPy config | `pyproject.toml` | `pyproject.toml` | Identical |
+| Boundary guards | `Makefile` `lint-boundaries` | `ci.yml` quality job | Must stay identical |
 | Bandit scope | No hook; manual command available | `ci.yml` | CI scans `sbir_etl/` and `packages/` in the `security` job |
 | Bandit config | `pyproject.toml` | `pyproject.toml` | Same when reproduced locally |
 | Detect-secrets scope | No hook; manual command available | `ci.yml` | CI scans the working tree against `.secrets.baseline` |
@@ -305,14 +316,14 @@ files locally. If the same tool and file fail differently:
 **Check scope:**
 
 ```bash
-# Local pre-commit and CI use the same four production roots plus tests/
-# Make sure you're checking the same files
+# Local pre-commit: production roots + tests only
+pre-commit run ruff --all-files
 
-pre-commit run ruff --all-files  # Same file scope; see version table above
-
-# Or manually
-uv run python -m ruff check sbir_etl packages/sbir-analytics/sbir_analytics packages/sbir-ml/sbir_ml packages/sbir-graph/sbir_graph tests
-uv run python -m ruff format --check sbir_etl packages/sbir-analytics/sbir_analytics packages/sbir-ml/sbir_ml packages/sbir-graph/sbir_graph tests
+# CI / make lint: whole repository
+make lint
+# or
+uv run python -m ruff check .
+uv run python -m ruff format --check .
 ```
 
 ### "MyPy passes locally but fails in CI"

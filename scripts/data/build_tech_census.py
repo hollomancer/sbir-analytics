@@ -18,11 +18,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
-import csv
-import hashlib
-import json
 import sys
-from datetime import UTC, datetime
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[2]
@@ -36,19 +32,8 @@ from sbir_etl.utils.tech_census import (  # noqa: E402
     normalize_state_code,
     normalize_state_codes,
     run_census,
+    write_census_artifacts,
 )
-
-
-def _sha256(path: Path) -> str:
-    digest = hashlib.sha256()
-    with path.open("rb") as handle:
-        while chunk := handle.read(1024 * 1024):
-            digest.update(chunk)
-    return digest.hexdigest()
-
-
-def _source_timestamp(path: Path) -> str:
-    return datetime.fromtimestamp(path.stat().st_mtime, UTC).isoformat()
 
 
 def main() -> int:
@@ -192,78 +177,19 @@ def main() -> int:
         + f"{grand['n']:>7,} (${grand['usd'] / 1e6:>7.1f}M)"
     )
 
-    out_dir = DATA / "tech_census" / compiled.area_id
-    out_dir.mkdir(parents=True, exist_ok=True)
+    written = write_census_artifacts(
+        result,
+        DATA / "tech_census" / compiled.area_id,
+        awards_csv=awards_csv,
+        source_row_count=len(awards),
+        reporting_row_count=len(reporting_awards),
+        data_vintage=args.data_vintage,
+        selected_fys=selected_fys,
+        selected_states=selected_states,
+    )
 
-    awards_csv_path = out_dir / "classified_awards.csv"
-    rows = result["classified_awards"]
-    preferred_columns = [
-        "company",
-        "city",
-        "state",
-        "uei",
-        "duns",
-        "title",
-        "agency",
-        "program",
-        "phase",
-        "year",
-        "amount",
-        "subset",
-        "scope_class",
-        "agency_tracking_number",
-        "contract",
-        "source_row",
-        "gate_evidence",
-        "physical_evidence",
-        "subset_evidence",
-        "scope_evidence",
-        "classification_source",
-        "override_reason",
-    ]
-    extra_columns = [key for row in rows for key in row if key not in preferred_columns]
-    cols = list(dict.fromkeys(preferred_columns + extra_columns))
-    with open(awards_csv_path, "w", newline="", encoding="utf-8") as f:
-        w = csv.DictWriter(f, fieldnames=cols, extrasaction="ignore")
-        w.writeheader()
-        w.writerows(rows)
-
-    summary_path = out_dir / "summary.json"
-    source_timestamp = _source_timestamp(awards_csv)
-    json_safe = {
-        "_epistemic": result["_epistemic"],
-        "area_id": result["area_id"],
-        "display_name": result["display_name"],
-        "grand_total": result["grand_total"],
-        "fy_totals": {str(k): v for k, v in result["fy_totals"].items()},
-        "subset_totals": result["subset_totals"],
-        "by_fy_subset": {f"{fy}|{subset}": v for (fy, subset), v in result["by_fy_subset"].items()},
-        "exclusion_counts": result["exclusion_counts"],
-        "adjacent_counts": result["adjacent_counts"],
-        "program_exclusion_counts": result["program_exclusion_counts"],
-        "rejection_counts": result["rejection_counts"],
-        "config_version": result["config_version"],
-        "override_version": result["override_version"],
-        "programs": result["programs"],
-        "scope_totals": result["scope_totals"],
-        "reporting_window": {
-            "fiscal_years": selected_fys or None,
-            "states": list(selected_states) or None,
-            "programs": result["programs"],
-        },
-        "provenance": {
-            "source_path": str(awards_csv.resolve()),
-            "sha256": _sha256(awards_csv),
-            "source_timestamp": source_timestamp,
-            "data_vintage": args.data_vintage,
-            "source_row_count": len(awards),
-            "reporting_row_count": len(reporting_awards),
-        },
-    }
-    summary_path.write_text(json.dumps(json_safe, indent=2) + "\n", encoding="utf-8")
-
-    print(f"\nWrote {awards_csv_path} ({grand['n']:,} rows)")
-    print(f"Wrote {summary_path}")
+    print(f"\nWrote {written['classified_awards']} ({grand['n']:,} rows)")
+    print(f"Wrote {written['summary']}")
     return 0
 
 
