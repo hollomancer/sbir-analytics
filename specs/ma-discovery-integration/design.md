@@ -99,7 +99,7 @@ These are choices the design intentionally does *not* pin, because they're indep
 
 | Decision | Default I'd lead with | Why deferred |
 |---|---|---|
-| Search backend (Tavily / Brave / Bing / Serper) | Tavily — purpose-built for snippet-focused agentic search; pluggable interface stays put | Pricing changes; better resolved with a real cost estimate |
+| Search backend (Tavily / Brave / Bing / Serper) | **Tavily** is the default production client; Brave is a second same-shape backend. Runtime default stays mock until a key is set. Comparison: [`search-backends.md`](search-backends.md) (exploratory, non-citable — not a recall benchmark). | Comparison note landed; revisit only if the sample run shows snippet quality is the bottleneck |
 | LLM verifier model | Claude Haiku 4.5 for cost; Sonnet 4.6 for ambiguous cases (two-stage) | Calibrate per actual snippet quality |
 | Output module path | `sbir_etl/enrichers/ma_discovery/` (matches enricher convention) | Easier to refactor when tests exist |
 | Confidence threshold tuning | Provisional 0.75 / 0.45; must align #371 or be replaced by calibrated cutoffs before implementation lands | Empirical |
@@ -108,7 +108,7 @@ These are choices the design intentionally does *not* pin, because they're indep
 
 1. **Fix `MAEvent.confidence`** as a `@computed_field` and align the score-to-tier cutoffs with this design (or replace both with calibrated thresholds). Standalone PR; small, safe, lands first.
 2. **Move toolkit scripts to a module path** (`sbir_etl/enrichers/ma_discovery/`) and fix relative imports. No behavior change. Done (issue #446, toolkit relocation).
-3. **Implement a real `SearchTool`** against the chosen backend, with config + credentials in `.env.example` and `OTConsortiumConfig`-style schema entry.
+3. **Implement a real `SearchTool`** against the chosen backend, with config + credentials in `.env.example` and `OTConsortiumConfig`-style schema entry. Done (issue #446 step 2): Tavily default, optional Brave, mock without a key.
 4. **Replace keyword verifier with LLM extractor.** Structured output: `{matched_company, matched_acquirer, acquisition_date, value_usd, citation_url}`.
 5. **Wire collision-detection / C3 promotion logic** between discovery output and existing `sbir_ma_events.jsonl`.
 6. **Unit tests:** mocked search backend, mocked LLM, fixture-based positive / negative / collision-promotion cases.

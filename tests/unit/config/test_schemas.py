@@ -17,6 +17,7 @@ from sbir_etl.config.schemas import (
     ExtractionConfig,
     FiscalAnalysisConfig,
     LoggingConfig,
+    MADiscoveryConfig,
     MetricsConfig,
     ModernBertConfig,
     ModernBertNeo4jConfig,
@@ -830,6 +831,28 @@ class TestPipelineConfig:
         assert isinstance(config.statistical_reporting, StatisticalReportingConfig)
         assert isinstance(config.fiscal_analysis, FiscalAnalysisConfig)
         assert isinstance(config.cli, CLIConfig)
+        assert isinstance(config.ma_discovery, MADiscoveryConfig)
+        assert config.ma_discovery.search_backend == "mock"
+
+
+class TestMADiscoveryConfig:
+    """Tests for the M&A discovery search-backend config block."""
+
+    def test_defaults(self) -> None:
+        config = MADiscoveryConfig()
+        assert config.search_backend == "mock"
+        assert config.search_api_key is None
+        assert config.api_key_env_var == "SBIR_ETL__MA_DISCOVERY__SEARCH_API_KEY"
+        assert config.rate_limit_per_minute == 60
+        assert config.max_results == 5
+
+    def test_normalizes_backend_name(self) -> None:
+        config = MADiscoveryConfig(search_backend=" Tavily ")
+        assert config.search_backend == "tavily"
+
+    def test_rejects_unknown_backend(self) -> None:
+        with pytest.raises(ValidationError, match="search_backend"):
+            MADiscoveryConfig(search_backend="serper")
 
 
 class TestTransformationConfig:
