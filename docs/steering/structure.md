@@ -140,9 +140,10 @@ package-to-script dependency behind process execution does not change its direct
 - **Unit tests**: Test individual functions in isolation
 - **Integration tests**: Test component interactions with real databases
 - **Asset checks**: Dagster asset checks for data quality validation
-- **Precision benchmark**: Transition scoring changes maintain the repository's ≥85% precision
-  benchmark. Other coverage and quality gates are owned by CI and subsystem tests rather than a
-  global prose target.
+- **Transition-scoring polarity**: PR unit tests keep HIGH-threshold polarity
+  honest. The ≥85% retrospective precision number is a manual S3-corpus
+  measurement, not a CI gate. Other coverage and quality gates are owned by
+  CI and subsystem tests rather than a global prose target.
 
 ## Import Conventions
 
