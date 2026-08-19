@@ -204,6 +204,43 @@ def test_parse_llm_payload_ignores_unknown_placeholder_date() -> None:
     assert verdict.acquisition_date is None
 
 
+def test_verdict_from_payload_nulls_non_iso_date() -> None:
+    verdict = verdict_from_payload(
+        {
+            "confirmed": True,
+            "acquisition_date": "March 2024",
+            "reason": "completed acquisition",
+        }
+    )
+    assert verdict.confirmed is True
+    assert verdict.acquisition_date is None
+
+
+def test_verdict_from_payload_nulls_noncanonical_iso_date() -> None:
+    verdict = verdict_from_payload(
+        {
+            "confirmed": True,
+            "acquisition_date": "2024-3-12",
+            "reason": "completed acquisition",
+        }
+    )
+    assert verdict.confirmed is True
+    assert verdict.acquisition_date is None
+
+
+def test_verdict_from_payload_nulls_non_finite_or_negative_value() -> None:
+    for raw in (-1, float("nan"), float("inf"), float("-inf")):
+        verdict = verdict_from_payload(
+            {
+                "confirmed": True,
+                "value_usd": raw,
+                "reason": "completed acquisition",
+            }
+        )
+        assert verdict.confirmed is True
+        assert verdict.value_usd is None
+
+
 def test_build_llm_extractor_returns_none_without_key(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv("OPENAI_API_KEY", raising=False)
     assert build_llm_extractor() is None

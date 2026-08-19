@@ -11,10 +11,12 @@ The orchestrator does not default to the LLM path.
 from __future__ import annotations
 
 import json
+import math
 import os
 import re
 from collections.abc import Callable
 from dataclasses import dataclass
+from datetime import date
 from typing import Any, Protocol
 
 from sbir_etl.enrichers.ma_discovery.verifier import verify_acquisition
@@ -166,16 +168,12 @@ def verdict_from_payload(
             reason="LLM JSON missing boolean 'confirmed'",
         )
 
-    date = _as_optional_str(payload.get("acquisition_date"))
-    if date is not None and not is_filled_date(date):
-        date = None
-
     return ExtractionVerdict(
         confirmed=confirmed,
         reason=_as_optional_str(payload.get("reason")) or "LLM structured verdict",
         matched_company=_as_optional_str(payload.get("matched_company")),
         matched_acquirer=_as_optional_str(payload.get("matched_acquirer")),
-        acquisition_date=date,
+        acquisition_date=_parse_iso_date(payload.get("acquisition_date")),
         value_usd=_parse_value_usd(payload.get("value_usd")),
         citation_url=_as_optional_str(payload.get("citation_url")) or citation_fallback,
     )
@@ -271,17 +269,35 @@ def _as_optional_str(value: Any) -> str | None:
     return None
 
 
+def _parse_iso_date(value: Any) -> str | None:
+    """Accept only canonical ISO ``YYYY-MM-DD``. Invalid dates become null."""
+    text = _as_optional_str(value)
+    if text is None or not is_filled_date(text):
+        return None
+    try:
+        parsed = date.fromisoformat(text)
+    except ValueError:
+        return None
+    canonical = parsed.isoformat()
+    return canonical if canonical == text else None
+
+
 def _parse_value_usd(value: Any) -> float | None:
     if value is None or isinstance(value, bool):
         return None
+    parsed: float | None
     if isinstance(value, (int, float)):
-        return float(value)
-    if isinstance(value, str):
+        parsed = float(value)
+    elif isinstance(value, str):
         cleaned = value.strip().replace(",", "").replace("$", "")
         if not cleaned:
             return None
         try:
-            return float(cleaned)
+            parsed = float(cleaned)
         except ValueError:
             return None
-    return None
+    else:
+        return None
+    if not math.isfinite(parsed) or parsed < 0:
+        return None
+    return parsed
