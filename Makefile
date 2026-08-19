@@ -178,8 +178,8 @@ test: ## Run all tests
 	$(call run,uv run pytest -v --cov=sbir_etl --cov=packages/sbir-analytics/sbir_analytics --cov=packages/sbir-ml/sbir_ml --cov=packages/sbir-graph/sbir_graph --cov-branch --cov-fail-under=70)
 
 .PHONY: literature-map
-literature-map: ## Refresh the OpenAlex literature map (CSV + refresh_status.md)
-	@$(call info,Refreshing literature map from OpenAlex)
+literature-map: ## Refresh the literature map from OpenAlex + grey RSS (CSV + refresh_status.md)
+	@$(call info,Refreshing literature map from OpenAlex and grey-literature feeds)
 	$(call run,uv run python scripts/data/update_literature_map.py)
 
 .PHONY: test-unit
