@@ -31,9 +31,7 @@ def test_enrich_ma_events_merges_mocked_poll_hit() -> None:
 
     enriched = enrich_ma_events(events, client)
 
-    client.set_watchlist.assert_called_once_with(
-        ["Physical Optics Corporation", "Unrelated Labs"]
-    )
+    client.set_watchlist.assert_called_once_with(["Physical Optics Corporation", "Unrelated Labs"])
     client.poll.assert_called_once_with()
 
     matched, other = enriched

@@ -22,8 +22,7 @@ class MockSearchTool:
             return [
                 {
                     "snippet": (
-                        "Mercury Systems announced the acquisition of "
-                        "Physical Optics Corporation."
+                        "Mercury Systems announced the acquisition of Physical Optics Corporation."
                     ),
                     "link": "http://example.com",
                 }
