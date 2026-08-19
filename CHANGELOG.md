@@ -10,6 +10,18 @@ version.
 
 ## [Unreleased]
 
+## [0.10.0] — 2026-08-19
+
+### Added
+
+- Weekly literature-map refresh: `OpenAlexClient.search_works`,
+  `make literature-map`, and a Monday GitHub Action that opens a PR for
+  new OpenAlex works plus GAO/NAP/CRS/ITIF RSS items. Authored memos and
+  `[L#]` entries are not rewritten (#666).
+- Exploratory, non-citable A-CP7 notebook for top-10 incumbent
+  repeat-winner displacement (descriptive slot counts, not causal
+  crowd-out) (#665).
+
 ## [0.9.0] — 2026-08-19
 
 ### Added
@@ -284,7 +296,8 @@ across the root project and the three packages under `packages/`.
 `vMAJOR.MINOR.PATCH` form it requires. Per that policy published tags are never
 moved or reused, so they remain as historical markers.
 
-[Unreleased]: https://github.com/hollomancer/sbir-analytics/compare/v0.9.0...HEAD
+[Unreleased]: https://github.com/hollomancer/sbir-analytics/compare/v0.10.0...HEAD
+[0.10.0]: https://github.com/hollomancer/sbir-analytics/compare/v0.9.0...v0.10.0
 [0.9.0]: https://github.com/hollomancer/sbir-analytics/compare/v0.8.0...v0.9.0
 [0.8.0]: https://github.com/hollomancer/sbir-analytics/compare/v0.7.1...v0.8.0
 [0.7.1]: https://github.com/hollomancer/sbir-analytics/compare/v0.7.0...v0.7.1
