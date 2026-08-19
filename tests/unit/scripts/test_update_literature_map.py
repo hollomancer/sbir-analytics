@@ -6,7 +6,10 @@ import asyncio
 import sys
 from pathlib import Path
 
+import pytest
+
 from sbir_etl.enrichers.openalex_client import OpenAlexClient
+from sbir_etl.exceptions import APIError
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "scripts" / "data"))
 
@@ -20,6 +23,7 @@ from update_literature_map import (  # noqa: E402
     openalex_ids_for_refresh,
     parse_feed,
     parse_work,
+    resolve_doi_work_id,
     synthetic_id,
     write_map,
 )
@@ -309,3 +313,43 @@ def test_search_works_passes_mailto(monkeypatch) -> None:
     assert captured["endpoint"] == "works"
     assert captured["params"]["mailto"] == "map@example.com"
     assert captured["params"]["search"] == "SBIR"
+
+
+def test_resolve_doi_work_id_uses_doi_filter(monkeypatch) -> None:
+    captured: dict[str, object] = {}
+
+    async def fake_search(self, params):  # noqa: ANN001
+        captured["params"] = params
+        return {"results": [{"id": "https://openalex.org/W2741809807"}], "meta": {}}
+
+    monkeypatch.setattr(OpenAlexClient, "search_works", fake_search)
+    oid = asyncio.run(resolve_doi_work_id(OpenAlexClient(), "10.1257/aer.20150491"))
+    assert oid == "W2741809807"
+    assert captured["params"] == {"filter": "doi:10.1257/aer.20150491", "per_page": 1}
+
+
+def test_resolve_doi_work_id_raises_when_missing(monkeypatch) -> None:
+    async def fake_search(self, params):  # noqa: ANN001
+        return {"results": [], "meta": {}}
+
+    monkeypatch.setattr(OpenAlexClient, "search_works", fake_search)
+    with pytest.raises(RuntimeError, match="no work id"):
+        asyncio.run(resolve_doi_work_id(OpenAlexClient(), "10.0/missing"))
+
+
+def test_search_works_propagates_malformed_filter(monkeypatch) -> None:
+    async def fake_request(self, method, endpoint, params=None):  # noqa: ANN001
+        raise APIError("bad filter", api_name="openalex", http_status=400)
+
+    monkeypatch.setattr(OpenAlexClient, "_make_request", fake_request)
+    with pytest.raises(APIError):
+        asyncio.run(OpenAlexClient().search_works({"filter": "cites:doi:10.1257/aer.20150491"}))
+
+
+def test_search_works_404_is_empty(monkeypatch) -> None:
+    async def fake_request(self, method, endpoint, params=None):  # noqa: ANN001
+        raise APIError("gone", api_name="openalex", http_status=404)
+
+    monkeypatch.setattr(OpenAlexClient, "_make_request", fake_request)
+    data = asyncio.run(OpenAlexClient().search_works({"filter": "openalex_id:W0"}))
+    assert data["results"] == []

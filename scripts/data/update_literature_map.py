@@ -474,6 +474,20 @@ def merge_rows(
     return list(by_id.values()), added
 
 
+async def resolve_doi_work_id(client: OpenAlexClient, doi: str) -> str:
+    """Resolve a DOI to an OpenAlex work id (``W…``).
+
+    The ``cites`` filter only accepts work ids, not ``doi:`` values.
+    """
+    data = await client.search_works({"filter": f"doi:{doi}", "per_page": 1})
+    results = data.get("results") or []
+    first = results[0] if results and isinstance(results[0], dict) else None
+    oid = _last_path_segment((first or {}).get("id")) or ""
+    if not is_openalex_work_id(oid):
+        raise RuntimeError(f"OpenAlex returned no work id for DOI {doi}")
+    return oid
+
+
 async def _works_pages(
     client: OpenAlexClient,
     params: dict[str, Any],
@@ -560,12 +574,13 @@ async def refresh(
             added_total += added
 
         for doi in ANCHOR_DOIS:
+            work_id = await resolve_doi_work_id(client, doi)
             cited = await _works_pages(
                 client,
-                {"filter": f"cites:doi:{doi},{year_filter}"},
+                {"filter": f"cites:{work_id},{year_filter}"},
             )
             parsed = [parse_work(w) for w in cited]
-            query_counts[f"cites:{doi}"] = len(parsed)
+            query_counts[f"cites:{work_id}"] = len(parsed)
             existing, added = merge_rows(existing, parsed)
             added_total += added
 

@@ -200,13 +200,12 @@ class OpenAlexClient(BaseAsyncAPIClient):
         """GET ``/works`` with caller-supplied query params.
 
         Used by the exploratory literature-map refresh. Returns the raw JSON
-        object (``results``, ``meta``). Empty ``results`` on 4xx; propagates
-        :class:`APIError` on 5xx.
+        object (``results``, ``meta``). A 404 is an empty page; other 4xx/5xx
+        errors propagate so malformed filters are not reported as zero hits.
         """
         try:
             return await self._make_request("GET", "works", params=self._with_mailto(params))
         except APIError as e:
-            status = e.details.get("http_status")
-            if status and 400 <= status < 500:
+            if e.details.get("http_status") == 404:
                 return {"results": [], "meta": {}}
             raise
