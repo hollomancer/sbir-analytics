@@ -97,7 +97,8 @@ explain how firms were selected and what the results cannot show.
 ## Research planning and communication
 
 - [Literature map and citation audit](literature-map/README.md) — research published
-  from 2019–2026 and missing coverage across question areas A–F.
+  from 2019–2026 and missing coverage across question areas A–F. The CSV is
+  refreshed weekly from OpenAlex (`make literature-map`); authored memos are not.
 - [Solicitation document and requirement evidence plan](solicitation_document_evidence_plan.md) —
   bounded acquisition, linkage, attachment parsing, and classifier gates for A1 and E5; Phase 1 is
   implemented, but this remains a plan rather than research evidence.
