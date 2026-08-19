@@ -10,6 +10,24 @@ version.
 
 ## [Unreleased]
 
+## [0.9.0] — 2026-08-19
+
+### Added
+
+- Importable M&A discovery toolkit at `sbir_etl.enrichers.ma_discovery`
+  (query generation, keyword verifier, mock search, press-wire merge, and
+  optional CLIs). Name cleaning goes through `sbir_etl.identity`. Search
+  backends and the LLM extractor are not in this release (#661).
+
+### Changed
+
+- `make ci-local` now reproduces pull-request CI (lint, guards, Dagster
+  validate, compose, Bandit, pinned `detect-secrets`, unit `-m "not slow"`,
+  hermetic e2e) instead of the post-merge coverage suite (#660).
+- Phase III PR canary no longer claims to be the ≥85% HIGH-precision
+  benchmark. A mixed-signal slice fails if retrospective weights are
+  swapped; the S3-corpus number stays a manual run (#660).
+
 ## [0.8.0] — 2026-08-18
 
 ### Added
@@ -266,7 +284,8 @@ across the root project and the three packages under `packages/`.
 `vMAJOR.MINOR.PATCH` form it requires. Per that policy published tags are never
 moved or reused, so they remain as historical markers.
 
-[Unreleased]: https://github.com/hollomancer/sbir-analytics/compare/v0.8.0...HEAD
+[Unreleased]: https://github.com/hollomancer/sbir-analytics/compare/v0.9.0...HEAD
+[0.9.0]: https://github.com/hollomancer/sbir-analytics/compare/v0.8.0...v0.9.0
 [0.8.0]: https://github.com/hollomancer/sbir-analytics/compare/v0.7.1...v0.8.0
 [0.7.1]: https://github.com/hollomancer/sbir-analytics/compare/v0.7.0...v0.7.1
 [0.7.0]: https://github.com/hollomancer/sbir-analytics/compare/v0.6.0...v0.7.0
