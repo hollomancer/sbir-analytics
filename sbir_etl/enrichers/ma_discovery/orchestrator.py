@@ -5,8 +5,8 @@ through a pluggable ``SearchTool``, and feeds snippets into
 ``verify_acquisition``. Confirmed hits are written as JSONL.
 
 The CLI constructs the search tool via ``build_search_tool``. Runtime
-default is ``MockSearchTool`` unless config/env selects a real backend
-and an API key is present.
+default is ``mock``. Selecting ``tavily`` or ``brave`` without a key
+fails closed.
 
 Usage::
 

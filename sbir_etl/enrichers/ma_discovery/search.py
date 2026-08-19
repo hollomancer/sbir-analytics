@@ -1,9 +1,9 @@
 """Pluggable search interface for M&A discovery.
 
 ``MockSearchTool`` is the Physical Optics / Mercury Systems fixture used
-by tests and the runtime default when no backend key is configured.
-Production clients (Tavily, optional Brave) implement the same
-``SearchTool`` shape and are constructed through ``build_search_tool``.
+by tests and when the backend is explicitly ``mock``. Production clients
+(Tavily, optional Brave) implement the same ``SearchTool`` shape and are
+constructed through ``build_search_tool``.
 """
 
 from __future__ import annotations
@@ -189,9 +189,9 @@ def build_search_tool(
 ) -> SearchTool:
     """Return a ``SearchTool`` for ``name`` (or the configured backend).
 
-    Missing keys fall back to ``MockSearchTool`` with a warning so tests and
-    local CLI runs do not require credentials. Unknown backend names raise
-    ``ConfigurationError``.
+    ``mock`` is the explicit no-credentials backend. Selecting ``tavily`` or
+    ``brave`` without a key raises ``ConfigurationError`` rather than
+    silently serving fixture hits. Unknown backend names also raise.
     """
     cfg = config
     backend_raw = name.strip() if isinstance(name, str) and name.strip() else ""
@@ -213,11 +213,10 @@ def build_search_tool(
 
     key = _resolve_api_key(api_key, cfg)
     if not key:
-        logger.warning(
-            "M&A search backend '{}' selected but no API key is set; using MockSearchTool",
-            backend,
+        raise ConfigurationError(
+            f"M&A search backend {backend!r} requires an API key",
+            config_key="ma_discovery.search_api_key",
         )
-        return MockSearchTool()
 
     timeout = cfg.timeout_seconds if cfg is not None else DEFAULT_TIMEOUT_SECONDS
     rate = cfg.rate_limit_per_minute if cfg is not None else DEFAULT_RATE_LIMIT_PER_MINUTE

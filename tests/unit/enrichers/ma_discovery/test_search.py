@@ -1,6 +1,6 @@
 """Tests for M&A SearchTool clients and the backend factory.
 
-No live network: HTTP is mocked. Missing keys fall back to the mock.
+No live network: HTTP is mocked. Live backends fail closed without a key.
 """
 
 from __future__ import annotations
@@ -64,14 +64,22 @@ async def test_mock_rejects_unrelated_query() -> None:
     assert await MockSearchTool().search("unrelated labs other holdings") == []
 
 
-def test_factory_missing_key_returns_mock(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_factory_missing_key_for_live_backend_fails_closed(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     monkeypatch.delenv("SBIR_ETL__MA_DISCOVERY__SEARCH_API_KEY", raising=False)
-    tool = build_search_tool(
-        "tavily",
-        api_key=None,
-        config=MADiscoveryConfig(search_backend="tavily", search_api_key=None),
-    )
-    assert isinstance(tool, MockSearchTool)
+    with pytest.raises(ConfigurationError, match="requires an API key"):
+        build_search_tool(
+            "tavily",
+            api_key=None,
+            config=MADiscoveryConfig(search_backend="tavily", search_api_key=None),
+        )
+    with pytest.raises(ConfigurationError, match="requires an API key"):
+        build_search_tool(
+            "brave",
+            api_key=None,
+            config=MADiscoveryConfig(search_backend="brave", search_api_key=None),
+        )
 
 
 def test_factory_known_backend_with_key_returns_client(mock_http_client: AsyncMock) -> None:
