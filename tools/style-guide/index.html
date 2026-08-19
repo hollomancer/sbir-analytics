@@ -1,0 +1,1687 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Evidence-Gated Visual Language</title>
+<style>
+  /* ============================================================
+     Tokens. Light is the base set; the dark blocks redefine token
+     VALUES only. No component is ever styled inside a media or
+     [data-theme] block.
+     ============================================================ */
+  :root {
+    --bg: #f5f7f8;
+    --surface: #ffffff;
+    --surface-raised: #ffffff;
+    --text: #16202a;
+    --muted: #5a6975;
+    --border: #d9e0e5;
+
+    --agency: #334155;
+    --nsf-award: #6d28d9;
+    --technology: #047857;
+    --entity: #a14c12;
+    --dod-award: #155e75;
+    --candidate: #b45309;
+    --edge: #788994;
+    --accent: #123f56;
+    --accent-text: #ffffff;
+    --focus: #6d28d9;
+    --critical: #047857;
+    --prime-soft: #d9f0f4;
+    --supplier-soft: #fae8d5;
+    --shadow: rgba(29, 43, 54, 0.09);
+
+    --rail: #eef1f3;
+    --hairline: #e3e8eb;
+
+    --sans: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0c1117;
+      --surface: #151c24;
+      --surface-raised: #1b2530;
+      --text: #edf3f7;
+      --muted: #9dabb6;
+      --border: #2b3945;
+
+      --agency: #cbd5e1;
+      --nsf-award: #c4b5fd;
+      --technology: #6ee7b7;
+      --entity: #f59e0b;
+      --dod-award: #38bdf8;
+      --candidate: #fbbf24;
+      --edge: #718493;
+      --accent: #d6efff;
+      --accent-text: #0a1c26;
+      --focus: #c4b5fd;
+      --critical: #6ee7b7;
+      --prime-soft: #123746;
+      --supplier-soft: #422a13;
+      --shadow: rgba(0, 0, 0, 0.25);
+
+      --rail: #10171e;
+      --hairline: #222e3a;
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --bg: #0c1117;
+    --surface: #151c24;
+    --surface-raised: #1b2530;
+    --text: #edf3f7;
+    --muted: #9dabb6;
+    --border: #2b3945;
+
+    --agency: #cbd5e1;
+    --nsf-award: #c4b5fd;
+    --technology: #6ee7b7;
+    --entity: #f59e0b;
+    --dod-award: #38bdf8;
+    --candidate: #fbbf24;
+    --edge: #718493;
+    --accent: #d6efff;
+    --accent-text: #0a1c26;
+    --focus: #c4b5fd;
+    --critical: #6ee7b7;
+    --prime-soft: #123746;
+    --supplier-soft: #422a13;
+    --shadow: rgba(0, 0, 0, 0.25);
+
+    --rail: #10171e;
+    --hairline: #222e3a;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ---------- shell ---------- */
+  .shell {
+    display: grid;
+    grid-template-columns: 236px minmax(0, 1fr);
+    align-items: start;
+  }
+
+  .rail {
+    position: sticky;
+    top: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 1.4rem;
+    height: 100vh;
+    padding: 1.5rem 1.1rem;
+    overflow-y: auto;
+    border-right: 1px solid var(--border);
+    background: var(--rail);
+  }
+
+  .rail-mark { display: grid; gap: 0.15rem; }
+
+  .rail-mark strong {
+    font-size: 0.92rem;
+    font-weight: 650;
+    letter-spacing: -0.015em;
+    line-height: 1.2;
+  }
+
+  .eyebrow {
+    margin: 0;
+    color: var(--muted);
+    font-family: var(--mono);
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.11em;
+    text-transform: uppercase;
+  }
+
+  .rail nav { display: grid; gap: 0.05rem; }
+
+  .rail nav a {
+    display: block;
+    padding: 0.32rem 0.45rem;
+    border-radius: 7px;
+    color: var(--muted);
+    font-size: 0.805rem;
+    text-decoration: none;
+  }
+
+  .rail nav a:hover { background: var(--surface); color: var(--text); }
+
+  .theme-switch { display: grid; gap: 0.35rem; margin-top: auto; }
+
+  .theme-switch div {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 2px;
+    padding: 2px;
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    background: var(--surface);
+  }
+
+  .theme-switch button {
+    padding: 0.3rem 0;
+    border: 0;
+    border-radius: 7px;
+    background: transparent;
+    color: var(--muted);
+    font-family: var(--mono);
+    font-size: 0.66rem;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    cursor: pointer;
+  }
+
+  .theme-switch button[aria-pressed="true"] { background: var(--accent); color: var(--accent-text); }
+
+  main { min-width: 0; }
+
+  /* ---------- sections ---------- */
+  section {
+    padding: 3rem clamp(1.2rem, 4vw, 3.4rem);
+    border-bottom: 1px solid var(--hairline);
+  }
+
+  .section-head { display: grid; gap: 0.5rem; max-width: 64ch; margin-bottom: 1.9rem; }
+
+  h2 {
+    margin: 0;
+    font-size: clamp(1.3rem, 2.4vw, 1.72rem);
+    font-weight: 650;
+    letter-spacing: -0.028em;
+    line-height: 1.18;
+    text-wrap: balance;
+  }
+
+  .section-head p { margin: 0; color: var(--muted); font-size: 0.93rem; }
+
+  h3 {
+    margin: 0 0 0.7rem;
+    color: var(--muted);
+    font-family: var(--mono);
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+  }
+
+  /* ---------- hero ---------- */
+  .hero { display: grid; gap: 1.5rem; padding-top: 3.2rem; }
+  .hero-copy { display: grid; gap: 0.75rem; max-width: 62ch; }
+
+  .hero h1 {
+    margin: 0;
+    font-size: clamp(1.9rem, 4.5vw, 3rem);
+    font-weight: 650;
+    letter-spacing: -0.04em;
+    line-height: 1.05;
+    text-wrap: balance;
+  }
+
+  .hero h1 em { font-style: normal; color: var(--muted); }
+
+  .lede { margin: 0; max-width: 60ch; color: var(--muted); font-size: 1.02rem; }
+
+  .scope-badges { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+
+  .scope-badges span {
+    padding: 0.32rem 0.62rem;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    color: var(--muted);
+    font-size: 0.75rem;
+  }
+
+  /* ---------- surfaces ---------- */
+  .plate {
+    padding: 1.1rem 1.2rem;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: var(--surface);
+  }
+
+  .grid-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(290px, 1fr)); gap: 1rem; }
+  .stack { display: grid; gap: 1.05rem; }
+  .note { margin: 0; color: var(--muted); font-size: 0.82rem; }
+  .inline-code, code { font-family: var(--mono); font-size: 0.78rem; }
+
+  /* ---------- enforcement flags ---------- */
+  .flag {
+    display: inline-block;
+    padding: 0.13rem 0.45rem;
+    border-radius: 999px;
+    font-family: var(--mono);
+    font-size: 0.61rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    white-space: nowrap;
+  }
+
+  .flag.enforced { background: var(--prime-soft); color: var(--technology); }
+  .flag.conventional { background: var(--prime-soft); color: var(--dod-award); }
+  .flag.contested { background: var(--supplier-soft); color: var(--candidate); }
+
+  /* Citability is a different taxonomy from convention-enforcement, so it gets
+     an outlined treatment rather than a filled pill. */
+  .flag.citable { border: 1px solid var(--technology); color: var(--technology); }
+  .flag.noncitable { border: 1px solid var(--muted); color: var(--muted); }
+
+  .flag-key { display: flex; flex-wrap: wrap; gap: 1rem; margin-top: 1rem; }
+  .flag-key div { display: grid; gap: 0.25rem; justify-items: start; max-width: 20rem; }
+
+  /* ---------- systems ---------- */
+  .systems { display: grid; grid-template-columns: repeat(auto-fit, minmax(215px, 1fr)); gap: 0.8rem; }
+
+  .system {
+    display: grid;
+    gap: 0.55rem;
+    justify-items: start;
+    min-width: 0;
+    padding: 0.95rem 1rem;
+    border: 1px solid var(--border);
+    border-radius: 11px;
+    background: var(--surface);
+  }
+
+  .system h4 { margin: 0; font-size: 0.87rem; font-weight: 650; }
+  .system p { margin: 0; color: var(--muted); font-size: 0.78rem; overflow-wrap: anywhere; }
+  .system .swatch-row { width: 100%; }
+  .swatch-row { display: flex; gap: 3px; }
+  .swatch-row i { flex: 1; height: 22px; border-radius: 4px; }
+
+  /* ---------- canvas ---------- */
+  .canvas-wrap {
+    position: relative;
+    overflow: hidden;
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    background:
+      radial-gradient(circle at 18% 50%, var(--prime-soft), transparent 32%),
+      radial-gradient(circle at 68% 50%, var(--supplier-soft), transparent 34%),
+      var(--surface);
+    box-shadow: 0 10px 30px var(--shadow);
+  }
+
+  canvas { display: block; width: 100%; height: 296px; }
+
+  .canvas-controls {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.75rem 1.1rem;
+    padding: 0.75rem 1rem;
+    border-top: 1px solid var(--border);
+    background: var(--surface-raised);
+  }
+
+  .ctl { display: inline-flex; align-items: center; gap: 0.45rem; color: var(--muted); font-size: 0.78rem; font-weight: 650; }
+  .ctl input[type="range"] { width: 128px; accent-color: var(--dod-award); }
+  .ctl input[type="checkbox"] { width: 1rem; height: 1rem; margin: 0; accent-color: var(--candidate); }
+
+  .readout { color: var(--text); font-family: var(--mono); font-size: 0.74rem; font-variant-numeric: tabular-nums; }
+
+  /* ---------- token table ---------- */
+  .tokens { display: grid; gap: 2px; }
+
+  .tok, .tok-head {
+    display: grid;
+    grid-template-columns: 2.1rem minmax(0, 1.3fr) repeat(2, minmax(0, 0.75fr)) minmax(0, 1.5fr);
+    gap: 0.7rem;
+  }
+
+  .tok {
+    align-items: center;
+    width: 100%;
+    padding: 0.48rem 0.6rem;
+    border: 0;
+    border-radius: 8px;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+  }
+
+  .tok:hover { background: var(--surface-raised); }
+
+  .tok-head {
+    padding: 0 0.6rem 0.45rem;
+    margin-bottom: 0.3rem;
+    border-bottom: 1px solid var(--border);
+    color: var(--muted);
+    font-family: var(--mono);
+    font-size: 0.63rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .chip { width: 2.1rem; height: 1.5rem; border: 1px solid var(--border); border-radius: 6px; }
+  .tok code { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .hex { color: var(--muted); font-family: var(--mono); font-size: 0.71rem; font-variant-numeric: tabular-nums; }
+  .tok .meaning { overflow: hidden; color: var(--muted); font-size: 0.785rem; text-overflow: ellipsis; white-space: nowrap; }
+
+  /* ---------- contrast ---------- */
+  .contrast-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    align-items: center;
+    gap: 0.7rem;
+    padding: 0.45rem 0;
+    border-top: 1px solid var(--border);
+    font-size: 0.81rem;
+  }
+
+  .ratio { font-family: var(--mono); font-size: 0.78rem; font-variant-numeric: tabular-nums; }
+
+  /* ---------- specimens ---------- */
+  .type-spec { display: grid; gap: 0.3rem; padding: 0.8rem 0; border-top: 1px solid var(--border); }
+  .type-spec .meta { margin: 0; color: var(--muted); font-family: var(--mono); font-size: 0.68rem; }
+
+  button.demo {
+    min-height: 40px;
+    padding: 0.55rem 0.85rem;
+    border: 1px solid var(--accent);
+    border-radius: 8px;
+    background: var(--accent);
+    color: var(--accent-text);
+    font: inherit;
+    cursor: pointer;
+  }
+
+  button.demo:hover { filter: brightness(1.08); }
+  button.demo.secondary { border-color: var(--border); background: var(--surface); color: var(--text); }
+
+  :where(a, button, input, select, [tabindex]):focus-visible {
+    outline: 3px solid var(--focus);
+    outline-offset: 2px;
+  }
+
+  .guardrail {
+    display: flex;
+    gap: 0.45rem;
+    padding: 0.75rem 0.9rem;
+    border-left: 3px solid var(--edge);
+    color: var(--muted);
+    font-size: 0.8rem;
+  }
+
+  .guardrail strong { flex: 0 0 auto; color: var(--text); }
+
+  .screening-block { padding: 0.75rem; border-left: 3px solid var(--entity); background: var(--supplier-soft); }
+  .screening-block p { margin: 0; font-size: 0.82rem; }
+
+  .detail-metrics { display: grid; grid-template-columns: 1fr 1fr; gap: 0.65rem; margin: 0; }
+  .detail-metrics div { padding-top: 0.55rem; border-top: 1px solid var(--border); }
+  .detail-metrics dt { color: var(--muted); font-size: 0.72rem; }
+  .detail-metrics dd { margin: 0.15rem 0 0; font-size: 1rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+
+  .organization-id { margin: 0; color: var(--muted); font-family: var(--mono); font-size: 0.72rem; overflow-wrap: anywhere; }
+
+  .tooltip-demo {
+    display: inline-block;
+    max-width: 260px;
+    padding: 0.45rem 0.55rem;
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    background: var(--surface-raised);
+    box-shadow: 0 8px 24px var(--shadow);
+    font-size: 0.78rem;
+  }
+
+  /* ---------- markdown specimens ---------- */
+  pre {
+    margin: 0;
+    padding: 0.8rem 0.9rem;
+    overflow-x: auto;
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    background: var(--surface-raised);
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 0.745rem;
+    line-height: 1.6;
+  }
+
+  pre b { color: var(--nsf-award); font-weight: 700; }
+  pre i { color: var(--muted); font-style: normal; }
+
+  /* ---------- tier ladder ---------- */
+  .ladder { display: grid; gap: 0.5rem; }
+
+  .rung {
+    display: grid;
+    grid-template-columns: minmax(8.5rem, auto) minmax(0, 1fr);
+    gap: 0.9rem;
+    width: 100%;
+    padding: 0.85rem 1rem;
+    border: 1px solid var(--border);
+    border-left-width: 4px;
+    border-radius: 10px;
+    background: var(--surface);
+    color: inherit;
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+  }
+
+  .rung:hover { border-color: var(--muted); }
+  .rung[aria-expanded="true"] { background: var(--surface-raised); }
+  .rung-name { font-family: var(--mono); font-size: 0.83rem; font-weight: 700; }
+  .rung-weight { color: var(--muted); font-family: var(--mono); font-size: 0.63rem; letter-spacing: 0.08em; text-transform: uppercase; }
+  .rung-body { display: grid; gap: 0.5rem; margin-top: 0.5rem; padding: 0 1rem 0.9rem; font-size: 0.84rem; }
+  .rung-body[hidden] { display: none; }
+  .rung-body ol { display: grid; gap: 0.2rem; margin: 0.2rem 0 0; padding-left: 1.1rem; }
+
+  /* ---------- tables ---------- */
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 0.83rem; }
+
+  th {
+    padding: 0.5rem 0.7rem 0.5rem 0;
+    border-bottom: 1px solid var(--border);
+    color: var(--muted);
+    font-family: var(--mono);
+    font-size: 0.63rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-align: left;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+
+  td { padding: 0.55rem 0.7rem 0.55rem 0; border-bottom: 1px solid var(--hairline); vertical-align: top; }
+  .retier { color: var(--candidate); font-family: var(--mono); font-size: 0.73rem; white-space: nowrap; }
+  .nowrap { white-space: nowrap; }
+
+  /* ---------- shapes ---------- */
+  .shapes { display: flex; flex-wrap: wrap; gap: 1.3rem; }
+  .shape-item { display: grid; justify-items: center; gap: 0.4rem; width: 5.2rem; text-align: center; }
+  .shape-item span { color: var(--muted); font-size: 0.72rem; line-height: 1.25; }
+  .glyph { width: 20px; height: 20px; }
+  .g-square { background: var(--agency); }
+  .g-round { border-radius: 3px; background: var(--nsf-award); }
+  .g-diamond { background: var(--technology); transform: rotate(45deg); }
+  .g-circle { border-radius: 50%; background: var(--entity); }
+  .g-round-dod { border-radius: 3px; background: var(--dod-award); }
+
+  .edge-samples { display: grid; gap: 0.7rem; }
+  .edge-row { display: grid; grid-template-columns: 6.5rem minmax(0, 1fr); align-items: center; gap: 0.8rem; font-size: 0.78rem; }
+  .edge-line { height: 0; border-top: 2px solid var(--edge); }
+  .edge-line.cand { border-top-color: var(--candidate); border-top-style: dashed; }
+
+  /* ---------- conflicts ---------- */
+  .conflict {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 0.9rem;
+    padding: 0.9rem 1rem;
+    border: 1px solid var(--border);
+    border-left: 4px solid var(--candidate);
+    border-radius: 10px;
+    background: var(--surface);
+  }
+
+  .conflict-swatches { display: grid; gap: 3px; }
+  .conflict-swatches i { width: 2.6rem; height: 1.3rem; border-radius: 4px; border: 1px solid var(--border); }
+  .conflict h4 { margin: 0 0 0.25rem; font-size: 0.87rem; font-weight: 650; }
+  .conflict p { margin: 0; color: var(--muted); font-size: 0.8rem; }
+
+  .copied {
+    position: fixed;
+    right: 1.2rem;
+    bottom: 1.2rem;
+    padding: 0.5rem 0.8rem;
+    border-radius: 8px;
+    background: var(--accent);
+    color: var(--accent-text);
+    font-family: var(--mono);
+    font-size: 0.74rem;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.18s ease;
+  }
+
+  .copied.show { opacity: 1; }
+
+  footer { padding: 2.2rem clamp(1.2rem, 4vw, 3.4rem) 3rem; color: var(--muted); font-size: 0.79rem; }
+  footer p { margin: 0 0 0.5rem; max-width: 70ch; }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { transition: none !important; animation: none !important; }
+  }
+
+  @media (max-width: 880px) {
+    .shell { grid-template-columns: 1fr; }
+    .rail { position: static; height: auto; border-right: 0; border-bottom: 1px solid var(--border); }
+    .rail nav { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); }
+    .theme-switch { max-width: 250px; margin-top: 0; }
+    .tok, .tok-head { grid-template-columns: 2.1rem minmax(0, 1fr) auto; }
+    .tok .hex ~ .hex, .tok-head span:nth-child(4) { display: none; }
+    .tok .meaning, .tok-head span:nth-child(5) { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<div class="shell">
+  <aside class="rail">
+    <div class="rail-mark">
+      <p class="eyebrow">sbir-analytics</p>
+      <strong>Evidence-Gated<br />Visual Language</strong>
+    </div>
+
+    <nav aria-label="Sections">
+      <a href="#systems">Four systems</a>
+      <a href="#lineage">Lineage strip</a>
+      <a href="#encoding">Encoding status</a>
+      <a href="#tokens">Interface tokens</a>
+      <a href="#figures">Figure palette</a>
+      <a href="#contrast">Contrast</a>
+      <a href="#type">Typography</a>
+      <a href="#components">Components</a>
+      <a href="#prose">Prose conventions</a>
+      <a href="#tiers">Tier ladder</a>
+      <a href="#conflicts">Known conflicts</a>
+      <a href="#flight">In flight</a>
+    </nav>
+
+    <div class="theme-switch">
+      <p class="eyebrow">Theme</p>
+      <div role="group" aria-label="Theme">
+        <button type="button" data-theme-set="light" aria-pressed="false">Light</button>
+        <button type="button" data-theme-set="system" aria-pressed="true">Auto</button>
+        <button type="button" data-theme-set="dark" aria-pressed="false">Dark</button>
+      </div>
+    </div>
+  </aside>
+
+  <main>
+    <section class="hero">
+      <div class="hero-copy">
+        <p class="eyebrow">Interactive style guide · prototype</p>
+        <h1>Form carries <em>how much you can trust it.</em></h1>
+        <p class="lede">
+          The distinguishing move in this repository is that visual form encodes epistemic standing,
+          not brand. A dashed edge is not a stylistic variant of a solid one — it means the
+          relationship is a name candidate rather than an identifier-verified observation. That idea
+          is real, it is good, and it is currently implemented four separate times in four
+          unrelated palettes.
+        </p>
+        <p class="lede">
+          This guide applies the repository's own discipline to its design system: every convention
+          below is labeled by how much weight it can carry.
+        </p>
+        <div class="scope-badges">
+          <span>Extracted from shipped code</span>
+          <span>Prototype · not yet normative</span>
+        </div>
+      </div>
+
+      <div class="flag-key">
+        <div>
+          <span class="flag enforced">ENFORCED</span>
+          <p class="note">A script fails CI when you break it.</p>
+        </div>
+        <div>
+          <span class="flag conventional">CONVENTIONAL</span>
+          <p class="note">Consistent across the codebase, but nothing checks it.</p>
+        </div>
+        <div>
+          <span class="flag contested">CONTESTED</span>
+          <p class="note">The codebase actively disagrees with itself. Do not copy either side.</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="systems">
+      <div class="section-head">
+        <h2>Four systems, no shared token</h2>
+        <p>
+          Charting, the network explorer, the HTML reports, and the procurement report each carry a
+          different design system, from a different era, with no value in common. Any style guide
+          that showed only one of them would misrepresent the codebase.
+        </p>
+      </div>
+
+      <div class="systems">
+        <div class="system">
+          <div class="swatch-row">
+            <i style="background:#2196F3"></i><i style="background:#FF9800"></i><i style="background:#4CAF50"></i><i style="background:#1565C0"></i><i style="background:#6A1B9A"></i>
+          </div>
+          <h4>Material Design</h4>
+          <p><code>scripts/data/</code> · 5 matplotlib scripts. Every color inlined at the call site.</p>
+          <span class="flag contested">CONTESTED</span>
+        </div>
+
+        <div class="system">
+          <div class="swatch-row">
+            <i style="background:#334155"></i><i style="background:#6d28d9"></i><i style="background:#047857"></i><i style="background:#a14c12"></i><i style="background:#155e75"></i>
+          </div>
+          <h4>Explorer tokens</h4>
+          <p><code>tools/sbir-dib-network-explorer/</code> · the only tokenized, dual-theme system here.</p>
+          <span class="flag conventional">CONVENTIONAL</span>
+        </div>
+
+        <div class="system">
+          <div class="swatch-row">
+            <i style="background:#2c3e50"></i><i style="background:#3498db"></i><i style="background:#27ae60"></i><i style="background:#f39c12"></i><i style="background:#e74c3c"></i>
+          </div>
+          <h4>Flat UI 1.0</h4>
+          <p><code>sbir_etl/utils/reporting/formats/</code> · legacy HTML reports, light-only.</p>
+          <span class="flag contested">CONTESTED</span>
+        </div>
+
+        <div class="system">
+          <div class="swatch-row">
+            <i style="background:#111827"></i><i style="background:#374151"></i><i style="background:#9ca3af"></i><i style="background:#d1d5db"></i><i style="background:#075985"></i>
+          </div>
+          <h4>Tailwind gray</h4>
+          <p><code>sbir_etl/reporting/procurement_transition/</code> · a fourth, newer neutral set.</p>
+          <span class="flag conventional">CONVENTIONAL</span>
+        </div>
+      </div>
+
+      <div class="plate" style="margin-top: 1rem;">
+        <h3>The missing keystone</h3>
+        <p class="note">
+          Two synced skills — <code>sbir-lit-refresh</code> and <code>sbir-spec-status-survey</code> —
+          instruct agents to call <code>apply_figure_style()</code> from a <code>figure-style</code>
+          skill. <strong style="color: var(--text);">That skill does not exist on disk.</strong> The
+          status-survey skill acknowledges this and tells the agent to apply the conventions by hand.
+          A shared figure style is already assumed by the tooling and simply was never written; the
+          most useful thing this prototype could turn into is its specification.
+        </p>
+      </div>
+    </section>
+
+    <section id="lineage">
+      <div class="section-head">
+        <h2>The lineage strip</h2>
+        <p>
+          Horizontal position is not layout — it is the funding lineage stage, fixed per record kind
+          in <code>kindDefinitions[].column</code>. Money flows left to right: agency, to NSF award,
+          through a technology area, to a legal entity, to DoD award.
+        </p>
+      </div>
+
+      <div class="canvas-wrap">
+        <canvas id="lineage-canvas" role="img"
+          aria-label="Funding lineage from agency through NSF award, CET area and legal entity to DoD award, drawn with the project's node shapes and log-scaled edge weight"></canvas>
+        <div class="canvas-controls">
+          <label class="ctl"><input type="checkbox" id="cand-toggle" />Candidate association</label>
+          <label class="ctl">Obligation<input type="range" id="amount" min="3" max="9" step="0.1" value="6.4" /></label>
+          <span class="readout" id="amount-out"></span>
+          <span class="readout" id="width-out"></span>
+        </div>
+      </div>
+
+      <p class="note" style="margin-top: 0.85rem;">
+        Edge thickness is logarithmic in dollars, clamped to a 0.8–5&nbsp;px band:
+        <code>max(0.8, min(5, 0.8 + log10(amount + 1) / 3))</code>. The clamp is the point — a $2B
+        prime contract must not visually erase a $150k Phase&nbsp;I award. Opacity separately encodes
+        persistence: <code>0.34 + min(0.36, fiscal_years × 0.07)</code>.
+      </p>
+    </section>
+
+    <section id="encoding">
+      <div class="section-head">
+        <h2>Encoding status</h2>
+        <p>
+          Three channels carry meaning independently: shape says what kind of record it is, hue says
+          which funding world it belongs to, stroke says whether the claim is verified. Because they
+          are independent, the graph survives greyscale and colour-vision deficiency.
+        </p>
+      </div>
+
+      <div class="grid-2">
+        <div class="plate">
+          <h3>Shape · record kind <span class="flag conventional">CONVENTIONAL</span></h3>
+          <div class="shapes">
+            <div class="shape-item"><i class="glyph g-square"></i><span>Agency</span></div>
+            <div class="shape-item"><i class="glyph g-round"></i><span>NSF award</span></div>
+            <div class="shape-item"><i class="glyph g-diamond"></i><span>CET area</span></div>
+            <div class="shape-item"><i class="glyph g-circle"></i><span>Legal entity</span></div>
+            <div class="shape-item"><i class="glyph g-round-dod"></i><span>DoD award</span></div>
+          </div>
+          <p class="note" style="margin-top: 0.9rem;">
+            Squares are institutions, rounded rectangles are money instruments, the diamond is a
+            classification, circles are legal persons. Tier is encoded by column position and shape,
+            never by a dedicated hue — Tier&nbsp;1 primes reuse the DoD teal and Tier&nbsp;2 awardees
+            reuse the entity amber.
+          </p>
+        </div>
+
+        <div class="plate">
+          <h3>Stroke · evidentiary standing <span class="flag conventional">CONVENTIONAL</span></h3>
+          <div class="edge-samples">
+            <div class="edge-row"><span>Verified</span><i class="edge-line"></i></div>
+            <div class="edge-row"><span>Candidate</span><i class="edge-line cand"></i></div>
+          </div>
+          <p class="note" style="margin-top: 0.9rem;">
+            Solid edges are direct or identifier-verified observations. Dashed edges — dash array
+            <code>[7, 5]</code>, always in the candidate hue — are name candidates, CET text
+            classifications, or temporal associations. Driven by <code>isCandidate()</code>, which
+            keys off <code>edge.candidate</code>, an <code>evidence_grade</code> containing
+            "candidate", or <code>match_confidence === "candidate_name"</code>.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <section id="tokens">
+      <div class="section-head">
+        <h2>Interface tokens</h2>
+        <p>
+          In the explorer stylesheet each token is declared once, as
+          <code>light-dark(light, dark)</code> under <code>color-scheme: light dark</code>. This page
+          restates the same tokens across three blocks — <code>:root</code> for the light values,
+          <code>@media (prefers-color-scheme: dark)</code> for the OS-dark values, and
+          <code>:root[data-theme="dark"]</code> so the rail's toggle can override the OS. Only values
+          are redefined in the dark blocks; no component is styled inside them. Both values are
+          listed whatever theme you are in, because the pair is the unit of design. Select a row to
+          copy its <code>var()</code> reference.
+        </p>
+      </div>
+
+      <div class="plate">
+        <div class="tok-head"><span></span><span>Token</span><span>Light</span><span>Dark</span><span>Means</span></div>
+        <div class="tokens" id="token-list"></div>
+      </div>
+
+      <p class="note" style="margin-top: 1rem;">
+        The canvas never hardcodes these. It resolves them at paint time by mounting a hidden probe
+        span, reading <code>getComputedStyle().color</code>, and discarding it — so the graph
+        re-themes with the OS and the stylesheet stays the single source of truth. It is the best
+        pattern in the repository and nothing else uses it.
+      </p>
+    </section>
+
+    <section id="figures">
+      <div class="section-head">
+        <h2>Figure palette</h2>
+        <p>
+          Material Design 500/700/800 swatches, inlined at every call site across five scripts. Two
+          of these hues mean two different things depending on which figure you are reading.
+        </p>
+      </div>
+
+      <div class="table-wrap plate">
+        <table>
+          <thead><tr><th></th><th>Hex</th><th>Meaning</th><th>Standing</th></tr></thead>
+          <tbody>
+            <tr><td><i class="chip" style="background:#2196F3;display:block"></i></td><td><code>#2196F3</code></td><td>Keyword cohort <em>and</em> generic first series</td><td><span class="flag contested">DOUBLE-BOOKED</span></td></tr>
+            <tr><td><i class="chip" style="background:#FF9800;display:block"></i></td><td><code>#FF9800</code></td><td>CET-proxy cohort <em>and</em> per-agency panel</td><td><span class="flag contested">DOUBLE-BOOKED</span></td></tr>
+            <tr><td><i class="chip" style="background:#4CAF50;display:block"></i></td><td><code>#4CAF50</code></td><td>CPC patent-classification cohort (B82Y/B82B)</td><td><span class="flag conventional">CONVENTIONAL</span></td></tr>
+            <tr><td><i class="chip" style="background:#1565C0;display:block"></i></td><td><code>#1565C0</code></td><td>Defense prime</td><td><span class="flag conventional">CONVENTIONAL</span></td></tr>
+            <tr><td><i class="chip" style="background:#6A1B9A;display:block"></i></td><td><code>#6A1B9A</code></td><td>Pharma / medtech prime</td><td><span class="flag conventional">CONVENTIONAL</span></td></tr>
+            <tr><td><i class="chip" style="background:#00897B;display:block"></i></td><td><code>#00897B</code></td><td>Agency panel, but only in one script</td><td><span class="flag contested">CONTESTED</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p class="note" style="margin-top: 0.9rem;">
+        The blue/purple pair is the clearest semantic opposition in the codebase: defense versus
+        commercial-health acquirer. Worth keeping, worth tokenizing.
+      </p>
+
+      <div class="grid-2" style="margin-top: 1.1rem;">
+        <div class="plate">
+          <h3>Reference marks</h3>
+          <div class="table-wrap">
+            <table>
+              <tbody>
+                <tr><td class="nowrap"><code>gray</code> dashed vline</td><td>Cohort average / benchmark</td></tr>
+                <tr><td class="nowrap"><code>red</code> dashed vline</td><td>Event boundary, t=0 — <strong>never</strong> "bad"</td></tr>
+                <tr><td class="nowrap"><code>white</code></td><td>Text on dark overlap; histogram edge</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p class="note" style="margin-top: 0.8rem;">
+            Red is reserved for a temporal zero-line and carries no valence, consistent with the
+            house rule that an absent signal is reported as not-yet-observed, never as failure.
+          </p>
+        </div>
+
+        <div class="plate">
+          <h3>Figure conventions <span class="flag conventional">CONVENTIONAL</span></h3>
+          <div class="table-wrap">
+            <table>
+              <tbody>
+                <tr><td class="nowrap">Backend</td><td><code>matplotlib.use("Agg")</code>, set at import</td></tr>
+                <tr><td class="nowrap">dpi</td><td><code>150</code> — universal, no exceptions</td></tr>
+                <tr><td class="nowrap">Two-panel</td><td><code>(13, 5)</code> · left composition, right per-agency rate</td></tr>
+                <tr><td class="nowrap">Save</td><td><code>fig.tight_layout()</code> → <code>fig.savefig()</code> → <code>plt.close(fig)</code></td></tr>
+                <tr><td class="nowrap">Bar alpha</td><td><code>0.85</code></td></tr>
+                <tr><td class="nowrap">Titles</td><td>Line 1 the claim, line 2 in parens the method or caveat</td></tr>
+                <tr><td class="nowrap">Grid / spines</td><td>Untouched. No seaborn, no despine, no font family set</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="contrast">
+      <div class="section-head">
+        <h2>Contrast, measured live</h2>
+        <p>
+          Each record hue against the surface it is drawn on, in the theme you are viewing now.
+          Switch themes in the rail and these recompute. Marks carry an adjacent text label, so 3:1
+          is the operative bar for the fills themselves.
+        </p>
+      </div>
+
+      <div class="plate" id="contrast-list"></div>
+    </section>
+
+    <section id="type">
+      <div class="section-head">
+        <h2>Typography</h2>
+        <p>
+          One family for prose, one for anything a reader might need to transcribe. Identifiers,
+          hashes, and token names are always monospace — a misread UEI is a data error, not a
+          cosmetic one.
+        </p>
+      </div>
+
+      <div class="stack">
+        <div class="plate">
+          <div class="type-spec">
+            <div style="font-size: clamp(1.45rem, 3vw, 2.15rem); letter-spacing: -0.035em; font-weight: 650;">NSF SBIR → DIB Explorer</div>
+            <p class="meta">h1 · clamp(1.45rem, 3vw, 2.15rem) · tracking −0.035em</p>
+          </div>
+          <div class="type-spec">
+            <div style="font-size: 1.25rem; line-height: 1.25; font-weight: 650;">Select an organization</div>
+            <p class="meta">h2 · 1.25rem / 1.25</p>
+          </div>
+          <div class="type-spec">
+            <div style="font-family: var(--mono); font-size: 0.72rem; font-weight: 700; letter-spacing: 0.09em; text-transform: uppercase; color: var(--muted);">Evidence and interpretation</div>
+            <p class="meta">h3 · uppercase · tracking 0.06em</p>
+          </div>
+          <div class="type-spec">
+            <p class="eyebrow">Evidence-gated funding lineage</p>
+            <p class="meta">.eyebrow · 0.74rem · weight 700 · tracking 0.11em</p>
+          </div>
+          <div class="type-spec">
+            <div style="font-weight: 650;">Verified relationships only</div>
+            <p class="meta">Interface label · weight 650 — the system's signature weight</p>
+          </div>
+          <div class="type-spec">
+            <p class="organization-id">UEI · JHTMDL8BNXV3 &nbsp;·&nbsp; CAGE · 5TRN9 &nbsp;·&nbsp; sha256:9f2c…a41b</p>
+            <p class="meta">.organization-id · monospace · overflow-wrap: anywhere</p>
+          </div>
+        </div>
+
+        <div class="plate">
+          <h3>On weight 650</h3>
+          <p class="note">
+            Not a rounding of 600 or 700. It appears seven times in the shipped stylesheet, always on
+            interface labels that must out-rank body text without reading as a heading. Inter carries
+            it as a variable axis; the fallback stack degrades to 700, which is acceptable — the
+            hierarchy survives, only the finesse is lost. No webfont is loaded, by design: the
+            explorer is dependency-free and must render offline from a local
+            <code>http.server</code>. Matplotlib figures set no font family at all and render in
+            DejaVu&nbsp;Sans, so charts and interface do not currently share a typeface.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <section id="components">
+      <div class="section-head">
+        <h2>Components</h2>
+        <p>
+          Two of these are specific to this project and carry most of its character. Both exist to
+          make an interpretive limit impossible to scroll past.
+        </p>
+      </div>
+
+      <div class="grid-2">
+        <div class="plate stack">
+          <div>
+            <h3>Guardrail</h3>
+            <div class="guardrail">
+              <strong>Interpretation boundary:</strong>
+              <span>Observed DoD funding is not proof that a specific NSF-funded capability was used.</span>
+            </div>
+          </div>
+          <p class="note">
+            Page level, below the graph, not dismissible. Muted text on a neutral
+            <code>--edge</code> rule: it is a boundary, not a warning. Styling it as an alert would
+            both overstate it and invite dismissal.
+          </p>
+        </div>
+
+        <div class="plate stack">
+          <div>
+            <h3>Screening block</h3>
+            <div class="screening-block">
+              <p>Match confidence is name-based only. No identifier link is present in the source tables for this pair.</p>
+            </div>
+          </div>
+          <p class="note">
+            Node level, tinted <code>--supplier-soft</code> with a solid <code>--entity</code> rule.
+            Rendered only when a specific record has an evidentiary caveat, so its presence is itself
+            information.
+          </p>
+        </div>
+
+        <div class="plate stack">
+          <div>
+            <h3>Controls</h3>
+            <div style="display: flex; flex-wrap: wrap; gap: 0.6rem; align-items: center;">
+              <button class="demo" type="button">Find</button>
+              <button class="demo secondary" type="button">Reset view</button>
+              <span class="scope-badges"><span>Evidence gated</span></span>
+            </div>
+          </div>
+          <p class="note">
+            40&nbsp;px minimum height on every interactive control, 8&nbsp;px radius, and a 3&nbsp;px
+            <code>--focus</code> outline at 2&nbsp;px offset. Tab through this page to see it. Pills
+            use a 999&nbsp;px radius and never carry an action.
+          </p>
+        </div>
+
+        <div class="plate stack">
+          <div>
+            <h3>Metric pair &amp; tooltip</h3>
+            <dl class="detail-metrics">
+              <div><dt>Signed obligations</dt><dd>$4.2M</dd></div>
+              <div><dt>Fiscal years</dt><dd>3</dd></div>
+            </dl>
+            <div style="margin-top: 0.9rem;"><span class="tooltip-demo">Legal entity · 2 verified relationships</span></div>
+          </div>
+          <p class="note">
+            Values are 1rem/700 with tabular figures so columns of dollars align. Money is formatted
+            through <code>Intl.NumberFormat</code> in compact notation, never hand-rounded in a
+            template.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <section id="prose">
+      <div class="section-head">
+        <h2>Prose conventions</h2>
+        <p>
+          Markdown is the largest rendered surface in this repository, and its conventions are the
+          only ones with a CI script behind them. Bold run-in labels replace fourth-level headings
+          throughout, because <code>MD036</code> is disabled precisely to allow it.
+        </p>
+      </div>
+
+      <div class="stack">
+        <div class="plate">
+          <h3>Tier declaration <span class="flag enforced">ENFORCED</span></h3>
+          <pre><b>**Target epistemic tier:**</b> `evidence`</pre>
+          <p class="note" style="margin-top: 0.7rem;">
+            Line 3 of a spec, exactly one per file, matched by a regex in
+            <code>scripts/ci/check_epistemic_tiers.py</code> against a frozen set of four values.
+            Missing, duplicate, and invalid declarations fail CI. This is the only piece of the
+            visual language a machine will stop you from breaking.
+          </p>
+        </div>
+
+        <div class="plate">
+          <h3>Status banner <span class="flag conventional">CONVENTIONAL</span></h3>
+          <pre><i>&gt;</i> <b>**Status (2026-08-14):**</b> Phase 0 design only. No implementation is
+<i>&gt;</i> authorized. The criteria are <b>**not frozen**</b>. Every artifact this spec
+<i>&gt;</i> produces is <b>**non-citable**</b> (`citable: false`) until the gates pass.</pre>
+          <p class="note" style="margin-top: 0.7rem;">
+            Blockquote with a bold lead-in. No GitHub <code>[!NOTE]</code> admonitions appear
+            anywhere in the repository. A lighter variant puts <code>**Status:**</code> as a plain
+            bold line directly under the H1; both forms are live, which is the one wrinkle here.
+            Nested bold is the intensifier: <code>**Status:** **FROZEN as Revision 1**</code>.
+          </p>
+        </div>
+
+        <div class="plate">
+          <h3>Anti-overclaim pairs <span class="flag conventional">CONVENTIONAL</span></h3>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Avoid</th><th>Use</th></tr></thead>
+              <tbody>
+                <tr><td>"transition rate"</td><td>"observable evidence from channel X"</td></tr>
+                <tr><td>"did not commercialize"</td><td>"remain indeterminate after recovery checks applied"</td></tr>
+                <tr><td>"patents prove commercialization"</td><td>"commercialization-adjacent evidence"</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p class="note" style="margin-top: 0.8rem;">
+            Normative in <code>publication-format.md</code> and enforced downstream in generated
+            reports, where an absent channel renders as <strong style="color: var(--text);">Not
+            computed — not zero</strong>. This is the prose equivalent of the dashed edge: the
+            absence of evidence gets its own visible form rather than defaulting to a zero.
+          </p>
+        </div>
+
+        <div class="grid-2">
+          <div class="plate">
+            <h3>Vocabularies</h3>
+            <p class="note" style="margin-bottom: 0.5rem;">Study status — five values, lowercase, always backticked:</p>
+            <p><code>exploratory</code> · <code>reproducible</code> · <code>validated</code> · <code>citable</code> · <code>retired</code></p>
+            <p class="note" style="margin: 0.8rem 0 0.5rem;">Spec lifecycle — five categories in the registry:</p>
+            <p class="note">Active · Maintenance · Gated backlog · Deferred · Archive candidate</p>
+          </div>
+
+          <div class="plate">
+            <h3>Smaller marks</h3>
+            <div class="table-wrap">
+              <table>
+                <tbody>
+                  <tr><td class="nowrap"><code>[L#]</code></td><td>Literature citation, slots centrally allocated — never invent one</td></tr>
+                  <tr><td class="nowrap"><code>·</code></td><td>Metadata separator: <em>Deps: … · Refs: … · Spec: …</em></td></tr>
+                  <tr><td class="nowrap"><code>—</code></td><td>House separator in titles; <code>–</code> for ranges</td></tr>
+                  <tr><td class="nowrap">✅ ⚠️ ❌</td><td>Machine output only. In prose, archive-era</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <div class="plate">
+          <h3>Emoji policy <span class="flag conventional">CONVENTIONAL</span></h3>
+          <p class="note">
+            Unwritten but perfectly observed: all 168 emoji occurrences across 17 markdown files sit
+            in archive directories or pre-2026 docs. Live steering, spec, and research docs have
+            zero. The only sanctioned emoji are emitted by code as a three-value quality scale —
+            ✅ at ≥0.95, ⚠️ at ≥0.85, ❌ below. They survive in archives because
+            <code>.markdownlint.yaml</code> excludes those paths from linting, not because the
+            convention lapsed.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <section id="tiers">
+      <div class="section-head">
+        <h2>The tier ladder</h2>
+        <p>
+          The same trust grammar applied to artifacts rather than marks. A tier fixes what an
+          artifact costs to maintain and how much weight it may carry. Select a tier for its contract.
+        </p>
+      </div>
+
+      <div class="ladder" id="ladder"></div>
+
+      <p class="note" style="margin-top: 1.1rem;">
+        Two rules keep the ladder honest. Nothing is promoted by becoming useful, gaining importers,
+        or having its numbers quoted — promotion is explicit work against the destination contract.
+        And <code>evidence</code> admits no partial credit: all four requirements, or the artifact is
+        <code>pipelines</code>.
+      </p>
+    </section>
+
+    <section id="conflicts">
+      <div class="section-head">
+        <h2>Known conflicts</h2>
+        <p>
+          Places where the codebase contradicts itself. Each is a decision waiting to be made, not a
+          bug to be quietly patched — picking a winner changes published figures.
+        </p>
+      </div>
+
+      <div class="stack">
+        <div class="conflict">
+          <div class="conflict-swatches"><i style="background:#047857"></i><i style="background:#047857"></i></div>
+          <div>
+            <h4><code>--technology</code> and <code>--critical</code> are the same value</h4>
+            <p>
+              Both resolve to <code>#047857</code> light and <code>#6ee7b7</code> dark. A CET-area
+              diamond and a critical-supply-chain review ring are indistinguishable by hue; only
+              shape and stroke separate them. Defensible, since the channels are independent — but
+              it should be a stated decision rather than a coincidence.
+            </p>
+          </div>
+        </div>
+
+        <div class="conflict">
+          <div class="conflict-swatches"><i style="background:#FF9800"></i><i style="background:#00897B"></i></div>
+          <div>
+            <h4>The per-agency panel has two colors</h4>
+            <p>
+              Orange <code>#FF9800</code> in the M&amp;A-signal and Form-D-temporal figures, teal
+              <code>#00897B</code> in prime-acquisitions. Same panel role, same right-hand position,
+              different hue. A reader comparing the three figures side by side will assume the
+              difference means something.
+            </p>
+          </div>
+        </div>
+
+        <div class="conflict">
+          <div class="conflict-swatches"><i style="background:#2196F3"></i><i style="background:#FF9800"></i></div>
+          <div>
+            <h4>Two hues are double-booked</h4>
+            <p>
+              <code>#2196F3</code> and <code>#FF9800</code> mean "keyword cohort" and "CET-proxy
+              cohort" in the cohort builder, but simply "left panel" and "right panel" in three other
+              figures. A reader who learns the cohort meaning will misread the rest.
+            </p>
+          </div>
+        </div>
+
+        <div class="conflict">
+          <div class="conflict-swatches"><i style="background:#e74c3c"></i><i style="background:#27ae60"></i></div>
+          <div>
+            <h4>Red and green mean opposite things in adjacent files</h4>
+            <p>
+              <code>html_templates.py</code> renders a <em>positive</em> delta in red
+              <code>#e74c3c</code> and a negative one in green <code>#27ae60</code>;
+              <code>html_processor.py</code> uses green for <code>.status-good</code>. Meanwhile the
+              spec-status-survey skill explicitly instructs new figures to
+              <em>avoid red/green opposition</em> entirely. Three positions, one repository.
+            </p>
+          </div>
+        </div>
+
+        <div class="conflict">
+          <div class="conflict-swatches"><i style="background:#1565C0"></i><i style="background:#155e75"></i></div>
+          <div>
+            <h4>Two unrelated blues for "defense"</h4>
+            <p>
+              Material <code>#1565C0</code> in matplotlib, teal-blue <code>#155e75</code> as
+              <code>--dod-award</code> in the explorer. Same concept, no shared token. The four
+              greens are worse: <code>#4CAF50</code> patent cohort, <code>#047857</code> CET area,
+              <code>#2d6a2d</code> high confidence in mermaid, <code>#27ae60</code> status-good.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div class="plate" style="margin-top: 1.1rem;">
+        <h3>The one encoded confidence palette worth keeping</h3>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th></th><th>Hex</th><th>Meaning</th></tr></thead>
+            <tbody>
+              <tr><td><i class="chip" style="background:#2d6a2d;display:block"></i></td><td><code>#2d6a2d</code></td><td>Confidence 1.0 — authoritative, exclusive, confirmed</td></tr>
+              <tr><td><i class="chip" style="background:#8b6914;display:block"></i></td><td><code>#8b6914</code></td><td>Heuristic — confidence 0.8 or varies</td></tr>
+              <tr><td><i class="chip" style="background:#555555;display:block"></i></td><td><code>#555</code></td><td>Null result — empty path</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="note" style="margin-top: 0.8rem;">
+          From the single styled mermaid diagram in
+          <code>docs/sbir-identification-methodology.md</code>, all with <code>color:#fff</code>.
+          Certain / heuristic / absent is the same distinction the explorer draws as solid / dashed —
+          the two systems already agree conceptually and differ only in execution. That agreement is
+          the natural seam along which to unify them.
+        </p>
+      </div>
+    </section>
+
+    <section id="flight">
+      <div class="section-head">
+        <h2>In flight</h2>
+        <p>
+          No open pull request touches a stylesheet. Every one of them changes the labeling language —
+          which, in a system where the label is the design, is the same thing. Recorded as of this
+          prototype.
+        </p>
+      </div>
+
+      <div class="table-wrap plate">
+        <table>
+          <thead><tr><th>PR</th><th>Change</th><th>Effect on the language</th></tr></thead>
+          <tbody>
+            <tr><td><code>#635</code></td><td>Make evidence tier mean its contract, not a label</td><td>Adds a CI paperwork gate for <code>evidence</code> and retiers eight specs downward. The badge stops being self-assigned.</td></tr>
+            <tr><td><code>#637</code></td><td>Align glossary and requirements template with owners</td><td>Makes <code>**Target epistemic tier:**</code> a required template field.</td></tr>
+            <tr><td><code>#638</code></td><td>Demote soft checklists that posed as CI standards</td><td>Removes the visual authority of checklists nothing enforced.</td></tr>
+            <tr><td><code>#639</code></td><td>Scrub per-spec glossaries of false confidence standards</td><td>Retires confidence vocabulary implying a standard no gate applied.</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3 style="margin-top: 1.6rem;">The 2026-08-15 retiering</h3>
+      <div class="table-wrap plate">
+        <table>
+          <thead><tr><th>Spec</th><th>Movement</th><th>Stated reason</th></tr></thead>
+          <tbody>
+            <tr><td><code>dark-majority-resolution</code></td><td class="retier">evidence → pipelines</td><td>No four-item evidence contract yet</td></tr>
+            <tr><td><code>phase-3-solicitation-alerts</code></td><td class="retier">evidence → pipelines</td><td>Retrospective work done; S2/S3 backlog</td></tr>
+            <tr><td><code>phase3-match-benchmark</code></td><td class="retier">evidence → pipelines</td><td>Reruns blocked on required inputs</td></tr>
+            <tr><td><code>phase3-notice-corpus-fusion</code></td><td class="retier">evidence → pipelines</td><td>Second label channel explicitly missing</td></tr>
+            <tr><td><code>procurement-transition-p1-remediation</code></td><td class="retier">evidence → pipelines</td><td>Cold-start bounds and provenance remain</td></tr>
+            <tr><td><code>follow-on-multiplier-validation</code></td><td class="retier">evidence → exploratory</td><td>Design-only, no evidence contract</td></tr>
+            <tr><td><code>phase3-candidate-enrichment</code></td><td class="retier">evidence → exploratory</td><td>Hand-weighted lift; learned weights pending</td></tr>
+            <tr><td><code>transition-coverage-expansion</code></td><td class="retier">evidence → exploratory</td><td>Attribution and wire-in decision remain</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p class="note" style="margin-top: 1rem;">
+        Eight demotions, zero promotions. Worth stating plainly in a style guide: the badge got
+        stricter and most artifacts wearing it did not qualify. Any surface that renders a tier —
+        including the <code>detail-tier</code> eyebrow in the explorer — is showing a value that
+        moved this month.
+      </p>
+    </section>
+
+    <footer>
+      <p>
+        Prototype. Extracted from <code>tools/sbir-dib-network-explorer/</code>,
+        <code>scripts/data/</code>, <code>sbir_etl/utils/reporting/</code>,
+        <code>docs/steering/epistemic-tiers.md</code>, and <code>specs/status.md</code>.
+      </p>
+      <p>
+        Not a source of truth. Every value here is transcribed, and transcription is exactly the
+        failure mode this repository writes about elsewhere — a number that left its source and
+        stopped being checkable. If this is worth keeping, the next step is to generate the token
+        table from the stylesheet and the conflict list from a linter, so the page fails when it
+        drifts. Until then it carries no more weight than any other exploratory artifact.
+      </p>
+    </footer>
+  </main>
+</div>
+
+<div class="copied" id="copied" role="status" aria-live="polite"></div>
+
+<script>
+  (function () {
+    "use strict";
+
+    var TOKENS = [
+      { name: "--bg", light: "#f5f7f8", dark: "#0c1117", means: "Page ground" },
+      { name: "--surface", light: "#ffffff", dark: "#151c24", means: "Cards, inputs, graph field" },
+      { name: "--surface-raised", light: "#ffffff", dark: "#1b2530", means: "Detail panel, tooltip" },
+      { name: "--text", light: "#16202a", dark: "#edf3f7", means: "Primary text, node labels" },
+      { name: "--muted", light: "#5a6975", dark: "#9dabb6", means: "Labels, captions, guardrail" },
+      { name: "--border", light: "#d9e0e5", dark: "#2b3945", means: "Hairlines, control edges" },
+      { name: "--agency", light: "#334155", dark: "#cbd5e1", means: "Agency · square" },
+      { name: "--nsf-award", light: "#6d28d9", dark: "#c4b5fd", means: "NSF award · rounded rect" },
+      { name: "--technology", light: "#047857", dark: "#6ee7b7", means: "CET area · diamond" },
+      { name: "--entity", light: "#a14c12", dark: "#f59e0b", means: "Legal entity · circle" },
+      { name: "--dod-award", light: "#155e75", dark: "#38bdf8", means: "DoD award · rounded rect" },
+      { name: "--candidate", light: "#b45309", dark: "#fbbf24", means: "Unverified association" },
+      { name: "--edge", light: "#788994", dark: "#718493", means: "Verified relationship" },
+      { name: "--critical", light: "#047857", dark: "#6ee7b7", means: "CET review ring — collides with --technology" },
+      { name: "--focus", light: "#6d28d9", dark: "#c4b5fd", means: "Focus outline, selection" },
+      { name: "--accent", light: "#123f56", dark: "#d6efff", means: "Primary action" },
+      { name: "--prime-soft", light: "#d9f0f4", dark: "#123746", means: "Prime field wash" },
+      { name: "--supplier-soft", light: "#fae8d5", dark: "#422a13", means: "Supplier field wash" }
+    ];
+
+    var RECORD_TOKENS = ["--agency", "--nsf-award", "--technology", "--entity", "--dod-award", "--candidate", "--muted"];
+
+    var TIERS = [
+      {
+        name: "exploratory", weight: "Non-citable", token: "--muted", citable: false,
+        contract: "Labeled non-citable. That is the whole contract.",
+        detail: "Permits no tests, no interface stability, no cleanup, going stale. Most of scripts/ belongs here and there is no shame in it — the failure is not writing it, but leaving it indistinguishable from work that earned a stronger claim.",
+        extra: "Splits into workbench (full rot tolerance) and operated — exploratory code reachable from a Dagster job, which keeps non-citability, loses rot tolerance, and must emit citable: false on anything leaving the repository."
+      },
+      {
+        name: "pipelines", weight: "Reproducible", token: "--dod-award", citable: false,
+        contract: "Deterministic. Reproducible from a declared data cut.",
+        detail: "Must not perform inference, estimation, or scoring a reader could mistake for a finding. Reviewed as infrastructure: correctness means faithfulness to the source, not plausibility of the result.",
+        extra: "The moment a stage starts deciding something contestable, it is doing evidence- or exploratory-tier work and needs the matching contract."
+      },
+      {
+        name: "primitives", weight: "Load-bearing", token: "--nsf-award", citable: false,
+        contract: "One implementation per concept. Comprehensive tests. Versioned behavior.",
+        detail: "Depends on nothing in the repository; depended on by everything. A change in output is a new named version, never an edit in place.",
+        extra: "The one-implementation rule is about contract, not uniformity. Named, versioned variants are fine — a second, unnamed implementation elsewhere in the tree is the defect."
+      },
+      {
+        name: "evidence", weight: "Citable", token: "--technology", citable: true,
+        contract: "All four requirements. There is no partial admission.",
+        four: [
+          "Frozen spec — method fixed at a content hash, before the run",
+          "SHA enforcement — inputs pinned by hash; manifest of hashes, sizes, row counts, output hash",
+          "Blocking asset checks — gates that fail the materialization rather than warn",
+          "Declared estimand — what quantity is estimated, and what would make it wrong"
+        ],
+        detail: "Entering this tier is meant to be expensive and visibly so. The correct default answer to “should this be evidence-tier?” is no.",
+        extra: "Reference implementation: the Phase III census. The census itself is currently reproducible, not citable — its study manifest holds results non-citable until audit tables and post-write checks pass."
+      }
+    ];
+
+    /* ---------------- theme ---------------- */
+    var root = document.documentElement;
+    var buttons = Array.prototype.slice.call(document.querySelectorAll("[data-theme-set]"));
+
+    function applyTheme(mode) {
+      if (mode === "system") root.removeAttribute("data-theme");
+      else root.setAttribute("data-theme", mode);
+      buttons.forEach(function (b) { b.setAttribute("aria-pressed", String(b.dataset.themeSet === mode)); });
+      refresh();
+    }
+
+    buttons.forEach(function (b) {
+      b.addEventListener("click", function () { applyTheme(b.dataset.themeSet); });
+    });
+
+    function isDark() {
+      var attr = root.getAttribute("data-theme");
+      if (attr === "dark") return true;
+      if (attr === "light") return false;
+      return window.matchMedia("(prefers-color-scheme: dark)").matches;
+    }
+
+    window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", refresh);
+
+    /* ---------------- copy ---------------- */
+    var toast = document.getElementById("copied");
+    var toastTimer = null;
+
+    function flash(msg) {
+      toast.textContent = msg;
+      toast.classList.add("show");
+      window.clearTimeout(toastTimer);
+      toastTimer = window.setTimeout(function () { toast.classList.remove("show"); }, 1400);
+    }
+
+    function copy(text) {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(
+          function () { flash("Copied " + text); },
+          function () { flash(text); }
+        );
+      } else {
+        flash(text);
+      }
+    }
+
+    /* ---------------- tokens ---------------- */
+    var list = document.getElementById("token-list");
+
+    TOKENS.forEach(function (t) {
+      var row = document.createElement("button");
+      row.type = "button";
+      row.className = "tok";
+      row.title = "Copy var(" + t.name + ")";
+
+      var chip = document.createElement("i");
+      chip.className = "chip";
+      chip.dataset.token = t.name;
+
+      var code = document.createElement("code");
+      code.textContent = t.name;
+
+      var l = document.createElement("span");
+      l.className = "hex";
+      l.textContent = t.light;
+
+      var d = document.createElement("span");
+      d.className = "hex";
+      d.textContent = t.dark;
+
+      var m = document.createElement("span");
+      m.className = "meaning";
+      m.textContent = t.means;
+
+      row.append(chip, code, l, d, m);
+      row.addEventListener("click", function () { copy("var(" + t.name + ")"); });
+      list.appendChild(row);
+    });
+
+    /* ---------------- contrast ---------------- */
+    function hexToRgb(hex) {
+      var h = hex.replace("#", "");
+      return [parseInt(h.slice(0, 2), 16), parseInt(h.slice(2, 4), 16), parseInt(h.slice(4, 6), 16)];
+    }
+
+    function luminance(rgb) {
+      var a = rgb.map(function (v) {
+        var s = v / 255;
+        return s <= 0.03928 ? s / 12.92 : Math.pow((s + 0.055) / 1.055, 2.4);
+      });
+      return 0.2126 * a[0] + 0.7152 * a[1] + 0.0722 * a[2];
+    }
+
+    function ratio(a, b) {
+      var la = luminance(hexToRgb(a));
+      var lb = luminance(hexToRgb(b));
+      return (Math.max(la, lb) + 0.05) / (Math.min(la, lb) + 0.05);
+    }
+
+    var contrastBox = document.getElementById("contrast-list");
+
+    function renderContrast() {
+      var dark = isDark();
+      var surface = dark ? "#151c24" : "#ffffff";
+      contrastBox.textContent = "";
+
+      RECORD_TOKENS.forEach(function (name) {
+        var t = TOKENS.find(function (x) { return x.name === name; });
+        if (!t) return;
+        var value = dark ? t.dark : t.light;
+        var r = ratio(value, surface);
+
+        var row = document.createElement("div");
+        row.className = "contrast-row";
+
+        var label = document.createElement("span");
+        var sw = document.createElement("i");
+        sw.style.cssText = "display:inline-block;width:1rem;height:1rem;border-radius:4px;vertical-align:-2px;margin-right:.5rem;background:" + value;
+        var nm = document.createElement("code");
+        nm.textContent = t.name;
+        label.append(sw, nm);
+
+        var num = document.createElement("span");
+        num.className = "ratio";
+        num.textContent = r.toFixed(2) + ":1";
+
+        var flag = document.createElement("span");
+        var ok = r >= 3;
+        flag.className = ok ? "flag enforced" : "flag contested";
+        flag.textContent = ok ? "PASSES 3:1" : "BELOW 3:1";
+
+        row.append(label, num, flag);
+        contrastBox.appendChild(row);
+      });
+
+      var note = document.createElement("p");
+      note.className = "note";
+      note.style.marginTop = "0.9rem";
+      note.textContent = dark
+        ? "Measured against --surface #151c24. Dark-theme hues are deliberately lifted to pastels; the saturated light-theme values would sit below 3:1 on this ground."
+        : "Measured against --surface #ffffff. Light-theme hues are deepened for the same reason in reverse.";
+      contrastBox.appendChild(note);
+    }
+
+    /* ---------------- tier ladder ---------------- */
+    var ladder = document.getElementById("ladder");
+
+    TIERS.forEach(function (tier) {
+      var wrap = document.createElement("div");
+
+      var btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "rung";
+      btn.style.borderLeftColor = "var(" + tier.token + ")";
+      btn.setAttribute("aria-expanded", "false");
+
+      var left = document.createElement("span");
+      left.style.cssText = "display:grid;gap:.15rem";
+      var nm = document.createElement("span");
+      nm.className = "rung-name";
+      nm.textContent = tier.name;
+      var wt = document.createElement("span");
+      wt.className = "rung-weight";
+      wt.textContent = tier.weight;
+      left.append(nm, wt);
+
+      var right = document.createElement("span");
+      right.style.cssText = "display:grid;gap:.45rem;justify-items:start";
+      var con = document.createElement("span");
+      con.style.fontSize = "0.86rem";
+      con.textContent = tier.contract;
+      var flag = document.createElement("span");
+      flag.className = tier.citable ? "flag citable" : "flag noncitable";
+      flag.textContent = tier.citable ? "MAY BE CITED" : "NON-CITABLE";
+      right.append(con, flag);
+
+      var body = document.createElement("div");
+      body.className = "rung-body";
+      body.hidden = true;
+
+      if (tier.four) {
+        var dt = document.createElement("p");
+        dt.className = "eyebrow";
+        dt.textContent = "All four required";
+        var ol = document.createElement("ol");
+        tier.four.forEach(function (f) {
+          var li = document.createElement("li");
+          li.textContent = f;
+          ol.appendChild(li);
+        });
+        body.append(dt, ol);
+      }
+
+      [tier.detail, tier.extra].forEach(function (p) {
+        if (!p) return;
+        var el = document.createElement("p");
+        el.className = "note";
+        el.textContent = p;
+        body.appendChild(el);
+      });
+
+      btn.append(left, right);
+      btn.addEventListener("click", function () {
+        var open = btn.getAttribute("aria-expanded") === "true";
+        btn.setAttribute("aria-expanded", String(!open));
+        body.hidden = open;
+      });
+
+      wrap.append(btn, body);
+      ladder.appendChild(wrap);
+    });
+
+    /* ---------------- lineage canvas ---------------- */
+    var canvas = document.getElementById("lineage-canvas");
+    var ctx = canvas.getContext("2d");
+    var candToggle = document.getElementById("cand-toggle");
+    var amountInput = document.getElementById("amount");
+    var amountOut = document.getElementById("amount-out");
+    var widthOut = document.getElementById("width-out");
+
+    // Column positions and shapes are the shipped kindDefinitions.
+    var NODES = [
+      { label: "NSF", column: 0.07, shape: "square", token: "--agency" },
+      { label: "Award 2149…", column: 0.25, shape: "roundRect", token: "--nsf-award" },
+      { label: "Adv. materials", column: 0.43, shape: "diamond", token: "--technology" },
+      { label: "Meridian Labs", column: 0.61, shape: "circle", token: "--entity" },
+      { label: "N6833523C0142", column: 0.86, shape: "roundRect", token: "--dod-award" }
+    ];
+
+    function cssVar(name) {
+      return getComputedStyle(root).getPropertyValue(name).trim();
+    }
+
+    function edgeWidth(amount) {
+      return Math.max(0.8, Math.min(5, 0.8 + Math.log10(amount + 1) / 3));
+    }
+
+    function nodePath(shape, x, y, r) {
+      ctx.beginPath();
+      if (shape === "square") {
+        ctx.rect(x - r, y - r, r * 2, r * 2);
+      } else if (shape === "roundRect") {
+        ctx.roundRect(x - r * 1.2, y - r, r * 2.4, r * 2, 3);
+      } else if (shape === "diamond") {
+        ctx.moveTo(x, y - r * 1.25);
+        ctx.lineTo(x + r * 1.25, y);
+        ctx.lineTo(x, y + r * 1.25);
+        ctx.lineTo(x - r * 1.25, y);
+        ctx.closePath();
+      } else {
+        ctx.arc(x, y, r, 0, Math.PI * 2);
+      }
+    }
+
+    function drawLineage() {
+      var dpr = window.devicePixelRatio || 1;
+      var w = canvas.clientWidth;
+      var h = canvas.clientHeight;
+      if (!w || !h) return;
+      canvas.width = w * dpr;
+      canvas.height = h * dpr;
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.clearRect(0, 0, w, h);
+
+      var amount = Math.pow(10, parseFloat(amountInput.value));
+      var lw = edgeWidth(amount);
+      var candidate = candToggle.checked;
+      var y = h / 2 - 6;
+      var r = 11;
+      var pad = 40;
+
+      var pts = NODES.map(function (n) {
+        return { x: pad + n.column * (w - pad * 2), node: n };
+      });
+
+      for (var i = 0; i < pts.length - 1; i++) {
+        var last = i === pts.length - 2;
+        ctx.beginPath();
+        ctx.moveTo(pts[i].x, y);
+        ctx.lineTo(pts[i + 1].x, y);
+        ctx.strokeStyle = last && candidate ? cssVar("--candidate") : cssVar("--edge");
+        ctx.lineWidth = last ? lw : 1.4;
+        ctx.setLineDash(last && candidate ? [7, 5] : []);
+        ctx.stroke();
+      }
+      ctx.setLineDash([]);
+
+      pts.forEach(function (p) {
+        nodePath(p.node.shape, p.x, y, r);
+        ctx.fillStyle = cssVar(p.node.token);
+        ctx.fill();
+
+        ctx.fillStyle = cssVar("--text");
+        ctx.font = "11px " + cssVar("--sans");
+        ctx.textAlign = "center";
+        ctx.textBaseline = "top";
+        ctx.fillText(p.node.label, p.x, y + r + 10);
+      });
+
+      var midX = (pts[pts.length - 2].x + pts[pts.length - 1].x) / 2;
+      ctx.fillStyle = cssVar("--muted");
+      ctx.font = "10px " + cssVar("--mono");
+      ctx.textAlign = "center";
+      ctx.textBaseline = "bottom";
+      ctx.fillText(candidate ? "candidate association" : "verified observation", midX, y - 16);
+
+      amountOut.textContent = "$" + new Intl.NumberFormat("en-US", {
+        notation: "compact", maximumFractionDigits: 1
+      }).format(amount);
+      widthOut.textContent = "lineWidth " + lw.toFixed(2) + "px";
+    }
+
+    candToggle.addEventListener("change", drawLineage);
+    amountInput.addEventListener("input", drawLineage);
+    window.addEventListener("resize", drawLineage);
+
+    /* ---------------- refresh ---------------- */
+    function paintChips() {
+      Array.prototype.slice.call(document.querySelectorAll(".chip[data-token]")).forEach(function (el) {
+        el.style.background = "var(" + el.dataset.token + ")";
+      });
+    }
+
+    function refresh() {
+      paintChips();
+      renderContrast();
+      drawLineage();
+    }
+
+    refresh();
+    window.requestAnimationFrame(drawLineage);
+  })();
+</script>
+
+</body>
+</html>
