@@ -22,6 +22,22 @@ def test_ci_has_a_weekly_full_suite_schedule() -> None:
     assert workflow["jobs"]["test-full"]["if"] == "github.event_name != 'pull_request'"
 
 
+def test_literature_map_refresh_is_a_monday_pr_job() -> None:
+    workflow = yaml.load(
+        (REPOSITORY_ROOT / ".github/workflows/literature-map.yml").read_text(encoding="utf-8"),
+        Loader=yaml.BaseLoader,
+    )
+    assert workflow["on"]["schedule"] == [{"cron": "17 9 * * 1"}]
+    assert workflow["permissions"]["contents"] == "write"
+    assert workflow["permissions"]["pull-requests"] == "write"
+    run_step = next(
+        step
+        for step in workflow["jobs"]["refresh"]["steps"]
+        if step.get("name") == "Refresh the map"
+    )
+    assert run_step["run"] == "uv run python scripts/data/update_literature_map.py"
+
+
 def test_pull_requests_run_the_hermetic_e2e_selection() -> None:
     job = _workflow()["jobs"]["test-e2e"]
     run_step = next(step for step in job["steps"] if step.get("name") == "Run hermetic E2E tests")

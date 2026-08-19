@@ -195,3 +195,18 @@ class OpenAlexClient(BaseAsyncAPIClient):
             return None
 
         return _parse_author(profile)
+
+    async def search_works(self, params: dict[str, Any]) -> dict[str, Any]:
+        """GET ``/works`` with caller-supplied query params.
+
+        Used by the exploratory literature-map refresh. Returns the raw JSON
+        object (``results``, ``meta``). Empty ``results`` on 4xx; propagates
+        :class:`APIError` on 5xx.
+        """
+        try:
+            return await self._make_request("GET", "works", params=self._with_mailto(params))
+        except APIError as e:
+            status = e.details.get("http_status")
+            if status and 400 <= status < 500:
+                return {"results": [], "meta": {}}
+            raise

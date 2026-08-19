@@ -1,0 +1,66 @@
+name: Literature map
+
+# Weekly OpenAlex refresh of docs/research/literature-map/sbir_literature_map.csv.
+# Opens a PR when the CSV or refresh_status.md change. Does not push to main
+# and does not rewrite authored memos. Exploratory; not a citable update.
+
+permissions:
+  contents: write
+  pull-requests: write
+
+on:
+  schedule:
+    # Monday 09:17 UTC — distinct from Saturday's ci.yml full suite.
+    - cron: "17 9 * * 1"
+  workflow_dispatch:
+
+concurrency:
+  group: literature-map
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    name: Refresh OpenAlex literature map
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Setup Python and UV
+        uses: ./.github/actions/setup-python-uv
+        with:
+          python-version: "3.11"
+          install-dev-deps: "true"
+
+      - name: Refresh the map
+        env:
+          OPENALEX_MAILTO: ${{ secrets.OPENALEX_MAILTO }}
+        run: uv run python scripts/data/update_literature_map.py
+
+      - name: Open or update a refresh PR
+        uses: peter-evans/create-pull-request@v7
+        with:
+          branch: chore/literature-map-refresh
+          delete-branch: true
+          commit-message: |
+            chore: refresh SBIR literature map from OpenAlex
+
+            Weekly OpenAlex metadata refresh and deterministic intake of new
+            core/adjacent works. Authored memos are unchanged.
+          title: "chore: refresh SBIR literature map from OpenAlex"
+          body: |
+            Automated weekly refresh of `docs/research/literature-map/sbir_literature_map.csv`
+            and `refresh_status.md` from the OpenAlex works API.
+
+            Existing rows keep their stored relevance/area labels; citation counts and
+            bibliographic fields are updated. New works are classified with title
+            keywords only (exploratory, not an LLM re-score).
+
+            `sbir_literature_map.md` and `citation_gap_memo.md` are **not** rewritten.
+            Review new rows before merging. This does not change study Status or
+            `[L#]` entries.
+
+            Trigger: schedule (Monday 09:17 UTC) or `workflow_dispatch`.
+          add-paths: |
+            docs/research/literature-map/sbir_literature_map.csv
+            docs/research/literature-map/refresh_status.md

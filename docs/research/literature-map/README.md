@@ -39,3 +39,22 @@ machine-classified each for relevance and policy area. OpenAlex covers journals 
 working papers well but is thin on the GAO/CSIS/NASEM grey literature that dominates `[L#]` —
 those institutional sources are best tracked directly. Abstracts were largely license-gated;
 thematic summaries rest on titles, venues, topics, and citation context.
+
+## Refresh
+
+The CSV is exploratory. Re-run locally or wait for the Monday GitHub Action:
+
+```bash
+make literature-map
+# or: uv run python scripts/data/update_literature_map.py
+```
+
+That updates `sbir_literature_map.csv` (citation counts and new keyword-classified works)
+and overwrites `refresh_status.md`. It does **not** rewrite this README, `sbir_literature_map.md`,
+or `citation_gap_memo.md`. Existing rows keep their stored relevance/area labels.
+
+`.github/workflows/literature-map.yml` runs the same command weekly (Monday 09:17 UTC) and
+opens `chore/literature-map-refresh` when those two files change. Optional secret:
+`OPENALEX_MAILTO` (OpenAlex polite pool). No API key is required.
+
+The workflow is not a study promotion and does not edit `[L#]` entries.
