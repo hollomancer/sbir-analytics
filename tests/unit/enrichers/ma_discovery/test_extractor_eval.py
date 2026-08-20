@@ -72,6 +72,16 @@ def test_keyword_harness_metrics_match_fixture_counts() -> None:
     assert "rumor_potential_acquisition" in mismatch_ids
 
 
+def test_harness_falls_back_to_class_name_when_extractor_has_no_name() -> None:
+    class NamelessKeywordExtractor:
+        def extract(self, item):
+            return KeywordExtractor().extract(item)
+
+    scores = score_extractor(NamelessKeywordExtractor(), load_fixtures()[:1])
+
+    assert scores.name == "NamelessKeywordExtractor"
+
+
 def test_gold_replay_is_perfect_on_labels_not_a_model() -> None:
     fixtures = load_fixtures()
     extractor = LlmExtractor(gold_replay_chat(fixtures))
