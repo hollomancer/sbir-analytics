@@ -417,6 +417,12 @@ def _source_id(value: object, *, label: str) -> str:
     return source_id
 
 
+def _binary_flag(value: object, *, label: str) -> bool:
+    if value not in {"0", "1"}:
+        raise PatentSourceContractError(f"{label} must be 0 or 1")
+    return value == "1"
+
+
 def materialize_patent_grant_events(bundle: ValidatedPatentBundle) -> list[dict[str, Any]]:
     """Reduce a verified synthetic/small bundle to native patent-grant events.
 
@@ -443,7 +449,7 @@ def materialize_patent_grant_events(bundle: ValidatedPatentBundle) -> list[dict[
     application_rows = _read_verified_rows(bundle.files["application"])
     assignee_rows = _read_verified_rows(bundle.files["assignee"])
 
-    patents: dict[str, tuple[str, str | None]] = {}
+    patents: dict[str, tuple[str, str | None, bool]] = {}
     for row in patent_rows:
         patent_id = _source_id(row.get("patent_id"), label="patent patent_id")
         patent_date = _iso_date(row.get("patent_date"), label=f"patent {patent_id} date")
@@ -453,7 +459,11 @@ def materialize_patent_grant_events(bundle: ValidatedPatentBundle) -> list[dict[
             raise PatentSourceContractError(
                 f"patent {patent_id} date follows the bundle data_through_date"
             )
-        patent_value = (patent_date.isoformat(), _optional_text(row.get("patent_title")))
+        patent_value = (
+            patent_date.isoformat(),
+            _optional_text(row.get("patent_title")),
+            _binary_flag(row.get("withdrawn"), label=f"patent {patent_id} withdrawn"),
+        )
         prior_patent = patents.get(patent_id)
         if prior_patent is not None and prior_patent != patent_value:
             raise PatentSourceContractError(f"patent {patent_id} has conflicting rows")
@@ -494,7 +504,9 @@ def materialize_patent_grant_events(bundle: ValidatedPatentBundle) -> list[dict[
 
     events: list[dict[str, Any]] = []
     for (assignee_id, patent_id), (organization, assignee_type) in sorted(assignees.items()):
-        event_date, patent_title = patents[patent_id]
+        event_date, patent_title, withdrawn = patents[patent_id]
+        if withdrawn:
+            continue
         event = {
             "application_filing_date": applications.get(patent_id),
             "assignee_id": assignee_id,

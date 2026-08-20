@@ -334,6 +334,17 @@ def test_native_grant_events_have_exact_schema_and_joint_assignees(tmp_path: Pat
     assert not any(forbidden & set(row) for row in events)
 
 
+def test_withdrawn_patent_cannot_materialize_a_grant_event(tmp_path: Path) -> None:
+    rows = _default_rows()
+    rows["patent"][0]["withdrawn"] = "1"
+    manifest, root = _source_fixture(tmp_path, rows=rows)
+    bundle = contract.validate_patent_source_bundle(manifest, base_dir=root)
+
+    events = contract.materialize_patent_grant_events(bundle)
+
+    assert {row["patent_id"] for row in events} == {"P2"}
+
+
 def test_missing_application_join_is_nullable(tmp_path: Path) -> None:
     rows = _default_rows()
     rows["application"] = rows["application"][:1]
@@ -411,6 +422,10 @@ def test_native_reducer_rejects_temporal_inconsistency(
         (
             lambda rows: rows["patent"][0].update(patent_id=" P1 "),
             "surrounding whitespace",
+        ),
+        (
+            lambda rows: rows["patent"][0].update(withdrawn="yes"),
+            "withdrawn must be 0 or 1",
         ),
     ],
 )
