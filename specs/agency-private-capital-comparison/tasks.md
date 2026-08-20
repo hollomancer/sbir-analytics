@@ -17,7 +17,9 @@
 > contract, but do not constitute an M&A-exit outcome or matched comparison. A
 > deterministic possible-contamination screen now queues fuzzy name/location
 > candidates for review without changing the provisional controls or the open
-> identity gate.
+> identity gate. A synthetic-only PatentsView contract now proves pinned source
+> validation and assignee-native grant reduction, but real patent acquisition,
+> identity adjudication, coverage, and outcome projection remain open.
 
 Tasks are grouped by phase. Phase 1 ships independently of PR #286. Phase 2 is
 gated on Phase 1 sign-off and its missing real-data input contracts.
@@ -146,7 +148,12 @@ on a pinned real-data run.
   unavailable, never zero. The pinned
   [real-data source-adapter audit](../../docs/research/agency-private-capital-form-d-business-combination-proxy.md)
   materialized 14,408 evidence filings across 10,224 CIKs and 311,809 explicit
-  coverage rows; those are source counts, not matched-cohort outcomes.
+  coverage rows; those are source counts, not matched-cohort outcomes. A
+  contract-only PatentsView follow-on now validates synthetic pinned assignee,
+  patent, and application archives, reduces them to assignee-native grant
+  events, and keeps CIK-to-assignee name evidence candidate-only. It performs
+  no real bulk acquisition or identity adjudication and cannot emit patent
+  coverage or a rate, so the patent portion of this task remains open.
 - [ ] 2.5 Complete the `ThreatsToValidity` gate — required entries: SAFE/convertible
   undercount, late-stage Form D inclusion, incomplete SBIR-CIK exclusion,
   SIC-to-NAICS-2 mapping validity, technical-merit vs. lawyer-access selection

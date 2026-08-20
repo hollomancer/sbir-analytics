@@ -161,6 +161,17 @@ eligible controls                         configured-agency treated cohort
    M&A adapters remain separate follow-ons. The matched asset continues to mark
    the proxy unavailable until an eligible matched risk set and the symmetric
    event/coverage artifacts are supplied.
+
+   The patent follow-on starts one layer below study outcomes. A local
+   `PVGPATDIS` contract validates exactly three pinned roles
+   (`g_assignee_disambiguated`, `g_patent`, and `g_application`) and reduces
+   them to deterministic, assignee-native `patent_grant` events. The source
+   release ID is content-derived and independent of local paths, download
+   timestamps, and manifest ordering. A separate minimal bridge contract may
+   emit exact-name evidence only as `candidate` or `ambiguous`. It cannot emit
+   accepted links, firm coverage, availability, denominators, or rates. Bulk
+   acquisition, production-scale materialization, real bridge review, and the
+   five-year patent outcome adapter remain separate work.
 9. **`ThreatsToValidity`** — Emits the structured caveats record. Required
    entries:
    - SAFE/convertible undercount (Form D weak on these)
