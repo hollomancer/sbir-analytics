@@ -5,10 +5,7 @@ def test_request_error_tracker_marks_rate_limited_company() -> None:
     tracker = _ServerErrorTracker()
     tracker.register("Acme Labs")
 
-    tracker.write(
-        "EDGAR filing mention search failed for 'Acme Labs': "
-        "429 Too Many Requests"
-    )
+    tracker.write("EDGAR filing mention search failed for 'Acme Labs': 429 Too Many Requests")
 
     assert tracker.had_error("Acme Labs")
 
