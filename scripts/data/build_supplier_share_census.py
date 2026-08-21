@@ -662,7 +662,10 @@ def _load_ma_signals(
         "scan_covered_firms": len(covered),
         "scan_attachment_methods": dict(sorted(scan_methods.items())),
         "search_complete_asserted": search_complete,
-        "threshold_policy": "existing final high plus medium tiers; low excluded",
+        "threshold_policy": (
+            "existing final high plus medium M&A tiers; low excluded; legacy M&A event "
+            "confidence is distinct from upstream Form D entity-match confidence"
+        ),
     }
     return result, metadata
 
@@ -1337,6 +1340,7 @@ def _render_readout(
             "- FPDS/USAspending sees primes only; sub-tier supply to primes is invisible, so observed federal continuation is understated.",
             "- Coded Phase III undercounts actual Phase III, in the same direction.",
             "- Form D absence is not absence of capital. Bootstrapped growth, debt, revenue growth, unmatched private offerings, and non-Reg-D capital are invisible, which can overstate the no-venture cell.",
+            "- The legacy M&A detector's event-confidence tier is distinct from Form D entity-match confidence: a business-combination filing makes an M&A event high-confidence even when the underlying Form D name link is medium or low. This channel requires hand review before citation.",
             "- Form D/EFTS coverage varies over time. Young cohorts are right-censored; old cohorts can be left-censored by electronic filing coverage.",
             "- Award-time identity is not current corporate identity; acquisitions, successors, affiliates, and aliases can split or combine apparent firms.",
             "- First observed SBIR/STTR award is only the cohort anchor; the data do not establish that a firm had no earlier federal work.",

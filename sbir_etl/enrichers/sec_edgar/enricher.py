@@ -434,7 +434,10 @@ async def _search_filing_mentions_filtered(
     if not mentions:
         return []
 
-    events: list[EdgarMAEvent] = []
+    # enrich_company ultimately keeps only the latest event from each filer.
+    # Discard older same-tier filings before the expensive document fetch so
+    # that the optimization cannot change the retained event or its tier.
+    latest_by_filer: dict[str, tuple[dict, str, date]] = {}
     for mention in mentions:
         filer_name = mention.get("filer_name", "")
         if not filer_name:
@@ -460,6 +463,12 @@ async def _search_filing_mentions_filtered(
         except ValueError:
             continue
 
+        existing = latest_by_filer.get(filer_name)
+        if existing is None or filing_date > existing[2]:
+            latest_by_filer[filer_name] = (mention, filer_name, filing_date)
+
+    events: list[EdgarMAEvent] = []
+    for mention, filer_name, filing_date in latest_by_filer.values():
         form_type = mention.get("form_type", "")
         mention_type = _classify_mention(mention.get("items", []), form_type)
 

@@ -411,6 +411,47 @@ class TestSearchInboundMAMentions:
         events = await _search_inbound_ma_mentions(mock_client, "Unknown LLC")
         assert events == []
 
+    @pytest.mark.asyncio
+    async def test_fetches_context_only_for_latest_same_filer_hit(self):
+        """Older same-filer filings cannot survive final profile deduplication."""
+        mock_client = AsyncMock()
+        mock_client.search_filing_mentions = AsyncMock(
+            side_effect=[
+                [],
+                [
+                    {
+                        "filer_cik": "99999",
+                        "filer_name": "ACQUIRER INC",
+                        "form_type": "10-K",
+                        "file_date": "2023-01-01",
+                        "accession_number": "old",
+                        "doc_id": "old-accession:old.htm",
+                    },
+                    {
+                        "filer_cik": "99999",
+                        "filer_name": "ACQUIRER INC",
+                        "form_type": "10-K",
+                        "file_date": "2024-01-01",
+                        "accession_number": "new",
+                        "doc_id": "new-accession:new.htm",
+                    },
+                ],
+                [],
+            ]
+        )
+        mock_client.fetch_filing_document = AsyncMock(
+            return_value="ACQUIRER INC acquired Target Co in 2022."
+        )
+
+        events = await _search_inbound_ma_mentions(mock_client, "Target Co")
+
+        assert len(events) == 1
+        assert events[0].filing_date == date(2024, 1, 1)
+        assert events[0].mention_type == "acquisition"
+        mock_client.fetch_filing_document.assert_awaited_once_with(
+            "99999", "new-accession", "new.htm"
+        )
+
 
 class TestSearchFormDFilings:
     @pytest.mark.asyncio

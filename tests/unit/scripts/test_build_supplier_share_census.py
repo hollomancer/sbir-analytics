@@ -266,3 +266,4 @@ def test_efts_error_rows_do_not_establish_ma_search_coverage(tmp_path: Path) -> 
     assert metadata["scan_rows"] == 3
     assert metadata["scan_error_rows"] == 2
     assert metadata["scan_covered_firms"] == 1
+    assert "distinct from upstream Form D entity-match confidence" in metadata["threshold_policy"]
