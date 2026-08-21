@@ -323,7 +323,7 @@ class TestSearchInboundMAMentions:
         # Return a match on the first call (strong M&A types), empty on the rest
         mock_client.search_filing_mentions = AsyncMock(
             side_effect=[
-                [  # Strong M&A types (8-K, DEFM14A, etc.)
+                [  # Combined strong M&A + annual forms
                     {
                         "filer_cik": "99999",
                         "filer_name": "LOCKHEED MARTIN CORPORATION",
@@ -333,7 +333,6 @@ class TestSearchInboundMAMentions:
                         "file_description": "Acquisition of Small SBIR Company",
                     },
                 ],
-                [],  # Annual reports (10-K, 10-Q)
                 [],  # Ownership filings (SC 13D/13G)
             ]
         )
@@ -343,8 +342,8 @@ class TestSearchInboundMAMentions:
         assert events[0].is_target is True
         assert events[0].filer_name == "LOCKHEED MARTIN CORPORATION"
         assert events[0].event_type == MAAcquisitionType.ACQUISITION
-        # Should have been called 3 times (one per filing type tier)
-        assert mock_client.search_filing_mentions.call_count == 3
+        # Complete strong + annual pages share one request; ownership stays separate.
+        assert mock_client.search_filing_mentions.call_count == 2
 
     @pytest.mark.asyncio
     async def test_combines_results_across_tiers(self):
@@ -352,7 +351,7 @@ class TestSearchInboundMAMentions:
         mock_client = AsyncMock()
         mock_client.search_filing_mentions = AsyncMock(
             side_effect=[
-                [  # 8-K match
+                [  # Combined page with 8-K and 10-K matches
                     {
                         "filer_cik": "111",
                         "filer_name": "ACQUIRER A",
@@ -361,8 +360,6 @@ class TestSearchInboundMAMentions:
                         "accession_number": "001",
                         "file_description": "",
                     },
-                ],
-                [  # 10-K match from different filer
                     {
                         "filer_cik": "222",
                         "filer_name": "ACQUIRER B",
@@ -396,7 +393,6 @@ class TestSearchInboundMAMentions:
                     },
                 ],
                 [],
-                [],
             ]
         )
 
@@ -410,6 +406,81 @@ class TestSearchInboundMAMentions:
 
         events = await _search_inbound_ma_mentions(mock_client, "Unknown LLC")
         assert events == []
+
+    @pytest.mark.asyncio
+    async def test_fetches_context_only_for_latest_same_filer_hit(self):
+        """Older same-filer filings cannot survive final profile deduplication."""
+        mock_client = AsyncMock()
+        mock_client.search_filing_mentions = AsyncMock(
+            side_effect=[
+                [
+                    {
+                        "filer_cik": "99999",
+                        "filer_name": "ACQUIRER INC",
+                        "form_type": "10-K",
+                        "file_date": "2023-01-01",
+                        "accession_number": "old",
+                        "doc_id": "old-accession:old.htm",
+                    },
+                    {
+                        "filer_cik": "99999",
+                        "filer_name": "ACQUIRER INC",
+                        "form_type": "10-K",
+                        "file_date": "2024-01-01",
+                        "accession_number": "new",
+                        "doc_id": "new-accession:new.htm",
+                    },
+                ],
+                [],
+            ]
+        )
+        mock_client.fetch_filing_document = AsyncMock(
+            return_value="ACQUIRER INC acquired Target Co in 2022."
+        )
+
+        events = await _search_inbound_ma_mentions(mock_client, "Target Co")
+
+        assert len(events) == 1
+        assert events[0].filing_date == date(2024, 1, 1)
+        assert events[0].mention_type == "acquisition"
+        mock_client.fetch_filing_document.assert_awaited_once_with(
+            "99999", "new-accession", "new.htm"
+        )
+
+    @pytest.mark.asyncio
+    async def test_page_boundary_falls_back_to_separate_tier_searches(self):
+        """A possibly truncated combined page cannot hide a tier's top hits."""
+        combined_page = [{"filer_name": ""} for _ in range(100)]
+        mock_client = AsyncMock()
+        mock_client.search_filing_mentions = AsyncMock(
+            side_effect=[
+                combined_page,
+                [],
+                [
+                    {
+                        "filer_cik": "111",
+                        "filer_name": "ACQUIRER A",
+                        "form_type": "8-K",
+                        "file_date": "2024-06-15",
+                        "accession_number": "001",
+                    }
+                ],
+                [
+                    {
+                        "filer_cik": "222",
+                        "filer_name": "ACQUIRER B",
+                        "form_type": "10-K",
+                        "file_date": "2024-03-01",
+                        "accession_number": "002",
+                    }
+                ],
+            ]
+        )
+
+        events = await _search_inbound_ma_mentions(mock_client, "Target Co")
+
+        assert {event.filer_name for event in events} == {"ACQUIRER A", "ACQUIRER B"}
+        assert mock_client.search_filing_mentions.call_count == 4
 
 
 class TestSearchFormDFilings:
@@ -803,3 +874,27 @@ class TestExtractMentionContext:
         mention = {"filer_cik": "12345"}  # No doc_id
         result = await _extract_mention_context(mock_client, "Unknown Co", mention)
         assert result is None
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        "mention",
+        [
+            {"filer_cik": "12345"},
+            {"filer_cik": "12345", "doc_id": "malformed"},
+            {"filer_cik": "12345", "doc_id": ":doc.htm"},
+            {"filer_cik": "12345", "doc_id": "0000012345-20-000001:"},
+            {"doc_id": "0000012345-20-000001:doc.htm"},
+        ],
+    )
+    async def test_incomplete_filing_reference_marks_context_unsearchable(self, mention):
+        from sbir_etl.enrichers.sec_edgar.enricher import _extract_mention_context
+
+        calls = []
+        mock_client = AsyncMock()
+        mock_client.__dict__["_context_incomplete_callback"] = lambda: calls.append(True)
+
+        result = await _extract_mention_context(mock_client, "Unknown Co", mention)
+
+        assert result is None
+        assert calls == [True]
+        mock_client.fetch_filing_document.assert_not_called()

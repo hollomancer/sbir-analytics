@@ -1090,6 +1090,18 @@ The relevant literature is Lerner [L10], Howell [L11], and Kortum & Lerner
 
 ### F2. Relational (Tier 2)
 
+- **Supplier-track share of the SBIR/STTR portfolio**
+  What share of cumulative SBIR/STTR dollars and firms is associated with
+  sustained federal performers: firms with observed long-tenure, repeat-award,
+  or post-Phase-II prime-contract activity and no observed Form D, M&A, or IPO
+  signal? Report the complete persistence x venture-signal matrix rather than a
+  binary supplier label, and expose the first-award-cohort censoring gradient.
+  **Status:** Exploratory and non-citable. Required Form D/EFTS coverage and
+  validation gates are not yet complete; missing signal inputs are
+  indeterminate, not negative evidence.
+  *Deps: ER, SEC EDGAR, M&A signals, Phase III/FPDS · Spec:
+  [../specs/supplier-share-census/](../specs/supplier-share-census/)*
+
 - **Acquirer-type concentration**
   Among acquirers of SBIR firms, what share are life-sciences consolidators
   (Bruker, Ligand, Thermo Fisher) versus defense primes versus financial
