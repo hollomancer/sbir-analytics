@@ -202,6 +202,7 @@ async def refine_events(
                     limit=10,
                 )
             except Exception:
+                _mark_context_incomplete(client)
                 mentions = []
 
             if not mentions:
@@ -229,6 +230,7 @@ async def refine_events(
                 try:
                     text = await client.fetch_filing_document(filer_cik, accession, filename)
                 except Exception:
+                    _mark_context_incomplete(client)
                     text = None
 
                 if not text:
