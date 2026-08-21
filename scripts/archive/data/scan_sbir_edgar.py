@@ -11,6 +11,10 @@ Usage:
     # Resume from checkpoint
     python scripts/archive/data/scan_sbir_edgar.py --awards /tmp/sbir_awards_full.csv --resume
 
+    # Scan only the inbound M&A channels, paced below the SEC fair-access ceiling
+    python scripts/archive/data/scan_sbir_edgar.py \
+        --awards /tmp/sbir_awards_full.csv --ma-only --requests-per-second 8
+
     # Skip document fetches (faster, counts only)
     python scripts/archive/data/scan_sbir_edgar.py --awards /tmp/sbir_awards_full.csv --no-doc-fetch
 
@@ -41,10 +45,31 @@ from sbir_etl.enrichers.sec_edgar.enricher import enrich_company
 # The client's rate limiter (600 req/min) is the real throttle; this just
 # keeps enough requests in-flight to fill the rate budget.
 DEFAULT_CONCURRENCY = 8
+DEFAULT_REQUESTS_PER_SECOND = 8.0
+
+
+class _PacedEdgarAPIClient(EdgarAPIClient):
+    """Apply a per-second ceiling in addition to the client's minute limit."""
+
+    def __init__(self, *args, requests_per_second: float, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._minimum_interval = 1.0 / requests_per_second
+        self._spacing_lock = asyncio.Lock()
+        self._next_request_at = 0.0
+
+    async def _wait_for_rate_limit(self) -> None:
+        async with self._spacing_lock:
+            await super()._wait_for_rate_limit()
+            loop = asyncio.get_running_loop()
+            now = loop.time()
+            if self._next_request_at > now:
+                await asyncio.sleep(self._next_request_at - now)
+                now = loop.time()
+            self._next_request_at = now + self._minimum_interval
 
 
 class _ServerErrorTracker:
-    """Thread-safe loguru sink that tracks which companies hit HTTP 5xx.
+    """Thread-safe loguru sink that tracks failed mention searches.
 
     In concurrent mode, multiple companies are in-flight at once, so we
     match the company name from the log message instead of using a simple
@@ -62,7 +87,7 @@ class _ServerErrorTracker:
         self._active_companies.discard(company_name)
 
     def write(self, message):
-        if "HTTP 5" not in message:
+        if "HTTP 5" not in message and "EDGAR filing mention search failed" not in message:
             return
         for name in self._active_companies:
             if name in message:
@@ -269,15 +294,21 @@ async def main() -> None:
                         help="Run city qualification pass on existing scan results")
     parser.add_argument("--no-doc-fetch", action="store_true",
                         help="Skip document fetches for context classification")
+    parser.add_argument("--ma-only", action="store_true",
+                        help="Skip CIK/XBRL enrichment; scan only inbound M&A mentions")
     parser.add_argument("--limit", type=int, default=0,
                         help="Scan only first N companies (0=all)")
     parser.add_argument("--rescan-errors", action="store_true",
-                        help="Re-scan companies that had server errors in previous run")
+                        help="Re-scan companies that had search request errors in previous run")
     parser.add_argument("--concurrency", type=int, default=DEFAULT_CONCURRENCY,
                         help=f"Companies to enrich concurrently (default {DEFAULT_CONCURRENCY})")
+    parser.add_argument("--requests-per-second", type=float, default=DEFAULT_REQUESTS_PER_SECOND,
+                        help=f"SEC request pacing ceiling (default {DEFAULT_REQUESTS_PER_SECOND:g})")
     parser.add_argument("--contact-email", default="conrad@hollomon.dev",
                         help="Email for SEC User-Agent")
     args = parser.parse_args()
+    if args.requests_per_second <= 0:
+        parser.error("--requests-per-second must be positive")
 
     # Dispatch city qualification pass
     if args.city_pass:
@@ -317,7 +348,10 @@ async def main() -> None:
         "timeout_seconds": 30,
         "contact_email": args.contact_email,
     }
-    client = EdgarAPIClient(config=config)
+    client = _PacedEdgarAPIClient(
+        config=config,
+        requests_per_second=args.requests_per_second,
+    )
 
     # Monkey-patch out document fetches if requested
     if args.no_doc_fetch:
@@ -326,7 +360,7 @@ async def main() -> None:
         client.fetch_filing_document = _no_fetch
         print("  Document fetches DISABLED (counts only)\n")
 
-    # Scan — track server errors per company via loguru sink
+    # Scan — track failed mention searches per company via loguru sink
     error_tracker = _ServerErrorTracker()
     tracker_id = logger.add(error_tracker, level="WARNING", format="{message}")
 
@@ -346,7 +380,13 @@ async def main() -> None:
         async with semaphore:
             error_tracker.register(name)
             try:
-                p = await enrich_company(client, name, award_count=award_count)
+                p = await enrich_company(
+                    client,
+                    name,
+                    award_count=award_count,
+                    resolve_cik=not args.ma_only,
+                    fetch_financials=not args.ma_only,
+                )
 
                 has_mention = p.mention_count > 0
                 had_errors = error_tracker.had_error(name)
@@ -411,9 +451,12 @@ async def main() -> None:
     print(f"\n{'='*60}")
     print(f"SCAN COMPLETE — {processed:,} companies in {elapsed/60:.1f} min")
     print(f"{'='*60}")
-    print(f"SEC filing mentions:  {with_mentions:,} ({with_mentions/len(remaining)*100:.1f}%)")
+    print(
+        f"SEC filing mentions:  {with_mentions:,} "
+        f"({with_mentions / max(len(remaining), 1) * 100:.1f}%)"
+    )
     print(f"Errors:               {errors:,}")
-    print(f"Server errors (5xx):  {server_errors:,} (rescan with --rescan-errors)")
+    print(f"Search request errors: {server_errors:,} (rescan with --rescan-errors)")
     print(f"Output:               {output_path}")
     print("Note: Form D sourced separately via fetch_form_d_index.py")
 
@@ -425,8 +468,11 @@ async def main() -> None:
         "with_mentions": with_mentions,
         "errors": errors,
         "server_errors": server_errors,
+        "search_errors": server_errors,
         "elapsed_seconds": elapsed,
         "doc_fetch_enabled": not args.no_doc_fetch,
+        "ma_only": args.ma_only,
+        "requests_per_second": args.requests_per_second,
     }
     with open(summary_path, "w") as f:
         json.dump(summary, f, indent=2)
