@@ -874,3 +874,27 @@ class TestExtractMentionContext:
         mention = {"filer_cik": "12345"}  # No doc_id
         result = await _extract_mention_context(mock_client, "Unknown Co", mention)
         assert result is None
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        "mention",
+        [
+            {"filer_cik": "12345"},
+            {"filer_cik": "12345", "doc_id": "malformed"},
+            {"filer_cik": "12345", "doc_id": ":doc.htm"},
+            {"filer_cik": "12345", "doc_id": "0000012345-20-000001:"},
+            {"doc_id": "0000012345-20-000001:doc.htm"},
+        ],
+    )
+    async def test_incomplete_filing_reference_marks_context_unsearchable(self, mention):
+        from sbir_etl.enrichers.sec_edgar.enricher import _extract_mention_context
+
+        calls = []
+        mock_client = AsyncMock()
+        mock_client.__dict__["_context_incomplete_callback"] = lambda: calls.append(True)
+
+        result = await _extract_mention_context(mock_client, "Unknown Co", mention)
+
+        assert result is None
+        assert calls == [True]
+        mock_client.fetch_filing_document.assert_not_called()

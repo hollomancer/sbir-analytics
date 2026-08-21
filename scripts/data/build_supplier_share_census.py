@@ -556,6 +556,10 @@ def _load_contract_signals(
     return result.drop(columns="first_explicit_phase_ii_end"), metadata
 
 
+def _reject_json_constant(value: str) -> None:
+    raise ValueError(f"non-standard JSON constant: {value}")
+
+
 def _jsonl_rows(path: Path) -> list[dict[str, Any]]:
     rows: list[dict[str, Any]] = []
     if not path.exists():
@@ -563,10 +567,10 @@ def _jsonl_rows(path: Path) -> list[dict[str, Any]]:
     with path.open(encoding="utf-8") as handle:
         for line_number, line in enumerate(handle, start=1):
             if not line.strip():
-                continue
+                raise ValueError(f"blank JSONL record at {path}:{line_number}")
             try:
-                value = json.loads(line)
-            except json.JSONDecodeError as exc:
+                value = json.loads(line, parse_constant=_reject_json_constant)
+            except (json.JSONDecodeError, ValueError) as exc:
                 raise ValueError(f"malformed JSON at {path}:{line_number}") from exc
             if not isinstance(value, dict):
                 raise ValueError(f"non-object JSON at {path}:{line_number}")
@@ -760,10 +764,24 @@ def _load_ma_signals(
         if labels and labels.issubset(coverage_eligible_labels)
     }
     signal_mismatches = 0
+    confidence_mismatches = 0
     for name in set(events_by_name) & set(expected_signals):
-        actual = events_by_name[name].get("signals") or {}
+        event = events_by_name[name]
+        actual = event.get("signals") or {}
         if any(bool(actual.get(key)) != expected_signals[name][key] for key in signal_keys):
             signal_mismatches += 1
+        expected = expected_signals[name]
+        direction = _clean(event.get("direction")).lower()
+        if expected["form_d_business_combination"] or expected["efts_subsidiary"]:
+            expected_confidence = "high"
+        elif expected["efts_acquisition_text"]:
+            expected_confidence = "medium" if direction in {"target", "ambiguous"} else "low"
+        elif expected["efts_ma_definitive"] and direction == "target":
+            expected_confidence = "medium"
+        else:
+            expected_confidence = "low"
+        if _clean(event.get("confidence")).lower() != expected_confidence:
+            confidence_mismatches += 1
     derivation_consistent = bool(
         events_path.exists()
         and scan_path.exists()
@@ -771,6 +789,7 @@ def _load_ma_signals(
         and not duplicate_event_names
         and set(events_by_name) == set(expected_signals)
         and signal_mismatches == 0
+        and confidence_mismatches == 0
     )
     artifacts_complete = derivation_consistent
     if artifacts_complete:
@@ -808,6 +827,7 @@ def _load_ma_signals(
         "derivation_expected_events": len(expected_signals),
         "derivation_event_name_mismatches": len(set(events_by_name) ^ set(expected_signals)),
         "derivation_signal_mismatches": signal_mismatches,
+        "derivation_confidence_mismatches": confidence_mismatches,
         "derivation_duplicate_event_names": len(duplicate_event_names),
         "derivation_form_d_sha256": _sha256(form_d_path) if form_d_path.exists() else None,
         "search_complete_asserted": search_complete,
@@ -1037,13 +1057,18 @@ def _validate_grid(frame: pd.DataFrame, firm_count: int) -> None:
 
 def _supplier_concentration(subset: pd.DataFrame) -> float | None:
     suppliers = subset.loc[subset["matrix_cell"].eq("persistent_no_venture")]
-    denominator = float(suppliers["cumulative_sbir_dollars"].sum())
-    if suppliers.empty or denominator <= 0:
+    denominator = suppliers["cumulative_sbir_dollars"].sum(min_count=1)
+    if suppliers.empty or pd.isna(denominator) or float(denominator) <= 0:
         return None
-    numerator = float(
-        suppliers.loc[suppliers["cumulative_dollar_decile"].eq(1), "cumulative_sbir_dollars"].sum()
+    top_decile = suppliers.loc[suppliers["cumulative_dollar_decile"].eq(1)]
+    numerator = (
+        float(top_decile["cumulative_sbir_dollars"].sum(min_count=1))
+        if not top_decile.empty
+        else 0.0
     )
-    return numerator / denominator
+    if pd.isna(numerator):
+        return None
+    return numerator / float(denominator)
 
 
 def _hash_rank(value: str, *, salt: str) -> str:
@@ -1069,10 +1094,15 @@ def _placebo_supplier_share(subset: pd.DataFrame) -> float | None:
         )
         work.loc[destination, "placebo_venture"] = original
     supplier = work["federal_persistent"] & ~work["placebo_venture"]
-    denominator = float(work["cumulative_sbir_dollars"].sum())
-    if denominator <= 0:
+    denominator = work["cumulative_sbir_dollars"].sum(min_count=1)
+    if pd.isna(denominator) or float(denominator) <= 0:
         return None
-    return float(work.loc[supplier, "cumulative_sbir_dollars"].sum() / denominator)
+    numerator = (
+        work.loc[supplier, "cumulative_sbir_dollars"].sum(min_count=1) if supplier.any() else 0.0
+    )
+    if pd.isna(numerator):
+        return None
+    return float(numerator / denominator)
 
 
 def _summary_rows(
@@ -1085,17 +1115,29 @@ def _summary_rows(
 ) -> list[dict[str, Any]]:
     tenure, awards_threshold, window = grid
     total_firms = int(len(subset))
-    total_dollars = float(subset["stratum_sbir_dollars"].sum()) if total_firms else 0.0
+    total_dollars = float(subset["stratum_sbir_dollars"].sum(min_count=1)) if total_firms else 0.0
+    has_total_dollars = bool(pd.notna(total_dollars) and total_dollars != 0)
     measurable = subset["required_venture_channels_searchable"]
-    headline_available = bool(total_firms and measurable.all())
+    maturity_complete = bool(total_firms and subset["headline_eligible"].all())
+    headline_available = bool(maturity_complete and measurable.all())
     supplier = subset["matrix_cell"].eq("persistent_no_venture")
+    supplier_dollars = (
+        float(subset.loc[supplier, "stratum_sbir_dollars"].sum(min_count=1))
+        if supplier.any()
+        else 0.0
+    )
     validation_status = (
-        str(subset["validation_status"].iloc[0]) if total_firms else "blocked_empty_stratum"
+        (str(subset["validation_status"].iloc[0]) if maturity_complete else "window_censored")
+        if total_firms
+        else "blocked_empty_stratum"
     )
     supplier_firm_share = float(supplier.mean()) if headline_available and total_firms else None
     supplier_dollar_share = (
-        float(subset.loc[supplier, "stratum_sbir_dollars"].sum() / total_dollars)
-        if headline_available and total_dollars
+        float(supplier_dollars / total_dollars)
+        if headline_available
+        and pd.notna(total_dollars)
+        and pd.notna(supplier_dollars)
+        and has_total_dollars
         else None
     )
     placebo_supplier_dollar_share = (
@@ -1120,7 +1162,7 @@ def _summary_rows(
         "firm_share": 1.0 if total_firms else None,
         "sbir_dollars": total_dollars,
         "total_sbir_dollars": total_dollars,
-        "dollar_share": 1.0 if total_dollars else None,
+        "dollar_share": 1.0 if has_total_dollars else None,
         "measurable_firm_count": int(measurable.sum()),
         "measurable_firm_share": float(measurable.mean()) if total_firms else None,
         "headline_available": headline_available,
@@ -1140,7 +1182,9 @@ def _summary_rows(
     rows = [total_row]
     for cell in MATRIX_CELLS:
         mask = subset["matrix_cell"].eq(cell)
-        dollars = float(subset.loc[mask, "stratum_sbir_dollars"].sum())
+        dollars = (
+            float(subset.loc[mask, "stratum_sbir_dollars"].sum(min_count=1)) if mask.any() else 0.0
+        )
         rows.append(
             {
                 **total_row,
@@ -1148,7 +1192,11 @@ def _summary_rows(
                 "firm_count": int(mask.sum()),
                 "firm_share": float(mask.sum() / total_firms) if total_firms else None,
                 "sbir_dollars": dollars,
-                "dollar_share": float(dollars / total_dollars) if total_dollars else None,
+                "dollar_share": (
+                    float(dollars / total_dollars)
+                    if has_total_dollars and pd.notna(dollars)
+                    else None
+                ),
                 "supplier_firm_share": None,
                 "supplier_dollar_share": None,
                 "supplier_top_decile_dollar_share": None,
@@ -1242,7 +1290,13 @@ def _validate_summary(firm_grid: pd.DataFrame, summary: pd.DataFrame) -> None:
     """Reconcile matrix cells and every declared summary denominator."""
 
     def close(left: float, right: float) -> bool:
+        if pd.isna(left) or pd.isna(right):
+            return bool(pd.isna(left) and pd.isna(right))
         return math.isclose(left, right, rel_tol=1e-9, abs_tol=max(1.0, abs(right) * 1e-9))
+
+    def summary_dollars(frame: pd.DataFrame) -> float:
+        populated = frame.loc[frame["firm_count"].gt(0), "sbir_dollars"]
+        return float(populated.sum(min_count=1)) if not populated.empty else 0.0
 
     grouping = ["t_years", "n_awards", "window_years", "stratification", "stratum"]
     for keys, group in summary.groupby(grouping, sort=False, dropna=False):
@@ -1253,7 +1307,7 @@ def _validate_summary(firm_grid: pd.DataFrame, summary: pd.DataFrame) -> None:
         row = total.iloc[0]
         if int(cells["firm_count"].sum()) != int(row["total_firms"]):
             raise RuntimeError(f"summary firm cells do not reconcile: {keys}")
-        if not close(float(cells["sbir_dollars"].sum()), float(row["total_sbir_dollars"])):
+        if not close(summary_dollars(cells), float(row["total_sbir_dollars"])):
             raise RuntimeError(f"summary dollar cells do not reconcile: {keys}")
 
     for keys, grid in firm_grid.groupby(["t_years", "n_awards", "window_years"], sort=False):
@@ -1276,14 +1330,14 @@ def _validate_summary(firm_grid: pd.DataFrame, summary: pd.DataFrame) -> None:
             if int(partition["firm_count"].sum()) != len(mature):
                 raise RuntimeError(f"{stratification} firm partition does not reconcile: {keys}")
             if not close(
-                float(partition["sbir_dollars"].sum()),
+                summary_dollars(partition),
                 float(overall_row["total_sbir_dollars"]),
             ):
                 raise RuntimeError(f"{stratification} dollars do not reconcile: {keys}")
 
         agency = totals.loc[totals["stratification"].eq("agency")]
         if not close(
-            float(agency["sbir_dollars"].sum()),
+            summary_dollars(agency),
             float(overall_row["total_sbir_dollars"]),
         ):
             raise RuntimeError(f"agency dollars do not reconcile: {keys}")
@@ -1292,8 +1346,8 @@ def _validate_summary(firm_grid: pd.DataFrame, summary: pd.DataFrame) -> None:
         if int(cohorts["firm_count"].sum()) != len(grid):
             raise RuntimeError(f"cohort firm partition does not reconcile: {keys}")
         if not close(
-            float(cohorts["sbir_dollars"].sum()),
-            float(grid["cumulative_sbir_dollars"].sum()),
+            summary_dollars(cohorts),
+            float(grid["cumulative_sbir_dollars"].sum(min_count=1)),
         ):
             raise RuntimeError(f"cohort dollars do not reconcile: {keys}")
 

@@ -344,12 +344,20 @@ async def _extract_mention_context(
     context_chars: int = 500,
 ) -> str | None:
     """Fetch the filing document and classify the mention by surrounding text."""
-    doc_id = mention.get("doc_id", "")
-    if not doc_id or ":" not in doc_id:
+
+    def mark_context_incomplete() -> None:
+        callback = getattr(client, "__dict__", {}).get("_context_incomplete_callback")
+        if callable(callback):
+            callback()
+
+    doc_id = mention.get("doc_id")
+    if not isinstance(doc_id, str) or ":" not in doc_id:
+        mark_context_incomplete()
         return None
     accession, filename = doc_id.split(":", 1)
-    cik = mention.get("filer_cik", "")
-    if not cik:
+    cik = str(mention.get("filer_cik") or "").strip()
+    if not accession.strip() or not filename.strip() or not cik:
+        mark_context_incomplete()
         return None
 
     text = await client.fetch_filing_document(cik, accession, filename)

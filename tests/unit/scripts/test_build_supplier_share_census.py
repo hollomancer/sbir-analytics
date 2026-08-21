@@ -344,11 +344,86 @@ def test_ma_coverage_requires_every_alias_and_complete_context(tmp_path: Path) -
     assert metadata["scan_covered_firms"] == 0
 
 
-def test_jsonl_loader_fails_closed_on_malformed_rows(tmp_path: Path) -> None:
-    path = tmp_path / "broken.jsonl"
-    path.write_text('{"ok": true}\nnot-json\n')
+def test_ma_derivation_rejects_stale_confidence(tmp_path: Path) -> None:
+    firms = pd.DataFrame({"firm_key": ["NAME:alpha"]})
+    awards = pd.DataFrame({"source_name": ["Alpha"], "firm_key": ["NAME:alpha"]})
+    lookups = {
+        "uei": {},
+        "duns": {},
+        "exact_name": {"alpha": "NAME:alpha"},
+        "join_name": {MODULE._name_key("Alpha"): "NAME:alpha"},
+        "ambiguous": {
+            "uei": set(),
+            "duns": set(),
+            "exact_name": set(),
+            "join_name": set(),
+        },
+    }
+    signal = {
+        "form_d_business_combination": False,
+        "efts_subsidiary": False,
+        "efts_ma_definitive": True,
+        "efts_acquisition_text": False,
+        "efts_ma_proxy": False,
+        "efts_ownership_active": False,
+    }
+    events_path = tmp_path / "events.jsonl"
+    events_path.write_text(
+        json.dumps(
+            {
+                "company_name": "Alpha",
+                "signals": signal,
+                "direction": "ambiguous",
+                "confidence": "medium",
+            }
+        )
+        + "\n"
+    )
+    scan_path = tmp_path / "efts.jsonl"
+    scan_path.write_text(
+        json.dumps(
+            {
+                "company_name": "Alpha",
+                "mention_types": ["ma_definitive"],
+                "context_classification_complete": True,
+            }
+        )
+        + "\n"
+    )
+    form_d_path = tmp_path / "form-d.jsonl"
+    form_d_path.write_text("")
 
-    with pytest.raises(ValueError, match="malformed JSON"):
+    signals, metadata = MODULE._load_ma_signals(
+        events_path,
+        scan_path,
+        form_d_path,
+        awards,
+        firms,
+        lookups,
+        search_complete=False,
+    )
+
+    assert not signals.iloc[0]["ma_searchable"]
+    assert metadata["derivation_consistent"] is False
+    assert metadata["derivation_confidence_mismatches"] == 1
+
+
+@pytest.mark.parametrize(
+    ("contents", "message"),
+    [
+        ('{"ok": true}\nnot-json\n', "malformed JSON"),
+        ('{"ok": true}\n\n', "blank JSONL record"),
+        ('{"value": NaN}\n', "malformed JSON"),
+        ('{"value": Infinity}\n', "malformed JSON"),
+    ],
+)
+def test_jsonl_loader_fails_closed_on_invalid_rows(
+    tmp_path: Path, contents: str, message: str
+) -> None:
+    path = tmp_path / "broken.jsonl"
+    path.write_text(contents)
+
+    with pytest.raises(ValueError, match=message):
         MODULE._jsonl_rows(path)
 
 
@@ -367,3 +442,38 @@ def test_agency_firm_membership_uses_award_count_not_positive_dollars() -> None:
         & summary["matrix_cell"].eq("TOTAL")
     ].iloc[0]
     assert dod["firm_count"] == 5
+
+
+def test_populated_all_missing_dollar_cells_remain_missing() -> None:
+    base = _base(searchable=True)
+    mature = base["observation_years"].ge(15)
+    base.loc[mature, "cumulative_sbir_dollars"] = pd.NA
+    base.loc[mature, "dod_award_dollars"] = pd.NA
+    grid = MODULE._build_grid(base)
+    summary = MODULE._build_summary(grid)
+    MODULE._validate_summary(grid, summary)
+
+    central = summary.loc[summary["is_central_grid"] & summary["matrix_cell"].eq("TOTAL")]
+    overall = central.loc[central["stratification"].eq("overall")].iloc[0]
+    dod = central.loc[central["stratification"].eq("agency") & central["stratum"].eq("DoD")].iloc[0]
+    assert overall["firm_count"] == 5
+    assert dod["firm_count"] == 5
+    assert pd.isna(overall["sbir_dollars"])
+    assert pd.isna(dod["sbir_dollars"])
+    assert pd.isna(overall["supplier_dollar_share"])
+
+
+def test_immature_cohort_share_is_window_censored() -> None:
+    grid = MODULE._build_grid(_base(searchable=True))
+    summary = MODULE._build_summary(grid)
+
+    cohort = summary.loc[
+        summary["is_central_grid"]
+        & summary["stratification"].eq("first_award_year")
+        & summary["stratum"].eq("2020")
+        & summary["matrix_cell"].eq("TOTAL")
+    ].iloc[0]
+    assert not cohort["headline_available"]
+    assert cohort["validation_status"] == "window_censored"
+    assert pd.isna(cohort["supplier_firm_share"])
+    assert pd.isna(cohort["supplier_dollar_share"])

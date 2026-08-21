@@ -69,6 +69,7 @@ class _PacedEdgarAPIClient(EdgarAPIClient):
         self._spacing_lock = asyncio.Lock()
         self._next_request_at = 0.0
         self._document_error_callback = document_error_callback
+        self._context_incomplete_callback = document_error_callback
         self._disable_document_fetches = disable_document_fetches
 
     async def _wait_for_rate_limit(self) -> None:
