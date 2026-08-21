@@ -59,3 +59,19 @@ the raw-byte SHA-256 of this file and the design before reading analytical input
 - **Criteria impact:** None. Revision 1 remains the operative analytical amendment.
 - **Visibility at approval:** Same blocked run described in Revision 1. All supplier shares,
   dollar-decile matrices, concentration statistics, and placebo statistics remained suppressed.
+
+## Revision 3 - Multi-Agency Negative-Control Blocks
+
+- **Approved:** 2026-08-21.
+- **Reason:** Freeze the agency assignment for the required blocked-permutation diagnostic before
+  any supplier-share result is available. Firms can receive awards from multiple agency groups,
+  so a dollar-selected primary agency would make the diagnostic block depend on the outcome.
+- **Criteria impact:** None. The descriptive denominator, both classification axes, grid, central
+  cell, and reported estimands are unchanged. The diagnostic permutes venture labels within
+  `agency-membership signature x five-year first-award cohort`, where the signature is the ordered
+  `+`-joined set of agency groups with at least one observed award (`DoD`, `HHS`, `NSF`, `other`).
+  Award dollars and matrix outcomes do not determine the block.
+- **Visibility at approval:** The complete Form D artifact was available, but the local EFTS/M&A
+  rebuild and supplier-share census were still incomplete. No supplier-cell firm share, dollar
+  share, matrix, concentration statistic, or placebo statistic had been computed from complete
+  venture inputs.

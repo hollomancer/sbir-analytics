@@ -45,6 +45,7 @@ def _firm(
         "award_amount_observed_count": award_count,
         "first_explicit_phase_ii_end": pd.Timestamp(f"{first_year}-12-31"),
         "primary_agency_group": "DoD",
+        "agency_membership_block": "DoD",
         "dod_award_dollars": dollars,
         "hhs_award_dollars": 0.0,
         "nsf_award_dollars": 0.0,
@@ -57,9 +58,9 @@ def _firm(
         "post_phase_ii_contract_action_count": 1 if contract_signal else 0,
         "contract_persistence_fired": contract_signal,
         "form_d_signal": form_d_signal,
-        "form_d_searchable": searchable or form_d_signal,
+        "form_d_searchable": searchable,
         "ma_signal": ma_signal,
-        "ma_searchable": searchable or ma_signal,
+        "ma_searchable": searchable,
         "ipo_signal": False,
     }
 
@@ -128,8 +129,9 @@ def _central(frame: pd.DataFrame) -> pd.DataFrame:
     ]
 
 
-def test_missing_required_searches_stay_unknown_and_suppress_headline() -> None:
-    grid = MODULE._build_grid(_base(searchable=False))
+def test_missing_required_searches_stay_unknown_and_suppress_headline(tmp_path: Path) -> None:
+    base = _base(searchable=False)
+    grid = MODULE._build_grid(base)
     central = _central(grid).set_index("firm_id")
 
     assert len(grid) == 6 * 18
@@ -151,6 +153,7 @@ def test_missing_required_searches_stay_unknown_and_suppress_headline() -> None:
     assert not total["headline_available"]
     assert pd.isna(total["supplier_firm_share"])
     assert pd.isna(total["supplier_dollar_share"])
+    assert not MODULE._write_validation_sample(base, grid, tmp_path / "sample.csv")
 
 
 def test_complete_searches_emit_matrix_arithmetic_sample_and_curve(tmp_path: Path) -> None:
@@ -207,12 +210,17 @@ def test_complete_searches_emit_matrix_arithmetic_sample_and_curve(tmp_path: Pat
         "Private firm-d",
         "Private firm-f",
     }
+    assert sample["validation_status"].eq("pending_hand_adjudication").all()
+    assert sample["epistemic_tier"].eq("exploratory").all()
+    assert sample["citable"].eq(False).all()
 
     figure_path = tmp_path / "cohort_curve.svg"
     MODULE._write_figure(summary, as_of_year=2026, path=figure_path)
     figure = figure_path.read_text()
     assert "polyline" in figure
     assert "Exploratory / non-citable" in figure
+    assert "12-year cutoff" in figure
+    assert "15-year cutoff" in figure
 
 
 def test_frozen_spec_hashes_match() -> None:
@@ -248,10 +256,20 @@ def test_efts_error_rows_do_not_establish_ma_search_coverage(tmp_path: Path) -> 
         {"company_name": "Gamma", "mention_count": 0, "had_server_errors": True},
     ]
     scan_path.write_text("".join(json.dumps(row) + "\n" for row in rows))
+    form_d_path = tmp_path / "form-d.jsonl"
+    form_d_path.write_text("")
+    awards = pd.DataFrame(
+        {
+            "source_name": ["Alpha", "Beta", "Gamma"],
+            "firm_key": ["NAME:alpha", "NAME:beta", "NAME:gamma"],
+        }
+    )
 
     signals, metadata = MODULE._load_ma_signals(
         tmp_path / "missing-events.jsonl",
         scan_path,
+        form_d_path,
+        awards,
         firms,
         lookups,
         search_complete=False,
@@ -259,11 +277,93 @@ def test_efts_error_rows_do_not_establish_ma_search_coverage(tmp_path: Path) -> 
 
     searchable = signals.set_index("firm_key")["ma_searchable"].to_dict()
     assert searchable == {
-        "NAME:alpha": True,
+        "NAME:alpha": False,
         "NAME:beta": False,
         "NAME:gamma": False,
     }
     assert metadata["scan_rows"] == 3
     assert metadata["scan_error_rows"] == 2
     assert metadata["scan_covered_firms"] == 1
+    assert metadata["derivation_consistent"] is False
     assert "distinct from upstream Form D entity-match confidence" in metadata["threshold_policy"]
+
+
+def test_ma_coverage_requires_every_alias_and_complete_context(tmp_path: Path) -> None:
+    firms = pd.DataFrame({"firm_key": ["NAME:alpha"]})
+    awards = pd.DataFrame(
+        {
+            "source_name": ["Alpha", "Alpha Labs"],
+            "firm_key": ["NAME:alpha", "NAME:alpha"],
+        }
+    )
+    lookups = {
+        "uei": {},
+        "duns": {},
+        "exact_name": {"alpha": "NAME:alpha", "alpha labs": "NAME:alpha"},
+        "join_name": {
+            MODULE._name_key("Alpha"): "NAME:alpha",
+            MODULE._name_key("Alpha Labs"): "NAME:alpha",
+        },
+        "ambiguous": {
+            "uei": set(),
+            "duns": set(),
+            "exact_name": set(),
+            "join_name": set(),
+        },
+    }
+    events_path = tmp_path / "events.jsonl"
+    events_path.write_text("")
+    form_d_path = tmp_path / "form-d.jsonl"
+    form_d_path.write_text("")
+    scan_path = tmp_path / "efts.jsonl"
+    scan_path.write_text(
+        json.dumps({"company_name": "Alpha", "mention_types": []})
+        + "\n"
+        + json.dumps(
+            {
+                "company_name": "Alpha Labs",
+                "mention_types": ["filing_mention"],
+            }
+        )
+        + "\n"
+    )
+
+    signals, metadata = MODULE._load_ma_signals(
+        events_path,
+        scan_path,
+        form_d_path,
+        awards,
+        firms,
+        lookups,
+        search_complete=False,
+    )
+
+    assert not signals.iloc[0]["ma_searchable"]
+    assert metadata["derivation_consistent"] is True
+    assert metadata["scan_context_incomplete_rows"] == 1
+    assert metadata["scan_covered_firms"] == 0
+
+
+def test_jsonl_loader_fails_closed_on_malformed_rows(tmp_path: Path) -> None:
+    path = tmp_path / "broken.jsonl"
+    path.write_text('{"ok": true}\nnot-json\n')
+
+    with pytest.raises(ValueError, match="malformed JSON"):
+        MODULE._jsonl_rows(path)
+
+
+def test_agency_firm_membership_uses_award_count_not_positive_dollars() -> None:
+    base = _base(searchable=True)
+    base.loc[base["firm_id"].eq("firm-a"), "cumulative_sbir_dollars"] = pd.NA
+    base.loc[base["firm_id"].eq("firm-a"), "dod_award_dollars"] = pd.NA
+    grid = MODULE._build_grid(base)
+    summary = MODULE._build_summary(grid)
+    MODULE._validate_summary(grid, summary)
+
+    dod = summary.loc[
+        summary["is_central_grid"]
+        & summary["stratification"].eq("agency")
+        & summary["stratum"].eq("DoD")
+        & summary["matrix_cell"].eq("TOTAL")
+    ].iloc[0]
+    assert dod["firm_count"] == 5

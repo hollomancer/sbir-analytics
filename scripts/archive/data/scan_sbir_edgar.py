@@ -24,8 +24,10 @@ Usage:
 
 import argparse
 import asyncio
+import contextvars
 import csv
 import json
+import re
 import sys
 import time
 from collections import Counter
@@ -78,6 +80,7 @@ class _ServerErrorTracker:
 
     def __init__(self):
         self._affected: set[str] = set()
+        self._document_affected: set[str] = set()
         self._active_companies: set[str] = set()
 
     def register(self, company_name: str) -> None:
@@ -87,15 +90,25 @@ class _ServerErrorTracker:
         self._active_companies.discard(company_name)
 
     def write(self, message):
-        if "HTTP 5" not in message and "EDGAR filing mention search failed" not in message:
+        match = re.search(
+            r"EDGAR filing mention search failed for '(.*)':",
+            str(message),
+        )
+        if match is None:
             return
-        for name in self._active_companies:
-            if name in message:
-                self._affected.add(name)
-                return
+        name = match.group(1)
+        if name in self._active_companies:
+            self._affected.add(name)
 
     def had_error(self, company_name: str) -> bool:
         return company_name in self._affected
+
+    def mark_document_error(self, company_name: str | None) -> None:
+        if company_name in self._active_companies:
+            self._document_affected.add(company_name)
+
+    def had_document_error(self, company_name: str) -> bool:
+        return company_name in self._document_affected
 
 
 def load_companies(awards_csv: str) -> list[tuple[str, int]]:
@@ -213,7 +226,12 @@ def load_checkpoint(path: Path, *, rescan_errors: bool = False) -> set[str]:
         for line in f:
             try:
                 rec = json.loads(line)
-                if rescan_errors and (rec.get("had_server_errors") or rec.get("error")):
+                if rescan_errors and (
+                    rec.get("had_server_errors")
+                    or rec.get("document_fetch_errors")
+                    or rec.get("context_classification_complete") is False
+                    or rec.get("error")
+                ):
                     continue
                 done.add(rec["company_name"])
             except (json.JSONDecodeError, KeyError):
@@ -399,6 +417,12 @@ async def main() -> None:
     remaining = [(name, count) for name, count in companies if name not in done]
     print(f"  {len(remaining):,} companies to scan\n")
 
+    # Track request and document failures at the company task grain.
+    error_tracker = _ServerErrorTracker()
+    current_company: contextvars.ContextVar[str | None] = contextvars.ContextVar(
+        "efts_current_company", default=None
+    )
+
     # Initialize client
     config = {
         "base_url": "https://efts.sec.gov/LATEST",
@@ -413,6 +437,16 @@ async def main() -> None:
         requests_per_second=args.requests_per_second,
     )
 
+    original_fetch = client.fetch_filing_document
+
+    async def _tracked_fetch(*args, **kwargs):
+        text = await original_fetch(*args, **kwargs)
+        if text is None:
+            error_tracker.mark_document_error(current_company.get())
+        return text
+
+    client.fetch_filing_document = _tracked_fetch
+
     # Monkey-patch out document fetches if requested
     if args.no_doc_fetch:
 
@@ -423,11 +457,11 @@ async def main() -> None:
         print("  Document fetches DISABLED (counts only)\n")
 
     # Scan — track failed mention searches per company via loguru sink
-    error_tracker = _ServerErrorTracker()
     tracker_id = logger.add(error_tracker, level="WARNING", format="{message}")
 
     with_mentions = 0
     server_errors = 0
+    document_errors = 0
     errors = 0
     start_time = time.time()
     processed = len(done)
@@ -440,10 +474,11 @@ async def main() -> None:
         award_count: int,
         out,
     ) -> None:
-        nonlocal with_mentions, server_errors, errors, processed
+        nonlocal with_mentions, server_errors, document_errors, errors, processed
 
         async with semaphore:
             error_tracker.register(name)
+            context_token = current_company.set(name)
             try:
                 p = await enrich_company(
                     client,
@@ -455,6 +490,7 @@ async def main() -> None:
 
                 has_mention = p.mention_count > 0
                 had_errors = error_tracker.had_error(name)
+                had_document_errors = error_tracker.had_document_error(name)
 
                 rec = {
                     "company_name": name,
@@ -466,15 +502,22 @@ async def main() -> None:
                     if p.latest_mention_date
                     else None,
                     "mention_noise_score": p.mention_noise_score,
+                    "context_classification_complete": bool(
+                        not args.no_doc_fetch and not had_document_errors
+                    ),
                 }
                 if had_errors:
                     rec["had_server_errors"] = True
+                if had_document_errors:
+                    rec["document_fetch_errors"] = True
 
                 async with write_lock:
                     if has_mention:
                         with_mentions += 1
                     if had_errors:
                         server_errors += 1
+                    if had_document_errors:
+                        document_errors += 1
                     out.write(json.dumps(rec) + "\n")
                     out.flush()
                     processed += 1
@@ -487,6 +530,7 @@ async def main() -> None:
                     out.flush()
                     processed += 1
             finally:
+                current_company.reset(context_token)
                 error_tracker.unregister(name)
 
     # Process in batches to allow periodic progress reporting
@@ -508,6 +552,7 @@ async def main() -> None:
                 f"  {processed:,}/{len(companies):,} "
                 f"({rate:.1f}/s, ETA {eta_min:.0f}min) "
                 f"mentions={with_mentions} err={errors} 5xx={server_errors}"
+                f" doc_err={document_errors}"
             )
 
     elapsed = time.time() - start_time
@@ -523,6 +568,7 @@ async def main() -> None:
         f"({with_mentions / max(len(remaining), 1) * 100:.1f}%)"
     )
     print(f"Errors:               {errors:,}")
+    print(f"Document fetch errors:{document_errors:,}")
     print(f"Search request errors: {server_errors:,} (rescan with --rescan-errors)")
     print(f"Output:               {output_path}")
     print("Note: Form D sourced separately via fetch_form_d_index.py")

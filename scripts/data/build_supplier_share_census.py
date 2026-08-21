@@ -50,7 +50,7 @@ DEFAULT_PRIVATE_SAMPLE = REPO_ROOT / "data/private/supplier_share/validation_sam
 DESIGN_PATH = REPO_ROOT / "specs/supplier-share-census/design.md"
 AMENDMENTS_PATH = REPO_ROOT / "specs/supplier-share-census/amendments.md"
 DESIGN_SHA256 = "c14dea2a147e46b740cc46925d7a89709a45c6aedc84c5a3324e3e75528e769f"
-AMENDMENTS_SHA256 = "d08a13d3e3b3996216ab40c619b7df5f05d7a323f67ee3739946abd95797aa60"
+AMENDMENTS_SHA256 = "c1a358645131ce3792cc745f56f5b5b381384d79fde62e0a8dff1d8a76620ac9"
 
 T_VALUES = (8, 10, 12)
 N_VALUES = (4, 6, 10)
@@ -85,6 +85,18 @@ REQUIRED_AWARD_COLUMNS = (
     "agency",
     "phase",
     "contract_end_date",
+)
+CLASSIFIER_COLUMNS = (
+    "firm_id",
+    "observation_years",
+    "award_tenure_years",
+    "award_count",
+    "contract_persistence_fired",
+    "form_d_signal",
+    "form_d_searchable",
+    "ma_signal",
+    "ma_searchable",
+    "ipo_signal",
 )
 
 
@@ -128,6 +140,12 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("--output-dir", type=Path, default=DEFAULT_OUTPUT_DIR)
     parser.add_argument("--private-validation-sample", type=Path, default=DEFAULT_PRIVATE_SAMPLE)
     parser.add_argument("--as-of-year", type=int)
+    parser.add_argument(
+        "--contract-history-scope",
+        choices=("partial_snapshot", "full_history"),
+        default="partial_snapshot",
+        help="Declared coverage of the supplied prime-contract materialization.",
+    )
     parser.add_argument(
         "--form-d-search-complete",
         action="store_true",
@@ -320,9 +338,7 @@ def _prepare_awards(path: Path, as_of_year: int | None) -> tuple[pd.DataFrame, p
             continue
         agency_dollars = {
             agency: float(
-                group.loc[group["agency_group"].eq(agency), "award_amount_numeric"]
-                .fillna(0.0)
-                .sum()
+                group.loc[group["agency_group"].eq(agency), "award_amount_numeric"].sum(min_count=1)
             )
             for agency in AGENCY_ORDER
         }
@@ -332,13 +348,15 @@ def _prepare_awards(path: Path, as_of_year: int | None) -> tuple[pd.DataFrame, p
         primary_agency = sorted(
             AGENCY_ORDER,
             key=lambda agency: (
-                -agency_dollars[agency],
                 -agency_counts[agency],
                 AGENCY_ORDER.index(agency),
             ),
         )[0]
+        agency_membership_block = "+".join(
+            agency for agency in AGENCY_ORDER if agency_counts[agency] > 0
+        )
         phase_ii_ends = group["phase_ii_explicit_end"].dropna()
-        total_dollars = float(group["award_amount_numeric"].fillna(0.0).sum())
+        total_dollars = float(group["award_amount_numeric"].sum(min_count=1))
         rows.append(
             {
                 "firm_key": firm_key,
@@ -357,6 +375,7 @@ def _prepare_awards(path: Path, as_of_year: int | None) -> tuple[pd.DataFrame, p
                     phase_ii_ends.min() if not phase_ii_ends.empty else pd.NaT
                 ),
                 "primary_agency_group": primary_agency,
+                "agency_membership_block": agency_membership_block,
                 **{
                     f"{agency.lower()}_award_dollars": agency_dollars[agency]
                     for agency in AGENCY_ORDER
@@ -450,7 +469,11 @@ def _resolve_external_firm(
 
 
 def _load_contract_signals(
-    path: Path, firms: pd.DataFrame, lookups: dict[str, Any]
+    path: Path,
+    firms: pd.DataFrame,
+    lookups: dict[str, Any],
+    *,
+    history_scope: str,
 ) -> tuple[pd.DataFrame, dict]:
     result = firms.loc[:, ["firm_key", "first_explicit_phase_ii_end"]].copy()
     result["post_phase_ii_net_prime_obligations"] = 0.0
@@ -461,6 +484,7 @@ def _load_contract_signals(
             "path": str(path),
             "available": False,
             "rows": 0,
+            "history_scope": "not_available",
             "note": "No materialized prime-contract input was supplied.",
         }
 
@@ -526,6 +550,7 @@ def _load_contract_signals(
         "matched_rows_by_method": dict(sorted(methods.items())),
         "unmatched_rows": unmatched,
         "matched_rows_without_explicit_phase_ii_end": missing_anchor,
+        "history_scope": history_scope,
         "source_scope": "as materialized; absence is not treated as complete contract history",
     }
     return result.drop(columns="first_explicit_phase_ii_end"), metadata
@@ -536,15 +561,16 @@ def _jsonl_rows(path: Path) -> list[dict[str, Any]]:
     if not path.exists():
         return rows
     with path.open(encoding="utf-8") as handle:
-        for line in handle:
+        for line_number, line in enumerate(handle, start=1):
             if not line.strip():
                 continue
             try:
                 value = json.loads(line)
-            except json.JSONDecodeError:
-                continue
-            if isinstance(value, dict):
-                rows.append(value)
+            except json.JSONDecodeError as exc:
+                raise ValueError(f"malformed JSON at {path}:{line_number}") from exc
+            if not isinstance(value, dict):
+                raise ValueError(f"non-object JSON at {path}:{line_number}")
+            rows.append(value)
     return rows
 
 
@@ -582,7 +608,6 @@ def _load_form_d_signals(
         if firm_key:
             positive.add(firm_key)
     result["form_d_signal"] = result["firm_key"].isin(positive)
-    result.loc[result["form_d_signal"], "form_d_searchable"] = True
     return result, {
         "path": str(path),
         "sha256": _sha256(path),
@@ -601,6 +626,8 @@ def _load_form_d_signals(
 def _load_ma_signals(
     events_path: Path,
     scan_path: Path,
+    form_d_path: Path,
+    awards: pd.DataFrame,
     firms: pd.DataFrame,
     lookups: dict[str, Any],
     *,
@@ -608,7 +635,7 @@ def _load_ma_signals(
 ) -> tuple[pd.DataFrame, dict]:
     result = firms.loc[:, ["firm_key"]].copy()
     result["ma_signal"] = False
-    result["ma_searchable"] = bool(search_complete and events_path.exists())
+    result["ma_searchable"] = False
     event_rows = _jsonl_rows(events_path)
     positive: set[str] = set()
     methods: Counter[str] = Counter()
@@ -626,25 +653,131 @@ def _load_ma_signals(
         if firm_key:
             positive.add(firm_key)
     result["ma_signal"] = result["firm_key"].isin(positive)
-    result.loc[result["ma_signal"], "ma_searchable"] = True
 
     scan_rows = _jsonl_rows(scan_path)
-    covered: set[str] = set()
+    expected_label_rows = awards.loc[:, ["source_name", "firm_key"]].drop_duplicates()
+    labels_per_firm: defaultdict[str, set[str]] = defaultdict(set)
+    firms_per_label: defaultdict[str, set[str]] = defaultdict(set)
+    for row in expected_label_rows.itertuples(index=False):
+        label = str(row.source_name)
+        firm_key = str(row.firm_key)
+        firms_per_label[label].add(firm_key)
+        labels_per_firm[firm_key].add(label)
+
+    scan_by_name: defaultdict[str, list[dict[str, Any]]] = defaultdict(list)
     scan_methods: Counter[str] = Counter()
     scan_error_rows = 0
+    scan_context_incomplete_rows = 0
     for row in scan_rows:
-        if row.get("error") or row.get("had_server_errors"):
+        name = _clean(row.get("company_name"))
+        if not name:
+            raise ValueError("EFTS scan row is missing company_name")
+        scan_by_name[name].append(row)
+        mention_types = set(row.get("mention_types") or [])
+        context_complete = row.get("context_classification_complete")
+        inferred_incomplete = context_complete is None and "filing_mention" in mention_types
+        if row.get("error") or row.get("had_server_errors") or row.get("document_fetch_errors"):
             scan_error_rows += 1
-            continue
+        if context_complete is False or inferred_incomplete:
+            scan_context_incomplete_rows += 1
         firm_key, method = _resolve_external_firm(
             lookups=lookups,
-            name=row.get("company_name"),
+            name=name,
         )
         scan_methods[method] += 1
-        if firm_key:
-            covered.add(firm_key)
-    if covered:
-        result.loc[result["firm_key"].isin(covered), "ma_searchable"] = True
+
+    clean_labels: set[str] = set()
+    duplicate_scan_labels: set[str] = set()
+    for label, rows in scan_by_name.items():
+        if len(rows) != 1:
+            duplicate_scan_labels.add(label)
+            continue
+        row = rows[0]
+        mention_types = set(row.get("mention_types") or [])
+        context_complete = row.get("context_classification_complete")
+        if context_complete is None:
+            context_complete = "filing_mention" not in mention_types
+        if not (
+            row.get("error") or row.get("had_server_errors") or row.get("document_fetch_errors")
+        ) and bool(context_complete):
+            clean_labels.add(label)
+
+    signal_keys = {
+        "form_d_business_combination",
+        "efts_subsidiary",
+        "efts_ma_definitive",
+        "efts_acquisition_text",
+        "efts_ma_proxy",
+        "efts_ownership_active",
+    }
+    expected_signals: dict[str, dict[str, bool]] = {}
+
+    def expected_for(name: str) -> dict[str, bool]:
+        return expected_signals.setdefault(name, dict.fromkeys(signal_keys, False))
+
+    for row in _jsonl_rows(form_d_path):
+        name = _clean(row.get("company_name"))
+        if name and any(
+            bool(offering.get("is_business_combination"))
+            for offering in (row.get("offerings") or [])
+            if isinstance(offering, dict)
+        ):
+            expected_for(name)["form_d_business_combination"] = True
+    efts_signal_map = {
+        "subsidiary": "efts_subsidiary",
+        "ma_definitive": "efts_ma_definitive",
+        "acquisition": "efts_acquisition_text",
+        "ma_proxy": "efts_ma_proxy",
+        "ownership_active": "efts_ownership_active",
+    }
+    for row in scan_rows:
+        name = _clean(row.get("company_name"))
+        for mention_type in set(row.get("mention_types") or []):
+            signal_key = efts_signal_map.get(mention_type)
+            if signal_key:
+                expected_for(name)[signal_key] = True
+
+    events_by_name: dict[str, dict[str, Any]] = {}
+    duplicate_event_names: set[str] = set()
+    for row in event_rows:
+        name = _clean(row.get("company_name"))
+        if not name:
+            duplicate_event_names.add("<missing>")
+        elif name in events_by_name:
+            duplicate_event_names.add(name)
+        else:
+            events_by_name[name] = row
+    ambiguous_positive_labels = {
+        label
+        for label, firm_keys in firms_per_label.items()
+        if len(firm_keys) > 1
+        and _clean(events_by_name.get(label, {}).get("confidence")).lower() in {"high", "medium"}
+    }
+    coverage_eligible_labels = clean_labels - ambiguous_positive_labels
+    covered = {
+        firm_key
+        for firm_key, labels in labels_per_firm.items()
+        if labels and labels.issubset(coverage_eligible_labels)
+    }
+    signal_mismatches = 0
+    for name in set(events_by_name) & set(expected_signals):
+        actual = events_by_name[name].get("signals") or {}
+        if any(bool(actual.get(key)) != expected_signals[name][key] for key in signal_keys):
+            signal_mismatches += 1
+    derivation_consistent = bool(
+        events_path.exists()
+        and scan_path.exists()
+        and form_d_path.exists()
+        and not duplicate_event_names
+        and set(events_by_name) == set(expected_signals)
+        and signal_mismatches == 0
+    )
+    artifacts_complete = derivation_consistent
+    if artifacts_complete:
+        if search_complete:
+            result["ma_searchable"] = True
+        else:
+            result["ma_searchable"] = result["firm_key"].isin(covered)
 
     metadata = {
         "events_path": str(events_path),
@@ -659,8 +792,24 @@ def _load_ma_signals(
         "scan_sha256": _sha256(scan_path) if scan_path.exists() else None,
         "scan_rows": len(scan_rows),
         "scan_error_rows": scan_error_rows,
+        "scan_context_incomplete_rows": scan_context_incomplete_rows,
+        "scan_expected_labels": len(firms_per_label),
+        "scan_clean_labels": len(clean_labels & set(firms_per_label)),
+        "scan_missing_labels": len(set(firms_per_label) - set(scan_by_name)),
+        "scan_unexpected_labels": len(set(scan_by_name) - set(firms_per_label)),
+        "scan_duplicate_labels": len(duplicate_scan_labels),
+        "scan_ambiguous_source_labels": sum(
+            len(firm_keys) > 1 for firm_keys in firms_per_label.values()
+        ),
+        "scan_ambiguous_positive_labels": len(ambiguous_positive_labels),
         "scan_covered_firms": len(covered),
         "scan_attachment_methods": dict(sorted(scan_methods.items())),
+        "derivation_consistent": derivation_consistent,
+        "derivation_expected_events": len(expected_signals),
+        "derivation_event_name_mismatches": len(set(events_by_name) ^ set(expected_signals)),
+        "derivation_signal_mismatches": signal_mismatches,
+        "derivation_duplicate_event_names": len(duplicate_event_names),
+        "derivation_form_d_sha256": _sha256(form_d_path) if form_d_path.exists() else None,
         "search_complete_asserted": search_complete,
         "threshold_policy": (
             "existing final high plus medium M&A tiers; low excluded; legacy M&A event "
@@ -698,8 +847,14 @@ def _load_ipo_signals(
         (column for column in ("company_name", "issuer_name", "recipient_name") if column in frame),
         None,
     )
-    if name_column is None:
-        raise ValueError("IPO signal input needs company_name, issuer_name, or recipient_name")
+    uei_column = next(
+        (column for column in ("uei", "company_uei", "issuer_uei") if column in frame), None
+    )
+    duns_column = next(
+        (column for column in ("duns", "company_duns", "issuer_duns") if column in frame), None
+    )
+    if name_column is None and uei_column is None and duns_column is None:
+        raise ValueError("IPO signal input needs a supported UEI, DUNS, or company-name column")
     form_column = next(
         (column for column in ("form", "form_type", "filing_type") if column in frame), None
     )
@@ -708,10 +863,12 @@ def _load_ipo_signals(
     qualifying = frame[form_column].map(lambda value: _clean(value).upper() in IPO_FORMS)
     positive: set[str] = set()
     methods: Counter[str] = Counter()
-    for row in frame.loc[qualifying].itertuples(index=False):
+    for _, row in frame.loc[qualifying].iterrows():
         firm_key, method = _resolve_external_firm(
             lookups=lookups,
-            name=getattr(row, name_column),
+            uei=row.get(uei_column) if uei_column else None,
+            duns=row.get(duns_column) if duns_column else None,
+            name=row.get(name_column) if name_column else None,
         )
         methods[method] += 1
         if firm_key:
@@ -760,7 +917,7 @@ def _validation_status(frame: pd.DataFrame) -> str:
     eligible = frame.loc[frame["headline_eligible"]]
     if eligible.empty:
         return "blocked_no_mature_cohort"
-    if eligible["venture_state"].eq("unknown_venture").any():
+    if not eligible["required_venture_channels_searchable"].all():
         return "blocked_missing_required_signal_inputs"
     return "pending_hand_adjudication"
 
@@ -782,13 +939,13 @@ def _cumulative_dollar_deciles(base: pd.DataFrame, mature: pd.Series) -> pd.Seri
     return deciles
 
 
-def _build_grid(base: pd.DataFrame) -> pd.DataFrame:
-    public_base = base.drop(columns=["private_firm_name", "firm_key"])
+def _classify_grid(classifier: pd.DataFrame) -> pd.DataFrame:
+    """Assign both axes without access to dollars, agency, or review labels."""
     grids: list[pd.DataFrame] = []
     for window in WINDOW_VALUES:
-        mature = base["observation_years"].ge(window)
-        dollar_deciles = _cumulative_dollar_deciles(base, mature)
-        venture_signal = base[["form_d_signal", "ma_signal", "ipo_signal"]].any(axis=1)
+        mature = classifier["observation_years"].ge(window)
+        venture_signal = classifier[["form_d_signal", "ma_signal", "ipo_signal"]].any(axis=1)
+        required_channels_searchable = classifier["form_d_searchable"] & classifier["ma_searchable"]
         reasons = [
             _signal_absence_reason(
                 venture_signal=bool(signal),
@@ -799,32 +956,34 @@ def _build_grid(base: pd.DataFrame) -> pd.DataFrame:
             for signal, is_mature, form_d, ma in zip(
                 venture_signal,
                 mature,
-                base["form_d_searchable"],
-                base["ma_searchable"],
+                classifier["form_d_searchable"],
+                classifier["ma_searchable"],
                 strict=True,
             )
         ]
-        reason = pd.Series((item[0] for item in reasons), index=base.index)
-        reason_detail = pd.Series((item[1] for item in reasons), index=base.index)
-        venture_state = pd.Series("unknown_venture", index=base.index)
+        reason = pd.Series((item[0] for item in reasons), index=classifier.index)
+        reason_detail = pd.Series((item[1] for item in reasons), index=classifier.index)
+        venture_state = pd.Series("unknown_venture", index=classifier.index)
         venture_state.loc[venture_signal] = "venture"
         venture_state.loc[reason.eq("no_filing_found")] = "no_venture"
         for tenure in T_VALUES:
-            tenure_fired = base["award_tenure_years"].ge(tenure)
+            tenure_fired = classifier["award_tenure_years"].ge(tenure)
             for awards_threshold in N_VALUES:
-                award_count_fired = base["award_count"].ge(awards_threshold)
-                persistent = tenure_fired | award_count_fired | base["contract_persistence_fired"]
-                grid = public_base.copy()
+                award_count_fired = classifier["award_count"].ge(awards_threshold)
+                persistent = (
+                    tenure_fired | award_count_fired | classifier["contract_persistence_fired"]
+                )
+                grid = classifier.loc[:, ["firm_id"]].copy()
                 grid["t_years"] = tenure
                 grid["n_awards"] = awards_threshold
                 grid["window_years"] = window
                 grid["is_central_grid"] = (tenure, awards_threshold, window) == CENTRAL_GRID
                 grid["headline_eligible"] = mature
-                grid["cumulative_dollar_decile"] = dollar_deciles
                 grid["tenure_criterion_fired"] = tenure_fired
                 grid["award_count_criterion_fired"] = award_count_fired
                 grid["federal_persistent"] = persistent
                 grid["venture_signal"] = venture_signal
+                grid["required_venture_channels_searchable"] = required_channels_searchable
                 grid["venture_state"] = venture_state
                 grid["signal_absent_reason"] = reason
                 grid["signal_absent_detail"] = reason_detail
@@ -833,9 +992,26 @@ def _build_grid(base: pd.DataFrame) -> pd.DataFrame:
                     for p_value, v_value in zip(persistent, venture_state, strict=True)
                 ]
                 grid["validation_status"] = _validation_status(grid)
+                grid["epistemic_tier"] = EPISTEMIC_TIER
                 grid["citable"] = False
                 grids.append(grid)
-    result = pd.concat(grids, ignore_index=True)
+    return pd.concat(grids, ignore_index=True)
+
+
+def _build_grid(base: pd.DataFrame) -> pd.DataFrame:
+    classifier = base.loc[:, list(CLASSIFIER_COLUMNS)].copy()
+    classified = _classify_grid(classifier)
+    public_base = base.drop(columns=["private_firm_name", "firm_key"])
+    result = classified.merge(public_base, on="firm_id", how="left", validate="many_to_one")
+    result["cumulative_dollar_decile"] = pd.Series(pd.NA, index=result.index, dtype="Int64")
+    for window in WINDOW_VALUES:
+        mature = base["observation_years"].ge(window)
+        deciles = _cumulative_dollar_deciles(base, mature)
+        decile_by_firm = pd.Series(deciles.to_numpy(), index=base["firm_id"])
+        mask = result["window_years"].eq(window)
+        result.loc[mask, "cumulative_dollar_decile"] = (
+            result.loc[mask, "firm_id"].map(decile_by_firm).astype("Int64")
+        )
     result = result.sort_values(
         ["window_years", "t_years", "n_awards", "firm_id"], kind="stable"
     ).reset_index(drop=True)
@@ -852,6 +1028,8 @@ def _validate_grid(frame: pd.DataFrame, firm_count: int) -> None:
         raise RuntimeError("at least one grid cell does not contain every canonical firm")
     if not frame["matrix_cell"].isin(MATRIX_CELLS).all():
         raise RuntimeError("unknown matrix cell emitted")
+    if not frame["epistemic_tier"].eq(EPISTEMIC_TIER).all() or not frame["citable"].eq(False).all():
+        raise RuntimeError("grid epistemic labeling is inconsistent")
     duplicate = frame.duplicated(["firm_id", "t_years", "n_awards", "window_years"])
     if duplicate.any():
         raise RuntimeError("firm-by-grid output is not unique")
@@ -873,20 +1051,20 @@ def _hash_rank(value: str, *, salt: str) -> str:
 
 
 def _placebo_supplier_share(subset: pd.DataFrame) -> float | None:
-    if subset.empty or subset["venture_state"].eq("unknown_venture").any():
+    if subset.empty or not subset["required_venture_channels_searchable"].all():
         return None
     work = subset.copy()
     work["cohort_block"] = (work["first_award_year"] // 5) * 5
     work["placebo_venture"] = False
-    for (agency, cohort), index in work.groupby(
-        ["primary_agency_group", "cohort_block"], sort=True
+    for (agency_block, cohort), index in work.groupby(
+        ["agency_membership_block", "cohort_block"], sort=True
     ).groups.items():
         block = work.loc[index].copy()
         original = block.sort_values("firm_id", kind="stable")["venture_signal"].tolist()
         destination = sorted(
             index,
             key=lambda row_index: _hash_rank(
-                str(work.at[row_index, "firm_id"]), salt=f"{agency}:{cohort}"
+                str(work.at[row_index, "firm_id"]), salt=f"{agency_block}:{cohort}"
             ),
         )
         work.loc[destination, "placebo_venture"] = original
@@ -908,7 +1086,7 @@ def _summary_rows(
     tenure, awards_threshold, window = grid
     total_firms = int(len(subset))
     total_dollars = float(subset["stratum_sbir_dollars"].sum()) if total_firms else 0.0
-    measurable = subset["venture_state"].ne("unknown_venture")
+    measurable = subset["required_venture_channels_searchable"]
     headline_available = bool(total_firms and measurable.all())
     supplier = subset["matrix_cell"].eq("persistent_no_venture")
     validation_status = (
@@ -956,6 +1134,7 @@ def _summary_rows(
         "placebo_supplier_dollar_share": placebo_supplier_dollar_share,
         "supplier_minus_placebo_dollar_share": supplier_minus_placebo_dollar_share,
         "validation_status": validation_status,
+        "epistemic_tier": EPISTEMIC_TIER,
         "citable": False,
     }
     rows = [total_row]
@@ -997,7 +1176,8 @@ def _build_summary(firm_grid: pd.DataFrame) -> pd.DataFrame:
         )
         for agency in AGENCY_ORDER:
             dollars_column = f"{agency.lower()}_award_dollars"
-            agency_frame = mature.loc[mature[dollars_column].gt(0)].copy()
+            count_column = f"{agency.lower()}_award_count"
+            agency_frame = mature.loc[mature[count_column].gt(0)].copy()
             agency_frame["stratum_sbir_dollars"] = agency_frame[dollars_column]
             rows.extend(
                 _summary_rows(
@@ -1058,6 +1238,66 @@ def _build_summary(firm_grid: pd.DataFrame) -> pd.DataFrame:
     ).reset_index(drop=True)
 
 
+def _validate_summary(firm_grid: pd.DataFrame, summary: pd.DataFrame) -> None:
+    """Reconcile matrix cells and every declared summary denominator."""
+
+    def close(left: float, right: float) -> bool:
+        return math.isclose(left, right, rel_tol=1e-9, abs_tol=max(1.0, abs(right) * 1e-9))
+
+    grouping = ["t_years", "n_awards", "window_years", "stratification", "stratum"]
+    for keys, group in summary.groupby(grouping, sort=False, dropna=False):
+        total = group.loc[group["matrix_cell"].eq("TOTAL")]
+        if len(total) != 1:
+            raise RuntimeError(f"summary total missing or duplicated: {keys}")
+        cells = group.loc[~group["matrix_cell"].eq("TOTAL")]
+        row = total.iloc[0]
+        if int(cells["firm_count"].sum()) != int(row["total_firms"]):
+            raise RuntimeError(f"summary firm cells do not reconcile: {keys}")
+        if not close(float(cells["sbir_dollars"].sum()), float(row["total_sbir_dollars"])):
+            raise RuntimeError(f"summary dollar cells do not reconcile: {keys}")
+
+    for keys, grid in firm_grid.groupby(["t_years", "n_awards", "window_years"], sort=False):
+        totals = summary.loc[
+            summary["t_years"].eq(keys[0])
+            & summary["n_awards"].eq(keys[1])
+            & summary["window_years"].eq(keys[2])
+            & summary["matrix_cell"].eq("TOTAL")
+        ]
+        overall = totals.loc[totals["stratification"].eq("overall")]
+        if len(overall) != 1:
+            raise RuntimeError(f"overall summary total missing or duplicated: {keys}")
+        overall_row = overall.iloc[0]
+        mature = grid.loc[grid["headline_eligible"]]
+        if int(overall_row["total_firms"]) != len(mature):
+            raise RuntimeError(f"overall mature firm count does not reconcile: {keys}")
+
+        for stratification in ("award_count", "cumulative_dollar_decile"):
+            partition = totals.loc[totals["stratification"].eq(stratification)]
+            if int(partition["firm_count"].sum()) != len(mature):
+                raise RuntimeError(f"{stratification} firm partition does not reconcile: {keys}")
+            if not close(
+                float(partition["sbir_dollars"].sum()),
+                float(overall_row["total_sbir_dollars"]),
+            ):
+                raise RuntimeError(f"{stratification} dollars do not reconcile: {keys}")
+
+        agency = totals.loc[totals["stratification"].eq("agency")]
+        if not close(
+            float(agency["sbir_dollars"].sum()),
+            float(overall_row["total_sbir_dollars"]),
+        ):
+            raise RuntimeError(f"agency dollars do not reconcile: {keys}")
+
+        cohorts = totals.loc[totals["stratification"].eq("first_award_year")]
+        if int(cohorts["firm_count"].sum()) != len(grid):
+            raise RuntimeError(f"cohort firm partition does not reconcile: {keys}")
+        if not close(
+            float(cohorts["sbir_dollars"].sum()),
+            float(grid["cumulative_sbir_dollars"].sum()),
+        ):
+            raise RuntimeError(f"cohort dollars do not reconcile: {keys}")
+
+
 def _write_validation_sample(base: pd.DataFrame, firm_grid: pd.DataFrame, path: Path) -> bool:
     central = firm_grid.loc[
         firm_grid["t_years"].eq(CENTRAL_GRID[0])
@@ -1065,7 +1305,7 @@ def _write_validation_sample(base: pd.DataFrame, firm_grid: pd.DataFrame, path: 
         & firm_grid["window_years"].eq(CENTRAL_GRID[2])
         & firm_grid["headline_eligible"]
     ]
-    if central.empty or central["venture_state"].eq("unknown_venture").any():
+    if central.empty or not central["required_venture_channels_searchable"].all():
         return False
     private = central.merge(
         base[["firm_id", "private_firm_name"]], on="firm_id", how="left", validate="one_to_one"
@@ -1106,6 +1346,9 @@ def _write_validation_sample(base: pd.DataFrame, firm_grid: pd.DataFrame, path: 
         "ma_signal",
         "ipo_signal",
         "contract_persistence_fired",
+        "validation_status",
+        "epistemic_tier",
+        "citable",
         "sample_rank",
     ]
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -1157,7 +1400,7 @@ def _write_figure(summary: pd.DataFrame, *, as_of_year: int, path: Path) -> None
     envelope = measurable.groupby("cohort")["supplier_dollar_share"].agg(["min", "max"])
     central = central.loc[central["supplier_dollar_share"].notna()]
     min_year = int(measurable["cohort"].min())
-    max_year = int(measurable["cohort"].max())
+    max_year = max(int(measurable["cohort"].max()), as_of_year - min(WINDOW_VALUES))
     max_share = max(float(measurable["supplier_dollar_share"].max()), 0.01)
 
     def x(year: float) -> float:
@@ -1239,6 +1482,11 @@ def _render_readout(
         "required venture channels were searchable. This is a descriptive record classification, ",
         "not a causal claim or a judgment about commercialization quality, dependence, or intent.",
         "",
+        "**Declared estimand:** For each frozen grid cell, among canonical firms whose first ",
+        "observed award is at least the configured window before the as-of year, report the ",
+        "firm share and cumulative observed SBIR/STTR dollar share in every persistence x ",
+        "venture-signal cell. Firm dollars include all observed awards through the data cut.",
+        "",
         "## Frozen criteria",
         "",
         "- Identity: `CanonicalMergePolicy.PRELOAD_V1`; UEI primary, DUNS fallback, unique existing normalized-name alias last; no new fuzzy matching.",
@@ -1257,8 +1505,10 @@ def _render_readout(
         "- Award-amount coverage: "
         f"{_format_pct(manifest['inputs']['sbir_awards']['award_amount_coverage'], digits=2)}",
         f"- Contract source available: {manifest['inputs']['contracts']['available']}",
+        f"- Contract history scope: `{manifest['inputs']['contracts']['history_scope']}`",
         f"- Form D source available / complete assertion: {manifest['inputs']['form_d']['available']} / {manifest['inputs']['form_d'].get('search_complete_asserted', False)}",
         f"- M&A source available / scan available: {manifest['inputs']['ma']['events_available']} / {manifest['inputs']['ma']['scan_available']}",
+        f"- M&A event/scan derivation consistent: {manifest['inputs']['ma']['derivation_consistent']}",
         "",
         "## Central-cell result",
         "",
@@ -1269,7 +1519,7 @@ def _render_readout(
                 f"- Mature firms: {int(central['total_firms']):,}",
                 f"- Persistent + no-observed-venture firm share: {_format_pct(central['supplier_firm_share'])}",
                 f"- Persistent + no-observed-venture cumulative-dollar share: {_format_pct(central['supplier_dollar_share'])}",
-                f"- Supplier-cell dollars held by its top decile: {_format_pct(central['supplier_top_decile_dollar_share'])}",
+                f"- Supplier-cell dollars contributed by denominator decile D01: {_format_pct(central['supplier_top_decile_dollar_share'])}",
                 f"- Blocked-permutation supplier-dollar share: {_format_pct(central['placebo_supplier_dollar_share'])}",
                 f"- Observed minus blocked-permutation share: {_format_pct(central['supplier_minus_placebo_dollar_share'])}",
             ]
@@ -1363,7 +1613,12 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
 
     awards, firms, sbir_meta = _prepare_awards(args.sbir_awards, args.as_of_year)
     lookups = _identity_lookups(awards)
-    contract_signals, contracts_meta = _load_contract_signals(args.contracts, firms, lookups)
+    contract_signals, contracts_meta = _load_contract_signals(
+        args.contracts,
+        firms,
+        lookups,
+        history_scope=args.contract_history_scope,
+    )
     form_d_signals, form_d_meta = _load_form_d_signals(
         args.form_d,
         firms,
@@ -1373,6 +1628,8 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
     ma_signals, ma_meta = _load_ma_signals(
         args.ma_events,
         args.efts_scan,
+        args.form_d,
+        awards,
         firms,
         lookups,
         search_complete=args.ma_search_complete,
@@ -1396,6 +1653,7 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
     for column, value in provenance.items():
         firm_grid[column] = pd.Series(value, index=firm_grid.index, dtype="string")
     summary = _build_summary(firm_grid)
+    _validate_summary(firm_grid, summary)
     validation_sample_written = _write_validation_sample(
         base, firm_grid, args.private_validation_sample
     )
@@ -1426,6 +1684,9 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
             "readout": str(paths.readout),
             "private_validation_sample": (
                 str(args.private_validation_sample) if validation_sample_written else None
+            ),
+            "private_validation_sample_sha256": (
+                _sha256(args.private_validation_sample) if validation_sample_written else None
             ),
         },
         "validation": {
