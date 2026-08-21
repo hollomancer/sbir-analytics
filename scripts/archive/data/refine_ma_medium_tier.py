@@ -91,6 +91,12 @@ _EMPLOYMENT = re.compile(
 )
 
 
+def _mark_context_incomplete(client: EdgarAPIClient) -> None:
+    callback = getattr(client, "__dict__", {}).get("_context_incomplete_callback")
+    if callable(callback):
+        callback()
+
+
 def classify_direction(
     text: str,
     company_name: str,
@@ -112,7 +118,9 @@ def classify_direction(
         clean = re.sub(
             r"\s*(?:Inc\.?|Corp\.?|LLC|L\.?L\.?C\.?|Ltd\.?|Co\.?|Company|"
             r"Corporation|Incorporated|Limited)\s*$",
-            "", company_name, flags=re.IGNORECASE,
+            "",
+            company_name,
+            flags=re.IGNORECASE,
         ).strip()
         if len(clean) >= 5:
             match = re.search(re.escape(clean), text, re.IGNORECASE)
@@ -122,8 +130,8 @@ def classify_direction(
     # Extract windows before and after the match
     before_start = max(0, match.start() - context_chars)
     after_end = min(len(text), match.end() + context_chars)
-    before_window = text[before_start:match.start()]
-    after_window = text[match.end():after_end]
+    before_window = text[before_start : match.start()]
+    after_window = text[match.end() : after_end]
     full_window = text[before_start:after_end]
 
     # Check for employment/consulting agreement — not an acquisition
@@ -168,7 +176,14 @@ async def refine_events(
     """Re-query EFTS and refine each medium-tier event."""
     semaphore = asyncio.Semaphore(concurrency)
     write_lock = asyncio.Lock()
-    stats = {"target": 0, "not_target": 0, "comparator": 0, "ambiguous": 0, "no_filing": 0, "error": 0}
+    stats = {
+        "target": 0,
+        "not_target": 0,
+        "comparator": 0,
+        "ambiguous": 0,
+        "no_filing": 0,
+        "error": 0,
+    }
     processed = 0
     start_time = time.time()
 
@@ -201,18 +216,18 @@ async def refine_events(
             # Try to fetch and classify the first M&A-related filing
             best_direction = "ambiguous"
             for mention in mentions:
-                doc_id = mention.get("doc_id", "")
-                if not doc_id or ":" not in doc_id:
+                doc_id = mention.get("doc_id")
+                if not isinstance(doc_id, str) or ":" not in doc_id:
+                    _mark_context_incomplete(client)
                     continue
-                filer_cik = mention.get("filer_cik", "")
-                if not filer_cik:
+                accession, filename = doc_id.split(":", 1)
+                filer_cik = str(mention.get("filer_cik") or "").strip()
+                if not accession.strip() or not filename.strip() or not filer_cik:
+                    _mark_context_incomplete(client)
                     continue
 
-                accession, filename = doc_id.split(":", 1)
                 try:
-                    text = await client.fetch_filing_document(
-                        filer_cik, accession, filename
-                    )
+                    text = await client.fetch_filing_document(filer_cik, accession, filename)
                 except Exception:
                     text = None
 
@@ -253,7 +268,7 @@ async def refine_events(
     batch_size = 50
     with open(output_path, "a" if resume_done else "w") as out:
         for batch_start in range(0, len(events), batch_size):
-            batch = events[batch_start:batch_start + batch_size]
+            batch = events[batch_start : batch_start + batch_size]
             tasks = [process_one(e, out) for e in batch]
             await asyncio.gather(*tasks)
 
@@ -317,9 +332,9 @@ async def main():
     await client.aclose()
 
     total = sum(stats.values())
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print(f"MEDIUM-TIER REFINEMENT COMPLETE — {total:,} events")
-    print(f"{'='*60}")
+    print(f"{'=' * 60}")
     print(f"  Confirmed target:  {stats['target']:,}")
     print(f"  Not target:        {stats['not_target']:,}")
     print(f"  Comparator:        {stats['comparator']:,}")
