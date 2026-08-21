@@ -122,21 +122,59 @@ def load_company_cities(awards_csv: str) -> dict[str, str]:
 
 
 _STATE_NAME_TO_CODE = {
-    "ALABAMA": "AL", "ALASKA": "AK", "ARIZONA": "AZ", "ARKANSAS": "AR",
-    "CALIFORNIA": "CA", "COLORADO": "CO", "CONNECTICUT": "CT", "DELAWARE": "DE",
-    "FLORIDA": "FL", "GEORGIA": "GA", "HAWAII": "HI", "IDAHO": "ID",
-    "ILLINOIS": "IL", "INDIANA": "IN", "IOWA": "IA", "KANSAS": "KS",
-    "KENTUCKY": "KY", "LOUISIANA": "LA", "MAINE": "ME", "MARYLAND": "MD",
-    "MASSACHUSETTS": "MA", "MICHIGAN": "MI", "MINNESOTA": "MN",
-    "MISSISSIPPI": "MS", "MISSOURI": "MO", "MONTANA": "MT", "NEBRASKA": "NE",
-    "NEVADA": "NV", "NEW HAMPSHIRE": "NH", "NEW JERSEY": "NJ",
-    "NEW MEXICO": "NM", "NEW YORK": "NY", "NORTH CAROLINA": "NC",
-    "NORTH DAKOTA": "ND", "OHIO": "OH", "OKLAHOMA": "OK", "OREGON": "OR",
-    "PENNSYLVANIA": "PA", "RHODE ISLAND": "RI", "SOUTH CAROLINA": "SC",
-    "SOUTH DAKOTA": "SD", "TENNESSEE": "TN", "TEXAS": "TX", "UTAH": "UT",
-    "VERMONT": "VT", "VIRGINIA": "VA", "WASHINGTON": "WA",
-    "WEST VIRGINIA": "WV", "WISCONSIN": "WI", "WYOMING": "WY",
-    "DISTRICT OF COLUMBIA": "DC", "PUERTO RICO": "PR", "GUAM": "GU",
+    "ALABAMA": "AL",
+    "ALASKA": "AK",
+    "ARIZONA": "AZ",
+    "ARKANSAS": "AR",
+    "CALIFORNIA": "CA",
+    "COLORADO": "CO",
+    "CONNECTICUT": "CT",
+    "DELAWARE": "DE",
+    "FLORIDA": "FL",
+    "GEORGIA": "GA",
+    "HAWAII": "HI",
+    "IDAHO": "ID",
+    "ILLINOIS": "IL",
+    "INDIANA": "IN",
+    "IOWA": "IA",
+    "KANSAS": "KS",
+    "KENTUCKY": "KY",
+    "LOUISIANA": "LA",
+    "MAINE": "ME",
+    "MARYLAND": "MD",
+    "MASSACHUSETTS": "MA",
+    "MICHIGAN": "MI",
+    "MINNESOTA": "MN",
+    "MISSISSIPPI": "MS",
+    "MISSOURI": "MO",
+    "MONTANA": "MT",
+    "NEBRASKA": "NE",
+    "NEVADA": "NV",
+    "NEW HAMPSHIRE": "NH",
+    "NEW JERSEY": "NJ",
+    "NEW MEXICO": "NM",
+    "NEW YORK": "NY",
+    "NORTH CAROLINA": "NC",
+    "NORTH DAKOTA": "ND",
+    "OHIO": "OH",
+    "OKLAHOMA": "OK",
+    "OREGON": "OR",
+    "PENNSYLVANIA": "PA",
+    "RHODE ISLAND": "RI",
+    "SOUTH CAROLINA": "SC",
+    "SOUTH DAKOTA": "SD",
+    "TENNESSEE": "TN",
+    "TEXAS": "TX",
+    "UTAH": "UT",
+    "VERMONT": "VT",
+    "VIRGINIA": "VA",
+    "WASHINGTON": "WA",
+    "WEST VIRGINIA": "WV",
+    "WISCONSIN": "WI",
+    "WYOMING": "WY",
+    "DISTRICT OF COLUMBIA": "DC",
+    "PUERTO RICO": "PR",
+    "GUAM": "GU",
     "VIRGIN ISLANDS": "VI",
 }
 
@@ -175,9 +213,7 @@ def load_checkpoint(path: Path, *, rescan_errors: bool = False) -> set[str]:
         for line in f:
             try:
                 rec = json.loads(line)
-                if rescan_errors and (
-                    rec.get("had_server_errors") or rec.get("error")
-                ):
+                if rescan_errors and (rec.get("had_server_errors") or rec.get("error")):
                     continue
                 done.add(rec["company_name"])
             except (json.JSONDecodeError, KeyError):
@@ -269,16 +305,20 @@ async def run_city_pass(args) -> None:
                     rate = (i + 1) / elapsed
                     eta = (len(remaining) - i - 1) / rate / 60
                     print(
-                        f"  {i+1:,}/{len(remaining):,} ({rate:.1f}/s, ETA {eta:.0f}min) "
+                        f"  {i + 1:,}/{len(remaining):,} ({rate:.1f}/s, ETA {eta:.0f}min) "
                         f"confirmed={confirmed} unconfirmed={unconfirmed} no_city={no_city}"
                     )
 
     elapsed = time.time() - start_time
-    print(f"\n{'='*60}")
-    print(f"CITY QUALIFICATION COMPLETE — {len(remaining):,} companies in {elapsed/60:.1f} min")
-    print(f"{'='*60}")
-    print(f"Confirmed (name+city match):   {confirmed} ({confirmed/max(1,confirmed+unconfirmed)*100:.0f}%)")
-    print(f"Unconfirmed (name only):       {unconfirmed} ({unconfirmed/max(1,confirmed+unconfirmed)*100:.0f}%)")
+    print(f"\n{'=' * 60}")
+    print(f"CITY QUALIFICATION COMPLETE — {len(remaining):,} companies in {elapsed / 60:.1f} min")
+    print(f"{'=' * 60}")
+    print(
+        f"Confirmed (name+city match):   {confirmed} ({confirmed / max(1, confirmed + unconfirmed) * 100:.0f}%)"
+    )
+    print(
+        f"Unconfirmed (name only):       {unconfirmed} ({unconfirmed / max(1, confirmed + unconfirmed) * 100:.0f}%)"
+    )
     print(f"No city data:                  {no_city}")
     print(f"Output: {output_path}")
 
@@ -286,26 +326,46 @@ async def run_city_pass(args) -> None:
 async def main() -> None:
     parser = argparse.ArgumentParser(description="Scan SBIR awardees against SEC EDGAR")
     parser.add_argument("--awards", required=True, help="Path to SBIR awards CSV")
-    parser.add_argument("--output", default="data/sec_edgar_scan.jsonl",
-                        help="Output JSONL checkpoint file")
-    parser.add_argument("--resume", action="store_true",
-                        help="Resume from existing checkpoint")
-    parser.add_argument("--city-pass", action="store_true",
-                        help="Run city qualification pass on existing scan results")
-    parser.add_argument("--no-doc-fetch", action="store_true",
-                        help="Skip document fetches for context classification")
-    parser.add_argument("--ma-only", action="store_true",
-                        help="Skip CIK/XBRL enrichment; scan only inbound M&A mentions")
-    parser.add_argument("--limit", type=int, default=0,
-                        help="Scan only first N companies (0=all)")
-    parser.add_argument("--rescan-errors", action="store_true",
-                        help="Re-scan companies that had search request errors in previous run")
-    parser.add_argument("--concurrency", type=int, default=DEFAULT_CONCURRENCY,
-                        help=f"Companies to enrich concurrently (default {DEFAULT_CONCURRENCY})")
-    parser.add_argument("--requests-per-second", type=float, default=DEFAULT_REQUESTS_PER_SECOND,
-                        help=f"SEC request pacing ceiling (default {DEFAULT_REQUESTS_PER_SECOND:g})")
-    parser.add_argument("--contact-email", default="conrad@hollomon.dev",
-                        help="Email for SEC User-Agent")
+    parser.add_argument(
+        "--output", default="data/sec_edgar_scan.jsonl", help="Output JSONL checkpoint file"
+    )
+    parser.add_argument("--resume", action="store_true", help="Resume from existing checkpoint")
+    parser.add_argument(
+        "--city-pass",
+        action="store_true",
+        help="Run city qualification pass on existing scan results",
+    )
+    parser.add_argument(
+        "--no-doc-fetch",
+        action="store_true",
+        help="Skip document fetches for context classification",
+    )
+    parser.add_argument(
+        "--ma-only",
+        action="store_true",
+        help="Skip CIK/XBRL enrichment; scan only inbound M&A mentions",
+    )
+    parser.add_argument("--limit", type=int, default=0, help="Scan only first N companies (0=all)")
+    parser.add_argument(
+        "--rescan-errors",
+        action="store_true",
+        help="Re-scan companies that had search request errors in previous run",
+    )
+    parser.add_argument(
+        "--concurrency",
+        type=int,
+        default=DEFAULT_CONCURRENCY,
+        help=f"Companies to enrich concurrently (default {DEFAULT_CONCURRENCY})",
+    )
+    parser.add_argument(
+        "--requests-per-second",
+        type=float,
+        default=DEFAULT_REQUESTS_PER_SECOND,
+        help=f"SEC request pacing ceiling (default {DEFAULT_REQUESTS_PER_SECOND:g})",
+    )
+    parser.add_argument(
+        "--contact-email", default="conrad@hollomon.dev", help="Email for SEC User-Agent"
+    )
     args = parser.parse_args()
     if args.requests_per_second <= 0:
         parser.error("--requests-per-second must be positive")
@@ -325,7 +385,7 @@ async def main() -> None:
     print(f"  {len(companies):,} unique companies, {total_awards:,} awards")
 
     if args.limit:
-        companies = companies[:args.limit]
+        companies = companies[: args.limit]
         print(f"  Limited to first {args.limit:,}")
 
     # Load checkpoint
@@ -355,8 +415,10 @@ async def main() -> None:
 
     # Monkey-patch out document fetches if requested
     if args.no_doc_fetch:
+
         async def _no_fetch(*a, **kw):
             return None
+
         client.fetch_filing_document = _no_fetch
         print("  Document fetches DISABLED (counts only)\n")
 
@@ -373,7 +435,10 @@ async def main() -> None:
     semaphore = asyncio.Semaphore(args.concurrency)
 
     async def _enrich_one(
-        i: int, name: str, award_count: int, out,
+        i: int,
+        name: str,
+        award_count: int,
+        out,
     ) -> None:
         nonlocal with_mentions, server_errors, errors, processed
 
@@ -397,7 +462,9 @@ async def main() -> None:
                     "mention_count": p.mention_count,
                     "mention_filers": p.mention_filers[:5],
                     "mention_types": p.mention_types,
-                    "latest_mention_date": str(p.latest_mention_date) if p.latest_mention_date else None,
+                    "latest_mention_date": str(p.latest_mention_date)
+                    if p.latest_mention_date
+                    else None,
                     "mention_noise_score": p.mention_noise_score,
                 }
                 if had_errors:
@@ -426,7 +493,7 @@ async def main() -> None:
     batch_size = 100
     with open(output_path, "a") as out:
         for batch_start in range(0, len(remaining), batch_size):
-            batch = remaining[batch_start:batch_start + batch_size]
+            batch = remaining[batch_start : batch_start + batch_size]
             tasks = [
                 _enrich_one(batch_start + j, name, count, out)
                 for j, (name, count) in enumerate(batch)
@@ -448,9 +515,9 @@ async def main() -> None:
     await client.aclose()
 
     # Summary
-    print(f"\n{'='*60}")
-    print(f"SCAN COMPLETE — {processed:,} companies in {elapsed/60:.1f} min")
-    print(f"{'='*60}")
+    print(f"\n{'=' * 60}")
+    print(f"SCAN COMPLETE — {processed:,} companies in {elapsed / 60:.1f} min")
+    print(f"{'=' * 60}")
     print(
         f"SEC filing mentions:  {with_mentions:,} "
         f"({with_mentions / max(len(remaining), 1) * 100:.1f}%)"
