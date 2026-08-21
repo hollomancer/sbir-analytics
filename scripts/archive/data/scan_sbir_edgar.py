@@ -31,10 +31,13 @@ import re
 import sys
 import time
 from collections import Counter
+from collections.abc import Callable
 from pathlib import Path
 
-# Force unbuffered stdout
-sys.stdout.reconfigure(line_buffering=True)
+# Force line-buffered progress output when the stream supports reconfiguration.
+reconfigure_stdout = getattr(sys.stdout, "reconfigure", None)
+if reconfigure_stdout is not None:
+    reconfigure_stdout(line_buffering=True)
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
@@ -53,11 +56,20 @@ DEFAULT_REQUESTS_PER_SECOND = 8.0
 class _PacedEdgarAPIClient(EdgarAPIClient):
     """Apply a per-second ceiling in addition to the client's minute limit."""
 
-    def __init__(self, *args, requests_per_second: float, **kwargs):
+    def __init__(
+        self,
+        *args,
+        requests_per_second: float,
+        document_error_callback: Callable[[], None] | None = None,
+        disable_document_fetches: bool = False,
+        **kwargs,
+    ):
         super().__init__(*args, **kwargs)
         self._minimum_interval = 1.0 / requests_per_second
         self._spacing_lock = asyncio.Lock()
         self._next_request_at = 0.0
+        self._document_error_callback = document_error_callback
+        self._disable_document_fetches = disable_document_fetches
 
     async def _wait_for_rate_limit(self) -> None:
         async with self._spacing_lock:
@@ -68,6 +80,19 @@ class _PacedEdgarAPIClient(EdgarAPIClient):
                 await asyncio.sleep(self._next_request_at - now)
                 now = loop.time()
             self._next_request_at = now + self._minimum_interval
+
+    async def fetch_filing_document(
+        self,
+        cik: str,
+        accession: str,
+        filename: str,
+    ) -> str | None:
+        if self._disable_document_fetches:
+            return None
+        text = await super().fetch_filing_document(cik, accession, filename)
+        if text is None and self._document_error_callback is not None:
+            self._document_error_callback()
+        return text
 
 
 class _ServerErrorTracker:
@@ -435,25 +460,12 @@ async def main() -> None:
     client = _PacedEdgarAPIClient(
         config=config,
         requests_per_second=args.requests_per_second,
+        document_error_callback=lambda: error_tracker.mark_document_error(current_company.get()),
+        disable_document_fetches=args.no_doc_fetch,
     )
 
-    original_fetch = client.fetch_filing_document
-
-    async def _tracked_fetch(*args, **kwargs):
-        text = await original_fetch(*args, **kwargs)
-        if text is None:
-            error_tracker.mark_document_error(current_company.get())
-        return text
-
-    client.fetch_filing_document = _tracked_fetch
-
-    # Monkey-patch out document fetches if requested
+    # Document-free scans are diagnostics only and cannot establish M&A absence.
     if args.no_doc_fetch:
-
-        async def _no_fetch(*a, **kw):
-            return None
-
-        client.fetch_filing_document = _no_fetch
         print("  Document fetches DISABLED (counts only)\n")
 
     # Scan — track failed mention searches per company via loguru sink

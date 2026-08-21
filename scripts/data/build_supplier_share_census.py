@@ -658,9 +658,9 @@ def _load_ma_signals(
     expected_label_rows = awards.loc[:, ["source_name", "firm_key"]].drop_duplicates()
     labels_per_firm: defaultdict[str, set[str]] = defaultdict(set)
     firms_per_label: defaultdict[str, set[str]] = defaultdict(set)
-    for row in expected_label_rows.itertuples(index=False):
-        label = str(row.source_name)
-        firm_key = str(row.firm_key)
+    for award_row in expected_label_rows.itertuples(index=False):
+        label = str(award_row.source_name)
+        firm_key = str(award_row.firm_key)
         firms_per_label[label].add(firm_key)
         labels_per_firm[firm_key].add(label)
 
