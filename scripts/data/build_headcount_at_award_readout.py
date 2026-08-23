@@ -4,12 +4,16 @@
 Epistemic tier: exploratory / non-citable.
 
 This script:
-1. Materializes the canonical SBIR.gov source parquet from the checked-in
-   ``data/raw/sbir/award_data.csv`` snapshot.
+1. Materializes an analysis-local SBIR.gov source parquet from the checked-in
+   ``data/raw/sbir/award_data.csv`` snapshot without touching evidence-tier inputs.
 2. Profiles the employee-count field coverage in the actual materialized schema.
 3. Rolls awards to firms using the repository's existing canonical merge policy
    (UEI primary, DUNS fallback, normalized-name last).
 4. Writes CSV artifacts, a Markdown readout, and a two-panel histogram figure.
+
+The requested criteria and proxy definitions are deterministic. Future changes to
+the cohort or statistical design should be explored in a notebook before changing
+this repeatable artifact generator.
 """
 
 from __future__ import annotations
@@ -40,12 +44,12 @@ from sbir_etl.identity import (
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 RAW_SBIR_PATH = REPO_ROOT / "data/raw/sbir/award_data.csv"
-MATERIALIZED_SBIR_PATH = REPO_ROOT / "data/processed/phase_iii_census_sbir_awards.parquet"
+MATERIALIZED_SBIR_PATH = REPO_ROOT / "data/processed/headcount_at_award/sbir_gov_awards.parquet"
 DEFAULT_OUTPUT_DIR = REPO_ROOT / "data/reports/headcount_at_award"
+PROCESSED_DATA_PATH = REPO_ROOT / "data/processed"
 FIGURE_NAME = "headcount_at_award_distribution.svg"
 MARKDOWN_NAME = "headcount_at_award_readout.md"
 SOURCE_URL = "https://data.www.sbir.gov/mod_awarddatapublic/award_data.csv"
-ANALYSIS_DATE = "2026-08-20"
 
 NONPROFIT_NAME_TOKENS: tuple[str, ...] = (
     "UNIVERS",
@@ -64,6 +68,12 @@ NONPROFIT_NAME_TOKENS: tuple[str, ...] = (
 PHASE_SORT_ORDER = {"I": 1, "IB": 2, "II": 3, "IIB": 4, "III": 5}
 PHASE1_FAMILY = frozenset({"PHASE I", "I", "PHASE IB", "IB"})
 PHASE23_FAMILY = frozenset({"PHASE II", "II", "PHASE IIB", "IIB", "PHASE III", "III"})
+AWARD_ORDER_COLUMNS = (
+    "award_sort_date",
+    "award_year",
+    "phase_sort_key",
+    "award_record_key",
+)
 
 
 @dataclass(frozen=True)
@@ -105,21 +115,34 @@ def _clean_text(value: object) -> str:
     return "" if text.lower() in {"", "nan", "none", "<na>"} else text
 
 
-def _parse_headcount(value: object) -> int | None:
-    """Mirror the repository's employee-count coercion deterministically."""
+def _parse_headcount_with_method(value: object) -> tuple[int | None, str]:
+    """Parse headcount while preserving whether text extraction was needed."""
 
     text = _clean_text(value)
     if not text:
-        return None
+        return None, "missing"
     cleaned = text.replace(",", "")
     try:
         parsed = float(cleaned)
     except ValueError:
-        digits = "".join(ch for ch in cleaned if ch.isdigit())
-        return int(digits) if digits else None
+        numbers = re.findall(r"[-+]?(?:\d+(?:\.\d*)?|\.\d+)", cleaned)
+        if not numbers:
+            return None, "invalid"
+        if len(numbers) > 1:
+            return None, "ambiguous_multiple_numbers"
+        parsed = float(numbers[0])
+        method = "embedded_numeric"
+    else:
+        method = "numeric"
+    if not math.isfinite(parsed):
+        return None, "nonfinite"
     if parsed < 0:
-        return None
-    return round(parsed)
+        return None, "negative"
+    return round(parsed), method
+
+
+def _parse_headcount(value: object) -> int | None:
+    return _parse_headcount_with_method(value)[0]
 
 
 def _parse_money(value: object) -> float | None:
@@ -147,20 +170,17 @@ def _normalize_matching_name(value: object) -> str:
     return normalize_company_name(value, profile=CompanyNameProfile.MATCHING_V1)
 
 
-def _original_company_key(row: pd.Series) -> str:
-    uei = _clean_text(row.get("company_uei"))
-    if uei:
-        return f"UEI:{uei}"
-    duns = _clean_text(row.get("company_duns"))
-    if duns:
-        return f"DUNS:{duns}"
-    return f"NAME:{_normalize_matching_name(row.get('company_name'))}"
-
-
 def _canonical_firm_frame(frame: pd.DataFrame) -> pd.DataFrame:
     canonical_map = build_canonical_company_map(frame, policy=CanonicalMergePolicy.PRELOAD_V1)
     enriched = frame.copy()
-    enriched["firm_original_key"] = enriched.apply(_original_company_key, axis=1)
+    uei = enriched["company_uei"].map(_clean_text)
+    duns = enriched["company_duns"].map(_clean_text)
+    name = enriched["company_name"].map(_normalize_matching_name)
+    enriched["firm_original_key"] = np.where(
+        uei.ne(""),
+        "UEI:" + uei,
+        np.where(duns.ne(""), "DUNS:" + duns, "NAME:" + name),
+    )
     enriched["firm_key"] = (
         enriched["firm_original_key"].map(canonical_map).fillna(enriched["firm_original_key"])
     )
@@ -184,7 +204,13 @@ def _canonical_firm_frame(frame: pd.DataFrame) -> pd.DataFrame:
 
 def _phase_sort_key(value: object) -> tuple[int, str]:
     text = _clean_text(value).upper()
-    return (PHASE_SORT_ORDER.get(text, 999), text)
+    canonical = text.removeprefix("PHASE ").strip()
+    return (PHASE_SORT_ORDER.get(canonical, 999), canonical)
+
+
+def _sort_awards(frame: pd.DataFrame, *group_columns: str) -> pd.DataFrame:
+    groups = group_columns or ("firm_key",)
+    return frame.sort_values([*groups, *AWARD_ORDER_COLUMNS], kind="stable")
 
 
 def _joined_unique(values: pd.Series) -> str:
@@ -249,14 +275,11 @@ def _is_nonprofit_name_flag(company_name: object, ri_name: object) -> bool:
 
 def _mark_single_award_spikes(frame: pd.DataFrame) -> pd.Series:
     result = pd.Series(False, index=frame.index)
-    for _, group in frame.groupby("firm_key", sort=False):
+    ordered_frame = _sort_awards(frame)
+    for _, group in ordered_frame.groupby("firm_key", sort=False):
         observed = group[group["headcount"].notna()].copy()
         if len(observed) < 3:
             continue
-        observed = observed.sort_values(
-            ["award_sort_date", "award_year", "phase_sort_key", "award_record_key"],
-            kind="stable",
-        )
         observed["prev_headcount"] = observed["headcount"].shift(1)
         observed["next_headcount"] = observed["headcount"].shift(-1)
         mask = (
@@ -269,31 +292,59 @@ def _mark_single_award_spikes(frame: pd.DataFrame) -> pd.Series:
     return result
 
 
-def _build_crosscheck_summary() -> pd.DataFrame:
+def _find_local_employee_crosscheck_sources(search_root: Path) -> list[Path]:
+    """Find local tabular artifacts explicitly named as FPDS/SAM employee data."""
+
+    if not search_root.is_dir():
+        return []
+    supported_suffixes = {".csv", ".parquet"}
+    candidates = []
+    for path in search_root.rglob("*"):
+        normalized = str(path.relative_to(search_root)).lower()
+        source_named = "fpds" in normalized or "sam" in normalized
+        employee_named = "employee" in normalized or "headcount" in normalized
+        if path.is_file() and path.suffix.lower() in supported_suffixes:
+            if source_named and employee_named:
+                candidates.append(path)
+    return sorted(candidates)
+
+
+def _build_crosscheck_summary(search_root: Path) -> pd.DataFrame:
+    sources = _find_local_employee_crosscheck_sources(search_root)
+    source_list = "; ".join(str(path) for path in sources)
+    if sources:
+        status = "source_detected_join_not_implemented"
+        note = (
+            "Detected local FPDS/SAM employee-count candidate(s), but this readout has no "
+            f"supported join contract for them: {source_list}. No agreement claim was produced."
+        )
+    else:
+        status = "source_not_found"
+        note = (
+            "Inspected local FPDS/SAM employee-count filenames under "
+            f"{search_root}; no candidate table was found, so no join was run."
+        )
+
     rows = [
         {
             "population": "top_100",
             "source": "fpds_or_sam_employee_counts",
-            "materialized_source_available": False,
-            "matched_rows": 0,
-            "agree_count": 0,
-            "disagree_count": 0,
-            "note": (
-                "No materialized FPDS/SAM employee-count table was present in this checkout on "
-                "2026-08-20."
-            ),
+            "crosscheck_status": status,
+            "materialized_source_available": bool(sources),
+            "matched_rows": pd.NA,
+            "agree_count": pd.NA,
+            "disagree_count": pd.NA,
+            "note": note,
         },
         {
             "population": "anomalies",
             "source": "fpds_or_sam_employee_counts",
-            "materialized_source_available": False,
-            "matched_rows": 0,
-            "agree_count": 0,
-            "disagree_count": 0,
-            "note": (
-                "No materialized FPDS/SAM employee-count table was present in this checkout on "
-                "2026-08-20."
-            ),
+            "crosscheck_status": status,
+            "materialized_source_available": bool(sources),
+            "matched_rows": pd.NA,
+            "agree_count": pd.NA,
+            "disagree_count": pd.NA,
+            "note": note,
         },
     ]
     return pd.DataFrame(rows)
@@ -428,6 +479,11 @@ def _write_figure(headcounts: pd.Series, output_path: Path) -> None:
 
 
 def _materialize_source(raw_path: Path, output_path: Path) -> tuple[pd.DataFrame, dict[str, Any]]:
+    if output_path.is_file():
+        frame = pd.read_parquet(output_path)
+        manifest = verify_sbir_gov_materialization(output_path, frame)
+        return frame, manifest
+
     manifest = materialize_sbir_gov_history(raw_path, output_path, source_url=SOURCE_URL)
     frame = pd.read_parquet(output_path)
     verify_sbir_gov_materialization(output_path, frame)
@@ -456,19 +512,19 @@ def _distribution_summary(headcounts: pd.Series) -> pd.DataFrame:
     return pd.DataFrame(metrics)
 
 
-def _safe_corr(x: pd.Series, y: pd.Series, method: str) -> float | pd.NA:
+def _safe_corr(x: pd.Series, y: pd.Series, method: str) -> float | None:
     valid = pd.DataFrame({"x": x, "y": y}).dropna()
     if len(valid) < 2 or valid["x"].nunique() < 2 or valid["y"].nunique() < 2:
-        return pd.NA
+        return None
     return float(valid["x"].corr(valid["y"], method=method))
 
 
 def _year_fixed_effect_corr(
     frame: pd.DataFrame, x_column: str, y_column: str, year_column: str, method: str
-) -> float | pd.NA:
+) -> float | None:
     valid = frame[[x_column, y_column, year_column]].dropna().copy()
     if len(valid) < 2 or valid[x_column].nunique() < 2 or valid[y_column].nunique() < 2:
-        return pd.NA
+        return None
 
     if method == "spearman":
         valid[x_column] = valid[x_column].rank(method="average")
@@ -479,19 +535,21 @@ def _year_fixed_effect_corr(
     x_residual = valid[x_column] - valid.groupby(year_column)[x_column].transform("mean")
     y_residual = valid[y_column] - valid.groupby(year_column)[y_column].transform("mean")
     if x_residual.nunique() < 2 or y_residual.nunique() < 2:
-        return pd.NA
+        return None
     return float(x_residual.corr(y_residual, method="pearson"))
+
+
+def _crossed_threshold_upward(values: pd.Series, threshold: int) -> bool:
+    below_before = values.lt(threshold).shift(fill_value=False).cummax()
+    return bool((values.ge(threshold) & below_before).any())
 
 
 def _all_firm_repeat_proxy(
     frame: pd.DataFrame,
 ) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     rows: list[dict[str, Any]] = []
-    for firm_key, group in frame.groupby("firm_key", sort=False):
-        ordered = group.sort_values(
-            ["award_sort_date", "award_year", "phase_sort_key", "award_record_key"],
-            kind="stable",
-        )
+    ordered_frame = _sort_awards(frame)
+    for firm_key, ordered in ordered_frame.groupby("firm_key", sort=False):
         observed = ordered[ordered["headcount"].notna()]
         if observed.empty:
             continue
@@ -614,11 +672,8 @@ def _all_firm_repeat_proxy(
 
 def _phase1_proxy_by_agency(frame: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
     rows: list[dict[str, Any]] = []
-    for (agency, firm_key), group in frame.groupby(["agency", "firm_key"], sort=False):
-        ordered = group.sort_values(
-            ["award_sort_date", "award_year", "phase_sort_key", "award_record_key"],
-            kind="stable",
-        )
+    ordered_frame = _sort_awards(frame, "agency", "firm_key")
+    for (agency, firm_key), ordered in ordered_frame.groupby(["agency", "firm_key"], sort=False):
         phase1_rows = ordered[ordered["phase"].str.upper().isin(PHASE1_FAMILY)]
         if phase1_rows.empty:
             continue
@@ -748,10 +803,11 @@ def _build_markdown(
 
     crosscheck_lines = []
     for _, row in crosscheck_summary.iterrows():
-        status = "not run" if not row["materialized_source_available"] else "run"
+        agree = "NA" if pd.isna(row["agree_count"]) else str(int(row["agree_count"]))
+        disagree = "NA" if pd.isna(row["disagree_count"]) else str(int(row["disagree_count"]))
         crosscheck_lines.append(
-            f"- {row['population']}: {status}; agree={int(row['agree_count'])}, "
-            f"disagree={int(row['disagree_count'])}. {row['note']}"
+            f"- {row['population']}: {row['crosscheck_status']}; agree={agree}, "
+            f"disagree={disagree}. {row['note']}"
         )
 
     agency_proxy_lines = []
@@ -801,9 +857,12 @@ def _build_markdown(
     trajectory_count = int(len(trajectory))
     coverage_grid_count = int(len(coverage_agency_year))
 
+    generated_at = _clean_text(manifest.get("generated_at"))
+    analysis_date = generated_at[:10] if generated_at else "unknown"
+
     markdown = f"""# Headcount At Award Readout
 
-> **Exploratory / non-citable.** Generated on {ANALYSIS_DATE} from the checked-in SBIR.gov bulk snapshot and repository primitives. Do not cite outside the repository.
+> **Exploratory / non-citable.** Generated on {analysis_date} from the checked-in SBIR.gov bulk snapshot and repository primitives. Do not cite outside the repository.
 
 ## Scope
 
@@ -817,14 +876,14 @@ def _build_markdown(
 - **Employee-count field:** actual materialized column name is `{employee_column}`.
 - **Population for coverage:** every retained SBIR.gov source row in the canonical materialized parquet.
 - **Population for distributional summaries:** rows with parsed non-null headcount after deterministic coercion.
-- **Headcount parse rule:** blank -> null; numeric strings, commas, and floats are coerced; text with embedded digits uses the digits; negative values are dropped.
+- **Headcount parse rule:** blank -> null; pure numeric strings, commas, and floats are coerced; text containing exactly one numeric token is extracted and flagged `embedded_numeric`; text containing multiple numeric tokens (for example, a range) is dropped as ambiguous; negative and non-finite values are dropped.
 - **Firm grain:** repository canonical merge policy `CanonicalMergePolicy.PRELOAD_V1`, keyed `UEI:` first, then `DUNS:`, then `NAME:<MATCHING_V1 normalized name>`.
 - **Near-cap band:** firms with any parsed award-time headcount in `[350, 500]`.
 - **Anomaly population:** award records with parsed headcount `>500`.
 - **STTR research-institution flag:** `program == STTR` and `ri_name` non-blank.
 - **Nonprofit name flag:** company or RI name contains one of `{", ".join(NONPROFIT_NAME_TOKENS)}`.
 - **Single-award spike flag:** one `>500` record bracketed by both adjacent observed headcounts `<100` within the same firm's chronological award history.
-- **Cross-check rule:** FPDS/SAM employee-count joins were attempted only against already materialized local tables.
+- **Cross-check rule:** local `data/processed` filenames explicitly identifying FPDS/SAM employee or headcount tables are discovered mechanically. No agreement claim is emitted unless a supported local join is actually run.
 - **Repeat-award proxy anchor:** each firm's first chronological award with parsed headcount.
 - **Repeat-award proxy outcome:** at least one later SBIR.gov award record for the same canonical firm; this is not an application win rate.
 
@@ -937,7 +996,9 @@ def main() -> int:
 
     frame = materialized.copy()
     frame["headcount_raw"] = frame[employee_column]
-    frame["headcount"] = frame["headcount_raw"].map(_parse_headcount)
+    parsed_headcounts = frame["headcount_raw"].map(_parse_headcount_with_method)
+    frame["headcount"] = parsed_headcounts.map(lambda parsed: parsed[0])
+    frame["headcount_parse_method"] = parsed_headcounts.map(lambda parsed: parsed[1])
     frame["headcount_populated_raw"] = frame["headcount_raw"].map(
         lambda value: bool(_clean_text(value))
     )
@@ -1078,6 +1139,7 @@ def main() -> int:
             "program",
             "headcount_raw",
             "headcount",
+            "headcount_parse_method",
             "ri_name",
             "sttr_research_institution_flag",
             "nonprofit_name_flag",
@@ -1119,14 +1181,11 @@ def main() -> int:
         ]
     )
 
+    frame = _sort_awards(frame)
     trajectory_rows: list[dict[str, Any]] = []
-    for _, group in frame.groupby("firm_key", sort=False):
-        if len(group) < 5:
+    for _, ordered in frame.groupby("firm_key", sort=False):
+        if len(ordered) < 5:
             continue
-        ordered = group.sort_values(
-            ["award_sort_date", "award_year", "phase_sort_key", "award_record_key"],
-            kind="stable",
-        )
         observed = ordered[ordered["headcount"].notna()].copy()
         if observed.empty:
             continue
@@ -1142,9 +1201,7 @@ def main() -> int:
                 "max_headcount": int(observed["headcount"].max()),
                 "latest_award_year": ordered["award_year"].iloc[-1],
                 "latest_award_headcount": ordered["headcount"].iloc[-1],
-                "crossed_350": bool(
-                    observed["headcount"].lt(350).any() and observed["headcount"].ge(350).any()
-                ),
+                "crossed_350": _crossed_threshold_upward(observed["headcount"], 350),
                 "agencies": _joined_unique(ordered["agency"]),
                 "phase_mix": _phase_mix(ordered["phase"]),
                 "total_award_dollars": float(ordered["award_amount_numeric"].fillna(0.0).sum()),
@@ -1158,7 +1215,7 @@ def main() -> int:
             kind="stable",
         ).reset_index(drop=True)
 
-    crosscheck_summary = _build_crosscheck_summary()
+    crosscheck_summary = _build_crosscheck_summary(PROCESSED_DATA_PATH)
     repeat_proxy_firms, repeat_proxy_summary, repeat_proxy_bands, repeat_proxy_sensitivity = (
         _all_firm_repeat_proxy(frame)
     )
