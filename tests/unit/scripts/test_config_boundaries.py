@@ -1,5 +1,7 @@
 from pathlib import Path
 
+import pytest
+
 from scripts.ci import check_config_boundaries as boundaries
 
 
@@ -84,5 +86,8 @@ def test_canonical_readers_and_tests_are_outside_the_guard(tmp_path: Path) -> No
     assert boundaries.scan_file(test_file, repository_root=tmp_path) == []
 
 
+# The whole-repo scan parses every tracked Python file; the same invariant is
+# enforced on every PR by the CI quality job running the script directly.
+@pytest.mark.slow
 def test_current_repository_obeys_config_boundaries() -> None:
     assert boundaries.scan_repository() == []

@@ -15,8 +15,6 @@ from __future__ import annotations
 from collections.abc import Sequence
 
 import numpy as np
-from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.metrics.pairwise import cosine_similarity
 
 
 def _clean(texts: Sequence[str]) -> list[str]:
@@ -25,6 +23,10 @@ def _clean(texts: Sequence[str]) -> list[str]:
 
 def _fit_corpus(queries: list[str], targets: list[str], analyzer: str):
     """Fit one TF-IDF space over queries + targets; None when the corpus is empty."""
+
+    # Lazy import: this module is reached from sbir_analytics.definitions, and
+    # sklearn would otherwise be paid at every Dagster/pytest process start.
+    from sklearn.feature_extraction.text import TfidfVectorizer
 
     ngram = (1, 2) if analyzer == "word" else (3, 5)
     stop = {"stop_words": "english"} if analyzer == "word" else {}
@@ -58,6 +60,8 @@ def tfidf_cosine_matrix(
     matrix = _fit_corpus(queries, targets, analyzer)
     if matrix is None:
         return np.zeros((len(queries), len(targets)))
+    from sklearn.metrics.pairwise import cosine_similarity
+
     return cosine_similarity(matrix[: len(queries)], matrix[len(queries) :])
 
 

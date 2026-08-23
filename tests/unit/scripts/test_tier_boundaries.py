@@ -2,6 +2,8 @@
 
 from pathlib import Path
 
+import pytest
+
 from scripts.ci import check_tier_boundaries as guard
 
 
@@ -149,5 +151,8 @@ def test_violation_format_includes_path_and_line(tmp_path):
     )
 
 
+# The whole-repo scan parses every tracked Python file; the same invariant is
+# enforced on every PR by the CI quality job running the script directly.
+@pytest.mark.slow
 def test_real_repository_passes():
     assert guard.scan_repository() == []

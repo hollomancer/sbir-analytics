@@ -10,6 +10,16 @@ version.
 
 ## [Unreleased]
 
+### Changed
+
+- Test-suite performance: dropped a per-test `gc.collect()` teardown in the
+  Neo4j client unit tests, made `sbir_ml` TF-IDF similarity import sklearn
+  lazily (≈1.5s off every `sbir_analytics.definitions` import, paid by each
+  pytest worker and Dagster process), marked the four whole-repo boundary-scan
+  tests `slow` (the CI quality job still enforces the same invariant on every
+  PR via `scripts/ci/check_*.py`), and regenerated `tests/.test_durations`
+  so the PR unit shards balance against the current test set.
+
 ## [0.10.0] — 2026-08-19
 
 ### Added

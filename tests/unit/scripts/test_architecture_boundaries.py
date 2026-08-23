@@ -1,5 +1,7 @@
 from pathlib import Path
 
+import pytest
+
 from scripts.ci import check_architecture_boundaries as boundaries
 
 
@@ -55,6 +57,9 @@ def test_packages_cannot_import_scripts(tmp_path: Path) -> None:
     assert violations[0].imported_module == "scripts.phase3_benchmark"
 
 
+# The whole-repo scan parses every tracked Python file; the same invariant is
+# enforced on every PR by the CI quality job running the script directly.
+@pytest.mark.slow
 def test_current_repository_obeys_architecture_boundaries() -> None:
     assert boundaries.scan_repository() == []
 

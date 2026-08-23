@@ -28,16 +28,6 @@ pytestmark = pytest.mark.fast
 # are now in tests/unit/loaders/conftest.py and automatically available
 
 
-@pytest.fixture(autouse=True)
-def reset_patches():
-    """Ensure patches are clean between tests."""
-    yield
-    # Force garbage collection to clean up any lingering mocks
-    import gc
-
-    gc.collect()
-
-
 class TestNeo4jConfig:
     """Tests for Neo4jConfig model."""
 
