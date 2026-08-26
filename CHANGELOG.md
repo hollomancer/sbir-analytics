@@ -10,6 +10,20 @@ version.
 
 ## [Unreleased]
 
+## [0.11.0] — 2026-08-26
+
+### Added
+
+- Exploratory, non-citable headcount-at-award readout over the canonical
+  SBIR.gov bulk materialization: schema and agency-year coverage, cap-slackness,
+  near-cap firms, mechanical >500 anomaly buckets, and award-history
+  repeat-award proxies. Uses `PRELOAD_V1` firm merge. Not a cap-removal
+  policy estimate and not a study promotion (#668).
+
+### Changed
+
+- GitHub Action `peter-evans/create-pull-request` 7 → 8 (#670).
+
 ## [0.10.0] — 2026-08-19
 
 ### Added
@@ -296,7 +310,8 @@ across the root project and the three packages under `packages/`.
 `vMAJOR.MINOR.PATCH` form it requires. Per that policy published tags are never
 moved or reused, so they remain as historical markers.
 
-[Unreleased]: https://github.com/hollomancer/sbir-analytics/compare/v0.10.0...HEAD
+[Unreleased]: https://github.com/hollomancer/sbir-analytics/compare/v0.11.0...HEAD
+[0.11.0]: https://github.com/hollomancer/sbir-analytics/compare/v0.10.0...v0.11.0
 [0.10.0]: https://github.com/hollomancer/sbir-analytics/compare/v0.9.0...v0.10.0
 [0.9.0]: https://github.com/hollomancer/sbir-analytics/compare/v0.8.0...v0.9.0
 [0.8.0]: https://github.com/hollomancer/sbir-analytics/compare/v0.7.1...v0.8.0
