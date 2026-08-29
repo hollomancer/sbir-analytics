@@ -1,0 +1,31 @@
+{
+  "title": "Observed M&A Signals among SBIR Awardees: A Lower-Bound Analysis of SEC Form D and EDGAR Full-Text Filings",
+  "upload_type": "publication",
+  "publication_type": "preprint",
+  "description": "Public records do not provide a complete ledger of what happens to firms after SBIR awards. This descriptive study links a committed 34,460-firm SBIR denominator to two SEC-based acquisition-signal channels: Form D business-combination records and EDGAR EFTS full-text mentions. The headline measure includes high- and medium-confidence detections only. It is a lower bound on observed acquisition signals, not a census of transactions. Firms without a detected event are treated as not-yet-observed.\n\nThe committed results identify 2,790 firms with high- or medium-confidence M&A signals, an observed rate of 8.1 percent. Among 2,558 records with valid dates, the median interval from first SBIR award to the recorded M&A event is 15 years. HHS has the highest documented agency rate at 9.3 percent. DoD follows at 5.8 percent. Other agencies range from 2.9 percent to 4.6 percent.\n\nDirectional full-text review demoted 126 of 1,178 original medium-tier candidates. It promoted 541 of 1,450 lower-tier candidates. These diagnostics reduce clear text-direction errors. They do not establish a final out-of-sample false-positive rate. Coverage also depends on SEC filing visibility, name resolution, and varying filing windows. The results are descriptive. They do not support causal claims, policy recommendations, or claims about unobserved firms.",
+  "creators": [
+    {
+      "name": "Hollomon, Conrad",
+      "affiliation": "Independent researcher"
+    }
+  ],
+  "keywords": [
+    "SBIR",
+    "technology transition",
+    "M&A",
+    "Form D",
+    "entrepreneurial finance"
+  ],
+  "access_right": "open",
+  "license": "cc-by-4.0",
+  "version": "1.0.0",
+  "language": "eng",
+  "related_identifiers": [
+    {
+      "identifier": "https://github.com/hollomancer/sbir-analytics",
+      "relation": "isSupplementedBy",
+      "scheme": "url"
+    }
+  ],
+  "notes": "Contact: hollomancer@protonmail.ch. This work was conducted in a personal capacity and does not represent the position of any agency. The paper is licensed under CC BY 4.0. Repository code remains licensed under MIT."
+}

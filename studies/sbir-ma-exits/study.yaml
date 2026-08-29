@@ -1,0 +1,65 @@
+schema_version: 1
+study_id: sbir-ma-exits
+title: Observed M&A signals among SBIR awardees
+evidence_status: exploratory
+research_questions:
+  - F1
+estimand: >-
+  Among the 34,460 SBIR companies in the committed dated analysis, describe the
+  lower-bound share with a high- or medium-confidence M&A signal from SEC Form D
+  business-combination records or EDGAR EFTS full-text evidence. Also describe
+  the recorded interval from first SBIR award to the detected event. Firms
+  without a detected event are not-yet-observed. The estimand is descriptive and
+  does not identify causal effects or a complete transaction census.
+frozen_artifacts:
+  - path: studies/sbir-ma-exits/CLAIM_PROVENANCE.md
+    sha256: 09b6ca6bf29095397f78d346cb4ba52eacc220a33efafb5bc28caa32b513fe0e
+implementation:
+  - path: scripts/archive/data/detect_sbir_ma_events.py
+    symbol: main
+  - path: scripts/archive/data/analyze_sbir_ma_exits.py
+    symbol: main
+identity_policy:
+  strategy: >-
+    Preserve the committed PR #286 company-level results. High confidence means
+    a Form D business-combination flag or EFTS subsidiary evidence. Medium
+    confidence means acquisition language near the company name after
+    directional text review. Lower-tier candidates do not enter the headline
+    result. A missing detection is not negative evidence.
+  version: sec-edgar-ma-pr286-two-tier
+  negative_evidence_allowed: false
+materialization:
+  allowed: true
+  blockers: []
+permitted_claims:
+  - >-
+    The committed dated note reports 2,790 high- or medium-confidence detections
+    among 34,460 SBIR companies, an observed lower-bound rate of 8.1 percent.
+  - >-
+    The committed dated note reports a 15-year median recorded interval from
+    first SBIR award to M&A event among 2,558 records with valid dates.
+  - >-
+    The committed dated note reports an HHS rate of 9.3 percent and a DoD rate of
+    5.8 percent under the same high-plus-medium filter.
+  - >-
+    These statements describe repository findings. They are not validated or
+    approved as citable evidence under the current research inventory.
+limitations:
+  - >-
+    Evidence status is exploratory. A Zenodo deposit would make the paper
+    discoverable but would not validate or promote the underlying findings.
+  - >-
+    Form D and EFTS provide an SEC-visibility floor. Not-yet-observed firms can
+    include transactions outside the filing and matching coverage.
+  - >-
+    Company matching and filing-context classification can create false
+    positives and missed events. No final blinded out-of-sample error rate is
+    committed for the accepted cohort.
+  - >-
+    The exact source input bytes and denominator hash are not committed. The
+    headline values are traceable to committed documents, not frozen data files.
+  - >-
+    Filing and latest-mention dates do not always equal legal transaction dates.
+  - >-
+    The design supports no causal claim, policy recommendation, or estimate of
+    missing statutory Phase III records.

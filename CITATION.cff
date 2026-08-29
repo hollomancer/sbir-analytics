@@ -1,0 +1,30 @@
+cff-version: 1.2.0
+message: >-
+  Cite this repository for the software and data-processing methods. Cite the
+  preferred research citation below for the SBIR M&A preprint.
+title: SBIR/STTR Commercialization Analytics
+type: software
+authors:
+  - family-names: Hollomon
+    given-names: Conrad
+    affiliation: Independent researcher
+    email: hollomancer@protonmail.ch
+repository-code: https://github.com/hollomancer/sbir-analytics
+url: https://github.com/hollomancer/sbir-analytics
+license: MIT
+version: 0.11.0
+date-released: 2026-08-26
+preferred-citation:
+  type: article
+  authors:
+    - family-names: Hollomon
+      given-names: Conrad
+      affiliation: Independent researcher
+      email: hollomancer@protonmail.ch
+  title: >-
+    Observed M&A Signals among SBIR Awardees: A Lower-Bound Analysis of SEC
+    Form D and EDGAR Full-Text Filings
+  year: 2026
+  version: 1.0.0
+  url: >-
+    https://github.com/hollomancer/sbir-analytics/blob/preprint/mna-v1/studies/sbir-ma-exits/paper.pdf
