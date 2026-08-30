@@ -3,7 +3,7 @@
 ## Decision
 
 This is a prospective, **exploratory** pre-run protocol for a new study. Its
-planned as-of cutoff is **2026-08-29 UTC**. It neither restores nor compares
+fixed source-row selection cutoff is **2026-08-29 UTC**. It neither restores nor compares
 against the unrecoverable April 2026 snapshot: historic award counts, event
 totals, match percentages, and their source files are excluded from every
 future input and verification step.
@@ -12,14 +12,17 @@ The authorized flow completed one private, raw SBIR.gov firm-frame retrieval
 under Amendments 1 and 3 and its limited cutoff audit under Amendment 2. Both
 retrievals were byte-identical. The audit failed: each response identified an
 August 1 snapshot while two `Proposal Award Date` values fall after the planned
-August 29 cutoff. The source therefore cannot establish the prospective firm
-frame and the study remains intentionally closed to analysis and materialization:
+August 29 cutoff. It therefore cannot establish a complete as-of prospective
+firm frame. Amendment 4 accepts the pinned object only as a retrieval-defined
+private selection using `Proposal Award Date <= 2026-08-29`; the study remains
+intentionally closed to analysis and materialization:
 
 ```text
 pre-run protocol + Amendments 1–3 + empty exploratory notebook + closed study gate
     -> two private official SBIR.gov retrieval attempts [byte-identical]
     -> private provenance and cutoff check [failed twice]
-    -> no firm-frame freeze, source substitution, analysis, or materialization
+    -> pinned retrieval-defined source-row selection [accepted, not complete]
+    -> no source substitution, analysis, or materialization
 ```
 
 ## Prospective run contract
@@ -38,10 +41,11 @@ must identify:
    source-specific uncertainty; and
 5. a declared descriptive estimand before aggregation.
 
-An unavailable, incomplete, or post-cutoff-only source is a failed precondition,
-not permission to substitute a nearby vintage or to infer missing observations.
-Amendment 1 authorizes only the stated SBIR.gov retrieval; no other network
-acquisition is authorized by this document.
+An unavailable, incomplete, or post-cutoff-only source is not permission to
+substitute a nearby vintage or infer missing observations. Amendment 4 permits
+one explicit alternative: a pinned provider object can define a retrieval-based
+selection, provided all downstream artifacts retain its completeness limits.
+No other network acquisition is authorized by this document.
 
 ## Identity and observation boundary
 

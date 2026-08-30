@@ -94,3 +94,27 @@ materialization, a numerical result, or a public release.
   otherwise inadequate candidate remains a recorded failed retrieval. It does
   not authorize cutoff movement, source mixing, SEC acquisition, identity work,
   event creation, aggregation, materialization, or a claim.
+
+## Amendment 4 — accept a retrieval-defined private firm-frame selection
+
+- **Operator authorization:** 2026-08-30. The operator directed the study to
+  work with the exact official bulk object already retrieved rather than change
+  the fixed August 29 date.
+- **Accepted input:** The private object with SHA-256
+  `efdf7ca5a398703002ebb33345275b0f68e50af3c5db361d48a2456266a23628`,
+  retrieved on 2026-08-30 and recorded in the Amendment 1 manifest, is accepted
+  as the **retrieval-defined source cut** for this exploratory study.
+- **Fixed selection rule:** `2026-08-29T23:59:59Z` is the inclusive selection
+  boundary for a source row's `Proposal Award Date`, not a claim that the bulk
+  file completely reflects SBIR.gov as of that time. A candidate frame row must
+  also have a nonblank `Company`. Amendment 2's aggregate diagnostic may be
+  extended only to record aggregate selected/excluded counts and identifier
+  availability; raw rows and names remain private.
+- **Interpretation boundary:** The selected rows are a reproducible subset of
+  one pinned provider object. They are not a complete as-of firm universe, a
+  denominator for prevalence or exit rates, or evidence that an absent firm had
+  no award or outcome.
+- **Still prohibited:** No SEC acquisition; identity resolution; candidate-event
+  creation; signal count; aggregation; materialization; external claim; or
+  public artifact. The privacy/license/release-scope decisions and each SEC
+  source authorization remain separate gates.

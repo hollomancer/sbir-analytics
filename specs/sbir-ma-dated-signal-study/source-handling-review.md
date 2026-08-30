@@ -31,7 +31,8 @@ is consistent with the existing [M&A signal-count design](../sbir-ma-match-rate-
 
 ## Resulting status
 
-The review supports a restricted, private handling plan but does **not** complete the
+Amendment 4 accepts the already retrieved SBIR.gov object as a restricted, private,
+retrieval-defined source-row selection. The review does **not** complete the
 privacy/license/release-scope approval table. The owner must explicitly decide each source's
-permitted retention, derived-audit, aggregate-release, and row-level-release scope before
-the source/estimand contract can be frozen.
+permitted retention, derived-audit, aggregate-release, and row-level-release scope before the
+outcome-source contract can be frozen.

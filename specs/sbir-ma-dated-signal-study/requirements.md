@@ -3,9 +3,9 @@
 > **Lifecycle status:** Active pre-run protocol. This is a new, dated study;
 > it does not reproduce the unrecoverable April 2026 analysis.
 > **Spec-file progress:** Pre-run documentation and the authorized private
-> SBIR.gov retrieval/cutoff audit are complete. That audit failed to establish
-> the planned cutoff, so firm-frame freezing, materialization, and analysis
-> remain blocked.
+> SBIR.gov retrieval/cutoff audit are complete. Amendment 4 accepts the pinned
+> object only as a retrieval-defined private selection; it does not establish
+> an as-of firm universe. Materialization and analysis remain blocked.
 > Anchors inventory question **F1 — M&A exit rate** in
 > [docs/research-questions.md](../../docs/research-questions.md).
 
@@ -41,9 +41,9 @@ the historic output.
 - **Signal:** a sourced observation suggestive of an ownership-change event; it
   is not, without validation, a distinct acquisition, deal, transaction date,
   exit, or firm outcome.
-- **Planned cutoff:** 2026-08-29 23:59:59 UTC. It defines the intended source
-  observation boundary after sources are acquired and frozen; it does not say
-  that any source was queried on that date.
+- **Selection cutoff:** 2026-08-29 23:59:59 UTC. For the accepted SBIR.gov
+  object, it inclusively selects `Proposal Award Date`; it is not a claim that
+  the provider file is a complete source observation as of that time.
 
 ---
 
@@ -57,7 +57,8 @@ mistaken for a reproduction of an unrecoverable historic analysis.
 
 #### Acceptance Criteria
 
-1. THE protocol SHALL name 2026-08-29 UTC as its planned as-of cutoff.
+1. THE protocol SHALL name 2026-08-29 UTC as its fixed source-row selection
+   cutoff and SHALL not present it as a complete provider snapshot.
 2. THE protocol SHALL state that April 2026 figures, denominator, inputs, and
    historical aggregate totals are not inputs, benchmarks, or reproduction
    targets for this study.
@@ -77,9 +78,11 @@ reviewable denominator and observation boundary.
 2. IF acquisition is authorized, THEN the execution amendment SHALL name the
    reviewed SBIR firm-frame source, each outcome-signal source, license/privacy
    review, retrieval timestamps, cutoff handling, and hashes before counting.
-3. IF an eligible source cannot establish coverage through the planned cutoff,
+3. IF an eligible source cannot establish coverage through the selection cutoff,
    THEN the study SHALL remain unmaterialized rather than silently move the
-   cutoff or mix vintages.
+   cutoff or mix vintages. A reviewed amendment may instead accept one pinned
+   provider object as a retrieval-defined selection only, with no completeness,
+   prevalence, or exit-rate claim.
 4. THE protocol SHALL use one prospective firm-frame identity policy and retain
    aliases, source record identifiers, and match rationale for every candidate;
    it SHALL not treat normalized names alone as validated firms.

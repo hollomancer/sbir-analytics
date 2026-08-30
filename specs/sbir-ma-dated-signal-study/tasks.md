@@ -54,6 +54,13 @@
   - Verify: the 2026-08-30 response is byte-identical to the Amendment 1
     object, including its August 1 `Last-Modified` metadata and failed cutoff
     audit. It is retained only as a failed candidate.
+- [x] Accept the pinned SBIR.gov object as a retrieval-defined private source-row
+  selection, retaining the fixed August 29 date as the inclusive
+  `Proposal Award Date` boundary.
+  - Verify: 112,949 rows have nonblank `Company` and a valid date on/before the
+    cutoff; `UEI`, `Duns`, `Agency Tracking Number`, and `Contract` are present
+    in 104,461, 109,199, 112,937, and 112,948 selected rows respectively. These
+    are source-row diagnostics, not firm or outcome counts.
 - [ ] Complete source-specific privacy/license/release-scope review before any
   public artifact or later source acquisition.
   - Verify: a later reviewed amendment records the review disposition and
