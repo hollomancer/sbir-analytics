@@ -1,0 +1,55 @@
+schema_version: 1
+study_id: sbir-ma-dated-signal-study
+title: Prospective SBIR M&A dated signal study (planned cutoff 2026-08-29 UTC)
+evidence_status: exploratory
+research_questions:
+  - F1
+estimand: >-
+  No numerical estimand is currently authorized. If separately approved, a
+  future amendment must declare a dated descriptive observed-signal quantity,
+  its reviewed SBIR firm frame, source coverage through 2026-08-29 UTC, unit,
+  denominator if any, observation window, and failure modes before acquisition
+  or aggregation. It must not reuse or reproduce the unrecoverable April 2026
+  result.
+frozen_artifacts:
+  - path: specs/sbir-ma-dated-signal-study/design.md
+    sha256: aaca88db6d28ecb15b80d9b02dcddb8428db421cb52140c2349343564a1f1888
+  - path: notebooks/explorations/sbir_ma_dated_signal_study.ipynb
+    sha256: eb797c8f25644e2cd62864b4aa84f52f4e9967182337cca45c1a748b61ee51b1
+implementation:
+  - path: scripts/data/sbir_ma_signal_counts_by_fy.py
+    symbol: main
+identity_policy:
+  strategy: >-
+    No identity resolution is authorized. A later approved run must retain raw
+    source identifiers, aliases, and candidate-match rationale; normalized names
+    may generate candidates but cannot establish a firm, acquisition, or exit.
+  version: unmaterialized-pre-run-2026-08-29
+  negative_evidence_allowed: false
+materialization:
+  allowed: false
+  blockers:
+    - >-
+      Amendment 1 authorizes only a private retrieval of the official SBIR.gov
+      award CSV to data/studies/sbir_ma_dated_signal_study/2026-08-29/.
+      Source/privacy/license/release-scope review, a frozen input manifest,
+      declared numerical estimand, further source acquisition, and human
+      validation remain unapproved; materialization stays closed.
+permitted_claims:
+  - >-
+    This is a new exploratory, unmaterialized protocol with a planned as-of
+    cutoff of 2026-08-29 UTC.
+  - >-
+    The unrecoverable April 2026 analysis is not reproduced, validated, or used
+    as an input or benchmark by this study.
+limitations:
+  - >-
+    No source data have been acquired or analyzed. This study has no numerical
+    result, firm frame, observed event population, or denominator.
+  - >-
+    Exploratory status is non-citable and does not authorize a Computable,
+    Validated, or Citable inventory status or any external numerical claim.
+  - >-
+    A signal is not an acquisition, exit, rate, survival outcome, agency effect,
+    comparator result, or causal finding without a separately frozen and
+    validated evidence-tier design.
