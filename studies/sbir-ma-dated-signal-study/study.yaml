@@ -15,7 +15,7 @@ estimand: >-
   reproduce the unrecoverable April 2026 result.
 frozen_artifacts:
   - path: specs/sbir-ma-dated-signal-study/design.md
-    sha256: 339f0144dab1130b338b2a07417e6f38efadd3699d9de4a467c287f72bb4d025
+    sha256: 271c5b3d7188dda585e45c78513688629df0572cd330dd78959f3983711bb166
   - path: notebooks/explorations/sbir_ma_dated_signal_study.ipynb
     sha256: eb797c8f25644e2cd62864b4aa84f52f4e9967182337cca45c1a748b61ee51b1
 implementation:
@@ -34,9 +34,10 @@ materialization:
     - >-
       Amendment 4 accepts the pinned SBIR.gov object only as a retrieval-defined
       source-row selection, not an as-of firm universe. Source/privacy/license/
-      release-scope review, outcome-source acquisition, identity review, a
-      declared numerical output, and human validation remain unapproved;
-      materialization stays closed.
+      release-scope review, Form D XML acquisition, identity review, a declared
+      numerical output, and human validation remain unapproved; materialization
+      stays closed. Amendment 5's private Form D index source cut does not
+      authorize matching, predicate evaluation, or a result.
 permitted_claims:
   - >-
     This is a new exploratory, unmaterialized protocol with a fixed 2026-08-29

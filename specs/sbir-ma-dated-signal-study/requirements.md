@@ -3,9 +3,10 @@
 > **Lifecycle status:** Active pre-run protocol. This is a new, dated study;
 > it does not reproduce the unrecoverable April 2026 analysis.
 > **Spec-file progress:** Pre-run documentation and the authorized private
-> SBIR.gov retrieval/cutoff audit are complete. Amendment 4 accepts the pinned
-> object only as a retrieval-defined private selection; it does not establish
-> an as-of firm universe. Materialization and analysis remain blocked.
+> SBIR.gov retrieval/cutoff audit and the authorized private SEC Form D index
+> acquisition are complete. Amendment 4 accepts the pinned SBIR object only as
+> a retrieval-defined private selection; it does not establish an as-of firm
+> universe. Materialization and analysis remain blocked.
 > Anchors inventory question **F1 — M&A exit rate** in
 > [docs/research-questions.md](../../docs/research-questions.md).
 

@@ -61,6 +61,11 @@
     cutoff; `UEI`, `Duns`, `Agency Tracking Number`, and `Contract` are present
     in 104,461, 109,199, 112,937, and 112,948 selected rows respectively. These
     are source-row diagnostics, not firm or outcome counts.
+- [x] Acquire and pin the authorized private SEC Form D quarterly index source.
+  - Verify: every 2009 Q1–2026 Q3 raw index file has private provenance and
+    integrity metadata; 784,466 Form D/D-A entries span 2009-01-02 through
+    2026-08-28, with none after the cutoff. No matching, XML retrieval,
+    predicate evaluation, or result is emitted.
 - [ ] Complete source-specific privacy/license/release-scope review before any
   public artifact or later source acquisition.
   - Verify: a later reviewed amendment records the review disposition and

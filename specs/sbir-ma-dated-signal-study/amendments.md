@@ -118,3 +118,27 @@ materialization, a numerical result, or a public release.
   creation; signal count; aggregation; materialization; external claim; or
   public artifact. The privacy/license/release-scope decisions and each SEC
   source authorization remain separate gates.
+
+## Amendment 5 — private SEC Form D index acquisition
+
+- **Operator authorization:** 2026-08-30. The operator authorized the first
+  private-only outcome-source acquisition: SEC EDGAR quarterly `form.idx`
+  records for Form D and Form D/A filings.
+- **Permitted retrieval:** Retrieve the official SEC quarterly index files from
+  2009 Q1 through 2026 Q3 into the ignored study root. Retain raw bytes and a
+  private per-file provenance manifest (URL, retrieval time, status/header
+  metadata, SHA-256, and byte size). The index is the source acquisition; no
+  filing XML is authorized by this amendment.
+- **Selection boundary:** Later candidate work may use only index entries with
+  `date_filed <= 2026-08-29`. The source period beginning in 2009 is a known
+  coverage limit, not evidence of no earlier filing or no outcome.
+- **Reuse boundary:** The archived Form D index parser may guide the Form D/D-A
+  record identification and source layout. Its fuzzy matching, confidence tiers,
+  PI/ZIP scoring, and existing artifacts are not inputs to this study.
+- **Handling:** Keep all raw index bytes, candidate links, and later filing
+  details private and out of Git, Git LFS, release assets, and public datasets.
+  This operational authorization does not determine redistribution rights.
+- **Still prohibited:** SBIR-to-Form-D identity resolution; XML retrieval;
+  business-combination predicate evaluation; candidate-event creation; counts;
+  aggregation; EDGAR/EFTS search; materialization; external claim; and public
+  artifact remain unauthorized.
