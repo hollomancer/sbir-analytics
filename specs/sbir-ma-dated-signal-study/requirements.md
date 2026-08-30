@@ -2,8 +2,10 @@
 
 > **Lifecycle status:** Active pre-run protocol. This is a new, dated study;
 > it does not reproduce the unrecoverable April 2026 analysis.
-> **Spec-file progress:** Pre-run documentation complete; source acquisition,
-> materialization, and analysis are deliberately blocked.
+> **Spec-file progress:** Pre-run documentation and the authorized private
+> SBIR.gov retrieval/cutoff audit are complete. That audit failed to establish
+> the planned cutoff, so firm-frame freezing, materialization, and analysis
+> remain blocked.
 > Anchors inventory question **F1 — M&A exit rate** in
 > [docs/research-questions.md](../../docs/research-questions.md).
 

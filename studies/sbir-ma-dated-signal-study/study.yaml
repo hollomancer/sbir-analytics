@@ -13,7 +13,7 @@ estimand: >-
   result.
 frozen_artifacts:
   - path: specs/sbir-ma-dated-signal-study/design.md
-    sha256: aaca88db6d28ecb15b80d9b02dcddb8428db421cb52140c2349343564a1f1888
+    sha256: 218ff8d4a75128d1cf6278a59b53ed8bf926865281accfa5658e95960708ce78
   - path: notebooks/explorations/sbir_ma_dated_signal_study.ipynb
     sha256: eb797c8f25644e2cd62864b4aa84f52f4e9967182337cca45c1a748b61ee51b1
 implementation:
@@ -30,11 +30,13 @@ materialization:
   allowed: false
   blockers:
     - >-
-      Amendment 1 authorizes only a private retrieval of the official SBIR.gov
-      award CSV to data/studies/sbir_ma_dated_signal_study/2026-08-29/.
-      Source/privacy/license/release-scope review, a frozen input manifest,
-      declared numerical estimand, further source acquisition, and human
-      validation remain unapproved; materialization stays closed.
+      Amendments 1–2 authorize only a private SBIR.gov retrieval and cutoff
+      audit. The audit failed to establish coverage through 2026-08-29 because
+      the August 1 HTTP snapshot contains two later proposal-award dates.
+      No source substitution is authorized. Source/privacy/license/release-scope
+      review, a frozen input manifest, declared numerical estimand, further
+      source acquisition, and human validation remain unapproved; materialization
+      stays closed.
 permitted_claims:
   - >-
     This is a new exploratory, unmaterialized protocol with a planned as-of
@@ -44,8 +46,9 @@ permitted_claims:
     as an input or benchmark by this study.
 limitations:
   - >-
-    No source data have been acquired or analyzed. This study has no numerical
-    result, firm frame, observed event population, or denominator.
+    The official SBIR.gov CSV was acquired privately and only its schema/date
+    coverage was audited. The cutoff check failed, so the study has no frozen
+    firm frame, observed event population, denominator, or numerical result.
   - >-
     Exploratory status is non-citable and does not authorize a Computable,
     Validated, or Citable inventory status or any external numerical claim.

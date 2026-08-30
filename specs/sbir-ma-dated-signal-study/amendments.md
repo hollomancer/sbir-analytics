@@ -46,3 +46,31 @@ materialization, a numerical result, or a public release.
 - **Visibility at authorization:** No new dated-study source has been acquired
   or analyzed, and no new dated-study numerical result was visible when this
   authorization was recorded.
+
+## Amendment 2 — private cutoff and source-handling review authorization
+
+- **Operator authorization:** 2026-08-30. The operator directed completion of
+  the remaining pre-freeze work using the previous M&A implementation and
+  decisions where they remain defensible. This amendment is limited to the
+  private checks and documentation below.
+- **Permitted private check:** Parse the already retrieved SBIR.gov
+  `award_data.csv` only to audit the `Proposal Award Date` field's schema,
+  date validity, minimum/maximum values, and coverage against
+  `2026-08-29T23:59:59Z`. Record aggregate diagnostics only; do not emit
+  source rows, contact data, company names, or a firm frame.
+- **Permitted documentation:** Review official SBIR.gov and SEC public
+  documentation to record operational access, privacy, and release-scope
+  constraints for the proposed source slate. This is a technical handling
+  review, not legal advice or a finding that redistribution is permitted.
+- **Method reuse boundary:** The historical Form D business-combination
+  predicate and EDGAR/EFTS filing-form/directional-review pattern may be
+  described as proposed method inputs. The historical JSONL, refinement
+  artifacts, tier totals, source snapshot, and April results remain excluded
+  and may not be reused or reconstructed.
+- **Still prohibited:** No SEC/Form D/EDGAR acquisition; firm identity
+  resolution; candidate-event creation; signal counting; aggregation;
+  notebook execution; materialization; external claim; public artifact; or
+  numerical analysis beyond the aggregate cutoff/schema diagnostic above.
+- **Decision effect:** A failed or unavailable cutoff check is recorded as a
+  hard stop for contract freeze and materialization. It does not permit moving
+  the cutoff or substituting another source vintage.

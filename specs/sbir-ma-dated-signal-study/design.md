@@ -8,15 +8,19 @@ against the unrecoverable April 2026 snapshot: historic award counts, event
 totals, match percentages, and their source files are excluded from every
 future input and verification step.
 
-The currently authorized flow permits one private, raw SBIR.gov firm-frame
-retrieval under [Amendment 1](amendments.md#amendment-1--private-first-source-acquisition-authorization).
-It remains intentionally closed to analysis and materialization:
+The authorized flow completed one private, raw SBIR.gov firm-frame retrieval
+under [Amendment 1](amendments.md#amendment-1--private-first-source-acquisition-authorization)
+and its limited cutoff audit under Amendment 2. The audit failed: the response
+identified an August 1 snapshot while two `Proposal Award Date` values fall
+after the planned August 29 cutoff. The source therefore cannot establish the
+prospective firm frame and the study remains intentionally closed to analysis
+and materialization:
 
 ```text
-pre-run protocol + Amendment 1 + empty exploratory notebook + closed study gate
-    -> private retrieval of official SBIR.gov award CSV only
-    -> record private provenance and explicit cutoff check
-    -> await separate authorization for every later source and all materialization
+pre-run protocol + Amendments 1–2 + empty exploratory notebook + closed study gate
+    -> private retrieval of official SBIR.gov award CSV [completed]
+    -> private provenance and cutoff check [failed]
+    -> no firm-frame freeze, source substitution, analysis, or materialization
 ```
 
 ## Prospective run contract

@@ -40,6 +40,15 @@
   - Verify: `freeze-packet.md` fixes the proposed observed-signal quantity,
     source slate, identity/audit policy, and the specific evidence needed for a
     later owner decision; it remains explicitly not frozen.
+- [x] Run the separately authorized private SBIR.gov cutoff/schema audit.
+  - Verify: 112,951 parseable `Proposal Award Date` values span 1905-07-01 to
+    2026-12-20; two fall after the 2026-08-29 cutoff, while the HTTP snapshot
+    is dated 2026-08-01. The cutoff check fails; no firm frame is frozen.
+- [x] Document the official source-handling constraints and prior-method reuse
+  boundary.
+  - Verify: `source-handling-review.md` limits reuse to candidate-signal
+    predicates and directional review; it excludes the unrecoverable historical
+    input, hybrid dates, confidence tiers, and exact-name event merge.
 - [ ] Complete source-specific privacy/license/release-scope review before any
   public artifact or later source acquisition.
   - Verify: a later reviewed amendment records the review disposition and

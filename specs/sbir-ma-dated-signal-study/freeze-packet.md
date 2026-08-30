@@ -29,7 +29,7 @@ announcement, agreement, closing, or acquisition date.
 
 | Role | Proposed source and bounded use | Required pre-freeze proof |
 |---|---|---|
-| Firm-frame spine | Official SBIR.gov bulk `award_data.csv`, retrieved privately under Amendment 1. Candidate eligibility would require a nonblank `Company` and a valid `Proposal Award Date` on or before the planned cutoff. The raw row, `UEI`, `Duns`, `Agency Tracking Number`, and `Contract` are retained as identity evidence; none alone is assumed complete. | Evaluate record-level coverage using `Proposal Award Date`; record eligible/excluded row diagnostics; complete source/privacy/license/release review. The currently captured HTTP `Last-Modified` date is insufficient. |
+| Firm-frame spine | Official SBIR.gov bulk `award_data.csv`, retrieved privately under Amendment 1. Candidate eligibility would require a nonblank `Company` and a valid `Proposal Award Date` on or before the planned cutoff. The raw row, `UEI`, `Duns`, `Agency Tracking Number`, and `Contract` are retained as identity evidence; none alone is assumed complete. | **Failed.** The private cutoff audit found an August 1 HTTP snapshot and two post-cutoff proposal-award dates (latest December 20). This temporal inconsistency cannot establish the August 29 firm frame; do not substitute another vintage. |
 | First ownership-change signal | SEC Form D records whose source record identifies a business-combination offering. Retain the filing identifier, filer/entity identifiers where supplied, filing date, and the exact predicate that produced the signal. | Approve the source-specific access, retention, privacy, and release scope; pin the exact acquisition method, retrieval time, source-version metadata, hash, size, schema, and row count. |
 | Second ownership-change signal | SEC EDGAR/EFTS full-text filings: `8-K`, `10-K`, `DEFM14A`, `PREM14A`, `SC TO-T`, and `SC 14D9`. A retained signal requires the query, filing accession, form, filer/CIK, filing date, matched text locator, source URL, and a directional disposition (`target`, `not_target`, `comparator`, or `ambiguous`). | Approve access/rate-limit handling and terms; freeze the exact query, form set, retrieval interval, text-extraction and direction rules, input manifest, and review protocol. A mention alone is not an acquisition. |
 
@@ -68,13 +68,16 @@ This draft records no legal conclusion and grants no redistribution right.
 The SBIR source includes contact and address fields. A later implementation must use an
 allowlisted working schema and must not propagate contact, phone, email, address, or free-text
 award fields into the candidate audit or any release unless the review explicitly permits it.
+See the factual [source-handling review](source-handling-review.md); its findings do not replace
+the owner decisions in this table.
 
 ## Freeze checklist
 
 The owner may label this contract **FROZEN** only when all of the following are recorded in a
 new, reviewed amendment:
 
-1. The SBIR record-level cutoff check passes or the study remains unmaterialized.
+1. The SBIR record-level cutoff check passes or the study remains unmaterialized. It currently
+   fails, so this checklist cannot be completed for the August 29 cutoff.
 2. Each source has a completed privacy/license/release-scope decision above.
 3. Each approved input has a private manifest with URL/method, retrieval time, version metadata,
    SHA-256, byte size, row count, schema, destination, and operator.
