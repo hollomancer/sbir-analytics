@@ -9,17 +9,16 @@ totals, match percentages, and their source files are excluded from every
 future input and verification step.
 
 The authorized flow completed one private, raw SBIR.gov firm-frame retrieval
-under [Amendment 1](amendments.md#amendment-1--private-first-source-acquisition-authorization)
-and its limited cutoff audit under Amendment 2. The audit failed: the response
-identified an August 1 snapshot while two `Proposal Award Date` values fall
-after the planned August 29 cutoff. The source therefore cannot establish the
-prospective firm frame and the study remains intentionally closed to analysis
-and materialization:
+under Amendments 1 and 3 and its limited cutoff audit under Amendment 2. Both
+retrievals were byte-identical. The audit failed: each response identified an
+August 1 snapshot while two `Proposal Award Date` values fall after the planned
+August 29 cutoff. The source therefore cannot establish the prospective firm
+frame and the study remains intentionally closed to analysis and materialization:
 
 ```text
-pre-run protocol + Amendments 1–2 + empty exploratory notebook + closed study gate
-    -> private retrieval of official SBIR.gov award CSV [completed]
-    -> private provenance and cutoff check [failed]
+pre-run protocol + Amendments 1–3 + empty exploratory notebook + closed study gate
+    -> two private official SBIR.gov retrieval attempts [byte-identical]
+    -> private provenance and cutoff check [failed twice]
     -> no firm-frame freeze, source substitution, analysis, or materialization
 ```
 

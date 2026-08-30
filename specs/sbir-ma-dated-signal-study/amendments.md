@@ -74,3 +74,23 @@ materialization, a numerical result, or a public release.
 - **Decision effect:** A failed or unavailable cutoff check is recorded as a
   hard stop for contract freeze and materialization. It does not permit moving
   the cutoff or substituting another source vintage.
+
+## Amendment 3 — private fresh-snapshot attempt at the fixed cutoff
+
+- **Operator authorization:** 2026-08-30. The operator directed a single fresh
+  retrieval attempt while retaining the fixed planned cutoff of
+  `2026-08-29T23:59:59Z`.
+- **Permitted source and retrieval:** Retrieve the official SBIR.gov bulk
+  `award_data.csv` once from the Amendment 1 URL, requesting a fresh response,
+  into the ignored local root
+  `data/studies/sbir_ma_dated_signal_study/2026-08-30/`. Retain raw bytes and
+  response headers only; do not replace or modify the Amendment 1 source.
+- **Required evaluation:** Write a separate private provenance manifest and
+  perform the same aggregate `Proposal Award Date` cutoff/schema audit
+  authorized by Amendment 2. The candidate is usable only if its response
+  provenance and record-date audit establish a coherent frame through the fixed
+  cutoff.
+- **Failure behavior:** A stale, temporally inconsistent, unavailable, or
+  otherwise inadequate candidate remains a recorded failed retrieval. It does
+  not authorize cutoff movement, source mixing, SEC acquisition, identity work,
+  event creation, aggregation, materialization, or a claim.

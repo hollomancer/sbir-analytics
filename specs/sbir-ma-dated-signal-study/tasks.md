@@ -49,6 +49,11 @@
   - Verify: `source-handling-review.md` limits reuse to candidate-signal
     predicates and directional review; it excludes the unrecoverable historical
     input, hybrid dates, confidence tiers, and exact-name event merge.
+- [x] Attempt one separately authorized fresh official bulk snapshot at the
+  fixed cutoff.
+  - Verify: the 2026-08-30 response is byte-identical to the Amendment 1
+    object, including its August 1 `Last-Modified` metadata and failed cutoff
+    audit. It is retained only as a failed candidate.
 - [ ] Complete source-specific privacy/license/release-scope review before any
   public artifact or later source acquisition.
   - Verify: a later reviewed amendment records the review disposition and
