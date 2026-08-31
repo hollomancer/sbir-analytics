@@ -140,3 +140,118 @@ def test_load_form_d_control_universe_dedupes_duplicate_ciks(tmp_path) -> None:
     assert len(df) == 1
     assert df.iloc[0]["form_d_cik"] == "999"
     assert df.iloc[0]["first_form_d_year"] == 2020
+
+
+def test_load_form_d_control_universe_refuses_staging_filename(tmp_path) -> None:
+    path = tmp_path / "form_d_control_identity_universe.provisional.jsonl"
+    _write_jsonl(path, [{"cik": "0000999", "issuer_name": "Staging Co"}])
+
+    with pytest.raises(ValueError, match="staging product"):
+        load_form_d_control_universe(path, sbir_ciks=set())
+
+
+def test_load_form_d_control_universe_refuses_staging_record_keys(tmp_path) -> None:
+    path = tmp_path / "form_d_control_universe.jsonl"
+    _write_jsonl(
+        path,
+        [
+            {
+                "cik": "0000999",
+                "issuer_name": "Staging Co",
+                "firm_key": "form_d_cik:999",
+                "schema_version": 1,
+            }
+        ],
+    )
+
+    with pytest.raises(ValueError, match="staging key"):
+        load_form_d_control_universe(path, sbir_ciks=set())
+
+
+def test_load_form_d_control_universe_refuses_ungated_manifest(tmp_path) -> None:
+    path = tmp_path / "form_d_control_universe.jsonl"
+    _write_jsonl(path, [{"cik": "0000999", "issuer_name": "Staging Co"}])
+    (tmp_path / "form_d_control_universe.manifest.json").write_text(
+        json.dumps({"ready_for_matching": False}), encoding="utf-8"
+    )
+
+    with pytest.raises(ValueError, match="ready_for_matching"):
+        load_form_d_control_universe(path, sbir_ciks=set())
+
+
+def test_amendments_do_not_inflate_totals(tmp_path) -> None:
+    """A D/A restates cumulative totals; summing the chain would double-count."""
+
+    path = tmp_path / "form_d_details.jsonl"
+    _write_jsonl(
+        path,
+        [
+            {
+                "company_name": "Acme Corp",
+                "form_d_cik": "0000123",
+                "match_confidence": {"tier": "high"},
+                "offerings": [
+                    {
+                        "entity_name": "ACME CORP",
+                        "filing_date": "2020-01-01",
+                        "industry_group": "Technology",
+                        "total_amount_sold": 5_000_000,
+                        "total_offering_amount": 5_000_000,
+                        "is_amendment": False,
+                    },
+                    {
+                        "entity_name": "ACME CORP",
+                        "filing_date": "2020-06-01",
+                        "industry_group": "Technology",
+                        "total_amount_sold": 8_000_000,
+                        "total_offering_amount": 8_000_000,
+                        "is_amendment": True,
+                    },
+                ],
+            }
+        ],
+    )
+
+    frame = load_form_d_matches(path)
+
+    assert len(frame) == 1
+    # Naive summing would report 13,000,000 across the two filings.
+    assert frame.loc[0, "total_form_d_raised"] == 5_000_000
+    assert frame.loc[0, "offering_count"] == 1
+
+
+def test_amendment_only_chain_uses_largest_restatement(tmp_path) -> None:
+    """With no original in range, fall back to the final restatement, not zero."""
+
+    path = tmp_path / "form_d_details.jsonl"
+    _write_jsonl(
+        path,
+        [
+            {
+                "company_name": "Beta Labs",
+                "form_d_cik": "0000456",
+                "match_confidence": {"tier": "high"},
+                "offerings": [
+                    {
+                        "entity_name": "BETA LABS",
+                        "filing_date": "2021-03-01",
+                        "industry_group": "Technology",
+                        "total_amount_sold": 2_000_000,
+                        "is_amendment": True,
+                    },
+                    {
+                        "entity_name": "BETA LABS",
+                        "filing_date": "2021-09-01",
+                        "industry_group": "Technology",
+                        "total_amount_sold": 3_500_000,
+                        "is_amendment": True,
+                    },
+                ],
+            }
+        ],
+    )
+
+    frame = load_form_d_matches(path)
+
+    assert len(frame) == 1
+    assert frame.loc[0, "total_form_d_raised"] == 3_500_000
