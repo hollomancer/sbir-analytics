@@ -402,6 +402,10 @@ def description_summary(coded_awards: pd.DataFrame) -> dict[str, Any]:
         "award_n": denominator,
         "median_chars": float(lengths.median()) if denominator else None,
         "blank_count": int(lengths.eq(0).sum()),
+        "bound": (
+            "conditional upper-bound proxy for uncoded-population description completeness "
+            "only under the untested monotonicity assumption"
+        ),
     }
     for threshold in (40, 150, 900):
         count = int(lengths.ge(threshold).sum())
@@ -514,6 +518,10 @@ def build_latency_panel(
         "phase_ii_firm_n": len(phase_ii_firms),
         "event_award_n": int(len(observed)),
         "event_award_rate": _percent(int(len(observed)), int(len(survival))),
+        "bound": (
+            "lower bound on matches captured by this public coded channel; not an identified "
+            "bound on true project transitions because same-firm false matches can bias upward"
+        ),
         "censored_award_n": int((~survival["event_observed"]).sum()),
         "event_firm_n": len(event_firms),
         "censored_firm_n": len(phase_ii_firms - event_firms),
@@ -751,16 +759,18 @@ def render_markdown(summary: dict[str, Any]) -> str:
 
     return f"""# Navy Phase III transition readout v1
 
-> **Exploratory — non-citable.** Prepared independently in a personal capacity; no employer or
-> agency affiliation is asserted. Descriptive only: no office ranking, statutory undercount
+> **Exploratory — non-citable.** Prepared independently in a personal capacity; no agency
+> affiliation is asserted. Descriptive only: no office ranking, statutory undercount
 > claim, or recommendation.
 
 **Frame.** Public SBIR.gov/FPDS data through {study["data_cut"]}; federal FY{study["start_fy"]}–FY{study["end_fy"]}.
 “Navy” is SBIR.gov DoD/Navy or FPDS SR3/ST3 with awarding **or** funding sub-tier 1700.
 FPDS actions are post-filtered, compound-key deduplicated, and represented by the latest
-retrieved Navy-attributed action. Counts floor coded capture only. Exact-UEI, no-topic pairing
-is not an identified bound on true transitions. Description rates are directional proxies for
-uncoded claims only if coded records are at least as complete—an untested assumption.
+retrieved Navy-attributed action. The coded set is the observed complement of the uncoded-claim
+population. Counts and coded-signal incidence are lower bounds on public coded-channel capture;
+exact-UEI, no-topic pairing means they are not bounds on true project transitions. Description
+completeness rates are conditional upper-bound proxies for uncoded claims only if coded records
+are at least as complete—an untested assumption.
 
 **Sources/provenance:** [SBIR.gov bulk](https://data.www.sbir.gov/mod_awarddatapublic/award_data.csv),
 [FPDS public Atom](https://www.fpds.gov/ezsearch/FEEDS/ATOM?FEEDNAME=PUBLIC),
@@ -781,9 +791,9 @@ both; annual counts use the union).
 {annual_rows}
 
 Latest retrieved-action descriptions have median {desc["median_chars"]:.0f} characters;
-{desc["ge_40_count"]:,} ({_fmt_rate(desc["ge_40_rate"])}) reach 40,
-{desc["ge_150_count"]:,} ({_fmt_rate(desc["ge_150_rate"])}) reach 150, and
-{desc["ge_900_count"]:,} ({_fmt_rate(desc["ge_900_rate"])}) reach 900.
+{desc["ge_40_count"]:,}/{desc["award_n"]:,} ({_fmt_rate(desc["ge_40_rate"])}) reach 40,
+{desc["ge_150_count"]:,}/{desc["award_n"]:,} ({_fmt_rate(desc["ge_150_rate"])}) reach 150, and
+{desc["ge_900_count"]:,}/{desc["award_n"]:,} ({_fmt_rate(desc["ge_900_rate"])}) reach 900.
 
 The requested **historical, unreproduced** DoD comparator is traceable only to a legacy
 [coded pull](https://github.com/hollomancer/sbir-analytics/blob/d844f2b0/scripts/phase3_benchmark/m0a_coded_pull.py),
@@ -801,10 +811,13 @@ At risk: {panel_b["phase_ii_award_n"]:,} Phase II awards ({panel_b["phase_ii_fir
 exact-UEI firms) ending by the cut. {panel_b["event_award_n"]:,}
 ({_fmt_rate(panel_b["event_award_rate"])}) pair to the first action of a distinct same-UEI coded
 award on/after the Phase II award date; {panel_b["censored_award_n"]:,} are right-censored.
+At firm grain, {panel_b["censored_firm_n"]:,}/{panel_b["phase_ii_firm_n"]:,} have no coded event:
+not-yet-observed, not zero.
 Quantiles condition on events. They retain {panel_b["negative_latency_n"]:,} actions during
 Phase II performance, so median completion-to-action latency is
 {panel_b["deciles"]["p50"]["days"]:,} days ({panel_b["deciles"]["p50"]["years"]:.2f} years).
-Undercoding pressures capture downward; unrelated same-firm awards can bias it upward.
+Undercoding makes the rate a coded-channel floor; unrelated same-firm awards can bias it upward
+against true transitions, so it is not a true-transition bound.
 
 | {decile_cells} |
 |{"".join("---:|" for _ in panel_b["deciles"])}
@@ -840,9 +853,11 @@ signal; that branch and its union are blocked rather than replaced with a proxy.
 ## Limitations
 
 SR3/ST3 and public/exact-UEI coverage miss transitions; firm-level pairing can reuse one event
-across awards. Censoring is administrative. Modification text may not describe the base award.
-DoN role attribution is unioned. Form D amendments/name matches and aggregated EFTS mentions can
-false-positive. Source cuts differ and are recorded. Nothing here identifies a mechanism.
+across awards. Censoring is administrative, not evidence of no transition. Modification text
+may not describe the base award.
+DoN awarding/funding attribution is unioned and may differ. Form D amendments/name matches and
+aggregated EFTS mentions can false-positive. Source cuts differ and are recorded. Nothing here
+identifies a mechanism.
 """
 
 
@@ -894,7 +909,7 @@ def build_summary(
             "end_fy": end_fy,
             "data_cut": data_cut.isoformat(),
             "as_of": as_of.isoformat(),
-            "capacity": "independent personal capacity; no employer or agency affiliation",
+            "capacity": "independent personal capacity; no agency affiliation",
         },
         "provenance": {
             "sbir": {

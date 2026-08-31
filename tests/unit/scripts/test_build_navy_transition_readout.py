@@ -13,6 +13,7 @@ from scripts.data.build_navy_transition_readout import (
     build_external_signal_panel,
     build_latency_panel,
     build_mechanism_panel,
+    description_summary,
     latest_award_grain,
     load_coded_inputs,
     prepare_coded_transactions,
@@ -186,6 +187,7 @@ def test_coded_transactions_union_postfilter_deduplication_and_award_grain() -> 
     a_award = awards.loc[awards["award_key"].str.contains("A-1")].iloc[0]
     assert a_award["don_awarding"]
     assert a_award["don_funding"]
+    assert "upper-bound" in description_summary(awards)["bound"]
 
 
 def test_mechanism_panel_blocks_constant_input_and_estimates_zero_phi() -> None:
@@ -261,6 +263,8 @@ def test_latency_excludes_pre_award_history_and_right_censors_unmatched_award() 
     assert summary["event_award_n"] == 1
     assert summary["censored_award_n"] == 1
     assert summary["negative_latency_n"] == 1
+    assert "lower bound" in summary["bound"]
+    assert "not an identified bound" in summary["bound"]
     assert by_award.loc["II-1", "event_date"] == date(2022, 6, 1)
     assert bool(by_award.loc["II-1", "event_observed"])
     assert not bool(by_award.loc["II-2", "event_observed"])
