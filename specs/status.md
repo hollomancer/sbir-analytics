@@ -170,6 +170,10 @@ bypassing lifecycle review; the status and rationale still require human judgmen
   stays gated on the decoy/estimand work in `phase3-transition-groundtruth` and a
   `studies/transition-scoring/` promotion. No GitHub-runner execution, no
   committed corpus bytes, no server schedule.
+- **`usaspending-multi-fy-archive-union` — Maintenance.** Pipelines-tier remediation for
+  the transition source layer's scalar archive selection. Resolve one declared revision per
+  requested fiscal year, union at transaction grain, and bind the complete archive set to the
+  output manifest; no transition classification or analysis is in scope.
 - **`weekly-awards-report-refactor` — Maintenance.** Monolith is already split
   into weekly reporting modules. Remaining work is injection, coverage, and
   alias cleanup.
