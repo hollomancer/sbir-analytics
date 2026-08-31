@@ -73,6 +73,10 @@ bypassing lifecycle review; the status and rationale still require human judgmen
 - **`follow-on-multiplier-validation` — Active.** Retiered `evidence` →
   `exploratory` (2026-08-15): design-only follow-up without an evidence contract.
   Still called out as an immediate research-plan gap.
+- **`form-d-amendment-chain-deduplication` — Maintenance.** Pipelines-tier correction for
+  monetary aggregation across Form D originals and amendments. Preserve accession-grain lineage,
+  resolve only auditable offering chains, and select one as-of amount per series; matching,
+  attribution, and undisclosed-capital estimation are out of scope.
 - **`iterative-api-enrichment` — Maintenance.** Issue #442 closed the
   shared lifecycle: `SourceAdapter` + `SourceRefreshRunner`, USAspending
   as the reference adapter, and `usaspending_refresh_batch` on the job.
