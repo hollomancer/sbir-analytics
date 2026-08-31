@@ -1,0 +1,279 @@
+{
+  "_epistemic": {
+    "citable": false,
+    "notice": "Exploratory analysis; do not cite as an evidence-tier result.",
+    "tier": "exploratory"
+  },
+  "panel_a": {
+    "annual": [
+      {
+        "coded_phase_iii_contracts": 229,
+        "fiscal_year": 2016,
+        "phase_i_awards": 458,
+        "phase_ii_awards": 224
+      },
+      {
+        "coded_phase_iii_contracts": 203,
+        "fiscal_year": 2017,
+        "phase_i_awards": 533,
+        "phase_ii_awards": 284
+      },
+      {
+        "coded_phase_iii_contracts": 139,
+        "fiscal_year": 2018,
+        "phase_i_awards": 433,
+        "phase_ii_awards": 280
+      },
+      {
+        "coded_phase_iii_contracts": 126,
+        "fiscal_year": 2019,
+        "phase_i_awards": 409,
+        "phase_ii_awards": 344
+      },
+      {
+        "coded_phase_iii_contracts": 136,
+        "fiscal_year": 2020,
+        "phase_i_awards": 704,
+        "phase_ii_awards": 290
+      },
+      {
+        "coded_phase_iii_contracts": 174,
+        "fiscal_year": 2021,
+        "phase_i_awards": 493,
+        "phase_ii_awards": 274
+      },
+      {
+        "coded_phase_iii_contracts": 200,
+        "fiscal_year": 2022,
+        "phase_i_awards": 382,
+        "phase_ii_awards": 243
+      },
+      {
+        "coded_phase_iii_contracts": 197,
+        "fiscal_year": 2023,
+        "phase_i_awards": 411,
+        "phase_ii_awards": 221
+      },
+      {
+        "coded_phase_iii_contracts": 283,
+        "fiscal_year": 2024,
+        "phase_i_awards": 472,
+        "phase_ii_awards": 303
+      },
+      {
+        "coded_phase_iii_contracts": 595,
+        "fiscal_year": 2025,
+        "phase_i_awards": 533,
+        "phase_ii_awards": 317
+      }
+    ],
+    "coded_award_n": 2282,
+    "coded_firm_n": 530,
+    "coded_transaction_n_all_dates_through_cut": 20586,
+    "description": {
+      "award_n": 2282,
+      "blank_count": 0,
+      "ge_150_count": 177,
+      "ge_150_rate": 0.077564,
+      "ge_40_count": 902,
+      "ge_40_rate": 0.395267,
+      "ge_900_count": 0,
+      "ge_900_rate": 0.0,
+      "lt_150_count": 2105,
+      "lt_150_rate": 0.922436,
+      "median_chars": 34.0
+    },
+    "don_awarding_and_funding_award_n": 1981,
+    "don_awarding_award_n": 2000,
+    "don_funding_award_n": 2263,
+    "filter": "Navy SBIR Phase I/II award date FY2016-FY2025; Navy-attributed strict SR3/ST3 compound award key assigned to latest retrieved Navy-attributed coded action in window",
+    "historical_dod_comparator": {
+      "award_n": 6351,
+      "conflicting_tracked_prose_median_chars": 43,
+      "description_ge_150_rate": 0.115,
+      "description_ge_40_rate": 0.536,
+      "description_ge_900_rate": 0.0,
+      "description_lt_150_rate": 0.885,
+      "description_median_chars": 42,
+      "description_median_status": "legacy documentation says 42; current tracked prose says 43; no committed generator",
+      "filter": "FY2016-FY2025, DoD department 9700, FPDS Element 10Q SR3/ST3, latest coded action per compound award key",
+      "firm_n": 1487,
+      "source_refs": [
+        "git:d844f2b0:scripts/phase3_benchmark/m0a_coded_pull.py",
+        "git:48f13305:scripts/phase3_benchmark/dod_within_retrieval.py",
+        "git:e51574be:specs/phase3-match-benchmark/eval-validity.md",
+        "repo:specs/phase3-match-benchmark/mse-dark-phase3.md"
+      ],
+      "status": "historical_unreproduced"
+    },
+    "phase_i_award_n": 4828,
+    "phase_ii_award_n": 2780
+  },
+  "panel_b": {
+    "censored_award_n": 1213,
+    "censored_firm_n": 618,
+    "deciles": {
+      "p10": {
+        "days": -1098,
+        "years": -3.01
+      },
+      "p20": {
+        "days": -854,
+        "years": -2.34
+      },
+      "p30": {
+        "days": -672,
+        "years": -1.84
+      },
+      "p40": {
+        "days": -487,
+        "years": -1.33
+      },
+      "p50": {
+        "days": -322,
+        "years": -0.88
+      },
+      "p60": {
+        "days": -134,
+        "years": -0.37
+      },
+      "p70": {
+        "days": 166,
+        "years": 0.45
+      },
+      "p80": {
+        "days": 493,
+        "years": 1.35
+      },
+      "p90": {
+        "days": 971,
+        "years": 2.66
+      }
+    },
+    "event_award_n": 799,
+    "event_award_rate": 0.397117,
+    "event_firm_n": 157,
+    "filter": "Navy Phase II award FY in scope, period-of-performance end on/before data cut; first coded action of a same-UEI distinct SR3/ST3 award on/after that Phase II award date and on/before data cut",
+    "negative_latency_n": 525,
+    "phase_ii_award_n": 2012,
+    "phase_ii_firm_n": 775
+  },
+  "panel_c": {
+    "award_n": 2282,
+    "both_description_and_taxonomy_missing_n": 0,
+    "description_blank_n": 0,
+    "either_taxonomy_missing_n": 1,
+    "filter": "same Navy coded award-grain FY window as Panel A",
+    "naics_missing_n": 1,
+    "near_zero": null,
+    "phi": null,
+    "psc_missing_n": 0,
+    "status": "blocked_constant_input"
+  },
+  "panel_d": {
+    "efts_acquisition_firms": {
+      "high": null,
+      "medium": null,
+      "status": "blocked_missing_type_specific_dates",
+      "total": null
+    },
+    "efts_latest_observed_mention": "2026-08-21",
+    "either_recent_signal_firms": {
+      "high": null,
+      "medium": null,
+      "status": "blocked_by_efts_branch",
+      "total": null
+    },
+    "filter": "unique normalized Navy Phase I/II firms in the FY window; Form D filing date in the 24-month window and high/medium match tiers only; EFTS acquisition branch blocked because the source lacks type-specific mention dates",
+    "form_d_latest_observed_filing": "2026-08-20",
+    "form_d_positive_raise_firms": {
+      "high": 43,
+      "medium": 4,
+      "total": 47
+    },
+    "navy_firm_n": 1686,
+    "window_end": "2026-08-31",
+    "window_start": "2024-09-01"
+  },
+  "provenance": {
+    "efts": {
+      "file": "sbir_ma_events.jsonl",
+      "record_n": 5252,
+      "sha256": "c3bbb67c5e95d7c4fdfa88dd8ac4a1f428fc02b59296d063c868f41bf2ef7ca9",
+      "source_url": "https://efts.sec.gov/LATEST/search-index"
+    },
+    "form_d": {
+      "file": "form_d_details.jsonl",
+      "record_n": 10742,
+      "sha256": "683ce43a955f074320daca5ed366152ca2c47cfd41b03b56ec9a25b6f3fc98ff",
+      "source_url": "https://www.sec.gov/edgar"
+    },
+    "fpds": [
+      {
+        "file": "navy-transition-sr3-awarding.parquet",
+        "manifest_file": "navy-transition-sr3-awarding.manifest.json",
+        "manifest_sha256": "1554af0e581b03c7a66111584e09a13a048018ecb58be2fe1d57c141a7e96dba",
+        "query": "RESEARCH:SR3 SIGNED_DATE:[1980/10/01,2025/09/30] CONTRACT_TYPE:\"AWARD\" CONTRACTING_AGENCY_ID:\"1700\"",
+        "raw_pages_sha256": "9d2763d6048a0f8628adcc475abd3e459a52bfb257c5960643a0f6306d352d21",
+        "reported_total_results": null,
+        "retrieval_complete": true,
+        "retrieved_at": "2026-08-31T11:46:16.425108+00:00",
+        "row_count": 15986,
+        "sha256": "b83f144e7e9cb61fea12498db47faa1fff31d860e1d93e98dea29c541e3af88b"
+      },
+      {
+        "file": "navy-transition-sr3-funding.parquet",
+        "manifest_file": "navy-transition-sr3-funding.manifest.json",
+        "manifest_sha256": "dace6052585d2e2913b576eda54f52cc5f05b34b5881b994be3fed63ef3e57bb",
+        "query": "RESEARCH:SR3 SIGNED_DATE:[1980/10/01,2025/09/30] CONTRACT_TYPE:\"AWARD\" FUNDING_AGENCY_ID:\"1700\"",
+        "raw_pages_sha256": "9998aa6767ffcdf682cb6760e66e3a758ee43ed9f73a4cacbd48558a7ca325a3",
+        "reported_total_results": null,
+        "retrieval_complete": true,
+        "retrieved_at": "2026-08-31T11:47:28.914689+00:00",
+        "row_count": 18531,
+        "sha256": "673347d17aa75b1dac7ce370abe85c2460016a6188fa49410fe83826789baefb"
+      },
+      {
+        "file": "navy-transition-st3-awarding.parquet",
+        "manifest_file": "navy-transition-st3-awarding.manifest.json",
+        "manifest_sha256": "95e69a658e5557d249c3791db84a204cc6360d2db4015bf8200c1c82c040f875",
+        "query": "RESEARCH:ST3 SIGNED_DATE:[1980/10/01,2025/09/30] CONTRACT_TYPE:\"AWARD\" CONTRACTING_AGENCY_ID:\"1700\"",
+        "raw_pages_sha256": "b5dd65bd6835f0f03c3f6c67043dff947cdf386cb8fe1f7f68da3183605aa911",
+        "reported_total_results": null,
+        "retrieval_complete": true,
+        "retrieved_at": "2026-08-31T11:49:09.882027+00:00",
+        "row_count": 1599,
+        "sha256": "5940b4ab8737d4f5106d699dea21f55a33a59616b87ac7fc574a9fb46dbf7901"
+      },
+      {
+        "file": "navy-transition-st3-funding.parquet",
+        "manifest_file": "navy-transition-st3-funding.manifest.json",
+        "manifest_sha256": "2ecac77f37efb1eb96a273e069aaf2e6202d48e99c2a9d9f1b4f0b3d38cc5063",
+        "query": "RESEARCH:ST3 SIGNED_DATE:[1980/10/01,2025/09/30] CONTRACT_TYPE:\"AWARD\" FUNDING_AGENCY_ID:\"1700\"",
+        "raw_pages_sha256": "4328b2bc6003157960317ca1b591c539738d2d0a2444ad6a5e9a705f6ce52194",
+        "reported_total_results": null,
+        "retrieval_complete": true,
+        "retrieved_at": "2026-08-31T11:49:25.185923+00:00",
+        "row_count": 1658,
+        "sha256": "f9b5da9b9d004d65621c0607f68ba960a25410c25a2dff88dc5da54e0918cc12"
+      }
+    ],
+    "sbir": {
+      "file": "phase_iii_census_sbir_awards.parquet",
+      "rows": 219497,
+      "sha256": "7d726822998305ac7f7d314a706d945783e15e12c1bcb5c7b2e499f1bc44a818",
+      "source_sha256": "73d646fc6883ed93b36d19518b0d9442a9ebae94c5b49ad5a7fcd6d3c2b872dd",
+      "source_system": "SBIR.gov bulk award_data.csv",
+      "source_url": "https://data.www.sbir.gov/mod_awarddatapublic/award_data.csv"
+    }
+  },
+  "status": "exploratory_non_citable",
+  "study": {
+    "as_of": "2026-08-31",
+    "capacity": "independent personal capacity; no employer or agency affiliation",
+    "data_cut": "2025-09-30",
+    "end_fy": 2025,
+    "start_fy": 2016,
+    "version": "navy-transition-v1"
+  }
+}

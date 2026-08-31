@@ -37,6 +37,29 @@ termination reason (`feed_exhausted`, `reported_total_reached`, or
 `page_limit_reached`). Cache entries are keyed and validated by canonical URL.
 Generated data stays under `data/` and is not committed.
 
+## Navy transition readout v1
+
+The readout uses the union of four complete SR3/ST3 × DoN-awarding/funding
+pulls. Repeat this command for `SR3`/`ST3` and replace the final clause with
+either `CONTRACTING_AGENCY_ID:"1700"` or `FUNDING_AGENCY_ID:"1700"`:
+
+```bash
+python scripts/phase3_benchmark/pull_fpds_10q.py SR3 \
+  --pages 2000 \
+  --query-term 'SIGNED_DATE:[1980/10/01,2025/09/30]' \
+  --query-term 'CONTRACT_TYPE:"AWARD"' \
+  --query-term 'CONTRACTING_AGENCY_ID:"1700"' \
+  --output data/derived/navy-transition-sr3-awarding.parquet \
+  --manifest data/derived/navy-transition-sr3-awarding.manifest.json \
+  --cache-dir data/raw/fpds/navy-transition-sr3-awarding \
+  --source-vintage 2026-08-31
+```
+
+Pass the resulting four parquet/manifest pairs as repeated `--coded` arguments
+to `scripts/data/build_navy_transition_readout.py`. The builder rejects an
+incomplete or non-exact query matrix; the checked-in aggregate summary records
+the actual queries and content hashes.
+
 ## Interpretation guardrails
 
 - FPDS entries are transactions. The benchmark constructs an award-grade key
