@@ -74,10 +74,13 @@
   - Verify: the private ledger contains 1,800 exact-key candidate names and
     5,744 candidate filings; the private retrieval manifest records HTTP 200
     for all 5,744 distinct candidate accessions.
-- [ ] Apply the Amendment 7 accession-grain XML predicate.
+- [x] Apply the Amendment 7 accession-grain XML predicate.
   - Verify: each private output row reconciles to one retrieved candidate XML,
     preserves its SHA-256, and is `true`, `false`, or `unavailable` without a
     firm, event, or aggregate claim.
+  - Completion: the ignored private observation ledger has one row for each of
+    the 5,744 candidate accessions. It contains only the authorized source-field
+    observation and provenance reference; no result or aggregate was emitted.
 - [ ] Complete source-specific privacy/license/release-scope review before any
   public artifact or later source acquisition.
   - Verify: a later reviewed amendment records the review disposition and
