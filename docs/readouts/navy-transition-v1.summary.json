@@ -7,61 +7,71 @@
   "panel_a": {
     "annual": [
       {
-        "coded_phase_iii_contracts": 229,
+        "coded_phase_iii_first_actions": 211,
+        "coded_phase_iii_latest_actions": 229,
         "fiscal_year": 2016,
         "phase_i_awards": 458,
         "phase_ii_awards": 224
       },
       {
-        "coded_phase_iii_contracts": 203,
+        "coded_phase_iii_first_actions": 195,
+        "coded_phase_iii_latest_actions": 203,
         "fiscal_year": 2017,
         "phase_i_awards": 533,
         "phase_ii_awards": 284
       },
       {
-        "coded_phase_iii_contracts": 139,
+        "coded_phase_iii_first_actions": 143,
+        "coded_phase_iii_latest_actions": 139,
         "fiscal_year": 2018,
         "phase_i_awards": 433,
         "phase_ii_awards": 280
       },
       {
-        "coded_phase_iii_contracts": 126,
+        "coded_phase_iii_first_actions": 156,
+        "coded_phase_iii_latest_actions": 126,
         "fiscal_year": 2019,
         "phase_i_awards": 409,
         "phase_ii_awards": 344
       },
       {
-        "coded_phase_iii_contracts": 136,
+        "coded_phase_iii_first_actions": 188,
+        "coded_phase_iii_latest_actions": 136,
         "fiscal_year": 2020,
         "phase_i_awards": 704,
         "phase_ii_awards": 290
       },
       {
-        "coded_phase_iii_contracts": 174,
+        "coded_phase_iii_first_actions": 198,
+        "coded_phase_iii_latest_actions": 174,
         "fiscal_year": 2021,
         "phase_i_awards": 493,
         "phase_ii_awards": 274
       },
       {
-        "coded_phase_iii_contracts": 200,
+        "coded_phase_iii_first_actions": 213,
+        "coded_phase_iii_latest_actions": 200,
         "fiscal_year": 2022,
         "phase_i_awards": 382,
         "phase_ii_awards": 243
       },
       {
-        "coded_phase_iii_contracts": 197,
+        "coded_phase_iii_first_actions": 211,
+        "coded_phase_iii_latest_actions": 197,
         "fiscal_year": 2023,
         "phase_i_awards": 411,
         "phase_ii_awards": 221
       },
       {
-        "coded_phase_iii_contracts": 283,
+        "coded_phase_iii_first_actions": 184,
+        "coded_phase_iii_latest_actions": 283,
         "fiscal_year": 2024,
         "phase_i_awards": 472,
         "phase_ii_awards": 303
       },
       {
-        "coded_phase_iii_contracts": 595,
+        "coded_phase_iii_first_actions": 185,
+        "coded_phase_iii_latest_actions": 595,
         "fiscal_year": 2025,
         "phase_i_awards": 533,
         "phase_ii_awards": 317
@@ -69,20 +79,29 @@
     ],
     "coded_award_n": 2282,
     "coded_firm_n": 530,
+    "coded_first_action_in_window_n": 1884,
     "coded_transaction_n_all_dates_through_cut": 20586,
     "description": {
       "award_n": 2282,
       "blank_count": 0,
-      "bound": "conditional upper-bound proxy for uncoded-population description completeness only under the untested monotonicity assumption",
       "ge_150_count": 177,
       "ge_150_rate": 0.077564,
       "ge_40_count": 902,
       "ge_40_rate": 0.395267,
-      "ge_900_count": 0,
-      "ge_900_rate": 0.0,
+      "interpretation": "latest-action description diagnostics within the observed strict-coded cohort; not a bound on uncoded records or a base-award narrative measure",
       "lt_150_count": 2105,
       "lt_150_rate": 0.922436,
-      "median_chars": 34.0
+      "median_chars": 34.0,
+      "representative_nonzero_mod_n": 1740,
+      "source_constraint": {
+        "effective_date": "2019-06-28",
+        "interpretation": "legacy pre-cap descriptions can persist on later modifications; thresholds above 250 are not uniformly observable",
+        "max_chars": 250,
+        "post_cap_over_cap_legacy_n": 8,
+        "post_cap_representative_n": 1628,
+        "required": true,
+        "rule_url": "https://beta.fpds.gov/downloads/Manuals/FPDS_User_Manual_V1.5.pdf"
+      }
     },
     "don_awarding_and_funding_award_n": 1981,
     "don_awarding_award_n": 2000,
@@ -93,10 +112,12 @@
       "conflicting_tracked_prose_median_chars": 43,
       "description_ge_150_rate": 0.115,
       "description_ge_40_rate": 0.536,
-      "description_ge_900_rate": 0.0,
       "description_lt_150_rate": 0.885,
       "description_median_chars": 42,
       "description_median_status": "legacy documentation says 42; current tracked prose says 43; no committed generator",
+      "excluded_description_thresholds": {
+        "900": "not comparable across FY2016-FY2025 because newly entered FPDS descriptions are capped at 250 characters after 2019-06-28"
+      },
       "filter": "FY2016-FY2025, DoD department 9700, FPDS Element 10Q SR3/ST3, latest coded action per compound award key",
       "firm_n": 1487,
       "source_refs": [
@@ -111,10 +132,23 @@
     "phase_ii_award_n": 2780
   },
   "panel_b": {
-    "bound": "lower bound on matches captured by this public coded channel; not an identified bound on true project transitions because same-firm false matches can bias upward",
-    "censored_award_n": 1213,
-    "censored_firm_n": 618,
-    "deciles": {
+    "assignment_rate": 0.397117,
+    "assignments_to_reused_contracts_n": 643,
+    "distinct_phase_iii_contract_n": 315,
+    "estimator": "event-conditional signed completion-relative latency ECDF; administratively unmatched awards do not enter the distribution and no survival estimator is fitted",
+    "filter": "Navy Phase II award FY in scope, period-of-performance end on/before data cut; first coded action of a same-UEI distinct SR3/ST3 award on/after that Phase II award date and on/before data cut",
+    "interpretation": "observed exact-UEI award-to-signal assignment rate; not an identified bound on project transitions because coding/identity misses and unrelated same-firm matches can bias in opposite directions",
+    "matched_phase_ii_award_n": 799,
+    "matched_phase_ii_firm_n": 157,
+    "max_phase_ii_assignments_per_phase_iii_contract": 36,
+    "no_qualifying_signal_award_n": 1213,
+    "no_qualifying_signal_firm_n": 618,
+    "phase_ii_award_n": 2012,
+    "phase_ii_firm_n": 775,
+    "post_completion_assignment_n": 274,
+    "pre_completion_assignment_n": 525,
+    "reused_phase_iii_contract_n": 159,
+    "signed_latency_deciles": {
       "p10": {
         "days": -1098,
         "years": -3.01
@@ -151,14 +185,7 @@
         "days": 971,
         "years": 2.66
       }
-    },
-    "event_award_n": 799,
-    "event_award_rate": 0.397117,
-    "event_firm_n": 157,
-    "filter": "Navy Phase II award FY in scope, period-of-performance end on/before data cut; first coded action of a same-UEI distinct SR3/ST3 award on/after that Phase II award date and on/before data cut",
-    "negative_latency_n": 525,
-    "phase_ii_award_n": 2012,
-    "phase_ii_firm_n": 775
+    }
   },
   "panel_c": {
     "award_n": 2282,
@@ -268,6 +295,11 @@
       "source_system": "SBIR.gov bulk award_data.csv",
       "source_url": "https://data.www.sbir.gov/mod_awarddatapublic/award_data.csv"
     }
+  },
+  "reproducibility": {
+    "limitation": "content hashes authenticate local FPDS, Form D, and EFTS snapshots, but the snapshots and full match-generator lineage are not tracked in git",
+    "local_pinned_input_rebuild": true,
+    "repository_only_rebuild": false
   },
   "status": "exploratory_non_citable",
   "study": {

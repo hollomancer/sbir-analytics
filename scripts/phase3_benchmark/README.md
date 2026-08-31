@@ -81,6 +81,10 @@ the actual queries and content hashes.
   remain provisional until rerun.
 - Empirical commands with missing gitignored inputs emit
   `status=blocked_missing_inputs`; they do not imply successful reproduction.
+- FPDS description cut points come from
+  `sbir_etl.utils.fpds_constraints`. The field is required and newly entered
+  text is capped at 250 characters after June 28, 2019; thresholds above that
+  limit are not comparable across vintages and are not emitted.
 - Description-only counts are unadjudicated flags. Capture-recapture output is
   an OR-indexed sensitivity analysis, with Chapman reported only as the OR=1
   homogeneous-independence scenario.

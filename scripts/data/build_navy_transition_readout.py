@@ -37,6 +37,12 @@ from sbir_analytics.assets.phase_transition.phase_iii import (  # noqa: E402
 from scripts.phase3_benchmark.undercount_award_grain import (  # noqa: E402
     reconstruct_coded_award_key,
 )
+from sbir_etl.utils.fpds_constraints import (  # noqa: E402
+    FPDS_DESCRIPTION_CAP_EFFECTIVE_DATE,
+    FPDS_DESCRIPTION_MAX_CHARS,
+    FPDS_DESCRIPTION_REQUIRED,
+    FPDS_DESCRIPTION_RULE_URL,
+)
 
 
 DEFAULT_SBIR = Path("data/processed/phase_iii_census_sbir_awards.parquet")
@@ -69,7 +75,12 @@ HISTORICAL_DOD_COMPARATOR = {
     "description_ge_40_rate": 0.536,
     "description_lt_150_rate": 0.885,
     "description_ge_150_rate": 0.115,
-    "description_ge_900_rate": 0.0,
+    "excluded_description_thresholds": {
+        "900": (
+            "not comparable across FY2016-FY2025 because newly entered FPDS descriptions "
+            "are capped at 250 characters after 2019-06-28"
+        )
+    },
     "source_refs": [
         "git:d844f2b0:scripts/phase3_benchmark/m0a_coded_pull.py",
         "git:48f13305:scripts/phase3_benchmark/dod_within_retrieval.py",
@@ -317,7 +328,7 @@ def prepare_coded_transactions(raw: pd.DataFrame, data_cut: date) -> pd.DataFram
 
 
 def latest_award_grain(transactions: pd.DataFrame) -> pd.DataFrame:
-    """Select the latest retrieved action and OR role flags across award history."""
+    """Select the latest action while retaining award-history diagnostics."""
 
     latest = (
         transactions.sort_values(
@@ -336,12 +347,14 @@ def latest_award_grain(transactions: pd.DataFrame) -> pd.DataFrame:
         .drop_duplicates("award_key", keep="last")
         .reset_index(drop=True)
     )
-    role_flags = transactions.groupby("award_key", as_index=False).agg(
+    history = transactions.groupby("award_key", as_index=False).agg(
         don_awarding=("don_awarding", "max"),
         don_funding=("don_funding", "max"),
+        first_action_date=("action_date", "min"),
+        retrieved_action_n=("action_date", "size"),
     )
     return latest.drop(columns=["don_awarding", "don_funding"]).merge(
-        role_flags, on="award_key", how="left", validate="one_to_one"
+        history, on="award_key", how="left", validate="one_to_one"
     )
 
 
@@ -371,7 +384,8 @@ def build_annual_panel(
     end_fy: int,
 ) -> list[dict[str, int]]:
     coded = coded_awards.copy()
-    coded["fiscal_year"] = _fiscal_year(coded["action_date"])
+    coded["latest_action_fiscal_year"] = _fiscal_year(coded["action_date"])
+    coded["first_action_fiscal_year"] = _fiscal_year(coded["first_action_date"])
     rows: list[dict[str, int]] = []
     for fiscal_year in range(start_fy, end_fy + 1):
         rows.append(
@@ -389,7 +403,12 @@ def build_annual_panel(
                         & (navy_sbir["analysis_phase"] == "II")
                     ).sum()
                 ),
-                "coded_phase_iii_contracts": int((coded["fiscal_year"] == fiscal_year).sum()),
+                "coded_phase_iii_first_actions": int(
+                    (coded["first_action_fiscal_year"] == fiscal_year).sum()
+                ),
+                "coded_phase_iii_latest_actions": int(
+                    (coded["latest_action_fiscal_year"] == fiscal_year).sum()
+                ),
             }
         )
     return rows
@@ -398,16 +417,42 @@ def build_annual_panel(
 def description_summary(coded_awards: pd.DataFrame) -> dict[str, Any]:
     lengths = coded_awards["description_length"].astype(int)
     denominator = int(len(lengths))
+    latest_dates = pd.to_datetime(coded_awards["action_date"], errors="coerce")
+    first_dates = pd.to_datetime(coded_awards["first_action_date"], errors="coerce")
+    post_cap = latest_dates.dt.date.ge(FPDS_DESCRIPTION_CAP_EFFECTIVE_DATE)
+    over_cap = lengths.gt(FPDS_DESCRIPTION_MAX_CHARS)
+    nonzero_mod = _clean_text(coded_awards["mod_number"]).str.fullmatch(r"0+").fillna(False).eq(
+        False
+    ) & _clean_text(coded_awards["mod_number"]).ne("")
     result: dict[str, Any] = {
         "award_n": denominator,
         "median_chars": float(lengths.median()) if denominator else None,
         "blank_count": int(lengths.eq(0).sum()),
-        "bound": (
-            "conditional upper-bound proxy for uncoded-population description completeness "
-            "only under the untested monotonicity assumption"
+        "interpretation": (
+            "latest-action description diagnostics within the observed strict-coded cohort; "
+            "not a bound on uncoded records or a base-award narrative measure"
         ),
+        "representative_nonzero_mod_n": int(nonzero_mod.sum()),
+        "source_constraint": {
+            "required": FPDS_DESCRIPTION_REQUIRED,
+            "max_chars": FPDS_DESCRIPTION_MAX_CHARS,
+            "effective_date": FPDS_DESCRIPTION_CAP_EFFECTIVE_DATE.isoformat(),
+            "rule_url": FPDS_DESCRIPTION_RULE_URL,
+            "post_cap_representative_n": int(post_cap.sum()),
+            "post_cap_over_cap_legacy_n": int(
+                (
+                    post_cap
+                    & over_cap
+                    & first_dates.dt.date.lt(FPDS_DESCRIPTION_CAP_EFFECTIVE_DATE)
+                ).sum()
+            ),
+            "interpretation": (
+                "legacy pre-cap descriptions can persist on later modifications; thresholds above "
+                "250 are not uniformly observable"
+            ),
+        },
     }
-    for threshold in (40, 150, 900):
+    for threshold in (40, 150):
         count = int(lengths.ge(threshold).sum())
         result[f"ge_{threshold}_count"] = count
         result[f"ge_{threshold}_rate"] = _percent(count, denominator)
@@ -487,8 +532,18 @@ def build_latency_panel(
     pairs = pairs.loc[
         pair_award_dates.notna() & pair_action_dates.ge(pair_award_dates)
     ].reset_index(drop=True)
+    assignments = (
+        pairs.sort_values(
+            ["phase_iii_action_date", "phase_iii_contract_id"],
+            kind="stable",
+        )
+        .drop_duplicates("phase_ii_award_id", keep="first")
+        .reset_index(drop=True)
+    )
     survival = _build_survival(phase_ii, pairs, data_cut)
     observed = survival.loc[survival["event_observed"]].copy()
+    if len(assignments) != len(observed):
+        raise ValueError("assignment and signed-latency event counts disagree")
     observed_days = pd.to_numeric(observed["time_days"], errors="coerce").dropna().astype(float)
     deciles: dict[str, dict[str, float | int]] = {}
     if not observed_days.empty:
@@ -508,6 +563,8 @@ def build_latency_panel(
         .astype(str)
         .str.strip()
     ) - {""}
+    contract_reuse = assignments["phase_iii_contract_id"].value_counts()
+    reused_contracts = contract_reuse.loc[contract_reuse.gt(1)]
     summary = {
         "filter": (
             "Navy Phase II award FY in scope, period-of-performance end on/before data cut; "
@@ -516,17 +573,29 @@ def build_latency_panel(
         ),
         "phase_ii_award_n": int(len(survival)),
         "phase_ii_firm_n": len(phase_ii_firms),
-        "event_award_n": int(len(observed)),
-        "event_award_rate": _percent(int(len(observed)), int(len(survival))),
-        "bound": (
-            "lower bound on matches captured by this public coded channel; not an identified "
-            "bound on true project transitions because same-firm false matches can bias upward"
+        "matched_phase_ii_award_n": int(len(assignments)),
+        "assignment_rate": _percent(int(len(assignments)), int(len(survival))),
+        "interpretation": (
+            "observed exact-UEI award-to-signal assignment rate; not an identified bound on "
+            "project transitions because coding/identity misses and unrelated same-firm matches "
+            "can bias in opposite directions"
         ),
-        "censored_award_n": int((~survival["event_observed"]).sum()),
-        "event_firm_n": len(event_firms),
-        "censored_firm_n": len(phase_ii_firms - event_firms),
-        "negative_latency_n": int(observed_days.lt(0).sum()),
-        "deciles": deciles,
+        "no_qualifying_signal_award_n": int((~survival["event_observed"]).sum()),
+        "matched_phase_ii_firm_n": len(event_firms),
+        "no_qualifying_signal_firm_n": len(phase_ii_firms - event_firms),
+        "distinct_phase_iii_contract_n": int(assignments["phase_iii_contract_id"].nunique()),
+        "reused_phase_iii_contract_n": int(len(reused_contracts)),
+        "assignments_to_reused_contracts_n": int(reused_contracts.sum()),
+        "max_phase_ii_assignments_per_phase_iii_contract": (
+            int(contract_reuse.max()) if not contract_reuse.empty else 0
+        ),
+        "pre_completion_assignment_n": int(observed_days.lt(0).sum()),
+        "post_completion_assignment_n": int(observed_days.ge(0).sum()),
+        "signed_latency_deciles": deciles,
+        "estimator": (
+            "event-conditional signed completion-relative latency ECDF; administratively "
+            "unmatched awards do not enter the distribution and no survival estimator is fitted"
+        ),
     }
     return summary, survival
 
@@ -672,17 +741,20 @@ def _write_latency_figure(survival: pd.DataFrame, path: Path, data_cut: date) ->
         probability = np.arange(1, observed.size + 1) / observed.size
         ax.step(observed, probability, where="post", color="#0B4F6C", linewidth=2.2)
         ax.axvline(0, color="#777777", linewidth=1, linestyle="--")
-        ax.set_ylabel("Share of observed coded events")
-        ax.set_xlabel("Years from Phase II period end to first coded Phase III action")
+        ax.set_ylabel("Share of matched Phase II award assignments")
+        ax.set_xlabel("Signed years: Phase II period end → assigned coded action")
     else:
-        ax.text(0.5, 0.5, "No coded events observed", ha="center", va="center")
+        ax.text(0.5, 0.5, "No coded assignments observed", ha="center", va="center")
         ax.set_axis_off()
-    event_n = int(survival["event_observed"].sum())
-    censored_n = int((~survival["event_observed"]).sum())
+    assignment_n = int(survival["event_observed"].sum())
+    unmatched_n = int((~survival["event_observed"]).sum())
     _figure_heading(
         fig,
-        "Navy Phase II → first coded Phase III",
-        f"Conditional ECDF: n={event_n} events; {censored_n} right-censored at {data_cut}",
+        "Navy Phase II → assigned same-firm coded Phase III",
+        (
+            f"Event-conditional ECDF: n={assignment_n} award assignments; "
+            f"{unmatched_n} without a signal by {data_cut}; no survival estimator"
+        ),
     )
     ax.grid(axis="y", color="#DDDDDD", linewidth=0.7)
     fig.savefig(path, dpi=180)
@@ -696,10 +768,17 @@ def _write_description_figure(coded_awards: pd.DataFrame, path: Path) -> None:
     probability = np.arange(1, len(lengths) + 1) / len(lengths)
     fig, ax = plt.subplots(figsize=(7.2, 4.2))
     ax.step(lengths, probability, where="post", color="#0B4F6C", linewidth=2.2)
-    colors = {40: "#D95F02", 150: "#7570B3", 900: "#1B9E77"}
+    colors = {40: "#D95F02", 150: "#7570B3"}
     for threshold, color in colors.items():
         ax.axvline(threshold, color=color, linewidth=1.4, linestyle="--", label=f"{threshold}")
-    upper = max(950.0, float(np.percentile(lengths, 99.5)))
+    ax.axvline(
+        FPDS_DESCRIPTION_MAX_CHARS,
+        color="#222222",
+        linewidth=1.4,
+        linestyle=":",
+        label="250 cap",
+    )
+    upper = max(260.0, float(np.percentile(lengths, 99.9)))
     ax.set_xlim(0, upper)
     ax.set_ylim(0, 1.01)
     ax.set_xlabel("Latest retrieved Navy-attributed action description (characters)")
@@ -709,7 +788,7 @@ def _write_description_figure(coded_awards: pd.DataFrame, path: Path) -> None:
         "Navy coded Phase III description ECDF",
         f"n={len(lengths):,} distinct award keys; FY2016–FY2025 retrieved-action scope",
     )
-    ax.legend(title="Threshold", frameon=False, ncols=3, loc="lower right")
+    ax.legend(title="Characters", frameon=False, ncols=3, loc="lower right")
     ax.grid(axis="y", color="#DDDDDD", linewidth=0.7)
     fig.savefig(path, dpi=180)
     plt.close(fig)
@@ -727,24 +806,30 @@ def render_markdown(summary: dict[str, Any]) -> str:
     panel_d = summary["panel_d"]
     desc = panel_a["description"]
     comparator = panel_a["historical_dod_comparator"]
+    first_action_in_window_n = sum(
+        row["coded_phase_iii_first_actions"] for row in panel_a["annual"]
+    )
+    pre_window_first_action_n = panel_a["coded_award_n"] - first_action_in_window_n
 
     annual_rows = "\n".join(
         f"| FY{row['fiscal_year']} | {row['phase_i_awards']:,} | "
-        f"{row['phase_ii_awards']:,} | {row['coded_phase_iii_contracts']:,} |"
+        f"{row['phase_ii_awards']:,} | {row['coded_phase_iii_first_actions']:,} | "
+        f"{row['coded_phase_iii_latest_actions']:,} |"
         for row in panel_a["annual"]
     )
-    decile_cells = " | ".join(panel_b["deciles"])
+    decile_cells = " | ".join(panel_b["signed_latency_deciles"])
     decile_values = " | ".join(
-        f"{panel_b['deciles'][key]['days']:,} ({panel_b['deciles'][key]['years']:.2f})"
-        for key in panel_b["deciles"]
+        f"{panel_b['signed_latency_deciles'][key]['days']:,} "
+        f"({panel_b['signed_latency_deciles'][key]['years']:.2f})"
+        for key in panel_b["signed_latency_deciles"]
     )
 
     if panel_c["status"] == "estimated":
         if panel_c["near_zero"]:
             mechanism_result = (
                 f"Phi = {panel_c['phi']:.3f}; this is near zero under the pre-set |phi| < 0.10 "
-                "descriptive rule. Within this coded frame, blank optional descriptions varied "
-                "independently of the two required classification fields."
+                "descriptive rule. Within this coded frame, description blankness varied "
+                "independently of the two classification fields."
             )
         else:
             mechanism_result = (
@@ -760,104 +845,103 @@ def render_markdown(summary: dict[str, Any]) -> str:
     return f"""# Navy Phase III transition readout v1
 
 > **Exploratory — non-citable.** Prepared independently in a personal capacity; no agency
-> affiliation is asserted. Descriptive only: no office ranking, statutory undercount
-> claim, or recommendation.
+> affiliation. Descriptive only—no ranking, statutory undercount claim, causal interpretation,
+> or recommendation.
 
-**Frame.** Public SBIR.gov/FPDS data through {study["data_cut"]}; federal FY{study["start_fy"]}–FY{study["end_fy"]}.
-“Navy” is SBIR.gov DoD/Navy or FPDS SR3/ST3 with awarding **or** funding sub-tier 1700.
-FPDS actions are post-filtered, compound-key deduplicated, and represented by the latest
-retrieved Navy-attributed action. The coded set is the observed complement of the uncoded-claim
-population. Counts and coded-signal incidence are lower bounds on public coded-channel capture;
-exact-UEI, no-topic pairing means they are not bounds on true project transitions. Description
-completeness rates are conditional upper-bound proxies for uncoded claims only if coded records
-are at least as complete—an untested assumption.
-
-**Sources/provenance:** [SBIR.gov bulk](https://data.www.sbir.gov/mod_awarddatapublic/award_data.csv),
-[FPDS public Atom](https://www.fpds.gov/ezsearch/FEEDS/ATOM?FEEDNAME=PUBLIC),
-[SEC EDGAR](https://www.sec.gov/edgar), and
-[SEC EFTS](https://efts.sec.gov/LATEST/search-index); hashes are in the
-[aggregate summary](navy-transition-v1.summary.json).
+**Frame.** SBIR.gov/FPDS through {study["data_cut"]}; FY{study["start_fy"]}–FY{study["end_fy"]}.
+“Navy” is SBIR.gov DoD/Navy or strict SR3/ST3 with awarding **or** funding sub-tier 1700.
+Compound-key-deduplicated exact-UEI linkage is a same-firm screen, not a project-transition bound.
+[Provenance and hashes](navy-transition-v1.summary.json) authenticate local inputs; untracked
+snapshots prevent a clean-checkout rebuild.
 
 ## A — Coverage and description field
 
-Denominators: {panel_a["phase_i_award_n"]:,} Navy Phase I and
-{panel_a["phase_ii_award_n"]:,} Phase II awards; {panel_a["coded_award_n"]:,} SR3/ST3 keys in
-the same FY window ({panel_a["don_awarding_award_n"]:,} DoN-awarded,
-{panel_a["don_funding_award_n"]:,} DoN-funded, {panel_a["don_awarding_and_funding_award_n"]:,}
-both; annual counts use the union).
+The cohort has {panel_a["phase_i_award_n"]:,} Phase I, {panel_a["phase_ii_award_n"]:,} Phase II,
+and {panel_a["coded_award_n"]:,} strict coded keys ({panel_a["don_awarding_award_n"]:,} DoN-awarded;
+{panel_a["don_funding_award_n"]:,} DoN-funded; {panel_a["don_awarding_and_funding_award_n"]:,} both).
+{first_action_in_window_n:,} first appear in-window; {pre_window_first_action_n:,} predate it.
 
-| Latest retrieved-action FY | Phase I awards | Phase II awards | Coded Phase III contracts |
-|---:|---:|---:|---:|
+| FY | Phase I award date | Phase II award date | First coded action | Latest coded action |
+|---:|---:|---:|---:|---:|
 {annual_rows}
 
-Latest retrieved-action descriptions have median {desc["median_chars"]:.0f} characters;
-{desc["ge_40_count"]:,}/{desc["award_n"]:,} ({_fmt_rate(desc["ge_40_rate"])}) reach 40,
-{desc["ge_150_count"]:,}/{desc["award_n"]:,} ({_fmt_rate(desc["ge_150_rate"])}) reach 150, and
-{desc["ge_900_count"]:,}/{desc["award_n"]:,} ({_fmt_rate(desc["ge_900_rate"])}) reach 900.
+Latest-action descriptions: median {desc["median_chars"]:.0f} characters; ≥40,
+{desc["ge_40_count"]:,}/{desc["award_n"]:,} ({_fmt_rate(desc["ge_40_rate"])}); ≥150,
+{desc["ge_150_count"]:,}/{desc["award_n"]:,} ({_fmt_rate(desc["ge_150_rate"])});
+{desc["representative_nonzero_mod_n"]:,} representatives are nonzero modifications.
+FPDS [requires the field and caps newly entered text at 250 characters after 2019-06-28]({FPDS_DESCRIPTION_RULE_URL});
+all {desc["source_constraint"]["post_cap_over_cap_legacy_n"]:,} later representatives above 250
+trace to pre-cap contracts. Thus 900 is cross-vintage-incomparable—not a zero or §638 standard.
 
-The requested **historical, unreproduced** DoD comparator is traceable only to a legacy
-[coded pull](https://github.com/hollomancer/sbir-analytics/blob/d844f2b0/scripts/phase3_benchmark/m0a_coded_pull.py),
-[threshold script](https://github.com/hollomancer/sbir-analytics/blob/48f13305/scripts/phase3_benchmark/dod_within_retrieval.py),
-and [median assertion](https://github.com/hollomancer/sbir-analytics/blob/e51574be/specs/phase3-match-benchmark/eval-validity.md):
-FY2016–25 DoD SR3/ST3 n={comparator["award_n"]:,}, median 42, 53.6% ≥40,
-88.5% <150, and 0% ≥900. The median has no committed generator and
-[tracked prose](../../specs/phase3-match-benchmark/mse-dark-phase3.md) says 43; these are quoted,
-not method-matched. Navy is {_fmt_rate(desc["lt_150_rate"])} <150. The 900 mark is analytic,
-not a statutory §638 floor.
+The **historical, unreproduced** DoD comparator (n={comparator["award_n"]:,}) reported 53.6% ≥40
+and 88.5% <150. Legacy notes disagree on median 42 versus
+[43](../../specs/phase3-match-benchmark/mse-dark-phase3.md); no committed generator reproduces or
+method-matches it to Navy.
 
-## B — Phase II to first coded Phase III
+## B — Phase II award-to-coded-signal assignments
 
-At risk: {panel_b["phase_ii_award_n"]:,} Phase II awards ({panel_b["phase_ii_firm_n"]:,}
-exact-UEI firms) ending by the cut. {panel_b["event_award_n"]:,}
-({_fmt_rate(panel_b["event_award_rate"])}) pair to the first action of a distinct same-UEI coded
-award on/after the Phase II award date; {panel_b["censored_award_n"]:,} are right-censored.
-At firm grain, {panel_b["censored_firm_n"]:,}/{panel_b["phase_ii_firm_n"]:,} have no coded event:
-not-yet-observed, not zero.
-Quantiles condition on events. They retain {panel_b["negative_latency_n"]:,} actions during
-Phase II performance, so median completion-to-action latency is
-{panel_b["deciles"]["p50"]["days"]:,} days ({panel_b["deciles"]["p50"]["years"]:.2f} years).
-Undercoding makes the rate a coded-channel floor; unrelated same-firm awards can bias it upward
-against true transitions, so it is not a true-transition bound.
+Of {panel_b["phase_ii_award_n"]:,} completed Phase II awards ({panel_b["phase_ii_firm_n"]:,} firms),
+{panel_b["matched_phase_ii_award_n"]:,} ({_fmt_rate(panel_b["assignment_rate"])}) map to
+{panel_b["distinct_phase_iii_contract_n"]:,} coded contracts across
+{panel_b["matched_phase_ii_firm_n"]:,} firms. {panel_b["reused_phase_iii_contract_n"]:,} contracts
+cover {panel_b["assignments_to_reused_contracts_n"]:,} assignments (maximum reuse,
+{panel_b["max_phase_ii_assignments_per_phase_iii_contract"]:,}). The other
+{panel_b["no_qualifying_signal_award_n"]:,} lack a signal by the cut; this does not establish no transition.
+
+Signed quantiles are assignment-weighted/event-conditional: {panel_b["pre_completion_assignment_n"]:,}
+pre-completion, {panel_b["post_completion_assignment_n"]:,} on/after. No survival estimator is fitted.
 
 | {decile_cells} |
-|{"".join("---:|" for _ in panel_b["deciles"])}
+|{"".join("---:|" for _ in panel_b["signed_latency_deciles"])}
 | {decile_values} |
 
-*Cells: days (years) from Phase II period end; n={panel_b["event_award_n"]:,} observed events.*
+*Cells: signed days (years) from Phase II period end; n={panel_b["matched_phase_ii_award_n"]:,}
+Phase-II-award assignments.*
 
-| A. Description ECDF and 40/150/900 thresholds | B. Conditional latency ECDF |
+| A. Description ECDF with FPDS cap | B. Conditional signed-latency ECDF |
 |:---:|:---:|
 | ![Description ECDF](figures/navy-transition-v1-description-cdf.png) | ![Latency ECDF](figures/navy-transition-v1-latency.png) |
 
 ## C — Description emptiness versus NAICS/PSC missingness
 
-In n={panel_c["award_n"]:,}, blank description={panel_c["description_blank_n"]:,}, missing
-NAICS={panel_c["naics_missing_n"]:,}, and missing PSC={panel_c["psc_missing_n"]:,}.
-{mechanism_result}
+n={panel_c["award_n"]:,}: blank description={panel_c["description_blank_n"]:,}, missing
+NAICS={panel_c["naics_missing_n"]:,}, missing PSC={panel_c["psc_missing_n"]:,}. {mechanism_result}
+Because FPDS requires description, zero blankness mainly reflects source validation—not narrative
+richness or an optionality mechanism.
 
 ## D — Recent external capital/acquisition signals
 
-Among {panel_d["navy_firm_n"]:,} normalized Navy firms, the {panel_d["window_start"]}–
-{panel_d["window_end"]} high/medium screens are:
+Among {panel_d["navy_firm_n"]:,} normalized Navy firms, {panel_d["form_d_positive_raise_firms"]["total"]:,}
+have positive non-combination Form D filings in {panel_d["window_start"]}–{panel_d["window_end"]}
+({panel_d["form_d_positive_raise_firms"]["high"]:,} high-confidence;
+{panel_d["form_d_positive_raise_firms"]["medium"]:,} medium). This is filing participation—not
+verified capital or SBIR attribution. EFTS lacks acquisition-specific dates, blocking that branch
+and the union. No names are emitted.
 
-| Public signal | High | Medium | Unique firms |
-|---|---:|---:|---:|
-| Positive non-combination Form D filing | {panel_d["form_d_positive_raise_firms"]["high"]:,} | {panel_d["form_d_positive_raise_firms"]["medium"]:,} | {panel_d["form_d_positive_raise_firms"]["total"]:,} |
-| EFTS acquisition in window | — | — | blocked |
-| Either recent signal | — | — | blocked |
+## Quality audit and published context
 
-No names are emitted. Form D is participation, not verified capital received. EFTS stores
-all-time types plus the latest mention of any type, so it cannot date the requested acquisition
-signal; that branch and its union are blocked rather than replaced with a proxy.
+**Infrastructure finding.** The 900-character value had leaked into shared benchmark diagnostics,
+not the FPDS parser, which preserves source text. This revision centralizes the official required/250
+constraint, rejects larger benchmark thresholds, and removes unqualified “lower-bound” and
+Kaplan–Meier-ready metadata. The defect was in research-evaluation semantics, not core ingestion.
 
-## Limitations
+- [GAO-25-107942](https://files.gao.gov/reports/GAO-25-107942/index.html) and
+  [NASEM 2026](https://www.nationalacademies.org/read/29329/chapter/9) find Phase III tracking
+  incomplete; this supports the coverage caution, not a Navy estimate.
+- The closest Navy study, [Rovito, Kamp, and Etemadi (2025)](https://doi.org/10.1007/s10961-024-10141-2),
+  says Phase III receipt is not strongly predictive of broader commercialization. Its different
+  linkage/prediction design still cannot validate this readout.
+- An [NRC NIH assessment](https://www.nationalacademies.org/read/11964/chapter/6) says first sales can
+  precede Phase II completion, making negative times plausible but not validating these matches. The
+  event-only ECDF excludes censored follow-up and is not [Kaplan–Meier](https://doi.org/10.1080/01621459.1958.10501452).
+- [NRC 2014](https://www.nationalacademies.org/read/18821/chapter/5) reports commercialization
+  near 45–50%, which is not comparable to this signal rate. [Howell (2017)](https://www.aeaweb.org/articles?id=10.1257/aer.20150808)
+  supports finance as an outcome; [SEC methodology](https://www.sec.gov/files/dera-white-paper_regulation-d_082018.pdf)
+  shows Form D is incomplete and self-reported, with no Navy-SBIR attribution here.
 
-SR3/ST3 and public/exact-UEI coverage miss transitions; firm-level pairing can reuse one event
-across awards. Censoring is administrative, not evidence of no transition. Modification text
-may not describe the base award.
-DoN awarding/funding attribution is unioned and may differ. Form D amendments/name matches and
-aggregated EFTS mentions can false-positive. Source cuts differ and are recorded. Nothing here
-identifies a mechanism.
+**Bottom line.** The results are a reproducible local map of observed public signals, not a complete
+commercialization measure. Coding and identity misses can bias downward; unrelated same-firm matches,
+contract reuse, modifications, and name matching can bias upward. Nothing here identifies a mechanism.
 """
 
 
@@ -934,6 +1018,14 @@ def build_summary(
                 "source_url": "https://efts.sec.gov/LATEST/search-index",
             },
         },
+        "reproducibility": {
+            "local_pinned_input_rebuild": True,
+            "repository_only_rebuild": False,
+            "limitation": (
+                "content hashes authenticate local FPDS, Form D, and EFTS snapshots, but the "
+                "snapshots and full match-generator lineage are not tracked in git"
+            ),
+        },
         "panel_a": {
             "filter": (
                 f"Navy SBIR Phase I/II award date FY{start_fy}-FY{end_fy}; Navy-attributed "
@@ -944,6 +1036,9 @@ def build_summary(
             "phase_ii_award_n": int(navy_sbir["analysis_phase"].eq("II").sum()),
             "coded_transaction_n_all_dates_through_cut": int(len(transactions)),
             "coded_award_n": int(len(scoped_awards)),
+            "coded_first_action_in_window_n": int(
+                _fiscal_year(scoped_awards["first_action_date"]).between(start_fy, end_fy).sum()
+            ),
             "coded_firm_n": len(coded_firms),
             "don_awarding_award_n": len(don_awarding),
             "don_funding_award_n": len(don_funding),
