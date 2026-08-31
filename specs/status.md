@@ -82,6 +82,10 @@ bypassing lifecycle review; the status and rationale still require human judgmen
   `sbir_etl/enrichers/ma_discovery/` (issue #446, toolkit relocation). Search
   backend, LLM extractor, and collision policy remain unbuilt. Revisit only
   when M&A recall becomes a selected research priority.
+- **`materialization-semantic-fingerprints` — Maintenance.** Pipelines-tier lineage repair
+  for the phase-transition chain. Bind outputs to named transformation contracts, normalized
+  configuration, and verified upstream hashes so semantic code changes invalidate stale artifacts;
+  no live rematerialization or evidence promotion is authorized by the spec.
 - **`modular-analysis-platform` — Maintenance.** Pipelines-tier contracts
   and registry so a new tech-census or transition-cohort profile is
   YAML-only (issue #441). HTTP is out of scope per ADR-004. Weekly awards
