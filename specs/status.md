@@ -56,6 +56,10 @@ bypassing lifecycle review; the status and rationale still require human judgmen
   test are accepted; and weekly-report refactor T2.3 plus the injected,
   typed-return work in T3.2 are complete. Offline, full-context, and shadow
   gates still precede any production integration.
+- **`edgar-type-specific-event-dates` — Maintenance.** Pipelines-tier repair for lossy
+  EDGAR profile aggregation. Persist filing-grain mention events and derive dates within each event
+  type so latest-any-mention cannot masquerade as an acquisition date; classifier validation and
+  M&A estimation remain out of scope.
 - **`epistemic-tier-enforcement` — Maintenance.** Enforcement follow-on to the
   2026-08 module-labeling sweep (PRs #550–#552). Shipped: the blocking
   tier-aware import guard (`scripts/ci/check_tier_boundaries.py`, in
