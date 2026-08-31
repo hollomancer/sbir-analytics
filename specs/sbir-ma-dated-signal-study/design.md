@@ -25,7 +25,8 @@ pre-run protocol + Amendments 1–3 + empty exploratory notebook + closed study 
     -> private SEC Form D index source cut [acquired]
     -> private exact-key candidate ledger and candidate XML [acquired]
     -> private, accession-grain Form D predicate observation [authorized]
-    -> no identity resolution, event creation, aggregation, or materialization
+    -> private review queue for predicate-positive candidate filings [authorized]
+    -> no confirmed identity, event creation, aggregation, or materialization
 ```
 
 ## Prospective run contract
@@ -53,6 +54,10 @@ the exact-key candidate ledger, and candidate XML retrieval. Amendment 7 permits
 only an accession-grain observation of the source-declared Form D
 business-combination field. It does not authorize identity resolution, an M&A
 signal or event, aggregation, or any other network acquisition.
+Amendment 8 authorizes a restricted, filing-level identity-review queue for
+predicate-positive candidates. The approved materials lack a shared stable
+identifier, so exact-name consistency is not confirmation and no firm identity
+is established without separately authorized corroborating evidence.
 
 ## Identity and observation boundary
 

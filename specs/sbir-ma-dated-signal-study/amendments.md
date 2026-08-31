@@ -190,3 +190,34 @@ materialization, a numerical result, or a public release.
   creation, confidence scoring, identity resolution, EDGAR/EFTS acquisition or
   search, materialization, external claim, and public artifact remain
   unauthorized.
+
+## Amendment 8 — private filing-level identity review queue
+
+- **Operator authorization:** 2026-08-30. The operator authorized private
+  candidate-level identity review and adjudication after the Amendment 7
+  source-field observation. This amendment starts with a review queue only for
+  accessions whose predicate status is `true`.
+- **Permitted private preparation:** Extract only the Form D XML
+  `primaryIssuer/entityName` and `primaryIssuer/cik`, retain the existing SBIR
+  aliases and Form D index filer, and record whether the issuer name has the
+  same `FORM_D_JOIN_V1` key as the existing candidate key. Keep this review
+  packet ignored and private.
+- **Human adjudication rule:** A reviewer may assign only
+  `same_firm_supported`, `unresolved`, or `linkage_not_supported`, with a
+  written rationale, reviewer identifier, timestamp, and source-reference IDs.
+  The closed evidence codes are `exact_key_candidate`,
+  `issuer_name_alias_agreement`, `stable_identifier_agreement`,
+  `business_address_agreement`, and `named_person_agreement`. Exact-name
+  consistency alone remains `unresolved`; `same_firm_supported` requires at
+  least one non-name corroborator. The final two evidence codes must not copy
+  sensitive values into the adjudication record.
+- **Current-evidence limit:** The approved SBIR and Form D materials contain no
+  shared stable firm identifier. No new corroborating source is authorized by
+  this amendment. The review packet therefore prepares review and records
+  source conflicts, but cannot by itself establish `confirmed` identity.
+- **Still prohibited:** Automated identity decisions, per-firm collapse,
+  aggregation, signal/event creation, confidence tiers, EDGAR/EFTS acquisition
+  or search, any new corroborating source acquisition, materialization,
+  external claim, and public artifact remain unauthorized. `unresolved` and
+  `linkage_not_supported` are not negative evidence about a firm, transaction,
+  or ownership change.
