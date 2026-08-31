@@ -142,3 +142,25 @@ materialization, a numerical result, or a public release.
   business-combination predicate evaluation; candidate-event creation; counts;
   aggregation; EDGAR/EFTS search; materialization; external claim; and public
   artifact remain unauthorized.
+
+## Amendment 6 — private Form D candidate ledger and XML retrieval
+
+- **Operator authorization:** 2026-08-30. The operator authorized private-only
+  SBIR↔Form D candidate linkage and XML retrieval for the already pinned source
+  cuts.
+- **Candidate rule:** Generate candidates only when an eligible SBIR source-row
+  alias and a Form D filer have the same
+  `CompanyNameProfile.FORM_D_JOIN_V1` key. Retain the raw aliases, award-row
+  identifiers, Form D filer name, CIK, filing date, form type, accession, and
+  the exact-key rationale in a private ledger. This is candidate generation,
+  not firm identity resolution; zero candidates or an unmatched source row are
+  not negative evidence.
+- **XML retrieval:** Retrieve only the Form D primary XML for ledger candidates,
+  using the accession and CIK from the pinned index source with identified,
+  rate-limited SEC access. Preserve raw XML and per-file retrieval provenance
+  privately. Failed or missing XML is recorded as unavailable, not excluded or
+  inferred.
+- **Still prohibited:** Evaluating a business-combination predicate, assigning
+  confidence tiers, declaring an M&A signal or event, aggregating candidates,
+  EDGAR/EFTS search, materialization, external claim, and public artifact remain
+  unauthorized.

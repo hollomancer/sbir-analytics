@@ -66,6 +66,13 @@
     integrity metadata; 784,466 Form D/D-A entries span 2009-01-02 through
     2026-08-28, with none after the cutoff. No matching, XML retrieval,
     predicate evaluation, or result is emitted.
+- [ ] Build the private exact-key SBIR↔Form D candidate ledger and retrieve
+  candidate XML under Amendment 6.
+  - Verify: every ledger entry states its `FORM_D_JOIN_V1` exact-key rationale
+    and source identifiers; XML provenance records success or failure without
+    interpreting any candidate as an event.
+  - Progress: the private ledger contains 1,800 exact-key candidate names and
+    5,744 candidate filings. XML retrieval remains pending.
 - [ ] Complete source-specific privacy/license/release-scope review before any
   public artifact or later source acquisition.
   - Verify: a later reviewed amendment records the review disposition and

@@ -21,6 +21,10 @@ frozen_artifacts:
 implementation:
   - path: scripts/data/sbir_ma_signal_counts_by_fy.py
     symbol: main
+  - path: scripts/data/build_sbir_ma_form_d_candidates.py
+    symbol: main
+  - path: scripts/data/fetch_sbir_ma_form_d_xml.py
+    symbol: main
 identity_policy:
   strategy: >-
     No identity resolution is authorized. A later approved run must retain raw
@@ -34,10 +38,10 @@ materialization:
     - >-
       Amendment 4 accepts the pinned SBIR.gov object only as a retrieval-defined
       source-row selection, not an as-of firm universe. Source/privacy/license/
-      release-scope review, Form D XML acquisition, identity review, a declared
-      numerical output, and human validation remain unapproved; materialization
-      stays closed. Amendment 5's private Form D index source cut does not
-      authorize matching, predicate evaluation, or a result.
+      release-scope review, identity review, a declared numerical output, and
+      human validation remain unapproved; materialization stays closed.
+      Amendment 6 authorizes private XML retrieval and an exact-key candidate
+      ledger, but not XML predicate evaluation or a result.
 permitted_claims:
   - >-
     This is a new exploratory, unmaterialized protocol with a fixed 2026-08-29
