@@ -16,11 +16,33 @@ import pandas as pd
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 
+from sbir_etl.utils.fpds_constraints import (
+    FPDS_DESCRIPTION_CAP_EFFECTIVE_DATE,
+    FPDS_DESCRIPTION_DIAGNOSTIC_THRESHOLDS,
+    FPDS_DESCRIPTION_MAX_CHARS,
+    FPDS_DESCRIPTION_REQUIRED,
+    FPDS_DESCRIPTION_RULE_URL,
+    threshold_is_uniformly_observable,
+)
+
 from retrieval_metrics import tie_corrected_auc, tie_rate
 
 
-def floor_coverage(lengths: np.ndarray, thresholds: tuple[int, ...]) -> dict[int, float]:
-    """Fraction of targets with description length at least each threshold."""
+def length_threshold_coverage(lengths: np.ndarray, thresholds: tuple[int, ...]) -> dict[int, float]:
+    """Fraction of targets at each descriptive length cut point.
+
+    Cut points are diagnostics, not statutory requirements or quality floors.
+    Callers should use the shared FPDS thresholds so the post-2019 250-character
+    source cap is not silently exceeded.
+    """
+
+    invalid = [
+        threshold for threshold in thresholds if not threshold_is_uniformly_observable(threshold)
+    ]
+    if invalid:
+        raise ValueError(
+            f"description thresholds exceed the post-2019 FPDS 250-character cap: {invalid}"
+        )
     n = len(lengths)
     return {t: (round(100 * float((lengths >= t).mean()), 1) if n else 0.0) for t in thresholds}
 
@@ -183,9 +205,20 @@ def main(argv: list[str] | None = None) -> int:
         coded = pd.read_parquet(args.coded)
         pairs = build_asof_pairs(awards, coded)
         result = within_dod_auc(pairs)
-        result["description_floor_coverage"] = floor_coverage(
-            pairs["description"].str.len().to_numpy(), (40, 150, 515, 900)
+        result["description_length_coverage"] = length_threshold_coverage(
+            pairs["description"].str.len().to_numpy(),
+            FPDS_DESCRIPTION_DIAGNOSTIC_THRESHOLDS,
         )
+        result["description_source_constraint"] = {
+            "required": FPDS_DESCRIPTION_REQUIRED,
+            "max_chars": FPDS_DESCRIPTION_MAX_CHARS,
+            "effective_date": FPDS_DESCRIPTION_CAP_EFFECTIVE_DATE.isoformat(),
+            "rule_url": FPDS_DESCRIPTION_RULE_URL,
+            "interpretation": (
+                "thresholds are descriptive cut points, not quality floors; legacy pre-cap "
+                "text can remain longer on later modifications"
+            ),
+        }
     payload = json.dumps(result, indent=2, default=str) + "\n"
     if args.output:
         args.output.parent.mkdir(parents=True, exist_ok=True)

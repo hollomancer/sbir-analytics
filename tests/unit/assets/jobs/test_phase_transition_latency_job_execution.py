@@ -30,6 +30,8 @@ module.
 
 from __future__ import annotations
 
+import json
+
 import pandas as pd
 import pytest
 from dagster import Definitions
@@ -137,3 +139,12 @@ def test_job_wires_phase_ii_and_phase_iii_into_matched_pairs_and_survival(worksp
     assert pairs.iloc[0]["phase_iii_contract_id"] == "C_III_1"
     assert len(survival) == 1
     assert bool(survival.iloc[0]["event_observed"]) is True
+
+    from sbir_analytics.assets.phase_transition.pairs import DEFAULT_SURVIVAL_OUTPUT
+
+    checks = json.loads(
+        (workspace / DEFAULT_SURVIVAL_OUTPUT).with_suffix(".checks.json").read_text()
+    )
+    assert checks["nonnegative_time_origin"] is True
+    assert checks["km_ready"] is False
+    assert "independent censoring" in checks["estimator_warning"]

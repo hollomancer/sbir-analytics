@@ -7,9 +7,11 @@
     which identifier resolved the join). Negative latencies are preserved.
 
 ``transformed_phase_transition_survival``
-    One row per Phase II award with an event indicator and time-to-event-or-
-    censor at the configured data-cut date. For observed events we use the
-    earliest Phase III action_date per Phase II.
+    One row per Phase II award with an event indicator and signed
+    completion-relative event-or-cutoff time. For observed events we use the
+    earliest Phase III action_date per Phase II. Negative event times make the
+    raw frame unsuitable for a conventional Kaplan-Meier estimator without a
+    separate pre-completion stratum or a different nonnegative time origin.
 
 Both assets depend on the upstream ``validated_phase_ii_awards`` and
 ``validated_phase_iii_contracts`` frames (passed through as Dagster inputs).
@@ -196,12 +198,13 @@ def _build_survival(
     pairs: pd.DataFrame,
     data_cut: date,
 ) -> pd.DataFrame:
-    """Build the KM-ready survival frame.
+    """Build the signed completion-relative follow-up frame.
 
     - Observed events: earliest Phase III action_date per Phase II award.
     - Censored rows: event_date = data_cut, event_observed=False.
     - ``time_days`` can be negative for observed events where Phase III
-      precedes Phase II end.
+      precedes Phase II end. Such rows are descriptive prevalent events, not
+      conventional nonnegative survival times.
     """
 
     if phase_ii.empty:
@@ -333,9 +336,10 @@ def transformed_phase_ii_iii_pairs(
     group_name="transformation",
     compute_kind="pandas",
     description=(
-        "Per-Phase-II time-to-event frame: event_observed + time_days "
+        "Per-Phase-II signed completion-relative follow-up frame: event_observed + time_days "
         "(days from phase_ii_end_date to earliest phase_iii_action_date, or to "
-        "the data-cut date when censored). Suitable for Kaplan-Meier. "
+        "the data-cut date when unmatched). Negative events require a separate "
+        "pre-completion stratum or a new origin before Kaplan-Meier. "
         "Row-level contract: `sbir_etl.models.phase_transition.PhaseTransitionSurvival`."
     ),
 )
@@ -368,6 +372,11 @@ def transformed_phase_transition_survival(
     observed = int(survival["event_observed"].sum()) if total else 0
     censored = total - observed
     match_rate = (observed / total) if total else 0.0
+    negative_event_times = (
+        int((survival["event_observed"] & survival["time_days"].lt(0)).sum()) if total else 0
+    )
+    negative_time_rows = int(survival["time_days"].lt(0).sum()) if total else 0
+    nonnegative_time_origin = negative_time_rows == 0
 
     # 5-year transition view: fraction of observed events where time_days <= 5*365.
     horizon_days = 5 * 365
@@ -384,6 +393,18 @@ def transformed_phase_transition_survival(
         "observed_events": observed,
         "censored": censored,
         "match_rate": round(match_rate, 4),
+        "time_origin": "phase_ii_period_of_performance_end",
+        "negative_event_times": negative_event_times,
+        "negative_time_rows": negative_time_rows,
+        "nonnegative_time_origin": nonnegative_time_origin,
+        "km_ready": False,
+        "estimator_warning": (
+            "negative completion-relative rows require stratification or a nonnegative origin; "
+            "independent censoring is also untested"
+            if not nonnegative_time_origin
+            else "the time frame is nonnegative, but independent censoring and other estimator "
+            "assumptions are untested"
+        ),
         "within_5_year_rate": round(five_year_rate, 4) if five_year_rate is not None else None,
         "inputs": {
             "phase_ii_rows": int(len(phase_ii)),
@@ -399,6 +420,10 @@ def transformed_phase_transition_survival(
         "checks_path": str(checks_path),
         "match_rate": round(match_rate, 4),
         "data_cut_date": data_cut.isoformat(),
+        "negative_event_times": negative_event_times,
+        "negative_time_rows": negative_time_rows,
+        "nonnegative_time_origin": nonnegative_time_origin,
+        "km_ready": False,
         "within_5_year_rate": round(five_year_rate, 4) if five_year_rate is not None else "n/a",
     }
 

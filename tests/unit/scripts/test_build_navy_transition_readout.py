@@ -4,12 +4,14 @@ from __future__ import annotations
 
 import json
 from datetime import date
+from pathlib import Path
 
 import pandas as pd
 import pytest
 
 from scripts.data.build_navy_transition_readout import (
     _fiscal_year,
+    build_annual_panel,
     build_external_signal_panel,
     build_latency_panel,
     build_mechanism_panel,
@@ -187,7 +189,59 @@ def test_coded_transactions_union_postfilter_deduplication_and_award_grain() -> 
     a_award = awards.loc[awards["award_key"].str.contains("A-1")].iloc[0]
     assert a_award["don_awarding"]
     assert a_award["don_funding"]
-    assert "upper-bound" in description_summary(awards)["bound"]
+    assert a_award["first_action_date"] == pd.Timestamp("2024-01-01")
+    assert a_award["retrieved_action_n"] == 5
+
+
+def test_annual_panel_separates_first_from_latest_action_and_description_cap() -> None:
+    navy_sbir = pd.DataFrame(
+        {
+            "fiscal_year": [2025, 2025],
+            "analysis_phase": ["I", "II"],
+        }
+    )
+    coded_awards = pd.DataFrame(
+        {
+            "award_key": ["LEGACY", "NEW", "PRE-CAP"],
+            "first_action_date": pd.to_datetime(["2015-01-01", "2024-10-01", "2018-01-01"]),
+            "action_date": pd.to_datetime(["2024-10-01", "2024-10-02", "2018-02-01"]),
+            "description_length": [300, 250, 900],
+            "mod_number": ["1", "0", "0"],
+        }
+    )
+
+    annual = build_annual_panel(navy_sbir, coded_awards, 2025, 2025)
+    assert annual == [
+        {
+            "fiscal_year": 2025,
+            "phase_i_awards": 1,
+            "phase_ii_awards": 1,
+            "coded_phase_iii_first_actions": 1,
+            "coded_phase_iii_latest_actions": 2,
+        }
+    ]
+
+    description = description_summary(coded_awards)
+    assert description["source_constraint"]["max_chars"] == 250
+    assert description["source_constraint"]["post_cap_representative_n"] == 2
+    assert description["source_constraint"]["post_cap_over_cap_legacy_n"] == 1
+    assert description["representative_nonzero_mod_n"] == 1
+    assert "ge_900_count" not in description
+    assert "not a bound" in description["interpretation"]
+
+
+def test_committed_readout_artifacts_exclude_the_impossible_900_character_metric() -> None:
+    root = Path(__file__).resolve().parents[3]
+    summary = json.loads((root / "docs/readouts/navy-transition-v1.summary.json").read_text())
+    description = summary["panel_a"]["description"]
+    comparator = summary["panel_a"]["historical_dod_comparator"]
+    markdown = (root / "docs/readouts/navy-transition-v1.md").read_text()
+
+    assert description["source_constraint"]["max_chars"] == 250
+    assert "ge_900_count" not in description
+    assert "description_ge_900_rate" not in comparator
+    assert "900" in comparator["excluded_description_thresholds"]
+    assert "Thus 900 is cross-vintage-incomparable" in markdown
 
 
 def test_mechanism_panel_blocks_constant_input_and_estimates_zero_phi() -> None:
@@ -260,14 +314,60 @@ def test_latency_excludes_pre_award_history_and_right_censors_unmatched_award() 
     summary, survival = build_latency_panel(navy_sbir, transactions, date(2025, 9, 30))
     by_award = survival.set_index("phase_ii_award_id")
 
-    assert summary["event_award_n"] == 1
-    assert summary["censored_award_n"] == 1
-    assert summary["negative_latency_n"] == 1
-    assert "lower bound" in summary["bound"]
-    assert "not an identified bound" in summary["bound"]
+    assert summary["matched_phase_ii_award_n"] == 1
+    assert summary["no_qualifying_signal_award_n"] == 1
+    assert summary["pre_completion_assignment_n"] == 1
+    assert summary["post_completion_assignment_n"] == 0
+    assert summary["distinct_phase_iii_contract_n"] == 1
+    assert "not an identified bound" in summary["interpretation"]
+    assert "no survival estimator" in summary["estimator"]
     assert by_award.loc["II-1", "event_date"] == date(2022, 6, 1)
     assert bool(by_award.loc["II-1", "event_observed"])
     assert not bool(by_award.loc["II-2", "event_observed"])
+
+
+def test_latency_reports_reuse_when_one_signal_is_assigned_to_multiple_phase_iis() -> None:
+    navy_sbir = pd.DataFrame(
+        [
+            {
+                "phase": "Phase II",
+                "analysis_phase": "II",
+                "award_id": f"II-{index}",
+                "company_uei": "ABCDEFGHIJKL",
+                "company_duns": "",
+                "company_name": "Alpha Labs",
+                "agency": "Department of Defense",
+                "branch": "Navy",
+                "award_date": award_date,
+                "contract_end_date": end_date,
+            }
+            for index, award_date, end_date in (
+                (1, "2020-01-01", "2021-12-31"),
+                (2, "2021-01-01", "2022-03-31"),
+                (3, "2022-01-01", "2023-01-01"),
+            )
+        ]
+    )
+    transactions = pd.DataFrame(
+        {
+            "award_key": ["P3-SHARED"],
+            "recipient_uei": ["ABCDEFGHIJKL"],
+            "recipient_name": ["Alpha Labs"],
+            "don_awarding": [True],
+            "action_date": pd.to_datetime(["2022-06-01"]),
+            "mod_number": ["0"],
+            "_transaction_number_sort": [1],
+            "research_code": ["SR3"],
+        }
+    )
+
+    summary, _survival = build_latency_panel(navy_sbir, transactions, date(2025, 9, 30))
+
+    assert summary["matched_phase_ii_award_n"] == 3
+    assert summary["distinct_phase_iii_contract_n"] == 1
+    assert summary["reused_phase_iii_contract_n"] == 1
+    assert summary["assignments_to_reused_contracts_n"] == 3
+    assert summary["max_phase_ii_assignments_per_phase_iii_contract"] == 3
 
 
 def test_external_signal_panel_filters_dates_deduplicates_tiers_and_emits_no_names() -> None:
