@@ -20,7 +20,8 @@ import httpx
 
 
 EPISTEMIC_TIER = "exploratory"
-REQUESTS_PER_SECOND = 4
+DEFAULT_REQUESTS_PER_SECOND = 4
+MAX_REQUESTS_PER_SECOND = 8
 
 
 def _load_candidates(path: Path) -> dict[str, dict[str, str]]:
@@ -54,11 +55,28 @@ async def main() -> int:
     parser.add_argument("--output-dir", type=Path, required=True)
     parser.add_argument("--manifest", type=Path, required=True)
     parser.add_argument("--contact-email", required=True)
+    parser.add_argument(
+        "--limit",
+        type=int,
+        help="Maximum number of incomplete filings to retrieve in this invocation.",
+    )
+    parser.add_argument(
+        "--requests-per-second",
+        type=int,
+        default=DEFAULT_REQUESTS_PER_SECOND,
+        help=f"Request rate (1-{MAX_REQUESTS_PER_SECOND}; default: %(default)s).",
+    )
     args = parser.parse_args()
+    if args.limit is not None and args.limit < 1:
+        parser.error("--limit must be positive")
+    if not 1 <= args.requests_per_second <= MAX_REQUESTS_PER_SECOND:
+        parser.error(f"--requests-per-second must be between 1 and {MAX_REQUESTS_PER_SECOND}")
 
     candidates = _load_candidates(args.candidates)
     completed = _completed_accessions(args.manifest)
     remaining = [item for accession, item in candidates.items() if accession not in completed]
+    if args.limit is not None:
+        remaining = remaining[: args.limit]
     args.output_dir.mkdir(parents=True, exist_ok=True)
     args.manifest.parent.mkdir(parents=True, exist_ok=True)
 
@@ -70,7 +88,7 @@ async def main() -> int:
         async with request_lock:
             now = time.monotonic()
             delay = max(0.0, next_request_at - now)
-            next_request_at = max(now, next_request_at) + 1 / REQUESTS_PER_SECOND
+            next_request_at = max(now, next_request_at) + 1 / args.requests_per_second
         if delay:
             await asyncio.sleep(delay)
 
@@ -78,7 +96,7 @@ async def main() -> int:
         "Accept": "application/xml, text/xml, */*",
         "User-Agent": f"SBIR-Analytics/0.11.0 ({args.contact_email})",
     }
-    semaphore = asyncio.Semaphore(4)
+    semaphore = asyncio.Semaphore(args.requests_per_second)
     write_lock = asyncio.Lock()
     succeeded = failed = 0
 
