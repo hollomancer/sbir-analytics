@@ -81,12 +81,15 @@
   - Completion: the ignored private observation ledger has one row for each of
     the 5,744 candidate accessions. It contains only the authorized source-field
     observation and provenance reference; no result or aggregate was emitted.
-- [ ] Prepare and adjudicate the Amendment 8 private filing-level identity
-  review queue.
+- [x] Prepare the Amendment 8 private filing-level identity review queue.
   - Verify: only predicate-positive accessions enter; each record carries the
     pre-existing aliases, source identifiers, XML provenance, and a reviewer
     status/rationale field. Exact-name consistency is not confirmation, and no
     per-firm output or aggregate is emitted.
+- [ ] Conduct the Amendment 8 human filing-level identity adjudication.
+  - Verify: each review decision uses the closed evidence/outcome taxonomy;
+    `same_firm_supported` has non-name corroboration, and no decision is
+    collapsed into a per-firm or event result.
 - [ ] Complete source-specific privacy/license/release-scope review before any
   public artifact or later source acquisition.
   - Verify: a later reviewed amendment records the review disposition and
