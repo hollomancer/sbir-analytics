@@ -78,7 +78,6 @@ def main() -> int:
     provenance = _xml_provenance(args.xml_manifest)
     args.output.parent.mkdir(parents=True, exist_ok=True)
 
-    observed = unavailable = 0
     with args.output.open("w", encoding="utf-8") as output:
         for accession, filing in candidates.items():
             xml_path = args.xml_dir / f"{accession}.xml"
@@ -100,12 +99,6 @@ def main() -> int:
                 "xml_sha256": xml_sha256,
             }
             output.write(json.dumps(record, sort_keys=True) + "\n")
-            if status == "unavailable":
-                unavailable += 1
-            else:
-                observed += 1
-
-    print(f"Private predicate ledger: observed={observed} unavailable={unavailable}")
     return 0
 
 
