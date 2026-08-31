@@ -39,6 +39,10 @@ bypassing lifecycle review; the status and rationale still require human judgmen
 - **`company-categorization` — Maintenance.** About 80% complete. Evaluate the
   remaining Neo4j loader and docs against the current `:Organization` graph
   schema before implementation.
+- **`contract-source-field-preservation` — Maintenance.** Pipelines-tier repair for lossy
+  USAspending contract projection. Preserve research code versus label, awarding versus funding
+  agency tiers, and transaction versus base-award descriptions without adding classification or
+  study-specific filters.
 - **`cross-agency-taxonomy` — Gated backlog.** M3 research target. Prerequisite
   classifier/tools exist, but this spec's batch run, report, and Dagster wiring
   are not implemented.
