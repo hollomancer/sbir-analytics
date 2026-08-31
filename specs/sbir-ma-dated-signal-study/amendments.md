@@ -164,3 +164,29 @@ materialization, a numerical result, or a public release.
   confidence tiers, declaring an M&A signal or event, aggregating candidates,
   EDGAR/EFTS search, materialization, external claim, and public artifact remain
   unauthorized.
+
+## Amendment 7 — private Form D XML predicate observation
+
+- **Operator authorization:** 2026-08-30. The operator directed continuation
+  after the authorized candidate XML retrieval completed. This amendment permits
+  only the exact, source-declared Form D business-combination field to be read
+  from those locally retained XML files.
+- **Predicate:** For each accession in the Amendment 6 candidate ledger whose
+  XML retrieval manifest records HTTP 200, record
+  `form_d_business_combination_v1` as `true` only when the XML element at
+  `offeringData/businessCombinationTransaction/isBusinessCombinationTransaction`
+  has text `true`, case-insensitively after trimming. Record `false` when that
+  element is present with another value. Record `unavailable` for missing,
+  malformed, or provenance-mismatched XML; do not coerce it to `false`.
+- **Private output:** Write one ignored, accession-grain predicate ledger that
+  contains the accession, CIK, index filing date, XML SHA-256, parser/predicate
+  version, predicate status, and the exact XML path. It must contain no raw XML,
+  address, contact, related-person, award-row, or free-text fields.
+- **Interpretation boundary:** A `true` value is a source-field observation on
+  an exact-key linkage candidate. It is not a resolved firm identity, target,
+  acquisition, transaction, exit, event, confidence tier, or negative finding;
+  `false` and `unavailable` are not evidence that no ownership change occurred.
+- **Still prohibited:** Candidate aggregation, per-firm collapse, signal/event
+  creation, confidence scoring, identity resolution, EDGAR/EFTS acquisition or
+  search, materialization, external claim, and public artifact remain
+  unauthorized.

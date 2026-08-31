@@ -15,7 +15,7 @@ estimand: >-
   reproduce the unrecoverable April 2026 result.
 frozen_artifacts:
   - path: specs/sbir-ma-dated-signal-study/design.md
-    sha256: 271c5b3d7188dda585e45c78513688629df0572cd330dd78959f3983711bb166
+    sha256: 8532fcd5b0ae1ee9cdc96d327a1f5491f5a9cc7252a268a7b5c553708d3d2871
   - path: notebooks/explorations/sbir_ma_dated_signal_study.ipynb
     sha256: eb797c8f25644e2cd62864b4aa84f52f4e9967182337cca45c1a748b61ee51b1
 implementation:
@@ -24,6 +24,8 @@ implementation:
   - path: scripts/data/build_sbir_ma_form_d_candidates.py
     symbol: main
   - path: scripts/data/fetch_sbir_ma_form_d_xml.py
+    symbol: main
+  - path: scripts/data/observe_sbir_ma_form_d_business_combination.py
     symbol: main
 identity_policy:
   strategy: >-
@@ -40,8 +42,9 @@ materialization:
       source-row selection, not an as-of firm universe. Source/privacy/license/
       release-scope review, identity review, a declared numerical output, and
       human validation remain unapproved; materialization stays closed.
-      Amendment 6 authorizes private XML retrieval and an exact-key candidate
-      ledger, but not XML predicate evaluation or a result.
+      Amendment 7 authorizes only accession-grain observation of the Form D
+      business-combination source field. It does not authorize an event,
+      identity resolution, aggregation, or result.
 permitted_claims:
   - >-
     This is a new exploratory, unmaterialized protocol with a fixed 2026-08-29

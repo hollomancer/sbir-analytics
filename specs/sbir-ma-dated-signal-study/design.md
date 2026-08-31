@@ -22,8 +22,10 @@ pre-run protocol + Amendments 1–3 + empty exploratory notebook + closed study 
     -> two private official SBIR.gov retrieval attempts [byte-identical]
     -> private provenance and cutoff check [failed twice]
     -> pinned retrieval-defined source-row selection [accepted, not complete]
-    -> private SEC Form D index source cut [acquired; no matching/XML]
-    -> no source substitution, signal analysis, or materialization
+    -> private SEC Form D index source cut [acquired]
+    -> private exact-key candidate ledger and candidate XML [acquired]
+    -> private, accession-grain Form D predicate observation [authorized]
+    -> no identity resolution, event creation, aggregation, or materialization
 ```
 
 ## Prospective run contract
@@ -46,8 +48,11 @@ An unavailable, incomplete, or post-cutoff-only source is not permission to
 substitute a nearby vintage or infer missing observations. Amendment 4 permits
 one explicit alternative: a pinned provider object can define a retrieval-based
 selection, provided all downstream artifacts retain its completeness limits.
-Amendment 5 separately authorizes the private SEC Form D index source cut; no
-filing XML or other network acquisition is authorized by this document.
+Amendments 5 and 6 separately authorize the private SEC Form D index source cut,
+the exact-key candidate ledger, and candidate XML retrieval. Amendment 7 permits
+only an accession-grain observation of the source-declared Form D
+business-combination field. It does not authorize identity resolution, an M&A
+signal or event, aggregation, or any other network acquisition.
 
 ## Identity and observation boundary
 
