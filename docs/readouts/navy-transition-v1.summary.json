@@ -73,6 +73,7 @@
     "description": {
       "award_n": 2282,
       "blank_count": 0,
+      "bound": "conditional upper-bound proxy for uncoded-population description completeness only under the untested monotonicity assumption",
       "ge_150_count": 177,
       "ge_150_rate": 0.077564,
       "ge_40_count": 902,
@@ -110,6 +111,7 @@
     "phase_ii_award_n": 2780
   },
   "panel_b": {
+    "bound": "lower bound on matches captured by this public coded channel; not an identified bound on true project transitions because same-firm false matches can bias upward",
     "censored_award_n": 1213,
     "censored_firm_n": 618,
     "deciles": {
@@ -270,7 +272,7 @@
   "status": "exploratory_non_citable",
   "study": {
     "as_of": "2026-08-31",
-    "capacity": "independent personal capacity; no employer or agency affiliation",
+    "capacity": "independent personal capacity; no agency affiliation",
     "data_cut": "2025-09-30",
     "end_fy": 2025,
     "start_fy": 2016,

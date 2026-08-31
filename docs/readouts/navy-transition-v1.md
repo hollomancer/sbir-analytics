@@ -1,15 +1,17 @@
 # Navy Phase III transition readout v1
 
-> **Exploratory — non-citable.** Prepared independently in a personal capacity; no employer or
-> agency affiliation is asserted. Descriptive only: no office ranking, statutory undercount
+> **Exploratory — non-citable.** Prepared independently in a personal capacity; no agency
+> affiliation is asserted. Descriptive only: no office ranking, statutory undercount
 > claim, or recommendation.
 
 **Frame.** Public SBIR.gov/FPDS data through 2025-09-30; federal FY2016–FY2025.
 “Navy” is SBIR.gov DoD/Navy or FPDS SR3/ST3 with awarding **or** funding sub-tier 1700.
 FPDS actions are post-filtered, compound-key deduplicated, and represented by the latest
-retrieved Navy-attributed action. Counts floor coded capture only. Exact-UEI, no-topic pairing
-is not an identified bound on true transitions. Description rates are directional proxies for
-uncoded claims only if coded records are at least as complete—an untested assumption.
+retrieved Navy-attributed action. The coded set is the observed complement of the uncoded-claim
+population. Counts and coded-signal incidence are lower bounds on public coded-channel capture;
+exact-UEI, no-topic pairing means they are not bounds on true project transitions. Description
+completeness rates are conditional upper-bound proxies for uncoded claims only if coded records
+are at least as complete—an untested assumption.
 
 **Sources/provenance:** [SBIR.gov bulk](https://data.www.sbir.gov/mod_awarddatapublic/award_data.csv),
 [FPDS public Atom](https://www.fpds.gov/ezsearch/FEEDS/ATOM?FEEDNAME=PUBLIC),
@@ -39,9 +41,9 @@ both; annual counts use the union).
 | FY2025 | 533 | 317 | 595 |
 
 Latest retrieved-action descriptions have median 34 characters;
-902 (39.5%) reach 40,
-177 (7.8%) reach 150, and
-0 (0.0%) reach 900.
+902/2,282 (39.5%) reach 40,
+177/2,282 (7.8%) reach 150, and
+0/2,282 (0.0%) reach 900.
 
 The requested **historical, unreproduced** DoD comparator is traceable only to a legacy
 [coded pull](https://github.com/hollomancer/sbir-analytics/blob/d844f2b0/scripts/phase3_benchmark/m0a_coded_pull.py),
@@ -59,10 +61,13 @@ At risk: 2,012 Phase II awards (775
 exact-UEI firms) ending by the cut. 799
 (39.7%) pair to the first action of a distinct same-UEI coded
 award on/after the Phase II award date; 1,213 are right-censored.
+At firm grain, 618/775 have no coded event:
+not-yet-observed, not zero.
 Quantiles condition on events. They retain 525 actions during
 Phase II performance, so median completion-to-action latency is
 -322 days (-0.88 years).
-Undercoding pressures capture downward; unrelated same-firm awards can bias it upward.
+Undercoding makes the rate a coded-channel floor; unrelated same-firm awards can bias it upward
+against true transitions, so it is not a true-transition bound.
 
 | p10 | p20 | p30 | p40 | p50 | p60 | p70 | p80 | p90 |
 |---:|---:|---:|---:|---:|---:|---:|---:|---:|
@@ -98,6 +103,8 @@ signal; that branch and its union are blocked rather than replaced with a proxy.
 ## Limitations
 
 SR3/ST3 and public/exact-UEI coverage miss transitions; firm-level pairing can reuse one event
-across awards. Censoring is administrative. Modification text may not describe the base award.
-DoN role attribution is unioned. Form D amendments/name matches and aggregated EFTS mentions can
-false-positive. Source cuts differ and are recorded. Nothing here identifies a mechanism.
+across awards. Censoring is administrative, not evidence of no transition. Modification text
+may not describe the base award.
+DoN awarding/funding attribution is unioned and may differ. Form D amendments/name matches and
+aggregated EFTS mentions can false-positive. Source cuts differ and are recorded. Nothing here
+identifies a mechanism.
