@@ -111,6 +111,10 @@ bypassing lifecycle review; the status and rationale still require human judgmen
 - **`phase-iii-source-materialization` — Maintenance.** The schema-verified
   USAspending and SBIR.gov source layer is implemented. Keep it aligned with the
   census and other transition consumers rather than extending it with scoring policy.
+- **`phase-transition-report-grain` — Maintenance.** Pipelines-tier correction for the
+  shared transition reporter's mixed pair- and award-grain summaries. Use one row per Phase II
+  award for headline rates and event-conditional latency, with pair multiplicity retained only as
+  an explicitly labeled diagnostic; matching-policy and survival-estimator changes are out of scope.
 - **`phase-iii-hand-label-validation` — Gated backlog.** Design and estimand
   are written but the spec is not yet frozen. Do not implement until the design
   is approved and frozen per the evidence-tier contract.
