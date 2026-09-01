@@ -104,6 +104,6 @@ Kaplan–Meier-ready metadata. The defect was in research-evaluation semantics, 
   supports finance as an outcome; [SEC methodology](https://www.sec.gov/files/dera-white-paper_regulation-d_082018.pdf)
   shows Form D is incomplete and self-reported, with no Navy-SBIR attribution here.
 
-**Bottom line.** The results are a reproducible local map of observed public signals, not a complete
+**Bottom line.** The results are a locally regenerable map of observed public signals, not a complete
 commercialization measure. Coding and identity misses can bias downward; unrelated same-firm matches,
 contract reuse, modifications, and name matching can bias upward. Nothing here identifies a mechanism.
