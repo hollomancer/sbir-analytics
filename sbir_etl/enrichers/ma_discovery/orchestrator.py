@@ -36,9 +36,15 @@ async def process_batch(
 ) -> list[dict[str, Any]]:
     """Run a batch of (company, acquirer, query) rows and return verified events."""
     verified: list[dict[str, Any]] = []
+    # generate_queries emits four rows per (company, acquirer) pair, so the
+    # inner break alone would still append the same pair up to four times.
+    seen: set[tuple[str, str]] = set()
     for row in queries:
         company = row["company_name"]
         acquirer = row["acquirer"]
+        pair = (company, acquirer)
+        if pair in seen:
+            continue
         query = row["query"]
         results = await search_tool.search(query)
         for res in results:
@@ -55,7 +61,8 @@ async def process_batch(
                         "evidence": snippet,
                     }
                 )
-                break  # one hit per (company, acquirer) is enough
+                seen.add(pair)  # one hit per (company, acquirer) is enough
+                break
     return verified
 
 
