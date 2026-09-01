@@ -21,6 +21,7 @@ from typing import Any, Protocol
 
 from sbir_etl.enrichers.ma_discovery.verifier import verify_acquisition
 from sbir_etl.enrichers.openai_client import DEFAULT_MODEL, OpenAIClient
+from sbir_etl.identity import CompanyNameProfile, normalize_company_name
 
 
 EPISTEMIC_TIER = "pipelines"
@@ -148,15 +149,34 @@ def parse_llm_payload(raw: str | None) -> dict[str, Any] | None:
     return parsed if isinstance(parsed, dict) else None
 
 
+def _same_firm(requested: str | None, returned: str | None) -> bool:
+    """Compare a requested and a returned firm name on the canonical profile.
+
+    ``RECIPIENT_V1`` strips legal suffixes and folds case, so the suffix and
+    case variation the prompt permits still matches, while a different firm
+    does not. It is the same profile ``queries.py`` uses to build the query
+    strings these snippets come from, so extractor and query generator agree
+    on identity. An empty normalization on either side is a mismatch.
+    """
+    left = normalize_company_name(requested, profile=CompanyNameProfile.RECIPIENT_V1)
+    right = normalize_company_name(returned, profile=CompanyNameProfile.RECIPIENT_V1)
+    return bool(left) and bool(right) and left == right
+
+
 def verdict_from_payload(
     payload: dict[str, Any] | None,
     *,
-    citation_fallback: str | None = None,
+    item: ExtractionInput,
     parse_failure_reason: str = "Unparseable LLM response",
 ) -> ExtractionVerdict:
     """Map a parsed JSON object onto ``ExtractionVerdict``.
 
-    Missing or malformed payloads are unconfirmed; they are never guessed.
+    Missing or malformed payloads are unconfirmed; they are never guessed. A
+    confirmation is accepted only for the pair in ``item``: callers key
+    verdicts by the *requested* pair, so a response about other firms would
+    otherwise be recorded as a confirmation of this one. Provenance stays
+    authoritative -- the citation is the search result's own URL, never a URL
+    the model produced.
     """
     if payload is None:
         return ExtractionVerdict(confirmed=False, reason=parse_failure_reason)
@@ -168,14 +188,31 @@ def verdict_from_payload(
             reason="LLM JSON missing boolean 'confirmed'",
         )
 
+    matched_company = _as_optional_str(payload.get("matched_company"))
+    matched_acquirer = _as_optional_str(payload.get("matched_acquirer"))
+    if confirmed and not (
+        _same_firm(item.company, matched_company) and _same_firm(item.acquirer, matched_acquirer)
+    ):
+        return ExtractionVerdict(
+            confirmed=False,
+            reason=(
+                "LLM confirmed a different pair than requested: asked "
+                f"{item.company!r}/{item.acquirer!r}, got "
+                f"{matched_company!r}/{matched_acquirer!r}"
+            ),
+            matched_company=matched_company,
+            matched_acquirer=matched_acquirer,
+            citation_url=item.source_url,
+        )
+
     return ExtractionVerdict(
         confirmed=confirmed,
         reason=_as_optional_str(payload.get("reason")) or "LLM structured verdict",
-        matched_company=_as_optional_str(payload.get("matched_company")),
-        matched_acquirer=_as_optional_str(payload.get("matched_acquirer")),
+        matched_company=matched_company,
+        matched_acquirer=matched_acquirer,
         acquisition_date=_parse_iso_date(payload.get("acquisition_date")),
         value_usd=_parse_value_usd(payload.get("value_usd")),
-        citation_url=_as_optional_str(payload.get("citation_url")) or citation_fallback,
+        citation_url=item.source_url,
     )
 
 
@@ -223,7 +260,7 @@ class LlmExtractor:
 
     def extract(self, item: ExtractionInput) -> ExtractionVerdict:
         raw = self._chat(EXTRACTOR_SYSTEM_PROMPT, build_user_prompt(item))
-        return verdict_from_payload(parse_llm_payload(raw), citation_fallback=item.source_url)
+        return verdict_from_payload(parse_llm_payload(raw), item=item)
 
 
 def build_llm_extractor(
