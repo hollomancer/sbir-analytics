@@ -272,26 +272,55 @@ class FrozenLlmExtractor:
 
 
 class RecordingLlmExtractor:
-    """Call an inner extractor's chat path is not used; wrap ``LlmExtractor``."""
+    """Wrap ``LlmExtractor``, append frozen responses, and resume from ``path``."""
 
     name = "recording_llm"
 
-    def __init__(self, inner: LlmExtractor, sink: list[dict[str, Any]]) -> None:
+    def __init__(
+        self,
+        inner: LlmExtractor,
+        sink: list[dict[str, Any]],
+        *,
+        path: Path | None = None,
+    ) -> None:
         self.inner = inner
         self._sink = sink
+        self._path = path
+        self._seen: dict[tuple[str, str, str], str | None] = {}
+        if path is not None and path.is_file():
+            for line in path.read_text(encoding="utf-8").splitlines():
+                if not line.strip():
+                    continue
+                record = json.loads(line)
+                key = (
+                    str(record.get("company") or ""),
+                    str(record.get("acquirer") or ""),
+                    str(record.get("source_url") or ""),
+                )
+                raw = record.get("raw_response")
+                self._seen[key] = raw if isinstance(raw, str) else None
+                self._sink.append(record)
 
     def extract(self, item: ExtractionInput) -> ExtractionVerdict:
+        key = _response_key(item)
+        if key in self._seen:
+            raw = self._seen[key]
+            return verdict_from_payload(parse_llm_payload(raw), item=item)
         raw = self.inner._chat(EXTRACTOR_SYSTEM_PROMPT, build_user_prompt(item))
-        self._sink.append(
-            {
-                "company": item.company,
-                "acquirer": item.acquirer,
-                "source_url": item.source_url,
-                "snippet": item.snippet,
-                "model": self.inner.model,
-                "raw_response": raw,
-            }
-        )
+        record = {
+            "company": item.company,
+            "acquirer": item.acquirer,
+            "source_url": item.source_url,
+            "snippet": item.snippet,
+            "model": self.inner.model,
+            "raw_response": raw,
+        }
+        self._sink.append(record)
+        self._seen[key] = raw
+        if self._path is not None:
+            self._path.parent.mkdir(parents=True, exist_ok=True)
+            with self._path.open("a", encoding="utf-8") as handle:
+                handle.write(json.dumps(record, sort_keys=True) + "\n")
         return verdict_from_payload(parse_llm_payload(raw), item=item)
 
 
@@ -344,6 +373,7 @@ def build_llm_extractor(
         client = OpenAIClient(
             api_key=key,
             model=chosen_model,
+            timeout=300,
             chat_url=OPENROUTER_CHAT_URL,
             extra_headers={
                 "HTTP-Referer": "https://github.com/hollomancer/sbir-analytics",

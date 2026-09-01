@@ -107,13 +107,25 @@ class OpenAIClient:
         for attempt in range(MAX_RETRIES + 1):
             self._semaphore.acquire()
             try:
-                resp = self._client.request(
-                    method,
-                    url,
-                    headers=self._headers(),
-                    json=payload,
-                    timeout=effective_timeout,
-                )
+                try:
+                    resp = self._client.request(
+                        method,
+                        url,
+                        headers=self._headers(),
+                        json=payload,
+                        timeout=effective_timeout,
+                    )
+                except httpx.TimeoutException:
+                    if attempt < MAX_RETRIES:
+                        wait = RETRY_BACKOFF_BASE ** (attempt + 1)
+                        logger.debug(
+                            f"OpenAI {model_name} timed out, "
+                            f"retrying in {wait}s (attempt {attempt + 1}/{MAX_RETRIES})"
+                        )
+                        time.sleep(wait)
+                        continue
+                    logger.warning(f"OpenAI API timeout after {MAX_RETRIES} retries")
+                    return None
             finally:
                 self._semaphore.release()
 

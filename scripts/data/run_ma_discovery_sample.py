@@ -197,7 +197,8 @@ def main() -> int:
         live = build_llm_extractor(api_key=args.llm_api_key)
         if live is None:
             raise SystemExit("OPENROUTER_API_KEY or XAI_API_KEY is required for --confirm llm")
-        extractor = RecordingLlmExtractor(live, llm_records)
+        llm_path = args.output_dir / "llm_responses.jsonl"
+        extractor = RecordingLlmExtractor(live, llm_records, path=llm_path)
 
     discovered = asyncio.run(
         _search(
@@ -226,10 +227,6 @@ def main() -> int:
             for row in recorded:
                 handle.write(json.dumps(row, sort_keys=True) + "\n")
     llm_path = args.output_dir / "llm_responses.jsonl"
-    if llm_records:
-        with llm_path.open("w", encoding="utf-8") as handle:
-            for row in llm_records:
-                handle.write(json.dumps(row, sort_keys=True) + "\n")
     with queue_path.open("w", encoding="utf-8") as handle:
         for row in queue:
             handle.write(json.dumps(row, sort_keys=True) + "\n")

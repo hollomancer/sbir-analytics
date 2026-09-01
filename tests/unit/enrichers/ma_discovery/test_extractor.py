@@ -17,6 +17,7 @@ from sbir_etl.enrichers.ma_discovery.extractor import (
     FrozenLlmExtractor,
     KeywordExtractor,
     LlmExtractor,
+    RecordingLlmExtractor,
     build_llm_extractor,
     build_user_prompt,
     pair_names_match,
@@ -304,6 +305,26 @@ def test_frozen_llm_extractor_missing_row_is_unconfirmed(tmp_path) -> None:
     path.write_text("")
     verdict = FrozenLlmExtractor(path).extract(_ITEM)
     assert verdict.confirmed is False
+
+
+def test_recording_llm_appends_and_resumes(tmp_path) -> None:
+    path = tmp_path / "llm.jsonl"
+    inner = LlmExtractor(lambda _system, _user: json.dumps(_payload(acquisition_date="2024-03-12")))
+    first = RecordingLlmExtractor(inner, [], path=path)
+    verdict = first.extract(_ITEM)
+    assert verdict.confirmed is True
+    assert path.is_file()
+    calls = {"n": 0}
+
+    def _chat(_system: str, _user: str) -> str:
+        calls["n"] += 1
+        return "should-not-run"
+
+    resumed = RecordingLlmExtractor(LlmExtractor(_chat), [], path=path)
+    again = resumed.extract(_ITEM)
+    assert calls["n"] == 0
+    assert again.confirmed is True
+    assert again.acquisition_date == "2024-03-12"
 
 
 def test_build_llm_extractor_returns_none_without_key(monkeypatch: pytest.MonkeyPatch) -> None:

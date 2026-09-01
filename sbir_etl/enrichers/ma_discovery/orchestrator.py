@@ -70,6 +70,8 @@ async def process_batch(
                 source_urls.append(link)
             snippet = res.get("snippet", "")
             source = link if isinstance(link, str) else None
+            if not snippet and not source:
+                continue
             verdict = verifier.extract(
                 ExtractionInput(
                     company=company,
