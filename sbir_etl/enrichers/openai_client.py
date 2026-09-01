@@ -66,11 +66,13 @@ class OpenAIClient:
         timeout: int = 120,
         model: str = DEFAULT_MODEL,
         chat_url: str = OPENAI_CHAT_URL,
+        extra_headers: dict[str, str] | None = None,
     ) -> None:
         self._api_key = api_key
         self._model = model
         self._timeout = timeout
         self._chat_url = chat_url
+        self._extra_headers = extra_headers or {}
         self._semaphore = threading.Semaphore(max_concurrent)
         self._client = httpx.Client(timeout=timeout)
 
@@ -84,10 +86,12 @@ class OpenAIClient:
         self.close()
 
     def _headers(self) -> dict[str, str]:
-        return {
+        headers = {
             "Authorization": f"Bearer {self._api_key}",
             "Content-Type": "application/json",
         }
+        headers.update(self._extra_headers)
+        return headers
 
     def _request(
         self,

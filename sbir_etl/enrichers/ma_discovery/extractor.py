@@ -31,6 +31,10 @@ UNKNOWN_DATE = "Unknown"
 XAI_API_KEY_ENV = "XAI_API_KEY"
 XAI_CHAT_URL = "https://api.x.ai/v1/chat/completions"
 DEFAULT_XAI_MODEL = "grok-4.6"
+OPENROUTER_API_KEY_ENV = "OPENROUTER_API_KEY"
+OPENROUTER_CHAT_URL = "https://openrouter.ai/api/v1/chat/completions"
+OPENROUTER_GROK_MODEL = "x-ai/grok-4.6"
+OPENROUTER_KEY_PREFIX = "sk-or-"
 
 EXTRACTOR_SYSTEM_PROMPT = """\
 You extract whether a text snippet confirms that one named company was acquired \
@@ -295,8 +299,8 @@ class LlmExtractor:
     """JSON-schema extractor over an injected chat callable or xAI chat.
 
     Callers must inject the client. Use ``build_llm_extractor`` when
-    ``XAI_API_KEY`` is present. Tests inject a mock that returns JSON and
-    never hit the network.
+    ``OPENROUTER_API_KEY`` or ``XAI_API_KEY`` is present. Tests inject a
+    mock that returns JSON and never hit the network.
     """
 
     name = "llm"
@@ -320,22 +324,40 @@ class LlmExtractor:
 def build_llm_extractor(
     *,
     api_key: str | None = None,
-    model: str = DEFAULT_XAI_MODEL,
+    model: str | None = None,
 ) -> LlmExtractor | None:
-    """Return an ``LlmExtractor`` over xAI chat when a key exists.
+    """Return an ``LlmExtractor`` over OpenRouter or xAI chat when a key exists.
 
-    Looks at ``api_key`` then ``XAI_API_KEY``. Returns ``None`` otherwise.
-    Does not change the orchestrator default (keyword).
+    Prefers ``api_key``, then ``OPENROUTER_API_KEY``, then ``XAI_API_KEY``.
+    Keys starting with ``sk-or-`` use OpenRouter and model ``x-ai/grok-4.6``.
+    Direct xAI keys use ``grok-4.6``. Does not change the orchestrator default.
     """
-    key = api_key if api_key is not None else os.environ.get(XAI_API_KEY_ENV)
+    key = (
+        (api_key.strip() if isinstance(api_key, str) and api_key.strip() else "")
+        or (os.environ.get(OPENROUTER_API_KEY_ENV) or "").strip()
+        or (os.environ.get(XAI_API_KEY_ENV) or "").strip()
+    )
     if not key:
         return None
+    if key.startswith(OPENROUTER_KEY_PREFIX):
+        chosen_model = model or OPENROUTER_GROK_MODEL
+        client = OpenAIClient(
+            api_key=key,
+            model=chosen_model,
+            chat_url=OPENROUTER_CHAT_URL,
+            extra_headers={
+                "HTTP-Referer": "https://github.com/hollomancer/sbir-analytics",
+                "X-Title": "sbir-analytics ma-discovery",
+            },
+        )
+        return LlmExtractor(client, model=chosen_model)
+    chosen_model = model or DEFAULT_XAI_MODEL
     client = OpenAIClient(
         api_key=key,
-        model=model,
+        model=chosen_model,
         chat_url=XAI_CHAT_URL,
     )
-    return LlmExtractor(client, model=model)
+    return LlmExtractor(client, model=chosen_model)
 
 
 def _bind_chat(

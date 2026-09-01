@@ -46,6 +46,29 @@ class TestOpenAIClient:
         client._client = mock_http
         assert client.chat("system", "user") == "ok"
         assert mock_http.request.call_args.args[1] == "https://api.x.ai/v1/chat/completions"
+        headers = mock_http.request.call_args.kwargs["headers"]
+        assert headers["Authorization"] == "Bearer test-key"
+
+    def test_extra_headers_are_sent(self):
+        mock_http = Mock()
+        mock_resp = Mock()
+        mock_resp.status_code = 200
+        mock_resp.json.return_value = {
+            "choices": [{"message": {"content": "ok"}}],
+            "usage": {},
+        }
+        mock_resp.raise_for_status = Mock()
+        mock_http.request.return_value = mock_resp
+
+        client = OpenAIClient(
+            api_key="sk-or-test",
+            chat_url="https://openrouter.ai/api/v1/chat/completions",
+            extra_headers={"HTTP-Referer": "https://example.com"},
+        )
+        client._client = mock_http
+        client.chat("system", "user")
+        headers = mock_http.request.call_args.kwargs["headers"]
+        assert headers["HTTP-Referer"] == "https://example.com"
 
     def test_chat_failure_returns_none(self):
         import httpx

@@ -170,9 +170,13 @@ def main() -> int:
         "--confirm",
         choices=("keyword", "llm"),
         default="keyword",
-        help="Snippet confirmer. llm uses xAI grok-4.6 and freezes raw responses.",
+        help="Snippet confirmer. llm uses OpenRouter or xAI grok-4.6 and freezes raw responses.",
     )
-    parser.add_argument("--llm-api-key", default=None, help="Override XAI_API_KEY.")
+    parser.add_argument(
+        "--llm-api-key",
+        default=None,
+        help="Override OPENROUTER_API_KEY or XAI_API_KEY.",
+    )
     args = parser.parse_args()
 
     events = load_ma_events(args.events)
@@ -192,7 +196,7 @@ def main() -> int:
     if args.confirm == "llm":
         live = build_llm_extractor(api_key=args.llm_api_key)
         if live is None:
-            raise SystemExit("XAI_API_KEY is required for --confirm llm")
+            raise SystemExit("OPENROUTER_API_KEY or XAI_API_KEY is required for --confirm llm")
         extractor = RecordingLlmExtractor(live, llm_records)
 
     discovered = asyncio.run(
