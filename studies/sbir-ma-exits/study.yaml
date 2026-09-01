@@ -14,6 +14,18 @@ estimand: >-
 frozen_artifacts:
   - path: studies/sbir-ma-exits/CLAIM_PROVENANCE.md
     sha256: 09b6ca6bf29095397f78d346cb4ba52eacc220a33efafb5bc28caa32b513fe0e
+  # The claim ledger alone is the index, not the book: freezing it while
+  # leaving the documents it describes unhashed lets a later edit that changes
+  # a number or drops the Scope-and-status section pass CI green. paper.md and
+  # zenodo.json are the two artifacts that actually leave the repository.
+  - path: studies/sbir-ma-exits/paper.md
+    sha256: 2bc1e6c955eead2136a7f5dd98205844005f6871447e5414e82a94cf8b490f79
+  - path: studies/sbir-ma-exits/zenodo.json
+    sha256: 7b49fc5b377c950a986759028853d6a5ad175b43ae35168d149e917082c29dde
+  # paper.pdf is deliberately NOT frozen yet. The committed binary is a
+  # ReportLab placeholder, not the documented pandoc/xelatex build; hashing it
+  # would pin the placeholder. Rebuild per PUBLISH_CHECKLIST step 6, then add
+  # it here.
 implementation:
   - path: scripts/archive/data/detect_sbir_ma_events.py
     symbol: main

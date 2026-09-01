@@ -15,7 +15,7 @@ license: MIT
 version: 0.11.0
 date-released: 2026-08-26
 preferred-citation:
-  type: article
+  type: unpublished
   authors:
     - family-names: Hollomon
       given-names: Conrad
@@ -26,5 +26,15 @@ preferred-citation:
     Form D and EDGAR Full-Text Filings
   year: 2026
   version: 1.0.0
+  notes: >-
+    Evidence status: exploratory. This package preserves a dated, exploratory
+    repository finding. It does not promote the analysis to validated or
+    citable evidence under the repository's study rules. The figures are not
+    approved for citation as evidence.
+  # Replace with `doi: 10.5281/zenodo.XXXXXXX` at publish time (checklist step
+  # 5). Until then this is a commit-pinned permalink, not a branch ref: a
+  # `blob/preprint/mna-v1/...` URL dies when the branch is deleted on merge,
+  # and `blob/v0.11.0/...` 404s too because the study does not exist at that
+  # tag -- v0.11.0 is the parent of the packaging commit.
   url: >-
-    https://github.com/hollomancer/sbir-analytics/blob/preprint/mna-v1/studies/sbir-ma-exits/paper.pdf
+    https://github.com/hollomancer/sbir-analytics/blob/b40c23aae901fc442d20f9b10ebafa8c5937056d/studies/sbir-ma-exits/paper.pdf

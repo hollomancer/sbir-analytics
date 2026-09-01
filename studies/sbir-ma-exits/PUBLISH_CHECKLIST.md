@@ -21,6 +21,16 @@ The repository inventory classifies the M&A rate and timing findings as a dated 
      --output studies/sbir-ma-exits/paper.pdf
    ```
 
+   Then confirm the build actually ran, rather than depositing a placeholder:
+
+   ```bash
+   head -c 200 studies/sbir-ma-exits/paper.pdf
+   ```
+
+   The output must not report `ReportLab Generated PDF document`. Confirm
+   `M&A` renders as `M&A` and not `M & A`, and that the repository URL in the
+   Appendix A table is not broken across a line.
+
 7. Render and inspect every PDF page. Confirm the DOI footer, page numbers, tables, links, and disclaimer.
 8. Enter the record metadata from `studies/sbir-ma-exits/zenodo.json`.
 9. Set the publication date to the actual human deposit date.
@@ -28,11 +38,12 @@ The repository inventory classifies the M&A rate and timing findings as a dated 
 11. Confirm the personal email is `hollomancer@protonmail.ch`.
 12. Confirm the exact sentence appears in the record and PDF: "This work was conducted in a personal capacity and does not represent the position of any agency."
 13. Select `CC BY 4.0` for the paper. Do not change the repository code license from MIT.
-14. Add the GitHub repository as the related identifier with relation `isSupplementedBy`.
-15. Upload `studies/sbir-ma-exits/paper.pdf` as the paper file.
-16. Preview the public record. Check title, abstract, keywords, version `1.0.0`, license, author, and related identifier.
-17. Publish the Zenodo record.
-18. After publication, verify that the DOI resolves and matches the PDF footer and `CITATION.cff`.
+14. Confirm the exact sentence appears in the record description, the record notes, and the PDF title page: "This package preserves a dated, exploratory repository finding. It does not promote the analysis to validated or citable evidence under the repository's study rules."
+15. Add the GitHub repository as the related identifier with relation `isSupplementedBy`.
+16. Upload `studies/sbir-ma-exits/paper.pdf` as the paper file.
+17. Preview the public record. Check title, abstract, keywords, version `1.0.0`, license, author, and related identifier.
+18. Publish the Zenodo record.
+19. After publication, verify that the DOI resolves and matches the PDF footer and `CITATION.cff`.
 
 ## Collected unverified items
 

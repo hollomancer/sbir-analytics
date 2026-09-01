@@ -136,8 +136,9 @@ point.
   ([E6](#e6-continuous-monitoring--rolling-analytics-tier-4-capstone);
   operational obligation, not a research question).
 - **Investors** — Form D fundraising profile ([F1](#f1-form-d-profile);
-  exploratory, no study), M&A exit rates and time-to-exit (dated notes, no
-  study), and F2 cohort comparisons (no study).
+  exploratory, no study), M&A exit rates and time-to-exit (dated notes under
+  an exploratory study contract, not citable), and F2 cohort comparisons (no
+  study).
 - **OSTP / congressional oversight** — A1 concentration (exploratory
   research note) and the A-CP13 choke-point watchlist
   ([A4](#a4-risk-monitoring--prediction-tier-4)). A-CP13 is not scoped and
@@ -1077,15 +1078,17 @@ The relevant literature is Lerner [L10], Howell [L11], and Kortum & Lerner
 
 - **M&A exit rate by agency**
   What is the SBIR-firm M&A exit rate, and how does it stratify by funding agency?
-  **Status:** Dated research note; no study contract. Older write-ups quote
-  agency-specific rates; those figures are not inventory Status and are not
-  approved for citation.
+  **Status:** Dated research note under an `exploratory` study contract
+  (`studies/sbir-ma-exits/study.yaml`). Older write-ups quote agency-specific
+  rates; those figures are not inventory Status and are not approved for
+  citation. An exploratory contract does not authorize a reserved Status rank.
   *Deps: ER, M&A signals · Spec: (PR #286 merged)*
 
 - **Time to exit**
   What is the median time from first SBIR award to M&A exit?
-  **Status:** Dated research note; no study contract. A previously quoted
-  median is not inventory Status.
+  **Status:** Dated research note under an `exploratory` study contract
+  (`studies/sbir-ma-exits/study.yaml`). A previously quoted median is not
+  inventory Status.
   *Deps: ER, M&A signals*
 
 ### F2. Relational (Tier 2)
