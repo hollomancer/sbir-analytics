@@ -184,10 +184,20 @@ def validated_phase_iii_contracts(context=None) -> Output[pd.DataFrame]:
         "total_rows": int(len(phase_iii)),
         "coverage": coverage_dict,
         "coding_coverage_warning": coding_coverage_warning,
-        # Backward-compatible alias for consumers of the original checks schema.
+        # Key-compatible alias for consumers of the original checks schema. The
+        # key survives; the "note" value deliberately does not. The old text
+        # ("Treat transition rates as lower bounds") asserted a one-sided bias
+        # this readout retracts, so carrying it forward under the old key would
+        # keep serving the claim being withdrawn.
         "undercount_warning": {
             **coding_coverage_warning,
             "deprecated_alias_for": "coding_coverage_warning",
+            "note_semantics_changed": (
+                "The 'note' value under this key changed and is no longer the "
+                "lower-bound wording. Coded-channel rates are observed rates, "
+                "not identified bounds; bias can run in either direction. Read "
+                "'coding_coverage_warning' instead."
+            ),
         },
         "agency_coverage": agency_coverage,
         "inputs": {
