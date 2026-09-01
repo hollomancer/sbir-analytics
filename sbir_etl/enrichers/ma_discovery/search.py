@@ -193,11 +193,13 @@ def build_search_tool(
     ``brave`` without a key raises ``ConfigurationError`` rather than
     silently serving fixture hits. Unknown backend names also raise.
     """
-    cfg = config
+    # Load config once, before any branch reads it. Loading it only on the
+    # no-argument path left cfg as None for an explicit --search-backend, so
+    # timeout / rate limit / max results silently fell back to module
+    # constants and config/base.yaml was never honored.
+    cfg = config if config is not None else _load_ma_discovery_config()
     backend_raw = name.strip() if isinstance(name, str) and name.strip() else ""
     if not backend_raw:
-        if cfg is None:
-            cfg = _load_ma_discovery_config()
         backend_raw = cfg.search_backend
     backend = backend_raw.strip().lower()
 
@@ -205,6 +207,15 @@ def build_search_tool(
         known = ", ".join(sorted(MA_DISCOVERY_SEARCH_BACKENDS))
         raise ConfigurationError(
             f"Unknown M&A search backend {backend!r}; expected one of {known}",
+            config_key="ma_discovery.search_backend",
+        )
+
+    if backend == "none":
+        raise ConfigurationError(
+            "No M&A search backend is selected. MockSearchTool returns fixture "
+            "hits that verify and get written as discovered acquisitions, so it "
+            "is opt-in only: pass --search-backend mock deliberately, or set a "
+            "live backend (tavily, brave) with an API key.",
             config_key="ma_discovery.search_backend",
         )
 

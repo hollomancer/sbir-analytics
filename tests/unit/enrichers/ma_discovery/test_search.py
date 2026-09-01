@@ -13,6 +13,9 @@ import pytest
 from sbir_etl.config.schemas.domain import MADiscoveryConfig
 from sbir_etl.enrichers.ma_discovery.queries import generate_queries
 from sbir_etl.enrichers.ma_discovery.search import (
+    DEFAULT_MAX_RESULTS,
+    DEFAULT_RATE_LIMIT_PER_MINUTE,
+    DEFAULT_TIMEOUT_SECONDS,
     BraveSearchTool,
     MockSearchTool,
     TavilySearchTool,
@@ -180,3 +183,36 @@ async def test_tavily_skips_hits_without_url(mock_http_client: AsyncMock) -> Non
     )
     tool = TavilySearchTool(api_key="tvly-test", http_client=mock_http_client)
     assert await tool.search("anything") == []
+
+
+def test_factory_none_backend_fails_closed() -> None:
+    """`none` is the default and must not resolve to fixture hits."""
+    with pytest.raises(ConfigurationError, match="No M&A search backend is selected"):
+        build_search_tool("none")
+    with pytest.raises(ConfigurationError, match="No M&A search backend is selected"):
+        build_search_tool(None, config=MADiscoveryConfig())
+
+
+def test_factory_explicit_backend_honors_configured_client_settings() -> None:
+    """An explicit backend name must still read config, not module constants.
+
+    Loading config only on the no-argument path left cfg as None here, so
+    timeout / rate limit / max results silently used DEFAULT_* constants.
+    """
+    cfg = MADiscoveryConfig(
+        search_backend="none",
+        search_api_key="tvly-test",
+        timeout_seconds=7,
+        rate_limit_per_minute=11,
+        max_results=3,
+    )
+    tool = build_search_tool("tavily", config=cfg)
+    assert isinstance(tool, TavilySearchTool)
+    assert tool.rate_limit_per_minute == 11
+    assert tool._max_results == 3
+    assert tool._client.timeout.read == 7
+    assert (11, 3, 7) != (
+        DEFAULT_RATE_LIMIT_PER_MINUTE,
+        DEFAULT_MAX_RESULTS,
+        DEFAULT_TIMEOUT_SECONDS,
+    )

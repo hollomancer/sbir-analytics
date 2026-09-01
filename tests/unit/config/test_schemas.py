@@ -832,7 +832,7 @@ class TestPipelineConfig:
         assert isinstance(config.fiscal_analysis, FiscalAnalysisConfig)
         assert isinstance(config.cli, CLIConfig)
         assert isinstance(config.ma_discovery, MADiscoveryConfig)
-        assert config.ma_discovery.search_backend == "mock"
+        assert config.ma_discovery.search_backend == "none"
 
 
 class TestMADiscoveryConfig:
@@ -840,7 +840,9 @@ class TestMADiscoveryConfig:
 
     def test_defaults(self) -> None:
         config = MADiscoveryConfig()
-        assert config.search_backend == "mock"
+        # `none` fails closed. `mock` serves fixture hits that verify and get
+        # written as discovered acquisitions, so it must never be the default.
+        assert config.search_backend == "none"
         assert config.search_api_key is None
         assert config.api_key_env_var == "SBIR_ETL__MA_DISCOVERY__SEARCH_API_KEY"
         assert config.rate_limit_per_minute == 60

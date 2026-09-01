@@ -611,20 +611,26 @@ class StatisticalReportingConfig(BaseModel):
         return normalized
 
 
-MA_DISCOVERY_SEARCH_BACKENDS = frozenset({"mock", "tavily", "brave"})
+MA_DISCOVERY_SEARCH_BACKENDS = frozenset({"none", "mock", "tavily", "brave"})
 DEFAULT_MA_DISCOVERY_API_KEY_ENV = "SBIR_ETL__MA_DISCOVERY__SEARCH_API_KEY"
 
 
 class MADiscoveryConfig(BaseModel):
     """Configuration for the M&A web-search discovery path.
 
-    Runtime default is the in-memory mock. A live client is used only when
-    ``search_backend`` is a real vendor *and* an API key is present.
+    Runtime default is ``none``: no backend is selected and building one
+    fails closed. The in-memory mock returns fixture hits that verify and get
+    written as discovered acquisitions, so it must be asked for by name. A
+    live client is used only when ``search_backend`` is a real vendor *and* an
+    API key is present.
     """
 
     search_backend: str = Field(
-        default="mock",
-        description="Search backend name: mock (default), tavily, or brave.",
+        default="none",
+        description=(
+            "Search backend name: none (default, fails closed), mock "
+            "(fixture hits, opt-in only), tavily, or brave."
+        ),
     )
     search_api_key: str | None = Field(
         default=None,
