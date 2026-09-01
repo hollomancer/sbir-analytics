@@ -140,6 +140,14 @@ bypassing lifecycle review; the status and rationale still require human judgmen
   ranking/auditability phases remain.
 - **`sbir-ma-match-rate-by-fy` — Gated backlog.** Analysis-only F2 follow-up on
   completed M&A detection. Start only when FY match-rate reporting is requested.
+- **`sec-source-fidelity` — Gated backlog.** Merges two reviewed proposals
+  (PRs #690, #691) into one surface: EDGAR profiles pair an M&A mention *type*
+  with an all-type "latest" date, and Form D amendment chains inflate cumulative
+  raised totals. An interim conservative lower bound is in place for the Form D
+  half. Blocked on locating the SEC file number, the amendment chain key, which
+  is absent from the codebase. Declared `exploratory` rather than `pipelines`:
+  every named consumer is a `scripts/data/` script. Coordinate with the Active
+  `agency-private-capital-comparison` spec, which shares `form_d_inputs.py`.
 - **`state-local-tax-rates` — Maintenance.** Existing hardcoded 2024 provider
   works. Remaining work is data-file/provenance cleanup for fiscal v2.
 - **`sttr-spinout-linkage` — Active.** Phase 0 design frozen as Revision 1 (exploratory,
