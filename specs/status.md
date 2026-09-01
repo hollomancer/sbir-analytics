@@ -33,7 +33,12 @@ bypassing lifecycle review; the status and rationale still require human judgmen
 - **`agency-private-capital-comparison` — Active.** The NSF Phase 1 real-data
   gate is materialized for review but remains non-citable and unsigned. Phase 2
   stays gated on Phase 1 sign-off, a reproducible Form D control-universe
-  producer, and symmetric FPDS/PATLINK/M&A outcome inputs.
+  producer, and symmetric FPDS/PATLINK/M&A outcome inputs. Also owns Form D
+  input fidelity in its own `form_d_inputs.py` loader (tasks F.1-F.3, from
+  PR #691): the staging-input refusal shipped in v0.12.0, and exact
+  amendment-chain collapse is blocked on locating the SEC file number. Note that
+  v0.12.0 changed `total_form_d_raised` and `offering_count` after the Phase 1
+  artifacts were materialized.
 - **`bea-nipa-tax-rates` — Active.** The NIPA provider exists; the remaining
   work is the on-disk cache and removal of hardcoded effective-rate consumers.
 - **`company-categorization` — Maintenance.** About 80% complete. Evaluate the
@@ -56,6 +61,13 @@ bypassing lifecycle review; the status and rationale still require human judgmen
   test are accepted; and weekly-report refactor T2.3 plus the injected,
   typed-return work in T3.2 are complete. Offline, full-context, and shadow
   gates still precede any production integration.
+- **`edgar-event-date-fidelity` — Gated backlog.** From PR #690. EDGAR profiles
+  pair an M&A mention *type* with a "latest" date taken across all types, and two
+  `scripts/data/` consumers already perform that unsafe join. Declared
+  `exploratory` rather than `pipelines`: both named consumers are scripts. Owns
+  only `sbir_etl/enrichers/sec_edgar/`. The Form D amendment work reviewed
+  alongside it (PR #691) is not here — it lives with the code it changes, as
+  `agency-private-capital-comparison` tasks F.1-F.3.
 - **`epistemic-tier-enforcement` — Maintenance.** Enforcement follow-on to the
   2026-08 module-labeling sweep (PRs #550–#552). Shipped: the blocking
   tier-aware import guard (`scripts/ci/check_tier_boundaries.py`, in
@@ -140,14 +152,6 @@ bypassing lifecycle review; the status and rationale still require human judgmen
   ranking/auditability phases remain.
 - **`sbir-ma-match-rate-by-fy` — Gated backlog.** Analysis-only F2 follow-up on
   completed M&A detection. Start only when FY match-rate reporting is requested.
-- **`sec-source-fidelity` — Gated backlog.** Merges two reviewed proposals
-  (PRs #690, #691) into one surface: EDGAR profiles pair an M&A mention *type*
-  with an all-type "latest" date, and Form D amendment chains inflate cumulative
-  raised totals. An interim conservative lower bound is in place for the Form D
-  half. Blocked on locating the SEC file number, the amendment chain key, which
-  is absent from the codebase. Declared `exploratory` rather than `pipelines`:
-  every named consumer is a `scripts/data/` script. Coordinate with the Active
-  `agency-private-capital-comparison` spec, which shares `form_d_inputs.py`.
 - **`state-local-tax-rates` — Maintenance.** Existing hardcoded 2024 provider
   works. Remaining work is data-file/provenance cleanup for fiscal v2.
 - **`sttr-spinout-linkage` — Active.** Phase 0 design frozen as Revision 1 (exploratory,
