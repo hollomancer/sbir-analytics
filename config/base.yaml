@@ -774,10 +774,11 @@ ot_consortium:
   fpds_reporting_lag_days: 90
 
 # M&A discovery web search. Runtime default is the in-memory mock (no network).
-# Set search_backend to tavily (recommended) or brave and provide
-# SBIR_ETL__MA_DISCOVERY__SEARCH_API_KEY to use a live client.
+# Default is fail-closed. Set search_backend to tavily (recommended) or brave
+# and provide SBIR_ETL__MA_DISCOVERY__SEARCH_API_KEY to use a live client.
+# mock is explicit opt-in. snippets replays a frozen search-result JSONL.
 ma_discovery:
-  search_backend: mock
+  search_backend: none
   api_key_env_var: "SBIR_ETL__MA_DISCOVERY__SEARCH_API_KEY"  # pragma: allowlist secret
   rate_limit_per_minute: 60
   timeout_seconds: 30

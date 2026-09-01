@@ -15,6 +15,7 @@ from sbir_etl.enrichers.ma_discovery.queries import generate_queries
 from sbir_etl.enrichers.ma_discovery.search import (
     BraveSearchTool,
     MockSearchTool,
+    SnippetSearchTool,
     TavilySearchTool,
     build_search_tool,
 )
@@ -97,6 +98,51 @@ def test_factory_unknown_name_raises() -> None:
 def test_factory_mock_name_ignores_key(mock_http_client: AsyncMock) -> None:
     tool = build_search_tool("mock", api_key="ignored", http_client=mock_http_client)
     assert isinstance(tool, MockSearchTool)
+
+
+def test_factory_none_is_fail_closed() -> None:
+    with pytest.raises(ConfigurationError, match="fail-closed"):
+        build_search_tool("none")
+    with pytest.raises(ConfigurationError, match="fail-closed"):
+        build_search_tool(None, config=MADiscoveryConfig())
+
+
+def test_factory_named_backend_loads_config_timeout(mock_http_client: AsyncMock) -> None:
+    cfg = MADiscoveryConfig(
+        search_backend="none",
+        timeout_seconds=11,
+        rate_limit_per_minute=7,
+        max_results=3,
+    )
+    tool = build_search_tool(
+        "tavily",
+        api_key="tvly-test",
+        config=cfg,
+        http_client=mock_http_client,
+    )
+    assert isinstance(tool, TavilySearchTool)
+    assert tool._client is mock_http_client
+    assert tool.rate_limit_per_minute == 7
+    assert tool._max_results == 3
+
+
+@pytest.mark.asyncio
+async def test_snippet_search_tool_replays_frozen_cut(tmp_path) -> None:
+    path = tmp_path / "hits.jsonl"
+    path.write_text(
+        '{"query": "q1", "snippet": "Mercury Systems acquired Physical Optics.", '
+        '"link": "https://cut.example/a"}\n'
+    )
+    tool = build_search_tool("snippets", snippets_path=path)
+    assert isinstance(tool, SnippetSearchTool)
+    hits = await tool.search("q1")
+    assert hits == [
+        {
+            "snippet": "Mercury Systems acquired Physical Optics.",
+            "link": "https://cut.example/a",
+        }
+    ]
+    assert await tool.search("missing") == []
 
 
 @pytest.mark.asyncio

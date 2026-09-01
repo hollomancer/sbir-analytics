@@ -116,5 +116,6 @@ async def test_orchestrator_still_uses_keyword_not_llm() -> None:
     ]
     verified = await process_batch(queries, MockSearchTool())
     assert len(verified) == 1
-    assert verified[0]["date"] == "Unknown"
+    assert verified[0]["date"] is None
+    assert verified[0]["confidence"] == "low"
     assert verified[0]["value"] is None

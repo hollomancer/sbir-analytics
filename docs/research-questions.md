@@ -388,7 +388,7 @@ NASEM calls this quantity the *leverage ratio*.
 - **Foreign-acquirer M&A detection**
   Did a defense-funded SBIR company undergo M&A activity, particularly involving
   a foreign acquirer?
-  *Deps: ER, M&A signals · Spec: [../specs/archive/completed-features/merger_acquisition_detection/](../specs/archive/completed-features/merger_acquisition_detection/)*
+  *Deps: ER, M&A signals · Spec: [../specs/archive/completed-features/merger_acquisition_detection/](../specs/archive/completed-features/merger_acquisition_detection/); recall expansion [../specs/ma-discovery-integration/](../specs/ma-discovery-integration/)*
 
 - **Inbound M&A via 8-K full-text search**
   For SBIR firms acquired by public companies, can inbound M&A be detected
@@ -399,7 +399,7 @@ NASEM calls this quantity the *leverage ratio*.
   Which defense primes concentrate SBIR-firm acquisitions (e.g. Titan, Teledyne,
   Ametek, Kratos), and are any of those acquirers themselves foreign-owned or
   under CFIUS review?
-  *Deps: ER, M&A signals*
+  *Deps: ER, M&A signals · Spec: [../specs/ma-discovery-integration/](../specs/ma-discovery-integration/)*
 
 - **M&A effect on transition pathways**
   How does M&A activity affect Phase III / federal-contract transition pathways?
@@ -457,7 +457,9 @@ NASEM calls this quantity the *leverage ratio*.
 >
 > The orchestrated graph has no continuous M&A-event materialization. Rerunning
 > the script is how the M&A signal feeding the vulnerability (A1/A3/A4) and
-> F-area questions gets refreshed. The former
+> F-area questions gets refreshed. Form-D-missing recall expansion is specified
+> in [`specs/ma-discovery-integration/`](../specs/ma-discovery-integration/)
+> (Active); it is not yet wired into that script. The former
 > `packages/sbir-analytics/sbir_analytics/assets/ma_detection.py` stub was a
 > placeholder, never wired into the M&A pipeline, and was removed in PR #317.
 
@@ -1095,7 +1097,7 @@ The relevant literature is Lerner [L10], Howell [L11], and Kortum & Lerner
   (Bruker, Ligand, Thermo Fisher) versus defense primes versus financial
   sponsors? What fraction of acquirers are serial buyers with 3+ SBIR-firm
   targets?
-  *Deps: ER, M&A signals*
+  *Deps: ER, M&A signals · Spec: [../specs/ma-discovery-integration/](../specs/ma-discovery-integration/)*
 
 - **Filers vs. non-filers**
   Do Form D filers and non-filers differ on transition, patent, and exit

@@ -18,6 +18,7 @@ from sbir_etl.enrichers.ma_discovery.extractor import (
     LlmExtractor,
     build_llm_extractor,
     build_user_prompt,
+    pair_names_match,
     verdict_from_payload,
 )
 from sbir_etl.enrichers.ma_discovery.extractor_eval import load_fixtures
@@ -32,6 +33,25 @@ def _by_id():
 
 def _extract(extractor, fixture):
     return extractor.extract(fixture.as_input())
+
+
+_ITEM = ExtractionInput(
+    company="Aether Photonics",
+    acquirer="Helios Defense",
+    snippet="Helios Defense acquired Aether Photonics.",
+    source_url="https://newswire.example/real-article",
+)
+
+
+def _payload(**overrides: object) -> dict:
+    body: dict = {
+        "confirmed": True,
+        "matched_company": "Aether Photonics",
+        "matched_acquirer": "Helios Defense",
+        "reason": "completed acquisition",
+    }
+    body.update(overrides)
+    return body
 
 
 def test_keyword_confirms_slam_dunk_names_and_verb() -> None:
@@ -102,7 +122,7 @@ def test_llm_parses_schema_from_plain_json() -> None:
     assert verdict.matched_acquirer == "Helios Defense"
     assert verdict.acquisition_date == "2024-03-12"
     assert verdict.value_usd == 42_000_000
-    assert verdict.citation_url == "https://example.com/press/helios-aether-2024"
+    assert verdict.citation_url == "https://example.com/unused"
 
 
 def test_llm_rejects_talks_only_when_mock_says_so() -> None:
@@ -187,58 +207,71 @@ def test_llm_accepts_openai_client_shape() -> None:
 
 
 def test_verdict_from_payload_rejects_non_bool_confirmed() -> None:
-    verdict = verdict_from_payload({"confirmed": "yes", "reason": "bad"})
+    verdict = verdict_from_payload({"confirmed": "yes", "reason": "bad"}, item=_ITEM)
     assert verdict.confirmed is False
     assert "boolean" in verdict.reason
 
 
 def test_parse_llm_payload_ignores_unknown_placeholder_date() -> None:
-    verdict = verdict_from_payload(
-        {
-            "confirmed": True,
-            "acquisition_date": "Unknown",
-            "reason": "keyword-shaped",
-        }
-    )
+    verdict = verdict_from_payload(_payload(acquisition_date="Unknown"), item=_ITEM)
     assert verdict.confirmed is True
     assert verdict.acquisition_date is None
 
 
 def test_verdict_from_payload_nulls_non_iso_date() -> None:
-    verdict = verdict_from_payload(
-        {
-            "confirmed": True,
-            "acquisition_date": "March 2024",
-            "reason": "completed acquisition",
-        }
-    )
+    verdict = verdict_from_payload(_payload(acquisition_date="March 2024"), item=_ITEM)
     assert verdict.confirmed is True
     assert verdict.acquisition_date is None
 
 
 def test_verdict_from_payload_nulls_noncanonical_iso_date() -> None:
-    verdict = verdict_from_payload(
-        {
-            "confirmed": True,
-            "acquisition_date": "2024-3-12",
-            "reason": "completed acquisition",
-        }
-    )
+    verdict = verdict_from_payload(_payload(acquisition_date="2024-3-12"), item=_ITEM)
     assert verdict.confirmed is True
     assert verdict.acquisition_date is None
 
 
 def test_verdict_from_payload_nulls_non_finite_or_negative_value() -> None:
     for raw in (-1, float("nan"), float("inf"), float("-inf")):
-        verdict = verdict_from_payload(
-            {
-                "confirmed": True,
-                "value_usd": raw,
-                "reason": "completed acquisition",
-            }
-        )
+        verdict = verdict_from_payload(_payload(value_usd=raw), item=_ITEM)
         assert verdict.confirmed is True
         assert verdict.value_usd is None
+
+
+def test_verdict_from_payload_rejects_unrelated_pair() -> None:
+    verdict = verdict_from_payload(
+        _payload(matched_company="Foo Industries", matched_acquirer="Bar Holdings"),
+        item=_ITEM,
+    )
+    assert verdict.confirmed is False
+    assert "does not match" in verdict.reason
+
+
+def test_verdict_from_payload_rejects_null_matched_names() -> None:
+    verdict = verdict_from_payload(
+        _payload(matched_company=None, matched_acquirer=None),
+        item=_ITEM,
+    )
+    assert verdict.confirmed is False
+
+
+def test_verdict_from_payload_accepts_suffix_case_variant() -> None:
+    verdict = verdict_from_payload(
+        _payload(
+            matched_company="AETHER PHOTONICS, INC.",
+            matched_acquirer="Helios Defense LLC",
+        ),
+        item=_ITEM,
+    )
+    assert verdict.confirmed is True
+    assert pair_names_match("Aether Photonics", "AETHER PHOTONICS, INC.")
+
+
+def test_verdict_from_payload_citation_is_item_source_url() -> None:
+    verdict = verdict_from_payload(
+        _payload(citation_url="https://fabricated.example/no-such-page"),
+        item=_ITEM,
+    )
+    assert verdict.citation_url == _ITEM.source_url
 
 
 def test_build_llm_extractor_returns_none_without_key(monkeypatch: pytest.MonkeyPatch) -> None:

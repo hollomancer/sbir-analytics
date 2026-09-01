@@ -1,6 +1,6 @@
 # M&A Discovery Integration — Design (1-pager)
 
-**Status:** Draft for review.
+**Status:** Active implementation target (lifecycle in `specs/status.md`). Design remains the C3 contract; search backend and extractor evaluation are the current slice.
 **Date:** 2026-06-26.
 **Relates to:** [`specs/archive/completed-features/merger_acquisition_detection/`](../archive/completed-features/merger_acquisition_detection/design.md) (existing Form D + EFTS detection), [`sbir_etl/capital_events/sources/ma_events.py`](../../sbir_etl/capital_events/sources/ma_events.py) (downstream consumer), and the toolkit now at [`sbir_etl/enrichers/ma_discovery/`](../../sbir_etl/enrichers/ma_discovery/) (relocated from draft PR [#371](https://github.com/hollomancer/sbir-analytics/pull/371); issue [#446](https://github.com/hollomancer/sbir-analytics/issues/446)).
 

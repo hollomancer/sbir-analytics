@@ -1,0 +1,49 @@
+schema_version: 1
+study_id: ma-discovery-recall
+title: Form-D-missing M&A discovery recall (web-search confirmation)
+evidence_status: exploratory
+research_questions:
+  - F2
+  - A4
+estimand: >-
+  Among Form-D-missing rows in a pinned sbir_ma_events.jsonl cut that name an
+  acquirer, count distinct (company, acquirer) pairs that a web-search snippet
+  extractor confirms at medium or high confidence and that C3 would insert or
+  promote, as of the run's as-of date. Non-detection is not proof of no
+  acquisition. The count is not an SBIR exit rate.
+frozen_artifacts:
+  - path: studies/ma-discovery-recall/design.md
+    sha256: 94207d66540b9a20466252051253ec84e9d78e3aea43d80b1297e3e4566ca182
+implementation:
+  - path: sbir_etl/enrichers/ma_discovery/collision.py
+    symbol: apply_c3
+  - path: sbir_etl/enrichers/ma_discovery/confidence.py
+    symbol: assign_confidence
+  - path: sbir_etl/enrichers/ma_discovery/orchestrator.py
+    symbol: process_batch
+  - path: sbir_etl/enrichers/ma_discovery/extractor.py
+    symbol: verdict_from_payload
+  - path: scripts/data/run_ma_discovery_sample.py
+    symbol: main
+identity_policy:
+  strategy: >-
+    Query generation, pair matching, and C3 company keys all use
+    CompanyNameProfile.RECIPIENT_V1 (suffix-stripping). Empty normalization is
+    a mismatch. Form D acquirers are never overwritten.
+  version: recipient-v1
+  negative_evidence_allowed: false
+materialization:
+  allowed: false
+  blockers:
+    - no licensed frozen snippet corpus from a live search of the Form-D-missing population
+    - 20-row stratified human review of medium rows not completed
+    - sample-run kill-gate (recall floor, precision cap, cost cap) not measured
+permitted_claims:
+  - The method, C3 join, confidence table, and fail-closed search default are
+    specified and fixture-tested.
+  - No numerical recall, precision, or exit-rate claim is authorized.
+limitations:
+  - This study is exploratory. Nothing that leaves the repository may be cited.
+  - Keyword confirmation cannot emit medium/high rows because it has no date.
+  - A live search or live LLM call is not a reproducible input.
+  - Inventory F2/A4 remain without a Computable rank on this work.

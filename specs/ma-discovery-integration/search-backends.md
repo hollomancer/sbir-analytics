@@ -38,8 +38,9 @@ is one API key. Brave is implemented as a second client with the same
 `{snippet, link, title?}` shape for callers who want an independent index.
 Serper and Bing are not implemented.
 
-Runtime default remains **mock** until `SBIR_ETL__MA_DISCOVERY__SEARCH_BACKEND`
-selects a real vendor **and** `SBIR_ETL__MA_DISCOVERY__SEARCH_API_KEY` is set.
+Runtime default is **none** (fail-closed). `mock` is explicit opt-in.
+`snippets` replays a frozen cut. A live vendor also needs
+`SBIR_ETL__MA_DISCOVERY__SEARCH_API_KEY`.
 
 This is not a measured recall or precision result. Revisit after the sample run
 in the parent design (step 7) if snippet quality is actually the bottleneck.

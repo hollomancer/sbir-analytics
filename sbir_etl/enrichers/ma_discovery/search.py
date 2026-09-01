@@ -8,7 +8,10 @@ constructed through ``build_search_tool``.
 
 from __future__ import annotations
 
+import json
 import os
+from collections import defaultdict
+from pathlib import Path
 from typing import Any, Protocol
 
 import httpx
@@ -50,6 +53,44 @@ def _map_hits(items: Any, *, snippet_key: str, link_key: str) -> list[dict[str, 
             hit["title"] = str(title)
         mapped.append(hit)
     return mapped
+
+
+class SnippetSearchTool:
+    """Replay a frozen search-result cut. No network.
+
+    Accepts JSONL rows ``{query, snippet, link, title?}`` or a JSON list of
+    the same shape. Lookups are exact on the stored query string.
+    """
+
+    def __init__(self, path: Path) -> None:
+        self.path = path
+        self._hits: dict[str, list[dict[str, Any]]] = defaultdict(list)
+        text = path.read_text(encoding="utf-8")
+        records: list[Any]
+        stripped = text.lstrip()
+        if stripped.startswith("["):
+            loaded = json.loads(text)
+            records = loaded if isinstance(loaded, list) else []
+        else:
+            records = [json.loads(line) for line in text.splitlines() if line.strip()]
+        for record in records:
+            if not isinstance(record, dict):
+                continue
+            query = record.get("query")
+            link = record.get("link")
+            if not isinstance(query, str) or not query or not link:
+                continue
+            hit: dict[str, Any] = {
+                "snippet": str(record.get("snippet") or ""),
+                "link": str(link),
+            }
+            title = record.get("title")
+            if title:
+                hit["title"] = str(title)
+            self._hits[query].append(hit)
+
+    async def search(self, query: str) -> list[dict[str, Any]]:
+        return list(self._hits.get(query, []))
 
 
 class MockSearchTool:
@@ -186,18 +227,17 @@ def build_search_tool(
     api_key: str | None = None,
     config: MADiscoveryConfig | None = None,
     http_client: httpx.AsyncClient | None = None,
+    snippets_path: Path | str | None = None,
 ) -> SearchTool:
     """Return a ``SearchTool`` for ``name`` (or the configured backend).
 
-    ``mock`` is the explicit no-credentials backend. Selecting ``tavily`` or
-    ``brave`` without a key raises ``ConfigurationError`` rather than
-    silently serving fixture hits. Unknown backend names also raise.
+    ``none`` is the fail-closed default and never writes fixture evidence.
+    ``mock`` is explicit opt-in. ``snippets`` replays a frozen cut.
+    Selecting ``tavily`` or ``brave`` without a key raises ``ConfigurationError``.
     """
-    cfg = config
+    cfg = config if config is not None else _load_ma_discovery_config()
     backend_raw = name.strip() if isinstance(name, str) and name.strip() else ""
     if not backend_raw:
-        if cfg is None:
-            cfg = _load_ma_discovery_config()
         backend_raw = cfg.search_backend
     backend = backend_raw.strip().lower()
 
@@ -208,8 +248,30 @@ def build_search_tool(
             config_key="ma_discovery.search_backend",
         )
 
+    if backend == "none":
+        raise ConfigurationError(
+            "M&A search backend 'none' is fail-closed; pass --search-backend mock "
+            "for fixtures, snippets for a frozen cut, or a live backend with a key",
+            config_key="ma_discovery.search_backend",
+        )
+
     if backend == "mock":
         return MockSearchTool()
+
+    if backend == "snippets":
+        raw_path = snippets_path if snippets_path is not None else cfg.snippets_path
+        if not raw_path:
+            raise ConfigurationError(
+                "M&A search backend 'snippets' requires snippets_path",
+                config_key="ma_discovery.snippets_path",
+            )
+        path = Path(raw_path)
+        if not path.is_file():
+            raise ConfigurationError(
+                f"M&A snippets cut does not exist: {path}",
+                config_key="ma_discovery.snippets_path",
+            )
+        return SnippetSearchTool(path)
 
     key = _resolve_api_key(api_key, cfg)
     if not key:
@@ -218,9 +280,9 @@ def build_search_tool(
             config_key="ma_discovery.search_api_key",
         )
 
-    timeout = cfg.timeout_seconds if cfg is not None else DEFAULT_TIMEOUT_SECONDS
-    rate = cfg.rate_limit_per_minute if cfg is not None else DEFAULT_RATE_LIMIT_PER_MINUTE
-    max_results = cfg.max_results if cfg is not None else DEFAULT_MAX_RESULTS
+    timeout = cfg.timeout_seconds
+    rate = cfg.rate_limit_per_minute
+    max_results = cfg.max_results
     kwargs: dict[str, Any] = {
         "api_key": key,
         "timeout": timeout,

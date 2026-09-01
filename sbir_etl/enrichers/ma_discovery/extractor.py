@@ -21,6 +21,7 @@ from typing import Any, Protocol
 
 from sbir_etl.enrichers.ma_discovery.verifier import verify_acquisition
 from sbir_etl.enrichers.openai_client import DEFAULT_MODEL, OpenAIClient
+from sbir_etl.identity import CompanyNameProfile, normalize_company_name
 
 
 EPISTEMIC_TIER = "pipelines"
@@ -148,15 +149,29 @@ def parse_llm_payload(raw: str | None) -> dict[str, Any] | None:
     return parsed if isinstance(parsed, dict) else None
 
 
+def pair_names_match(requested: str | None, returned: str | None) -> bool:
+    """True when both names normalize equal under ``RECIPIENT_V1``.
+
+    Empty normalization on either side is a mismatch. Legal-suffix and case
+    differences are ignored so extractor and query generator share identity.
+    """
+    left = normalize_company_name(requested or "", profile=CompanyNameProfile.RECIPIENT_V1)
+    right = normalize_company_name(returned or "", profile=CompanyNameProfile.RECIPIENT_V1)
+    return bool(left) and bool(right) and left == right
+
+
 def verdict_from_payload(
     payload: dict[str, Any] | None,
     *,
-    citation_fallback: str | None = None,
+    item: ExtractionInput,
     parse_failure_reason: str = "Unparseable LLM response",
 ) -> ExtractionVerdict:
     """Map a parsed JSON object onto ``ExtractionVerdict``.
 
     Missing or malformed payloads are unconfirmed; they are never guessed.
+    ``confirmed=true`` fails closed unless both returned names match ``item``
+    under ``RECIPIENT_V1``. ``item.source_url`` is the citation; the model
+    cannot replace it.
     """
     if payload is None:
         return ExtractionVerdict(confirmed=False, reason=parse_failure_reason)
@@ -168,14 +183,24 @@ def verdict_from_payload(
             reason="LLM JSON missing boolean 'confirmed'",
         )
 
+    matched_company = _as_optional_str(payload.get("matched_company"))
+    matched_acquirer = _as_optional_str(payload.get("matched_acquirer"))
+    reason = _as_optional_str(payload.get("reason")) or "LLM structured verdict"
+    if confirmed and (
+        not pair_names_match(item.company, matched_company)
+        or not pair_names_match(item.acquirer, matched_acquirer)
+    ):
+        confirmed = False
+        reason = "LLM pair does not match requested company/acquirer"
+
     return ExtractionVerdict(
         confirmed=confirmed,
-        reason=_as_optional_str(payload.get("reason")) or "LLM structured verdict",
-        matched_company=_as_optional_str(payload.get("matched_company")),
-        matched_acquirer=_as_optional_str(payload.get("matched_acquirer")),
+        reason=reason,
+        matched_company=matched_company,
+        matched_acquirer=matched_acquirer,
         acquisition_date=_parse_iso_date(payload.get("acquisition_date")),
         value_usd=_parse_value_usd(payload.get("value_usd")),
-        citation_url=_as_optional_str(payload.get("citation_url")) or citation_fallback,
+        citation_url=item.source_url,
     )
 
 
@@ -223,7 +248,7 @@ class LlmExtractor:
 
     def extract(self, item: ExtractionInput) -> ExtractionVerdict:
         raw = self._chat(EXTRACTOR_SYSTEM_PROMPT, build_user_prompt(item))
-        return verdict_from_payload(parse_llm_payload(raw), citation_fallback=item.source_url)
+        return verdict_from_payload(parse_llm_payload(raw), item=item)
 
 
 def build_llm_extractor(

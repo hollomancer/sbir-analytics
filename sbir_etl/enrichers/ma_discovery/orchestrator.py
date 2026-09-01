@@ -1,16 +1,16 @@
 """Run search queries for M&A candidates and verify the snippets.
 
 Reads the candidate query CSV emitted by ``queries``, runs each query
-through a pluggable ``SearchTool``, and feeds snippets into
-``verify_acquisition``. Confirmed hits are written as JSONL.
+through a pluggable ``SearchTool``, and feeds snippets into a
+``SnippetExtractor`` (keyword by default). Confirmed hits are written as
+JSONL. One confirmed hit per ``(company_name, acquirer)`` is kept.
 
 The CLI constructs the search tool via ``build_search_tool``. Runtime
-default is ``mock``. Selecting ``tavily`` or ``brave`` without a key
-fails closed.
+default is ``none`` (fail-closed). ``mock`` is explicit opt-in.
 
 Usage::
 
-    python -m sbir_etl.enrichers.ma_discovery.orchestrator
+    python -m sbir_etl.enrichers.ma_discovery.orchestrator --search-backend mock
 """
 
 from __future__ import annotations
@@ -23,39 +23,79 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import Any
 
+from sbir_etl.enrichers.ma_discovery.confidence import assign_confidence
+from sbir_etl.enrichers.ma_discovery.extractor import (
+    ExtractionInput,
+    KeywordExtractor,
+    SnippetExtractor,
+)
 from sbir_etl.enrichers.ma_discovery.search import SearchTool, build_search_tool
-from sbir_etl.enrichers.ma_discovery.verifier import verify_acquisition
+from sbir_etl.identity import CompanyNameProfile, normalize_company_name
 
 
 DEFAULT_QUERIES_PATH = Path("data/ma_search_queries.csv")
 DEFAULT_OUTPUT_PATH = Path("data/discovered_acquisitions.jsonl")
 
 
+def _pair_key(company: str, acquirer: str) -> tuple[str, str]:
+    profile = CompanyNameProfile.RECIPIENT_V1
+    return (
+        normalize_company_name(company, profile=profile),
+        normalize_company_name(acquirer, profile=profile),
+    )
+
+
 async def process_batch(
-    queries: list[dict[str, str]], search_tool: SearchTool
+    queries: list[dict[str, str]],
+    search_tool: SearchTool,
+    *,
+    extractor: SnippetExtractor | None = None,
 ) -> list[dict[str, Any]]:
     """Run a batch of (company, acquirer, query) rows and return verified events."""
+    verifier = extractor if extractor is not None else KeywordExtractor()
     verified: list[dict[str, Any]] = []
+    seen: set[tuple[str, str]] = set()
     for row in queries:
         company = row["company_name"]
         acquirer = row["acquirer"]
+        key = _pair_key(company, acquirer)
+        if key in seen:
+            continue
         query = row["query"]
         results = await search_tool.search(query)
+        source_urls: list[str] = []
         for res in results:
+            link = res.get("link")
+            if isinstance(link, str) and link:
+                source_urls.append(link)
             snippet = res.get("snippet", "")
-            verification = verify_acquisition(company, acquirer, snippet)
-            if verification["confirmed"]:
-                verified.append(
-                    {
-                        "company_name": company,
-                        "acquirer": acquirer,
-                        "date": verification["date"],
-                        "value": verification["value"],
-                        "source": res.get("link", "Unknown"),
-                        "evidence": snippet,
-                    }
+            source = link if isinstance(link, str) else None
+            verdict = verifier.extract(
+                ExtractionInput(
+                    company=company,
+                    acquirer=acquirer,
+                    snippet=str(snippet),
+                    source_url=source,
                 )
-                break  # one hit per (company, acquirer) is enough
+            )
+            if not verdict.confirmed:
+                continue
+            confidence = assign_confidence(verdict, source_count=len(source_urls))
+            seen.add(key)
+            verified.append(
+                {
+                    "company_name": company,
+                    "acquirer": acquirer,
+                    "date": verdict.acquisition_date,
+                    "event_date": verdict.acquisition_date,
+                    "value": verdict.value_usd,
+                    "source": source or "Unknown",
+                    "evidence": snippet,
+                    "confidence": confidence,
+                    "reason": verdict.reason,
+                }
+            )
+            break
     return verified
 
 
@@ -92,17 +132,38 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument(
         "--search-backend",
         default=None,
-        help="Search backend: mock, tavily, or brave. Default: config or mock.",
+        help="Search backend: none, mock, snippets, tavily, or brave. Default: config (none).",
     )
     parser.add_argument(
         "--search-api-key",
         default=None,
         help="API key for a live backend. Falls back to config/env.",
     )
+    parser.add_argument(
+        "--snippets",
+        type=Path,
+        default=None,
+        help="Frozen search-result JSONL for --search-backend snippets.",
+    )
+    parser.add_argument("--max-candidates", type=int, default=None)
     args = parser.parse_args(argv)
 
     queries = load_query_csv(args.input)
-    search_tool = build_search_tool(args.search_backend, api_key=args.search_api_key)
+    if args.max_candidates is not None:
+        kept: list[dict[str, str]] = []
+        seen_pairs: set[tuple[str, str]] = set()
+        for row in queries:
+            key = _pair_key(row["company_name"], row["acquirer"])
+            if key not in seen_pairs and len(seen_pairs) >= args.max_candidates:
+                continue
+            seen_pairs.add(key)
+            kept.append(row)
+        queries = kept
+    search_tool = build_search_tool(
+        args.search_backend,
+        api_key=args.search_api_key,
+        snippets_path=args.snippets,
+    )
     verified = asyncio.run(_run_batch(queries, search_tool))
     write_verified_jsonl(args.output, verified)
     print(f"Found {len(verified)} verified acquisitions. Wrote {args.output}")

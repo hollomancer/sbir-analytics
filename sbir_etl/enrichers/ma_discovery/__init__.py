@@ -6,6 +6,8 @@ exists (keyword adapter plus optional LLM JSON client); the orchestrator
 still defaults to ``verify_acquisition``.
 """
 
+from sbir_etl.enrichers.ma_discovery.collision import CollisionResult, apply_c3
+from sbir_etl.enrichers.ma_discovery.confidence import assign_confidence
 from sbir_etl.enrichers.ma_discovery.extractor import (
     ExtractionInput,
     ExtractionVerdict,
@@ -13,6 +15,7 @@ from sbir_etl.enrichers.ma_discovery.extractor import (
     LlmExtractor,
     SnippetExtractor,
     build_llm_extractor,
+    pair_names_match,
 )
 from sbir_etl.enrichers.ma_discovery.orchestrator import process_batch
 from sbir_etl.enrichers.ma_discovery.press import enrich_ma_events, merge_press_signals
@@ -21,6 +24,7 @@ from sbir_etl.enrichers.ma_discovery.search import (
     BraveSearchTool,
     MockSearchTool,
     SearchTool,
+    SnippetSearchTool,
     TavilySearchTool,
     build_search_tool,
 )
@@ -32,6 +36,7 @@ EPISTEMIC_TIER = "pipelines"
 __all__ = [
     "EPISTEMIC_TIER",
     "BraveSearchTool",
+    "CollisionResult",
     "ExtractionInput",
     "ExtractionVerdict",
     "KeywordExtractor",
@@ -39,10 +44,14 @@ __all__ = [
     "MockSearchTool",
     "SearchTool",
     "SnippetExtractor",
+    "SnippetSearchTool",
     "TavilySearchTool",
     "VerificationResult",
+    "apply_c3",
+    "assign_confidence",
     "build_llm_extractor",
     "build_search_tool",
+    "pair_names_match",
     "enrich_ma_events",
     "generate_queries",
     "merge_press_signals",
