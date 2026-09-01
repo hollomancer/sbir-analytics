@@ -140,3 +140,55 @@ def test_load_form_d_control_universe_dedupes_duplicate_ciks(tmp_path) -> None:
     assert len(df) == 1
     assert df.iloc[0]["form_d_cik"] == "999"
     assert df.iloc[0]["first_form_d_year"] == 2020
+
+
+def _staging_row(cik: str = "555") -> dict:
+    """One record in the shape build_form_d_control_universe.py emits."""
+    return {
+        "firm_key": f"form_d_cik:{cik}",
+        "schema_version": 1,
+        "cik": cik,
+        "issuer_name": "Staging Issuer LLC",
+        "filings": [{"filing_date": "2015-04-02"}],
+    }
+
+
+def test_control_universe_refuses_provisional_filename(tmp_path) -> None:
+    path = tmp_path / "form_d_control_identity_universe.provisional.jsonl"
+    _write_jsonl(path, [_staging_row()])
+    with pytest.raises(ValueError, match="staging/provisional identity artifact"):
+        load_form_d_control_universe(path, sbir_ciks=set())
+
+
+def test_control_universe_refuses_identity_staging_filename(tmp_path) -> None:
+    path = tmp_path / "form_d_issuer_universe.identity-staging.jsonl"
+    _write_jsonl(path, [_staging_row()])
+    with pytest.raises(ValueError, match="staging/provisional identity artifact"):
+        load_form_d_control_universe(path, sbir_ciks=set())
+
+
+def test_control_universe_refuses_staging_shaped_records(tmp_path) -> None:
+    """A renamed staging file is still staging; the record shape gives it away."""
+    path = tmp_path / "form_d_control_universe.jsonl"
+    _write_jsonl(path, [_staging_row("555"), _staging_row("556")])
+    with pytest.raises(ValueError, match="staging issuer records"):
+        load_form_d_control_universe(path, sbir_ciks=set())
+
+
+def test_control_universe_refuses_not_ready_manifest(tmp_path) -> None:
+    path = tmp_path / "form_d_control_universe.jsonl"
+    _write_jsonl(
+        path,
+        [
+            {
+                "form_d_cik": "777",
+                "company_name": "Ready Issuer",
+                "offerings": [{"filing_date": "2015-04-02", "total_amount_sold": 1}],
+            }
+        ],
+    )
+    (tmp_path / "form_d_control_universe.manifest.json").write_text(
+        json.dumps({"ready_for_matching": False, "complete_sbir_exclusion": False})
+    )
+    with pytest.raises(ValueError, match="ready_for_matching, complete_sbir_exclusion"):
+        load_form_d_control_universe(path, sbir_ciks=set())

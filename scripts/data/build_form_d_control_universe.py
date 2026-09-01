@@ -206,7 +206,7 @@ def _fetch(url: str, *, user_agent: str) -> bytes:
     try:
         with urllib.request.urlopen(request, timeout=90) as response:  # noqa: S310
             return response.read()
-    except Exception as exc:  # pragma: no cover - exercised through an injected fetcher
+    except Exception as exc:  # pragma: no cover - live network path, not exercised in tests
         raise BuildError(f"Failed to fetch {url}: {exc}") from exc
 
 

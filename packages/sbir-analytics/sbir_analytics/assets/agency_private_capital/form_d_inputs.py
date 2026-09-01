@@ -68,6 +68,55 @@ def load_form_d_matches(
     return _frame(rows)
 
 
+_STAGING_SUFFIXES = (".identity-staging.jsonl", ".provisional.jsonl")
+_STAGING_RECORD_KEYS = ("firm_key", "schema_version")
+_MANIFEST_READY_FLAGS = (
+    "ready_for_matching",
+    "complete_sbir_exclusion",
+    "covariates_ready",
+)
+
+
+def _refuse_staging_input(path: Path, records: list[dict[str, Any]]) -> None:
+    """Fail closed on the provisional identity universe.
+
+    The staging producer emits `cik` and `issuer_name`, which is exactly the
+    shape this loader accepts, so pointing the matched asset at it would load
+    cleanly -- while skipping the producer's own fail-closed flags and joining
+    on FORM_D_JOIN_V1 rather than the ORGANIZATION_KEY_V1 the exclusion used.
+    Refuse until the staging set is promoted, rather than waiting for matching
+    to be implemented.
+    """
+
+    name = path.name
+    if name.endswith(_STAGING_SUFFIXES):
+        raise ValueError(
+            f"{path} is a staging/provisional identity artifact and is not a "
+            "control universe. It is keyed on ORGANIZATION_KEY_V1, not the "
+            "FORM_D_JOIN_V1 key this loader joins on, and its SBIR exclusion "
+            "is incomplete."
+        )
+
+    manifest = path.with_name(path.name.split(".", 1)[0] + ".manifest.json")
+    if manifest.exists():
+        try:
+            flags = json.loads(manifest.read_text())
+        except (OSError, json.JSONDecodeError):
+            flags = {}
+        not_ready = [f for f in _MANIFEST_READY_FLAGS if flags.get(f) is False]
+        if not_ready:
+            raise ValueError(
+                f"{manifest} reports {', '.join(not_ready)} = false; "
+                f"{path} is not ready for matching."
+            )
+
+    if records and all(any(key in rec for key in _STAGING_RECORD_KEYS) for rec in records[:10]):
+        raise ValueError(
+            f"{path} carries staging issuer records ("
+            f"{'/'.join(_STAGING_RECORD_KEYS)}) and is not a control universe."
+        )
+
+
 def load_form_d_control_universe(
     path: Path,
     *,
@@ -79,10 +128,16 @@ def load_form_d_control_universe(
 
     The control universe is expected to be broader than SBIR matches. Any CIK
     already present in the SBIR matched set is removed before matching.
+
+    Staging and provisional identity artifacts are refused outright; see
+    ``_refuse_staging_input``.
     """
 
+    records = list(read_jsonl(path))
+    _refuse_staging_input(path, records)
+
     rows: list[dict[str, Any]] = []
-    for row in _iter_company_form_d_rows(read_jsonl(path), matched_to_sbir=False):
+    for row in _iter_company_form_d_rows(records, matched_to_sbir=False):
         cik = str(row.get("form_d_cik") or "").lstrip("0")
         if not cik or cik in sbir_ciks:
             continue
