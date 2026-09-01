@@ -1095,12 +1095,21 @@
         <div class="plate">
           <h3>Emoji policy <span class="flag conventional">CONVENTIONAL</span></h3>
           <p class="note">
-            Unwritten but perfectly observed: all 168 emoji occurrences across 17 markdown files sit
-            in archive directories or pre-2026 docs. Live steering, spec, and research docs have
-            zero. The only sanctioned emoji are emitted by code as a three-value quality scale —
-            ✅ at ≥0.95, ⚠️ at ≥0.85, ❌ below. They survive in archives because
-            <code>.markdownlint.yaml</code> excludes those paths from linting, not because the
-            convention lapsed.
+            Unwritten and unevenly observed. 169 emoji occurrences sit in 17 markdown files.
+            Archive directories hold most of them, but 9 live files still carry 68 —
+            <code>docs/architecture/duckdb-cet-analysis.md</code> alone has 42, and
+            <code>specs/company-categorization/tasks.md</code>,
+            <code>specs/phase3-match-benchmark/</code>, and
+            <code>docs/research/dod-form-d-leverage.md</code> account for the rest. So the
+            convention is real in new prose and has never been enforced retroactively.
+          </p>
+          <p class="note">
+            Two corrections worth keeping visible, because this page argues that unverified
+            transcription is the failure mode. Nothing enforces this: <code>.markdownlint.yaml</code>
+            has no emoji rule, so its archive exclusions are not why archives keep theirs. And the
+            three-value quality scale — ✅ at ≥0.95, ⚠️ at ≥0.85, ❌ below — is not the only emoji
+            code emits: 18 live Python files print emoji, including ℹ️ in
+            <code>scripts/performance/detect_performance_regression.py</code> and 📊 and 🔍 elsewhere.
           </p>
         </div>
       </div>
