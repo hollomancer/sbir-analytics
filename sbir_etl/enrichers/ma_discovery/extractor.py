@@ -21,14 +21,16 @@ from pathlib import Path
 from typing import Any, Protocol
 
 from sbir_etl.enrichers.ma_discovery.verifier import verify_acquisition
-from sbir_etl.enrichers.openai_client import DEFAULT_MODEL, OpenAIClient
+from sbir_etl.enrichers.openai_client import OpenAIClient
 from sbir_etl.identity import CompanyNameProfile, normalize_company_name
 
 
 EPISTEMIC_TIER = "pipelines"
 
 UNKNOWN_DATE = "Unknown"
-OPENAI_API_KEY_ENV = "OPENAI_API_KEY"
+XAI_API_KEY_ENV = "XAI_API_KEY"
+XAI_CHAT_URL = "https://api.x.ai/v1/chat/completions"
+DEFAULT_XAI_MODEL = "grok-4.6"
 
 EXTRACTOR_SYSTEM_PROMPT = """\
 You extract whether a text snippet confirms that one named company was acquired \
@@ -290,11 +292,11 @@ class RecordingLlmExtractor:
 
 
 class LlmExtractor:
-    """JSON-schema extractor over an injected chat callable or ``OpenAIClient``.
+    """JSON-schema extractor over an injected chat callable or xAI chat.
 
-    Callers must inject the client. Use ``build_llm_extractor`` when an API
-    key is present. Tests inject a mock that returns JSON and never hit the
-    network.
+    Callers must inject the client. Use ``build_llm_extractor`` when
+    ``XAI_API_KEY`` is present. Tests inject a mock that returns JSON and
+    never hit the network.
     """
 
     name = "llm"
@@ -303,7 +305,7 @@ class LlmExtractor:
         self,
         client: ChatClient | ChatFn,
         *,
-        model: str = DEFAULT_MODEL,
+        model: str = DEFAULT_XAI_MODEL,
         temperature: float = 0.0,
     ) -> None:
         self.model = model
@@ -318,17 +320,22 @@ class LlmExtractor:
 def build_llm_extractor(
     *,
     api_key: str | None = None,
-    model: str = DEFAULT_MODEL,
+    model: str = DEFAULT_XAI_MODEL,
 ) -> LlmExtractor | None:
-    """Return an ``LlmExtractor`` over ``OpenAIClient`` when a key exists.
+    """Return an ``LlmExtractor`` over xAI chat when a key exists.
 
-    Looks at ``api_key`` then ``OPENAI_API_KEY``. Returns ``None`` otherwise.
-    Does not change the orchestrator default.
+    Looks at ``api_key`` then ``XAI_API_KEY``. Returns ``None`` otherwise.
+    Does not change the orchestrator default (keyword).
     """
-    key = api_key if api_key is not None else os.environ.get(OPENAI_API_KEY_ENV)
+    key = api_key if api_key is not None else os.environ.get(XAI_API_KEY_ENV)
     if not key:
         return None
-    return LlmExtractor(OpenAIClient(api_key=key), model=model)
+    client = OpenAIClient(
+        api_key=key,
+        model=model,
+        chat_url=XAI_CHAT_URL,
+    )
+    return LlmExtractor(client, model=model)
 
 
 def _bind_chat(

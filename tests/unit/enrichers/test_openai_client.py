@@ -4,7 +4,7 @@ from unittest.mock import Mock
 
 import pytest
 
-from sbir_etl.enrichers.openai_client import OpenAIClient, WebSearchResult
+from sbir_etl.enrichers.openai_client import OPENAI_CHAT_URL, OpenAIClient, WebSearchResult
 
 pytestmark = pytest.mark.fast
 
@@ -26,6 +26,26 @@ class TestOpenAIClient:
         result = client.chat("system", "user")
 
         assert result == "Hello world"
+        assert mock_http.request.call_args.args[1] == OPENAI_CHAT_URL
+
+    def test_chat_uses_override_chat_url(self):
+        mock_http = Mock()
+        mock_resp = Mock()
+        mock_resp.status_code = 200
+        mock_resp.json.return_value = {
+            "choices": [{"message": {"content": "ok"}}],
+            "usage": {},
+        }
+        mock_resp.raise_for_status = Mock()
+        mock_http.request.return_value = mock_resp
+
+        client = OpenAIClient(
+            api_key="test-key",
+            chat_url="https://api.x.ai/v1/chat/completions",
+        )
+        client._client = mock_http
+        assert client.chat("system", "user") == "ok"
+        assert mock_http.request.call_args.args[1] == "https://api.x.ai/v1/chat/completions"
 
     def test_chat_failure_returns_none(self):
         import httpx

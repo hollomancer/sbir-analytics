@@ -19,7 +19,10 @@ unchanged.
 
 Models *considered*, not bake-off winners:
 
-- Existing repo default: `OpenAIClient` / `gpt-4.1-mini` (`sbir_etl.enrichers.openai_client`).
+- Discovery confirmer (this spec): xAI `grok-4.6` via `OpenAIClient` pointed at
+  `https://api.x.ai/v1/chat/completions` (`XAI_API_KEY`). Live calls are
+  capture-only; rerun uses frozen response JSONL.
+- Other repo LLM callers still use OpenAI `gpt-4.1-mini` unless they opt in.
 - Design hint (`design.md`): cheap model for obvious snippets, stronger model
   for ambiguous ones (Claude Haiku / Sonnet in the draft). That split is
   unmeasured. This PR does not add an Anthropic client and does not rank
@@ -28,7 +31,7 @@ Models *considered*, not bake-off winners:
 The committed eval is **keyword vs the JSON prompt + parse path**. LLM unit
 tests inject a mock that returns JSON. The notebook default path uses the same
 fixtures plus a gold-label replay (not a model). A live OpenAI cell exists
-behind `MA_DISCOVERY_LIVE_LLM=1` and `OPENAI_API_KEY`; it is off in CI.
+behind `MA_DISCOVERY_LIVE_LLM=1` and `XAI_API_KEY`; it is off in CI.
 
 ## What the frozen fixtures show (non-citable)
 

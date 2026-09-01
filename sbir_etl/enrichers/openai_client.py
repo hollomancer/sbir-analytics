@@ -65,10 +65,12 @@ class OpenAIClient:
         max_concurrent: int = 4,
         timeout: int = 120,
         model: str = DEFAULT_MODEL,
+        chat_url: str = OPENAI_CHAT_URL,
     ) -> None:
         self._api_key = api_key
         self._model = model
         self._timeout = timeout
+        self._chat_url = chat_url
         self._semaphore = threading.Semaphore(max_concurrent)
         self._client = httpx.Client(timeout=timeout)
 
@@ -158,7 +160,7 @@ class OpenAIClient:
                 {"role": "user", "content": user},
             ],
         }
-        resp = self._request("POST", OPENAI_CHAT_URL, payload)
+        resp = self._request("POST", self._chat_url, payload)
         if resp is None:
             return None
 

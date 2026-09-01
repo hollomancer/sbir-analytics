@@ -18,6 +18,11 @@ from typing import Any
 
 from sbir_etl.config.schemas.domain import MADiscoveryConfig
 from sbir_etl.enrichers.ma_discovery.collision import apply_c3
+from sbir_etl.enrichers.ma_discovery.extractor import (
+    RecordingLlmExtractor,
+    SnippetExtractor,
+    build_llm_extractor,
+)
 from sbir_etl.enrichers.ma_discovery.orchestrator import process_batch
 from sbir_etl.enrichers.ma_discovery.queries import (
     load_ma_events,
@@ -125,6 +130,7 @@ async def _search(
     api_key: str | None,
     snippets: Path | None,
     sink: list[dict[str, Any]],
+    extractor: SnippetExtractor | None = None,
 ) -> list[dict[str, Any]]:
     config = MADiscoveryConfig(
         search_backend=backend or "none",
@@ -141,7 +147,7 @@ async def _search(
     )
     tool = RecordingSearchTool(inner, sink)
     try:
-        return await process_batch(queries, tool)
+        return await process_batch(queries, tool, extractor=extractor)
     finally:
         await tool.aclose()
 
@@ -160,6 +166,13 @@ def main() -> int:
         default=1,
         help="Query templates per pair. Live capture uses 1 to bound API spend.",
     )
+    parser.add_argument(
+        "--confirm",
+        choices=("keyword", "llm"),
+        default="keyword",
+        help="Snippet confirmer. llm uses xAI grok-4.6 and freezes raw responses.",
+    )
+    parser.add_argument("--llm-api-key", default=None, help="Override XAI_API_KEY.")
     args = parser.parse_args()
 
     events = load_ma_events(args.events)
@@ -174,6 +187,13 @@ def main() -> int:
         f"Searching {len(bounded)} queries across {pair_n} pairs (backend={args.search_backend!r})"
     )
     recorded: list[dict[str, Any]] = []
+    llm_records: list[dict[str, Any]] = []
+    extractor: SnippetExtractor | None = None
+    if args.confirm == "llm":
+        live = build_llm_extractor(api_key=args.llm_api_key)
+        if live is None:
+            raise SystemExit("XAI_API_KEY is required for --confirm llm")
+        extractor = RecordingLlmExtractor(live, llm_records)
 
     discovered = asyncio.run(
         _search(
@@ -182,6 +202,7 @@ def main() -> int:
             api_key=args.search_api_key,
             snippets=args.snippets,
             sink=recorded,
+            extractor=extractor,
         )
     )
     collision = apply_c3(events, discovered)
@@ -195,9 +216,16 @@ def main() -> int:
     with discovered_path.open("w", encoding="utf-8") as handle:
         for row in discovered:
             handle.write(json.dumps(row, sort_keys=True) + "\n")
-    with snippets_path.open("w", encoding="utf-8") as handle:
-        for row in recorded:
-            handle.write(json.dumps(row, sort_keys=True) + "\n")
+    replay = args.snippets is not None
+    if not replay:
+        with snippets_path.open("w", encoding="utf-8") as handle:
+            for row in recorded:
+                handle.write(json.dumps(row, sort_keys=True) + "\n")
+    llm_path = args.output_dir / "llm_responses.jsonl"
+    if llm_records:
+        with llm_path.open("w", encoding="utf-8") as handle:
+            for row in llm_records:
+                handle.write(json.dumps(row, sort_keys=True) + "\n")
     with queue_path.open("w", encoding="utf-8") as handle:
         for row in queue:
             handle.write(json.dumps(row, sort_keys=True) + "\n")
@@ -217,7 +245,11 @@ def main() -> int:
         "candidate_pairs": pair_n,
         "queries_per_pair": args.queries_per_pair,
         "recorded_snippet_rows": len(recorded),
-        "snippets_sha256": _sha256(snippets_path),
+        "snippets_sha256": _sha256(args.snippets or snippets_path),
+        "confirm": args.confirm,
+        "llm_model": llm_records[0]["model"] if llm_records else None,
+        "llm_response_n": len(llm_records),
+        "llm_responses_sha256": _sha256(llm_path) if llm_records else None,
         "discovered_n": len(discovered),
         "discovered_medium_high_n": len(medium_high),
         "inserted_n": len(collision.inserted),

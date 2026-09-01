@@ -307,14 +307,15 @@ def test_frozen_llm_extractor_missing_row_is_unconfirmed(tmp_path) -> None:
 
 
 def test_build_llm_extractor_returns_none_without_key(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("XAI_API_KEY", raising=False)
     monkeypatch.delenv("OPENAI_API_KEY", raising=False)
     assert build_llm_extractor() is None
 
 
-def test_build_llm_extractor_uses_openai_client_when_key_present(
+def test_build_llm_extractor_uses_xai_when_key_present(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setenv("OPENAI_API_KEY", "sk-test-not-used")
+    monkeypatch.setenv("XAI_API_KEY", "xai-test-not-used")
     extractor = build_llm_extractor()
     assert isinstance(extractor, LlmExtractor)
-    assert extractor.model == "gpt-4.1-mini"
+    assert extractor.model == "grok-4.6"
