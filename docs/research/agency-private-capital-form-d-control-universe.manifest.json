@@ -1,12 +1,14 @@
 {
   "artifact_role": "tracked_research_manifest",
+  "artifact_role_note": "artifact_role is added by this tracked docs copy and is not emitted by build(). It is not part of the producer's output schema.",
   "caveats": [
     "Exact normalized-name exclusion has unknown recall.",
     "Aliases, renames, spelling variation, acquisitions, and unmatched CIKs can remain.",
     "A retained issuer means only not exact-name-matched to the observed SBIR history.",
     "SEC Form D supplies SIC and industry group, not NAICS."
   ],
-  "code_commit": "053ce78a3a19f0004ee3eba7857104b9ab4580f8",
+  "code_commit": "ceb7e5b35853e119774e5a95ee4bfee906b0f65b",
+  "code_commit_note": "Reachable commit whose producer tree emitted the recorded invariants and output hashes. The previous pin 053ce78a3a19f0004ee3eba7857104b9ab4580f8 was a pre-rebase object that is not an ancestor of any branch, so a fresh clone could not `git show` it.",
   "complete": true,
   "complete_sbir_exclusion": false,
   "covariates_ready": false,
