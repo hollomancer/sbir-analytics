@@ -14,6 +14,7 @@ import pytest
 from sbir_etl.enrichers.ma_discovery.extractor import (
     EXTRACTOR_SYSTEM_PROMPT,
     ExtractionInput,
+    FrozenLlmExtractor,
     KeywordExtractor,
     LlmExtractor,
     build_llm_extractor,
@@ -272,6 +273,37 @@ def test_verdict_from_payload_citation_is_item_source_url() -> None:
         item=_ITEM,
     )
     assert verdict.citation_url == _ITEM.source_url
+
+
+def test_frozen_llm_extractor_replays_and_keeps_source_url(tmp_path) -> None:
+    path = tmp_path / "llm.jsonl"
+    path.write_text(
+        json.dumps(
+            {
+                "company": _ITEM.company,
+                "acquirer": _ITEM.acquirer,
+                "source_url": _ITEM.source_url,
+                "raw_response": json.dumps(
+                    _payload(
+                        acquisition_date="2024-03-12",
+                        citation_url="https://fabricated.example/x",
+                    )
+                ),
+            }
+        )
+        + "\n"
+    )
+    verdict = FrozenLlmExtractor(path).extract(_ITEM)
+    assert verdict.confirmed is True
+    assert verdict.acquisition_date == "2024-03-12"
+    assert verdict.citation_url == _ITEM.source_url
+
+
+def test_frozen_llm_extractor_missing_row_is_unconfirmed(tmp_path) -> None:
+    path = tmp_path / "llm.jsonl"
+    path.write_text("")
+    verdict = FrozenLlmExtractor(path).extract(_ITEM)
+    assert verdict.confirmed is False
 
 
 def test_build_llm_extractor_returns_none_without_key(monkeypatch: pytest.MonkeyPatch) -> None:

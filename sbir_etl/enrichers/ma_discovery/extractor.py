@@ -17,6 +17,7 @@ import re
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import date
+from pathlib import Path
 from typing import Any, Protocol
 
 from sbir_etl.enrichers.ma_discovery.verifier import verify_acquisition
@@ -223,6 +224,69 @@ class KeywordExtractor:
             value_usd=result["value"],
             citation_url=item.source_url,
         )
+
+
+def _response_key(item: ExtractionInput) -> tuple[str, str, str]:
+    return (item.company, item.acquirer, item.source_url or "")
+
+
+class FrozenLlmExtractor:
+    """Replay frozen chat responses. No network.
+
+    JSONL rows: ``company``, ``acquirer``, ``source_url``, ``raw_response``.
+    Missing rows are unconfirmed.
+    """
+
+    name = "frozen_llm"
+
+    def __init__(self, path: Path) -> None:
+        self.path = path
+        self._raw: dict[tuple[str, str, str], str] = {}
+        for line in path.read_text(encoding="utf-8").splitlines():
+            if not line.strip():
+                continue
+            record = json.loads(line)
+            key = (
+                str(record.get("company") or ""),
+                str(record.get("acquirer") or ""),
+                str(record.get("source_url") or ""),
+            )
+            raw = record.get("raw_response")
+            if isinstance(raw, str) and raw:
+                self._raw[key] = raw
+
+    def extract(self, item: ExtractionInput) -> ExtractionVerdict:
+        raw = self._raw.get(_response_key(item))
+        if raw is None:
+            return ExtractionVerdict(
+                confirmed=False,
+                reason="No frozen LLM response for this snippet",
+            )
+        return verdict_from_payload(parse_llm_payload(raw), item=item)
+
+
+class RecordingLlmExtractor:
+    """Call an inner extractor's chat path is not used; wrap ``LlmExtractor``."""
+
+    name = "recording_llm"
+
+    def __init__(self, inner: LlmExtractor, sink: list[dict[str, Any]]) -> None:
+        self.inner = inner
+        self._sink = sink
+
+    def extract(self, item: ExtractionInput) -> ExtractionVerdict:
+        raw = self.inner._chat(EXTRACTOR_SYSTEM_PROMPT, build_user_prompt(item))
+        self._sink.append(
+            {
+                "company": item.company,
+                "acquirer": item.acquirer,
+                "source_url": item.source_url,
+                "snippet": item.snippet,
+                "model": self.inner.model,
+                "raw_response": raw,
+            }
+        )
+        return verdict_from_payload(parse_llm_payload(raw), item=item)
 
 
 class LlmExtractor:

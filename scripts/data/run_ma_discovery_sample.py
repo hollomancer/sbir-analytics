@@ -16,13 +16,14 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
+from sbir_etl.config.schemas.domain import MADiscoveryConfig
 from sbir_etl.enrichers.ma_discovery.collision import apply_c3
 from sbir_etl.enrichers.ma_discovery.orchestrator import process_batch
 from sbir_etl.enrichers.ma_discovery.queries import (
     load_ma_events,
     query_rows_from_events,
 )
-from sbir_etl.enrichers.ma_discovery.search import build_search_tool
+from sbir_etl.enrichers.ma_discovery.search import SearchTool, build_search_tool
 
 
 EPISTEMIC_TIER = "exploratory"
@@ -65,20 +66,84 @@ def build_review_queue(
     return queue
 
 
+class RecordingSearchTool:
+    """Wrap a SearchTool and append every query/hit to a sink. Exploratory."""
+
+    def __init__(self, inner: SearchTool, sink: list[dict[str, Any]]) -> None:
+        self._inner = inner
+        self._sink = sink
+
+    async def search(self, query: str) -> list[dict[str, Any]]:
+        hits = await self._inner.search(query)
+        if not hits:
+            self._sink.append({"query": query, "snippet": "", "link": None, "hit_count": 0})
+            return hits
+        for hit in hits:
+            record = {
+                "query": query,
+                "snippet": hit.get("snippet") or "",
+                "link": hit.get("link"),
+                "hit_count": len(hits),
+            }
+            title = hit.get("title")
+            if title:
+                record["title"] = title
+            self._sink.append(record)
+        return hits
+
+    async def aclose(self) -> None:
+        aclose = getattr(self._inner, "aclose", None)
+        if aclose is not None:
+            await aclose()
+
+
+def bound_queries(
+    queries: list[dict[str, str]],
+    *,
+    max_candidates: int,
+    queries_per_pair: int,
+) -> list[dict[str, str]]:
+    """Keep the first ``queries_per_pair`` templates for up to ``max_candidates`` pairs."""
+    kept: list[dict[str, str]] = []
+    per_pair: dict[tuple[str, str], int] = {}
+    for row in queries:
+        key = (row["company_name"], row["acquirer"])
+        if key not in per_pair and len(per_pair) >= max_candidates:
+            continue
+        used = per_pair.get(key, 0)
+        if used >= queries_per_pair:
+            continue
+        per_pair[key] = used + 1
+        kept.append(row)
+    return kept
+
+
 async def _search(
     queries: list[dict[str, str]],
     *,
     backend: str | None,
     api_key: str | None,
     snippets: Path | None,
+    sink: list[dict[str, Any]],
 ) -> list[dict[str, Any]]:
-    tool = build_search_tool(backend, api_key=api_key, snippets_path=snippets)
+    config = MADiscoveryConfig(
+        search_backend=backend or "none",
+        search_api_key=api_key,
+        rate_limit_per_minute=20,
+        max_results=5,
+        snippets_path=str(snippets) if snippets else None,
+    )
+    inner = build_search_tool(
+        backend,
+        api_key=api_key,
+        config=config,
+        snippets_path=snippets,
+    )
+    tool = RecordingSearchTool(inner, sink)
     try:
         return await process_batch(queries, tool)
     finally:
-        aclose = getattr(tool, "aclose", None)
-        if aclose is not None:
-            await aclose()
+        await tool.aclose()
 
 
 def main() -> int:
@@ -89,18 +154,26 @@ def main() -> int:
     parser.add_argument("--search-api-key", default=None)
     parser.add_argument("--snippets", type=Path, default=None)
     parser.add_argument("--max-candidates", type=int, default=200)
+    parser.add_argument(
+        "--queries-per-pair",
+        type=int,
+        default=1,
+        help="Query templates per pair. Live capture uses 1 to bound API spend.",
+    )
     args = parser.parse_args()
 
     events = load_ma_events(args.events)
     queries = query_rows_from_events(events)
-    seen: set[tuple[str, str]] = set()
-    bounded: list[dict[str, str]] = []
-    for row in queries:
-        key = (row["company_name"], row["acquirer"])
-        if key not in seen and len(seen) >= args.max_candidates:
-            continue
-        seen.add(key)
-        bounded.append(row)
+    bounded = bound_queries(
+        queries,
+        max_candidates=args.max_candidates,
+        queries_per_pair=args.queries_per_pair,
+    )
+    pair_n = len({(row["company_name"], row["acquirer"]) for row in bounded})
+    print(
+        f"Searching {len(bounded)} queries across {pair_n} pairs (backend={args.search_backend!r})"
+    )
+    recorded: list[dict[str, Any]] = []
 
     discovered = asyncio.run(
         _search(
@@ -108,6 +181,7 @@ def main() -> int:
             backend=args.search_backend,
             api_key=args.search_api_key,
             snippets=args.snippets,
+            sink=recorded,
         )
     )
     collision = apply_c3(events, discovered)
@@ -115,10 +189,14 @@ def main() -> int:
 
     args.output_dir.mkdir(parents=True, exist_ok=True)
     discovered_path = args.output_dir / "discovered_acquisitions.jsonl"
+    snippets_path = args.output_dir / "search_snippets.jsonl"
     queue_path = args.output_dir / "review_queue.jsonl"
     summary_path = args.output_dir / "sample_run_summary.json"
     with discovered_path.open("w", encoding="utf-8") as handle:
         for row in discovered:
+            handle.write(json.dumps(row, sort_keys=True) + "\n")
+    with snippets_path.open("w", encoding="utf-8") as handle:
+        for row in recorded:
             handle.write(json.dumps(row, sort_keys=True) + "\n")
     with queue_path.open("w", encoding="utf-8") as handle:
         for row in queue:
@@ -136,14 +214,18 @@ def main() -> int:
         "events_sha256": _sha256(args.events),
         "events_n": len(events),
         "query_rows": len(bounded),
-        "candidate_pairs": len(seen),
+        "candidate_pairs": pair_n,
+        "queries_per_pair": args.queries_per_pair,
+        "recorded_snippet_rows": len(recorded),
+        "snippets_sha256": _sha256(snippets_path),
         "discovered_n": len(discovered),
         "discovered_medium_high_n": len(medium_high),
         "inserted_n": len(collision.inserted),
         "promoted_n": len(collision.promoted),
         "review_queue_n": len(queue),
         "search_backend": args.search_backend,
-        "snippets_path": str(args.snippets) if args.snippets else None,
+        "snippets_path": str(snippets_path),
+        "snippets_input": str(args.snippets) if args.snippets else None,
         "kill_gate": {
             "recall_floor_met": len(medium_high) >= 10,
             "precision_review_complete": False,
