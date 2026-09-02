@@ -125,6 +125,53 @@ pinned real-data run.
   non-SBIR Form D issuers transitioned at [B]%. Caveats below." Hand to
   user for review.
 
+## Form D Input Fidelity
+
+`form_d_inputs.py` is this spec's own loader — it lives in
+`packages/sbir-analytics/sbir_analytics/assets/agency_private_capital/` and only
+this spec's assets consume it. These tasks were reviewed as PR #691 and were
+briefly filed under a separate SEC spec; they belong here, because the code and
+every consumer of it are owned by this spec. The EDGAR event-date work reviewed
+alongside them stays in `specs/edgar-event-date-fidelity/`, which touches
+`sbir_etl/enrichers/sec_edgar/` and shares no files with this spec.
+
+- [x] F.1 Refuse Form D control-universe staging products in the loader.
+  - `load_form_d_control_universe` accepted the identity-staging shape silently:
+    `cik`/`issuer_name` satisfy its fallbacks, nested `filings` is ignored, and a
+    missing `filing_date` turns the year window into a no-op. Staging records are
+    keyed with `ORGANIZATION_KEY_V1` rather than the `FORM_D_JOIN_V1` used here,
+    so the join produced zero matched pairs rather than an error.
+  - This enforces the SHALL in `requirements.md` R9 that tasks 2.3 and 2.6 rely
+    on. Shipped in v0.12.0; PR #582's finding on this is addressed on `main`.
+  - Verify: `tests/unit/agency_private_capital/test_form_d_inputs.py` covers the
+    staging filename, `firm_key`/`schema_version` record, and ungated-manifest
+    cases. Done.
+
+- [ ] F.2 Locate the SEC Form D amendment chain key.
+  - Blocks F.3, and is the reason F.3 cannot be done yet. The `021-…` file number
+    is the chain identifier; it appears nowhere in the codebase, and
+    `FormDFiling` (`sbir_etl/models/sec_edgar.py:195`) carries only an
+    `is_amendment` boolean and a per-filing `accession_number`, neither of which
+    groups filings into chains.
+  - Per CLAUDE.md's notebook-first rule this is a bounded notebook audit, not an
+    implementation task.
+  - Verify: a notebook showing an original and its amendments grouped by the
+    proposed key against real filings.
+
+- [ ] F.3 Replace the interim amendment lower bound with exact chain collapse.
+  - Blocked on F.2. Amendments restate *cumulative* offering totals rather than
+    adding to them, so summing an original alongside its amendments
+    double-counted `total_form_d_raised` and `offering_count`. The interim fix
+    shipped in v0.12.0 sums originals only, falling back to the largest
+    restatement for amendment-only chains — on a 5/8/10 chain it reports 5 where
+    the correct answer is 10. It is a documented lower bound, not a total.
+  - Replace that behavior, do not layer over it; delete its code comment with it.
+  - Note for Phase 1 sign-off: v0.12.0 changed `total_form_d_raised` and
+    `offering_count` after the Phase 1 artifacts were materialized. Re-check any
+    figure carried forward from before that release.
+  - Verify: an original plus two restating amendments reports the final
+    restatement, and `offering_count` counts one offering.
+
 ## Cross-Phase Tasks
 
 - [ ] X.1 Add `docs/agency-private-capital-comparison/` with methodology, glossary, and
