@@ -54,7 +54,8 @@ remains authoritative.
 
 - `tools/sbir-dib-network-explorer/` — the source of the token system
 - `docs/steering/epistemic-tiers.md` — the tier contracts
-- Two synced skills (`sbir-lit-refresh`, `sbir-spec-status-survey`) call an
-  `apply_figure_style()` helper from a `figure-style` skill that does not exist
-  on disk. A shared figure style is already assumed by the tooling; this page is
-  a candidate specification for it.
+- `sbir-lit-refresh` calls an `apply_figure_style()` helper from a `figure-style`
+  skill that does not exist on disk. `sbir-spec-status-survey` states that
+  `figure-style` is **not** in its loadout and applies the conventions by hand
+  instead. A shared figure style is already assumed by one skill and hand-copied
+  by the other; this page is a candidate specification for it.
