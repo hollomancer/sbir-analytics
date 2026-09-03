@@ -348,8 +348,9 @@ def _optional_date(
 
 
 def _aliases(row: Mapping[str, str]) -> list[str]:
+    values = (str(row.get(column) or "").strip() for column in ISSUER_ALIAS_COLUMNS)
     return sorted(
-        {str(row.get(column) or "").strip() for column in ISSUER_ALIAS_COLUMNS if row.get(column)},
+        {value for value in values if value},
         key=lambda value: (normalize_company_name(value, profile=NORMALIZER), value),
     )
 
@@ -907,7 +908,7 @@ def main(argv: list[str] | None = None) -> int:
     try:
         manifest = build(parse_args(argv))
     except BuildError as exc:
-        print(f"error: {exc}")
+        print(f"error: {exc}", file=sys.stderr)
         return 1
     print(
         json.dumps(

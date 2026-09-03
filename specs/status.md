@@ -36,9 +36,15 @@ bypassing lifecycle review; the status and rationale still require human judgmen
   producer, but task 2.2 remains open: exact-name SBIR exclusion has unknown
   recall (`complete_sbir_exclusion=false`), DERA has no NAICS and the staging
   covariates are not ready (`covariates_ready=false`), and the existing matched
-  asset must not consume it. Phase 2 stays gated on Phase 1 sign-off, a
-  higher-recall authoritative CIK/alias union, a validated SIC-to-NAICS-2
-  strategy, and symmetric FPDS/patent/M&A outcome inputs.
+  asset refuses to consume it (see below). Phase 2 stays gated on Phase 1
+  sign-off, a higher-recall authoritative CIK/alias union, a validated
+  SIC-to-NAICS-2 strategy, and symmetric FPDS/patent/M&A outcome inputs. Also
+  owns Form D input fidelity in its own `form_d_inputs.py` loader (tasks
+  F.1-F.3, from PR #691): the staging-input refusal shipped in v0.12.0 and is
+  now reinforced by the staging producer's own refusal above; exact
+  amendment-chain collapse is blocked on locating the SEC file number. Note
+  that v0.12.0 changed `total_form_d_raised` and `offering_count` after the
+  Phase 1 artifacts were materialized.
 - **`bea-nipa-tax-rates` — Active.** The NIPA provider exists; the remaining
   work is the on-disk cache and removal of hardcoded effective-rate consumers.
 - **`company-categorization` — Maintenance.** About 80% complete. Evaluate the
@@ -61,6 +67,13 @@ bypassing lifecycle review; the status and rationale still require human judgmen
   test are accepted; and weekly-report refactor T2.3 plus the injected,
   typed-return work in T3.2 are complete. Offline, full-context, and shadow
   gates still precede any production integration.
+- **`edgar-event-date-fidelity` — Gated backlog.** From PR #690. EDGAR profiles
+  pair an M&A mention *type* with a "latest" date taken across all types, and two
+  `scripts/data/` consumers already perform that unsafe join. Declared
+  `exploratory` rather than `pipelines`: both named consumers are scripts. Owns
+  only `sbir_etl/enrichers/sec_edgar/`. The Form D amendment work reviewed
+  alongside it (PR #691) is not here — it lives with the code it changes, as
+  `agency-private-capital-comparison` tasks F.1-F.3.
 - **`epistemic-tier-enforcement` — Maintenance.** Enforcement follow-on to the
   2026-08 module-labeling sweep (PRs #550–#552). Shipped: the blocking
   tier-aware import guard (`scripts/ci/check_tier_boundaries.py`, in

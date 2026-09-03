@@ -153,29 +153,54 @@ def _staging_row(cik: str = "555") -> dict:
     }
 
 
-def test_control_universe_refuses_provisional_filename(tmp_path) -> None:
+def test_load_form_d_control_universe_refuses_provisional_filename(tmp_path) -> None:
     path = tmp_path / "form_d_control_identity_universe.provisional.jsonl"
     _write_jsonl(path, [_staging_row()])
-    with pytest.raises(ValueError, match="staging/provisional identity artifact"):
+    with pytest.raises(ValueError, match="staging"):
         load_form_d_control_universe(path, sbir_ciks=set())
 
 
-def test_control_universe_refuses_identity_staging_filename(tmp_path) -> None:
+def test_load_form_d_control_universe_refuses_identity_staging_filename(tmp_path) -> None:
     path = tmp_path / "form_d_issuer_universe.identity-staging.jsonl"
     _write_jsonl(path, [_staging_row()])
-    with pytest.raises(ValueError, match="staging/provisional identity artifact"):
+    with pytest.raises(ValueError, match="staging"):
         load_form_d_control_universe(path, sbir_ciks=set())
 
 
-def test_control_universe_refuses_staging_shaped_records(tmp_path) -> None:
+def test_load_form_d_control_universe_refuses_staging_shaped_records(tmp_path) -> None:
     """A renamed staging file is still staging; the record shape gives it away."""
     path = tmp_path / "form_d_control_universe.jsonl"
     _write_jsonl(path, [_staging_row("555"), _staging_row("556")])
-    with pytest.raises(ValueError, match="staging issuer records"):
+    with pytest.raises(ValueError, match="staging keys"):
         load_form_d_control_universe(path, sbir_ciks=set())
 
 
-def test_control_universe_refuses_not_ready_manifest(tmp_path) -> None:
+def test_load_form_d_control_universe_does_not_false_positive_on_one_shared_key(
+    tmp_path,
+) -> None:
+    """Only `schema_version`, without `firm_key`, must not trip the guard.
+
+    `schema_version` alone is a generic enough field name that a future,
+    unrelated control-universe format could legitimately carry it. Only the
+    combination the real producer emits -- both keys together -- is staging.
+    """
+    path = tmp_path / "form_d_control_universe.jsonl"
+    _write_jsonl(
+        path,
+        [
+            {
+                "form_d_cik": "777",
+                "company_name": "Ready Issuer",
+                "schema_version": 2,
+                "offerings": [{"filing_date": "2015-04-02", "total_amount_sold": 1}],
+            }
+        ],
+    )
+    df = load_form_d_control_universe(path, sbir_ciks=set())
+    assert len(df) == 1
+
+
+def test_load_form_d_control_universe_refuses_ungated_manifest(tmp_path) -> None:
     path = tmp_path / "form_d_control_universe.jsonl"
     _write_jsonl(
         path,
@@ -190,5 +215,83 @@ def test_control_universe_refuses_not_ready_manifest(tmp_path) -> None:
     (tmp_path / "form_d_control_universe.manifest.json").write_text(
         json.dumps({"ready_for_matching": False, "complete_sbir_exclusion": False})
     )
-    with pytest.raises(ValueError, match="ready_for_matching, complete_sbir_exclusion"):
+    with pytest.raises(ValueError, match="ready_for_matching"):
         load_form_d_control_universe(path, sbir_ciks=set())
+
+
+def test_amendments_do_not_inflate_totals(tmp_path) -> None:
+    """A D/A restates cumulative totals; summing the chain would double-count."""
+
+    path = tmp_path / "form_d_details.jsonl"
+    _write_jsonl(
+        path,
+        [
+            {
+                "company_name": "Acme Corp",
+                "form_d_cik": "0000123",
+                "match_confidence": {"tier": "high"},
+                "offerings": [
+                    {
+                        "entity_name": "ACME CORP",
+                        "filing_date": "2020-01-01",
+                        "industry_group": "Technology",
+                        "total_amount_sold": 5_000_000,
+                        "total_offering_amount": 5_000_000,
+                        "is_amendment": False,
+                    },
+                    {
+                        "entity_name": "ACME CORP",
+                        "filing_date": "2020-06-01",
+                        "industry_group": "Technology",
+                        "total_amount_sold": 8_000_000,
+                        "total_offering_amount": 8_000_000,
+                        "is_amendment": True,
+                    },
+                ],
+            }
+        ],
+    )
+
+    frame = load_form_d_matches(path)
+
+    assert len(frame) == 1
+    # Naive summing would report 13,000,000 across the two filings.
+    assert frame.loc[0, "total_form_d_raised"] == 5_000_000
+    assert frame.loc[0, "offering_count"] == 1
+
+
+def test_amendment_only_chain_uses_largest_restatement(tmp_path) -> None:
+    """With no original in range, fall back to the final restatement, not zero."""
+
+    path = tmp_path / "form_d_details.jsonl"
+    _write_jsonl(
+        path,
+        [
+            {
+                "company_name": "Beta Labs",
+                "form_d_cik": "0000456",
+                "match_confidence": {"tier": "high"},
+                "offerings": [
+                    {
+                        "entity_name": "BETA LABS",
+                        "filing_date": "2021-03-01",
+                        "industry_group": "Technology",
+                        "total_amount_sold": 2_000_000,
+                        "is_amendment": True,
+                    },
+                    {
+                        "entity_name": "BETA LABS",
+                        "filing_date": "2021-09-01",
+                        "industry_group": "Technology",
+                        "total_amount_sold": 3_500_000,
+                        "is_amendment": True,
+                    },
+                ],
+            }
+        ],
+    )
+
+    frame = load_form_d_matches(path)
+
+    assert len(frame) == 1
+    assert frame.loc[0, "total_form_d_raised"] == 3_500_000

@@ -26,6 +26,25 @@ from sbir_etl.identity import CompanyNameProfile, normalize_company_name
 DEFAULT_FORM_D_MATCHES_PATH = Path("data/form_d_details.jsonl")
 DEFAULT_FORM_D_CONTROL_UNIVERSE_PATH = Path("data/form_d_control_universe.jsonl")
 
+# Staging products from the Form D control-identity producer are shaped closely
+# enough to the legitimate universe that this loader would ingest them silently:
+# `cik`/`issuer_name` satisfy the fallbacks below, nested `filings` is ignored,
+# and a missing `filing_date` turns the year window into a no-op. They are also
+# keyed with ORGANIZATION_KEY_V1 rather than the FORM_D_JOIN_V1 used here, so a
+# join would silently produce zero matched pairs instead of an error.
+_STAGING_FILENAME_SUFFIXES = (".provisional.jsonl", ".identity-staging.jsonl")
+# Both keys together, not either alone: the producer always emits them as a
+# pair (build_form_d_control_universe.py:546-554, 689-691), but `schema_version`
+# on its own is a generic enough name that an unrelated future control-universe
+# format could legitimately add it without being a staging artifact.
+_STAGING_RECORD_KEYS = ("firm_key", "schema_version")
+_STAGING_RECORD_SAMPLE_SIZE = 10
+_STAGING_MANIFEST_GATES = (
+    "ready_for_matching",
+    "complete_sbir_exclusion",
+    "covariates_ready",
+)
+
 
 def normalize_name(value: object) -> str:
     """Compatibility shim for the versioned Form D join-key policy."""
@@ -68,55 +87,6 @@ def load_form_d_matches(
     return _frame(rows)
 
 
-_STAGING_SUFFIXES = (".identity-staging.jsonl", ".provisional.jsonl")
-_STAGING_RECORD_KEYS = ("firm_key", "schema_version")
-_MANIFEST_READY_FLAGS = (
-    "ready_for_matching",
-    "complete_sbir_exclusion",
-    "covariates_ready",
-)
-
-
-def _refuse_staging_input(path: Path, records: list[dict[str, Any]]) -> None:
-    """Fail closed on the provisional identity universe.
-
-    The staging producer emits `cik` and `issuer_name`, which is exactly the
-    shape this loader accepts, so pointing the matched asset at it would load
-    cleanly -- while skipping the producer's own fail-closed flags and joining
-    on FORM_D_JOIN_V1 rather than the ORGANIZATION_KEY_V1 the exclusion used.
-    Refuse until the staging set is promoted, rather than waiting for matching
-    to be implemented.
-    """
-
-    name = path.name
-    if name.endswith(_STAGING_SUFFIXES):
-        raise ValueError(
-            f"{path} is a staging/provisional identity artifact and is not a "
-            "control universe. It is keyed on ORGANIZATION_KEY_V1, not the "
-            "FORM_D_JOIN_V1 key this loader joins on, and its SBIR exclusion "
-            "is incomplete."
-        )
-
-    manifest = path.with_name(path.name.split(".", 1)[0] + ".manifest.json")
-    if manifest.exists():
-        try:
-            flags = json.loads(manifest.read_text())
-        except (OSError, json.JSONDecodeError):
-            flags = {}
-        not_ready = [f for f in _MANIFEST_READY_FLAGS if flags.get(f) is False]
-        if not_ready:
-            raise ValueError(
-                f"{manifest} reports {', '.join(not_ready)} = false; "
-                f"{path} is not ready for matching."
-            )
-
-    if records and all(any(key in rec for key in _STAGING_RECORD_KEYS) for rec in records[:10]):
-        raise ValueError(
-            f"{path} carries staging issuer records ("
-            f"{'/'.join(_STAGING_RECORD_KEYS)}) and is not a control universe."
-        )
-
-
 def load_form_d_control_universe(
     path: Path,
     *,
@@ -130,11 +100,11 @@ def load_form_d_control_universe(
     already present in the SBIR matched set is removed before matching.
 
     Staging and provisional identity artifacts are refused outright; see
-    ``_refuse_staging_input``.
+    ``_reject_staging_universe``.
     """
 
-    records = list(read_jsonl(path))
-    _refuse_staging_input(path, records)
+    records = read_jsonl(path)
+    _reject_staging_universe(path, records)
 
     rows: list[dict[str, Any]] = []
     for row in _iter_company_form_d_rows(records, matched_to_sbir=False):
@@ -152,6 +122,48 @@ def load_form_d_control_universe(
         .drop_duplicates(subset=["form_d_cik"], keep="first")
         .reset_index(drop=True)
     )
+
+
+def _reject_staging_universe(path: Path, records: list[dict[str, Any]]) -> None:
+    """Refuse Form D control-universe staging products.
+
+    The producer emits identity-only staging sets whose gates are still false.
+    Consuming one would join on a different identity profile than the SBIR
+    exclusion was computed with, so fail closed rather than match on it.
+    """
+
+    name = path.name
+    for suffix in _STAGING_FILENAME_SUFFIXES:
+        if name.endswith(suffix):
+            raise ValueError(
+                f"Refusing Form D control universe {path}: '{suffix}' marks a staging "
+                "product, keyed on ORGANIZATION_KEY_V1 rather than the FORM_D_JOIN_V1 "
+                "this loader joins on, and not ready for matching."
+            )
+
+    sample = records[:_STAGING_RECORD_SAMPLE_SIZE]
+    if sample and all(all(key in rec for key in _STAGING_RECORD_KEYS) for rec in sample):
+        raise ValueError(
+            f"Refusing Form D control universe {path}: records carry staging keys "
+            f"{_STAGING_RECORD_KEYS}, which the matching-ready universe does not use. "
+            "A renamed staging file is still staging; this is the check that catches it."
+        )
+
+    manifest_path = path.with_name("form_d_control_universe.manifest.json")
+    if not manifest_path.exists():
+        return
+    try:
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return
+    if not isinstance(manifest, dict):
+        return
+    failed = [gate for gate in _STAGING_MANIFEST_GATES if manifest.get(gate) is False]
+    if failed:
+        raise ValueError(
+            f"Refusing Form D control universe {path}: sibling manifest reports "
+            f"{failed} still false."
+        )
 
 
 def _iter_company_form_d_rows(
@@ -181,8 +193,21 @@ def _iter_company_form_d_rows(
             for year in (_year(o.get("filing_date") or o.get("date_filed")) for o in kept_offerings)
             if year is not None
         )
-        total_sold = _sum_float(o.get("total_amount_sold") for o in kept_offerings)
-        total_offered = _sum_float(o.get("total_offering_amount") for o in kept_offerings)
+        # Form D amendments (D/A) restate the *cumulative* offering totals rather
+        # than adding to them, so summing an original alongside its amendments
+        # double-counts. Collapsing chains exactly needs the SEC file number, which
+        # these records do not carry, so sum originals only and fall back to the
+        # largest restatement when a chain reaches us as amendments alone. That is
+        # a documented lower bound, not an exact total.
+        originals = [o for o in kept_offerings if not o.get("is_amendment")]
+        amendments = [o for o in kept_offerings if o.get("is_amendment")]
+        counted = originals or amendments
+        if originals:
+            total_sold = _sum_float(o.get("total_amount_sold") for o in originals)
+            total_offered = _sum_float(o.get("total_offering_amount") for o in originals)
+        else:
+            total_sold = _max_float(o.get("total_amount_sold") for o in amendments)
+            total_offered = _max_float(o.get("total_offering_amount") for o in amendments)
 
         issuer_name = (
             first.get("entity_name")
@@ -214,7 +239,7 @@ def _iter_company_form_d_rows(
             "industry_group": industry_group or "Unknown",
             "first_form_d_date": first.get("filing_date") or first.get("date_filed") or "",
             "first_form_d_year": filing_years[0] if filing_years else None,
-            "offering_count": len(kept_offerings),
+            "offering_count": len(counted),
             "total_form_d_raised": total_sold,
             "total_form_d_offered": total_offered,
             "security_types": security_types,
@@ -231,6 +256,7 @@ def _offering_from_flat_record(rec: dict[str, Any]) -> dict[str, Any]:
         "securities_types": rec.get("securities_types") or [],
         "total_amount_sold": rec.get("total_amount_sold") or rec.get("total_raised"),
         "total_offering_amount": rec.get("total_offering_amount"),
+        "is_amendment": bool(rec.get("is_amendment")),
     }
 
 
@@ -256,6 +282,11 @@ def _sum_float(values: Iterable[object]) -> float:
             continue
         total += parsed
     return total
+
+
+def _max_float(values: Iterable[object]) -> float:
+    parsed = [v for v in (_float_or_none(value) for value in values) if v is not None]
+    return max(parsed) if parsed else 0.0
 
 
 def _float_or_none(value: object) -> float | None:

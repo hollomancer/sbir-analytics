@@ -1,6 +1,6 @@
 [project]
 name = "sbir-etl"
-version = "0.10.0"
+version = "0.12.0"
 description = "SBIR ETL library — extract, enrich, and transform SBIR/STTR awards data"
 authors = [{name = "Conrad Hollomon", email = "conrad.hollomon@pm.me"}]
 readme = "README.md"

@@ -1,6 +1,6 @@
 [project]
 name = "sbir-graph"
-version = "0.10.0"
+version = "0.12.0"
 description = "SBIR Graph — Neo4j graph database loaders and pathway queries"
 authors = [{name = "Conrad Hollomon", email = "conrad.hollomon@pm.me"}]
 license = {text = "MIT"}
