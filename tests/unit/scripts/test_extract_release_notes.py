@@ -82,7 +82,7 @@ def test_empty_section_is_an_error(tmp_path: Path) -> None:
 
 
 def test_version_prefix_does_not_match_a_longer_version(tmp_path: Path) -> None:
-    """`0.1.0` must not match the `0.1.0` inside a `## [0.1.01]` heading."""
+    """`0.1.1` must not match the `0.1.1` prefix inside a `## [0.1.10]` heading."""
     path = _changelog(
         tmp_path,
         "# Changelog\n\n## [0.1.10] - 2026-01-01\n\n- ten\n",

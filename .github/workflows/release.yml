@@ -51,13 +51,18 @@ jobs:
           fi
           echo "tag=${tag}" >>"${GITHUB_OUTPUT}"
 
-      - name: Verify the tag is annotated
+      - name: Verify the tag exists and is annotated
         shell: bash
         env:
           TAG: ${{ steps.tag.outputs.tag }}
         run: |
-          if [[ "$(git cat-file -t "${TAG}")" != "tag" ]]; then
-            echo "error: ${TAG} is lightweight; the policy requires an annotated tag" >&2
+          object_type="$(git cat-file -t "${TAG}" 2>/dev/null || true)"
+          if [[ -z "${object_type}" ]]; then
+            echo "error: ${TAG} does not exist in this checkout" >&2
+            exit 1
+          fi
+          if [[ "${object_type}" != "tag" ]]; then
+            echo "error: ${TAG} is ${object_type}, not an annotated tag" >&2
             exit 1
           fi
 
@@ -78,8 +83,11 @@ jobs:
         env:
           TAG: ${{ steps.tag.outputs.tag }}
         run: |
-          previous="$(git tag --list 'v*.*.*' --sort=-version:refname \
-            | grep -v "^${TAG}$" | head -n1 || true)"
+          # The tag immediately *before* TAG in version order -- not simply the
+          # newest other tag, which would be wrong whenever workflow_dispatch
+          # publishes an older tag after newer releases exist.
+          previous="$(git tag --list 'v*.*.*' --sort=version:refname \
+            | awk -v tag="${TAG}" '$0 == tag { exit } { prev = $0 } END { print prev }')"
           args=(--tag "${TAG}")
           if [[ -n "${previous}" ]]; then
             args+=(--previous-tag "${previous}")
