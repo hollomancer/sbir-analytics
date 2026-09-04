@@ -1,0 +1,104 @@
+name: Release
+
+# Publishes the GitHub release when a vMAJOR.MINOR.PATCH tag is pushed.
+# Creating and pushing the tag stays manual -- that is the deliberate act that
+# starts a release. Everything after it is mechanical and lives here.
+#
+# See docs/steering/versioning.md for the surrounding policy.
+
+on:
+  push:
+    tags: ["v*.*.*"]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Existing release tag to publish notes for (e.g. v0.12.0)"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    name: Publish GitHub release
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          # Full history and tags so the previous release can be resolved for
+          # the compare link, and so the tag object type can be inspected.
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.11"
+
+      - name: Resolve the tag being released
+        id: tag
+        shell: bash
+        env:
+          INPUT_TAG: ${{ inputs.tag }}
+          REF_NAME: ${{ github.ref_name }}
+        run: |
+          tag="${INPUT_TAG:-$REF_NAME}"
+          if ! [[ "${tag}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "error: '${tag}' is not a vMAJOR.MINOR.PATCH tag" >&2
+            exit 1
+          fi
+          echo "tag=${tag}" >>"${GITHUB_OUTPUT}"
+
+      - name: Verify the tag is annotated
+        shell: bash
+        env:
+          TAG: ${{ steps.tag.outputs.tag }}
+        run: |
+          if [[ "$(git cat-file -t "${TAG}")" != "tag" ]]; then
+            echo "error: ${TAG} is lightweight; the policy requires an annotated tag" >&2
+            exit 1
+          fi
+
+      # Re-run rather than trusting the tag push's own Version Policy job: this
+      # is the job that publishes, so it should not depend on a separate
+      # workflow having passed first.
+      - name: Validate synchronized version metadata
+        shell: bash
+        env:
+          TAG: ${{ steps.tag.outputs.tag }}
+        run: python scripts/ci/check_versioning.py --tag "${TAG}"
+
+      # Written to a file rather than a step output: release notes are
+      # untrusted-ish free text, and interpolating them into a shell command
+      # would be a command-injection seam.
+      - name: Build release notes from CHANGELOG.md
+        shell: bash
+        env:
+          TAG: ${{ steps.tag.outputs.tag }}
+        run: |
+          previous="$(git tag --list 'v*.*.*' --sort=-version:refname \
+            | grep -v "^${TAG}$" | head -n1 || true)"
+          args=(--tag "${TAG}")
+          if [[ -n "${previous}" ]]; then
+            args+=(--previous-tag "${previous}")
+          fi
+          python scripts/ci/extract_release_notes.py "${args[@]}" >"${RUNNER_TEMP}/notes.md"
+          echo "--- release notes ---"
+          cat "${RUNNER_TEMP}/notes.md"
+
+      - name: Publish the release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.tag.outputs.tag }}
+        run: |
+          if gh release view "${TAG}" >/dev/null 2>&1; then
+            echo "Release ${TAG} already exists; leaving it untouched."
+            exit 0
+          fi
+          gh release create "${TAG}" \
+            --title "SBIR Analytics ${TAG}" \
+            --notes-file "${RUNNER_TEMP}/notes.md" \
+            --verify-tag
