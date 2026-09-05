@@ -8,8 +8,10 @@
 
 **Status**: Active
 
-`.github/workflows/ci.yml` is the repository's only GitHub Actions workflow. In addition to pull
+`.github/workflows/ci.yml` is the quality and test workflow. In addition to pull
 requests and pushes to `main`, it runs a weekly regression suite at 08:17 UTC each Saturday.
+`.github/workflows/literature-map.yml` is a separate Monday job that refreshes the
+OpenAlex literature map and opens a PR when the CSV changes.
 
 ## Pull requests
 

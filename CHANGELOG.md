@@ -10,6 +10,62 @@ version.
 
 ## [Unreleased]
 
+## [0.12.0] — 2026-08-31
+
+### Fixed
+
+- `validated_phase_iii_contracts` and the `phase_transition_pairs`/survival
+  assets now write their parquet unconditionally, including when the frame
+  is empty. Skipping the write on an empty result left the previous parquet
+  on disk beside a freshly written `checks.json` reporting `total_rows: 0`,
+  so a legitimate zero-row run looked like a stale one (#692).
+- `load_form_d_control_universe` refuses Form D control-universe staging
+  products (a `.provisional.jsonl`/`.identity-staging.jsonl` filename,
+  staging-shaped records, or a sibling manifest reporting an unready gate)
+  instead of loading them silently on a mismatched identity key (#692).
+- Form D amendment filings no longer inflate `total_form_d_raised` and
+  `offering_count` by being summed alongside the filing they amend. The fix
+  is a documented lower bound, not exact chain collapse — that is blocked on
+  locating the SEC file number that links an amendment to its original (#692).
+- The phase-transition report read latency from `pairs` (one row per matched
+  contract) while reading the transition rate and agency counts from
+  `survival` (one row per Phase II award), mixing two denominators under one
+  transition vocabulary. All three now read `survival` (#692).
+
+### Changed
+
+- Consolidated three reviewed spec proposals into the specs that already own
+  the surface they touch, rather than three new registry entries:
+  `specs/phase-iii-source-materialization/tasks.md` gained the transition
+  source/lineage work, and a new `specs/sec-source-fidelity/` spec covers
+  EDGAR event-date and Form D source fidelity (#692).
+
+## [0.11.0] — 2026-08-26
+
+### Added
+
+- Exploratory, non-citable headcount-at-award readout over the canonical
+  SBIR.gov bulk materialization: schema and agency-year coverage, cap-slackness,
+  near-cap firms, mechanical >500 anomaly buckets, and award-history
+  repeat-award proxies. Uses `PRELOAD_V1` firm merge. Not a cap-removal
+  policy estimate and not a study promotion (#668).
+
+### Changed
+
+- GitHub Action `peter-evans/create-pull-request` 7 → 8 (#670).
+
+## [0.10.0] — 2026-08-19
+
+### Added
+
+- Weekly literature-map refresh: `OpenAlexClient.search_works`,
+  `make literature-map`, and a Monday GitHub Action that opens a PR for
+  new OpenAlex works plus GAO/NAP/CRS/ITIF RSS items. Authored memos and
+  `[L#]` entries are not rewritten (#666).
+- Exploratory, non-citable A-CP7 notebook for top-10 incumbent
+  repeat-winner displacement (descriptive slot counts, not causal
+  crowd-out) (#665).
+
 ## [0.9.0] — 2026-08-19
 
 ### Added
@@ -284,7 +340,9 @@ across the root project and the three packages under `packages/`.
 `vMAJOR.MINOR.PATCH` form it requires. Per that policy published tags are never
 moved or reused, so they remain as historical markers.
 
-[Unreleased]: https://github.com/hollomancer/sbir-analytics/compare/v0.9.0...HEAD
+[Unreleased]: https://github.com/hollomancer/sbir-analytics/compare/v0.11.0...HEAD
+[0.11.0]: https://github.com/hollomancer/sbir-analytics/compare/v0.10.0...v0.11.0
+[0.10.0]: https://github.com/hollomancer/sbir-analytics/compare/v0.9.0...v0.10.0
 [0.9.0]: https://github.com/hollomancer/sbir-analytics/compare/v0.8.0...v0.9.0
 [0.8.0]: https://github.com/hollomancer/sbir-analytics/compare/v0.7.1...v0.8.0
 [0.7.1]: https://github.com/hollomancer/sbir-analytics/compare/v0.7.0...v0.7.1
