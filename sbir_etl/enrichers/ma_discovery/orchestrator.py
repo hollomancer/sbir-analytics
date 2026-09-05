@@ -4,9 +4,10 @@ Reads the candidate query CSV emitted by ``queries``, runs each query
 through a pluggable ``SearchTool``, and feeds snippets into
 ``verify_acquisition``. Confirmed hits are written as JSONL.
 
-The CLI constructs the search tool via ``build_search_tool``. Runtime
-default is ``mock``. Selecting ``tavily`` or ``brave`` without a key
-fails closed.
+The CLI constructs the search tool via ``build_search_tool``. The config
+default is ``none``, which fails closed; ``mock`` serves fixture hits and
+is opt-in only (``--search-backend mock``). Selecting ``tavily`` or
+``brave`` without a key also fails closed.
 
 Usage::
 
@@ -99,7 +100,10 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument(
         "--search-backend",
         default=None,
-        help="Search backend: mock, tavily, or brave. Default: config or mock.",
+        help=(
+            "Search backend: mock, tavily, or brave. Default: config, which is "
+            "none and fails closed; pass mock to opt in to fixture hits."
+        ),
     )
     parser.add_argument(
         "--search-api-key",

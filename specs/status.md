@@ -92,8 +92,8 @@ bypassing lifecycle review; the status and rationale still require human judgmen
   Tasks 6.1–6.2 remain optional Phase 2 expansion.
 - **`ma-discovery-integration` — Deferred.** The #371 toolkit now lives at
   `sbir_etl/enrichers/ma_discovery/` (issue #446). SearchTool has a real
-  Tavily client (Brave optional) behind config; runtime default remains mock
-  without a key. LLM extractor and collision policy remain unbuilt. Revisit
+  Tavily client (Brave optional) behind config; runtime default is `none`
+  (fail-closed); `mock` is opt-in only. LLM extractor and collision policy remain unbuilt. Revisit
   only when M&A recall becomes a selected research priority.
 - **`modular-analysis-platform` — Maintenance.** Pipelines-tier contracts
   and registry so a new tech-census or transition-cohort profile is
