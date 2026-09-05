@@ -1,0 +1,134 @@
+[
+  {
+    "id": "slam_dunk_date_value",
+    "category": "slam_dunk",
+    "company": "Aether Photonics",
+    "acquirer": "Helios Defense",
+    "snippet": "Helios Defense announced today that it has acquired Aether Photonics for $42 million. The transaction closed on March 12, 2024.",
+    "source_url": "https://example.com/press/helios-aether-2024",
+    "expected_confirmed": true,
+    "expected_acquisition_date": "2024-03-12",
+    "expected_value_usd": 42000000
+  },
+  {
+    "id": "slam_dunk_date_only",
+    "category": "slam_dunk",
+    "company": "Northwind Sensors",
+    "acquirer": "Cascade Systems",
+    "snippet": "Cascade Systems completed the acquisition of Northwind Sensors on 8 January 2023, according to a company press release.",
+    "source_url": "https://example.com/press/cascade-northwind",
+    "expected_confirmed": true,
+    "expected_acquisition_date": "2023-01-08",
+    "expected_value_usd": null
+  },
+  {
+    "id": "slam_dunk_bought",
+    "category": "slam_dunk",
+    "company": "Cedar Micro",
+    "acquirer": "Summit Partners",
+    "snippet": "Summit Partners bought Cedar Micro in a deal announced June 4, 2022. Terms were not disclosed.",
+    "source_url": "https://example.com/press/summit-cedar",
+    "expected_confirmed": true,
+    "expected_acquisition_date": "2022-06-04",
+    "expected_value_usd": null
+  },
+  {
+    "id": "negative_same_industry",
+    "category": "negative",
+    "company": "Harbor Analytics",
+    "acquirer": "Pinnacle Group",
+    "snippet": "Harbor Analytics and Pinnacle Group announced a joint research contract to deliver maritime sensing software to the same Navy program office.",
+    "source_url": "https://example.com/news/harbor-pinnacle-teaming",
+    "expected_confirmed": false,
+    "expected_acquisition_date": null,
+    "expected_value_usd": null
+  },
+  {
+    "id": "negative_supplier",
+    "category": "negative",
+    "company": "Beacon Optics",
+    "acquirer": "Sterling Corp",
+    "snippet": "Sterling Corp selected Beacon Optics as a supplier for infrared coatings. The companies have worked together since 2019.",
+    "source_url": "https://example.com/news/sterling-beacon-supplier",
+    "expected_confirmed": false,
+    "expected_acquisition_date": null,
+    "expected_value_usd": null
+  },
+  {
+    "id": "rumor_talks_to_acquire",
+    "category": "rumor",
+    "company": "Lumen Dynamics",
+    "acquirer": "Vertex Capital",
+    "snippet": "Sources say Vertex Capital is in talks to acquire Lumen Dynamics, but neither side has confirmed a deal.",
+    "source_url": "https://example.com/rumor/vertex-lumen",
+    "expected_confirmed": false,
+    "expected_acquisition_date": null,
+    "expected_value_usd": null
+  },
+  {
+    "id": "rumor_exploring_merger",
+    "category": "rumor",
+    "company": "Polar Computing",
+    "acquirer": "Northern Tech",
+    "snippet": "Polar Computing and Northern Tech are exploring a possible merger, people familiar with the matter said. Talks remain preliminary.",
+    "source_url": "https://example.com/rumor/polar-northern",
+    "expected_confirmed": false,
+    "expected_acquisition_date": null,
+    "expected_value_usd": null
+  },
+  {
+    "id": "rumor_potential_acquisition",
+    "category": "rumor",
+    "company": "Ion Lattice",
+    "acquirer": "Cobalt Ventures",
+    "snippet": "Cobalt Ventures has approached Ion Lattice about a potential acquisition, according to two people briefed on the discussions. No agreement has been signed.",
+    "source_url": "https://example.com/rumor/cobalt-ion",
+    "expected_confirmed": false,
+    "expected_acquisition_date": null,
+    "expected_value_usd": null
+  },
+  {
+    "id": "suffix_mismatch",
+    "category": "suffix_mismatch",
+    "company": "Quanta Materials Inc",
+    "acquirer": "Broadline Holdings LLC",
+    "snippet": "Broadline Holdings acquired Quanta Materials on September 1, 2021 for $18.5 million.",
+    "source_url": "https://example.com/press/broadline-quanta",
+    "expected_confirmed": true,
+    "expected_acquisition_date": "2021-09-01",
+    "expected_value_usd": 18500000
+  },
+  {
+    "id": "case_variant",
+    "category": "case_mismatch",
+    "company": "orbital labs",
+    "acquirer": "nexus aerospace",
+    "snippet": "NEXUS AEROSPACE ANNOUNCED THE ACQUISITION OF ORBITAL LABS ON 15 NOVEMBER 2020.",
+    "source_url": "https://example.com/press/nexus-orbital",
+    "expected_confirmed": true,
+    "expected_acquisition_date": "2020-11-15",
+    "expected_value_usd": null
+  },
+  {
+    "id": "missing_date_has_value",
+    "category": "missing_date",
+    "company": "Ridge Robotics",
+    "acquirer": "Atlas Industrial",
+    "snippet": "Atlas Industrial acquired Ridge Robotics in an all-cash transaction valued at $7.2 million. The close date was not disclosed.",
+    "source_url": "https://example.com/press/atlas-ridge",
+    "expected_confirmed": true,
+    "expected_acquisition_date": null,
+    "expected_value_usd": 7200000
+  },
+  {
+    "id": "missing_value_has_date",
+    "category": "missing_value",
+    "company": "Mariner Software",
+    "acquirer": "Harbor Point",
+    "snippet": "Harbor Point completed its acquisition of Mariner Software on 2025-02-20. Deal value was not disclosed.",
+    "source_url": "https://example.com/press/harbor-mariner",
+    "expected_confirmed": true,
+    "expected_acquisition_date": "2025-02-20",
+    "expected_value_usd": null
+  }
+]

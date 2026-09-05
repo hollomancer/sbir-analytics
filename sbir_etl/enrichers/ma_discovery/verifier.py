@@ -2,7 +2,8 @@
 
 Both names must appear in the text and a recognized acquisition verb must
 be present. Date extraction is out of scope for this heuristic (always
-``"Unknown"`` on confirm). An LLM extractor is a later replacement.
+``"Unknown"`` on confirm). ``KeywordExtractor`` adapts this function onto
+the shared structured verdict; the orchestrator still calls it directly.
 """
 
 from __future__ import annotations
