@@ -61,8 +61,10 @@ def test_keyword_harness_metrics_match_fixture_counts() -> None:
     assert scores.false_negatives == fn
     assert scores.true_negatives == tn
     assert scores.n == len(fixtures)
-    assert scores.precision == pytest.approx(tp / (tp + fp))
-    assert scores.recall == pytest.approx(tp / (tp + fn))
+    # Guard the denominators the same way the harness does, so a fixture
+    # change that predicts no positives fails an assertion, not the suite.
+    assert scores.precision == pytest.approx(tp / (tp + fp) if tp + fp else 0.0)
+    assert scores.recall == pytest.approx(tp / (tp + fn) if tp + fn else 0.0)
     # Keyword never extracts a date or value, so fill rates on confirms are 0.
     assert scores.date_fill_rate == 0.0
     assert scores.value_fill_rate == 0.0

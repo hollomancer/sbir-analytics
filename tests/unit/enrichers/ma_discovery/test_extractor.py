@@ -291,5 +291,30 @@ def test_build_llm_extractor_uses_openai_client_when_key_present(
 ) -> None:
     monkeypatch.setenv("OPENAI_API_KEY", "sk-test-not-used")
     extractor = build_llm_extractor()
-    assert isinstance(extractor, LlmExtractor)
-    assert extractor.model == "gpt-4.1-mini"
+    try:
+        assert isinstance(extractor, LlmExtractor)
+        assert extractor.model == "gpt-4.1-mini"
+    finally:
+        # The real OpenAIClient owns an httpx.Client; do not leak it.
+        if extractor is not None:
+            extractor.close()
+
+
+def test_llm_extractor_close_forwards_to_client() -> None:
+    class _Client:
+        closed = False
+
+        def chat(self, system: str, user: str, **_: object) -> str | None:
+            return None
+
+        def close(self) -> None:
+            self.closed = True
+
+    client = _Client()
+    with LlmExtractor(client):
+        pass
+    assert client.closed
+
+
+def test_llm_extractor_close_tolerates_bare_callable() -> None:
+    LlmExtractor(lambda system, user: None).close()

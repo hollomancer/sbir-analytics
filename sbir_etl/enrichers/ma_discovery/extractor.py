@@ -256,11 +256,28 @@ class LlmExtractor:
     ) -> None:
         self.model = model
         self.temperature = temperature
+        self._client = client
         self._chat = _bind_chat(client, model=model, temperature=temperature)
 
     def extract(self, item: ExtractionInput) -> ExtractionVerdict:
         raw = self._chat(EXTRACTOR_SYSTEM_PROMPT, build_user_prompt(item))
         return verdict_from_payload(parse_llm_payload(raw), item=item)
+
+    def close(self) -> None:
+        """Release the injected client's resources, when it owns any.
+
+        ``build_llm_extractor`` hands in an ``OpenAIClient`` that owns an
+        ``httpx.Client``; a bare chat callable has nothing to close.
+        """
+        close = getattr(self._client, "close", None)
+        if callable(close):
+            close()
+
+    def __enter__(self) -> LlmExtractor:
+        return self
+
+    def __exit__(self, *exc: object) -> None:
+        self.close()
 
 
 def build_llm_extractor(
