@@ -2959,7 +2959,7 @@ requires-dist = [
     { name = "pandas", specifier = ">=3.0.2,<4.0.0" },
     { name = "pandas-stubs", marker = "extra == 'dev'", specifier = ">=2.2.0,<4.0.0" },
     { name = "playwright", marker = "extra == 'uspto-browser'", specifier = ">=1.47.0,<2.0.0" },
-    { name = "plotly", marker = "extra == 'viz'", specifier = ">=5.18.0,<7.0.0" },
+    { name = "plotly", marker = "extra == 'viz'", specifier = ">=5.18.0,<8.0.0" },
     { name = "pre-commit", marker = "extra == 'dev'", specifier = ">=3.5.0,<5.0.0" },
     { name = "psutil", marker = "extra == 'monitoring'", specifier = ">=5.9.0,<8.0.0" },
     { name = "pyarrow", specifier = ">=14.0.2,<26.0.0" },
