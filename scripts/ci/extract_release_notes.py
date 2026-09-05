@@ -8,6 +8,7 @@ writing the release by hand afterwards.
 """
 
 import argparse
+import os
 import re
 import sys
 from pathlib import Path
@@ -15,6 +16,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 CHANGELOG = ROOT / "CHANGELOG.md"
+DEFAULT_REPOSITORY = "hollomancer/sbir-analytics"
 SEMVER = re.compile(r"^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$")
 
 
@@ -78,7 +80,10 @@ def main(argv: list[str] | None = None) -> int:
         return 1
 
     if args.previous_tag:
-        repo = "hollomancer/sbir-analytics"
+        # Actions sets GITHUB_REPOSITORY; the fallback keeps local runs working.
+        # Hard-coding it would point the compare link at the wrong repository
+        # after a rename, in a mirror, or in a fork's own Actions run.
+        repo = os.environ.get("GITHUB_REPOSITORY") or DEFAULT_REPOSITORY
         compare = f"https://github.com/{repo}/compare/{args.previous_tag}...v{version}"
         body = f"{body}\n\n## Full changelog\n\n{compare}"
 

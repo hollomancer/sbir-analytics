@@ -90,3 +90,25 @@ def test_version_prefix_does_not_match_a_longer_version(tmp_path: Path) -> None:
 
     with pytest.raises(LookupError):
         notes.extract("0.1.1", path)
+
+
+def test_compare_link_uses_the_actions_repository(tmp_path, monkeypatch, capsys) -> None:
+    """A fork or renamed repo must not get a compare link to the original."""
+    monkeypatch.setattr(notes, "CHANGELOG", _changelog(tmp_path))
+    monkeypatch.setenv("GITHUB_REPOSITORY", "someone-else/a-fork")
+
+    assert notes.main(["--tag", "v0.12.0", "--previous-tag", "v0.11.0"]) == 0
+
+    out = capsys.readouterr().out
+    assert "https://github.com/someone-else/a-fork/compare/v0.11.0...v0.12.0" in out
+
+
+def test_compare_link_falls_back_when_unset(tmp_path, monkeypatch, capsys) -> None:
+    """Local runs have no GITHUB_REPOSITORY and should still produce a link."""
+    monkeypatch.setattr(notes, "CHANGELOG", _changelog(tmp_path))
+    monkeypatch.delenv("GITHUB_REPOSITORY", raising=False)
+
+    assert notes.main(["--tag", "v0.12.0", "--previous-tag", "v0.11.0"]) == 0
+
+    out = capsys.readouterr().out
+    assert f"https://github.com/{notes.DEFAULT_REPOSITORY}/compare/v0.11.0...v0.12.0" in out
