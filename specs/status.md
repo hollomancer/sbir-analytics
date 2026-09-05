@@ -154,6 +154,11 @@ bypassing lifecycle review; the status and rationale still require human judgmen
   completed M&A detection. Start only when FY match-rate reporting is requested.
 - **`state-local-tax-rates` — Maintenance.** Existing hardcoded 2024 provider
   works. Remaining work is data-file/provenance cleanup for fiscal v2.
+- **`supplier-share-census` — Active.** Exploratory, non-citable F2 census of
+  observed federal persistence versus observed venture signals. The frozen
+  sensitivity grid and deterministic producer are authorized; citation remains
+  gated on complete Form D/EFTS search coverage, a stratified hand review,
+  face-validity anchors, and negative-control review.
 - **`sttr-spinout-linkage` — Active.** Phase 0 design frozen as Revision 1 (exploratory,
   non-citable); implementation (`tasks.md` Phase 1) is unblocked. Proposes a deterministic
   public-data classifier splitting each STTR SBC↔RI relationship into spinout vs.

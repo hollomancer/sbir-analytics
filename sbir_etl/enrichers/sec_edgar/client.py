@@ -270,6 +270,8 @@ class EdgarAPIClient(BaseAsyncAPIClient):
             "startdt": "2000-01-01",
             "enddt": "2026-12-31",
             "forms": forms,
+            "from": 0,
+            "size": limit,
         }
         try:
             response = await self._make_request("GET", "/search-index", params=params)

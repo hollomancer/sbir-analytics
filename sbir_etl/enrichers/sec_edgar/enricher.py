@@ -149,6 +149,10 @@ def _detect_ma_events(cik: str, filings: list[dict[str, Any]]) -> list[EdgarMAEv
 _MA_FILING_TYPES = "8-K,DEFM14A,PREM14A,SC TO-T,SC 14D9,425"
 _ANNUAL_FILING_TYPES = "10-K,10-Q"
 _OWNERSHIP_FILING_TYPES = "SC 13D,SC 13D/A,SC 13G,SC 13G/A"
+_OPERATING_FILING_TYPES = f"{_MA_FILING_TYPES},{_ANNUAL_FILING_TYPES}"
+_MA_FORM_TYPES = frozenset(_MA_FILING_TYPES.split(","))
+_ANNUAL_FORM_TYPES = frozenset(_ANNUAL_FILING_TYPES.split(","))
+_EFTS_PAGE_SIZE = 100
 
 # SIC code ranges that are almost always noise (REIT/mortgage filings).
 _NOISE_SIC_RANGES = (range(6500, 6800), range(6150, 6200))
@@ -340,12 +344,20 @@ async def _extract_mention_context(
     context_chars: int = 500,
 ) -> str | None:
     """Fetch the filing document and classify the mention by surrounding text."""
-    doc_id = mention.get("doc_id", "")
-    if not doc_id or ":" not in doc_id:
+
+    def mark_context_incomplete() -> None:
+        callback = getattr(client, "__dict__", {}).get("_context_incomplete_callback")
+        if callable(callback):
+            callback()
+
+    doc_id = mention.get("doc_id")
+    if not isinstance(doc_id, str) or ":" not in doc_id:
+        mark_context_incomplete()
         return None
     accession, filename = doc_id.split(":", 1)
-    cik = mention.get("filer_cik", "")
-    if not cik:
+    cik = str(mention.get("filer_cik") or "").strip()
+    if not accession.strip() or not filename.strip() or not cik:
+        mark_context_incomplete()
         return None
 
     text = await client.fetch_filing_document(cik, accession, filename)
@@ -423,6 +435,7 @@ async def _search_filing_mentions_filtered(
     *,
     name_match_threshold: int = 80,
     limit: int = 20,
+    mentions: list[dict] | None = None,
 ) -> list[EdgarMAEvent]:
     """Search for mentions of a company in filings by other public companies.
 
@@ -430,11 +443,15 @@ async def _search_filing_mentions_filtered(
     and name-collision filers (target name is a substring of a different,
     longer filer name).
     """
-    mentions = await client.search_filing_mentions(company_name, forms=forms, limit=limit)
+    if mentions is None:
+        mentions = await client.search_filing_mentions(company_name, forms=forms, limit=limit)
     if not mentions:
         return []
 
-    events: list[EdgarMAEvent] = []
+    # enrich_company ultimately keeps only the latest event from each filer.
+    # Discard older same-tier filings before the expensive document fetch so
+    # that the optimization cannot change the retained event or its tier.
+    latest_by_filer: dict[str, tuple[dict, str, date]] = {}
     for mention in mentions:
         filer_name = mention.get("filer_name", "")
         if not filer_name:
@@ -460,6 +477,12 @@ async def _search_filing_mentions_filtered(
         except ValueError:
             continue
 
+        existing = latest_by_filer.get(filer_name)
+        if existing is None or filing_date > existing[2]:
+            latest_by_filer[filer_name] = (mention, filer_name, filing_date)
+
+    events: list[EdgarMAEvent] = []
+    for mention, filer_name, filing_date in latest_by_filer.values():
         form_type = mention.get("form_type", "")
         mention_type = _classify_mention(mention.get("items", []), form_type)
 
@@ -496,20 +519,11 @@ async def _search_inbound_ma_mentions(
     (2) annual/quarterly — 10-K/10-Q post-acquisition mentions;
     (3) ownership — SC 13D/13G (>5% stakes).
     """
-    strong, annual, ownership = await asyncio.gather(
-        _search_filing_mentions_filtered(
-            client,
+    combined, ownership = await asyncio.gather(
+        client.search_filing_mentions(
             company_name,
-            _MA_FILING_TYPES,
-            name_match_threshold=name_match_threshold,
-            limit=20,
-        ),
-        _search_filing_mentions_filtered(
-            client,
-            company_name,
-            _ANNUAL_FILING_TYPES,
-            name_match_threshold=name_match_threshold,
-            limit=10,
+            forms=_OPERATING_FILING_TYPES,
+            limit=_EFTS_PAGE_SIZE,
         ),
         _search_filing_mentions_filtered(
             client,
@@ -519,6 +533,53 @@ async def _search_inbound_ma_mentions(
             limit=10,
         ),
     )
+
+    # EFTS returns at most 100 hits. When fewer are returned, the complete
+    # strong + annual hit set is present and can be partitioned locally. At
+    # the page boundary, retain the original separate searches so no tier's
+    # top hits can be hidden by the combined result ordering.
+    if len(combined) < _EFTS_PAGE_SIZE:
+        strong_mentions = [
+            mention for mention in combined if mention.get("form_type") in _MA_FORM_TYPES
+        ][:20]
+        annual_mentions = [
+            mention for mention in combined if mention.get("form_type") in _ANNUAL_FORM_TYPES
+        ][:10]
+        strong, annual = await asyncio.gather(
+            _search_filing_mentions_filtered(
+                client,
+                company_name,
+                _MA_FILING_TYPES,
+                name_match_threshold=name_match_threshold,
+                limit=20,
+                mentions=strong_mentions,
+            ),
+            _search_filing_mentions_filtered(
+                client,
+                company_name,
+                _ANNUAL_FILING_TYPES,
+                name_match_threshold=name_match_threshold,
+                limit=10,
+                mentions=annual_mentions,
+            ),
+        )
+    else:
+        strong, annual = await asyncio.gather(
+            _search_filing_mentions_filtered(
+                client,
+                company_name,
+                _MA_FILING_TYPES,
+                name_match_threshold=name_match_threshold,
+                limit=20,
+            ),
+            _search_filing_mentions_filtered(
+                client,
+                company_name,
+                _ANNUAL_FILING_TYPES,
+                name_match_threshold=name_match_threshold,
+                limit=10,
+            ),
+        )
     return strong + annual + ownership
 
 

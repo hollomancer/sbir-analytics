@@ -39,6 +39,15 @@ As in Wave 1, these are companion views over the canonical artifacts — the scr
 the repeatable computation layer, and each notebook degrades to a "run the generator first"
 message when an artifact is absent.
 
+## Wave 3 — companion notebooks added
+
+| Candidate investigation | Starting source | Notebook |
+|---|---|---|
+| Supplier-share census | `build_supplier_share_census.py` | `examples/supplier_share_census_review.ipynb` |
+
+The supplier-share companion keeps missing venture-search coverage visible, reviews the frozen
+sensitivity grid, and never substitutes notebook calculations for the canonical producer.
+
 ## Active explorations
 
 Question-driven work under `notebooks/explorations/`. These are not companions to a
