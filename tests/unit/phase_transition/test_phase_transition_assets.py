@@ -1070,6 +1070,9 @@ def test_pairs_and_survival_end_to_end():
     s = survival.set_index("phase_ii_award_id")
     assert bool(s.loc["C_II_1", "event_observed"]) is True
     assert bool(s.loc["C_II_2", "event_observed"]) is False
+    # The raw completion-relative frame preserves prevalent events; callers
+    # must stratify them or choose a nonnegative origin before Kaplan-Meier.
+    assert s.loc["C_II_3", "time_days"] < 0
     # Censored row's event_date equals the data-cut date.
     assert s.loc["C_II_2", "event_date"] == data_cut
     # time_days for censored row = data_cut - phase_ii_end_date.

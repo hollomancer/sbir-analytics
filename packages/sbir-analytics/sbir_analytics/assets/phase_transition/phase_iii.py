@@ -1,9 +1,9 @@
 """Phase III contracts asset.
 
 FPDS procurement rows where ``sbir_phase`` resolves to "Phase III". The
-``research`` flag (FPDS Element 10Q) is a known undercount — many Phase III
-contracts are miscoded or unflagged, especially outside DoD. Coverage is
-logged by agency so downstream analysis can qualify the transition rate.
+``research`` flag (FPDS Element 10Q) is an incomplete and inconsistently used
+observation channel, especially outside DoD. Coverage is logged by agency so
+downstream analysis can qualify the observed coded-channel rate.
 """
 
 from __future__ import annotations
@@ -98,7 +98,7 @@ def _agency_coverage_table(
 ) -> dict[str, dict[str, int]]:
     """Row counts by agency for both the full contract frame and Phase III.
 
-    This is the "Phase III flag as known undercount" audit: total contract
+    This is the Phase III coding-coverage audit: total contract
     rows per agency vs. rows that survived the Phase III classifier.
     """
 
@@ -132,7 +132,7 @@ def _agency_coverage_table(
     compute_kind="pandas",
     description=(
         "FPDS contracts flagged Phase III (SR3/ST3 or explicit sbir_phase). "
-        "The flag is a known undercount — coverage by agency is emitted as checks. "
+        "The coding channel is incomplete — coverage by agency is emitted as checks. "
         "Row-level contract: `sbir_etl.models.phase_transition.PhaseIIIContract`."
     ),
 )
@@ -170,17 +170,35 @@ def validated_phase_iii_contracts(context=None) -> Output[pd.DataFrame]:
         "recipient_duns": round(duns_cov, 4),
         "action_date": round(action_cov, 4),
     }
+    coding_coverage_warning = {
+        "agencies_with_zero_phase_iii": zero_p3_agencies,
+        "agencies_total": len(agency_coverage),
+        "note": (
+            "FPDS sbir_phase coding is incomplete and inconsistent, especially outside "
+            "DoD. Report observed coded-channel rates, not identified bounds: missed "
+            "codes and identity links can bias downward, while same-firm false matches "
+            "can bias upward."
+        ),
+    }
     checks: dict[str, Any] = {
         "ok": True,
         "generated_at": now_utc_iso(),
         "total_rows": int(len(phase_iii)),
         "coverage": coverage_dict,
+        "coding_coverage_warning": coding_coverage_warning,
+        # Key-compatible alias for consumers of the original checks schema. The
+        # key survives; the "note" value deliberately does not. The old text
+        # ("Treat transition rates as lower bounds") asserted a one-sided bias
+        # this readout retracts, so carrying it forward under the old key would
+        # keep serving the claim being withdrawn.
         "undercount_warning": {
-            "agencies_with_zero_phase_iii": zero_p3_agencies,
-            "agencies_total": len(agency_coverage),
-            "note": (
-                "FPDS sbir_phase coding is known to undercount Phase III, especially "
-                "outside DoD. Treat transition rates as lower bounds."
+            **coding_coverage_warning,
+            "deprecated_alias_for": "coding_coverage_warning",
+            "note_semantics_changed": (
+                "The 'note' value under this key changed and is no longer the "
+                "lower-bound wording. Coded-channel rates are observed rates, "
+                "not identified bounds; bias can run in either direction. Read "
+                "'coding_coverage_warning' instead."
             ),
         },
         "agency_coverage": agency_coverage,
