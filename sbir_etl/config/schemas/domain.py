@@ -611,6 +611,64 @@ class StatisticalReportingConfig(BaseModel):
         return normalized
 
 
+MA_DISCOVERY_SEARCH_BACKENDS = frozenset({"none", "mock", "tavily", "brave"})
+DEFAULT_MA_DISCOVERY_API_KEY_ENV = "SBIR_ETL__MA_DISCOVERY__SEARCH_API_KEY"
+
+
+class MADiscoveryConfig(BaseModel):
+    """Configuration for the M&A web-search discovery path.
+
+    Runtime default is ``none``: no backend is selected and building one
+    fails closed. The in-memory mock returns fixture hits that verify and get
+    written as discovered acquisitions, so it must be asked for by name. A
+    live client is used only when ``search_backend`` is a real vendor *and* an
+    API key is present.
+    """
+
+    search_backend: str = Field(
+        default="none",
+        description=(
+            "Search backend name: none (default, fails closed), mock "
+            "(fixture hits, opt-in only), tavily, or brave."
+        ),
+    )
+    search_api_key: str | None = Field(
+        default=None,
+        description="API key for the selected backend. Prefer the env var.",
+    )
+    api_key_env_var: str = Field(
+        default=DEFAULT_MA_DISCOVERY_API_KEY_ENV,
+        description="Environment variable holding the search API key.",
+    )
+    rate_limit_per_minute: int = Field(
+        default=60,
+        ge=1,
+        description="Requests per minute for the live search client.",
+    )
+    timeout_seconds: int = Field(
+        default=30,
+        ge=1,
+        description="HTTP timeout in seconds for the live search client.",
+    )
+    max_results: int = Field(
+        default=5,
+        ge=1,
+        le=20,
+        description="Maximum search hits to request per query.",
+    )
+
+    @field_validator("search_backend", mode="before")
+    @classmethod
+    def _normalize_search_backend(cls, value: object) -> object:
+        if not isinstance(value, str):
+            return value
+        normalized = value.strip().lower()
+        if normalized not in MA_DISCOVERY_SEARCH_BACKENDS:
+            known = ", ".join(sorted(MA_DISCOVERY_SEARCH_BACKENDS))
+            raise ValueError(f"search_backend must be one of {known}; got {value!r}")
+        return normalized
+
+
 class OTConsortiumConfig(BaseModel):
     """Configuration for OT consortium Phase III verification tiering."""
 
@@ -636,10 +694,13 @@ class OTConsortiumConfig(BaseModel):
 
 
 __all__ = [
+    "DEFAULT_MA_DISCOVERY_API_KEY_ENV",
     "EnrichmentConfig",
     "EnrichmentRefreshConfig",
     "EnrichmentSourceConfig",
     "FiscalAnalysisConfig",
+    "MA_DISCOVERY_SEARCH_BACKENDS",
+    "MADiscoveryConfig",
     "MLConfig",
     "ModernBertApiConfig",
     "ModernBertConfig",

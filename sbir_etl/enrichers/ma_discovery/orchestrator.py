@@ -4,8 +4,10 @@ Reads the candidate query CSV emitted by ``queries``, runs each query
 through a pluggable ``SearchTool``, and feeds snippets into
 ``verify_acquisition``. Confirmed hits are written as JSONL.
 
-This PR ships only ``MockSearchTool``. A live search-API client is a
-later step.
+The CLI constructs the search tool via ``build_search_tool``. The config
+default is ``none``, which fails closed; ``mock`` serves fixture hits and
+is opt-in only (``--search-backend mock``). Selecting ``tavily`` or
+``brave`` without a key also fails closed.
 
 Usage::
 
@@ -22,7 +24,7 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import Any
 
-from sbir_etl.enrichers.ma_discovery.search import MockSearchTool, SearchTool
+from sbir_etl.enrichers.ma_discovery.search import SearchTool, build_search_tool
 from sbir_etl.enrichers.ma_discovery.verifier import verify_acquisition
 
 
@@ -35,9 +37,15 @@ async def process_batch(
 ) -> list[dict[str, Any]]:
     """Run a batch of (company, acquirer, query) rows and return verified events."""
     verified: list[dict[str, Any]] = []
+    # generate_queries emits four rows per (company, acquirer) pair, so the
+    # inner break alone would still append the same pair up to four times.
+    seen: set[tuple[str, str]] = set()
     for row in queries:
         company = row["company_name"]
         acquirer = row["acquirer"]
+        pair = (company, acquirer)
+        if pair in seen:
+            continue
         query = row["query"]
         results = await search_tool.search(query)
         for res in results:
@@ -54,7 +62,8 @@ async def process_batch(
                         "evidence": snippet,
                     }
                 )
-                break  # one hit per (company, acquirer) is enough
+                seen.add(pair)  # one hit per (company, acquirer) is enough
+                break
     return verified
 
 
@@ -72,14 +81,40 @@ def write_verified_jsonl(path: Path, rows: Sequence[dict[str, Any]]) -> None:
             handle.write(json.dumps(row) + "\n")
 
 
+async def _run_batch(
+    queries: list[dict[str, str]], search_tool: SearchTool
+) -> list[dict[str, Any]]:
+    """Run ``process_batch`` and close the search client when it supports it."""
+    try:
+        return await process_batch(queries, search_tool)
+    finally:
+        aclose = getattr(search_tool, "aclose", None)
+        if aclose is not None:
+            await aclose()
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Verify M&A search-query snippets")
     parser.add_argument("--input", type=Path, default=DEFAULT_QUERIES_PATH)
     parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT_PATH)
+    parser.add_argument(
+        "--search-backend",
+        default=None,
+        help=(
+            "Search backend: mock, tavily, or brave. Default: config, which is "
+            "none and fails closed; pass mock to opt in to fixture hits."
+        ),
+    )
+    parser.add_argument(
+        "--search-api-key",
+        default=None,
+        help="API key for a live backend. Falls back to config/env.",
+    )
     args = parser.parse_args(argv)
 
     queries = load_query_csv(args.input)
-    verified = asyncio.run(process_batch(queries, MockSearchTool()))
+    search_tool = build_search_tool(args.search_backend, api_key=args.search_api_key)
+    verified = asyncio.run(_run_batch(queries, search_tool))
     write_verified_jsonl(args.output, verified)
     print(f"Found {len(verified)} verified acquisitions. Wrote {args.output}")
     return 0
