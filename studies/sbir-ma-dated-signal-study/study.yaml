@@ -1,0 +1,69 @@
+schema_version: 1
+study_id: sbir-ma-dated-signal-study
+title: Prospective SBIR M&A dated signal study (planned cutoff 2026-08-29 UTC)
+evidence_status: exploratory
+research_questions:
+  - F1
+estimand: >-
+  No numerical output is currently authorized. Amendment 4 accepts one pinned
+  SBIR.gov object as a retrieval-defined private source cut: eligible source
+  rows have a nonblank Company and Proposal Award Date on or before
+  2026-08-29T23:59:59Z. This is not a complete as-of firm universe or a
+  denominator for prevalence or exit rates. A future amendment must declare any
+  observed-signal quantity, reviewed identity policy, outcome-source coverage,
+  and failure modes before acquisition or aggregation. It must not reuse or
+  reproduce the unrecoverable April 2026 result.
+frozen_artifacts:
+  - path: specs/sbir-ma-dated-signal-study/design.md
+    sha256: e4e690a55eaa21847686ecf0fb709cc9e2e3db80e8ce3380222d8aadbb37cfe6
+  - path: notebooks/explorations/sbir_ma_dated_signal_study.ipynb
+    sha256: eb797c8f25644e2cd62864b4aa84f52f4e9967182337cca45c1a748b61ee51b1
+implementation:
+  - path: scripts/data/sbir_ma_signal_counts_by_fy.py
+    symbol: main
+  - path: scripts/data/build_sbir_ma_form_d_candidates.py
+    symbol: main
+  - path: scripts/data/fetch_sbir_ma_form_d_xml.py
+    symbol: main
+  - path: scripts/data/observe_sbir_ma_form_d_business_combination.py
+    symbol: main
+  - path: scripts/data/build_sbir_ma_form_d_identity_review_queue.py
+    symbol: main
+identity_policy:
+  strategy: >-
+    No identity resolution is authorized. A later approved run must retain raw
+    source identifiers, aliases, and candidate-match rationale; normalized names
+    may generate candidates but cannot establish a firm, acquisition, or exit.
+  version: retrieval-defined-selection-2026-08-29-v1
+  negative_evidence_allowed: false
+materialization:
+  allowed: false
+  blockers:
+    - >-
+      Amendment 4 accepts the pinned SBIR.gov object only as a retrieval-defined
+      source-row selection, not an as-of firm universe. Source/privacy/license/
+      release-scope review, identity review, a declared numerical output, and
+      human validation remain unapproved; materialization stays closed.
+      Amendment 8 authorizes only a private, filing-level identity-review queue
+      for predicate-positive candidates. It does not authorize a confirmed
+      identity, event, aggregation, or result.
+permitted_claims:
+  - >-
+    This is a new exploratory, unmaterialized protocol with a fixed 2026-08-29
+    UTC source-row selection cutoff in one pinned provider object.
+  - >-
+    The unrecoverable April 2026 analysis is not reproduced, validated, or used
+    as an input or benchmark by this study.
+limitations:
+  - >-
+    The official SBIR.gov CSV was acquired privately and is accepted only as a
+    retrieval-defined source-row selection. It has no complete as-of coverage,
+    reviewed firm identity, observed event population, denominator, or numerical
+    result.
+  - >-
+    Exploratory status is non-citable and does not authorize a Computable,
+    Validated, or Citable inventory status or any external numerical claim.
+  - >-
+    A signal is not an acquisition, exit, rate, survival outcome, agency effect,
+    comparator result, or causal finding without a separately frozen and
+    validated evidence-tier design.
