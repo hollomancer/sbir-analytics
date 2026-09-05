@@ -4,10 +4,11 @@
 
 > **Status (2026-08-09):** Phase 1 is implemented and its pinned NSF real-data
 > review artifact is materialized, but it is non-citable and awaits sign-off.
-> Phase 2 has a tested scaffold, not a valid matched comparison: it still lacks
-> a reproducible control-universe producer and symmetric FPDS/PATLINK/M&A
-> outcome inputs. Do not materialize or publish Phase 2 before the Phase 1 gate
-> and those input contracts are satisfied.
+> Phase 2 has a tested scaffold and a maintained, reproducible SEC DERA staging
+> producer, not a valid matched comparison. The staged universe has incomplete
+> SBIR exclusion and no validated NAICS-2 covariate, and the scaffold lacks
+> symmetric FPDS/patent/M&A outcome inputs. Do not materialize or publish Phase 2
+> before the Phase 1, identity, covariate, and outcome gates are satisfied.
 > Supports inventory questions **F3** (private-capital comparison), **B2** (commercialization outcomes), **B3** (transition rates) in [docs/research-questions.md](../../docs/research-questions.md).
 
 **Research question anchor:** F3 / B2 / B3 — SBIR vs. private-capital cohort comparison (NSF initial target)
@@ -57,33 +58,28 @@ instrument types) is treated as feature, not bug, because the policy question
 is "what private-capital alternative would these firms otherwise rely on,"
 not "what would seed VCs alone do."
 
-## Reuse Posture: PR #286
+## Reuse posture and source boundary
 
-This spec was originally drafted under the assumption that EDGAR ingest, Form
-D parsing, CIK resolution, and M&A signal extraction were all greenfield work.
-That assumption was wrong. **PR #286 builds
-all of that infrastructure** and was discovered mid-spec:
+PR #286 (`claude/sbir-ma-exit-analysis`) supplied useful SBIR-focused SEC EDGAR
+and Form D parsing, heuristic CIK matching, scoring tiers, and SBIR M&A signal
+extraction. Relevant reusable code and artifacts include:
 
-- `sbir_etl/enrichers/sec_edgar/{client,enricher,form_d_scoring}.py` — full
-  EDGAR client (~1,800 lines), rate-limited (10 req/s SEC limit), checkpointed
-- `sbir_etl/models/sec_edgar.py` — typed models for filings, mentions, Form D
-- `packages/sbir-analytics/sbir_analytics/assets/sec_edgar_enrichment.py` —
-  Dagster asset, with companion job
-- `scripts/data/{fetch_form_d_index,fetch_form_d_details,detect_sbir_ma_events,
-  refine_ma_medium_tier,analyze_sbir_ma_exits,analyze_form_d_tiers,
-  explore_form_d_clusters,scan_sbir_edgar}.py` — pipeline scripts
-- `data/sbir_ma_events.jsonl` — curated M&A events, confidence-tiered
-- 3-layer CIK resolution (threshold + containment + distinctive-word) with
-  city-co-occurrence disambiguation; 552 high-confidence Form D M&A signals,
-  4,022 EFTS-mention candidates refined to 1,203 confirmed targets after
-  directional text refinement (false-positive removal)
-- Published findings in `docs/research/`: 8.1% SBIR M&A exit rate, 1.82x
-  Form D-to-SBIR leverage ratio (high-confidence), agency stratification,
-  top-acquirer landscape, serial-acquirer count
+- `sbir_etl/enrichers/sec_edgar/{client,enricher,form_d_scoring}.py`;
+- `sbir_etl/models/sec_edgar.py`;
+- `packages/sbir-analytics/sbir_analytics/assets/sec_edgar_enrichment.py`; and
+- `data/sbir_ma_events.jsonl`, which is SBIR-side M&A evidence.
 
-This spec **consumes** PR #286's outputs rather than reimplementing them.
-Phase 2 collapses from "ingest + parse + crosswalk + cohort + compare" to
-"filter to NSF + build control cohort + compute deltas".
+Those outputs do **not** provide a maintained broad Form D control producer, a
+complete authoritative SBIR-CIK resolution set, control-side M&A coverage, or a
+PATLINK input for the Phase 2 scaffold. PR #286's heuristic matches can be reused
+as candidate evidence, but they cannot define "never SBIR."
+
+The bounded broad-universe prerequisite is now maintained separately by
+`scripts/data/build_form_d_control_universe.py`. It consumes the SEC DERA
+[quarterly Form D bulk data sets](https://www.sec.gov/data-research/sec-markets-data/form-d-data-sets)
+for the closed 2009Q1–2024Q4 window and pins sources and products in deterministic
+manifests. The [official Form D](https://www.sec.gov/files/Form_D.pdf) and DERA
+files provide SIC and Form D industry group, not NAICS.
 
 ## Phasing
 
@@ -92,13 +88,15 @@ This spec ships in two sequential phases, each independently useful.
 - **Phase 1 — Published-baseline comparison.** Compute NSF SBIR cohort outcomes
   on metrics with cited public VC baselines. No new data ingest. Independent
   of PR #286.
-- **Phase 2 — NSF-vs-private-capital matched cohort.** Consume PR #286
-  artifacts to filter to NSF awardees, construct a non-SBIR Form D control
-  cohort, and compute outcome deltas. Gated on PR #286 merging to main.
+- **Phase 2 — NSF-vs-private-capital matched cohort.** Build a validated
+  high-recall SBIR identity exclusion over the maintained DERA issuer universe,
+  establish validated matching covariates, then compute symmetric outcome
+  deltas. PR #286 supplies only narrow reusable evidence, not these gates.
 
-Phase 1 is the gating deliverable. Although #286 is now on main and a Phase 2
-scaffold exists, a real Phase 2 run remains gated on Phase 1 sign-off and the
-missing input contracts described above.
+Phase 1 is the gating deliverable. Although #286 is now on main, the DERA staging
+producer is maintained, and a Phase 2 scaffold exists, a real Phase 2 run remains
+gated on Phase 1 sign-off and the missing identity, covariate, and symmetric
+outcome contracts described above.
 
 ## Phase 1 Requirements
 
@@ -117,10 +115,10 @@ missing input contracts described above.
    - 5-year survival proxy (firm appears as recipient/vendor in any federal
      dataset 5 years post-Phase-II). Denominator is unique companies per
      stratum, not award rows.
-   - M&A exit rate — reuses #286's `data/sbir_ma_events.jsonl` once that PR
-     merges (was previously gated as "not-yet-available"). Agency-filtered
-     slice is a one-line join. Join is UEI/DUNS-first; falls back to
-     normalized company name when UEI/DUNS are absent.
+   - M&A exit rate — reuses #286's SBIR-side `data/sbir_ma_events.jsonl` for
+     this treated-only Phase 1 metric. The agency-filtered slice is a one-line
+     join. Join is UEI/DUNS-first; falls back to normalized company name when
+     UEI/DUNS are absent.
    - Patent rate — **deferred to Phase 2**. The asset does not accept
      PATLINK as an input in Phase 1; adding PATLINK is out of scope here.
 3. **SHALL** present results alongside cited public private-capital and
@@ -157,34 +155,50 @@ cohort estimand and identity approach still require review.
 
 ## Phase 2 Requirements
 
-Phase 2 consumes PR #286 artifacts. None of the EDGAR/Form-D ingest or
-parsing work belongs in this spec.
+Phase 2 may reuse narrow PR #286 evidence, but its broad issuer source is the
+pinned official DERA quarterly bulk collection. The current producer outputs
+provisional identity staging only.
 
-7. **SHALL** filter PR #286's SBIR↔EDGAR signal tables (`sec_edgar_enrichment`
-   asset outputs and `data/sbir_ma_events.jsonl`) to the configured agency's
-   SBIR awardees only (e.g. NSF: ALN 47.041 / 47.084).
-8. **SHALL** construct a non-SBIR control cohort: Form D issuers in #286's
-   index that are *not* matched to any SBIR awardee (CIK is not in the
-   resolved SBIR-CIK set produced by #286). Bucket by issuer-reported
-   vintage (filing year), NAICS-2, state.
-9. **SHALL** match the agency cohort and control cohort on covariates: vintage
-   year, NAICS-2, state. Coarsened-exact matching, no propensity scoring in
-   v1. Document cohort sizes and balance.
-10. **SHALL** compute Phase 1's outcome metrics on the matched control cohort
-    where applicable: federal-contract presence (FPDS join), patent rate
-    (PATLINK), M&A exit rate (#286's events table). Survival proxy and
-    Phase-graduation rates do not apply to the control cohort and are
-    reported as N/A.
+7. **SHALL** filter the observed SBIR award history to the configured agency
+   (e.g. NSF: ALN 47.041 / 47.084), retain every historical organization name
+   present there, and resolve the treated cohort through the validated
+   higher-recall CIK/alias union. PR #286's heuristic matches are candidate
+   evidence, not the complete treated identity set.
+8. **SHALL** construct a defensible SBIR-excluded Form D control cohort. The
+   partial implementation SHALL ingest the official DERA quarterly bulk ZIPs
+   for the closed 2009Q1–2024Q4 window and emit deterministic manifests, a broad
+   issuer universe, candidate exact-normalized-name SBIR-CIK exclusion evidence,
+   and filtered disjoint identity-only controls. Exact comparison SHALL use every
+   historical name present in the SBIR award history and
+   `CompanyNameProfile.ORGANIZATION_KEY_V1`.
+   While exclusion recall is unknown, the manifest SHALL state
+   `complete_sbir_exclusion=false`; retained means only not exact-name-matched to
+   observed SBIR history, not "never SBIR." Requirement 8 remains open until a
+   higher-recall authoritative CIK/alias union is validated.
+9. **SHALL** match the agency and eligible control cohorts on vintage year,
+   validated NAICS-2, and state using coarsened-exact matching; no propensity
+   scoring in v1. DERA supplies SIC and Form D industry group, not NAICS. The
+   staging producer SHALL NOT infer NAICS and SHALL state
+   `covariates_ready=false` until a validated SIC-to-NAICS-2 strategy exists.
+   The existing matched asset SHALL refuse staging output while either gate is
+   false. Document cohort sizes and balance only after both gates pass.
+10. **SHALL** compute applicable outcomes symmetrically for treated and control
+    cohorts: federal-contract presence, patent presence, and M&A exit rate.
+    The current scaffold has no real FPDS or patent input, while #286's
+    `sbir_ma_events.jsonl` contains SBIR-only M&A evidence and cannot establish
+    control coverage. Missing outcome inputs or coverage SHALL be reported as
+    unavailable, never zero. Implement each symmetric outcome contract in a
+    separate follow-on PR. Survival proxy and Phase-graduation rates do not
+    apply to controls and remain N/A.
 11. **SHALL** publish a threats-to-validity section before any headline
     finding. Required entries: SAFE/convertible undercount, late-stage Form
-    D inclusion, NAICS self-report noise, #286's CIK-resolution recall floor
-    (~28% of SBIR companies appear in EDGAR per #286), technical-merit vs.
-    lawyer-access selection bias, control-cohort exclusion of pre-Form-D
-    SBIR awardees who later raised capital.
+    D inclusion, unknown exact-name exclusion recall, alias/rename/acquisition
+    leakage, SIC-to-NAICS-2 mapping validity, technical-merit vs. lawyer-access
+    selection bias, and control-cohort timing leakage.
 12. **SHOULD** decompose results by Form D security-type (equity / debt /
     option / convertible) and offering-size buckets so downstream readers
-    can zoom in on the noisy seed-stage subset if they want. Use #286's
-    Form D scoring tiers directly.
+    can zoom in on the noisy seed-stage subset if they want. Reuse #286's
+    scoring tiers only after verifying that they apply to the DERA source schema.
 13. **SHOULD** reproduce #286's published 1.82x SBIR-to-Form-D leverage
     ratio scoped to the configured agency only, as a cross-check on the
     dataset slice.
@@ -195,21 +209,24 @@ Can state: "On vintage [X], NAICS-2 [Y], state [Z]: the configured agency's
 Phase II awardees transitioned to federal contract at [A]% within 5 years;
 matched non-SBIR Form D issuers transitioned at [B]%. Selection-bias and
 matching caveats below." The reconciliation matters more than the headline
-number.
+number. This gate remains open; the provisional identity-only staging output is
+not sufficient to evaluate it.
 
 ## Dependencies
 
 - NSF identification (ALN 47.041 / 47.084) — `sbir_etl/models/sbir_identification.py` (EXISTS)
 - Transition detection (≥85% precision) — `packages/sbir-ml/sbir_ml/transition/` (EXISTS)
 - Entity resolution cascade — UEI/DUNS/CAGE/fuzzy-name (EXISTS)
-- PATLINK patent linkage (EXISTS)
+- Phase 2 patent linkage — NOT WIRED; no PATLINK input is present in the scaffold
 - CET classifier (EXISTS, used for Phase 1 stratification)
-- **PR #286** — provides EDGAR ingest, Form D parsing, CIK resolution, M&A
-  event detection, Form D scoring tiers. Gates all of Phase 2. After merge,
-  this branch must rebase on top of main.
-- `VendorCrosswalk` — used by #286's CIK resolver. Spec authors should not
-  modify it directly; if a CIK field is needed for downstream analysis,
-  request it via the #286 owners or a follow-on PR rather than fork it here.
+- Official SEC DERA quarterly Form D bulk data, pinned 2009Q1–2024Q4 — staging
+  producer EXISTS; higher-recall exclusion and validated NAICS-2 do not
+- **PR #286** — reusable SBIR-focused EDGAR/Form D parsing, heuristic CIK
+  evidence, scoring tiers, and SBIR-side M&A events; not a complete Phase 2
+  identity or outcome contract
+- Authoritative CIK/alias union with demonstrated exclusion recall — MISSING
+- Validated SIC-to-NAICS-2 strategy — MISSING
+- Symmetric FPDS, patent, and M&A outcome inputs — MISSING
 
 ## Out of Scope
 
@@ -219,6 +236,7 @@ number.
   causal claims require IV / regression-discontinuity machinery beyond scope.
 - Patent rate in Phase 1 — deferred to Phase 2 (the asset does not accept
   PATLINK as an input; adding it is out of scope for the current iteration).
-- Re-implementation of any infrastructure delivered by PR #286. If a #286
-  artifact is missing or wrong for our purposes, file an issue against the
-  #286 follow-up; do not duplicate.
+- Re-implementation of PR #286's SBIR-focused EDGAR enrichment and scoring.
+  The official DERA broad-universe producer and the missing authoritative
+  identity, covariate, and symmetric outcome contracts are distinct follow-ons,
+  not capabilities already delivered by #286.

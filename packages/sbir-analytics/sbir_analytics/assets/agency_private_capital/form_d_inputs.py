@@ -33,7 +33,12 @@ DEFAULT_FORM_D_CONTROL_UNIVERSE_PATH = Path("data/form_d_control_universe.jsonl"
 # keyed with ORGANIZATION_KEY_V1 rather than the FORM_D_JOIN_V1 used here, so a
 # join would silently produce zero matched pairs instead of an error.
 _STAGING_FILENAME_SUFFIXES = (".provisional.jsonl", ".identity-staging.jsonl")
+# Both keys together, not either alone: the producer always emits them as a
+# pair (build_form_d_control_universe.py:546-554, 689-691), but `schema_version`
+# on its own is a generic enough name that an unrelated future control-universe
+# format could legitimately add it without being a staging artifact.
 _STAGING_RECORD_KEYS = ("firm_key", "schema_version")
+_STAGING_RECORD_SAMPLE_SIZE = 10
 _STAGING_MANIFEST_GATES = (
     "ready_for_matching",
     "complete_sbir_exclusion",
@@ -93,6 +98,9 @@ def load_form_d_control_universe(
 
     The control universe is expected to be broader than SBIR matches. Any CIK
     already present in the SBIR matched set is removed before matching.
+
+    Staging and provisional identity artifacts are refused outright; see
+    ``_reject_staging_universe``.
     """
 
     records = read_jsonl(path)
@@ -129,14 +137,16 @@ def _reject_staging_universe(path: Path, records: list[dict[str, Any]]) -> None:
         if name.endswith(suffix):
             raise ValueError(
                 f"Refusing Form D control universe {path}: '{suffix}' marks a staging "
-                "product that is not ready for matching."
+                "product, keyed on ORGANIZATION_KEY_V1 rather than the FORM_D_JOIN_V1 "
+                "this loader joins on, and not ready for matching."
             )
 
-    if records and any(key in records[0] for key in _STAGING_RECORD_KEYS):
-        present = sorted(key for key in _STAGING_RECORD_KEYS if key in records[0])
+    sample = records[:_STAGING_RECORD_SAMPLE_SIZE]
+    if sample and all(all(key in rec for key in _STAGING_RECORD_KEYS) for rec in sample):
         raise ValueError(
-            f"Refusing Form D control universe {path}: records carry staging key(s) "
-            f"{present}, which the matching-ready universe does not use."
+            f"Refusing Form D control universe {path}: records carry staging keys "
+            f"{_STAGING_RECORD_KEYS}, which the matching-ready universe does not use. "
+            "A renamed staging file is still staging; this is the check that catches it."
         )
 
     manifest_path = path.with_name("form_d_control_universe.manifest.json")

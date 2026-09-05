@@ -142,39 +142,79 @@ def test_load_form_d_control_universe_dedupes_duplicate_ciks(tmp_path) -> None:
     assert df.iloc[0]["first_form_d_year"] == 2020
 
 
-def test_load_form_d_control_universe_refuses_staging_filename(tmp_path) -> None:
-    path = tmp_path / "form_d_control_identity_universe.provisional.jsonl"
-    _write_jsonl(path, [{"cik": "0000999", "issuer_name": "Staging Co"}])
+def _staging_row(cik: str = "555") -> dict:
+    """One record in the shape build_form_d_control_universe.py emits."""
+    return {
+        "firm_key": f"form_d_cik:{cik}",
+        "schema_version": 1,
+        "cik": cik,
+        "issuer_name": "Staging Issuer LLC",
+        "filings": [{"filing_date": "2015-04-02"}],
+    }
 
-    with pytest.raises(ValueError, match="staging product"):
+
+def test_load_form_d_control_universe_refuses_provisional_filename(tmp_path) -> None:
+    path = tmp_path / "form_d_control_identity_universe.provisional.jsonl"
+    _write_jsonl(path, [_staging_row()])
+    with pytest.raises(ValueError, match="staging"):
         load_form_d_control_universe(path, sbir_ciks=set())
 
 
-def test_load_form_d_control_universe_refuses_staging_record_keys(tmp_path) -> None:
+def test_load_form_d_control_universe_refuses_identity_staging_filename(tmp_path) -> None:
+    path = tmp_path / "form_d_issuer_universe.identity-staging.jsonl"
+    _write_jsonl(path, [_staging_row()])
+    with pytest.raises(ValueError, match="staging"):
+        load_form_d_control_universe(path, sbir_ciks=set())
+
+
+def test_load_form_d_control_universe_refuses_staging_shaped_records(tmp_path) -> None:
+    """A renamed staging file is still staging; the record shape gives it away."""
+    path = tmp_path / "form_d_control_universe.jsonl"
+    _write_jsonl(path, [_staging_row("555"), _staging_row("556")])
+    with pytest.raises(ValueError, match="staging keys"):
+        load_form_d_control_universe(path, sbir_ciks=set())
+
+
+def test_load_form_d_control_universe_does_not_false_positive_on_one_shared_key(
+    tmp_path,
+) -> None:
+    """Only `schema_version`, without `firm_key`, must not trip the guard.
+
+    `schema_version` alone is a generic enough field name that a future,
+    unrelated control-universe format could legitimately carry it. Only the
+    combination the real producer emits -- both keys together -- is staging.
+    """
     path = tmp_path / "form_d_control_universe.jsonl"
     _write_jsonl(
         path,
         [
             {
-                "cik": "0000999",
-                "issuer_name": "Staging Co",
-                "firm_key": "form_d_cik:999",
-                "schema_version": 1,
+                "form_d_cik": "777",
+                "company_name": "Ready Issuer",
+                "schema_version": 2,
+                "offerings": [{"filing_date": "2015-04-02", "total_amount_sold": 1}],
             }
         ],
     )
-
-    with pytest.raises(ValueError, match="staging key"):
-        load_form_d_control_universe(path, sbir_ciks=set())
+    df = load_form_d_control_universe(path, sbir_ciks=set())
+    assert len(df) == 1
 
 
 def test_load_form_d_control_universe_refuses_ungated_manifest(tmp_path) -> None:
     path = tmp_path / "form_d_control_universe.jsonl"
-    _write_jsonl(path, [{"cik": "0000999", "issuer_name": "Staging Co"}])
-    (tmp_path / "form_d_control_universe.manifest.json").write_text(
-        json.dumps({"ready_for_matching": False}), encoding="utf-8"
+    _write_jsonl(
+        path,
+        [
+            {
+                "form_d_cik": "777",
+                "company_name": "Ready Issuer",
+                "offerings": [{"filing_date": "2015-04-02", "total_amount_sold": 1}],
+            }
+        ],
     )
-
+    (tmp_path / "form_d_control_universe.manifest.json").write_text(
+        json.dumps({"ready_for_matching": False, "complete_sbir_exclusion": False})
+    )
     with pytest.raises(ValueError, match="ready_for_matching"):
         load_form_d_control_universe(path, sbir_ciks=set())
 
