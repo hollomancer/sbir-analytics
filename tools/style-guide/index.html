@@ -802,10 +802,11 @@
       </div>
 
       <p class="note" style="margin-top: 1rem;">
-        The canvas never hardcodes these. It resolves them at paint time by mounting a hidden probe
-        span, reading <code>getComputedStyle().color</code>, and discarding it — so the graph
-        re-themes with the OS and the stylesheet stays the single source of truth. It is the best
-        pattern in the repository and nothing else uses it.
+        The canvas never hardcodes these. It resolves them at paint time by reading each custom
+        property with <code>getComputedStyle(document.documentElement).getPropertyValue()</code>
+        (the <code>cssVar</code> helper below) — so the graph re-themes with the OS and the
+        stylesheet stays the single source of truth. It is the best pattern in the repository and
+        nothing else uses it.
       </p>
     </section>
 
@@ -1397,14 +1398,30 @@
       toastTimer = window.setTimeout(function () { toast.classList.remove("show"); }, 1400);
     }
 
+    function legacyCopy(text) {
+      // Non-secure contexts and older browsers have no navigator.clipboard.
+      // Select the text in an off-screen textarea and use the legacy command.
+      var ta = document.createElement("textarea");
+      ta.value = text;
+      ta.setAttribute("readonly", "");
+      ta.style.position = "fixed";
+      ta.style.opacity = "0";
+      document.body.appendChild(ta);
+      ta.select();
+      var ok = false;
+      try { ok = document.execCommand("copy"); } catch (e) { ok = false; }
+      document.body.removeChild(ta);
+      flash(ok ? "Copied " + text : "Copy failed: " + text);
+    }
+
     function copy(text) {
       if (navigator.clipboard && navigator.clipboard.writeText) {
         navigator.clipboard.writeText(text).then(
           function () { flash("Copied " + text); },
-          function () { flash(text); }
+          function () { legacyCopy(text); }
         );
       } else {
-        flash(text);
+        legacyCopy(text);
       }
     }
 
@@ -1465,7 +1482,9 @@
 
     function renderContrast() {
       var dark = isDark();
-      var surface = dark ? "#151c24" : "#ffffff";
+      // Read the live token so the ratios track the stylesheet; the literals
+      // are only a fallback for a stylesheet that fails to load.
+      var surface = cssVar("--surface") || (dark ? "#151c24" : "#ffffff");
       contrastBox.textContent = "";
 
       RECORD_TOKENS.forEach(function (name) {
