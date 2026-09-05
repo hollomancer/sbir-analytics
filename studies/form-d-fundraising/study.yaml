@@ -1,0 +1,61 @@
+schema_version: 1
+study_id: form-d-fundraising
+title: SBIR federal spending vs Form D private capital, 2009–2024
+evidence_status: reproducible
+research_questions:
+  - F3
+estimand: >-
+  Among SBIR/STTR awardees in calendar years 2009–2024, estimate two
+  lower-bound private-to-SBIR leverage ratios from SEC Form D
+  totalAmountSold after year and excluded-industry-group filters: (1)
+  program-level, Form D dollars from matched firms divided by all SBIR.gov
+  award dollars in the window; (2) per-matched-firm, Form D dollars from
+  the subset of matched firms that have at least one in-window SBIR award,
+  divided by SBIR.gov dollars for that same subset. Report each ratio at
+  the high and high-plus-medium match-confidence filters, with a firm-level
+  percentile bootstrap (1,000 iterations, seed 42). Non-detection is not
+  proof of zero private capital. The ratios are not NASEM's DoD follow-on
+  federal-contract leverage.
+frozen_artifacts:
+  - path: studies/form-d-fundraising/design.md
+    sha256: 5459e2eea7b689b8f5e5e4ea0803b991328e488c32703eb7a730409bc2e99f2b
+implementation:
+  - path: scripts/data/bootstrap_form_d_leverage_ci.py
+    symbol: main
+  - path: scripts/data/bootstrap_form_d_leverage_ci.py
+    symbol: bootstrap_two_views
+  - path: sbir_etl/enrichers/sec_edgar/form_d_scoring.py
+    symbol: compute_form_d_confidence
+identity_policy:
+  strategy: >-
+    Ratio join is uppercase stripped company name. Match-confidence tiers
+    come from compute_form_d_confidence (high = PI-to-executive name score
+    ≥ 0.7 or ZIP match; medium = state match or missing state evidence; a
+    state mismatch is low). The ratio script does not use
+    CompanyNameProfile.FORM_D_JOIN_V1.
+  version: two-signal tiering, methodology commit f65abb89
+  negative_evidence_allowed: false
+materialization:
+  allowed: true
+  blockers: []
+permitted_claims:
+  - Given the frozen design and a 2009–2024 SBIR.gov plus Form D details
+    cut, the two leverage ratios and their seed-42 bootstrap intervals are
+    deterministic.
+  - Those ratios measure disclosed Regulation D capital, not follow-on
+    federal contracts, and are not a NASEM 4:1 reproduction.
+limitations:
+  - This study is reproducible, not validated or citable. Anything that
+    leaves the repository must be labeled non-citable, and no
+    research question may be marked validated or citable on these numbers.
+  - SEC Form D is a lower-bound proxy. Firms that raise privately without
+    a Form D, or whose name does not match, are invisible. A zero means
+    we found none, never there are none.
+  - Input bytes are local and gitignored. The dated headline numbers are
+    not SHA-enforced here; only the method note is.
+  - totalAmountSold is self-reported and not SEC-verified.
+  - The ratio join is an uppercase name match, not the versioned
+    form-d-join-v1 identity profile. Large issuers near the tier boundary
+    can move the headline.
+  - Bootstrap intervals capture firm-sampling uncertainty only, not
+    matching error or amount-reporting error.

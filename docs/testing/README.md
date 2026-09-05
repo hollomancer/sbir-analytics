@@ -30,6 +30,8 @@ make test-integration
 make test-functional
 make test
 make lint
+make lint-boundaries
+make ci-local
 make docs-check
 ```
 

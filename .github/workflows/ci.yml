@@ -82,6 +82,7 @@ jobs:
           uv run python scripts/ci/check_config_boundaries.py
           uv run python scripts/ci/check_removed_src_references.py
           uv run python scripts/ci/validate_study_manifests.py
+          uv run python scripts/ci/check_research_question_status.py
           # Guards the company-identity primitive: a direct RapidFuzz scorer
           # outside sbir_etl.identity is a second, unnamed implementation of
           # the similarity contract. Previously exercised only by its own unit
@@ -136,9 +137,7 @@ jobs:
       # ran nowhere after weekly.yml was retired; a non-blocking version would
       # reproduce the state it is meant to fix.
       - name: Run detect-secrets
-        run: |
-          uv pip install detect-secrets
-          uv run detect-secrets scan --baseline .secrets.baseline
+        run: uv run detect-secrets scan --baseline .secrets.baseline
 
   test-fast:
     name: Fast Tests (${{ matrix.shard }}/4)

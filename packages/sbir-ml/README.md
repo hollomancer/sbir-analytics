@@ -39,7 +39,9 @@ Core deps: `sbir-etl`, `scikit-learn`, `tqdm`. Optional extras:
 
 ## Notes
 
-- Transition scoring changes must maintain the ≥85% precision benchmark
-  (`scripts/phase_iii_precision_backtest.py`).
+- Transition scoring HIGH-threshold polarity is gated on every PR by
+  `tests/unit/scripts/test_phase_iii_precision_backtest.py`. The ≥85%
+  HIGH-precision number is a manual S3-corpus run of
+  `scripts/phase_iii_precision_backtest.py`, not a CI gate.
 - The six scored signals and their default weights are documented in
   [`docs/transition/scoring-guide.md`](../../docs/transition/scoring-guide.md).

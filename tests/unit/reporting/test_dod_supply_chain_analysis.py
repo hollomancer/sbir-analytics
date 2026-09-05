@@ -116,6 +116,8 @@ def test_initial_analysis_reports_scope_and_limitations() -> None:
                 "entrant_firm_share": 1.0,
                 "dod_cta14": ["trusted_ai_and_autonomy"],
                 "dod_sc8": ["cyber_posture"],
+                "nssts_cet14": ["ai_and_autonomy"],
+                "nssts_mission_needs": ["national_security_ai_and_autonomy"],
             }
         ]
     )

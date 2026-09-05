@@ -188,20 +188,21 @@ ranking, or another contestable decision into a pipeline.
 ## Relationship to the research questions
 
 [research-questions.md](../research-questions.md) is the inventory of what the
-repository exists to answer, and its **Status** lines already speak in
-epistemic terms — what is answerable today, what is a lower-bound proxy, what
-is contested. The tiers are the supply side of that same distinction:
+repository exists to answer, and its reserved **Status** ranks are a public
+API backed by [study contracts](../../studies/README.md), not by directory
+tier labels:
 
-| research-questions.md says | Backing tier |
+| research-questions.md says | Required `studies/*/study.yaml` |
 |---|---|
-| Answerable today, citable | `evidence` |
-| Answerable but lower-bound proxy | `evidence`, with the bound in the declared estimand |
-| Partial or contested | `pipelines` + `exploratory` |
-| Design target, not built | none yet |
+| `Citable` | `evidence_status: citable` |
+| `Validated` | `validated` or `citable` |
+| `Computable` / `Partially computable` | `reproducible` or higher |
+| Exploratory / partial / inventory target | none required |
 
-A question cannot be marked answerable on the strength of exploratory-tier
-work. If the inventory claims an answer, something in `evidence` has to stand
-behind it.
+A question cannot be marked `Computable` on the strength of exploratory-tier
+work or an exploratory study. `scripts/ci/check_research_question_status.py`
+enforces the pairing. An `evidence`-tier spec is the implementation contract
+for building that study; it is not itself a Status rank.
 
 ## Current status
 
@@ -217,7 +218,11 @@ What already holds:
   and the CI quality job.
 - Active specs declare a target tier in `requirements.md`;
   `scripts/ci/check_epistemic_tiers.py` rejects missing, duplicate, and
-  invalid declarations in `make lint-boundaries` and CI.
+  invalid declarations in `make lint-boundaries` and CI. Specs that declare
+  `evidence` must also carry paperwork for SHA-256 freeze enforcement (a
+  recorded digest or explicit raw-byte freeze language in `amendments.md`)
+  plus a `**Declared estimand:**` field. That gate is paperwork-only; it does
+  not prove runtime SHA or blocking asset-check enforcement.
 - The tier dependency lattice is executable: `scripts/ci/check_tier_boundaries.py`
   (in `make lint-boundaries` and CI) resolves each module's effective tier and
   blocks imports below it. Its `TIER_IMPORT_ALLOWLIST` is empty — every seeded

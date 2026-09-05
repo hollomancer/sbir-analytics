@@ -33,7 +33,12 @@ bypassing lifecycle review; the status and rationale still require human judgmen
 - **`agency-private-capital-comparison` — Active.** The NSF Phase 1 real-data
   gate is materialized for review but remains non-citable and unsigned. Phase 2
   stays gated on Phase 1 sign-off, a reproducible Form D control-universe
-  producer, and symmetric FPDS/PATLINK/M&A outcome inputs.
+  producer, and symmetric FPDS/PATLINK/M&A outcome inputs. Also owns Form D
+  input fidelity in its own `form_d_inputs.py` loader (tasks F.1-F.3, from
+  PR #691): the staging-input refusal shipped in v0.12.0, and exact
+  amendment-chain collapse is blocked on locating the SEC file number. Note that
+  v0.12.0 changed `total_form_d_raised` and `offering_count` after the Phase 1
+  artifacts were materialized.
 - **`bea-nipa-tax-rates` — Active.** The NIPA provider exists; the remaining
   work is the on-disk cache and removal of hardcoded effective-rate consumers.
 - **`company-categorization` — Maintenance.** About 80% complete. Evaluate the
@@ -42,7 +47,8 @@ bypassing lifecycle review; the status and rationale still require human judgmen
 - **`cross-agency-taxonomy` — Gated backlog.** M3 research target. Prerequisite
   classifier/tools exist, but this spec's batch run, report, and Dagster wiring
   are not implemented.
-- **`dark-majority-resolution` — Maintenance.** Core contract, identity,
+- **`dark-majority-resolution` — Maintenance.** Retiered `evidence` → `pipelines`
+  (2026-08-15): no four-item evidence contract yet. Core contract, identity,
   liveness, and recovery work is implemented. Remaining work is a bounded web
   liveness sweep plus blocked/deferred external-registry checks.
 - **`data-imputation` — Gated backlog.** Foundational E4 work, but zero
@@ -55,6 +61,13 @@ bypassing lifecycle review; the status and rationale still require human judgmen
   test are accepted; and weekly-report refactor T2.3 plus the injected,
   typed-return work in T3.2 are complete. Offline, full-context, and shadow
   gates still precede any production integration.
+- **`edgar-event-date-fidelity` — Gated backlog.** From PR #690. EDGAR profiles
+  pair an M&A mention *type* with a "latest" date taken across all types, and two
+  `scripts/data/` consumers already perform that unsafe join. Declared
+  `exploratory` rather than `pipelines`: both named consumers are scripts. Owns
+  only `sbir_etl/enrichers/sec_edgar/`. The Form D amendment work reviewed
+  alongside it (PR #691) is not here — it lives with the code it changes, as
+  `agency-private-capital-comparison` tasks F.1-F.3.
 - **`epistemic-tier-enforcement` — Maintenance.** Enforcement follow-on to the
   2026-08 module-labeling sweep (PRs #550–#552). Shipped: the blocking
   tier-aware import guard (`scripts/ci/check_tier_boundaries.py`, in
@@ -69,17 +82,18 @@ bypassing lifecycle review; the status and rationale still require human judgmen
   ordinary upkeep of declarations as modules are added.
 - **`fiscal-tax-impact-v2.md` — Gated backlog.** Valid D2 methodology upgrade.
   Leave inactive until fiscal-model refresh is selected.
-- **`follow-on-multiplier-validation` — Active.** Design-only follow-up to the
-  completed multiplier asset. Still called out as an immediate research-plan
-  gap.
+- **`follow-on-multiplier-validation` — Active.** Retiered `evidence` →
+  `exploratory` (2026-08-15): design-only follow-up without an evidence contract.
+  Still called out as an immediate research-plan gap.
 - **`iterative-api-enrichment` — Maintenance.** Issue #442 closed the
   shared lifecycle: `SourceAdapter` + `SourceRefreshRunner`, USAspending
   as the reference adapter, and `usaspending_refresh_batch` on the job.
   Per-source adapters stay split (#443 NIH RePORTER, then SAM/PatentsView).
   Tasks 6.1–6.2 remain optional Phase 2 expansion.
-- **`ma-discovery-integration` — Deferred.** The design depends on an unmerged
-  discovery toolkit and missing press-enrichment glue. Revisit only when M&A
-  recall becomes a selected research priority.
+- **`ma-discovery-integration` — Deferred.** The #371 toolkit now lives at
+  `sbir_etl/enrichers/ma_discovery/` (issue #446, toolkit relocation). Search
+  backend, LLM extractor, and collision policy remain unbuilt. Revisit only
+  when M&A recall becomes a selected research priority.
 - **`modular-analysis-platform` — Maintenance.** Pipelines-tier contracts
   and registry so a new tech-census or transition-cohort profile is
   YAML-only (issue #441). HTTP is out of scope per ADR-004. Weekly awards
@@ -96,7 +110,8 @@ bypassing lifecycle review; the status and rationale still require human judgmen
 - **`patent-cost-spillover` — Gated backlog.** M2 analytical layer remains
   missing. Implement only when patent cost/spillover becomes the selected
   sprint.
-- **`phase-3-solicitation-alerts` — Maintenance.** Retrospective S1 work is
+- **`phase-3-solicitation-alerts` — Maintenance.** Retiered `evidence` →
+  `pipelines` (2026-08-15). Retrospective S1 work is
   implemented. SAM.gov Opportunities S2/S3 paths remain backlog.
 - **`phase-iii-census` — Active.** Phase 1 is implemented and materialized under
   a reproducible study contract; the control-identity eligibility gate, the
@@ -111,14 +126,17 @@ bypassing lifecycle review; the status and rationale still require human judgmen
 - **`phase-iii-hand-label-validation` — Gated backlog.** Design and estimand
   are written but the spec is not yet frozen. Do not implement until the design
   is approved and frozen per the evidence-tier contract.
-- **`phase3-candidate-enrichment` — Active.** The source-coverage gate stopped
+- **`phase3-candidate-enrichment` — Active.** Retiered `evidence` → `exploratory`
+  (2026-08-15). The source-coverage gate stopped
   the text assembler, while the firm-ranking/lineage experiment found a useful
   but hand-weighted lift. Learned weights and a larger independent validation set
   remain before production use.
-- **`phase3-match-benchmark` — Maintenance.** Corrected estimator and cohort
+- **`phase3-match-benchmark` — Maintenance.** Retiered `evidence` → `pipelines`
+  (2026-08-15). Corrected estimator and cohort
   rules are implemented; empirical reruns remain blocked on the required inputs.
   Its results remain provisional portfolio-linkage evidence.
-- **`phase3-notice-corpus-fusion` — Maintenance.** Award-grain recovery,
+- **`phase3-notice-corpus-fusion` — Maintenance.** Retiered `evidence` →
+  `pipelines` (2026-08-15). Award-grain recovery,
   reproduction, frozen coefficients, and packet integration landed. Reconcile
   the remaining documentation task and the explicitly missing second label channel.
 - **`phase3-transition-groundtruth` — Maintenance.** The independent corpus,
@@ -128,7 +146,8 @@ bypassing lifecycle review; the status and rationale still require human judgmen
 - **`phase3-undercount-extension` — Gated backlog.** Valid B3 follow-up, but it
   depends on reusable resolution/self-label components and must keep contract
   undercount separate from provisional non-contract vehicle counts.
-- **`procurement-transition-p1-remediation` — Active.** Award identity and path
+- **`procurement-transition-p1-remediation` — Active.** Retiered `evidence` →
+  `pipelines` (2026-08-15). Award identity and path
   attribution landed. Cold-start bounds, source-normalization provenance, and
   ranking/auditability phases remain.
 - **`sbir-ma-match-rate-by-fy` — Gated backlog.** Analysis-only F2 follow-up on
@@ -148,7 +167,8 @@ bypassing lifecycle review; the status and rationale still require human judgmen
 - **`tech-area-transition-report` — Maintenance.** The parameterized cohort and
   report pattern is implemented across nanotechnology, QIS, and hypersonics.
   The remaining task is to add richer headline channels when their evidence exists.
-- **`transition-coverage-expansion` — Active.** Initial access and coverage
+- **`transition-coverage-expansion` — Active.** Retiered `evidence` →
+  `exploratory` (2026-08-15). Initial access and coverage
   spikes are recorded. Credible grant/subaward attribution, OT resolution, and a
   channel-by-channel wire-in decision remain.
 - **`transition-precision-benchmark` — Active.** Automates the full-corpus

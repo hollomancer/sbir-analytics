@@ -4,7 +4,7 @@
 
 pipeline:
   name: "sbir-analytics"
-  version: "0.6.0"
+  version: "0.12.0"
   environment: "development" # overridden by environment
 
 # File system paths configuration
@@ -252,7 +252,7 @@ enrichment_refresh:
       ttl_hours: 168  # 7 days - filings are relatively stable
 
   nih_reporter:
-    # Disabled registry slot for issue #443. No client is implemented here.
+    # Disabled until a hand run succeeds (issue #443). Adapter is wired; do not enable on the live host yet.
     enabled: false
     cadence_days: 7
     sla_staleness_days: 7

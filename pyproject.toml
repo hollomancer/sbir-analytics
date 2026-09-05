@@ -1,6 +1,6 @@
 [project]
 name = "sbir-etl"
-version = "0.6.0"
+version = "0.12.0"
 description = "SBIR ETL library — extract, enrich, and transform SBIR/STTR awards data"
 authors = [{name = "Conrad Hollomon", email = "conrad.hollomon@pm.me"}]
 readme = "README.md"
@@ -62,6 +62,7 @@ dev = [
     "mypy>=1.8.0,<3.0.0",
     "pytest-cov>=5.0.0,<8.0.0",
     "bandit>=1.7.0,<2.0.0",
+    "detect-secrets>=1.5.0,<2.0.0",
     "pandas-stubs>=2.2.0,<4.0.0",
     "types-psutil>=5.9.0,<8.0.0",
     "types-PyYAML>=6.0.0,<7.0.0",

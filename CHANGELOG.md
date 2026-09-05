@@ -10,6 +10,196 @@ version.
 
 ## [Unreleased]
 
+## [0.12.0] — 2026-08-31
+
+### Fixed
+
+- `validated_phase_iii_contracts` and the `phase_transition_pairs`/survival
+  assets now write their parquet unconditionally, including when the frame
+  is empty. Skipping the write on an empty result left the previous parquet
+  on disk beside a freshly written `checks.json` reporting `total_rows: 0`,
+  so a legitimate zero-row run looked like a stale one (#692).
+- `load_form_d_control_universe` refuses Form D control-universe staging
+  products (a `.provisional.jsonl`/`.identity-staging.jsonl` filename,
+  staging-shaped records, or a sibling manifest reporting an unready gate)
+  instead of loading them silently on a mismatched identity key (#692).
+- Form D amendment filings no longer inflate `total_form_d_raised` and
+  `offering_count` by being summed alongside the filing they amend. The fix
+  is a documented lower bound, not exact chain collapse — that is blocked on
+  locating the SEC file number that links an amendment to its original (#692).
+- The phase-transition report read latency from `pairs` (one row per matched
+  contract) while reading the transition rate and agency counts from
+  `survival` (one row per Phase II award), mixing two denominators under one
+  transition vocabulary. All three now read `survival` (#692).
+
+### Changed
+
+- Consolidated three reviewed spec proposals into the specs that already own
+  the surface they touch, rather than three new registry entries:
+  `specs/phase-iii-source-materialization/tasks.md` gained the transition
+  source/lineage work, and a new `specs/sec-source-fidelity/` spec covers
+  EDGAR event-date and Form D source fidelity (#692).
+
+## [0.11.0] — 2026-08-26
+
+### Added
+
+- Exploratory, non-citable headcount-at-award readout over the canonical
+  SBIR.gov bulk materialization: schema and agency-year coverage, cap-slackness,
+  near-cap firms, mechanical >500 anomaly buckets, and award-history
+  repeat-award proxies. Uses `PRELOAD_V1` firm merge. Not a cap-removal
+  policy estimate and not a study promotion (#668).
+
+### Changed
+
+- GitHub Action `peter-evans/create-pull-request` 7 → 8 (#670).
+
+## [0.10.0] — 2026-08-19
+
+### Added
+
+- Weekly literature-map refresh: `OpenAlexClient.search_works`,
+  `make literature-map`, and a Monday GitHub Action that opens a PR for
+  new OpenAlex works plus GAO/NAP/CRS/ITIF RSS items. Authored memos and
+  `[L#]` entries are not rewritten (#666).
+- Exploratory, non-citable A-CP7 notebook for top-10 incumbent
+  repeat-winner displacement (descriptive slot counts, not causal
+  crowd-out) (#665).
+
+## [0.9.0] — 2026-08-19
+
+### Added
+
+- Importable M&A discovery toolkit at `sbir_etl.enrichers.ma_discovery`
+  (query generation, keyword verifier, mock search, press-wire merge, and
+  optional CLIs). Name cleaning goes through `sbir_etl.identity`. Search
+  backends and the LLM extractor are not in this release (#661).
+
+### Changed
+
+- `make ci-local` now reproduces pull-request CI (lint, guards, Dagster
+  validate, compose, Bandit, pinned `detect-secrets`, unit `-m "not slow"`,
+  hermetic e2e) instead of the post-merge coverage suite (#660).
+- Phase III PR canary no longer claims to be the ≥85% HIGH-precision
+  benchmark. A mixed-signal slice fails if retrospective weights are
+  swapped; the S3-corpus number stays a manual run (#660).
+
+## [0.8.0] — 2026-08-18
+
+### Added
+
+- Reserved inventory Status ranks (`Computable`, `Validated`, `Citable`) now
+  require a matching `studies/*/study.yaml`. CI enforces the pairing
+  (`scripts/ci/check_research_question_status.py`) (#654, #657).
+- `studies/form-d-fundraising` at `reproducible`: frozen Form D leverage
+  estimand, restored `scripts/data/bootstrap_form_d_leverage_ci.py`, and
+  F3 Status may say Computable. Not validated or citable (#658).
+
+### Changed
+
+- Audience start-here lists only reserved Status ranks or explicit refusals.
+  F3 is split into the Form D leverage estimand and causal questions that
+  design cannot answer. E4–E6 are marked operational. Unbacked F1 M&A point
+  estimates were removed from the inventory (#657).
+- Phase III census research-outputs index now treats `study.yaml` as the
+  clock: August identity, matching, outcomes, and placebo memos are
+  recorded; hand-labeled validation remains open (#656).
+
+## [0.7.1] — 2026-08-18
+
+### Added
+
+- Hermetic end-to-end coverage for `core_refresh_job` (#649).
+- Job-level execution tests for `phase_transition_latency_job`,
+  `cet_full_pipeline_job`, and `cet_drift_job` (#650).
+- Unit tests for the previously untested Neo4j categorization, SEC EDGAR,
+  organization, and patent-loading paths, plus weekly-report LLM digest
+  builders (#651).
+
+### Changed
+
+- Specs that declared `evidence` without the four-item contract were
+  retiered; `phase-iii-census` remains the only evidence target, and CI now
+  requires amendments SHA paperwork plus a declared estimand (#635).
+- The evidence-tier checker fence-strips `amendments.md` before the SHA
+  scan. The new job tests pin `core_refresh_job` membership, the production
+  `cet_drift_job` selection, and the CET pipeline skip path (#652).
+
+### Fixed
+
+- `OrganizationLoader.create_subsidiary_relationships` kept an invalid pair
+  (with a `None` child) and dropped a later valid pair when a mixed batch
+  contained a hole (#652).
+
+## [0.7.0] — 2026-08-18
+
+### Added
+
+- `SourceAdapter` protocol and `SourceRefreshRunner`, with `USAspendingAPIClient`
+  wrapped as the reference adapter, restoring `uv run refresh-enrichment
+  --source usaspending` (#619).
+- Pipelines-tier `AnalysisSpec` / `AnalysisRun` platform with a registry-driven
+  runner, snapshot compare, and `scripts/data/run_analysis.py --profile`; the
+  prior hard-coded tech-area builder CLIs remain as deprecated shims (#619).
+- STTR spinout-linkage exploratory kernel: identity resolution, generic-token
+  guard, typed dimension-absence reasons, and the frozen Order 0–4 linkage
+  cascade (#623), its D1 award-spine loader and design freeze-hash guard
+  (#627), and a D4 money/paper-trail scorer scoring the subcontract and
+  spinout signals as two independent directions (#632).
+- STTR spinout-linkage partner-type seed lists: FFRDC, IPEDS, new-model-org,
+  fiscal-sponsor, and IRS nonprofit-registry data captured; the
+  research-hospitals list is left honestly pending on two dead-end sources
+  (#624).
+- `evidence-auditor` and `deployment-safety-reviewer` specialist review
+  agents, cross-checked against the actual evidence-tier contract and
+  self-hosted server runbook they enforce (#646).
+- A crosswalk from the canonical 21-area CET taxonomy to the 14 national
+  security CET areas in Appendix A of the August 2026 National Security
+  Science and Technology Strategy, with Appendix B's priority-need alignment
+  and a `docs/nssts-2026-alignment.md` explainer of what the strategy does
+  and does not license (#647).
+
+### Changed
+
+- `specs/sttr-spinout-linkage` frozen as Revision 1: all 12 open design
+  questions resolved, including a second research pass confirming no public
+  or paid source directly supplies Bayh-Dole research-institution-to-SBC
+  license records (#620, #626).
+- `make lint-boundaries` now runs the same eight guard scripts as the CI
+  quality job, including two that were previously CI-only (#633).
+- Remaining `(str, Enum)` classes migrated to `StrEnum`, enforced by a
+  targeted `UP042` check in `make lint` and CI; Python version wording
+  unified to 3.11–3.12 throughout (#634).
+- CLAUDE.md and agent role instructions deduplicated behind a single shared
+  pointer (#636).
+- The steering glossary and requirements template point confidence bands at
+  their owning config or doc instead of restating them, and disambiguate
+  enrichment "evidence" from the epistemic `evidence` tier (#637).
+- Steering checklists that read as CI gates but were not enforced anywhere
+  are relabeled as guidance, with the genuinely CI-enforced contracts kept
+  in their own table (#638).
+- Per-spec glossaries scrubbed of confidence bands they never owned;
+  archived specs keep only glossary terms still used in their own
+  requirements text (#639).
+
+### Fixed
+
+- The USAspending refresh pipeline: requests carried only `award_id` and
+  could never match an award, the runner checkpoint was never cleared so an
+  award refreshed once was skipped forever, and NaN identifiers reached the
+  API as the literal string `"nan"` (#621).
+- The analysis platform: `run_analysis.py --profile` wrote no census
+  artifacts, the calibration-drift gate was unreachable from the CLI, and a
+  malformed analysis registry could crash the entire Dagster definitions
+  load instead of just the affected cohort assets (#622).
+- The STTR linkage kernel: a generic-token guard bypass on the exact-match
+  identity path, a guard failure that collapsed into a measured negative
+  instead of blocking the label, `D4MoneyTrail`'s single shared status
+  letting one direction's typed absence suppress the other's real signal,
+  and an unreachable cascade branch (#628).
+- `D4MoneyTrail` construction after the kernel's status-field split, which
+  had been failing `Fast Tests` on every open pull request (#647).
+
 ## [0.6.0] — 2026-08-15
 
 ### Added
@@ -150,7 +340,13 @@ across the root project and the three packages under `packages/`.
 `vMAJOR.MINOR.PATCH` form it requires. Per that policy published tags are never
 moved or reused, so they remain as historical markers.
 
-[Unreleased]: https://github.com/hollomancer/sbir-analytics/compare/v0.6.0...HEAD
+[Unreleased]: https://github.com/hollomancer/sbir-analytics/compare/v0.11.0...HEAD
+[0.11.0]: https://github.com/hollomancer/sbir-analytics/compare/v0.10.0...v0.11.0
+[0.10.0]: https://github.com/hollomancer/sbir-analytics/compare/v0.9.0...v0.10.0
+[0.9.0]: https://github.com/hollomancer/sbir-analytics/compare/v0.8.0...v0.9.0
+[0.8.0]: https://github.com/hollomancer/sbir-analytics/compare/v0.7.1...v0.8.0
+[0.7.1]: https://github.com/hollomancer/sbir-analytics/compare/v0.7.0...v0.7.1
+[0.7.0]: https://github.com/hollomancer/sbir-analytics/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/hollomancer/sbir-analytics/compare/v0.5.1...v0.6.0
 [0.5.1]: https://github.com/hollomancer/sbir-analytics/compare/v0.5.0...v0.5.1
 [0.5.0]: https://github.com/hollomancer/sbir-analytics/compare/v0.4.0...v0.5.0

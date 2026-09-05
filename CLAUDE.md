@@ -11,6 +11,21 @@ Before implementing a spec, check `specs/status.md` and follow
 `docs/development/spec-workflow-guide.md`; a directory can be gated, deferred, or
 an archive candidate even when it still has unchecked tasks.
 
+## Communication
+
+Write in plain language everywhere: chat replies, commit messages, PR bodies,
+docstrings, notebook narrative, and analysis write-ups.
+
+- Lead with the finding or the change, then the reasoning. Short, concrete sentences.
+- Prefer ordinary words. Keep the terms that carry real precision here (tier names,
+  estimand, grain, as-of date) and expand an unfamiliar acronym on first use.
+- Be specific: name files, columns, row counts, and actual numbers rather than
+  "significantly" or "a lot".
+- State uncertainty and failure plainly — what a number does not cover, what was not
+  verified, which tier the work sits in. Never dress exploratory work in confident
+  prose; plain language is how tier discipline shows up in writing.
+- No marketing tone, no self-congratulation, no restating the request back.
+
 ## Epistemic tiers
 
 Every artifact sits in one tier, which fixes what it costs to maintain and how
@@ -21,7 +36,7 @@ much weight it can carry. Full contracts:
 |------|----------|-------------|
 | `primitives` | One implementation per concept, versioned behavior, comprehensive tests | `sbir_etl/identity/`, `sbir_etl/config/`, `sbir_etl/models/` |
 | `pipelines` | Deterministic, reproducible from a declared data cut, no inference | `sbir_etl/`, `packages/` |
-| `evidence` | Frozen spec + SHA enforcement + blocking asset checks + declared estimand — all four | Phase III census |
+| `evidence` | Frozen spec + SHA enforcement + blocking asset checks + declared estimand — all four | Phase III census (`check_epistemic_tiers.py` enforces amendments SHA paperwork + declared estimand; not full runtime gates) |
 | `exploratory` | Labeled non-citable. Nothing else required. | most of `scripts/` |
 
 Three rules:
@@ -61,9 +76,10 @@ by hand with the inputs available on this host.
 
 ## Agents
 
-Full role instructions live in `.claude/agents/`. The `.Codex/agents/` files
-route Codex agents to the same instructions so the two runtimes do not maintain
-separate copies.
+Full role instructions live in `.claude/agents/`. Those files are **role-only**
+(workflows, verdicts, tier-scaled effort); shared conventions stay here in
+CLAUDE.md. The `.Codex/agents/` files route Codex agents to the same
+instructions so the two runtimes do not maintain separate copies.
 
 | Agent | When to Use | Model |
 |-------|-------------|-------|
@@ -71,9 +87,15 @@ separate copies.
 | `test-fixer` | Failing tests, broken coverage, test diagnostics | sonnet |
 | `quality-sweep` | Lint/type errors, code cleanup after large changes | sonnet |
 | `scope-guard` | Before large implementations — challenges scope creep | opus |
+| `evidence-auditor` | Evidence promotion, study contracts, and citable claims | opus |
+| `deployment-safety-reviewer` | Read-only review before live operations and materialization | opus |
 
 For **spec work**: scope-guard → spec-implementer → test-fixer → quality-sweep.
 For **bug fixes**: skip to test-fixer or quality-sweep directly.
+For **evidence promotion or externally reportable claims**: run evidence-auditor
+before changing study status or presenting the result as validated or citable.
+For **live deployment or materialization**: run deployment-safety-reviewer
+before the separately authorized operation; the reviewer never executes live mutations.
 
 Each agent reads the tier from the spec and holds to it: `scope-guard` checks the
 declared tier against the contract and can return `RETIER`, `spec-implementer`
@@ -146,17 +168,21 @@ uv run pytest -m integration           # Integration tests
 uv run pytest -n auto                  # Parallel execution
 make lint                              # Ruff over the repo, MyPy over sbir_etl + sbir-graph + sbir-ml
 make lint-boundaries                   # Same boundary/hygiene guards as CI (incl. identity + epistemic tiers)
+make ci-local                         # PR analog: lint, guards, Bandit, detect-secrets, unit -m "not slow", hermetic e2e
 make docs-check                        # Hygiene subset only (also included in lint-boundaries)
 ```
 
 `make lint-boundaries` must stay aligned with the CI quality job's guard step. If
 Make and CI diverge, CI is authoritative and the Makefile is wrong.
 
-Transition scoring changes must maintain the ≥85% Phase III retrospective
-HIGH-precision benchmark. Enforcement today is a fixture-level canary
-(`tests/unit/scripts/test_phase_iii_precision_backtest.py`) that runs on every
-PR; the full benchmark against the S3 corpus is run manually via
-`scripts/phase_iii_precision_backtest.py` and is not yet automated in CI.
+Transition scoring changes must not silently invert HIGH-threshold polarity.
+Every PR runs `tests/unit/scripts/test_phase_iii_precision_backtest.py`:
+obvious transitions stay HIGH, obvious non-transitions stay below the
+threshold, and a small mixed-signal slice fails if current retrospective
+weights are swapped. That file is not the ≥85% HIGH-precision benchmark.
+The ≥85% number is measured only by a manual run of
+`scripts/phase_iii_precision_backtest.py` against the S3 corpus and is not
+a CI gate.
 
 ## Releases and versioning
 
