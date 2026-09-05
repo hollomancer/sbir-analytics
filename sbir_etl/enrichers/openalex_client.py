@@ -195,3 +195,17 @@ class OpenAlexClient(BaseAsyncAPIClient):
             return None
 
         return _parse_author(profile)
+
+    async def search_works(self, params: dict[str, Any]) -> dict[str, Any]:
+        """GET ``/works`` with caller-supplied query params.
+
+        Used by the exploratory literature-map refresh. Returns the raw JSON
+        object (``results``, ``meta``). A 404 is an empty page; other 4xx/5xx
+        errors propagate so malformed filters are not reported as zero hits.
+        """
+        try:
+            return await self._make_request("GET", "works", params=self._with_mailto(params))
+        except APIError as e:
+            if e.details.get("http_status") == 404:
+                return {"results": [], "meta": {}}
+            raise
