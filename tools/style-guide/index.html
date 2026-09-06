@@ -697,10 +697,12 @@
       <div class="plate" style="margin-top: 1rem;">
         <h3>The missing keystone</h3>
         <p class="note">
-          Two synced skills — <code>sbir-lit-refresh</code> and <code>sbir-spec-status-survey</code> —
-          instruct agents to call <code>apply_figure_style()</code> from a <code>figure-style</code>
-          skill. <strong style="color: var(--text);">That skill does not exist on disk.</strong> The
-          status-survey skill acknowledges this and tells the agent to apply the conventions by hand.
+          One synced skill, <code>sbir-lit-refresh</code>, instructs agents to call
+          <code>apply_figure_style()</code> from a <code>figure-style</code> skill.
+          <strong style="color: var(--text);">That skill does not exist on disk.</strong>
+          <code>sbir-spec-status-survey</code> states that <code>figure-style</code> is not in its
+          loadout and applies the conventions by hand. Both are user-level synced skills, not files
+          in this repository's <code>.claude/skills/</code> or <code>.agents/skills/</code>.
           A shared figure style is already assumed by the tooling and simply was never written; the
           most useful thing this prototype could turn into is its specification.
         </p>
@@ -814,7 +816,7 @@
       <div class="section-head">
         <h2>Figure palette</h2>
         <p>
-          Material Design 500/700/800 swatches, inlined at every call site across five scripts. Two
+          Material Design 500/600/800 swatches, inlined at every call site across five scripts. Two
           of these hues mean two different things depending on which figure you are reading.
         </p>
       </div>
@@ -863,9 +865,9 @@
               <tbody>
                 <tr><td class="nowrap">Backend</td><td><code>matplotlib.use("Agg")</code>, set at import</td></tr>
                 <tr><td class="nowrap">dpi</td><td><code>150</code> — universal, no exceptions</td></tr>
-                <tr><td class="nowrap">Two-panel</td><td><code>(13, 5)</code> · left composition, right per-agency rate</td></tr>
-                <tr><td class="nowrap">Save</td><td><code>fig.tight_layout()</code> → <code>fig.savefig()</code> → <code>plt.close(fig)</code></td></tr>
-                <tr><td class="nowrap">Bar alpha</td><td><code>0.85</code></td></tr>
+                <tr><td class="nowrap">Two-panel</td><td><code>(13, 5)</code> · left composition, right per-agency rate (<code>nano_form_d_temporal.py</code> uses <code>(12, 5)</code>)</td></tr>
+                <tr><td class="nowrap">Save</td><td><code>fig.tight_layout()</code> → <code>fig.savefig()</code> → <code>plt.close(fig)</code> (<code>nano_survival_analysis.py</code> never closes)</td></tr>
+                <tr><td class="nowrap">Bar alpha</td><td><code>0.85</code> (<code>0.8</code> in <code>nano_form_d_temporal.py</code>)</td></tr>
                 <tr><td class="nowrap">Titles</td><td>Line 1 the claim, line 2 in parens the method or caveat</td></tr>
                 <tr><td class="nowrap">Grid / spines</td><td>Untouched. No seaborn, no despine, no font family set</td></tr>
               </tbody>
@@ -929,7 +931,7 @@
         <div class="plate">
           <h3>On weight 650</h3>
           <p class="note">
-            Not a rounding of 600 or 700. It appears seven times in the shipped stylesheet, always on
+            Not a rounding of 600 or 700. It appears five times in the shipped stylesheet, always on
             interface labels that must out-rank body text without reading as a heading. Inter carries
             it as a variable axis; the fallback stack degrades to 700, which is acceptable — the
             hierarchy survives, only the finesse is lost. No webfont is loaded, by design: the
@@ -1006,7 +1008,7 @@
             <div style="margin-top: 0.9rem;"><span class="tooltip-demo">Legal entity · 2 verified relationships</span></div>
           </div>
           <p class="note">
-            Values are 1rem/700 with tabular figures so columns of dollars align. Money is formatted
+            Values are 1rem/700. The stylesheet sets no tabular-figure variant, so columns of dollars align only where the digits happen to be the same width. Money is formatted
             through <code>Intl.NumberFormat</code> in compact notation, never hand-rounded in a
             template.
           </p>
@@ -1029,10 +1031,14 @@
           <h3>Tier declaration <span class="flag enforced">ENFORCED</span></h3>
           <pre><b>**Target epistemic tier:**</b> `evidence`</pre>
           <p class="note" style="margin-top: 0.7rem;">
-            Line 3 of a spec, exactly one per file, matched by a regex in
-            <code>scripts/ci/check_epistemic_tiers.py</code> against a frozen set of four values.
-            Missing, duplicate, and invalid declarations fail CI. This is the only piece of the
-            visual language a machine will stop you from breaking.
+            Anywhere in a spec's <code>requirements.md</code>, exactly one per file, matched by a
+            multiline regex in <code>scripts/ci/check_epistemic_tiers.py</code> against a frozen set
+            of four values. Missing, duplicate, and invalid declarations fail CI. It is one of three
+            labeling rules a machine enforces: this declaration; module <code>EPISTEMIC_TIER</code>
+            constants and the import lattice between tiers (<code>check_tier_boundaries.py</code>);
+            and reserved Status words in <code>docs/research-questions.md</code>
+            (<code>check_research_question_status.py</code>). Nothing runs
+            <code>.markdownlint.yaml</code>.
           </p>
         </div>
 
@@ -1097,23 +1103,20 @@
         <div class="plate">
           <h3>Emoji policy <span class="flag conventional">CONVENTIONAL</span></h3>
           <p class="note">
-            Unwritten and unevenly observed. 169 emoji occurrences sit in 17 markdown files.
-            Archive directories hold most of them, but 9 live files still carry 68 —
-            <code>docs/architecture/duckdb-cet-analysis.md</code> alone has 42, with the
-            remainder spread across <code>specs/company-categorization/tasks.md</code>,
-            <code>specs/phase3-match-benchmark/</code>,
-            <code>docs/research/dod-form-d-leverage.md</code>, and several
-            <code>docs/development/</code> and <code>docs/architecture/</code> standards pages
-            (<code>exception-handling.md</code>, <code>logging-standards.md</code>,
-            <code>asset-naming-standards.md</code>). So the
-            convention is real in new prose and has never been enforced retroactively.
+            Unwritten and unevenly observed. Counting rule: occurrences of ✅, ⚠️, and ❌ in
+            tracked markdown files; a file is "archive" when its path contains
+            <code>archive</code>. 163 occurrences sit in 16 markdown files.
+            Archive directories hold most of them, but 8 live files still carry 63 —
+            <code>docs/architecture/duckdb-cet-analysis.md</code> alone has 41, with the remainder in
+            <code>docs/development/exception-handling.md</code> (6), <code>specs/company-categorization/tasks.md</code> (6), <code>docs/architecture/asset-naming-standards.md</code> (3), <code>specs/phase3-match-benchmark/mse-dark-phase3.md</code> (3), <code>specs/phase3-match-benchmark/cross-agency-scope.md</code> (2), <code>docs/development/logging-standards.md</code> (1), <code>docs/research/dod-form-d-leverage.md</code> (1). So the convention is real in new prose and has never been enforced
+            retroactively.
           </p>
           <p class="note">
             Two corrections worth keeping visible, because this page argues that unverified
             transcription is the failure mode. Nothing enforces this: <code>.markdownlint.yaml</code>
             has no emoji rule, so its archive exclusions are not why archives keep theirs. And the
             three-value quality scale — ✅ at ≥0.95, ⚠️ at ≥0.85, ❌ below — is not the only emoji
-            code emits: 18 live Python files print emoji, including ℹ️ in
+            code emits: 25 live Python files print at least one of ✅ ⚠️ ❌ ℹ️ 📊 🔍, including ℹ️ in
             <code>scripts/performance/detect_performance_regression.py</code> and 📊 and 🔍 elsewhere.
           </p>
         </div>
@@ -1241,9 +1244,9 @@
       <div class="section-head">
         <h2>In flight</h2>
         <p>
-          No open pull request touches a stylesheet. Every one of them changes the labeling language —
-          which, in a system where the label is the design, is the same thing. Recorded as of this
-          prototype.
+          As of 2026-08-16, no open pull request touched a stylesheet. Every one of them changed the
+          labeling language — which, in a system where the label is the design, is the same thing.
+          All four merged on 2026-08-18; the table is kept as the record of that moment.
         </p>
       </div>
 
