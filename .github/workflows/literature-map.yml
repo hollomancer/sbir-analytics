@@ -39,7 +39,7 @@ jobs:
         run: uv run python scripts/data/update_literature_map.py
 
       - name: Open or update a refresh PR
-        uses: peter-evans/create-pull-request@v7
+        uses: peter-evans/create-pull-request@v8
         with:
           branch: chore/literature-map-refresh
           delete-branch: true

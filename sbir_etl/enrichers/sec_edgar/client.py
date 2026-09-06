@@ -12,6 +12,7 @@ containing a contact email address.
 from __future__ import annotations
 
 import os
+from collections.abc import Callable
 from html.parser import HTMLParser
 from typing import Any, cast
 
@@ -130,6 +131,12 @@ class EdgarAPIClient(BaseAsyncAPIClient):
         )
         self.timeout = cast(int, self.api_config.get("timeout_seconds", 30))
         self.rate_limit_per_minute = cast(int, self.api_config.get("rate_limit_per_minute", 600))
+        # Optional hook the enricher calls when a mention carries an incomplete
+        # filing reference (no doc_id, accession, filename, or CIK), so a scan
+        # can type that mention as not searchable instead of silently missing.
+        # Declared here so callers set a public attribute, not a private one
+        # read back through __dict__.
+        self.context_incomplete_callback: Callable[[], None] | None = None
 
         # SEC requires a User-Agent with contact info for fair access.
         # Accept contact_email directly from config, or look it up from env.
@@ -257,7 +264,9 @@ class EdgarAPIClient(BaseAsyncAPIClient):
         Args:
             company_name: Company name to search for in filing text.
             forms: Filing types to search (comma-separated, e.g., "8-K,10-K").
-            limit: Maximum results to return.
+            limit: Maximum results to return. Sent to EFTS as ``size``; the
+                server default page is 100, so a ``limit`` above 100 now
+                returns hits that the pre-``size`` request could not.
 
         Returns:
             List of filing mention dicts with: filer_cik, filer_name,

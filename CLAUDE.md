@@ -11,6 +11,30 @@ Before implementing a spec, check `specs/status.md` and follow
 `docs/development/spec-workflow-guide.md`; a directory can be gated, deferred, or
 an archive candidate even when it still has unchecked tasks.
 
+## Communication
+
+Default to the Federal Plain Language Guidelines (plainlanguage.gov) everywhere:
+chat replies, commit messages, PR bodies, docstrings, notebook narrative, and
+analysis write-ups.
+
+Technical documents use the ASD-STE100 Simplified Technical English writing rules
+instead. A document is technical when the reader will execute it or a machine will
+consume it: the server runbook (`docs/deployment/`), study contracts (`studies/`),
+and the contracts in `docs/steering/`. One instruction per sentence; imperative for
+steps; one meaning per word; procedural sentences at 20 words or fewer. The STE
+dictionary is licensed and not in this repo — apply the writing rules, do not claim
+STE compliance.
+
+- Lead with the finding or the change, then the reasoning. Short, concrete sentences.
+- Prefer ordinary words. Keep the terms that carry real precision here (tier names,
+  estimand, grain, as-of date) and expand an unfamiliar acronym on first use.
+- Be specific: name files, columns, row counts, and actual numbers rather than
+  "significantly" or "a lot".
+- State uncertainty and failure plainly — what a number does not cover, what was not
+  verified, which tier the work sits in. Never dress exploratory work in confident
+  prose; plain language is how tier discipline shows up in writing.
+- No marketing tone, no self-congratulation, no restating the request back.
+
 ## Epistemic tiers
 
 Every artifact sits in one tier, which fixes what it costs to maintain and how

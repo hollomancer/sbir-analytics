@@ -346,7 +346,7 @@ async def _extract_mention_context(
     """Fetch the filing document and classify the mention by surrounding text."""
 
     def mark_context_incomplete() -> None:
-        callback = getattr(client, "__dict__", {}).get("_context_incomplete_callback")
+        callback = getattr(client, "context_incomplete_callback", None)
         if callable(callback):
             callback()
 
@@ -537,8 +537,15 @@ async def _search_inbound_ma_mentions(
     # EFTS returns at most 100 hits. When fewer are returned, the complete
     # strong + annual hit set is present and can be partitioned locally. At
     # the page boundary, retain the original separate searches so no tier's
-    # top hits can be hidden by the combined result ordering.
-    if len(combined) < _EFTS_PAGE_SIZE:
+    # top hits can be hidden by the combined result ordering. The partition
+    # keys on the response's root form, which is not guaranteed to equal the
+    # request vocabulary (an empty root_forms, or a variant such as 8-K12B),
+    # so any hit that lands in neither tier also falls back to the separate
+    # searches rather than being dropped.
+    if len(combined) < _EFTS_PAGE_SIZE and all(
+        mention.get("form_type") in _MA_FORM_TYPES or mention.get("form_type") in _ANNUAL_FORM_TYPES
+        for mention in combined
+    ):
         strong_mentions = [
             mention for mention in combined if mention.get("form_type") in _MA_FORM_TYPES
         ][:20]

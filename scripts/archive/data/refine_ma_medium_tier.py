@@ -92,7 +92,7 @@ _EMPLOYMENT = re.compile(
 
 
 def _mark_context_incomplete(client: EdgarAPIClient) -> None:
-    callback = getattr(client, "__dict__", {}).get("_context_incomplete_callback")
+    callback = getattr(client, "context_incomplete_callback", None)
     if callable(callback):
         callback()
 
