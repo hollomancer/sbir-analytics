@@ -35,7 +35,7 @@ Latest-action descriptions: median 34 characters; ≥40,
 177/2,282 (7.8%);
 1,740 representatives are nonzero modifications.
 FPDS [requires the field and caps newly entered text at 250 characters after 2019-06-28](https://beta.fpds.gov/downloads/Manuals/FPDS_User_Manual_V1.5.pdf);
-all 8 later representatives above 250
+8 later representatives above 250
 trace to pre-cap contracts. Thus 900 is cross-vintage-incomparable—not a zero or §638 standard.
 
 The **historical, unreproduced** DoD comparator (n=6,351) reported 53.6% ≥40

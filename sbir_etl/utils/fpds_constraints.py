@@ -10,6 +10,8 @@ from __future__ import annotations
 
 from datetime import date
 
+EPISTEMIC_TIER = "pipelines"
+
 
 FPDS_DESCRIPTION_REQUIRED = True
 FPDS_DESCRIPTION_MAX_CHARS = 250
