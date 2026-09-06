@@ -1,8 +1,10 @@
 # SBIR M&A Dated Signal Study — Tasks
 
-> **Status:** The pre-run protocol is complete. Amendment 1 authorizes only a
-> private first retrieval of the official SBIR.gov award CSV; analysis and
-> materialization remain unauthorized.
+> **Status:** The pre-run protocol is complete. Amendments 1–8 authorize only
+> private source acquisition, exact-key candidate linkage, an accession-grain
+> source-field observation, and a human identity review queue. Automated
+> identity decisions, aggregation, analysis, and materialization remain
+> unauthorized.
 
 ## T0. Establish the new-study boundary
 
@@ -73,7 +75,9 @@
     interpreting any candidate as an event.
   - Verify: the private ledger contains 1,800 exact-key candidate names and
     5,744 candidate filings; the private retrieval manifest records HTTP 200
-    for all 5,744 distinct candidate accessions.
+    for all 5,744 distinct candidate accessions. These are private ledger
+    provenance counts at name-key and accession grain, not firm, event, or
+    outcome counts.
 - [x] Apply the Amendment 7 accession-grain XML predicate.
   - Verify: each private output row reconciles to one retrieved candidate XML,
     preserves its SHA-256, and is `true`, `false`, or `unavailable` without a

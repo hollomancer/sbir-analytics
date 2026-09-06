@@ -18,6 +18,8 @@ from pathlib import Path
 
 import httpx
 
+from sbir_etl import __version__
+
 
 EPISTEMIC_TIER = "exploratory"
 DEFAULT_REQUESTS_PER_SECOND = 4
@@ -42,11 +44,16 @@ def _completed_accessions(manifest: Path) -> set[str]:
     if not manifest.exists():
         return set()
     with manifest.open(encoding="utf-8") as handle:
-        return {
-            json.loads(line)["accession_number"]
-            for line in handle
-            if line.strip() and json.loads(line).get("status") == 200
-        }
+        completed: set[str] = set()
+        for line in handle:
+            if not line.strip():
+                continue
+            record = json.loads(line)
+            # A 200 with an empty body is written as a failure (bytes 0, no
+            # SHA-256); it must stay eligible for retry on the next run.
+            if record.get("status") == 200 and record.get("bytes"):
+                completed.add(record["accession_number"])
+        return completed
 
 
 async def main() -> int:
@@ -94,7 +101,7 @@ async def main() -> int:
 
     headers = {
         "Accept": "application/xml, text/xml, */*",
-        "User-Agent": f"SBIR-Analytics/0.11.0 ({args.contact_email})",
+        "User-Agent": f"SBIR-Analytics/{__version__} ({args.contact_email})",
     }
     semaphore = asyncio.Semaphore(args.requests_per_second)
     write_lock = asyncio.Lock()

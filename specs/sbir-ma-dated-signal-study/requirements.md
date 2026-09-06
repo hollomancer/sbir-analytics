@@ -6,6 +6,8 @@
 > SBIR.gov retrieval/cutoff audit, private SEC Form D index acquisition,
 > exact-key candidate linkage, and candidate XML retrieval are complete.
 > Amendment 7 permits only a private, accession-grain source-field observation.
+> Amendment 8 permits only a private filing-level identity review queue with
+> human adjudication; it authorizes no automated identity decision.
 > Amendment 4 accepts the pinned SBIR object only as a retrieval-defined private
 > selection; it does not establish an as-of firm universe. Materialization and
 > analysis remain blocked.
