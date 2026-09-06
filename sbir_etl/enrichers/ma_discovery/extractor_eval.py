@@ -117,9 +117,9 @@ def score_extractor(
 ) -> ExtractorScores:
     """Run ``extractor`` over ``fixtures`` and score ``confirmed`` plus fill rates."""
     cases = tuple(_score_case(extractor.extract(item.as_input()), item) for item in fixtures)
-    return scores_from_cases(
-        cases, name=name or getattr(extractor, "name", extractor.__class__.__name__)
-    )
+    attr_name = getattr(extractor, "name", None)
+    resolved_name = name or (attr_name if isinstance(attr_name, str) else None)
+    return scores_from_cases(cases, name=resolved_name or extractor.__class__.__name__)
 
 
 def scores_from_cases(cases: Sequence[CaseScore], *, name: str) -> ExtractorScores:
