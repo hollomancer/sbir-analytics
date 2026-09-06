@@ -353,6 +353,14 @@ def test_recording_llm_retries_empty_freeze_rows(tmp_path) -> None:
     assert verdict.acquisition_date == "2024-03-12"
 
 
+def test_recording_llm_does_not_persist_empty_live_payload(tmp_path) -> None:
+    path = tmp_path / "llm.jsonl"
+    extractor = RecordingLlmExtractor(LlmExtractor(lambda _s, _u: None), [], path=path)
+    verdict = extractor.extract(_ITEM)
+    assert verdict.confirmed is False
+    assert not path.exists()
+
+
 def test_build_llm_extractor_returns_none_without_key(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv("XAI_API_KEY", raising=False)
     monkeypatch.delenv("OPENROUTER_API_KEY", raising=False)

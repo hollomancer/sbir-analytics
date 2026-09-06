@@ -308,6 +308,11 @@ class RecordingLlmExtractor:
         if isinstance(raw, str) and raw.strip():
             return verdict_from_payload(parse_llm_payload(raw), item=item)
         raw = self.inner._chat(EXTRACTOR_SYSTEM_PROMPT, build_user_prompt(item))
+        if not (isinstance(raw, str) and raw.strip()):
+            return ExtractionVerdict(
+                confirmed=False,
+                reason="LLM call returned no payload",
+            )
         record = {
             "company": item.company,
             "acquirer": item.acquirer,

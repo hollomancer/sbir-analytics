@@ -129,6 +129,10 @@ class OpenAIClient:
             finally:
                 self._semaphore.release()
 
+            if resp.status_code in {401, 402, 403}:
+                logger.warning(f"OpenAI API error: {resp.status_code} (no retry)")
+                raise RuntimeError(f"OpenAI API error: {resp.status_code}")
+
             if resp.status_code == 429 or resp.status_code >= 500:
                 if attempt < MAX_RETRIES:
                     wait = RETRY_BACKOFF_BASE ** (attempt + 1)

@@ -105,6 +105,18 @@ class TestOpenAIClient:
         result = client.chat("sys", "usr")
         assert result is None
 
+    def test_chat_402_raises_without_retry(self):
+        mock_http = Mock()
+        mock_resp = Mock()
+        mock_resp.status_code = 402
+        mock_http.request.return_value = mock_resp
+
+        client = OpenAIClient(api_key="test-key", max_concurrent=1)
+        client._client = mock_http
+        with pytest.raises(RuntimeError, match="402"):
+            client.chat("sys", "usr")
+        assert mock_http.request.call_count == 1
+
     def test_web_search_success(self):
         mock_http = Mock()
         mock_resp = Mock()
