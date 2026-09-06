@@ -1,0 +1,91 @@
+{
+  "_epistemic": {
+    "citable": false,
+    "tier": "exploratory",
+    "notice": "Held-out confirmatory cut. Recall floor missed (8<10 strict). Not a passed validation."
+  },
+  "study_id": "ma-discovery-recall",
+  "protocol": "studies/ma-discovery-recall/confirmatory-design.md",
+  "as_of_utc": "2026-09-03T00:57:34.965201+00:00",
+  "candidate_pairs": 1000,
+  "skip_pairs": 500,
+  "queries_per_pair": 1,
+  "stop_when": "dated_confirm",
+  "search_backend_capture": "brave",
+  "search_backend_rerun": "snippets",
+  "confirm": "llm",
+  "llm_model": "x-ai/grok-4.6",
+  "outcome": "recall_floor_missed",
+  "inputs": {
+    "events": {
+      "path": "data/sbir_ma_events.jsonl",
+      "sha256": "6ffc8481a240b2ee9bd9fdef806395d3f62e9d1f3ba12a68490d28fb53a1cf49",
+      "n": 4306,
+      "gitignored": true
+    },
+    "snippets": {
+      "path": "data/processed/ma_discovery_confirmatory/search_snippets.jsonl",
+      "sha256": "2bc028243f084c9612f05d53077bfbbc6cfcc64b81de23f9ca732aa6d4679b8e",
+      "n": 2369,
+      "unique_queries": 1000,
+      "gitignored": true
+    },
+    "llm_responses": {
+      "path": "data/processed/ma_discovery_confirmatory/llm_responses.jsonl",
+      "sha256": "a65b0f79359fedb289854894a0ac3f6cf622ba0459e37ac2cd1281fd94a25260",
+      "n": 1831,
+      "gitignored": true
+    }
+  },
+  "outputs": {
+    "discovered_acquisitions": {
+      "path": "data/processed/ma_discovery_confirmatory/discovered_acquisitions.jsonl",
+      "sha256": "5ce33c5f49825a3191d40ad27aaa383c6007adafe18416d9cb3f8e33534a4463",
+      "n": 66,
+      "low_n": 41,
+      "medium_n": 23,
+      "high_n": 2,
+      "gitignored": true
+    },
+    "review_queue": {
+      "path": "data/processed/ma_discovery_confirmatory/review_queue.jsonl",
+      "sha256": "f2f64a2f6e15fe3c150137fe2aead7e3abccfd866a3165dda52a3b975019e8c2",
+      "n": 20,
+      "note": "First 20 medium rows; unlabeled because recall already failed.",
+      "gitignored": true
+    }
+  },
+  "c3": {
+    "inserted_n": 64,
+    "promoted_n": 2,
+    "discovered_medium_high_n": 25,
+    "strict_medium_high_n": 8
+  },
+  "kill_gate": {
+    "recall_floor_met": false,
+    "recall_n": 8,
+    "recall_rule": "strict",
+    "precision_review_complete": false,
+    "cost_per_pair_usd": 0.01261,
+    "cost_per_pair_cap_usd": 0.1,
+    "cost_per_pair_cap_met": true,
+    "cost_note": "Brave 1000 queries x $5/1k = $5.00. OpenRouter key cumulative $13.996 minus pilot ~$6.388 leaves ~$7.61 confirmatory LLM. Total ~$12.61 / 1000 pairs. Tail hits after OpenRouter 402 were unconfirmed."
+  },
+  "incomplete_llm": {
+    "empty_raw_response_n": 855,
+    "empty_from_row_index": 976,
+    "pairs_in_llm_freeze": 513,
+    "pairs_with_only_empty_response": 241,
+    "note": "Every empty freeze row sits in the second half of llm_responses.jsonl. Completing those pairs is a live LLM call on already-frozen Brave snippets. This checkout has no API keys, so the tail stays unconfirmed."
+  },
+  "strict_pairs": [
+    ["IonQ, Inc.", "CAPELLA SPACE CORP", "2025-07-15"],
+    ["Emergent BioSolutions Inc.", "PAXVAX, INC.", "2018-10-04"],
+    ["PALTALK, INC.", "NewTek", "2025-01-02"],
+    ["CUBIST PHARMACEUTICALS INC", "ILLUMIGEN BIOSCIENCES, INC.", "2007-12-24"],
+    ["TRIQUINT SEMICONDUCTOR INC", "Tfr Technologies, Inc.", "2004-12-14"],
+    ["ORASURE TECHNOLOGIES INC", "Epitope Inc.", "2000-09-29"],
+    ["CIBER INC", "Ascent Technology", "2004-05-24"],
+    ["SYNLOGIC, INC.", "MIRNA THERAPEUTICS, INC.", "2017-08-28"]
+  ]
+}

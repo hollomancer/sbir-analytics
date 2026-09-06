@@ -50,8 +50,15 @@ async def process_batch(
     search_tool: SearchTool,
     *,
     extractor: SnippetExtractor | None = None,
+    stop_when: str = "first_confirm",
 ) -> list[dict[str, Any]]:
-    """Run a batch of (company, acquirer, query) rows and return verified events."""
+    """Run a batch of (company, acquirer, query) rows and return verified events.
+
+    ``stop_when`` is ``first_confirm`` (pilot) or ``dated_confirm`` (keep
+    scanning hits until medium/high or the query is exhausted).
+    """
+    if stop_when not in {"first_confirm", "dated_confirm"}:
+        raise ValueError(f"unknown stop_when {stop_when!r}")
     verifier = extractor if extractor is not None else KeywordExtractor()
     verified: list[dict[str, Any]] = []
     seen: set[tuple[str, str]] = set()
@@ -64,6 +71,7 @@ async def process_batch(
         query = row["query"]
         results = await search_tool.search(query)
         source_urls: list[str] = []
+        undated: dict[str, Any] | None = None
         for res in results:
             link = res.get("link")
             if isinstance(link, str) and link:
@@ -83,21 +91,28 @@ async def process_batch(
             if not verdict.confirmed:
                 continue
             confidence = assign_confidence(verdict, source_count=len(source_urls))
-            seen.add(key)
-            verified.append(
-                {
-                    "company_name": company,
-                    "acquirer": acquirer,
-                    "date": verdict.acquisition_date,
-                    "event_date": verdict.acquisition_date,
-                    "value": verdict.value_usd,
-                    "source": source or "Unknown",
-                    "evidence": snippet,
-                    "confidence": confidence,
-                    "reason": verdict.reason,
-                }
-            )
-            break
+            event = {
+                "company_name": company,
+                "acquirer": acquirer,
+                "date": verdict.acquisition_date,
+                "event_date": verdict.acquisition_date,
+                "value": verdict.value_usd,
+                "source": source or "Unknown",
+                "evidence": snippet,
+                "confidence": confidence,
+                "reason": verdict.reason,
+            }
+            if stop_when == "first_confirm" or confidence in {"medium", "high"}:
+                seen.add(key)
+                verified.append(event)
+                undated = None
+                break
+            if undated is None:
+                undated = event
+        else:
+            if undated is not None:
+                seen.add(key)
+                verified.append(undated)
     return verified
 
 

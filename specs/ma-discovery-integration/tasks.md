@@ -16,11 +16,19 @@
 - [x] 5. Frozen-snippet search backend and sample-run / review-queue CLI
   - Verify: snippet factory test; `scripts/data/run_ma_discovery_sample.py --help`
 
-- [ ] 6. Licensed snippet cut of the Form-D-missing population (human source/ToS + keys)
+- [x] 6. Licensed snippet cut of the Form-D-missing population (human source/ToS + keys)
   - Verify: hashed JSONL recorded in the study run summary
+  - Note: pilot freeze is private/gitignored (`run-manifest.json`). Confirmatory
+    freeze is private/gitignored (`confirmatory-run-manifest.json`).
 
-- [ ] 7. Sample run + 20-row human medium-row review (validation design in the study note)
-  - Verify: kill-gate fields in `sample_run_summary.json`; labeled `review_queue.jsonl`
+- [ ] 7. Held-out confirmatory run (pairs 501–1500, strict recall, stop-until-dated)
+  - Spec: `studies/ma-discovery-recall/confirmatory-design.md` (hashed before capture)
+  - Captured 2026-09-03: strict recall 8<10; cost under cap; 241 pairs have only
+    empty LLM freeze rows after OpenRouter 402. No medium-row labels because
+    recall already failed. Completing the tail needs API keys.
+  - Verify: `--skip-pairs 500 --max-candidates 1000 --stop-when dated_confirm --strict-recall --fail-on-gate`;
+    labels in `confirmatory-labels.jsonl`
 
-- [ ] 8. Promote `studies/ma-discovery-recall` only after the validation design passes
+- [ ] 8. Promote `studies/ma-discovery-recall` only after the confirmatory design passes
   - Verify: evidence-auditor; `evidence_status` remains `exploratory` until then
+  - Do not edit `docs/research-questions.md`

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import pytest
 
+from sbir_etl.enrichers.ma_discovery.extractor import ExtractionInput, ExtractionVerdict
 from sbir_etl.enrichers.ma_discovery.orchestrator import main, process_batch
 from sbir_etl.enrichers.ma_discovery.queries import generate_queries
 from sbir_etl.enrichers.ma_discovery.search import MockSearchTool
@@ -93,6 +94,58 @@ async def test_process_batch_dedupes_four_query_rows_for_one_pair() -> None:
     ]
     verified = await process_batch(queries, MockSearchTool())
     assert len(verified) == 1
+
+
+class _TwoHitSearch:
+    async def search(self, query: str) -> list[dict[str, str]]:
+        return [
+            {"snippet": "acquired with no calendar date", "link": "http://example.com/a"},
+            {"snippet": "acquired on 2015-12-16", "link": "http://example.com/b"},
+        ]
+
+
+class _UndatedThenDated:
+    def __init__(self) -> None:
+        self.n = 0
+
+    def extract(self, item: ExtractionInput) -> ExtractionVerdict:
+        self.n += 1
+        if "2015-12-16" in item.snippet:
+            return ExtractionVerdict(
+                confirmed=True,
+                reason="dated",
+                acquisition_date="2015-12-16",
+                matched_company=item.company,
+                matched_acquirer=item.acquirer,
+            )
+        return ExtractionVerdict(
+            confirmed=True,
+            reason="undated",
+            matched_company=item.company,
+            matched_acquirer=item.acquirer,
+        )
+
+
+@pytest.mark.asyncio
+async def test_dated_confirm_skips_undated_first_hit() -> None:
+    queries = [
+        {
+            "company_name": "Lewis Innovative Technologies, Inc.",
+            "acquirer": "MERCURY SYSTEMS INC",
+            "query": "q",
+        }
+    ]
+    first = await process_batch(
+        queries, _TwoHitSearch(), extractor=_UndatedThenDated(), stop_when="first_confirm"
+    )
+    assert first[0]["confidence"] == "low"
+    assert first[0]["date"] is None
+    dated = await process_batch(
+        queries, _TwoHitSearch(), extractor=_UndatedThenDated(), stop_when="dated_confirm"
+    )
+    assert dated[0]["confidence"] == "medium"
+    assert dated[0]["date"] == "2015-12-16"
+    assert dated[0]["source"] == "http://example.com/b"
 
 
 def test_main_without_backend_is_fail_closed(tmp_path) -> None:

@@ -14,6 +14,18 @@ estimand: >-
 frozen_artifacts:
   - path: studies/ma-discovery-recall/design.md
     sha256: 94207d66540b9a20466252051253ec84e9d78e3aea43d80b1297e3e4566ca182
+  - path: studies/ma-discovery-recall/amendments.md
+    sha256: 42f0759e274b74ad60a691831b4e9f0b843baecfe25d4fb5efd1e64029e79802
+  - path: studies/ma-discovery-recall/pilot.md
+    sha256: 6e5577581dccacd1ef9e19379832311938df05048b6a7696cde4877cc4ca4573
+  - path: studies/ma-discovery-recall/confirmatory-design.md
+    sha256: fde276f8e556383e320efb29572f2a1e6dd64a299fed9113906b502884c1c08e
+  - path: studies/ma-discovery-recall/labels.jsonl
+    sha256: 99ac5c225821b7471323d137cfb1836be68264cd041bac3a07b59ef29eaa5fca
+  - path: studies/ma-discovery-recall/run-manifest.json
+    sha256: daf6f3431ca1d0823a30ea98439ae7ab2bdceb25b3e4881ff9135db7d4d025b9
+  - path: studies/ma-discovery-recall/confirmatory-run-manifest.json
+    sha256: 90478ca70f81b1984ec97a795c8e233f3b50f7f0c83125bd0592416ac2b65ad1
 implementation:
   - path: sbir_etl/enrichers/ma_discovery/collision.py
     symbol: apply_c3
@@ -35,9 +47,14 @@ identity_policy:
 materialization:
   allowed: false
   blockers:
-    - no licensed frozen snippet corpus from a live search of the Form-D-missing population
-    - 20-row stratified human review of medium rows not completed
-    - sample-run kill-gate (recall floor, precision cap, cost cap) not measured
+    - Discovery output is not wired into capital_events or Neo4j
+    - >-
+      Preregistered validation design did not pass: 200-pair recall 9<10;
+      500-pair enlarge and cost restatement were post-hoc (evidence-auditor
+      2026-09-02 BLOCK)
+    - >-
+      Held-out confirmatory design did not pass: pairs 501–1500 strict recall
+      8<10; 241 pairs have only empty LLM freeze rows after OpenRouter 402
 permitted_claims:
   - The method, C3 join, confidence table, and fail-closed search default are
     specified and fixture-tested.
@@ -46,4 +63,6 @@ limitations:
   - This study is exploratory. Nothing that leaves the repository may be cited.
   - Keyword confirmation cannot emit medium/high rows because it has no date.
   - A live search or live LLM call is not a reproducible input.
-  - Inventory F2/A4 remain without a Computable rank on this work.
+  - The Brave snippet cut and frozen LLM JSONL are a private gitignored freeze;
+    they are not redistributed.
+  - Inventory F2/A4 remain without a Computable or Validated rank on this work.
