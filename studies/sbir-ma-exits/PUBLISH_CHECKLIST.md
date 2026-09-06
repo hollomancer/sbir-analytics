@@ -11,7 +11,17 @@ The repository inventory classifies the M&A rate and timing findings as a dated 
 1. Log in to Zenodo with the account that will own the record.
 2. Create a new upload for a publication and choose `Preprint`.
 3. Reserve the DOI before uploading the final PDF.
-4. Replace every DOI marker in `studies/sbir-ma-exits/paper.md` with the reserved DOI.
+4. Replace the DOI placeholder token `10.5281/zenodo.XXXXXXX` in
+   `studies/sbir-ma-exits/paper.md` with the reserved DOI. It occurs exactly
+   twice: the page footer and the title-page deposit status. Do not
+   search-and-replace `[UNVERIFIED — human review]`; that marker labels other
+   unverified items, not the DOI. Then recompute the hash and update
+   `frozen_artifacts` in `studies/sbir-ma-exits/study.yaml`, or
+   `scripts/ci/validate_study_manifests.py` fails on the publish commit:
+
+   ```bash
+   sha256sum studies/sbir-ma-exits/paper.md
+   ```
 5. Add the reserved DOI to `CITATION.cff` under `preferred-citation`.
 6. Rebuild the PDF from the repository root:
 
@@ -47,6 +57,6 @@ The repository inventory classifies the M&A rate and timing findings as a dated 
 
 ## Collected unverified items
 
-- `[UNVERIFIED — human review]` Reserved Zenodo DOI. It does not exist until a human reserves it.
+- `10.5281/zenodo.XXXXXXX` Reserved Zenodo DOI placeholder in `paper.md` and `CITATION.cff`. It does not exist until a human reserves it.
 - `[UNVERIFIED — human review]` Final out-of-sample false-positive rate for accepted M&A detections. The committed diagnostics do not supply this value.
 - `[UNVERIFIED — human review]` Exact frozen input snapshot and hash for the 34,460-firm denominator. The committed documents state the denominator, but the input bytes are not committed.

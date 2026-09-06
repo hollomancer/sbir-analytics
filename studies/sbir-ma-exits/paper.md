@@ -30,7 +30,7 @@ header-includes:
     \pagestyle{fancy}
     \fancyhf{}
     \fancyfoot[L]{\scriptsize Version 1.0.0}
-    \fancyfoot[C]{\scriptsize DOI: [UNVERIFIED \textemdash{} human review]}
+    \fancyfoot[C]{\scriptsize DOI: 10.5281/zenodo.XXXXXXX}
     \fancyfoot[R]{\scriptsize \thepage}
     \renewcommand{\footrulewidth}{0.4pt}
     \setlength{\headheight}{14pt}
@@ -67,7 +67,7 @@ header-includes:
 \textbf{License.} Copyright 2026 Conrad Hollomon. The paper is licensed under CC BY 4.0. Repository code remains licensed under MIT.
 
 \vspace{0.14in}
-\textbf{Deposit status.} Prepared for a human-created Zenodo record. DOI: [UNVERIFIED — human review].
+\textbf{Deposit status.} Prepared for a human-created Zenodo record. DOI: 10.5281/zenodo.XXXXXXX.
 \end{minipage}
 
 \vspace{0.3in}
