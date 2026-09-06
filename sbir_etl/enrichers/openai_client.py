@@ -156,6 +156,7 @@ class OpenAIClient:
         user: str,
         model: str | None = None,
         temperature: float = 0.3,
+        max_tokens: int | None = None,
     ) -> str | None:
         """Call the Chat Completions API.
 
@@ -176,6 +177,8 @@ class OpenAIClient:
                 {"role": "user", "content": user},
             ],
         }
+        if max_tokens is not None:
+            payload["max_tokens"] = max_tokens
         resp = self._request("POST", self._chat_url, payload)
         if resp is None:
             return None

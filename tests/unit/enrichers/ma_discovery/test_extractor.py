@@ -199,7 +199,7 @@ def test_llm_prompt_asks_for_schema_and_pair() -> None:
 def test_llm_accepts_openai_client_shape() -> None:
     payload = {"confirmed": False, "reason": "client-shape mock"}
     client = SimpleNamespace(
-        chat=lambda system, user, model=None, temperature=0.3: json.dumps(payload)
+        chat=lambda system, user, model=None, temperature=0.3, max_tokens=None: json.dumps(payload)
     )
     verdict = LlmExtractor(client, model="gpt-4.1-mini").extract(
         ExtractionInput(company="A", acquirer="B", snippet="no")
@@ -325,6 +325,32 @@ def test_recording_llm_appends_and_resumes(tmp_path) -> None:
     assert calls["n"] == 0
     assert again.confirmed is True
     assert again.acquisition_date == "2024-03-12"
+
+
+def test_recording_llm_retries_empty_freeze_rows(tmp_path) -> None:
+    path = tmp_path / "llm.jsonl"
+    path.write_text(
+        json.dumps(
+            {
+                "company": _ITEM.company,
+                "acquirer": _ITEM.acquirer,
+                "source_url": _ITEM.source_url,
+                "raw_response": "",
+            }
+        )
+        + "\n"
+    )
+    calls = {"n": 0}
+
+    def _chat(_system: str, _user: str) -> str:
+        calls["n"] += 1
+        return json.dumps(_payload(acquisition_date="2024-03-12"))
+
+    extractor = RecordingLlmExtractor(LlmExtractor(_chat), [], path=path)
+    verdict = extractor.extract(_ITEM)
+    assert calls["n"] == 1
+    assert verdict.confirmed is True
+    assert verdict.acquisition_date == "2024-03-12"
 
 
 def test_build_llm_extractor_returns_none_without_key(monkeypatch: pytest.MonkeyPatch) -> None:

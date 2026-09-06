@@ -76,6 +76,7 @@ class ChatClient(Protocol):
         user: str,
         model: str | None = None,
         temperature: float = 0.3,
+        max_tokens: int | None = None,
     ) -> str | None: ...
 
 
@@ -303,8 +304,8 @@ class RecordingLlmExtractor:
 
     def extract(self, item: ExtractionInput) -> ExtractionVerdict:
         key = _response_key(item)
-        if key in self._seen:
-            raw = self._seen[key]
+        raw = self._seen.get(key)
+        if isinstance(raw, str) and raw.strip():
             return verdict_from_payload(parse_llm_payload(raw), item=item)
         raw = self.inner._chat(EXTRACTOR_SYSTEM_PROMPT, build_user_prompt(item))
         record = {
@@ -400,7 +401,13 @@ def _bind_chat(
     if callable(chat):
 
         def _from_client(system: str, user: str) -> str | None:
-            return chat(system, user, model=model, temperature=temperature)
+            return chat(
+                system,
+                user,
+                model=model,
+                temperature=temperature,
+                max_tokens=2048,
+            )
 
         return _from_client
     if callable(client):
