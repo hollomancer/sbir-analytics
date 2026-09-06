@@ -63,7 +63,7 @@ All three; no extra conjuncts.
    vendor credits are not subtracted. No $5 absolute cap. No
    `--max-candidates 200`.
 
-A run that fails any of the three does not promote. Do not restated the
+A run that fails any of the three does not promote. Do not restate the
 envelope after a miss.
 
 ## Rerun

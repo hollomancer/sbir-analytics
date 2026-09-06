@@ -19,7 +19,7 @@ frozen_artifacts:
   - path: studies/ma-discovery-recall/pilot.md
     sha256: 6e5577581dccacd1ef9e19379832311938df05048b6a7696cde4877cc4ca4573
   - path: studies/ma-discovery-recall/confirmatory-design.md
-    sha256: fde276f8e556383e320efb29572f2a1e6dd64a299fed9113906b502884c1c08e
+    sha256: dbf945f59a316bbd41cbb018e2806a4907b8f94781ca669e8da34c475276b9e5
   - path: studies/ma-discovery-recall/labels.jsonl
     sha256: 99ac5c225821b7471323d137cfb1836be68264cd041bac3a07b59ef29eaa5fca
   - path: studies/ma-discovery-recall/run-manifest.json

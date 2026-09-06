@@ -26,8 +26,8 @@
   - Captured 2026-09-03: strict recall 8<10; cost under cap; 241 pairs have only
     empty LLM freeze rows after OpenRouter 402. No medium-row labels because
     recall already failed. Completing the tail needs API keys.
-  - Verify: `--skip-pairs 500 --max-candidates 1000 --stop-when dated_confirm --strict-recall --fail-on-gate`;
-    labels in `confirmatory-labels.jsonl`
+  - Verify: kill-gate fields in `confirmatory-run-manifest.json`. Medium-row
+    labels start only if recall passes; none were started.
 
 - [ ] 8. Promote `studies/ma-discovery-recall` only after the confirmatory design passes
   - Verify: evidence-auditor; `evidence_status` remains `exploratory` until then
