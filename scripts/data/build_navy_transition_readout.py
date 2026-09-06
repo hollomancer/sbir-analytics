@@ -439,6 +439,7 @@ def description_summary(coded_awards: pd.DataFrame) -> dict[str, Any]:
             "effective_date": FPDS_DESCRIPTION_CAP_EFFECTIVE_DATE.isoformat(),
             "rule_url": FPDS_DESCRIPTION_RULE_URL,
             "post_cap_representative_n": int(post_cap.sum()),
+            "post_cap_over_cap_n": int((post_cap & over_cap).sum()),
             "post_cap_over_cap_legacy_n": int(
                 (
                     post_cap
@@ -715,8 +716,18 @@ def build_external_signal_panel(
             "medium": None,
             "total": None,
         },
+        # Snapshot-reach diagnostics.  Both maxima run over every record in the
+        # snapshot (any firm, any tier), not only the counted matches, so they
+        # can fall on either side of ``as_of``.  Latest before ``as_of`` means
+        # the window tail is empty because the snapshot is stale; latest after
+        # ``as_of`` means the snapshot holds out-of-window records that the
+        # counts above exclude.  The booleans make the direction explicit.
         "form_d_latest_observed_filing": form_d_latest.isoformat() if form_d_latest else None,
+        "form_d_snapshot_reaches_window_end": (
+            bool(form_d_latest >= as_of) if form_d_latest else None
+        ),
         "efts_latest_observed_mention": efts_latest.isoformat() if efts_latest else None,
+        "efts_snapshot_reaches_window_end": bool(efts_latest >= as_of) if efts_latest else None,
     }
 
 
@@ -870,7 +881,8 @@ Latest-action descriptions: median {desc["median_chars"]:.0f} characters; ≥40,
 {desc["ge_150_count"]:,}/{desc["award_n"]:,} ({_fmt_rate(desc["ge_150_rate"])});
 {desc["representative_nonzero_mod_n"]:,} representatives are nonzero modifications.
 FPDS [requires the field and caps newly entered text at 250 characters after 2019-06-28]({FPDS_DESCRIPTION_RULE_URL});
-all {desc["source_constraint"]["post_cap_over_cap_legacy_n"]:,} later representatives above 250
+{desc["source_constraint"]["post_cap_over_cap_legacy_n"]:,} of
+{desc["source_constraint"]["post_cap_over_cap_n"]:,} later representatives above 250
 trace to pre-cap contracts. Thus 900 is cross-vintage-incomparable—not a zero or §638 standard.
 
 The **historical, unreproduced** DoD comparator (n={comparator["award_n"]:,}) reported 53.6% ≥40

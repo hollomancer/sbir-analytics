@@ -477,6 +477,14 @@ def test_external_signal_panel_filters_dates_deduplicates_tiers_and_emits_no_nam
 
     assert result["window_start"] == "2024-09-01"
     assert result["navy_firm_n"] == 3
+    # Snapshot-reach booleans compare the snapshot-wide latest date with as_of.
+    for prefix in ("form_d", "efts"):
+        latest_key = {
+            "form_d": "form_d_latest_observed_filing",
+            "efts": "efts_latest_observed_mention",
+        }
+        latest = result[latest_key[prefix]]
+        assert result[f"{prefix}_snapshot_reaches_window_end"] == (latest >= "2026-08-31")
     assert result["form_d_positive_raise_firms"] == {"high": 1, "medium": 1, "total": 2}
     assert result["efts_acquisition_firms"] == {
         "status": "blocked_missing_type_specific_dates",

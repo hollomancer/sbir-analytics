@@ -207,6 +207,7 @@
       "total": null
     },
     "efts_latest_observed_mention": "2026-08-21",
+    "efts_snapshot_reaches_window_end": false,
     "either_recent_signal_firms": {
       "high": null,
       "medium": null,
@@ -215,6 +216,7 @@
     },
     "filter": "unique normalized Navy Phase I/II firms in the FY window; Form D filing date in the 24-month window and high/medium match tiers only; EFTS acquisition branch blocked because the source lacks type-specific mention dates",
     "form_d_latest_observed_filing": "2026-08-20",
+    "form_d_snapshot_reaches_window_end": false,
     "form_d_positive_raise_firms": {
       "high": 43,
       "medium": 4,
