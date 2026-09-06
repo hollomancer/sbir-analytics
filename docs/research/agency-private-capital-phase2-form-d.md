@@ -14,8 +14,10 @@ The maintained CLI, `scripts/data/build_form_d_control_universe.py`, consumes th
 SEC Division of Economic and Risk Analysis (DERA)
 [quarterly Form D bulk ZIP files](https://www.sec.gov/data-research/sec-markets-data/form-d-data-sets).
 Its source contract is the closed, inclusive set **2009Q1 through 2024Q4**, not a
-moving "latest" window. Deterministic manifests pin the expected quarter set and
-the source and product checksums so a rerun cannot silently change its inputs.
+moving "latest" window. Deterministic manifests record the expected quarter set and
+the source and product checksums. The producer does not yet compare a rerun
+against a prior manifest, so a changed cache file shows up only as a different
+recorded hash; a lockfile check is tracked under task 2.2.
 The [real-data identity audit](agency-private-capital-form-d-control-universe.md)
 records the first complete materialization and its gate decision.
 

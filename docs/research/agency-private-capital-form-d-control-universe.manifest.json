@@ -8,7 +8,9 @@
     "SEC Form D supplies SIC and industry group, not NAICS."
   ],
   "code_commit": "ceb7e5b35853e119774e5a95ee4bfee906b0f65b",
-  "code_commit_note": "Reachable commit whose producer tree emitted the recorded invariants and output hashes. The previous pin 053ce78a3a19f0004ee3eba7857104b9ab4580f8 was a pre-rebase object that is not an ancestor of any branch, so a fresh clone could not `git show` it.",
+  "code_commit_note": "Reachable commit whose producer tree emitted the recorded invariants and output hashes. The previous pin 053ce78a3a19f0004ee3eba7857104b9ab4580f8 was a pre-rebase object that is not an ancestor of any branch, so a fresh clone could not `git show` it. A squash merge orphans code_commit the same way; use code_blob_sha1 to locate the producer.",
+  "code_blob_sha1": "d0356810f8d528f670665e7096dd231127044a9d",
+  "code_blob_sha1_note": "git hash-object of scripts/data/build_form_d_control_universe.py at code_commit. Content-addressed, so it survives rebase and squash merges. Later edits to the producer that do not change outputs (comment, alias, stderr fixes) yield a different blob; the recorded hashes were produced by this blob.",
   "complete": true,
   "complete_sbir_exclusion": false,
   "covariates_ready": false,

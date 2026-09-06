@@ -146,7 +146,7 @@ def sha256_path(path: Path) -> str:
 def _quarter_index(value: str) -> int:
     match = re.fullmatch(r"(20\d{2})Q([1-4])", value.upper())
     if not match:
-        raise BuildError(f"Invalid quarter {value!r}; expected YYYQn, for example 2024Q4")
+        raise BuildError(f"Invalid quarter {value!r}; expected YYYYQn, for example 2024Q4")
     return int(match.group(1)) * 4 + int(match.group(2)) - 1
 
 
@@ -274,12 +274,39 @@ def _read_tsv(
 ) -> tuple[list[dict[str, str]], list[str]]:
     with archive.open(member) as raw:
         text = io.TextIOWrapper(raw, encoding="utf-8-sig", errors="strict", newline="")
-        reader = csv.DictReader(text, delimiter="\t")
-        headers = list(reader.fieldnames or [])
-        missing = sorted(TABLE_COLUMNS[table_name] - set(headers))
-        if missing:
-            raise BuildError(f"{quarter} {table_name} schema is missing: {', '.join(missing)}")
-        return [dict(row) for row in reader], headers
+        # DERA tables are tab-separated and unquoted. QUOTE_NONE keeps a field
+        # that starts with a double quote (an entity name) from swallowing the
+        # rest of the row and the next row.
+        reader = csv.DictReader(text, delimiter="\t", quoting=csv.QUOTE_NONE)
+        try:
+            headers = list(reader.fieldnames or [])
+            missing = sorted(TABLE_COLUMNS[table_name] - set(headers))
+            if missing:
+                raise BuildError(
+                    f"{quarter} {table_name} schema is missing: {', '.join(missing)}"
+                )
+            return [dict(row) for row in reader], headers
+        except UnicodeDecodeError as exc:
+            raise BuildError(f"{quarter} {table_name} is not valid UTF-8: {exc}") from exc
+
+
+def failed_invariants(invariants: dict[str, bool | int]) -> list[str]:
+    """Return the invariant names that fail.
+
+    Boolean invariants must be ``True`` and count invariants must be ``0``.
+    The two kinds are checked separately because ``False == 0`` in Python, so
+    a single ``value is True or value == 0`` test lets every boolean invariant
+    pass.
+    """
+    failed = []
+    for name, value in invariants.items():
+        if isinstance(value, bool):
+            ok = value is True
+        else:
+            ok = value == 0
+        if not ok:
+            failed.append(name)
+    return failed
 
 
 def normalize_cik(value: object) -> str | None:
@@ -813,8 +840,9 @@ def build(args: argparse.Namespace) -> dict[str, Any]:
         "exclusion_ciks_unique": len(exclusion_ciks) == len(exclusions),
         "ready_for_matching_is_false": ready_for_matching is False,
     }
-    if not all(value is True or value == 0 for value in invariants.values()):
-        raise BuildError(f"Control-universe invariant failed: {invariants}")
+    failed = failed_invariants(invariants)
+    if failed:
+        raise BuildError(f"Control-universe invariant failed: {failed} in {invariants}")
 
     output_dir.mkdir(parents=True, exist_ok=True)
     outputs = {

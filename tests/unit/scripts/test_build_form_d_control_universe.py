@@ -479,3 +479,35 @@ def test_complete_build_is_deterministic_and_identity_only(tmp_path: Path) -> No
         "issuer_ciks": 1,
         "provisional_control_ciks": 0,
     }
+
+
+def test_failed_invariants_rejects_false_booleans_and_nonzero_counts() -> None:
+    assert producer.failed_invariants({"a_unique": True, "overlap_count": 0}) == []
+    # False == 0 in Python; a boolean invariant must still fail when False.
+    assert producer.failed_invariants({"a_unique": False, "overlap_count": 0}) == ["a_unique"]
+    assert producer.failed_invariants({"a_unique": True, "overlap_count": 2}) == ["overlap_count"]
+
+
+def test_read_tsv_keeps_leading_quote_names_and_rejects_bad_utf8(tmp_path: Path) -> None:
+    archive = tmp_path / "quarter.zip"
+    header = "\t".join(sorted(producer.TABLE_COLUMNS["ISSUERS.tsv"]))
+    columns = sorted(producer.TABLE_COLUMNS["ISSUERS.tsv"])
+    row_a = dict.fromkeys(columns, "")
+    row_b = dict.fromkeys(columns, "")
+    row_a.update({"ACCESSIONNUMBER": "0001", "ENTITYNAME": '"ABC" HOLDINGS LLC', "CIK": "123"})
+    row_b.update({"ACCESSIONNUMBER": "0002", "ENTITYNAME": "PLAIN CO", "CIK": "456"})
+    body = "\n".join(
+        [header] + ["\t".join(row[column] for column in columns) for row in (row_a, row_b)]
+    )
+    with zipfile.ZipFile(archive, "w") as handle:
+        handle.writestr("ISSUERS.tsv", body + "\n")
+        handle.writestr("BAD.tsv", (header + "\n0003\t").encode() + b"\xff\xfe")
+    with zipfile.ZipFile(archive) as handle:
+        rows, headers = producer._read_tsv(
+            handle, "ISSUERS.tsv", table_name="ISSUERS.tsv", quarter="2024Q4"
+        )
+        assert headers == columns
+        assert [row["ACCESSIONNUMBER"] for row in rows] == ["0001", "0002"]
+        assert rows[0]["ENTITYNAME"] == '"ABC" HOLDINGS LLC'
+        with pytest.raises(producer.BuildError, match="not valid UTF-8"):
+            producer._read_tsv(handle, "BAD.tsv", table_name="ISSUERS.tsv", quarter="2024Q4")
