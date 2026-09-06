@@ -113,6 +113,8 @@ class TavilySearchTool(BaseAsyncAPIClient):
             },
         )
         results = data.get("results") if isinstance(data, dict) else None
+        if results is None:
+            logger.warning("Tavily response has no 'results' key; treating as no hits")
         return _map_hits(results, snippet_key="content", link_key="url")
 
 
@@ -155,6 +157,8 @@ class BraveSearchTool(BaseAsyncAPIClient):
         )
         web = data.get("web") if isinstance(data, dict) else None
         results = web.get("results") if isinstance(web, dict) else None
+        if results is None:
+            logger.warning("Brave response has no 'web.results' key; treating as no hits")
         return _map_hits(results, snippet_key="description", link_key="url")
 
 
@@ -162,8 +166,11 @@ def _load_ma_discovery_config() -> MADiscoveryConfig:
     """Load ``ma_discovery`` from the shared config primitive, with defaults."""
     try:
         loaded = get_config()
-    except ConfigurationError:
-        logger.debug("M&A discovery config unavailable; using defaults")
+    except ConfigurationError as exc:
+        # Surface the real cause. Swallowing it at debug level turned a
+        # typo in SBIR_ETL__MA_DISCOVERY__SEARCH_BACKEND into the unrelated
+        # "no backend selected" error.
+        logger.warning("M&A discovery config failed to load; using defaults: {}", exc)
         return MADiscoveryConfig()
     cfg = getattr(loaded, "ma_discovery", None)
     if isinstance(cfg, MADiscoveryConfig):
