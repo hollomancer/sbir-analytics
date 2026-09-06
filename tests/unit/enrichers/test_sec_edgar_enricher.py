@@ -448,6 +448,41 @@ class TestSearchInboundMAMentions:
         )
 
     @pytest.mark.asyncio
+    async def test_unpartitionable_form_falls_back_to_separate_tier_searches(self):
+        """A root form outside both tier vocabularies must not be dropped."""
+        combined_page = [
+            {
+                "filer_cik": "333",
+                "filer_name": "ACQUIRER C",
+                "form_type": "8-K12B",
+                "file_date": "2024-05-01",
+                "accession_number": "003",
+            }
+        ]
+        mock_client = AsyncMock()
+        mock_client.search_filing_mentions = AsyncMock(
+            side_effect=[
+                combined_page,
+                [],
+                [
+                    {
+                        "filer_cik": "111",
+                        "filer_name": "ACQUIRER A",
+                        "form_type": "8-K",
+                        "file_date": "2024-06-15",
+                        "accession_number": "001",
+                    }
+                ],
+                [],
+            ]
+        )
+
+        events = await _search_inbound_ma_mentions(mock_client, "Target Co")
+
+        assert {event.filer_name for event in events} == {"ACQUIRER A"}
+        assert mock_client.search_filing_mentions.call_count == 4
+
+    @pytest.mark.asyncio
     async def test_page_boundary_falls_back_to_separate_tier_searches(self):
         """A possibly truncated combined page cannot hide a tier's top hits."""
         combined_page = [{"filer_name": ""} for _ in range(100)]
@@ -891,7 +926,7 @@ class TestExtractMentionContext:
 
         calls = []
         mock_client = AsyncMock()
-        mock_client.__dict__["_context_incomplete_callback"] = lambda: calls.append(True)
+        mock_client.context_incomplete_callback = lambda: calls.append(True)
 
         result = await _extract_mention_context(mock_client, "Unknown Co", mention)
 

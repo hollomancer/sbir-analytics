@@ -10,7 +10,7 @@ class _IncompleteReferenceClient:
         self.mode = mode
         self.incomplete_calls = 0
         self.fetch_calls = 0
-        self._context_incomplete_callback = self._mark_incomplete
+        self.context_incomplete_callback = self._mark_incomplete
 
     def _mark_incomplete(self) -> None:
         self.incomplete_calls += 1
