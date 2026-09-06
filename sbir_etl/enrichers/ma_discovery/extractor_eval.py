@@ -13,13 +13,13 @@ from pathlib import Path
 from typing import Any
 
 from sbir_etl.enrichers.ma_discovery.extractor import (
-    ChatFn,
     ExtractionInput,
     ExtractionVerdict,
     SnippetExtractor,
     is_filled_date,
     is_filled_value,
 )
+from sbir_etl.enrichers.ma_discovery.llm_extractor import ChatFn
 
 
 EPISTEMIC_TIER = "exploratory"

@@ -10,7 +10,8 @@ import json
 
 import pytest
 
-from sbir_etl.enrichers.ma_discovery.extractor import KeywordExtractor, LlmExtractor
+from sbir_etl.enrichers.ma_discovery.extractor import KeywordExtractor
+from sbir_etl.enrichers.ma_discovery.llm_extractor import LlmExtractor
 from sbir_etl.enrichers.ma_discovery.extractor_eval import (
     CaseScore,
     gold_replay_chat,

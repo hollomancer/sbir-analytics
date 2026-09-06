@@ -15,7 +15,7 @@ unchanged.
 | Extractor | How it decides | Date / value | Cost |
 |---|---|---|---|
 | **Keyword** (`KeywordExtractor` over `verify_acquisition`) | Both names as raw substrings plus one of `{acquired, acquisition, bought, merger, merged, purchase}` | Never fills. Confirmed rows keep `date="Unknown"` in the heuristic and `None` on the structured verdict | Zero |
-| **Structured LLM prompt** (`LlmExtractor`) | Injected chat callable; prompt asks for JSON matching the design schema and forbids talks-only / invented fields | Fills only when the model returns ISO date / numeric USD | Per-snippet token cost |
+| **Structured LLM prompt** (`LlmExtractor`, `llm_extractor.py`, exploratory tier) | Injected chat callable; prompt asks for JSON matching the design schema and forbids talks-only / invented fields | Fills only when the model returns ISO date / numeric USD | Per-snippet token cost |
 
 Models *considered*, not bake-off winners:
 

@@ -2,17 +2,16 @@
 
 Epistemic tier: pipelines. Relocated from the paused #371 scripts.
 Search backends are pluggable via ``SearchTool``. A typed snippet extractor
-exists (keyword adapter plus optional LLM JSON client); the orchestrator
-still defaults to ``verify_acquisition``.
+contract exists with a keyword adapter; the orchestrator still defaults to
+``verify_acquisition``. The LLM extractor is exploratory tier and lives in
+``llm_extractor.py``; import it from there, it is not re-exported here.
 """
 
 from sbir_etl.enrichers.ma_discovery.extractor import (
     ExtractionInput,
     ExtractionVerdict,
     KeywordExtractor,
-    LlmExtractor,
     SnippetExtractor,
-    build_llm_extractor,
 )
 from sbir_etl.enrichers.ma_discovery.orchestrator import process_batch
 from sbir_etl.enrichers.ma_discovery.press import enrich_ma_events, merge_press_signals
@@ -35,13 +34,11 @@ __all__ = [
     "ExtractionInput",
     "ExtractionVerdict",
     "KeywordExtractor",
-    "LlmExtractor",
     "MockSearchTool",
     "SearchTool",
     "SnippetExtractor",
     "TavilySearchTool",
     "VerificationResult",
-    "build_llm_extractor",
     "build_search_tool",
     "enrich_ma_events",
     "generate_queries",

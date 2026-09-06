@@ -12,14 +12,16 @@ from types import SimpleNamespace
 import pytest
 
 from sbir_etl.enrichers.ma_discovery.extractor import (
-    EXTRACTOR_SYSTEM_PROMPT,
     MAX_REASON_CHARS,
     ExtractionInput,
     KeywordExtractor,
-    LlmExtractor,
-    build_llm_extractor,
     parse_llm_payload,
     verdict_from_payload,
+)
+from sbir_etl.enrichers.ma_discovery.llm_extractor import (
+    EXTRACTOR_SYSTEM_PROMPT,
+    LlmExtractor,
+    build_llm_extractor,
 )
 from sbir_etl.enrichers.ma_discovery.extractor_eval import load_fixtures
 
