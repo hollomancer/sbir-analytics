@@ -6,6 +6,7 @@ import pytest
 
 from sbir_etl.enrichers.ma_discovery.orchestrator import main, process_batch
 from sbir_etl.enrichers.ma_discovery.queries import generate_queries
+from sbir_etl.config.loader import get_config
 from sbir_etl.config.schemas.domain import MADiscoveryConfig
 from sbir_etl.enrichers.ma_discovery.search import MockSearchTool, build_search_tool
 from sbir_etl.exceptions import ConfigurationError
@@ -68,13 +69,20 @@ def test_main_uses_mock_backend(tmp_path) -> None:
     assert len(lines) == 1
 
 
-def test_main_without_backend_fails_closed_and_writes_nothing(tmp_path) -> None:
+def test_main_without_backend_fails_closed_and_writes_nothing(tmp_path, monkeypatch) -> None:
     """A no-argument run must not fall back to fixture hits.
 
     MockSearchTool returns a hard-coded Physical Optics / Mercury Systems hit
     that verify_acquisition confirms, so a default of "mock" wrote synthetic
     evidence to the real output file and exited 0.
+
+    The run reads config/base.yaml through get_config(), which also applies
+    SBIR_ETL__* environment overrides and caches the result. Clear both so the
+    test pins the shipped YAML default rather than the developer's shell.
     """
+    monkeypatch.delenv("SBIR_ETL__MA_DISCOVERY__SEARCH_BACKEND", raising=False)
+    monkeypatch.delenv("SBIR_ETL__MA_DISCOVERY__SEARCH_API_KEY", raising=False)
+    get_config.cache_clear()
     input_path = tmp_path / "queries.csv"
     input_path.write_text(
         "company_name,acquirer,query\n"
