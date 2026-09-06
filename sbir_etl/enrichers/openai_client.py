@@ -124,9 +124,7 @@ class OpenAIClient:
                         )
                         time.sleep(wait)
                         continue
-                    logger.warning(
-                        f"OpenAI API {type(exc).__name__} after {MAX_RETRIES} retries"
-                    )
+                    logger.warning(f"OpenAI API {type(exc).__name__} after {MAX_RETRIES} retries")
                     return None
             finally:
                 self._semaphore.release()

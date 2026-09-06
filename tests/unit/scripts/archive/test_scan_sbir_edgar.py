@@ -34,8 +34,6 @@ def test_request_error_tracker_stops_at_first_closing_quote() -> None:
     tracker = _ServerErrorTracker()
     tracker.register("Acme Labs")
 
-    tracker.write(
-        "EDGAR filing mention search failed for 'Acme Labs': later quoted 'detail': 500"
-    )
+    tracker.write("EDGAR filing mention search failed for 'Acme Labs': later quoted 'detail': 500")
 
     assert tracker.had_error("Acme Labs")
