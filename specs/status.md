@@ -90,11 +90,15 @@ bypassing lifecycle review; the status and rationale still require human judgmen
   as the reference adapter, and `usaspending_refresh_batch` on the job.
   Per-source adapters stay split (#443 NIH RePORTER, then SAM/PatentsView).
   Tasks 6.1–6.2 remain optional Phase 2 expansion.
-- **`ma-discovery-integration` — Deferred.** The #371 toolkit now lives at
-  `sbir_etl/enrichers/ma_discovery/` (issue #446). SearchTool has a real
-  Tavily client (Brave optional) behind config; runtime default is `none`
-  (fail-closed); `mock` is opt-in only. LLM extractor and collision policy remain unbuilt. Revisit
-  only when M&A recall becomes a selected research priority.
+- **`ma-discovery-integration` — Active (bounded slice).** M&A recall was
+  selected as a research priority on 2026-09-06 (inventory anchors A4 / F2).
+  The active scope is issue #446 steps 2–3: the #371 toolkit at
+  `sbir_etl/enrichers/ma_discovery/`, a real Tavily client (Brave optional)
+  behind config with a fail-closed `none` default and opt-in `mock`, and a
+  fixture-only extractor eval (#663). The C3 collision policy, the
+  `MAEvent.confidence` rewrite, and any capital-events join stay out of scope
+  until a labeled Form-D-missing sample exists; candidate discovery remains
+  non-citable per `requirements.md`.
 - **`modular-analysis-platform` — Maintenance.** Pipelines-tier contracts
   and registry so a new tech-census or transition-cohort profile is
   YAML-only (issue #441). HTTP is out of scope per ADR-004. Weekly awards
