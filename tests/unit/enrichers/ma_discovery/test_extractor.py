@@ -13,11 +13,12 @@ import pytest
 
 from sbir_etl.enrichers.ma_discovery.extractor import (
     EXTRACTOR_SYSTEM_PROMPT,
+    MAX_REASON_CHARS,
     ExtractionInput,
     KeywordExtractor,
     LlmExtractor,
     build_llm_extractor,
-    build_user_prompt,
+    parse_llm_payload,
     verdict_from_payload,
 )
 from sbir_etl.enrichers.ma_discovery.extractor_eval import load_fixtures
@@ -180,8 +181,9 @@ def test_llm_prompt_asks_for_schema_and_pair() -> None:
     assert "value_usd" in captured["system"]
     assert "talks" in captured["system"]
     assert captured["system"] == EXTRACTOR_SYSTEM_PROMPT
-    assert captured["user"] == build_user_prompt(item)
-    assert "Aether Photonics" in captured["user"]
+    assert "<snippet>" in captured["system"]
+    assert captured["user"].startswith("Company: Aether Photonics\nAcquirer: Helios Defense\n")
+    assert f"<snippet>\n{item.snippet}\n</snippet>" in captured["user"]
 
 
 def test_llm_accepts_openai_client_shape() -> None:
@@ -318,3 +320,29 @@ def test_llm_extractor_close_forwards_to_client() -> None:
 
 def test_llm_extractor_close_tolerates_bare_callable() -> None:
     LlmExtractor(lambda system, user: None).close()
+
+
+def test_parse_llm_payload_keeps_object_with_trailing_prose_and_rejects_lists() -> None:
+    assert parse_llm_payload(
+        '{"confirmed": false, "reason": "talks"}\n\nNote: {confirmed} is a bool'
+    ) == {
+        "confirmed": False,
+        "reason": "talks",
+    }
+    nested = '```json\n{"confirmed": true, "extra": {"a": {"b": 1}}}\n```'
+    assert parse_llm_payload(nested) == {"confirmed": True, "extra": {"a": {"b": 1}}}
+    assert parse_llm_payload('[{"confirmed": true}]') is None
+    assert parse_llm_payload("no json here") is None
+
+
+def test_verdict_reason_is_capped() -> None:
+    item = ExtractionInput(
+        company="Aether Photonics", acquirer="Helios Defense", snippet="x", source_url="https://s"
+    )
+    payload = {
+        "confirmed": False,
+        "matched_company": "Aether Photonics",
+        "matched_acquirer": "Helios Defense",
+        "reason": "r" * 2000,
+    }
+    assert len(verdict_from_payload(payload, item=item).reason) == MAX_REASON_CHARS
