@@ -150,13 +150,15 @@ class TestSearchFilingMentions:
         """Verify the company name is quoted for exact phrase matching."""
         client._make_request = AsyncMock(return_value={"hits": {"hits": []}})
 
-        await client.search_filing_mentions("Acme Corp")
+        await client.search_filing_mentions("Acme Corp", limit=37)
         call_args = client._make_request.call_args
         # _make_request(method, endpoint, params) — params is positional arg 3
         params = (
             call_args.args[2] if len(call_args.args) > 2 else call_args.kwargs.get("params", {})
         )
         assert params["q"] == '"Acme Corp"'
+        assert params["from"] == 0
+        assert params["size"] == 37
 
     @pytest.mark.asyncio
     async def test_returns_empty_on_error(self, client):
