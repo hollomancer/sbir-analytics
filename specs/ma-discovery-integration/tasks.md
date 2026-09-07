@@ -23,11 +23,11 @@
 
 - [ ] 7. Held-out confirmatory run (pairs 501–1500, strict recall, stop-until-dated)
   - Spec: `studies/ma-discovery-recall/confirmatory-design.md` (hashed before capture)
-  - Captured 2026-09-03: strict recall 8<10; cost under cap; 241 pairs have only
-    empty LLM freeze rows after OpenRouter 402. No medium-row labels because
-    recall already failed. Completing the tail needs API keys.
-  - Verify: kill-gate fields in `confirmatory-run-manifest.json`. Medium-row
-    labels start only if recall passes; none were started.
+  - Capture complete 2026-09-07: strict recall 13>=10; cost ~$0.0186/pair.
+    52 medium rows; review queue is the first 20, unlabeled. Precision
+    review is the remaining verify.
+  - Verify: kill-gate fields in `confirmatory-run-manifest.json`; medium-row
+    labels.
 
 - [ ] 8. Promote `studies/ma-discovery-recall` only after the confirmatory design passes
   - Verify: evidence-auditor; `evidence_status` remains `exploratory` until then

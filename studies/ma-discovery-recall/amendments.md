@@ -70,3 +70,25 @@ Observed (see `confirmatory-run-manifest.json`):
 
 A run that fails any confirmatory gate does not promote. Do not evaluate a
 rewritten gate on this freeze. `evidence_status` stays **exploratory**.
+
+## A4 — Confirmatory tail completed (exploratory record, 2026-09-07)
+
+The held-out freeze was resumed on the same Brave snippets, same hashed
+`confirmatory-design.md`, stop-until-dated, strict recall. Empty freeze
+rows were retried; 402s were not written as freeze rows. LLM chats used
+`max_tokens=2048`.
+
+Observed (see `confirmatory-run-manifest.json`):
+
+- Strict medium/high C3 insert-or-promote: **13** (floor ≥10 **met**).
+- 140 discovered rows (84 low, 52 medium, 4 high). C3: 138 inserts, 2
+  promotes.
+- Compacted LLM freeze: 1,831 unique `(company, acquirer, source_url)`
+  keys, 1,753 filled. 78 empty URL keys remain; every pair has a filled
+  reply on another URL.
+- Cost ~$0.0186/pair (Brave $5 + LLM ~$13.64, under $0.10).
+- Precision labels **not started**. Review queue is the first 20 medium
+  rows. The study does not promote until that review and the FP cap.
+
+`evidence_status` stays **exploratory**. Do not edit
+`docs/research-questions.md`.
