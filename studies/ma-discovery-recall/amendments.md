@@ -54,8 +54,11 @@ Narrative of this pilot: [pilot.md](pilot.md). Held-out confirmatory protocol
 
 ## A3 — Held-out confirmatory cut (exploratory record, 2026-09-03)
 
-`confirmatory-design.md` was hashed before Brave/LLM capture of pairs 501–1500.
-The run used one query template, stop-until-dated, and strict recall.
+`confirmatory-design.md` was recorded as the confirmatory protocol for pairs
+501–1500. The run used one query template, stop-until-dated, and strict
+recall. Evidence-auditor 2026-09-07: freeze-before-run was **not** shown
+for that file (first git appearance is the same commit as the confirmatory
+miss; Brave snippets predate it). See A5.
 
 Observed (see `confirmatory-run-manifest.json`):
 
@@ -92,6 +95,29 @@ Observed (see `confirmatory-run-manifest.json`):
   contact boilerplate, claim is in the URL. Labels:
   `confirmatory-labels.jsonl`.
 
-All three confirmatory gates are met. `evidence_status` stays
-**exploratory** until evidence-auditor. Do not edit
-`docs/research-questions.md`.
+All three confirmatory gates are met as an exploratory record.
+`evidence_status` stays **exploratory**. Do not edit
+`docs/research-questions.md`. See A5 for the remaining hashed-cut path.
+
+## A5 — Held-out 1501 protocol (hash before capture)
+
+Evidence-auditor 2026-09-07: **BLOCK** on promoting the confirmatory
+501–1500 freeze. `confirmatory-design.md` first appears in git in the
+same commit as the confirmatory miss (`c94967b5`, 2026-09-06). The Brave
+snippet freeze mtime is 2026-09-02. Completing empty LLM rows on that
+freeze is not freeze-before-run and does not enlarge a hashed cut.
+
+The 200-pair envelope in [design.md](design.md) remains a failed
+preregistered validation (recall 9<10). Do not rewrite it. Do not
+evaluate a rewritten gate on pairs 1–1500.
+
+[held-out-1501.md](held-out-1501.md) is the measured protocol for pairs
+1501–2500 (skip 1,500, keep 1,000). Hash this note and
+`held-out-1501.yaml` into `study.yaml` **before** any Brave or LLM call
+on that cut. Same three gates as confirmatory-design: strict recall ≥10,
+medium-row FP ≤0.25, ≤$0.10/pair. Intended rank if gates pass and
+evidence-auditor does not BLOCK: study `validated`. Materialization stays
+closed. Inventory F2/A4 is not edited. `citable` is out of scope.
+
+Live capture is refused unless `--protocol` is hashed in HEAD. This
+amendment is Commit A of that cut: protocol only, zero results.

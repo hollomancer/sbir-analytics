@@ -18,11 +18,15 @@ frozen_artifacts:
   - path: studies/ma-discovery-recall/design.md
     sha256: 94207d66540b9a20466252051253ec84e9d78e3aea43d80b1297e3e4566ca182
   - path: studies/ma-discovery-recall/amendments.md
-    sha256: a0e0e0e697083021d81f2eda66ccc76fc9bc8794169ae0c9e6761ff22b6b6e93
+    sha256: 31caf42fffd562ecd4538d6fd444efc203e2e5015fa869ef5f2403de533024e2
   - path: studies/ma-discovery-recall/pilot.md
-    sha256: 6e5577581dccacd1ef9e19379832311938df05048b6a7696cde4877cc4ca4573
+    sha256: 9863569996295a3d2a0e33c1fa42ba36ec1482d8f8d6880fb77ede101a8936cd
   - path: studies/ma-discovery-recall/confirmatory-design.md
     sha256: dbf945f59a316bbd41cbb018e2806a4907b8f94781ca669e8da34c475276b9e5
+  - path: studies/ma-discovery-recall/held-out-1501.md
+    sha256: b983466f579a7dec8b5e04001a99fe85e95303db5c1c9eb1db06616f9d7e3e5a
+  - path: studies/ma-discovery-recall/held-out-1501.yaml
+    sha256: d4676dc3cdd812a8efc8c8aba3332a380a9867c080bbeb23f2d4881a7b7b8efd
   - path: studies/ma-discovery-recall/labels.jsonl
     sha256: 99ac5c225821b7471323d137cfb1836be68264cd041bac3a07b59ef29eaa5fca
   - path: studies/ma-discovery-recall/run-manifest.json

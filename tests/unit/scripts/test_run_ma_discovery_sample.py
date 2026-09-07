@@ -368,3 +368,20 @@ def test_main_refuses_capture_llm_without_protocol(monkeypatch: pytest.MonkeyPat
     )
     with pytest.raises(SystemExit, match="hashed in HEAD"):
         main()
+
+
+def test_checked_in_held_out_1501_protocol_loads() -> None:
+    protocol = load_cut_protocol(Path("studies/ma-discovery-recall/held-out-1501.yaml"))
+    assert protocol.protocol_id == "held-out-1501"
+    assert protocol.skip_pairs == 1500
+    assert protocol.max_candidates == 1000
+    assert protocol.queries_per_pair == 1
+    assert protocol.stop_when == "dated_confirm"
+    assert protocol.strict_recall is True
+    assert protocol.fail_on_gate is True
+    assert protocol.confirm == "llm"
+    assert protocol.search_backend_capture == "brave"
+    assert protocol.intended_rank == "validated"
+    assert protocol.events_sha256 == (
+        "6ffc8481a240b2ee9bd9fdef806395d3f62e9d1f3ba12a68490d28fb53a1cf49"
+    )

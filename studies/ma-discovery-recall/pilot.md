@@ -9,8 +9,9 @@ rewritten gate on this freeze. Evidence-auditor 2026-09-02 **BLOCK**ed
 
 Hashes and row counts: [run-manifest.json](run-manifest.json). Human labels:
 [labels.jsonl](labels.jsonl). Frozen method that the first batch failed:
-[design.md](design.md). Confirmatory protocol (hash before held-out capture):
-[confirmatory-design.md](confirmatory-design.md).
+[design.md](design.md). Confirmatory protocol (pairs 501–1500, exploratory
+record): [confirmatory-design.md](confirmatory-design.md). Successor hashed
+cut (pairs 1501–2500): [held-out-1501.md](held-out-1501.md).
 
 ## Population and method actually used
 
