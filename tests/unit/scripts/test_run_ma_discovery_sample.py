@@ -4,8 +4,10 @@ from __future__ import annotations
 
 import hashlib
 import json
+from pathlib import Path
 
 import pytest
+import yaml
 
 from scripts.data.run_ma_discovery_sample import (
     RecordingSearchTool,
@@ -13,7 +15,15 @@ from scripts.data.run_ma_discovery_sample import (
     build_review_queue,
     check_run_manifest,
     drop_recorded_queries,
+    gate_failures,
+    is_live_capture,
+    live_capture_errors,
+    load_cut_protocol,
     load_recorded_queries,
+    main,
+    precision_from_labels,
+    protocol_pin_errors,
+    should_fail_on_gate,
     strict_medium_high_n,
 )
 
@@ -144,3 +154,217 @@ def test_check_run_manifest_detects_mismatch(tmp_path) -> None:
     errors = check_run_manifest(manifest, events=events, snippets=snippets, llm=None)
     assert any("events SHA mismatch" in e for e in errors)
     assert not any("snippets SHA mismatch" in e for e in errors)
+
+
+_EVENTS_SHA = "a" * 64
+
+
+def _protocol_payload(**overrides: object) -> dict:
+    payload: dict = {
+        "protocol_id": "held-out-1501",
+        "protocol_md": "notes/cut.md",
+        "skip_pairs": 1500,
+        "max_candidates": 1000,
+        "queries_per_pair": 1,
+        "stop_when": "dated_confirm",
+        "strict_recall": True,
+        "fail_on_gate": True,
+        "confirm": "llm",
+        "search_backend_capture": "brave",
+        "search_backend_rerun": "snippets",
+        "events_path": "data/sbir_ma_events.jsonl",
+        "events_sha256": _EVENTS_SHA,
+        "output_dir": "data/processed/ma_discovery_heldout_1501",
+        "intended_rank": "validated",
+        "recall_floor": 10,
+        "precision_fp_cap": 0.25,
+        "cost_per_pair_cap_usd": 0.10,
+    }
+    payload.update(overrides)
+    return payload
+
+
+def _write_protocol(root: Path, payload: dict | None = None) -> Path:
+    notes = root / "notes"
+    notes.mkdir(parents=True, exist_ok=True)
+    md = notes / "cut.md"
+    md.write_text("# cut\n", encoding="utf-8")
+    path = notes / "cut.yaml"
+    path.write_text(
+        yaml.safe_dump(_protocol_payload() if payload is None else payload), encoding="utf-8"
+    )
+    return path
+
+
+def test_is_live_capture_only_for_brave_tavily_or_llm() -> None:
+    assert is_live_capture(search_backend="brave", capture_llm=False)
+    assert is_live_capture(search_backend="tavily", capture_llm=False)
+    assert is_live_capture(search_backend="snippets", capture_llm=True)
+    assert not is_live_capture(search_backend="snippets", capture_llm=False)
+    assert not is_live_capture(search_backend="mock", capture_llm=False)
+    assert not is_live_capture(search_backend="none", capture_llm=False)
+    assert not is_live_capture(search_backend=None, capture_llm=False)
+
+
+def test_live_capture_refused_without_protocol() -> None:
+    errors = live_capture_errors(search_backend="brave", capture_llm=False, protocol=None)
+    assert any("hashed in HEAD" in e for e in errors)
+
+
+def test_live_capture_backend_must_match_protocol(tmp_path: Path) -> None:
+    protocol = load_cut_protocol(_write_protocol(tmp_path))
+    errors = live_capture_errors(search_backend="tavily", capture_llm=True, protocol=protocol)
+    assert any("does not match protocol" in e for e in errors)
+    assert live_capture_errors(search_backend="brave", capture_llm=True, protocol=protocol) == []
+
+
+def test_load_cut_protocol_rejects_unknown_fields(tmp_path: Path) -> None:
+    path = _write_protocol(tmp_path, _protocol_payload(extra_field="nope"))
+    with pytest.raises(ValueError, match="unknown fields"):
+        load_cut_protocol(path)
+
+
+def test_protocol_pin_errors_require_head_and_study_hash(tmp_path: Path) -> None:
+    protocol_path = _write_protocol(tmp_path)
+    protocol = load_cut_protocol(protocol_path)
+    md = tmp_path / protocol.protocol_md
+    yaml_bytes = protocol_path.read_bytes()
+    md_bytes = md.read_bytes()
+    study = tmp_path / "study.yaml"
+    study.write_text(
+        yaml.safe_dump(
+            {
+                "frozen_artifacts": [
+                    {
+                        "path": "notes/cut.yaml",
+                        "sha256": hashlib.sha256(yaml_bytes).hexdigest(),
+                    },
+                    {
+                        "path": "notes/cut.md",
+                        "sha256": hashlib.sha256(md_bytes).hexdigest(),
+                    },
+                ]
+            }
+        ),
+        encoding="utf-8",
+    )
+    head = {"notes/cut.yaml": yaml_bytes, "notes/cut.md": md_bytes}
+    assert (
+        protocol_pin_errors(
+            protocol,
+            protocol_path,
+            repository_root=tmp_path,
+            study_yaml=study,
+            head_blob=head.get,
+        )
+        == []
+    )
+    missing_head = protocol_pin_errors(
+        protocol,
+        protocol_path,
+        repository_root=tmp_path,
+        study_yaml=study,
+        head_blob=lambda _rel: None,
+    )
+    assert any("protocol not in HEAD: notes/cut.yaml" in e for e in missing_head)
+    drifted = protocol_pin_errors(
+        protocol,
+        protocol_path,
+        repository_root=tmp_path,
+        study_yaml=study,
+        head_blob=lambda rel: b"stale" if rel.endswith(".yaml") else head.get(rel),
+    )
+    assert any("differs from HEAD: notes/cut.yaml" in e for e in drifted)
+
+
+def test_protocol_pin_errors_require_study_yaml_pin(tmp_path: Path) -> None:
+    protocol_path = _write_protocol(tmp_path)
+    protocol = load_cut_protocol(protocol_path)
+    study = tmp_path / "study.yaml"
+    study.write_text(yaml.safe_dump({"frozen_artifacts": []}), encoding="utf-8")
+    blobs = {
+        "notes/cut.yaml": protocol_path.read_bytes(),
+        "notes/cut.md": (tmp_path / protocol.protocol_md).read_bytes(),
+    }
+    errors = protocol_pin_errors(
+        protocol,
+        protocol_path,
+        repository_root=tmp_path,
+        study_yaml=study,
+        head_blob=blobs.get,
+    )
+    assert any("not pinned in study.yaml: notes/cut.yaml" in e for e in errors)
+    assert any("not pinned in study.yaml: notes/cut.md" in e for e in errors)
+
+
+def test_should_fail_on_gate_for_protocol_or_run_manifest(tmp_path: Path) -> None:
+    protocol = load_cut_protocol(_write_protocol(tmp_path))
+    assert should_fail_on_gate(flag=False, protocol=None, run_manifest=None) is False
+    assert should_fail_on_gate(flag=True, protocol=None, run_manifest=None) is True
+    assert should_fail_on_gate(flag=False, protocol=protocol, run_manifest=None) is True
+    assert (
+        should_fail_on_gate(flag=False, protocol=None, run_manifest=tmp_path / "run.json") is True
+    )
+
+
+def test_precision_from_labels_excludes_ambiguous() -> None:
+    stats = precision_from_labels(
+        [
+            {"review_outcome": "true"},
+            {"review_outcome": "true"},
+            {"review_outcome": "false"},
+            {"review_outcome": "ambiguous"},
+            {"review_outcome": "unreviewed"},
+        ]
+    )
+    assert stats["true_n"] == 2
+    assert stats["false_n"] == 1
+    assert stats["ambiguous_n"] == 1
+    assert stats["unreviewed_n"] == 1
+    assert stats["fp_rate"] == pytest.approx(1 / 3)
+    assert stats["complete"] is False
+
+
+def test_gate_failures_skip_incomplete_precision() -> None:
+    incomplete = precision_from_labels([{"review_outcome": "unreviewed"}])
+    assert (
+        gate_failures(
+            recall_n=13,
+            recall_floor=10,
+            labels=incomplete,
+            precision_fp_cap=0.25,
+            cost_per_pair_usd=None,
+            cost_cap=0.10,
+        )
+        == []
+    )
+    complete = precision_from_labels([{"review_outcome": "false"}, {"review_outcome": "false"}])
+    errors = gate_failures(
+        recall_n=9,
+        recall_floor=10,
+        labels=complete,
+        precision_fp_cap=0.25,
+        cost_per_pair_usd=0.2,
+        cost_cap=0.10,
+    )
+    assert any("recall floor missed" in e for e in errors)
+    assert any("precision FP" in e for e in errors)
+    assert any("cost per pair" in e for e in errors)
+
+
+def test_main_refuses_live_capture_without_protocol(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(
+        "sys.argv",
+        ["run_ma_discovery_sample.py", "--search-backend", "brave"],
+    )
+    with pytest.raises(SystemExit, match="hashed in HEAD"):
+        main()
+
+
+def test_main_refuses_capture_llm_without_protocol(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(
+        "sys.argv",
+        ["run_ma_discovery_sample.py", "--capture-llm"],
+    )
+    with pytest.raises(SystemExit, match="hashed in HEAD"):
+        main()

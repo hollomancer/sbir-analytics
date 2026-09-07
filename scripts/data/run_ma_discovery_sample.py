@@ -4,6 +4,7 @@
 Epistemic tier: exploratory. This is the sample-run / review-queue CLI for
 ``studies/ma-discovery-recall``. It does not promote a rank. Default search
 backend is fail-closed; pass ``--search-backend mock`` or ``snippets``.
+Live Brave/Tavily or ``--capture-llm`` requires ``--protocol`` hashed in HEAD.
 """
 
 from __future__ import annotations
@@ -12,11 +13,16 @@ import argparse
 import asyncio
 import hashlib
 import json
+import re
+import subprocess
+from collections.abc import Callable
+from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
 from sbir_etl.config.schemas.domain import MADiscoveryConfig
+from sbir_etl.config.yaml_io import read_yaml_mapping
 from sbir_etl.enrichers.ma_discovery.collision import apply_c3, name_key
 from sbir_etl.enrichers.ma_discovery.extractor import (
     FrozenLlmExtractor,
@@ -30,10 +36,16 @@ from sbir_etl.enrichers.ma_discovery.queries import (
     query_rows_from_events,
 )
 from sbir_etl.enrichers.ma_discovery.search import SearchTool, build_search_tool
+from sbir_etl.exceptions import ConfigurationError
 
 
 EPISTEMIC_TIER = "exploratory"
 REVIEW_SIZE = 20
+LIVE_SEARCH_BACKENDS = frozenset({"brave", "tavily"})
+REPO_ROOT = Path(__file__).resolve().parents[2]
+DEFAULT_STUDY_YAML = REPO_ROOT / "studies" / "ma-discovery-recall" / "study.yaml"
+_SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
+HeadBlob = Callable[[str], bytes | None]
 
 
 def _sha256(path: Path) -> str | None:
@@ -239,6 +251,267 @@ def check_run_manifest(
     return errors
 
 
+@dataclass(frozen=True)
+class CutProtocol:
+    """Machine-readable measured-cut contract. Exploratory CLI helper."""
+
+    protocol_id: str
+    protocol_md: str
+    skip_pairs: int
+    max_candidates: int
+    queries_per_pair: int
+    stop_when: str
+    strict_recall: bool
+    fail_on_gate: bool
+    confirm: str
+    search_backend_capture: str
+    search_backend_rerun: str
+    events_path: str
+    events_sha256: str
+    output_dir: str
+    intended_rank: str
+    recall_floor: int
+    precision_fp_cap: float
+    cost_per_pair_cap_usd: float
+
+
+def is_live_capture(*, search_backend: str | None, capture_llm: bool) -> bool:
+    """True when the run would call Brave, Tavily, or a live LLM."""
+    backend = (search_backend or "").strip().lower()
+    return bool(capture_llm) or backend in LIVE_SEARCH_BACKENDS
+
+
+def load_cut_protocol(path: Path) -> CutProtocol:
+    """Load a cut protocol YAML. Unknown or missing fields fail closed."""
+    try:
+        raw = read_yaml_mapping(path, description="cut protocol")
+    except ConfigurationError as exc:
+        raise ValueError(str(exc)) from exc
+    expected = set(CutProtocol.__dataclass_fields__)
+    missing = sorted(expected - raw.keys())
+    extra = sorted(set(raw) - expected)
+    if missing:
+        raise ValueError(f"cut protocol missing fields: {missing}")
+    if extra:
+        raise ValueError(f"cut protocol unknown fields: {extra}")
+    stop_when = raw["stop_when"]
+    if stop_when not in {"first_confirm", "dated_confirm"}:
+        raise ValueError(
+            f"cut protocol stop_when must be dated_confirm or first_confirm: {stop_when!r}"
+        )
+    sha = raw["events_sha256"]
+    if not isinstance(sha, str) or not _SHA256_RE.fullmatch(sha):
+        raise ValueError("cut protocol events_sha256 must be 64 lowercase hex chars")
+    return CutProtocol(
+        protocol_id=str(raw["protocol_id"]),
+        protocol_md=str(raw["protocol_md"]),
+        skip_pairs=int(raw["skip_pairs"]),
+        max_candidates=int(raw["max_candidates"]),
+        queries_per_pair=int(raw["queries_per_pair"]),
+        stop_when=str(stop_when),
+        strict_recall=bool(raw["strict_recall"]),
+        fail_on_gate=bool(raw["fail_on_gate"]),
+        confirm=str(raw["confirm"]),
+        search_backend_capture=str(raw["search_backend_capture"]),
+        search_backend_rerun=str(raw["search_backend_rerun"]),
+        events_path=str(raw["events_path"]),
+        events_sha256=sha,
+        output_dir=str(raw["output_dir"]),
+        intended_rank=str(raw["intended_rank"]),
+        recall_floor=int(raw["recall_floor"]),
+        precision_fp_cap=float(raw["precision_fp_cap"]),
+        cost_per_pair_cap_usd=float(raw["cost_per_pair_cap_usd"]),
+    )
+
+
+def git_head_blob(relative_path: str, *, cwd: Path) -> bytes | None:
+    """Return ``git show HEAD:path`` bytes, or None if the path is not in HEAD."""
+    result = subprocess.run(
+        ["git", "show", f"HEAD:{relative_path}"],
+        cwd=cwd,
+        capture_output=True,
+        check=False,
+    )
+    if result.returncode != 0:
+        return None
+    return result.stdout
+
+
+def _repo_relative(path: Path, root: Path) -> str | None:
+    try:
+        return path.resolve().relative_to(root.resolve()).as_posix()
+    except ValueError:
+        return None
+
+
+def protocol_pin_errors(
+    protocol: CutProtocol,
+    protocol_path: Path,
+    *,
+    repository_root: Path,
+    study_yaml: Path,
+    head_blob: HeadBlob | None = None,
+) -> list[str]:
+    """Protocol files must match HEAD bytes and ``study.yaml`` frozen_artifacts."""
+    lookup = head_blob or (lambda rel: git_head_blob(rel, cwd=repository_root))
+    try:
+        manifest = read_yaml_mapping(study_yaml, description="study manifest")
+    except ConfigurationError as exc:
+        return [str(exc)]
+    artifacts = manifest.get("frozen_artifacts")
+    pinned: dict[str, str] = {}
+    if isinstance(artifacts, list):
+        for item in artifacts:
+            if not isinstance(item, dict):
+                continue
+            art_path = item.get("path")
+            art_sha = item.get("sha256")
+            if isinstance(art_path, str) and isinstance(art_sha, str):
+                pinned[art_path] = art_sha
+
+    errors: list[str] = []
+    yaml_rel = _repo_relative(protocol_path, repository_root)
+    if yaml_rel is None:
+        return [f"protocol path escapes repository root: {protocol_path}"]
+    md_path = repository_root / protocol.protocol_md
+    checks = [(yaml_rel, protocol_path), (protocol.protocol_md, md_path)]
+    for relative, path in checks:
+        if not path.is_file():
+            errors.append(f"protocol file missing: {relative}")
+            continue
+        working = path.read_bytes()
+        head = lookup(relative)
+        if head is None:
+            errors.append(
+                f"protocol not in HEAD: {relative} (hash it in git before any live capture)"
+            )
+        elif head != working:
+            errors.append(f"protocol working tree differs from HEAD: {relative}")
+        expected = pinned.get(relative)
+        actual = hashlib.sha256(working).hexdigest()
+        if expected is None:
+            errors.append(f"protocol not pinned in {study_yaml.name}: {relative}")
+        elif expected != actual:
+            errors.append(
+                f"frozen_artifacts sha256 mismatch for {relative}: "
+                f"expected {expected}, found {actual}"
+            )
+    return errors
+
+
+def live_capture_errors(
+    *,
+    search_backend: str | None,
+    capture_llm: bool,
+    protocol: CutProtocol | None,
+) -> list[str]:
+    """Refuse live search/LLM unless a hashed protocol selected the cut."""
+    if not is_live_capture(search_backend=search_backend, capture_llm=capture_llm):
+        return []
+    if protocol is None:
+        return [
+            "live Brave/Tavily/--capture-llm requires --protocol hashed in HEAD "
+            "before any search or LLM call"
+        ]
+    errors: list[str] = []
+    backend = (search_backend or "").strip().lower()
+    if backend in LIVE_SEARCH_BACKENDS and backend != protocol.search_backend_capture:
+        errors.append(
+            f"live search backend {backend!r} does not match protocol "
+            f"{protocol.search_backend_capture!r}"
+        )
+    if capture_llm and protocol.confirm != "llm":
+        errors.append("protocol does not authorize --capture-llm")
+    return errors
+
+
+def apply_cut_protocol(args: argparse.Namespace, protocol: CutProtocol) -> None:
+    """Overwrite cut flags from the protocol. Protocol is authoritative."""
+    args.skip_pairs = protocol.skip_pairs
+    args.max_candidates = protocol.max_candidates
+    args.queries_per_pair = protocol.queries_per_pair
+    args.stop_when = protocol.stop_when
+    args.strict_recall = protocol.strict_recall
+    args.fail_on_gate = True
+    args.confirm = protocol.confirm
+    args.output_dir = Path(protocol.output_dir)
+    args.events = Path(protocol.events_path)
+
+
+def should_fail_on_gate(
+    *,
+    flag: bool,
+    protocol: CutProtocol | None,
+    run_manifest: Path | None,
+) -> bool:
+    """Protocol runs and SHA-checked replays fail closed on missed gates."""
+    return bool(flag) or protocol is not None or run_manifest is not None
+
+
+def precision_from_labels(rows: list[dict[str, Any]]) -> dict[str, Any]:
+    """FP = false/(true+false). Ambiguous and unreviewed are excluded."""
+    true_n = false_n = ambiguous_n = unreviewed_n = 0
+    for row in rows:
+        outcome = row.get("review_outcome")
+        if outcome == "true":
+            true_n += 1
+        elif outcome == "false":
+            false_n += 1
+        elif outcome == "ambiguous":
+            ambiguous_n += 1
+        else:
+            unreviewed_n += 1
+    denom = true_n + false_n
+    return {
+        "true_n": true_n,
+        "false_n": false_n,
+        "ambiguous_n": ambiguous_n,
+        "unreviewed_n": unreviewed_n,
+        "fp_rate": (false_n / denom) if denom else None,
+        "complete": bool(rows) and unreviewed_n == 0,
+    }
+
+
+def load_jsonl_rows(path: Path) -> list[dict[str, Any]]:
+    if not path.is_file():
+        return []
+    rows: list[dict[str, Any]] = []
+    for line in path.read_text(encoding="utf-8").splitlines():
+        if not line.strip():
+            continue
+        payload = json.loads(line)
+        if isinstance(payload, dict):
+            rows.append(payload)
+    return rows
+
+
+def gate_failures(
+    *,
+    recall_n: int,
+    recall_floor: int,
+    labels: dict[str, Any] | None,
+    precision_fp_cap: float,
+    cost_per_pair_usd: float | None,
+    cost_cap: float,
+) -> list[str]:
+    """Automated gates that can fail a confirmatory/protocol run.
+
+    Incomplete precision labels are not a failure; they keep ``accepted`` false.
+    """
+    errors: list[str] = []
+    if recall_n < recall_floor:
+        errors.append(f"recall floor missed ({recall_n} < {recall_floor})")
+    if labels is not None and labels["complete"]:
+        fp_rate = labels["fp_rate"]
+        if fp_rate is None:
+            errors.append("precision labels have no true/false rows")
+        elif fp_rate > precision_fp_cap:
+            errors.append(f"precision FP {fp_rate} exceeds cap {precision_fp_cap}")
+    if cost_per_pair_usd is not None and cost_per_pair_usd > cost_cap:
+        errors.append(f"cost per pair ${cost_per_pair_usd} exceeds cap ${cost_cap}")
+    return errors
+
+
 async def _search(
     queries: list[dict[str, str]],
     *,
@@ -265,9 +538,7 @@ async def _search(
     )
     tool = RecordingSearchTool(inner, sink, path=record_path)
     try:
-        return await process_batch(
-            queries, tool, extractor=extractor, stop_when=stop_when
-        )
+        return await process_batch(queries, tool, extractor=extractor, stop_when=stop_when)
     finally:
         await tool.aclose()
 
@@ -334,9 +605,69 @@ def main() -> int:
     parser.add_argument(
         "--fail-on-gate",
         action="store_true",
-        help="Exit 1 when the recall floor is not met.",
+        help="Exit 1 when recall, complete precision, or measured cost misses a cap.",
+    )
+    parser.add_argument(
+        "--protocol",
+        type=Path,
+        default=None,
+        help="Hashed cut protocol YAML. Required for live Brave/Tavily/--capture-llm.",
+    )
+    parser.add_argument(
+        "--study-yaml",
+        type=Path,
+        default=DEFAULT_STUDY_YAML,
+        help="Study manifest used to verify protocol frozen_artifacts pins.",
+    )
+    parser.add_argument(
+        "--labels",
+        type=Path,
+        default=None,
+        help="JSONL human labels for the precision gate (review_outcome true/false/ambiguous).",
     )
     args = parser.parse_args()
+
+    protocol: CutProtocol | None = None
+    if args.protocol is not None:
+        try:
+            protocol = load_cut_protocol(args.protocol)
+        except ValueError as exc:
+            raise SystemExit(str(exc)) from exc
+        apply_cut_protocol(args, protocol)
+        pin_errors = protocol_pin_errors(
+            protocol,
+            args.protocol,
+            repository_root=REPO_ROOT,
+            study_yaml=args.study_yaml,
+        )
+        if pin_errors:
+            raise SystemExit("protocol pin check failed:\n" + "\n".join(pin_errors))
+        print(
+            f"Using protocol {protocol.protocol_id}: skip={protocol.skip_pairs} "
+            f"max={protocol.max_candidates} stop={protocol.stop_when}"
+        )
+
+    live_errors = live_capture_errors(
+        search_backend=args.search_backend,
+        capture_llm=args.capture_llm,
+        protocol=protocol,
+    )
+    if live_errors:
+        raise SystemExit("\n".join(live_errors))
+
+    if protocol is not None:
+        events_sha = _sha256(args.events)
+        if events_sha != protocol.events_sha256:
+            raise SystemExit(
+                "events SHA mismatch vs protocol: "
+                f"expected {protocol.events_sha256}, found {events_sha}"
+            )
+
+    args.fail_on_gate = should_fail_on_gate(
+        flag=args.fail_on_gate,
+        protocol=protocol,
+        run_manifest=args.run_manifest,
+    )
 
     events = load_ma_events(args.events)
     queries = query_rows_from_events(events)
@@ -371,16 +702,12 @@ def main() -> int:
         if args.capture_llm:
             live = build_llm_extractor(api_key=args.llm_api_key)
             if live is None:
-                raise SystemExit(
-                    "OPENROUTER_API_KEY or XAI_API_KEY is required for --capture-llm"
-                )
+                raise SystemExit("OPENROUTER_API_KEY or XAI_API_KEY is required for --capture-llm")
             extractor = RecordingLlmExtractor(live, llm_records, path=llm_path)
         else:
             freeze = args.llm_freeze or llm_path
             if not freeze.is_file():
-                raise SystemExit(
-                    "--confirm llm requires --llm-freeze JSONL or --capture-llm"
-                )
+                raise SystemExit("--confirm llm requires --llm-freeze JSONL or --capture-llm")
             extractor = FrozenLlmExtractor(freeze)
             llm_path = freeze
 
@@ -423,12 +750,28 @@ def main() -> int:
     medium_high = [row for row in discovered if row.get("confidence") in {"medium", "high"}]
     strict_n = strict_medium_high_n(events, collision.inserted + collision.promoted)
     recall_n = strict_n if args.strict_recall else len(medium_high)
-    recall_met = recall_n >= 10
+    recall_floor = protocol.recall_floor if protocol is not None else 10
+    recall_met = recall_n >= recall_floor
+    precision_cap = protocol.precision_fp_cap if protocol is not None else 0.25
+    cost_cap = protocol.cost_per_pair_cap_usd if protocol is not None else 0.10
+    label_path = args.labels if args.labels is not None else queue_path
+    label_rows = load_jsonl_rows(label_path) if label_path.is_file() else []
+    labels = precision_from_labels(label_rows) if label_rows else None
+    precision_complete = bool(labels and labels["complete"])
+    fp_rate = labels["fp_rate"] if labels else None
+    precision_cap_met = precision_complete and fp_rate is not None and fp_rate <= precision_cap
+    failures = gate_failures(
+        recall_n=recall_n,
+        recall_floor=recall_floor,
+        labels=labels,
+        precision_fp_cap=precision_cap,
+        cost_per_pair_usd=None,
+        cost_cap=cost_cap,
+    )
+    accepted = recall_met and precision_cap_met
     llm_n = len(llm_records)
     if not llm_n and args.confirm == "llm" and llm_path.is_file():
-        llm_n = sum(
-            1 for line in llm_path.read_text(encoding="utf-8").splitlines() if line.strip()
-        )
+        llm_n = sum(1 for line in llm_path.read_text(encoding="utf-8").splitlines() if line.strip())
     summary = {
         "_epistemic": {
             "citable": False,
@@ -436,6 +779,7 @@ def main() -> int:
             "notice": "Sample run; not a validated or citable result.",
         },
         "as_of_utc": datetime.now(UTC).isoformat(),
+        "protocol_id": protocol.protocol_id if protocol is not None else None,
         "events_path": str(args.events),
         "events_sha256": _sha256(args.events),
         "events_n": len(events),
@@ -462,15 +806,20 @@ def main() -> int:
         "kill_gate": {
             "recall_floor_met": recall_met,
             "recall_n": recall_n,
+            "recall_floor": recall_floor,
             "recall_rule": "strict" if args.strict_recall else "discovered_medium_high",
-            "precision_review_complete": False,
+            "precision_review_complete": precision_complete,
+            "precision_fp_rate": fp_rate,
+            "precision_cap_met": precision_cap_met,
             "cost_cap_measured": False,
+            "cost_per_pair_cap_usd": cost_cap,
+            "accepted": accepted,
         },
     }
     summary_path.write_text(json.dumps(summary, indent=2) + "\n", encoding="utf-8")
     print(f"Discovered {len(discovered)} rows; review queue {len(queue)} → {args.output_dir}")
-    if args.fail_on_gate and not recall_met:
-        print(f"recall floor missed ({recall_n} < 10, rule={summary['kill_gate']['recall_rule']})")
+    if args.fail_on_gate and failures:
+        print("; ".join(failures))
         return 1
     return 0
 

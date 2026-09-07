@@ -6,11 +6,14 @@ research_questions:
   - F2
   - A4
 estimand: >-
-  Among Form-D-missing rows in a pinned sbir_ma_events.jsonl cut that name an
-  acquirer, count distinct (company, acquirer) pairs that a web-search snippet
-  extractor confirms at medium or high confidence and that C3 would insert or
-  promote, as of the run's as-of date. Non-detection is not proof of no
-  acquisition. The count is not an SBIR exit rate.
+  Among Form-D-missing rows in the pinned sbir_ma_events.jsonl cut that name an
+  acquirer and whose existing event is not already confidence in {medium, high},
+  count distinct (company, acquirer) pairs after CompanyNameProfile.RECIPIENT_V1
+  that a web-search snippet extractor confirms at medium or high confidence and
+  that C3 inserts or promotes, as of the run as-of date. Non-detection is not
+  proof of no acquisition. The count is not an SBIR exit rate. The 200-pair
+  envelope in design.md remains the failed original validation design and is
+  not rewritten.
 frozen_artifacts:
   - path: studies/ma-discovery-recall/design.md
     sha256: 94207d66540b9a20466252051253ec84e9d78e3aea43d80b1297e3e4566ca182
@@ -55,8 +58,10 @@ materialization:
       500-pair enlarge and cost restatement were post-hoc (evidence-auditor
       2026-09-02 BLOCK)
     - >-
-      Held-out confirmatory gates met (strict recall 13>=10, FP 0/19, cost
-      under cap); evidence-auditor has not promoted evidence_status
+      Held-out confirmatory 501-1500 is an exploratory record; evidence-auditor
+      BLOCKED promotion because confirmatory-design.md was not shown hashed in
+      git before the Brave freeze. Remaining bar is a new protocol hashed
+      before any search/LLM on unseen pairs.
 permitted_claims:
   - The method, C3 join, confidence table, and fail-closed search default are
     specified and fixture-tested.
