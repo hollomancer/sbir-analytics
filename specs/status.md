@@ -93,9 +93,9 @@ bypassing lifecycle review; the status and rationale still require human judgmen
 - **`ma-discovery-integration` — Active.** M&A recall is a selected F2/A4
   implementation target. Fail-closed search, C3, pair-name guards, and the
   `ma-discovery-recall` study (exploratory; materialization closed) are in
-  tree. The held-out confirmatory cut met strict recall (13>=10) and the
-  cost cap; medium-row precision labels are not started. Candidate
-  discovery stays non-citable.
+  tree. The held-out confirmatory cut met strict recall (13>=10), FP 0/19,
+  and the cost cap. evidence_status stays exploratory pending
+  evidence-auditor. Candidate discovery stays non-citable.
 - **`modular-analysis-platform` — Maintenance.** Pipelines-tier contracts
   and registry so a new tech-census or transition-cohort profile is
   YAML-only (issue #441). HTTP is out of scope per ADR-004. Weekly awards

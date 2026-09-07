@@ -2,7 +2,7 @@
   "_epistemic": {
     "citable": false,
     "tier": "exploratory",
-    "notice": "Held-out confirmatory cut. Strict recall floor met (13>=10). Precision labels not started. Not a passed validation."
+    "notice": "Held-out confirmatory cut. Strict recall 13>=10, FP 0/19, cost under cap. Exploratory until evidence-auditor. Not citable."
   },
   "study_id": "ma-discovery-recall",
   "protocol": "studies/ma-discovery-recall/confirmatory-design.md",
@@ -15,7 +15,7 @@
   "search_backend_rerun": "snippets",
   "confirm": "llm",
   "llm_model": "x-ai/grok-4.6",
-  "outcome": "recall_floor_met_precision_pending",
+  "outcome": "confirmatory_gates_met",
   "inputs": {
     "events": {
       "path": "data/sbir_ma_events.jsonl",
@@ -52,10 +52,20 @@
     },
     "review_queue": {
       "path": "data/processed/ma_discovery_confirmatory/review_queue.jsonl",
-      "sha256": "f2f64a2f6e15fe3c150137fe2aead7e3abccfd866a3165dda52a3b975019e8c2",
+      "sha256": "5c18a5fcc8c2eb0497f0ebab8546d9fc1de7684d1b99230454643dd688125eea",
       "n": 20,
-      "note": "First 20 medium rows; unlabeled. Recall passed, so precision review can start.",
+      "note": "First 20 medium rows, labeled. Same bytes as studies/ma-discovery-recall/confirmatory-labels.jsonl.",
       "gitignored": true
+    },
+    "labels": {
+      "path": "studies/ma-discovery-recall/confirmatory-labels.jsonl",
+      "sha256": "5c18a5fcc8c2eb0497f0ebab8546d9fc1de7684d1b99230454643dd688125eea",
+      "n": 20,
+      "true_n": 19,
+      "false_n": 0,
+      "ambiguous_n": 1,
+      "fp_rate": 0.0,
+      "gitignored": false
     }
   },
   "c3": {
@@ -68,7 +78,9 @@
     "recall_floor_met": true,
     "recall_n": 13,
     "recall_rule": "strict",
-    "precision_review_complete": false,
+    "precision_review_complete": true,
+    "precision_fp_rate": 0.0,
+    "precision_cap_met": true,
     "cost_per_pair_usd": 0.01864,
     "cost_per_pair_cap_usd": 0.1,
     "cost_per_pair_cap_met": true,

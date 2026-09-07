@@ -15,7 +15,7 @@ frozen_artifacts:
   - path: studies/ma-discovery-recall/design.md
     sha256: 94207d66540b9a20466252051253ec84e9d78e3aea43d80b1297e3e4566ca182
   - path: studies/ma-discovery-recall/amendments.md
-    sha256: 1451270779a42a4d839966b4bd9fa7fbe7393475b9a6236ae227a71d288d2d81
+    sha256: a0e0e0e697083021d81f2eda66ccc76fc9bc8794169ae0c9e6761ff22b6b6e93
   - path: studies/ma-discovery-recall/pilot.md
     sha256: 6e5577581dccacd1ef9e19379832311938df05048b6a7696cde4877cc4ca4573
   - path: studies/ma-discovery-recall/confirmatory-design.md
@@ -25,7 +25,9 @@ frozen_artifacts:
   - path: studies/ma-discovery-recall/run-manifest.json
     sha256: daf6f3431ca1d0823a30ea98439ae7ab2bdceb25b3e4881ff9135db7d4d025b9
   - path: studies/ma-discovery-recall/confirmatory-run-manifest.json
-    sha256: ee21f1f8c89968d006c7255a52ecf1b03aef330f089728a31d92951d0f47b80d
+    sha256: dad2f006740b7423ac310fa4d9c0827651a3ca9dff0e6bb64fdb98352888e5c1
+  - path: studies/ma-discovery-recall/confirmatory-labels.jsonl
+    sha256: 5c18a5fcc8c2eb0497f0ebab8546d9fc1de7684d1b99230454643dd688125eea
 implementation:
   - path: sbir_etl/enrichers/ma_discovery/collision.py
     symbol: apply_c3
@@ -53,8 +55,8 @@ materialization:
       500-pair enlarge and cost restatement were post-hoc (evidence-auditor
       2026-09-02 BLOCK)
     - >-
-      Held-out confirmatory recall floor passed (13>=10) and cost is under
-      cap; precision labels on the medium review queue are not started
+      Held-out confirmatory gates met (strict recall 13>=10, FP 0/19, cost
+      under cap); evidence-auditor has not promoted evidence_status
 permitted_claims:
   - The method, C3 join, confidence table, and fail-closed search default are
     specified and fixture-tested.

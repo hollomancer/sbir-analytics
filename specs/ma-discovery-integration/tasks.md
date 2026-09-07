@@ -21,13 +21,11 @@
   - Note: pilot freeze is private/gitignored (`run-manifest.json`). Confirmatory
     freeze is private/gitignored (`confirmatory-run-manifest.json`).
 
-- [ ] 7. Held-out confirmatory run (pairs 501–1500, strict recall, stop-until-dated)
+- [x] 7. Held-out confirmatory run (pairs 501–1500, strict recall, stop-until-dated)
   - Spec: `studies/ma-discovery-recall/confirmatory-design.md` (hashed before capture)
-  - Capture complete 2026-09-07: strict recall 13>=10; cost ~$0.0186/pair.
-    52 medium rows; review queue is the first 20, unlabeled. Precision
-    review is the remaining verify.
-  - Verify: kill-gate fields in `confirmatory-run-manifest.json`; medium-row
-    labels.
+  - Complete 2026-09-07: strict recall 13>=10; cost ~$0.0186/pair; 20 medium
+    labels 19 true / 0 false / 1 ambiguous (FP = 0).
+  - Verify: `confirmatory-run-manifest.json`; `confirmatory-labels.jsonl`
 
 - [ ] 8. Promote `studies/ma-discovery-recall` only after the confirmatory design passes
   - Verify: evidence-auditor; `evidence_status` remains `exploratory` until then

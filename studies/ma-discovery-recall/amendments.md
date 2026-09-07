@@ -87,8 +87,11 @@ Observed (see `confirmatory-run-manifest.json`):
   keys, 1,753 filled. 78 empty URL keys remain; every pair has a filled
   reply on another URL.
 - Cost ~$0.0186/pair (Brave $5 + LLM ~$13.64, under $0.10).
-- Precision labels **not started**. Review queue is the first 20 medium
-  rows. The study does not promote until that review and the FP cap.
+- Precision: 20 medium rows labeled **19 true / 0 false / 1 ambiguous**.
+  FP = 0/19 = 0 (cap 0.25). Ambiguous is Synlogic/Mirna: snippet is
+  contact boilerplate, claim is in the URL. Labels:
+  `confirmatory-labels.jsonl`.
 
-`evidence_status` stays **exploratory**. Do not edit
+All three confirmatory gates are met. `evidence_status` stays
+**exploratory** until evidence-auditor. Do not edit
 `docs/research-questions.md`.
