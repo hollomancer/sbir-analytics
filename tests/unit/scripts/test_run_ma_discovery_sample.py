@@ -418,6 +418,67 @@ async def test_recording_search_tool_counts_failures(tmp_path: Path) -> None:
     assert sink[0]["hit_count"] == 0
 
 
+def test_main_fails_and_reports_when_search_faults(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """A faulted run names the fault and reports it in the summary.
+
+    Covers the plumbing the component tests cannot reach: counter to summary
+    to gate to reported failure. This asserts the fault message, not just the
+    exit code; a missed recall floor also exits 1 and would mask the gate.
+    """
+
+    class _Boom:
+        async def search(self, query: str) -> list[dict[str, object]]:
+            raise OSError("connection reset")
+
+    monkeypatch.setattr(
+        "scripts.data.run_ma_discovery_sample.build_search_tool",
+        lambda *a, **kw: _Boom(),
+    )
+
+    events = tmp_path / "events.jsonl"
+    events.write_text(
+        json.dumps(
+            {
+                "company_name": "Acme Robotics, Inc.",
+                "event_date": "2020-01-13",
+                "acquirer": "Globex Corporation",
+                "confidence": "low",
+                "signals": {},
+            }
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    out = tmp_path / "out"
+    monkeypatch.setattr(
+        "sys.argv",
+        [
+            "run_ma_discovery_sample.py",
+            "--events",
+            str(events),
+            "--search-backend",
+            "mock",
+            "--confirm",
+            "keyword",
+            "--output-dir",
+            str(out),
+            "--fail-on-gate",
+        ],
+    )
+
+    assert main() == 1
+    assert "search failures recorded as empty" in capsys.readouterr().out
+
+    summary = json.loads((out / "sample_run_summary.json").read_text(encoding="utf-8"))
+    assert summary["search_failure_n"] >= 1
+    assert summary["kill_gate"]["fully_measured"] is False
+    assert summary["kill_gate"]["accepted"] is False
+
+
 def test_main_refuses_live_capture_without_protocol(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(
         "sys.argv",
