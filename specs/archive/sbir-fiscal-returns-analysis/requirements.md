@@ -6,18 +6,13 @@ The SBIR Fiscal Returns Analysis feature enables computation of federal fiscal r
 
 ## Glossary
 
-- **Fiscal_Returns_System**: The SBIR Fiscal Returns Analysis system implemented as Dagster assets
-- **SBIR_Award**: Small Business Innovation Research program award record with funding and recipient information
-- **Economic_Multiplier**: Factor representing indirect and induced economic effects of direct spending
-- **Tax_Receipt**: Federal tax revenue generated from economic activity (IIT, payroll, CIT, excise)
-- **ROI_Calculation**: Return on investment computation comparing tax receipts to SBIR spending
-- **Inflation_Adjustment**: Process of normalizing monetary values to a consistent base year
-- **NAICS_Code**: North American Industry Classification System code identifying business sectors
-- **BEA_IO_Sector**: Bureau of Economic Analysis Input-Output sector classification
-- **StateIO_Model**: State-level input-output economic model for impact analysis
-- **Fiscal_Year**: Government fiscal year period for analysis aggregation
-- **Sensitivity_Band**: Range of estimates reflecting parameter uncertainty
-- **Audit_Trail**: Documented record of assumptions, parameters, and data transformations
+> Archived. Fiscal-feature terms only; confidence intervals here are statistical,
+> not enrichment bands. See [glossary.md](../../../docs/steering/glossary.md).
+
+- **Economic_Multiplier** — Indirect/induced effects factor on direct spending.
+- **Sensitivity_Band** — Range of estimates reflecting parameter uncertainty.
+- **StateIO_Model** — State-level input-output model for impact analysis.
+- **BEA_IO_Sector** — BEA Input-Output sector classification paired with NAICS.
 
 ## Requirements
 

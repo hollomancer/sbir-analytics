@@ -1,10 +1,12 @@
 # Transition Coverage & Self-Labeling Expansion — Requirements
 
-**Target epistemic tier:** `evidence`
+**Target epistemic tier:** `exploratory`
 
+> Retiered from `evidence` (2026-08-15): the four-item evidence contract (frozen spec + SHA enforcement + blocking asset checks + declared estimand) is not in place here. Re-promote only with an explicit amendments freeze and estimand declaration.
 > **Status:** Draft spec. No implementation beyond the exploratory spikes recorded below.
 > Follow-on to #481 (validation) and #484 (enrichment). Supports **B2 / E1** in
 > [docs/research-questions.md](../../docs/research-questions.md).
+
 
 **Research question anchor:** B2 (SBIR→federal follow-on), E1 (Phase III identification)
 **Answers for:** Whoever needs the *full* transition footprint, not just marked prime contracts

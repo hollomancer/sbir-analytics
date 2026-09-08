@@ -1,5 +1,13 @@
 # Massachusetts Physical Unmanned-Systems SBIR/STTR Readout
 
+**Audience:** maintainers and analysts scoping state- or district-level SBIR
+readouts; a discovery input, not an outside-facing product.
+
+**What this is:** a first-pass count of Massachusetts SBIR/STTR firms whose
+funded work builds physical unmanned systems — air, ground, surface, and
+undersea — from a single SBIR.gov snapshot, with a manual review pass that
+removed software-only and incidental matches.
+
 > **Exploratory / non-citable.** Use this readout for discovery, not as
 > evidence-tier support or an externally cited result. The 238-award reviewed
 > total cannot be regenerated until the original award-level review decisions

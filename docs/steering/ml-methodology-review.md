@@ -1,14 +1,16 @@
-# ML Methodology Review Checklist
+# ML Methodology Review Guidance
 
 ## Overview
 
-This is the standing review checklist for ML code in `packages/sbir-ml/`. It exists to catch methodology bugs — the kind where code runs, tests pass, and reported metrics are still wrong (data leakage, missing seeds, hand-rolled metrics with magic epsilons, accuracy as a headline for imbalanced multi-label problems).
+This is standing review guidance for ML code in `packages/sbir-ml/`. It exists to catch methodology bugs — the kind where code runs, tests pass, and reported metrics are still wrong (data leakage, missing seeds, hand-rolled metrics with magic epsilons, accuracy as a headline for imbalanced multi-label problems).
+
+It is **not a CI gate** and not a required merge checklist. Use it when reviewing ML PRs or before re-training artifacts that downstream consumers depend on.
 
 The patterns are drawn from [`scicode-lint`](https://github.com/authentic-research-partners/scicode-lint)'s published 66-pattern catalog (v1.0 registry, 2026-03-15), filtered to the subset relevant to our sklearn + HuggingFace-Inference stack. PyTorch-specific patterns are documented but currently not load-bearing.
 
 Methodology bugs in the CET classifier directly distort its own reported precision/recall/F1 (computed in `trainer.py` and stored in the metrics dict). Indirectly, degraded CET classifications feed `transition/features/cet_analyzer.py` and become one signal in the rule-based **transition scorer** — which is what CLAUDE.md's "≥85% precision benchmark" actually references. The cascade is dampened by `cet_alignment`'s weight (1 of 6 signals), but real: a data-leakage bug here doesn't just produce a worse classifier, it can quietly degrade downstream transition-scoring precision in ways the CET-classifier-internal metrics don't show.
 
-### What this checklist does and does not cover
+### What this guidance does and does not cover
 
 **Covers:** ML methodology in `packages/sbir-ml/sbir_ml/ml/` — TF-IDF + LogisticRegression CET classifier (`cet_classifier.py`), patent classifier (`patent_classifier.py`), trainer (`trainer.py`), vectorizers (`multi_source_vectorizer.py`).
 
@@ -16,17 +18,17 @@ Methodology bugs in the CET classifier directly distort its own reported precisi
 
 **Does NOT cover:** the rule-based **transition scorer** at `packages/sbir-ml/sbir_ml/transition/`. That's a separate system with separate methodology risks (signal weight calibration, threshold drift, ground-truth labeling protocol). CLAUDE.md's ≥85% precision target lives there, not here. See "Next audit scope" below.
 
-## When to use this checklist
+## When to use this guidance
 
-- **Reviewing any PR that touches `packages/sbir-ml/sbir_ml/ml/`** — required pass before merge
-- **Before re-running training that produces an artifact downstream consumers depend on** — verify the methodology hasn't drifted from this checklist
-- **Periodic baseline refresh** — re-run the checklist annually (or whenever scicode-lint releases a new pattern version) against the full ML surface area and update the "Initial Findings" appendix
+- **Reviewing a PR that touches `packages/sbir-ml/sbir_ml/ml/`** — recommended, not a merge requirement
+- **Before re-running training that produces an artifact downstream consumers depend on** — verify the methodology hasn't drifted from these notes
+- **Periodic baseline refresh** — re-run the notes annually (or whenever scicode-lint releases a new pattern version) against the full ML surface area and update the "Initial Findings" appendix
 
 ## How to apply
 
 For each section below, read the code being reviewed and answer the verification question. Findings are recorded against the relevant pattern ID so future reviewers can trace decisions. Pattern IDs match scicode-lint's registry (e.g., `ml-008`, `rep-001`) — useful for cross-referencing when a real tool run is later performed.
 
-## The checklist
+## Review notes
 
 ### 1. Data leakage (highest severity)
 

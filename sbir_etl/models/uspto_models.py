@@ -23,7 +23,7 @@ Validators:
 
 import re
 from datetime import date
-from enum import Enum
+from enum import StrEnum
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -44,7 +44,7 @@ def _normalize_name(name: str | None) -> str | None:
 
 
 # ---- Enums ----
-class ConveyanceType(str, Enum):
+class ConveyanceType(StrEnum):
     ASSIGNMENT = "assignment"
     LICENSE = "license"
     SECURITY_INTEREST = "security_interest"

@@ -1,4 +1,4 @@
-"""Unit tests for scripts/archive/data/bootstrap_form_d_leverage_ci.py."""
+"""Unit tests for scripts/data/bootstrap_form_d_leverage_ci.py."""
 
 from __future__ import annotations
 
@@ -12,11 +12,7 @@ import pytest
 
 # Load the script as a module (it lives outside the package tree).
 SCRIPT_PATH = (
-    Path(__file__).resolve().parents[4]
-    / "scripts"
-    / "archive"
-    / "data"
-    / "bootstrap_form_d_leverage_ci.py"
+    Path(__file__).resolve().parents[3] / "scripts" / "data" / "bootstrap_form_d_leverage_ci.py"
 )
 _spec = importlib.util.spec_from_file_location("bootstrap_form_d_leverage_ci", SCRIPT_PATH)
 _mod = importlib.util.module_from_spec(_spec)

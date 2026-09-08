@@ -1,14 +1,14 @@
 from __future__ import annotations
 
 from datetime import date, datetime
-from enum import Enum
+from enum import StrEnum
 
 from pydantic import BaseModel, Field, field_validator
 
 from sbir_etl.models.transition_models import VendorMatch  # noqa: F401 — canonical definition
 
 
-class CompetitionType(str, Enum):
+class CompetitionType(StrEnum):
     """Competition types for federal contracts."""
 
     SOLE_SOURCE = "sole_source"
@@ -18,7 +18,7 @@ class CompetitionType(str, Enum):
     OTHER = "other"
 
 
-class ContractStatus(str, Enum):
+class ContractStatus(StrEnum):
     """Contract status enumeration."""
 
     ACTIVE = "active"

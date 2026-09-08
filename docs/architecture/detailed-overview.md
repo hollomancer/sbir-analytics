@@ -37,7 +37,7 @@ later, its tool and Make target belong in the repository first.
 
 | Concern | Technology | Canonical location |
 | --- | --- | --- |
-| Language and packaging | Python 3.11 or 3.12, uv workspace | `pyproject.toml`, `uv.lock` |
+| Language and packaging | Python 3.11–3.12 (`requires-python >=3.11,<3.13`), uv workspace | `pyproject.toml`, `uv.lock` |
 | Tabular processing | pandas, DuckDB, PyArrow | `sbir_etl/`, assets, studies |
 | Configuration | Pydantic and YAML | `sbir_etl/config/`, `config/` |
 | Orchestration | Dagster | `packages/sbir-analytics/` |

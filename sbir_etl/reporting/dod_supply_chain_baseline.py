@@ -36,6 +36,8 @@ FACT_COLUMNS = [
     "taxonomy_version",
     "dod_cta14",
     "dod_sc8",
+    "nssts_cet14",
+    "nssts_mission_needs",
     "award_amount",
     "phase",
     "dod_component",
@@ -303,6 +305,12 @@ def build_award_facts(
     facts["dod_sc8"] = facts["cet_area"].map(
         lambda cet_id: crosswalk.targets_for(str(cet_id), "dod_sc8")
     )
+    facts["nssts_cet14"] = facts["cet_area"].map(
+        lambda cet_id: crosswalk.targets_for(str(cet_id), "nssts_cet14")
+    )
+    facts["nssts_mission_needs"] = facts["cet_area"].map(
+        lambda cet_id: sorted(crosswalk.mission_needs_for(str(cet_id)))
+    )
     facts["award_amount"] = pd.to_numeric(
         _first_column(cohort, ("award_amount", "Award Amount", "obligation_amount")),
         errors="coerce",
@@ -460,6 +468,8 @@ def build_cet_metrics(
                     "cet_area": cet_area,
                     "dod_cta14": _ordered_tag_union(group["dod_cta14"]),
                     "dod_sc8": _ordered_tag_union(group["dod_sc8"]),
+                    "nssts_cet14": _ordered_tag_union(group["nssts_cet14"]),
+                    "nssts_mission_needs": _ordered_tag_union(group["nssts_mission_needs"]),
                     "award_count": int(group["award_id"].nunique()),
                     "distinct_firms": distinct_firms,
                     "award_dollars": dollars,

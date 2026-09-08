@@ -65,3 +65,51 @@
 
 - [x] 6.3 Extend `config/base.yaml` with optional `enrichment_refresh` entries for each evaluated API, including feature flags so environments can opt-in once legal/data-sharing reviews are completed.
   - Notes: Added `enabled` feature flag to `EnrichmentSourceConfig` schema (`sbir_etl/config/schemas/domain.py`). Environments opt-in via env var (e.g., `SBIR_ETL__ENRICHMENT_REFRESH__SEC_EDGAR__ENABLED=true`). Drift note (2026-07-02): current `config/base.yaml` and `EnrichmentRefreshConfig` carry only `usaspending` and `sec_edgar` (disabled by default); the `opencorporates`/`dla_cage` entries originally added have since been removed.
+
+## Issue #442 — shared source lifecycle
+
+Optional Phase 2 expansion (6.1, 6.2) is **not** required to close #442.
+
+- [x] 7.1 Add `SourceAdapter`, `SourceProvenance`, and `SourceRefreshRunner` in `sbir_etl/enrichers/source_adapter.py`.
+  - Verify: mock-adapter contract test covers fetch → normalize → validate → freshness → checkpoint
+- [x] 7.2 Wrap `USAspendingAPIClient` as `USAspendingSourceAdapter`.
+  - Verify: unit test with a fake client, no network
+- [x] 7.3 Convert `usaspending_refresh_batch` to an asset in `usaspending_iterative_enrichment_job` and call `CheckpointStore`.
+  - Verify: job selection includes the refresh asset; hermetic e2e with a mocked adapter
+- [x] 7.4 Restore `uv run refresh-enrichment --source usaspending`.
+  - Verify: CLI `--help` and a mocked dry-run
+- [x] 7.5 Update `docs/enrichment/usaspending-iterative-refresh.md`.
+  - Verify: `make docs-check`
+
+## Issue #443 — NIH RePORTER source adapter
+
+Per-source adapter for R43/R44/R41/R42. Shared lifecycle stays in
+`SourceAdapter` / `SourceRefreshRunner`. Grain: exact `project_num` /
+`core_project_num` + FY on known SBIR.gov NIH/HHS awards; windows become
+RePORTER criteria. Out of scope: STTR `research_hospitals`, live schedule,
+rewriting the Phase III urllib extractor.
+
+- [x] 8.1 Add `sbir_etl/enrichers/nih_reporter/` client, key canonicalizer,
+      and normalized record schema. Move `canonicalize_nih_query_key` here;
+      Phase III re-exports it.
+  - Verify: `tests/unit/enrichers/nih_reporter/` (pagination, windows,
+    duplicates, retries) and `tests/unit/phase_iii_negative_controls/test_nih_reporter.py`
+- [x] 8.2 Adapter + SBIR.gov request builder + `refresh-enrichment --source nih_reporter`.
+  - Verify: mocked CLI dry-run; disabled source exits; no USAspending parquet dependency
+  - Notes: `NIHReporterSourceAdapter` + `requests.py` build exact-key lookups
+    from the SBIR.gov award frame. `--window` is RePORTER criteria (date or
+    `fy:`), not a local award-date filter. First run treats an empty freshness
+    ledger as "all eligible NIH/HHS awards." Persist grain is `appl_id` at
+    `data/derived/nih_reporter_awards.parquet`. `enabled: false` until a hand
+    run succeeds.
+- [x] 8.3 Dagster ledger / stale set / refresh batch and job. No sensor.
+      Keep `enabled: false`.
+  - Verify: job selection includes the refresh asset; hermetic fake adapter
+  - Notes: `nih_reporter_iterative_enrichment_job` selects
+    `nih_reporter_freshness_ledger`, `stale_nih_reporter_awards`, and
+    `nih_reporter_refresh_batch`. First-run / stale selection is shared with
+    the CLI (`nih_ids_needing_refresh`). Refresh no-ops while
+    `enabled: false`. No sensor and no schedule.
+- [ ] 8.4 Docs (`docs/enrichment/nih-reporter-refresh.md`) and E3 freshness
+      mention only after a hand run has written a freshness row.
+  - Verify: `make docs-check`

@@ -50,7 +50,7 @@ The standard orchestration interface is the auto-discovered Dagster asset `follo
 Run it from the repository's normal Dagster deployment, or exercise the deterministic path with:
 
 ```bash
-uv run pytest tests/unit/follow_on_multiplier tests/integration/follow_on_multiplier
+uv run pytest tests/unit/follow_on_multiplier
 ```
 
 The asset writes Parquet tables and NASEM JSON/Markdown reports to `data/processed/follow_on_multiplier/`. Nominal dollars are the default; for an adjusted-dollar orchestration run, set `dollar_basis: adjusted` and `adjustment_factors_path` to a CSV containing `fiscal_year,adjustment_factor`.

@@ -1,0 +1,28 @@
+{
+  "meta": {"total": 1, "offset": 0, "limit": 500},
+  "results": [
+    {
+      "appl_id": 10824314,
+      "fiscal_year": 2024,
+      "project_num": "1R43AI123456-01",
+      "core_project_num": "R43AI123456",
+      "activity_code": "R43",
+      "agency_ic_admin": "NIAID",
+      "organization": {
+        "org_name": "Example Biotech Inc",
+        "org_ueis": ["DPMGH9MG1X67"],
+        "org_duns": ["076580745"],
+        "primary_uei": "DPMGH9MG1X67",
+        "primary_duns": "076580745"
+      },
+      "principal_investigators": [
+        {"first_name": "Ada", "last_name": "Lovelace", "full_name": "Ada Lovelace"}
+      ],
+      "project_title": "Example SBIR project",
+      "abstract_text": "An abstract.",
+      "award_amount": 275000,
+      "opportunity_number": "PA-22-176",
+      "full_study_section": {"srg_code": "ZRG1", "name": "Special Emphasis Panel"}
+    }
+  ]
+}

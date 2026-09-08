@@ -2,7 +2,7 @@
 
 **Status:** Draft for review.
 **Date:** 2026-06-26.
-**Relates to:** [`specs/archive/completed-features/merger_acquisition_detection/`](../archive/completed-features/merger_acquisition_detection/design.md) (existing Form D + EFTS detection), [`sbir_etl/capital_events/sources/ma_events.py`](../../sbir_etl/capital_events/sources/ma_events.py) (downstream consumer), and the unmerged toolkit scaffold preserved in draft PR [#371](https://github.com/hollomancer/sbir-analytics/pull/371).
+**Relates to:** [`specs/archive/completed-features/merger_acquisition_detection/`](../archive/completed-features/merger_acquisition_detection/design.md) (existing Form D + EFTS detection), [`sbir_etl/capital_events/sources/ma_events.py`](../../sbir_etl/capital_events/sources/ma_events.py) (downstream consumer), and the toolkit now at [`sbir_etl/enrichers/ma_discovery/`](../../sbir_etl/enrichers/ma_discovery/) (relocated from draft PR [#371](https://github.com/hollomancer/sbir-analytics/pull/371); issue [#446](https://github.com/hollomancer/sbir-analytics/issues/446)).
 
 ## Why
 
@@ -14,16 +14,16 @@ A web-search-based discovery path can recover some of those, but only if the row
 
 The capital-events builder at `sbir_etl/capital_events/sources/ma_events.py:13-55` reads `data/enriched_sbir_ma_events.jsonl` and filters on `confidence in {"high", "medium"}` (string tier, not a numeric score). The pipeline shape is fixed; discovery must conform to it.
 
-Note: `detect_sbir_ma_events.py` writes `data/sbir_ma_events.jsonl`; the builder reads `data/enriched_sbir_ma_events.jsonl`. **No committed script produces the enriched file** — the press-wire enrichment step (`SyncPressWireClient` in `sbir_etl/enrichers/press_wire.py`) exists as a library but is not wired into a standalone CLI. The diagram below treats `enrich_ma_with_press.py` as a **to-be-added** component; discovery integration assumes this enrichment glue lands as part of (or before) the discovery implementation PR.
+Note: `detect_sbir_ma_events.py` writes `data/sbir_ma_events.jsonl`; the builder reads `data/enriched_sbir_ma_events.jsonl`. Press-wire enrichment lives at `sbir_etl.enrichers.ma_discovery.press` and wraps `SyncPressWireClient`. Discovery integration still assumes that glue runs before the builder.
 
 **Adopted: option C with collision rule C3.**
 
 ```
 detect_sbir_ma_events.py ─► sbir_ma_events.jsonl ─┐
-                                                  ├─► [TODO] enrich_ma_with_press.py ─► enriched_sbir_ma_events.jsonl ─► capital_events.parquet (MA_EVENT)
-ma_discovery_orchestrator ────────────────────────┘                                     ▲
-       ▲                                                                                │
-       └── runs only on Form-D-missing rows surfaced by detect_sbir_ma_events           └── filter: confidence in {high, medium}
+                                                  ├─► ma_discovery.press ─► enriched_sbir_ma_events.jsonl ─► capital_events.parquet (MA_EVENT)
+ma_discovery.orchestrator ────────────────────────┘                          ▲
+       ▲                                                                     │
+       └── runs only on Form-D-missing rows surfaced by detect_sbir_ma_events └── filter: confidence in {high, medium}
 ```
 
 Discovery is a candidate-expansion step that fires only for firms detect_sbir_ma_events emitted *without* Form D backing. Its output joins `sbir_ma_events.jsonl` before press enrichment, so discovered rows pick up press-wire signals the same way Form D-backed rows do. Until the press-enrichment CLI is wired up, discovery output can be concatenated directly into `enriched_sbir_ma_events.jsonl` (the file the builder reads); the field contract is the same.
@@ -89,7 +89,7 @@ class MAEvent(BaseModel):
 ## Out of scope for v1
 
 - Auto-tuning the confidence thresholds against a labeled set. Use the boundary thresholds above and revisit after the first manual run.
-- Press-release scraping beyond the existing `SyncPressWireClient` (in `sbir_etl/enrichers/press_wire.py`). The to-be-added `enrich_ma_with_press.py` CLI is expected to wrap this client and stay in the pipeline as a sibling step.
+- Press-release scraping beyond the existing `SyncPressWireClient` (in `sbir_etl/enrichers/press_wire.py`). `sbir_etl.enrichers.ma_discovery.press` wraps this client and stays in the pipeline as a sibling step.
 - Discovery for non-Form-D-missing firms ("would discovery surface a *better* signal for a row Form D already covered?"). Adds cost without clearly improving recall.
 - A graph loader for discovered M&A events. They flow into `capital_events.parquet` like every other source; the Neo4j path picks them up at the existing `MAEventLoader`.
 
@@ -107,7 +107,7 @@ These are choices the design intentionally does *not* pin, because they're indep
 ## Implementation sequencing (after this design is approved)
 
 1. **Fix `MAEvent.confidence`** as a `@computed_field` and align the score-to-tier cutoffs with this design (or replace both with calibrated thresholds). Standalone PR; small, safe, lands first.
-2. **Move toolkit scripts to a module path** (`sbir_etl/enrichers/ma_discovery/`) and fix relative imports. No behavior change.
+2. **Move toolkit scripts to a module path** (`sbir_etl/enrichers/ma_discovery/`) and fix relative imports. No behavior change. Done (issue #446, toolkit relocation).
 3. **Implement a real `SearchTool`** against the chosen backend, with config + credentials in `.env.example` and `OTConsortiumConfig`-style schema entry.
 4. **Replace keyword verifier with LLM extractor.** Structured output: `{matched_company, matched_acquirer, acquisition_date, value_usd, citation_url}`.
 5. **Wire collision-detection / C3 promotion logic** between discovery output and existing `sbir_ma_events.jsonl`.

@@ -59,6 +59,10 @@ The evaluation rationale is recorded in
 
 ## Glossary
 
+Feature-local evaluation arms for this prototype. "Confidence" below means
+statistical intervals on metrics — not enrichment or transition score bands
+([glossary.md](../../docs/steering/glossary.md)).
+
 - **Legacy arm:** The current batched prompt and manual parser evaluated on the
   restricted official-text corpus. It is a control, not a complete production
   baseline.

@@ -1,0 +1,62 @@
+{
+  "list_name": "nonprofit_registry",
+  "version": "2026-08-14",
+  "captured": "2026-08-14",
+  "purpose": "STTR partner-type classifier seed list -> NONPROFIT_INSTITUTE, OTHER_NONPROFIT labels (specs/sttr-spinout-linkage/design.md#partner-type-classification)",
+  "source": "IRS Exempt Organizations Business Master File Extract (EO BMF)",
+  "source_page": "https://www.irs.gov/charities-non-profits/exempt-organizations-business-master-file-extract-eo-bmf",
+  "update_cadence": "IRS publishes a refreshed EO BMF extract monthly, on the second Tuesday of the month.",
+  "not_committed_reason": "The four regional extracts total ~336 MB combined. This repository does not use Git LFS (largest currently tracked file is under 1 MB), so the raw extract is not checked into git -- consistent with the existing large-bulk-input precedent in docs/research/agency-private-capital-phase1-nsf.manifest.json, where the 394 MB award_data.csv is hash-anchored via a manifest rather than committed. Reproduce by re-downloading each file below and verifying its sha256 before use; a materially different hash means the IRS has republished the extract and this row's version must be superseded, not silently accepted.",
+  "inputs": [
+    {
+      "file": "eo1.csv",
+      "region": "IRS region 1 (per EO BMF regional split; the extract does not map 1:1 to US Census regions)",
+      "url": "https://www.irs.gov/pub/irs-soi/eo1.csv",
+      "retrieved_at": "2026-08-14",
+      "size_bytes": 48629769,
+      "row_count_incl_header": 278015,
+      "sha256": "6749085dd79a822f7b50a6dae41b055ad2c691232b30536a0583aeab65c9063a"
+    },
+    {
+      "file": "eo2.csv",
+      "region": "IRS region 2",
+      "url": "https://www.irs.gov/pub/irs-soi/eo2.csv",
+      "retrieved_at": "2026-08-14",
+      "size_bytes": 125728575,
+      "row_count_incl_header": 719135,
+      "sha256": "5abab7fdd1a0a7f8e0f39d836208a182ebd7e2560aac7847e995d5eb1a2fa195"
+    },
+    {
+      "file": "eo3.csv",
+      "region": "IRS region 3",
+      "url": "https://www.irs.gov/pub/irs-soi/eo3.csv",
+      "retrieved_at": "2026-08-14",
+      "size_bytes": 164634273,
+      "row_count_incl_header": 955287,
+      "sha256": "47371e01f77926dce01ebbeeade92f5f3a49f1018429017ac0ed1f3063f3c9d5"
+    },
+    {
+      "file": "eo4.csv",
+      "region": "IRS region 4 (Puerto Rico / international / other)",
+      "url": "https://www.irs.gov/pub/irs-soi/eo4.csv",
+      "retrieved_at": "2026-08-14",
+      "size_bytes": 861858,
+      "row_count_incl_header": 4907,
+      "sha256": "8a5288f8ccce9dc8d6bbfc656f9af039c113d017b89a260fd7b58011e28b39e1"
+    }
+  ],
+  "schema": {
+    "columns": [
+      "EIN", "NAME", "ICO", "STREET", "CITY", "STATE", "ZIP", "GROUP", "SUBSECTION",
+      "AFFILIATION", "CLASSIFICATION", "RULING", "DEDUCTIBILITY", "FOUNDATION", "ACTIVITY",
+      "ORGANIZATION", "STATUS", "TAX_PERIOD", "ASSET_CD", "INCOME_CD", "FILING_REQ_CD",
+      "PF_FILING_REQ_CD", "ACCT_PD", "ASSET_AMT", "INCOME_AMT", "REVENUE_AMT", "NTEE_CD", "SORT_NAME"
+    ],
+    "format": "csv",
+    "notes": "SUBSECTION=03 identifies IRC 501(c)(3) organizations. NTEE_CD (National Taxonomy of Exempt Entities) is the field expected to carry the most classification signal for distinguishing a science/research-institute nonprofit (major group U, and parts of H) from a generic OTHER_NONPROFIT at classifier-build time; that filtering logic belongs to task 1.3, not this capture task."
+  },
+  "aggregate": {
+    "total_size_bytes": 339854475,
+    "total_row_count_incl_header": 1957344
+  }
+}

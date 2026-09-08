@@ -190,7 +190,8 @@ class KiroSpecGenerator:
 
 ## Glossary
 
-{self._format_glossary(requirements.glossary)}
+> Archived. Placeholder `{self._format_glossary(...)}` removed. See
+> [glossary.md](../../../../docs/steering/glossary.md).
 
 ## Requirements
 

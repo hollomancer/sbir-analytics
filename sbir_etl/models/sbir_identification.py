@@ -15,7 +15,7 @@ References:
 
 from __future__ import annotations
 
-from enum import Enum
+from enum import StrEnum
 from typing import TypedDict
 
 
@@ -24,7 +24,7 @@ from typing import TypedDict
 # ---------------------------------------------------------------------------
 
 
-class SbirResearchCode(str, Enum):
+class SbirResearchCode(StrEnum):
     """FPDS ``research`` field values — exclusively SBIR/STTR identifiers.
 
     Despite the generic field name, the FPDS ``research`` field (Data Dictionary

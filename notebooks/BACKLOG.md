@@ -39,11 +39,18 @@ As in Wave 1, these are companion views over the canonical artifacts — the scr
 the repeatable computation layer, and each notebook degrades to a "run the generator first"
 message when an artifact is absent.
 
-## Active exploratory analyses
+## Active explorations
 
-| Research thread | Canonical computation | Notebook |
-|---|---|---|
-| NASA–Air Force–DOE post-Phase-II commercialization outcomes | `three_agency_commercialization_outcomes.py` | `explorations/b2_three_agency_commercialization_outcomes.ipynb` |
+Question-driven work under `notebooks/explorations/`. These are not companions to a
+canonical generator; they stay `exploratory` and non-citable until explicitly promoted.
+
+| Investigation | Question | Notebook | Status |
+|---|---|---|---|
+| Negative-control screen coverage | B2 — do identifier-poor SAM candidates pass the Phase III negative-control screen unscreened? | `explorations/b2_control_screen_unscreenable_candidates.ipynb` | Active. Feeds a possible amendment to the frozen `phase-iii-census` spec; not itself a census number. |
+| STTR partner-type × commercialization channels | B1 / B3 — among STTR Phase II firms, do observed Phase III / Form D / M&A rates differ by a coarse RI partner-type heuristic? | `explorations/b1_sttr_partner_type_commercialization.ipynb` | Active. Not RQ2; not the frozen partner-type classifier. |
+| STTR spinout-vs-subcontract (RQ1) data availability | B2/RQ1 (spec-local anchor, distinct from the canonical B2) — is the public data the frozen classification cascade would consume actually present locally, independent of the `open-questions.md` freeze gate? | `explorations/sttr_rq1_data_availability.ipynb` | Active. Input-availability probe only; does not implement or run the cascade. |
+| Top-10 incumbent repeat-winner displacement exposure | A-CP7 — how much Phase I capacity do the ten highest *prior*-award-count firms absorb, and what is the mechanical reallocation capacity toward first-time and low-volume incumbents? | `explorations/a_cp7_top10_repeat_winner_displacement.ipynb` | Active. Exploratory crowd-out **proxies** only; no applicant file, not causal, not a Status upgrade. |
+| NASA–Air Force–DOE post-Phase-II commercialization outcomes | B2 / B3 / F1–F3 — how do observed federal-contract, Form D, and public M&A signals compare after first Phase II? | `explorations/b2_three_agency_commercialization_outcomes.ipynb` | Active. Canonical generator-backed analysis; exploratory and non-citable. |
 
 ## Keep automated — not notebook candidates
 

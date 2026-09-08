@@ -177,6 +177,11 @@ test: ## Run all tests
 	@$(call info,Running tests)
 	$(call run,uv run pytest -v --cov=sbir_etl --cov=packages/sbir-analytics/sbir_analytics --cov=packages/sbir-ml/sbir_ml --cov=packages/sbir-graph/sbir_graph --cov-branch --cov-fail-under=70)
 
+.PHONY: literature-map
+literature-map: ## Refresh the literature map from OpenAlex + grey RSS (CSV + refresh_status.md)
+	@$(call info,Refreshing literature map from OpenAlex and grey-literature feeds)
+	$(call run,uv run python scripts/data/update_literature_map.py)
+
 .PHONY: test-unit
 test-unit: ## Run unit tests only
 	@$(call info,Running unit tests)
@@ -225,20 +230,34 @@ lint: ## Run linting and type checking
 	@$(call info,Running linting and type checking)
 	$(call run,uv run ruff check .)
 	$(call run,uv run ruff format --check .)
+	# UP042 is still a preview rule; run it targeted so we do not opt into every
+	# unstable preview lint. Prefer StrEnum over (str, Enum) in production code.
+	$(call run,uv run ruff check sbir_etl packages tests --preview --select UP042)
 	$(call run,uv run mypy sbir_etl packages/sbir-graph/sbir_graph packages/sbir-ml/sbir_ml)
 
 .PHONY: lint-boundaries
-lint-boundaries: ## Enforce package and archive dependency boundaries
-	@$(call info,Checking architecture boundaries)
+# Keep this list identical to the "Run architecture, documentation, and
+# repository hygiene guards" step in .github/workflows/ci.yml. Local green and
+# CI green must mean the same set of boundary checks; if they diverge, CI wins
+# and this target is a bug.
+lint-boundaries: ## Architecture, epistemic-tier, identity, config, hygiene, and study guards (matches CI)
+	@$(call info,Checking architecture, tier, identity, and repository hygiene guards)
 	$(call run,uv run python scripts/ci/check_architecture_boundaries.py)
+	$(call run,uv run python scripts/ci/check_epistemic_tiers.py)
 	$(call run,uv run python scripts/ci/check_tier_boundaries.py)
 	$(call run,uv run python scripts/ci/check_file_sizes.py)
 	$(call run,uv run python scripts/ci/check_config_boundaries.py)
 	$(call run,uv run python scripts/ci/check_removed_src_references.py)
 	$(call run,uv run python scripts/ci/validate_study_manifests.py)
+	$(call run,uv run python scripts/ci/check_research_question_status.py)
+	$(call run,uv run python scripts/ci/check_identity_boundaries.py)
 
 .PHONY: docs-check
-docs-check: ## Check docs, agent files, spec registry, stale commands, and old code references
+# Thin alias for the hygiene script only. Full boundary coverage lives in
+# `make lint-boundaries` (which also runs this script). Prefer lint-boundaries
+# when checking a PR locally; keep docs-check for callers that only need
+# registry/link/stale-command scans.
+docs-check: ## Hygiene only: doc links, stale commands, spec registry, agent/skill mirrors
 	@$(call info,Running repository hygiene checks)
 	$(call run,uv run python scripts/ci/check_removed_src_references.py)
 
@@ -674,18 +693,21 @@ server-validate-config: server-env-check ## Validate docker-compose.server.yml
 	 $(call success,$(SERVER_COMPOSE_FILE) is valid)
 
 .PHONY: ci-local
-ci-local: ## Run CI checks locally (mimics GitHub Actions)
-	@$(call info,Running CI checks locally)
-	@set -euo pipefail; \
-	 $(MAKE) validate; \
-	 $(call info,Running secret scan); \
-	 if command -v python3 >/dev/null 2>&1; then \
-	   python3 scripts/ci/scan_secrets.py || exit_code=$$?; \
-	   if [ "$${exit_code:-0}" != "0" ]; then \
-	     $(call failure,Secret scan failed); \
-	     exit $$exit_code; \
-	   fi; \
-	 else \
-	   $(call warn,Python3 not found, skipping secret scan); \
-	 fi; \
-	 $(call success,CI checks completed)
+ci-local: ## Reproduce pull-request CI locally (not the post-merge full suite)
+	@$(call info,Running pull-request CI checks locally)
+	@$(MAKE) lint
+	@$(MAKE) lint-boundaries
+	@$(call info,Validating Dagster definitions)
+	@uv run python -c "from dagster import Definitions; from sbir_analytics.definitions import defs; Definitions.validate_loadable(defs)"
+	@$(call info,Validating compose files)
+	@docker compose -f docker-compose.yml config -q
+	@docker compose -f docker-compose.server.yml --env-file .env.server.example config -q
+	@$(call info,Running Bandit)
+	@uv run python -m bandit -r sbir_etl packages -c pyproject.toml
+	@$(call info,Running detect-secrets)
+	@uv run detect-secrets scan --baseline .secrets.baseline
+	@$(call info,Running PR unit shards locally)
+	@uv run pytest tests/unit/ -m "not slow"
+	@$(call info,Running hermetic E2E)
+	@uv run pytest tests/e2e/ -m "not requires_api and not real_data"
+	@$(call success,Pull-request CI checks completed)

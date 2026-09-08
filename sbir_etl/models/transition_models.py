@@ -1,18 +1,18 @@
 from __future__ import annotations
 
 from datetime import date, datetime
-from enum import Enum
+from enum import StrEnum
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
 
-class ConfidenceLevel(str, Enum):
+class ConfidenceLevel(StrEnum):
     HIGH = "high"
     LIKELY = "likely"
     POSSIBLE = "possible"
 
 
-class CompetitionType(str, Enum):
+class CompetitionType(StrEnum):
     SOLE_SOURCE = "sole_source"
     LIMITED = "limited"
     FULL_AND_OPEN = "full_and_open"

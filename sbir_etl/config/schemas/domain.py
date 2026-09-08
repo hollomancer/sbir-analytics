@@ -181,6 +181,17 @@ class EnrichmentRefreshConfig(BaseModel):
         ),
         description="SEC EDGAR refresh settings (opt-in, disabled by default)",
     )
+    nih_reporter: EnrichmentSourceConfig = Field(
+        default_factory=lambda: EnrichmentSourceConfig(
+            enabled=False,
+            cadence_days=7,
+            sla_staleness_days=7,
+            batch_size=100,
+            max_concurrent_requests=2,
+            rate_limit_per_minute=30,
+        ),
+        description="NIH RePORTER refresh settings (disabled; adapter is issue #443)",
+    )
 
 
 # ---------------------------------------------------------------------------

@@ -882,19 +882,21 @@ scoring:
 
 ## Validation & Metrics
 
-### Scoring Validation Checklist
+### Manual config review notes (not CI-enforced)
 
-- [ ] All signal weights sum to 1.0
-- [ ] Base score is between 0.10 and 0.25
-- [ ] Confidence thresholds: high > likely > 0
-- [ ] high threshold ≥ 0.75 (reasonable precision target)
-- [ ] likely threshold ≤ 0.75 (distinct from high)
-- [ ] All signal bonuses between 0.0 and 1.0
-- [ ] All window scores between 0.0 and 1.0
+Handy checks when editing scoring config by hand:
 
-### Metrics to Monitor
+- All signal weights sum to 1.0
+- Base score is between 0.10 and 0.25
+- Confidence thresholds: high > likely > 0
+- high threshold ≥ 0.75 (reasonable precision target)
+- likely threshold ≤ 0.75 (distinct from high)
+- All signal bonuses between 0.0 and 1.0
+- All window scores between 0.0 and 1.0
 
-After applying scoring configuration:
+### Metrics to monitor
+
+After applying scoring configuration (operator targets, not a CI DoD):
 
 ```text
 Metric                  Target    Action if Below
@@ -907,6 +909,9 @@ LIKELY confidence rate  15-30%    Adjust signal weights
 Avg score               0.60-0.75 Increase base score
 ```
 
+The ≥85% HIGH-precision target is enforced on PRs only as a fixture-level canary
+(`tests/unit/scripts/test_phase_iii_precision_backtest.py`). The full S3 corpus
+backtest (`scripts/phase_iii_precision_backtest.py`) remains manual — see CLAUDE.md.
 ## Troubleshooting
 
 ### Problem: Too Many POSSIBLE Detections

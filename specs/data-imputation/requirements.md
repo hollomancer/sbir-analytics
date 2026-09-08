@@ -62,8 +62,10 @@ choose whether to include imputed values.
   `contract_start_date_fallback`, `agency_phase_median`, `zip5_crosswalk`).
 - **Provenance record** — Per-field metadata capturing whether a value was imputed, by
   which method, from which source fields, with what confidence.
-- **Confidence tier** — `high` / `medium` / `low`, defined per imputation method based on
-  empirical accuracy measured against non-null ground-truth holdouts.
+- **Confidence tier** — Method-local `high` / `medium` / `low` for an imputation
+  method's empirical accuracy against non-null holdouts. Not the steering enrichment
+  bands, transition HIGH/LIKELY/POSSIBLE, or company-categorization award-count
+  tiers — see [glossary.md](../../docs/steering/glossary.md).
 
 ## Requirements
 

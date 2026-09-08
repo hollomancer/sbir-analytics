@@ -1,7 +1,6 @@
-"""Integration tests for USPTO download script.
+"""CLI smoke tests for scripts/data/download_uspto.py.
 
-These tests verify the download script's functionality without actually
-downloading large files or uploading to S3.
+Argparse and import checks only. No download, no S3.
 """
 
 import subprocess

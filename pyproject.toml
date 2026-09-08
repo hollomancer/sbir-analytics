@@ -1,6 +1,6 @@
 [project]
 name = "sbir-etl"
-version = "0.5.1"
+version = "0.12.0"
 description = "SBIR ETL library — extract, enrich, and transform SBIR/STTR awards data"
 authors = [{name = "Conrad Hollomon", email = "conrad.hollomon@pm.me"}]
 readme = "README.md"
@@ -30,6 +30,7 @@ dependencies = [
 
 [project.scripts]
 refresh-state-rates = "sbir_etl.transformers.fiscal.refresh_state_rates:main"
+refresh-enrichment = "sbir_etl.enrichers.refresh_cli:main"
 
 [project.optional-dependencies]
 # UCC1 pilot — TLS-impersonating HTTP client for bizfileOnline (Imperva-fronted)
@@ -49,7 +50,7 @@ streaming = ["remotezip>=0.12.0,<1.0.0"]
 phonetic = ["jellyfish>=1.0.0,<2.0.0"]
 # Process memory monitoring (falls back to timing-only if absent)
 monitoring = ["psutil>=5.9.0,<8.0.0"]
-viz = ["plotly>=5.18.0,<7.0.0"]  # Quality dashboards and HTML reports
+viz = ["plotly>=5.18.0,<8.0.0"]  # Quality dashboards and HTML reports
 dev = [
     "pytest>=9.0.3,<10.0.0",
     "pytest-asyncio>=0.23.0,<2.0.0",
@@ -61,6 +62,7 @@ dev = [
     "mypy>=1.8.0,<3.0.0",
     "pytest-cov>=5.0.0,<8.0.0",
     "bandit>=1.7.0,<2.0.0",
+    "detect-secrets>=1.5.0,<2.0.0",
     "pandas-stubs>=2.2.0,<4.0.0",
     "types-psutil>=5.9.0,<8.0.0",
     "types-PyYAML>=6.0.0,<7.0.0",
@@ -139,7 +141,6 @@ ignore = [
     "C901", # too complex
     "E402", # module level import not at top - OK for conditional imports after version checks
     "I001", # import sorting - OK for optional imports in try blocks
-    "UP042", # preserve str/Enum behavior until a dedicated StrEnum migration
 ]
 
 [tool.ruff.lint.isort]

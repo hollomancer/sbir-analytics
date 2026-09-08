@@ -152,8 +152,10 @@ def validated_phase_iii_contracts(context=None) -> Output[pd.DataFrame]:
     phase_iii = _prepare_phase_iii_rows(contracts)
 
     ensure_parent_dir(output_path)
-    if not phase_iii.empty:
-        phase_iii.to_parquet(output_path, index=False)
+    # Write unconditionally, including when empty. Skipping the write left the
+    # previous parquet on disk while checks.json below is overwritten with
+    # total_rows: 0, so a stale table read as a fresh zero-row result.
+    phase_iii.to_parquet(output_path, index=False)
 
     uei_cov = float(phase_iii["recipient_uei"].notna().mean()) if not phase_iii.empty else 0.0
     duns_cov = float(phase_iii["recipient_duns"].notna().mean()) if not phase_iii.empty else 0.0

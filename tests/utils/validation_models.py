@@ -6,7 +6,7 @@ test reports, and recommendations for E2E testing.
 
 from dataclasses import dataclass, field
 from datetime import datetime
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 
 from tests.utils.pipeline_validator import (
@@ -17,7 +17,7 @@ from tests.utils.pipeline_validator import (
 )
 
 
-class ValidationScenario(str, Enum):
+class ValidationScenario(StrEnum):
     """E2E test scenarios."""
 
     MINIMAL = "minimal"
@@ -26,7 +26,7 @@ class ValidationScenario(str, Enum):
     EDGE_CASES = "edge_cases"
 
 
-class RecommendationPriority(str, Enum):
+class RecommendationPriority(StrEnum):
     """Priority levels for recommendations."""
 
     LOW = "low"

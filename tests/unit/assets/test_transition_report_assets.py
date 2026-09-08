@@ -101,3 +101,19 @@ def test_factory_wired_all_three_areas(mod):
     for area in mod.TECH_AREAS:
         assert hasattr(mod, f"tech_area_cohort_{area}")
         assert hasattr(mod, f"tech_area_cohort_{area}_nonempty")
+
+
+def test_broken_registry_does_not_break_the_module_import(monkeypatch):
+    """A bad registry must not abort the whole Dagster definitions load (regression)."""
+
+    import sbir_etl.analysis.registry as registry
+
+    def _boom(*args, **kwargs):
+        raise ValueError("unknown analysis_kind")
+
+    monkeypatch.setattr(registry, "load_registry", _boom)
+
+    degraded = _load_module()
+
+    assert degraded.TECH_AREAS == ()
+    assert not hasattr(degraded, "tech_area_cohort_hypersonics")

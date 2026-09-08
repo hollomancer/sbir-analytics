@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Decompose DoD's 1.011x program-level Form D leverage by branch and other cuts.
 
-The bootstrap analysis (``scripts/archive/data/bootstrap_form_d_leverage_ci.py`` /
+The bootstrap analysis (``scripts/data/bootstrap_form_d_leverage_ci.py`` /
 ``docs/research/form-d-leverage-bootstrap-findings.md``) surfaced DoD's
 program-level leverage as **1.011x [0.842, 1.214]** — statistically
 distinguishable from every other large-cohort agency and far below

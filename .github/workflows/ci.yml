@@ -50,6 +50,11 @@ jobs:
       - name: Run Ruff lint
         run: uv run python -m ruff check .
 
+      # UP042 (StrEnum) is still preview; keep it targeted so the main lint does
+      # not opt into every unstable preview rule.
+      - name: Run Ruff StrEnum check (UP042 preview)
+        run: uv run python -m ruff check sbir_etl packages tests --preview --select UP042
+
       # Formatting is scoped to the primitives/pipelines trees; `[tool.ruff.format]`
       # in pyproject.toml excludes the exploratory-tier directories.
       - name: Run Ruff format check
@@ -77,6 +82,7 @@ jobs:
           uv run python scripts/ci/check_config_boundaries.py
           uv run python scripts/ci/check_removed_src_references.py
           uv run python scripts/ci/validate_study_manifests.py
+          uv run python scripts/ci/check_research_question_status.py
           # Guards the company-identity primitive: a direct RapidFuzz scorer
           # outside sbir_etl.identity is a second, unnamed implementation of
           # the similarity contract. Previously exercised only by its own unit
@@ -131,9 +137,7 @@ jobs:
       # ran nowhere after weekly.yml was retired; a non-blocking version would
       # reproduce the state it is meant to fix.
       - name: Run detect-secrets
-        run: |
-          uv pip install detect-secrets
-          uv run detect-secrets scan --baseline .secrets.baseline
+        run: uv run detect-secrets scan --baseline .secrets.baseline
 
   test-fast:
     name: Fast Tests (${{ matrix.shard }}/4)

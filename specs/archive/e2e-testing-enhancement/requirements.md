@@ -6,14 +6,8 @@ This document outlines the requirements for enhancing the end-to-end (E2E) testi
 
 ## Glossary
 
-- **E2E_Test_Suite**: The complete collection of end-to-end tests that validate the entire SBIR ETL pipeline from data ingestion through Neo4j loading
-- **Dockerized_Test_Environment**: A fully containerized testing environment using Docker Compose that can run on a MacBook Air with minimal resource requirements
-- **Pipeline_Validation**: Automated verification that all pipeline stages execute successfully and produce expected outputs
-- **Test_Data_Manager**: Component responsible for managing and providing test datasets for E2E testing
-- **Resource_Monitor**: System that tracks memory and CPU usage during test execution to ensure compatibility with MacBook Air constraints
-- **MacBook_Air**: Apple laptop computer with 8GB RAM used as the target development environment
-- **ETL_Pipeline**: Extract, Transform, Load data processing pipeline with five stages (Extract, Validate, Enrich, Transform, Load)
-- **Developer**: Software engineer working on the SBIR ETL pipeline who executes tests locally
+> Archived. Boilerplate E2E/testing glossary removed. See
+> [glossary.md](../../../docs/steering/glossary.md).
 
 ## Requirements
 

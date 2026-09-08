@@ -11,6 +11,7 @@ from typing import Any
 
 import pandas as pd
 
+from sbir_etl.enrichers.nih_reporter.keys import canonicalize_nih_query_key
 from sbir_etl.identity.exact_awards import IdentityRecoveryError
 from .source_keys import NIH_CORE_PROJECT_ADAPTER, NIH_PROJECT_ADAPTER
 
@@ -31,17 +32,6 @@ _INCLUDE_FIELDS = (
     "CoreProjectNum",
     "Organization",
 )
-
-
-def canonicalize_nih_query_key(value: Any) -> str | None:
-    """Format an SBIR source key for an exact NIH project-number query."""
-
-    if value is None or value is pd.NA:
-        return None
-    text = str(value).strip(" ,").upper()
-    if not text or text in {"<NA>", "NAN", "NONE", "NULL", r"\N"}:
-        return None
-    return "".join(text.split()) or None
 
 
 def _chunks(values: Sequence[str], size: int) -> Iterator[Sequence[str]]:

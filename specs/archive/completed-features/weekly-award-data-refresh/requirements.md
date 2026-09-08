@@ -6,10 +6,13 @@ Define the behavioral requirements for automatically refreshing the SBIR.gov awa
 
 ## Glossary
 
-- **Award_CSV** – Canonical SBIR.gov dataset served at `https://data.www.sbir.gov/mod_awarddatapublic/award_data.csv`
-- **Repo_Copy** – File tracked in this repository at `data/raw/sbir/awards_data.csv`
+> Archived. Feature-local sync terms; no confidence bands.
+
+- **Award_CSV** – Canonical SBIR.gov dataset at
+  `https://data.www.sbir.gov/mod_awarddatapublic/award_data.csv`
+- **Repo_Copy** – Tracked file at `data/raw/sbir/awards_data.csv`
 - **Sync_Workflow** – Scheduled GitHub Actions workflow that refreshes the Repo_Copy
-- **Data_Diff_Report** – Commit/PR summary describing row-count deltas and metadata for a refreshed dataset
+- **Data_Diff_Report** – Commit/PR summary of row-count deltas for a refresh
 
 ## Functional Requirements (EARS)
 

@@ -1,29 +1,13 @@
 # SBIR/STTR Commercialization Analytics
 
 [![CI](https://github.com/hollomancer/sbir-analytics/actions/workflows/ci.yml/badge.svg)](https://github.com/hollomancer/sbir-analytics/actions/workflows/ci.yml)
-[![Python 3.11](https://img.shields.io/badge/python-3.11-blue.svg)](https://www.python.org/downloads/)
+[![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
 A research project linking federal SBIR/STTR award data to
 downstream commercialization signals (federal contracts,
 patents, private financing, and acquisitions) to better
 understand what happens after a small business wins an SBIR award.
-
-## My role and use of AI
-
-- Defined the research agenda and functional requirements, starting with the
-  policy questions in [docs/research-questions.md](docs/research-questions.md).
-- Selected public data sources and specified the entity-linkage, analytical,
-  and reporting methods used to investigate those questions.
-- Set evidence and validation boundaries, including what the outputs can and
-  cannot support.
-- Used Claude and Codex extensively to implement and iterate on the software,
-  then reviewed the work through tests, reproducibility checks, and documented
-  evidence limits.
-
-This is independent research software developed on personal time. It is not an
-agency product or a production service, and its findings do not represent the
-position of any agency.
 
 ## See it work
 
@@ -47,15 +31,6 @@ and compare the result with the committed
 [expected report](examples/army_science_technology_report.md). Every company,
 award, opportunity, and judgment in this example is synthetic; it demonstrates
 the workflow and evidence trail, not live acquisition intelligence.
-
-The repository separates software capability from evidentiary maturity:
-
-| Capability | Current status | Evidence or boundary |
-| --- | --- | --- |
-| Procurement-transition reporting | Exploratory; runnable synthetic demonstration | [Synthetic example and expected output](examples/army-procurement-transition.md) |
-| Award ingestion, entity resolution, and graph loading | Implemented; real-data setup required | Operational capability, not an evidence claim; see the [getting-started guide](docs/getting-started/README.md) and [architecture](docs/architecture/detailed-overview.md) |
-| Phase III outcome analysis | Reproducible; not validated or approved for citation | [Phase III census study record](studies/phase-iii-census/study.yaml) |
-| Private-capital, M&A, and fiscal analyses | Exploratory and data-dependent | [Research output status index](docs/research/README.md) and the limitations below |
 
 ## Questions I'm trying to answer
 
@@ -163,7 +138,7 @@ repository, start with these documents in order:
 
 ## Running it
 
-The project targets **Python 3.11** and uses
+The project targets **Python 3.11–3.12** (`requires-python >=3.11,<3.13`) and uses
 [`uv`](https://github.com/astral-sh/uv) for
 dependency management. There is intentionally no `requirements.txt` — the
 dependency set is defined by `pyproject.toml` and pinned in `uv.lock`. (If you
@@ -200,8 +175,8 @@ fresh clone and are the same gates CI enforces:
 make install          # uv sync --extra stack-dev
 make test-unit        # ~5,800 unit tests, under a minute
 make lint             # Ruff lint + format across the repo, MyPy over sbir_etl and the packages
-make lint-boundaries  # architecture, epistemic-tier, config, and study guards
-make docs-check       # dead doc links, stale commands, spec-registry coverage
+make lint-boundaries  # same architecture / epistemic-tier / identity / config / hygiene / study guards as CI
+make docs-check       # hygiene subset only (links, stale commands, spec registry; also run by lint-boundaries)
 ```
 
 The remaining suites need services: `uv run pytest -m integration` expects a

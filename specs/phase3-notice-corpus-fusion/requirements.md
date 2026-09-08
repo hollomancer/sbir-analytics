@@ -1,7 +1,8 @@
 # Phase III Notice Corpus & Fusion Ranker — Requirements
 
-**Target epistemic tier:** `evidence`
+**Target epistemic tier:** `pipelines`
 
+> Retiered from `evidence` (2026-08-15): the four-item evidence contract (frozen spec + SHA enforcement + blocking asset checks + declared estimand) is not in place here. Re-promote only with an explicit amendments freeze and estimand declaration.
 > **Status:** Implemented (T1–T7 done — see `tasks.md`). The implementation ships a production
 > scoring path: coefficients are frozen at
 > `packages/sbir-ml/sbir_ml/transition/detection/fusion_coefficients.json` and the monthly
@@ -9,6 +10,7 @@
 > first, deadline as tie-break). Two requirements were superseded rather than satisfied —
 > see "Superseded by the award-grain pivot" below.
 > Supports inventory questions **B2 / B3 / E1** in [docs/research-questions.md](../../docs/research-questions.md).
+
 
 **Research question anchor:** B2 (did SBIR research transition to a federal contract), B3 (transition latency), E1 (Phase III identification)
 **Answers for:** Procurement-center packet consumers, transition-detection maintainers

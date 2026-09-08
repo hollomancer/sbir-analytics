@@ -1,7 +1,7 @@
 """Fast contracts for the complete Dagster code location."""
 
 import pytest
-from dagster import DefaultScheduleStatus, Definitions
+from dagster import AssetKey, DefaultScheduleStatus, Definitions
 
 from sbir_analytics import definitions
 
@@ -12,6 +12,15 @@ pytestmark = pytest.mark.fast
 def test_definitions_are_loadable():
     """The registered assets, jobs, checks, schedules, and sensors resolve."""
     Definitions.validate_loadable(definitions.defs)
+
+
+def test_cet_drift_job_selects_only_the_drift_asset():
+    """Keep the reconstructed Layer-3 job in lockstep with the production selection."""
+    assert definitions.cet_drift_job is not None
+    job = definitions.defs.resolve_job_def("cet_drift_job")
+    assert job.asset_layer.executable_asset_keys == {
+        AssetKey(["ml", "validated_cet_drift_detection"])
+    }
 
 
 def test_source_download_schedule_contracts():

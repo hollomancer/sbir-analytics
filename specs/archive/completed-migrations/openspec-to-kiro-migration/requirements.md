@@ -6,12 +6,13 @@ This document outlines the requirements for completely migrating from OpenSpec t
 
 ## Glossary
 
-- **OpenSpec_System**: The current specification management system using openspec/ directory structure with changes/ and specs/ subdirectories
-- **Kiro_Specs**: The target specification system using specs/ directory structure with requirements.md, design.md, and tasks.md files
-- **Change_Migration**: The process of converting OpenSpec changes to Kiro specs with proper requirements, design, and task documentation
-- **Spec_Consolidation**: The process of merging related OpenSpec specifications into cohesive Kiro specs that align with feature boundaries
-- **Workflow_Transition**: The migration of development workflows from OpenSpec commands to Kiro's spec execution model
-- **Historical_Preservation**: Maintaining access to completed OpenSpec changes and specifications for reference and audit purposes
+> Archived. Migration-local OpenSpec→Kiro terms; not a live confidence or
+> enrichment standard. See [glossary.md](../../../../docs/steering/glossary.md).
+
+- **OpenSpec_System** — Former `openspec/` changes+specs layout.
+- **Kiro_Specs** — Current `specs/<feature>/{requirements,design,tasks}.md` layout.
+- **Change_Migration / Spec_Consolidation** — Converting and merging OpenSpec
+  changes into feature-bounded Kiro specs.
 
 ## Requirements
 

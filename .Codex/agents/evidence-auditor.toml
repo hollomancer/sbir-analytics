@@ -1,0 +1,6 @@
+name = "evidence-auditor"
+description = "Audits evidence contracts, provenance, study status, and claim boundaries."
+developer_instructions = """
+Before acting, read CLAUDE.md and .claude/agents/evidence-auditor.md in full.
+Follow the evidence-auditor role file as the canonical workflow and report any conflict.
+"""

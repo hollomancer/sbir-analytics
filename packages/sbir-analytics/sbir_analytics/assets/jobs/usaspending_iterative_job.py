@@ -12,6 +12,7 @@ usaspending_iterative_enrichment_job = define_asset_job(
     selection=AssetSelection.keys(
         "usaspending_freshness_ledger",
         "stale_usaspending_awards",
+        "usaspending_refresh_batch",
     ),
     description="USAspending iterative enrichment refresh: identify and refresh stale awards",
 )

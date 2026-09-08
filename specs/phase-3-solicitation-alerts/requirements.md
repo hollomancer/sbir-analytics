@@ -1,11 +1,13 @@
 # Phase III Solicitation & Award Candidate Alerts — Requirements
 
-**Target epistemic tier:** `evidence`
+**Target epistemic tier:** `pipelines`
 
+> Retiered from `evidence` (2026-08-15): the four-item evidence contract (frozen spec + SHA enforcement + blocking asset checks + declared estimand) is not in place here. Re-promote only with an explicit amendments freeze and estimand declaration.
 > **Status:** Partially implemented. S1 retrospective reclassification shipped
 > in PRs #394, #410, and #412; S2/S3 SAM.gov Opportunities candidate paths and
 > final documentation/sign-off remain backlog.
 > Supports inventory questions **B2 / B3 / B4 / E1 / E6 / E5** in [docs/research-questions.md](../../docs/research-questions.md).
+
 
 **Research question anchor:** B2 / B3 / B4 / E1 / E6 / E5 — Phase III identification, solicitation alerting, and FPDS data-gap measurement
 **Answers for:** SBIR program managers, GAO/SBA oversight analysts, pipeline engineers

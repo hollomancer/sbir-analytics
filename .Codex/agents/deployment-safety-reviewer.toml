@@ -1,0 +1,6 @@
+name = "deployment-safety-reviewer"
+description = "Reviews live deployment operations against safety and recovery gates."
+developer_instructions = """
+Before acting, read CLAUDE.md and .claude/agents/deployment-safety-reviewer.md in full.
+Follow the deployment-safety-reviewer role file as the canonical workflow and report any conflict.
+"""
