@@ -16,15 +16,20 @@ import json
 import re
 import subprocess
 from collections.abc import Callable
+from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import TimeoutError as FuturesTimeout
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
+import httpx
+
 from sbir_etl.config.schemas.domain import MADiscoveryConfig
 from sbir_etl.config.yaml_io import read_yaml_mapping
 from sbir_etl.enrichers.ma_discovery.collision import apply_c3, name_key
 from sbir_etl.enrichers.ma_discovery.extractor import (
+    ExtractionVerdict,
     FrozenLlmExtractor,
     RecordingLlmExtractor,
     SnippetExtractor,
@@ -42,6 +47,44 @@ from sbir_etl.exceptions import ConfigurationError
 EPISTEMIC_TIER = "exploratory"
 REVIEW_SIZE = 20
 LIVE_SEARCH_BACKENDS = frozenset({"brave", "tavily"})
+_BRAVE_SEARCH_URL = "https://api.search.brave.com/res/v1/web/search"
+
+
+def _brave_search_sync(api_key: str, query: str, max_results: int) -> list[dict[str, Any]]:
+    """Blocking Brave GET with a real socket timeout. Exploratory capture helper."""
+    with httpx.Client(timeout=30.0) as client:
+        response = client.get(
+            _BRAVE_SEARCH_URL,
+            params={"q": query, "count": max_results},
+            headers={
+                "X-Subscription-Token": api_key,
+                "Accept": "application/json",
+            },
+        )
+        response.raise_for_status()
+        data = response.json()
+    web = data.get("web") if isinstance(data, dict) else None
+    results = web.get("results") if isinstance(web, dict) else None
+    if not isinstance(results, list):
+        return []
+    hits: list[dict[str, Any]] = []
+    for item in results:
+        if not isinstance(item, dict):
+            continue
+        link = item.get("url")
+        if not link:
+            continue
+        hit: dict[str, Any] = {
+            "snippet": str(item.get("description") or ""),
+            "link": str(link),
+        }
+        title = item.get("title")
+        if title:
+            hit["title"] = str(title)
+        hits.append(hit)
+    return hits
+
+
 REPO_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_STUDY_YAML = REPO_ROOT / "studies" / "ma-discovery-recall" / "study.yaml"
 _SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
@@ -85,7 +128,12 @@ def build_review_queue(
 
 
 class RecordingSearchTool:
-    """Wrap a SearchTool and append every query/hit to a sink. Exploratory."""
+    """Wrap a SearchTool and append every query/hit to a sink. Exploratory.
+
+    A failed search is recorded as an empty hit so the run can continue, but it
+    is not evidence that no article exists. ``failure_n`` counts them so the
+    caller can gate on them instead of reading them as absence.
+    """
 
     def __init__(
         self,
@@ -97,6 +145,7 @@ class RecordingSearchTool:
         self._inner = inner
         self._sink = sink
         self._path = path
+        self.failure_n = 0
 
     def _record(self, record: dict[str, Any]) -> None:
         self._sink.append(record)
@@ -107,7 +156,17 @@ class RecordingSearchTool:
             handle.write(json.dumps(record, sort_keys=True) + "\n")
 
     async def search(self, query: str) -> list[dict[str, Any]]:
-        hits = await self._inner.search(query)
+        api_key = getattr(self._inner, "_api_key", None)
+        try:
+            if isinstance(api_key, str) and api_key:
+                max_results = int(getattr(self._inner, "_max_results", 5) or 5)
+                hits = await asyncio.to_thread(_brave_search_sync, api_key, query, max_results)
+            else:
+                hits = await asyncio.wait_for(self._inner.search(query), timeout=60)
+        except (TimeoutError, httpx.HTTPError, OSError) as exc:
+            self.failure_n += 1
+            print(f"search failed ({type(exc).__name__}); empty hit is not absence")
+            hits = []
         if not hits:
             self._record({"query": query, "snippet": "", "link": None, "hit_count": 0})
             return hits
@@ -128,6 +187,35 @@ class RecordingSearchTool:
         aclose = getattr(self._inner, "aclose", None)
         if aclose is not None:
             await aclose()
+
+
+class _TimedExtractor:
+    """Run extract() in a thread so a hung TLS read cannot block the cut.
+
+    A timeout writes no freeze row, so both this run and any replay score the
+    pair unconfirmed. That is indistinguishable from the model reading the
+    snippet and rejecting it. ``timeout_n`` counts them so the caller can gate
+    on them instead of scoring a network fault as no acquisition.
+    """
+
+    name = "timed_llm"
+
+    def __init__(self, inner: SnippetExtractor, *, timeout: float) -> None:
+        self.inner = inner
+        self._timeout = timeout
+        self.timeout_n = 0
+
+    def extract(self, item: Any) -> ExtractionVerdict:
+        pool = ThreadPoolExecutor(max_workers=1, thread_name_prefix="llm-extract")
+        future = pool.submit(self.inner.extract, item)
+        try:
+            return future.result(timeout=self._timeout)
+        except FuturesTimeout:
+            self.timeout_n += 1
+            print("LLM extract timeout; unconfirmed here is not a rejection")
+            return ExtractionVerdict(confirmed=False, reason="LLM timeout")
+        finally:
+            pool.shutdown(wait=False, cancel_futures=True)
 
 
 def bound_queries(
@@ -493,14 +581,24 @@ def gate_failures(
     precision_fp_cap: float,
     cost_per_pair_usd: float | None,
     cost_cap: float,
+    llm_timeout_n: int = 0,
+    search_failure_n: int = 0,
 ) -> list[str]:
     """Automated gates that can fail a confirmatory/protocol run.
 
     Incomplete precision labels are not a failure; they keep ``accepted`` false.
+    A network fault is a failure: it scores as unconfirmed and would otherwise
+    depress recall with no trace in the summary.
     """
     errors: list[str] = []
     if recall_n < recall_floor:
         errors.append(f"recall floor missed ({recall_n} < {recall_floor})")
+    if llm_timeout_n:
+        errors.append(f"{llm_timeout_n} LLM timeouts scored as unconfirmed; recall is not measured")
+    if search_failure_n:
+        errors.append(
+            f"{search_failure_n} search failures recorded as empty; recall is not measured"
+        )
     if labels is not None and labels["complete"]:
         fp_rate = labels["fp_rate"]
         if fp_rate is None:
@@ -522,7 +620,7 @@ async def _search(
     extractor: SnippetExtractor | None = None,
     record_path: Path | None = None,
     stop_when: str = "first_confirm",
-) -> list[dict[str, Any]]:
+) -> tuple[list[dict[str, Any]], int]:
     config = MADiscoveryConfig(
         search_backend=backend or "none",
         search_api_key=api_key,
@@ -538,7 +636,8 @@ async def _search(
     )
     tool = RecordingSearchTool(inner, sink, path=record_path)
     try:
-        return await process_batch(queries, tool, extractor=extractor, stop_when=stop_when)
+        rows = await process_batch(queries, tool, extractor=extractor, stop_when=stop_when)
+        return rows, tool.failure_n
     finally:
         await tool.aclose()
 
@@ -703,7 +802,10 @@ def main() -> int:
             live = build_llm_extractor(api_key=args.llm_api_key)
             if live is None:
                 raise SystemExit("OPENROUTER_API_KEY or XAI_API_KEY is required for --capture-llm")
-            extractor = RecordingLlmExtractor(live, llm_records, path=llm_path)
+            extractor = _TimedExtractor(
+                RecordingLlmExtractor(live, llm_records, path=llm_path),
+                timeout=90,
+            )
         else:
             freeze = args.llm_freeze or llm_path
             if not freeze.is_file():
@@ -721,7 +823,7 @@ def main() -> int:
         if sha_errors:
             raise SystemExit("run-manifest SHA check failed:\n" + "\n".join(sha_errors))
 
-    discovered = asyncio.run(
+    discovered, search_failure_n = asyncio.run(
         _search(
             bounded,
             backend=args.search_backend,
@@ -733,6 +835,7 @@ def main() -> int:
             stop_when=args.stop_when,
         )
     )
+    llm_timeout_n = int(getattr(extractor, "timeout_n", 0))
     collision = apply_c3(events, discovered)
     queue = build_review_queue(collision.inserted + collision.promoted)
 
@@ -767,8 +870,11 @@ def main() -> int:
         precision_fp_cap=precision_cap,
         cost_per_pair_usd=None,
         cost_cap=cost_cap,
+        llm_timeout_n=llm_timeout_n,
+        search_failure_n=search_failure_n,
     )
-    accepted = recall_met and precision_cap_met
+    fully_measured = not llm_timeout_n and not search_failure_n
+    accepted = recall_met and precision_cap_met and fully_measured
     llm_n = len(llm_records)
     if not llm_n and args.confirm == "llm" and llm_path.is_file():
         llm_n = sum(1 for line in llm_path.read_text(encoding="utf-8").splitlines() if line.strip())
@@ -803,7 +909,10 @@ def main() -> int:
         "search_backend": args.search_backend,
         "snippets_path": str(snippets_path),
         "snippets_input": str(args.snippets) if args.snippets else None,
+        "llm_timeout_n": llm_timeout_n,
+        "search_failure_n": search_failure_n,
         "kill_gate": {
+            "fully_measured": fully_measured,
             "recall_floor_met": recall_met,
             "recall_n": recall_n,
             "recall_floor": recall_floor,

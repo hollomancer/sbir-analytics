@@ -4,13 +4,17 @@ from __future__ import annotations
 
 import hashlib
 import json
+import time
 from pathlib import Path
 
 import pytest
 import yaml
 
+from sbir_etl.enrichers.ma_discovery.extractor import ExtractionVerdict
+
 from scripts.data.run_ma_discovery_sample import (
     RecordingSearchTool,
+    _TimedExtractor,
     bound_queries,
     build_review_queue,
     check_run_manifest,
@@ -350,6 +354,68 @@ def test_gate_failures_skip_incomplete_precision() -> None:
     assert any("recall floor missed" in e for e in errors)
     assert any("precision FP" in e for e in errors)
     assert any("cost per pair" in e for e in errors)
+
+
+def test_gate_failures_on_network_faults() -> None:
+    """A timeout or search failure must fail the gate even when recall passes.
+
+    Both score the pair unconfirmed, so a passing recall number computed over
+    them is not a measured number.
+    """
+    clean = gate_failures(
+        recall_n=13,
+        recall_floor=10,
+        labels=None,
+        precision_fp_cap=0.25,
+        cost_per_pair_usd=None,
+        cost_cap=0.10,
+    )
+    assert clean == []
+
+    errors = gate_failures(
+        recall_n=13,
+        recall_floor=10,
+        labels=None,
+        precision_fp_cap=0.25,
+        cost_per_pair_usd=None,
+        cost_cap=0.10,
+        llm_timeout_n=2,
+        search_failure_n=3,
+    )
+    assert any("2 LLM timeouts" in e for e in errors)
+    assert any("3 search failures" in e for e in errors)
+
+
+def test_timed_extractor_counts_timeouts() -> None:
+    """A hung extract() is counted, not silently scored as a rejection."""
+
+    class _Hang:
+        name = "hang"
+
+        def extract(self, item: object) -> ExtractionVerdict:
+            time.sleep(5)
+            raise AssertionError("should not finish")
+
+    timed = _TimedExtractor(_Hang(), timeout=0.05)
+    verdict = timed.extract(object())
+    assert verdict.confirmed is False
+    assert timed.timeout_n == 1
+
+
+@pytest.mark.asyncio
+async def test_recording_search_tool_counts_failures(tmp_path: Path) -> None:
+    """A search that raises is counted, and its empty hit is not read as absence."""
+
+    class _Boom:
+        async def search(self, query: str) -> list[dict[str, object]]:
+            raise OSError("connection reset")
+
+    sink: list[dict[str, object]] = []
+    tool = RecordingSearchTool(_Boom(), sink, path=tmp_path / "snippets.jsonl")
+    hits = await tool.search("acme acquired by globex")
+    assert hits == []
+    assert tool.failure_n == 1
+    assert sink[0]["hit_count"] == 0
 
 
 def test_main_refuses_live_capture_without_protocol(monkeypatch: pytest.MonkeyPatch) -> None:
