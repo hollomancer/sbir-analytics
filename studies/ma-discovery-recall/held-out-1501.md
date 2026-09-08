@@ -99,6 +99,38 @@ that call unless this note and the YAML are in `HEAD` and pinned in
   or completed-precision gate: non-zero exit. Incomplete labels keep
   `accepted: false` and are not a recall failure.
 
+## Capture-code provenance
+
+Commit `5fdccb7c` changed the capture path after `0023e204` hashed this note.
+No Brave call and no LLM call had touched pairs 1501+ at that time.
+Freeze-before-run holds for this cut.
+
+The change counts network faults. It does not score them as evidence.
+Before it, a failed search recorded an empty hit. An LLM timeout recorded an
+unconfirmed verdict and wrote no freeze row. Both look identical to a true
+negative, in the summary and in the replay. Either one lowers recall with no
+trace. `sample_run_summary.json` now reports `search_failure_n`,
+`llm_timeout_n`, and `kill_gate.fully_measured`.
+
+### Validity precondition
+
+A fault count above zero voids the run.
+
+This is not a fourth gate. It cannot promote a run. It cannot excuse a miss.
+It can only block.
+
+Apply these rules:
+
+- Treat a run with any fault as void.
+- Do not read the discovery rows of a void run.
+- Rerun the same 1,000 pairs.
+- Do not enlarge the cut after a void run.
+- Do not move to pairs 2501+ after a void run.
+- Treat a fully measured run that misses recall as a miss. Do not rerun it.
+
+A void run makes live calls on pairs 1501+. Its numbers are not measured and
+must not be read. Blindness holds only if nobody reads them before the rerun.
+
 ## Out of scope
 
 Inventory Status edits (`docs/research-questions.md`). `capital_events` /
