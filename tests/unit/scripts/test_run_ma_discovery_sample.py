@@ -405,21 +405,28 @@ def test_clean_recall_miss_is_a_miss() -> None:
     assert not any("not measured" in e for e in errors)
 
 
-def test_faulted_query_is_not_frozen(tmp_path: Path) -> None:
-    """A faulted row must not freeze its query, or the rerun inherits the fault."""
+def test_unobserved_empties_are_not_frozen(tmp_path: Path) -> None:
+    """Only a verified zero hit freezes its query.
+
+    A fault is a known non-observation. An ``unverified_empty`` row predates
+    fault marking, so its emptiness is not established either. Freezing either
+    one makes the rerun inherit the gap.
+    """
     cut = tmp_path / "snippets.jsonl"
+    base = {"snippet": "", "link": None, "hit_count": 0}
     cut.write_text(
-        json.dumps({"query": "real zero hit", "snippet": "", "link": None, "hit_count": 0})
-        + "\n"
-        + json.dumps(
-            {"query": "faulted", "snippet": "", "link": None, "hit_count": 0, "fault": True}
+        "\n".join(
+            json.dumps(row)
+            for row in [
+                {"query": "verified zero hit", **base},
+                {"query": "faulted", **base, "fault": True},
+                {"query": "pre-instrumentation", **base, "unverified_empty": True},
+            ]
         )
         + "\n",
         encoding="utf-8",
     )
-    recorded = load_recorded_queries(cut)
-    assert "real zero hit" in recorded
-    assert "faulted" not in recorded
+    assert load_recorded_queries(cut) == {"verified zero hit"}
 
 
 def test_timed_extractor_counts_timeouts() -> None:

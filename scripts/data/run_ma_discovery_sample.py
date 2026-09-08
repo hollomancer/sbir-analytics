@@ -260,9 +260,17 @@ def bound_queries(
 def load_recorded_queries(path: Path) -> set[str]:
     """Return query strings already frozen in a snippets JSONL cut.
 
-    A row marked ``fault`` is a network failure, not an observation. It does
-    not freeze the query, so a rerun retries that pair instead of inheriting
-    the fault. A genuine zero-hit row does freeze: Brave answered.
+    Two markers stop a row from freezing its query, so a rerun retries that
+    pair instead of inheriting the gap:
+
+    ``fault``
+        An exception was observed. A known non-observation.
+    ``unverified_empty``
+        The row is empty and was captured before fault marking existed, so a
+        genuine zero hit and a swallowed fault cannot be told apart.
+
+    An unmarked zero-hit row does freeze: the vendor answered and found
+    nothing.
     """
     if not path.is_file():
         return set()
@@ -271,7 +279,7 @@ def load_recorded_queries(path: Path) -> set[str]:
         if not line.strip():
             continue
         record = json.loads(line)
-        if record.get("fault"):
+        if record.get("fault") or record.get("unverified_empty"):
             continue
         query = record.get("query")
         if isinstance(query, str) and query:
