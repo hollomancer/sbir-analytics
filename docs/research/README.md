@@ -27,6 +27,7 @@ and [study requirements](../../studies/README.md) for the review rules.
 | [Agency private-capital Phase 2 method](agency-private-capital-phase2-form-d.md) | B2, B3, F3 | Compares matched groups; does not prove cause and effect | No fixed published run |
 | [M&A exit analysis](sbir-ma-exit-analysis.md) | A4, F1, F2 | Dated analysis; likely understates exits because it uses public filings | Run documented 2026-04-23 |
 | [Capital-pathway cohorts](sbir-pathway-cohorts.md) | F1, F2 | Dated group analysis | 3,639 firms with high-confidence matches; 2026-06-23 |
+| [NASA, Air Force, and DOE commercialization outcomes](nasa-air-force-doe-commercialization-outcomes.md) | B2, B3, F1, F2, F3 | Exploratory multi-channel comparison; non-citable | First Phase II cohorts; 3-, 5-, and 10-year windows through 2024-12-31 |
 | [UCC-1 pilot](sbir-ucc1-pilot.md) | F1 | Early, partial pilot for one state | California subset; 2026-05-16 |
 | [California UCC API notes](ucc1-bizfileonline-api.md) | E5, F1 | Reference for the data source; not a research result | Web addresses recorded 2026-05-16 |
 | [SEC EDGAR learnings](sec-edgar-sbir-learnings.md) | E5, F1, F2 | Notes on implementation and source behavior | Observations from 2026-04-19 and 2026-04-22 |

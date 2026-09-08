@@ -39,6 +39,12 @@ As in Wave 1, these are companion views over the canonical artifacts — the scr
 the repeatable computation layer, and each notebook degrades to a "run the generator first"
 message when an artifact is absent.
 
+## Active exploratory analyses
+
+| Research thread | Canonical computation | Notebook |
+|---|---|---|
+| NASA–Air Force–DOE post-Phase-II commercialization outcomes | `three_agency_commercialization_outcomes.py` | `explorations/b2_three_agency_commercialization_outcomes.ipynb` |
+
 ## Keep automated — not notebook candidates
 
 - Downloads and external ingestion: `download_sbir.py`, `download_sam_gov.py`,
