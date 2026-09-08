@@ -6,7 +6,9 @@ from pathlib import Path
 import pandas as pd
 
 
-SCRIPT = Path(__file__).resolve().parents[3] / "scripts/data/three_agency_commercialization_outcomes.py"
+SCRIPT = (
+    Path(__file__).resolve().parents[3] / "scripts/data/three_agency_commercialization_outcomes.py"
+)
 SPEC = importlib.util.spec_from_file_location("three_agency_commercialization_outcomes", SCRIPT)
 assert SPEC is not None and SPEC.loader is not None
 MODULE = importlib.util.module_from_spec(SPEC)
@@ -15,15 +17,31 @@ SPEC.loader.exec_module(MODULE)
 
 
 def test_agency_scope_is_exact():
-    assert MODULE.agency_label(pd.Series({"Agency": "National Aeronautics and Space Administration"})) == "NASA"
-    assert MODULE.agency_label(pd.Series({"Agency": "Department of Energy", "Branch": "ARPA-E"})) == "DOE"
-    assert MODULE.agency_label(pd.Series({"Agency": "Department of Defense", "Branch": "Air Force"})) == "Air Force"
-    assert MODULE.agency_label(pd.Series({"Agency": "Department of Defense", "Branch": "Space Development Agency"})) is None
+    assert (
+        MODULE.agency_label(pd.Series({"Agency": "National Aeronautics and Space Administration"}))
+        == "NASA"
+    )
+    assert (
+        MODULE.agency_label(pd.Series({"Agency": "Department of Energy", "Branch": "ARPA-E"}))
+        == "DOE"
+    )
+    assert (
+        MODULE.agency_label(pd.Series({"Agency": "Department of Defense", "Branch": "Air Force"}))
+        == "Air Force"
+    )
+    assert (
+        MODULE.agency_label(
+            pd.Series({"Agency": "Department of Defense", "Branch": "Space Development Agency"})
+        )
+        is None
+    )
 
 
 def test_phase_i_ii_research_exclusion_retains_phase_iii():
     assert MODULE.is_phase_i_ii_research("SR1")
-    assert MODULE.is_phase_i_ii_research("SMALL BUSINESS INNOVATION RESEARCH PROGRAM PHASE II ACTION")
+    assert MODULE.is_phase_i_ii_research(
+        "SMALL BUSINESS INNOVATION RESEARCH PROGRAM PHASE II ACTION"
+    )
     assert not MODULE.is_phase_i_ii_research("SR3")
     assert not MODULE.is_phase_i_ii_research(None)
 
