@@ -157,6 +157,7 @@ class RecordingSearchTool:
 
     async def search(self, query: str) -> list[dict[str, Any]]:
         api_key = getattr(self._inner, "_api_key", None)
+        faulted = False
         try:
             if isinstance(api_key, str) and api_key:
                 max_results = int(getattr(self._inner, "_max_results", 5) or 5)
@@ -165,10 +166,19 @@ class RecordingSearchTool:
                 hits = await asyncio.wait_for(self._inner.search(query), timeout=60)
         except (TimeoutError, httpx.HTTPError, OSError) as exc:
             self.failure_n += 1
+            faulted = True
             print(f"search failed ({type(exc).__name__}); empty hit is not absence")
             hits = []
         if not hits:
-            self._record({"query": query, "snippet": "", "link": None, "hit_count": 0})
+            empty: dict[str, Any] = {
+                "query": query,
+                "snippet": "",
+                "link": None,
+                "hit_count": 0,
+            }
+            if faulted:
+                empty["fault"] = True
+            self._record(empty)
             return hits
         for hit in hits:
             record = {
@@ -248,7 +258,12 @@ def bound_queries(
 
 
 def load_recorded_queries(path: Path) -> set[str]:
-    """Return query strings already frozen in a snippets JSONL cut."""
+    """Return query strings already frozen in a snippets JSONL cut.
+
+    A row marked ``fault`` is a network failure, not an observation. It does
+    not freeze the query, so a rerun retries that pair instead of inheriting
+    the fault. A genuine zero-hit row does freeze: Brave answered.
+    """
     if not path.is_file():
         return set()
     recorded: set[str] = set()
@@ -256,6 +271,8 @@ def load_recorded_queries(path: Path) -> set[str]:
         if not line.strip():
             continue
         record = json.loads(line)
+        if record.get("fault"):
+            continue
         query = record.get("query")
         if isinstance(query, str) and query:
             recorded.add(query)
@@ -587,18 +604,24 @@ def gate_failures(
     """Automated gates that can fail a confirmatory/protocol run.
 
     Incomplete precision labels are not a failure; they keep ``accepted`` false.
-    A network fault is a failure: it scores as unconfirmed and would otherwise
-    depress recall with no trace in the summary.
+
+    Network faults are asymmetric on recall. A fault scores the pair
+    unconfirmed and can never manufacture a confirmation, so faults only ever
+    understate recall. A recall pass carrying faults is therefore conservative
+    and stands. A recall miss carrying faults is not a miss: the faulted pairs
+    may hold the absent confirmations, so the number is not measured.
     """
     errors: list[str] = []
+    faults = llm_timeout_n + search_failure_n
     if recall_n < recall_floor:
-        errors.append(f"recall floor missed ({recall_n} < {recall_floor})")
-    if llm_timeout_n:
-        errors.append(f"{llm_timeout_n} LLM timeouts scored as unconfirmed; recall is not measured")
-    if search_failure_n:
-        errors.append(
-            f"{search_failure_n} search failures recorded as empty; recall is not measured"
-        )
+        if faults:
+            errors.append(
+                f"recall {recall_n} < {recall_floor} with {faults} faults "
+                f"({llm_timeout_n} LLM timeout, {search_failure_n} search); "
+                "the miss is not measured, retry the faulted pairs"
+            )
+        else:
+            errors.append(f"recall floor missed ({recall_n} < {recall_floor})")
     if labels is not None and labels["complete"]:
         fp_rate = labels["fp_rate"]
         if fp_rate is None:
@@ -874,7 +897,7 @@ def main() -> int:
         search_failure_n=search_failure_n,
     )
     fully_measured = not llm_timeout_n and not search_failure_n
-    accepted = recall_met and precision_cap_met and fully_measured
+    accepted = recall_met and precision_cap_met
     llm_n = len(llm_records)
     if not llm_n and args.confirm == "llm" and llm_path.is_file():
         llm_n = sum(1 for line in llm_path.read_text(encoding="utf-8").splitlines() if line.strip())

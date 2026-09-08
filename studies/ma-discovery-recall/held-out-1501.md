@@ -101,9 +101,9 @@ that call unless this note and the YAML are in `HEAD` and pinned in
 
 ## Capture-code provenance
 
-Commit `5fdccb7c` changed the capture path after `0023e204` hashed this note.
-No Brave call and no LLM call had touched pairs 1501+ at that time.
-Freeze-before-run holds for this cut.
+Commits `5fdccb7c` and `e64be572` changed the capture path after `0023e204`
+hashed this note. No Brave call and no LLM call had touched pairs 1501+ at
+that time. Freeze-before-run holds for this cut.
 
 The change counts network faults. It does not score them as evidence.
 Before it, a failed search recorded an empty hit. An LLM timeout recorded an
@@ -114,22 +114,31 @@ trace. `sample_run_summary.json` now reports `search_failure_n`,
 
 ### Validity precondition
 
-A fault count above zero voids the run.
+Network faults are asymmetric on recall. A fault scores its pair unconfirmed.
+It can never add a confirmation. Faults therefore only understate recall.
 
-This is not a fourth gate. It cannot promote a run. It cannot excuse a miss.
-It can only block.
+This is not a fourth gate. It cannot promote a run and it cannot excuse a
+fully measured miss.
 
 Apply these rules:
 
-- Treat a run with any fault as void.
-- Do not read the discovery rows of a void run.
-- Rerun the same 1,000 pairs.
-- Do not enlarge the cut after a void run.
-- Do not move to pairs 2501+ after a void run.
-- Treat a fully measured run that misses recall as a miss. Do not rerun it.
+- Accept a recall pass that carries faults. True recall is at least the
+  observed count. Report the fault counts with the result.
+- Treat a recall miss that carries faults as not measured. It is not a miss.
+- Retry the faulted pairs only. Do not re-query clean pairs.
+- Treat a fully measured recall miss as a miss. Do not retry it.
+- Do not enlarge the cut after a retry.
+- Do not move to pairs 2501+ after a retry.
 
-A void run makes live calls on pairs 1501+. Its numbers are not measured and
-must not be read. Blindness holds only if nobody reads them before the rerun.
+A faulted search writes a row marked `fault`. `load_recorded_queries` does
+not freeze that query, so a retry re-queries the faulted pairs only. A
+genuine zero-hit row does freeze: Brave answered.
+
+Faults do not affect gate 2. A fault removes a candidate row. It does not
+create a confirmed row. Label the medium rows that exist.
+
+Faults lower measured cost per pair, so a gate 3 pass under faults is not
+conservative. Compute gate 3 from the run after the retry.
 
 ## Out of scope
 

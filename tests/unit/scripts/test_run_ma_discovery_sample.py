@@ -356,22 +356,12 @@ def test_gate_failures_skip_incomplete_precision() -> None:
     assert any("cost per pair" in e for e in errors)
 
 
-def test_gate_failures_on_network_faults() -> None:
-    """A timeout or search failure must fail the gate even when recall passes.
+def test_faults_do_not_fail_a_recall_pass() -> None:
+    """Faults only understate recall, so a pass carrying them is conservative.
 
-    Both score the pair unconfirmed, so a passing recall number computed over
-    them is not a measured number.
+    A fault scores its pair unconfirmed and can never add a confirmation. If
+    the floor cleared anyway, true recall is at least the observed number.
     """
-    clean = gate_failures(
-        recall_n=13,
-        recall_floor=10,
-        labels=None,
-        precision_fp_cap=0.25,
-        cost_per_pair_usd=None,
-        cost_cap=0.10,
-    )
-    assert clean == []
-
     errors = gate_failures(
         recall_n=13,
         recall_floor=10,
@@ -382,8 +372,54 @@ def test_gate_failures_on_network_faults() -> None:
         llm_timeout_n=2,
         search_failure_n=3,
     )
-    assert any("2 LLM timeouts" in e for e in errors)
-    assert any("3 search failures" in e for e in errors)
+    assert errors == []
+
+
+def test_faults_void_a_recall_miss() -> None:
+    """A miss carrying faults is not a miss; the faulted pairs may hold hits."""
+    errors = gate_failures(
+        recall_n=9,
+        recall_floor=10,
+        labels=None,
+        precision_fp_cap=0.25,
+        cost_per_pair_usd=None,
+        cost_cap=0.10,
+        llm_timeout_n=2,
+        search_failure_n=3,
+    )
+    assert any("not measured" in e for e in errors)
+    assert any("5 faults" in e for e in errors)
+
+
+def test_clean_recall_miss_is_a_miss() -> None:
+    """A miss with no faults is a miss. It must not be softened into a retry."""
+    errors = gate_failures(
+        recall_n=9,
+        recall_floor=10,
+        labels=None,
+        precision_fp_cap=0.25,
+        cost_per_pair_usd=None,
+        cost_cap=0.10,
+    )
+    assert any("recall floor missed" in e for e in errors)
+    assert not any("not measured" in e for e in errors)
+
+
+def test_faulted_query_is_not_frozen(tmp_path: Path) -> None:
+    """A faulted row must not freeze its query, or the rerun inherits the fault."""
+    cut = tmp_path / "snippets.jsonl"
+    cut.write_text(
+        json.dumps({"query": "real zero hit", "snippet": "", "link": None, "hit_count": 0})
+        + "\n"
+        + json.dumps(
+            {"query": "faulted", "snippet": "", "link": None, "hit_count": 0, "fault": True}
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    recorded = load_recorded_queries(cut)
+    assert "real zero hit" in recorded
+    assert "faulted" not in recorded
 
 
 def test_timed_extractor_counts_timeouts() -> None:
@@ -423,11 +459,11 @@ def test_main_fails_and_reports_when_search_faults(
     tmp_path: Path,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    """A faulted run names the fault and reports it in the summary.
+    """A faulted miss names the faults and marks the queries for retry.
 
     Covers the plumbing the component tests cannot reach: counter to summary
-    to gate to reported failure. This asserts the fault message, not just the
-    exit code; a missed recall floor also exits 1 and would mask the gate.
+    to gate to reported failure. This asserts the fault wording, not just the
+    exit code; a clean recall miss also exits 1 and would mask the gate.
     """
 
     class _Boom:
@@ -471,12 +507,15 @@ def test_main_fails_and_reports_when_search_faults(
     )
 
     assert main() == 1
-    assert "search failures recorded as empty" in capsys.readouterr().out
+    assert "the miss is not measured" in capsys.readouterr().out
 
     summary = json.loads((out / "sample_run_summary.json").read_text(encoding="utf-8"))
     assert summary["search_failure_n"] >= 1
     assert summary["kill_gate"]["fully_measured"] is False
     assert summary["kill_gate"]["accepted"] is False
+
+    # The faulted query must stay retryable, or the rerun inherits the fault.
+    assert load_recorded_queries(out / "search_snippets.jsonl") == set()
 
 
 def test_main_refuses_live_capture_without_protocol(monkeypatch: pytest.MonkeyPatch) -> None:
