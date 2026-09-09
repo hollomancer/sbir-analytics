@@ -38,7 +38,10 @@ def extract_form_d_signals(records: list[dict]) -> list[dict]:
     join is fuzzy, and ``form_d_details.jsonl`` already carries the
     multi-signal verdict from ``compute_form_d_confidence`` in
     ``match_confidence.tier``. Without this filter a filing by an unrelated
-    company is attributed to an SBIR firm and then graded ``high``: measured
+    company is attributed to an SBIR firm. When this filter landed such a row
+    was then graded ``high``; the Form D flag no longer grades an exit, so an
+    unmatched filing now yields a low-tier acquirer-side row, or with this
+    filter no row at all. Measured
     2026-09-08, 323 of the 374 business-combination records whose SEC filer
     name does not match the SBIR name under RECIPIENT_V1 were already tier
     ``low``. ``capital_events/sources/form_d.py`` keeps records on the same
@@ -165,9 +168,15 @@ def merge_events(
         efts_date = e["event_date"]
         if name in merged:
             existing = merged[name]
-            existing_date = existing["event_date"]
-            # A valid date beats an empty one; when both valid, take the earlier.
-            if efts_date and (not existing_date or efts_date < existing_date):
+            # The EFTS date wins whenever there is one, even if it is later.
+            # The competing date comes from a Form D business-combination
+            # filing, which is acquirer-side: it dates the issuer raising
+            # capital to buy something, not the SBIR firm being acquired.
+            # Taking the earlier of the two put an acquirer-side date on the
+            # exit for 30 of 36 overlapping companies - nLight Photonics was
+            # dated 2013 from a Form D while its target-side evidence is 2026.
+            # The Form D date is still available in form_d_detail.
+            if efts_date:
                 existing["event_date"] = efts_date
             existing["efts_detail"] = e["efts_detail"]
         else:

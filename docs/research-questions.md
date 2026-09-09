@@ -453,7 +453,14 @@ NASEM calls this quantity the *leverage ratio*.
 > script merges two signals: Form D filings (entity_type-based
 > business-combination heuristics) and an SEC EDGAR full-text mention scan across
 > multiple filing types — operationally 8-K, 10-K, DEFM14A, PREM14A, SC TO-T, and
-> SC 14D9 (see `scripts/archive/data/refine_ma_medium_tier.py`).
+> SC 14D9 (see `scripts/data/refine_ma_medium_tier.py`).
+>
+> **The Form D business-combination flag does not grade an exit.** Form D Item
+> 10 marks a Rule 145 transaction, a deemed offer and sale of securities *by
+> the issuer*, so the filer is the acquirer. It is retained as an acquirer-side
+> signal, and rows carrying only that flag are written to
+> `data/sbir_ma_acquirer_side.jsonl` rather than the exit artifact. Do not wire
+> Form D combinations into A1/A3/A4 exit questions.
 >
 > The orchestrated graph has no continuous M&A-event materialization. Rerunning
 > the script is how the M&A signal feeding the vulnerability (A1/A3/A4) and

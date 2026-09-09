@@ -434,3 +434,54 @@ def test_form_d_with_efts_evidence_is_not_excluded():
 def test_row_without_a_form_d_flag_is_never_excluded():
     assert is_acquirer_side_only({"efts_subsidiary": True}) is False
     assert is_acquirer_side_only({}) is False
+
+
+def test_exit_date_comes_from_target_side_evidence():
+    """A Form D date must not become the exit date.
+
+    Form D Item 10 dates the issuer raising capital to acquire something. It
+    is acquirer-side, so it says nothing about when the SBIR firm was bought.
+    Taking the earlier date put a 2013 Form D date on an exit whose target-side
+    evidence was 2026.
+    """
+    fd = [
+        {
+            "company_name": "ACME",
+            "event_date": "2013-01-02",
+            "source": "form_d",
+            "form_d_detail": {"filing_date": "2013-01-02"},
+        }
+    ]
+    ef = [
+        {
+            "company_name": "ACME",
+            "event_date": "2026-02-27",
+            "source": "efts",
+            "efts_detail": {"mention_types": ["acquisition"], "mention_filers": ["Globex"]},
+        }
+    ]
+    merged = merge_events(fd, ef)
+    assert merged[0]["event_date"] == "2026-02-27"
+    assert merged[0]["form_d_detail"]["filing_date"] == "2013-01-02"
+
+
+def test_form_d_date_is_used_when_there_is_no_efts_date():
+    """With no target-side evidence the Form D date is all there is."""
+    fd = [
+        {
+            "company_name": "ACME",
+            "event_date": "2013-01-02",
+            "source": "form_d",
+            "form_d_detail": {"filing_date": "2013-01-02"},
+        }
+    ]
+    ef = [
+        {
+            "company_name": "ACME",
+            "event_date": "",
+            "source": "efts",
+            "efts_detail": {"mention_types": ["acquisition"], "mention_filers": []},
+        }
+    ]
+    merged = merge_events(fd, ef)
+    assert merged[0]["event_date"] == "2013-01-02"

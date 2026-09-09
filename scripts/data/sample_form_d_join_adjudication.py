@@ -67,8 +67,16 @@ def load_sbir_firms_by_zip(awards_csv: Path) -> tuple[dict[str, set[str]], dict[
     """Return distinct SBIR company names per 5-digit ZIP, and each firm's ZIPs.
 
     A firm holds awards across years and can move, so it has a set of ZIPs, not
-    one. The scorer compares the Form D ZIPs against all of them; taking only
-    the first would report a ZIP that never matched.
+    one.
+
+    This is deliberately *wider* than the scorer, and does not reconstruct it.
+    ``fetch_form_d_details.load_award_data`` keeps only the first ZIP it sees
+    per exact ``Company`` key, and ``compute_form_d_confidence`` matches
+    against that single value. Collecting every award ZIP can therefore show a
+    firm sharing a ZIP the scorer never used. That is the right bias for a
+    worksheet whose purpose is to surface addresses worth a human look, but a
+    reviewer should not read a shared ZIP here as the one that produced the
+    match.
 
     Company names are keyed upper-cased to match the SEC-derived naming in
     ``form_d_details.jsonl``.

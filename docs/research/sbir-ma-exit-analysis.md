@@ -55,8 +55,15 @@ same inputs:
 
 High-plus-medium falls 32%.
 
-**Regenerated 2026-09-09.** `data/sbir_ma_events.jsonl` now holds the corrected
-population, produced end to end from committed code:
+**Regenerated 2026-09-09, then superseded the same day.** The figures in this
+subsection came from a chain run at commit `7205798b`, before three later
+corrections: the directional classifier was returning `target` for
+active-voice acquirer sentences, acquirer-side rows were still reaching exit
+consumers that never read `confidence`, and a Form D filing date could become
+the exit date. **Treat every number below as provisional.** A regeneration at
+final HEAD is pending and its result will replace them.
+
+For the record, the superseded run produced:
 
 | | published | regenerated |
 |---|---:|---:|
@@ -85,15 +92,17 @@ unknown; they are preserved at
 `data/processed/ma_events_unexplained_promotions.jsonl` and are absent from the
 regenerated file.
 
-**Not yet done.** `data/sbir_ma_events.jsonl` still holds the published
-numbers. Regeneration needs `refine_ma_medium_tier.py`, roughly 1,200-1,600
+**Regeneration status.** `data/sbir_ma_events.jsonl` was regenerated at
+`7205798b` and is not the published April population, but it also predates the
+three corrections listed above, so it is not final either. Regeneration needs `refine_ma_medium_tier.py`, roughly 1,200-1,600
 live SEC EDGAR fetches, and will move the medium tier by a further ~490 events
 for an unrelated reason: the shipped file was generated six days before PR #286
 merged, its generating code changed before merge, and it reproduces from no
 commit. The corrected rate should be computed once, after regeneration, rather
 than restated twice.
 
-Also outstanding: 81 surviving Form D matches await human adjudication
+Also outstanding: 141 high-tier Form D combination records survive the join
+filter, of which 81 are sampled for human adjudication
 (`data/processed/form_d_join_adjudication.jsonl`), stratified by qualifying
 signal because 84 of 141 survivors qualify on ZIP match alone and 58 of those
 share a ZIP with five or more SBIR firms.
@@ -178,9 +187,15 @@ original scan, so they are inherently weaker candidates.
 
 ## Confidence Tiers (Final)
 
+> **Superseded — every count in this table and every figure below it.** These
+> are the April 2026 numbers. A partial edit had left the table not adding up;
+> the original values are restored here so the published record is at least
+> internally consistent. The corrected counts are pending a regeneration at
+> final HEAD and are not yet written anywhere in this note.
+
 | Tier | Rule | Count |
 |------|------|-------|
-| High | ~~Form D business combination OR~~ EFTS `subsidiary` | ~~1,197~~ 676 |
+| High | Form D business combination OR EFTS `subsidiary` | 1,197 |
 | Medium | Text-confirmed acquisition direction (from original scan or expansion) | 1,593 |
 | Low | All other signals + demoted false positives | 1,516 |
 | **Total** | | **4,306** |
@@ -378,5 +393,5 @@ identity; Form D gives deal size.
 - Medium-tier refinement: `data/sbir_ma_medium_refined.jsonl` (1,178 records)
 - Low-tier expansion: `data/sbir_ma_low_refined.jsonl` (1,450 records)
 - Detection script: `scripts/data/detect_sbir_ma_events.py`
-- Refinement script: `scripts/archive/data/refine_ma_medium_tier.py`
+- Refinement script: `scripts/data/refine_ma_medium_tier.py`
 - Analysis script: `scripts/archive/data/analyze_sbir_ma_exits.py`
