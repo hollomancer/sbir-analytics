@@ -5,8 +5,8 @@ Extracts signals from Form D business combinations and EFTS mention
 classifications, merges into a unified events dataset with confidence tiers.
 
 Usage:
-    python scripts/archive/data/detect_sbir_ma_events.py
-    python scripts/archive/data/detect_sbir_ma_events.py --form-d data/form_d_details.jsonl
+    python scripts/data/detect_sbir_ma_events.py
+    python scripts/data/detect_sbir_ma_events.py --form-d data/form_d_details.jsonl
 """
 
 import argparse
@@ -18,34 +18,46 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 
-# Match tiers accepted from form_d_details.jsonl. "high" matches
-# capital_events/sources/form_d.py, which applies the same filter.
-KEEP_MATCH_TIERS = frozenset({"high"})
+# Match tier accepted from form_d_details.jsonl. capital_events/sources/form_d.py
+# hardcodes the same value, so the two paths keep the same records.
+KEEP_MATCH_TIER = "high"
 
 
-def extract_form_d_signals(
-    records: list[dict], *, keep_tiers: frozenset[str] = KEEP_MATCH_TIERS
-) -> list[dict]:
+def has_business_combination(record: dict) -> bool:
+    """Return whether a form_d_details.jsonl record has any combination offering."""
+    return any(o.get("is_business_combination") for o in record.get("offerings") or [])
+
+
+def extract_form_d_signals(records: list[dict]) -> list[dict]:
     """Extract M&A events from Form D business combination flags.
 
     For each company with at least one is_business_combination offering,
     produces one event using the earliest combo filing date.
 
-    Only records whose SBIR-to-SEC match reached ``keep_tiers`` are used. The
-    match is fuzzy, and ``form_d_details.jsonl`` already carries the
+    A record is used only when its SBIR-to-SEC match tier is ``high``. The
+    join is fuzzy, and ``form_d_details.jsonl`` already carries the
     multi-signal verdict from ``compute_form_d_confidence`` in
     ``match_confidence.tier``. Without this filter a filing by an unrelated
     company is attributed to an SBIR firm and then graded ``high``: measured
     2026-09-08, 323 of the 374 business-combination records whose SEC filer
     name does not match the SBIR name under RECIPIENT_V1 were already tier
-    ``low``. ``capital_events/sources/form_d.py`` applies the same filter.
+    ``low``. ``capital_events/sources/form_d.py`` keeps records on the same
+    single value.
+
+    ``high`` is not a score threshold. ``form_d_scoring.py`` assigns it when
+    the best PI-to-officer name score is at least 0.7 **or** the SBIR ZIP
+    matches a Form D ZIP; ``medium`` on state overlap alone; ``low``
+    otherwise. Filer-name similarity is not used to assign the tier. So a
+    ``high`` record may be ZIP-only, which is weak where many SBIR firms share
+    a ZIP. The event carries ``match_person_score`` and ``match_address_score``
+    so a consumer can tell the two apart.
     """
     events = []
     for r in records:
-        tier = (r.get("match_confidence") or {}).get("tier")
-        if tier not in keep_tiers:
+        confidence = r.get("match_confidence") or {}
+        if confidence.get("tier") != KEEP_MATCH_TIER:
             continue
-        combos = [o for o in r.get("offerings", []) if o.get("is_business_combination")]
+        combos = [o for o in r.get("offerings") or [] if o.get("is_business_combination")]
         if not combos:
             continue
 
@@ -68,10 +80,11 @@ def extract_form_d_signals(
                     "total_amount_sold": total_sold if total_sold > 0 else None,
                     "combo_count": len(combos),
                     "related_persons": all_persons,
-                    # Carried so downstream can audit match quality. The enriched
-                    # events file previously dropped it, leaving consumers unable
-                    # to filter on it even when they wanted to.
-                    "match_tier": tier,
+                    # Which signal earned the high tier. Recording the tier itself
+                    # would be useless here — every kept record is "high". These
+                    # two separate a ZIP-only match from a person-confirmed one.
+                    "match_person_score": confidence.get("person_score"),
+                    "match_address_score": confidence.get("address_score"),
                 },
             }
         )
@@ -266,8 +279,14 @@ def main():
     with open(args.form_d) as f:
         for line in f:
             form_d_records.append(json.loads(line))
+    combo_records = sum(1 for r in form_d_records if has_business_combination(r))
     form_d_events = extract_form_d_signals(form_d_records)
-    print(f"  Form D business combinations: {len(form_d_events)} companies")
+    dropped = combo_records - len(form_d_events)
+    print(
+        f"  Form D business combinations: {len(form_d_events)} companies kept, "
+        f"{dropped} dropped on match tier != {KEEP_MATCH_TIER} "
+        f"(of {combo_records} combination records)"
+    )
 
     # Layer 2: EFTS
     print("Loading EFTS scan data...")

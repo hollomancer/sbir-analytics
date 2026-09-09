@@ -11,7 +11,7 @@ Usage:
 Defaults mirror PR #286's pipeline conventions: the awards CSV defaults to
 ``/tmp/sbir_awards_full.csv`` (downloaded on first run from SBIR.gov), and
 the M&A events JSONL defaults to ``data/sbir_ma_events.jsonl`` (produced by
-``scripts/archive/data/detect_sbir_ma_events.py``).
+``scripts/data/detect_sbir_ma_events.py``).
 
 Outputs four artifacts to ``data/processed/agency_private_capital/<agency_lower>/``:
 - agency_cohort_outcomes.parquet

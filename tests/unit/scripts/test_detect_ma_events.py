@@ -1,17 +1,43 @@
-"""Tests for M&A event detection."""
+"""Tests for scripts/data/detect_sbir_ma_events.py."""
 
+from __future__ import annotations
+
+import importlib.util
 import sys
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[4] / "scripts" / "archive" / "data"))
+import pytest
 
-from detect_sbir_ma_events import (
-    assign_confidence,
-    build_signals_dict,
-    extract_efts_signals,
-    extract_form_d_signals,
-    merge_events,
-)
+
+# Load the script as a module (it lives outside the package tree).
+SCRIPT_PATH = Path(__file__).resolve().parents[3] / "scripts" / "data" / "detect_sbir_ma_events.py"
+_spec = importlib.util.spec_from_file_location("detect_sbir_ma_events", SCRIPT_PATH)
+_mod = importlib.util.module_from_spec(_spec)
+sys.modules["detect_sbir_ma_events"] = _mod
+_spec.loader.exec_module(_mod)
+
+assign_confidence = _mod.assign_confidence
+build_signals_dict = _mod.build_signals_dict
+extract_efts_signals = _mod.extract_efts_signals
+extract_form_d_signals = _mod.extract_form_d_signals
+has_business_combination = _mod.has_business_combination
+merge_events = _mod.merge_events
+
+
+def _combo_record(company_name: str, match_confidence: object) -> dict:
+    """A form_d_details.jsonl record with one business-combination offering."""
+    return {
+        "company_name": company_name,
+        "match_confidence": match_confidence,
+        "offerings": [
+            {
+                "filing_date": "2020-05-04",
+                "is_business_combination": True,
+                "total_amount_sold": 2_000_000,
+                "related_persons": [],
+            }
+        ],
+    }
 
 
 def test_extract_form_d_signals_finds_business_combination():
@@ -45,10 +71,13 @@ def test_extract_form_d_signals_finds_business_combination():
 
 
 def test_extract_form_d_signals_skips_non_combo():
+    # Tier is "high" on purpose. With a rejected tier the match filter would
+    # drop the record before the non-combo branch under test ever runs, and the
+    # assertion would pass for the wrong reason.
     records = [
         {
             "company_name": "BORING INC",
-            "match_confidence": {"tier": "medium"},
+            "match_confidence": {"tier": "high"},
             "offerings": [
                 {
                     "filing_date": "2020-06-01",
@@ -61,6 +90,99 @@ def test_extract_form_d_signals_skips_non_combo():
     ]
     events = extract_form_d_signals(records)
     assert len(events) == 0
+
+
+# --- Form D match-tier filter ---
+
+
+@pytest.mark.parametrize("tier", ["low", "medium"])
+def test_extract_form_d_signals_drops_rejected_tier(tier):
+    """The SBIR-to-SEC join is fuzzy; form_d_scoring.py already graded it.
+
+    Before this filter existed, a Form D filed by an unrelated company was
+    attributed to an SBIR firm and then graded "high" by assign_confidence,
+    which only asks whether a Form D exists.
+    """
+    records = [_combo_record("MISMATCHED INC", {"tier": tier})]
+    assert extract_form_d_signals(records) == []
+
+
+@pytest.mark.parametrize(
+    "match_confidence",
+    [
+        None,
+        {},
+        {"tier": None},
+        {"tier": ""},
+        {"tier": "HIGH"},  # the scorer writes lower-case; the check is exact
+    ],
+    ids=["null", "empty", "none-tier", "blank-tier", "wrong-case"],
+)
+def test_extract_form_d_signals_drops_malformed_match_confidence(match_confidence):
+    """A record without a usable tier is dropped, not crashed on."""
+    records = [_combo_record("MALFORMED INC", match_confidence)]
+    assert extract_form_d_signals(records) == []
+
+
+def test_extract_form_d_signals_drops_record_with_no_match_confidence_key():
+    """The key is absent, not just empty. Reading it must not raise."""
+    record = _combo_record("NO KEY INC", None)
+    del record["match_confidence"]
+    assert extract_form_d_signals([record]) == []
+
+
+def test_extract_form_d_signals_keeps_high_tier_among_rejected():
+    """Rejected records must not stop later records from being emitted."""
+    records = [
+        _combo_record("LOW INC", {"tier": "low"}),
+        _combo_record("HIGH INC", {"tier": "high"}),
+        _combo_record("MEDIUM INC", {"tier": "medium"}),
+    ]
+    events = extract_form_d_signals(records)
+    assert [e["company_name"] for e in events] == ["HIGH INC"]
+
+
+def test_extract_form_d_signals_carries_match_scores():
+    """The event records which signal earned the high tier.
+
+    ``form_d_scoring.py`` grants "high" on a person match >= 0.7 **or** a ZIP
+    match, so "high" alone cannot tell a ZIP-only join from a person-confirmed
+    one. Carrying the tier would be constant and therefore useless.
+    """
+    zip_only = _combo_record(
+        "ZIP ONLY INC",
+        {"tier": "high", "person_score": None, "address_score": 1.0, "name_score": 0.21},
+    )
+    person_matched = _combo_record(
+        "PERSON INC",
+        {"tier": "high", "person_score": 0.92, "address_score": 0.0, "name_score": 0.21},
+    )
+    events = extract_form_d_signals([zip_only, person_matched])
+
+    assert len(events) == 2
+    assert "match_tier" not in events[0]["form_d_detail"]
+    assert events[0]["form_d_detail"]["match_person_score"] is None
+    assert events[0]["form_d_detail"]["match_address_score"] == 1.0
+    assert events[1]["form_d_detail"]["match_person_score"] == 0.92
+    assert events[1]["form_d_detail"]["match_address_score"] == 0.0
+
+
+# --- Drop accounting ---
+
+
+def test_has_business_combination_counts_the_filter_denominator():
+    """main() reports kept vs dropped, so the denominator must ignore tier."""
+    records = [
+        _combo_record("LOW INC", {"tier": "low"}),
+        _combo_record("HIGH INC", {"tier": "high"}),
+        {"company_name": "NO OFFERINGS INC", "match_confidence": {"tier": "high"}},
+    ]
+    combo_records = sum(1 for r in records if has_business_combination(r))
+    assert combo_records == 2
+    assert combo_records - len(extract_form_d_signals(records)) == 1
+
+
+# --- Form D date selection ---
 
 
 def test_extract_form_d_signals_uses_earliest_combo_date():

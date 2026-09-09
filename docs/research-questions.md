@@ -449,7 +449,7 @@ NASEM calls this quantity the *leverage ratio*.
 
 > **Implementation note — M&A detection is script-driven, not orchestrated.**
 > M&A event detection runs as a CLI script
-> (`scripts/archive/data/detect_sbir_ma_events.py`), not as a Dagster asset. The
+> (`scripts/data/detect_sbir_ma_events.py`), not as a Dagster asset. The
 > script merges two signals: Form D filings (entity_type-based
 > business-combination heuristics) and an SEC EDGAR full-text mention scan across
 > multiple filing types — operationally 8-K, 10-K, DEFM14A, PREM14A, SC TO-T, and

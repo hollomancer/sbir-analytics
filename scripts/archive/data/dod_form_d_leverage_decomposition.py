@@ -334,7 +334,7 @@ def decomposition_3_ma_overlap(
 
     "M&A event" here means the firm appears in sbir_ma_events.jsonl
     at all (which combines Form D business-combination heuristics and
-    SEC EDGAR full-text mention scan — see scripts/archive/data/detect_sbir_ma_events.py).
+    SEC EDGAR full-text mention scan — see scripts/data/detect_sbir_ma_events.py).
     """
     firms_by_branch: dict[str, set[str]] = defaultdict(set)
     for name, e in sbir_firms.items():

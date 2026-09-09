@@ -25,7 +25,7 @@ define a fixed observation horizon and censoring policy.
 ## Evidence boundary
 
 - Input: `data/sbir_ma_events.jsonl`, produced historically by
-  `scripts/archive/data/detect_sbir_ma_events.py`.
+  `scripts/data/detect_sbir_ma_events.py`.
 - Grain: one normalized `company_name` key, using only `strip()` and
   case-folding.
 - Observation date: top-level `event_date`.

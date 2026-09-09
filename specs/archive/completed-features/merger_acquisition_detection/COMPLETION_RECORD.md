@@ -5,6 +5,6 @@ enrichment path and capital-events scripts.
 **Archived**: 2026-07-02
 
 Evidence:
-- `scripts/archive/data/detect_sbir_ma_events.py` (tested in tests/unit/scripts/)
+- `scripts/data/detect_sbir_ma_events.py` (tested in tests/unit/scripts/)
 - capital_events `sources/ma_events.py`
 - `sbir_etl/enrichers/sec_edgar/`
