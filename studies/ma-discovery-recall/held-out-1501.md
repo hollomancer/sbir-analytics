@@ -101,9 +101,21 @@ that call unless this note and the YAML are in `HEAD` and pinned in
 
 ## Capture-code provenance
 
-Commits `5fdccb7c` and `e64be572` changed the capture path after `0023e204`
-hashed this note. No Brave call and no LLM call had touched pairs 1501+ at
-that time. Freeze-before-run holds for this cut.
+**Correction, 2026-09-08.** An earlier version of this section, frozen at
+sha256 `ca17ba0dcd031c6987dcebd0b887f256d56a5cda959a6a0d856f917a5df088fb`,
+said that no Brave call and no LLM call had touched pairs 1501+ when commits
+`5fdccb7c` and `e64be572` changed the capture path. That was false. A capture
+ran from 09-07 11:58 to 09-08 02:15 and covered 948 of the 1,000 cut pairs.
+It preceded those commits and both rewrites of this section (`1fc7d936`,
+`bb7c2ac3`). The superseded hash is recorded here so the error stays visible.
+
+Freeze-before-run holds for this note **as hashed at `0023e204`**, which
+preceded the capture. It does **not** hold for this note as now frozen. The
+estimand, cut, stop rule, and the three gates are byte-identical across every
+version; what changed after data existed is the validity precondition, which
+decides whether a recall miss counts as a miss. Rewriting that rule with
+948/1,000 pairs on disk is the same structural defect that blocked this study
+on 2026-09-02. This cut does not promote on any reading.
 
 The change counts network faults. It does not score them as evidence.
 Before it, a failed search recorded an empty hit. An LLM timeout recorded an
@@ -114,8 +126,20 @@ trace. `sample_run_summary.json` now reports `search_failure_n`,
 
 ### Validity precondition
 
-Network faults are asymmetric on recall. A fault scores its pair unconfirmed.
-It can never add a confirmation. Faults therefore only understate recall.
+A fault cannot manufacture a confirmed **hit**: pairs are processed
+independently, and a timeout drops one hit without aborting the pair.
+
+That is not the same as monotonicity of the gated quantity, and an earlier
+version of this note wrongly asserted it was. `strict_medium_high_n` is
+**not** monotone in the discovered set. `apply_c3` matches on the company key
+alone and credits a promotion to the existing row's pair key, so a fault can
+raise strict recall. A counterexample was executed against the real
+`apply_c3` on 2026-09-08: two events on one company key gave
+`strict_medium_high_n` 0 with both discoveries present and 1 with one search
+faulted. Exposure in this cut is bounded: 3 company keys carry more than one
+acquirer, covering 6 pairs.
+
+Treat the rules below as a bounded operating convention, not a proof.
 
 This is not a fourth gate. It cannot promote a run and it cannot excuse a
 fully measured miss.
@@ -133,6 +157,19 @@ Apply these rules:
 A faulted search writes a row marked `fault`. `load_recorded_queries` does
 not freeze that query, so a retry re-queries the faulted pairs only. A
 genuine zero-hit row does freeze: Brave answered.
+
+A row marked `unverified_empty` also does not freeze its query. That marker
+covers empty rows captured before fault marking existed, where a genuine zero
+hit and a swallowed fault cannot be told apart. It was added in `f34266c5`
+and applied to 476 rows of this cut **after** those rows existed, which is
+why this cut cannot promote: retry eligibility must be pre-specified, and
+here it was not. Any future protocol must declare both markers before
+capture.
+
+The retry rule is a one-sided ratchet — a pass carrying faults is accepted, a
+miss triggers a retry that can only add. That is safe only while retry
+eligibility is observation-independent. Do not add a further retry class
+after a capture.
 
 Faults do not affect gate 2. A fault removes a candidate row. It does not
 create a confirmed row. Label the medium rows that exist.
