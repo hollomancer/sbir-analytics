@@ -18,18 +18,34 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 
-def extract_form_d_signals(records: list[dict]) -> list[dict]:
+# Match tiers accepted from form_d_details.jsonl. "high" matches
+# capital_events/sources/form_d.py, which applies the same filter.
+KEEP_MATCH_TIERS = frozenset({"high"})
+
+
+def extract_form_d_signals(
+    records: list[dict], *, keep_tiers: frozenset[str] = KEEP_MATCH_TIERS
+) -> list[dict]:
     """Extract M&A events from Form D business combination flags.
 
     For each company with at least one is_business_combination offering,
     produces one event using the earliest combo filing date.
+
+    Only records whose SBIR-to-SEC match reached ``keep_tiers`` are used. The
+    match is fuzzy, and ``form_d_details.jsonl`` already carries the
+    multi-signal verdict from ``compute_form_d_confidence`` in
+    ``match_confidence.tier``. Without this filter a filing by an unrelated
+    company is attributed to an SBIR firm and then graded ``high``: measured
+    2026-09-08, 323 of the 374 business-combination records whose SEC filer
+    name does not match the SBIR name under RECIPIENT_V1 were already tier
+    ``low``. ``capital_events/sources/form_d.py`` applies the same filter.
     """
     events = []
     for r in records:
-        combos = [
-            o for o in r.get("offerings", [])
-            if o.get("is_business_combination")
-        ]
+        tier = (r.get("match_confidence") or {}).get("tier")
+        if tier not in keep_tiers:
+            continue
+        combos = [o for o in r.get("offerings", []) if o.get("is_business_combination")]
         if not combos:
             continue
 
@@ -42,17 +58,23 @@ def extract_form_d_signals(records: list[dict]) -> list[dict]:
         for o in combos:
             all_persons.extend(o.get("related_persons", []))
 
-        events.append({
-            "company_name": r["company_name"],
-            "event_date": str(earliest.get("filing_date", ""))[:10],
-            "source": "form_d",
-            "form_d_detail": {
-                "filing_date": str(earliest.get("filing_date", ""))[:10],
-                "total_amount_sold": total_sold if total_sold > 0 else None,
-                "combo_count": len(combos),
-                "related_persons": all_persons,
-            },
-        })
+        events.append(
+            {
+                "company_name": r["company_name"],
+                "event_date": str(earliest.get("filing_date", ""))[:10],
+                "source": "form_d",
+                "form_d_detail": {
+                    "filing_date": str(earliest.get("filing_date", ""))[:10],
+                    "total_amount_sold": total_sold if total_sold > 0 else None,
+                    "combo_count": len(combos),
+                    "related_persons": all_persons,
+                    # Carried so downstream can audit match quality. The enriched
+                    # events file previously dropped it, leaving consumers unable
+                    # to filter on it even when they wanted to.
+                    "match_tier": tier,
+                },
+            }
+        )
 
     return events
 
@@ -81,17 +103,19 @@ def extract_efts_signals(records: list[dict]) -> list[dict]:
         tier_order = {"high": 0, "medium": 1, "low": 2}
         best_tier = min(ma_hits.values(), key=lambda t: tier_order[t])
 
-        events.append({
-            "company_name": r["company_name"],
-            "event_date": r.get("latest_mention_date", ""),
-            "source": "efts",
-            "efts_detail": {
-                "mention_filers": r.get("mention_filers", []),
-                "mention_types": sorted(ma_hits.keys()),
-                "latest_mention_date": r.get("latest_mention_date", ""),
-                "efts_tier": best_tier,
-            },
-        })
+        events.append(
+            {
+                "company_name": r["company_name"],
+                "event_date": r.get("latest_mention_date", ""),
+                "source": "efts",
+                "efts_detail": {
+                    "mention_filers": r.get("mention_filers", []),
+                    "mention_types": sorted(ma_hits.keys()),
+                    "latest_mention_date": r.get("latest_mention_date", ""),
+                    "efts_tier": best_tier,
+                },
+            }
+        )
 
     return events
 
@@ -148,12 +172,8 @@ def assign_confidence(event: dict) -> str:
     """Assign confidence tier based on which signals fired."""
     has_form_d = event.get("form_d_detail") is not None
     efts = event.get("efts_detail")
-    has_efts_high = (
-        efts is not None and "subsidiary" in efts.get("mention_types", [])
-    )
-    has_acq_text = efts is not None and (
-        "acquisition" in efts.get("mention_types", [])
-    )
+    has_efts_high = efts is not None and "subsidiary" in efts.get("mention_types", [])
+    has_acq_text = efts is not None and ("acquisition" in efts.get("mention_types", []))
 
     if has_form_d or has_efts_high:
         return "high"
@@ -292,9 +312,9 @@ def main():
             tiers[confidence] += 1
 
     total = sum(tiers.values())
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print(f"M&A EXIT DETECTION COMPLETE — {total:,} events")
-    print(f"{'='*60}")
+    print(f"{'=' * 60}")
     print(f"  High confidence:   {tiers['high']:,}")
     print(f"  Medium confidence: {tiers['medium']:,}")
     print(f"  Low confidence:    {tiers['low']:,}")
