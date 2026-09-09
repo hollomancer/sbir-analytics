@@ -24,7 +24,7 @@ frozen_artifacts:
   - path: studies/ma-discovery-recall/confirmatory-design.md
     sha256: dbf945f59a316bbd41cbb018e2806a4907b8f94781ca669e8da34c475276b9e5
   - path: studies/ma-discovery-recall/held-out-1501.md
-    sha256: 6c653323c5f92155787b6345631ebd2e9510a76686f33ba36e81f0fea3bee270
+    sha256: e7090020ef22b87090496d7c93857ed84a45a0d6479cff11289f3a3f23f041ab
   - path: studies/ma-discovery-recall/held-out-1501.yaml
     sha256: d4676dc3cdd812a8efc8c8aba3332a380a9867c080bbeb23f2d4881a7b7b8efd
   - path: studies/ma-discovery-recall/labels.jsonl

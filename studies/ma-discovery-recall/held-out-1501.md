@@ -136,8 +136,19 @@ alone and credits a promotion to the existing row's pair key, so a fault can
 raise strict recall. A counterexample was executed against the real
 `apply_c3` on 2026-09-08: two events on one company key gave
 `strict_medium_high_n` 0 with both discoveries present and 1 with one search
-faulted. Exposure in this cut is bounded: 3 company keys carry more than one
-acquirer, covering 6 pairs.
+faulted.
+
+Exposure is **11 company keys over 22 pair keys**. An earlier version of this
+note said 3 keys and 6 pairs, which counted only keys carrying more than one
+acquirer inside the 1,000-pair cut. `apply_c3` iterates all 4,306 events, so a
+hit can bind to a row that was never a query candidate. Two hits on one key are
+also not required: under `dated_confirm` a single fault changes which snippet
+is emitted, and therefore its date, which changes the match through the
+±30-day guard.
+
+Realized exposure in the pinned freeze is zero. Of 129 discovered rows, no
+company key carries more than one hit, and the single row on an ambiguous key
+is `low` confidence, so it cannot enter `strict_medium_high_n`.
 
 Treat the rules below as a bounded operating convention, not a proof.
 

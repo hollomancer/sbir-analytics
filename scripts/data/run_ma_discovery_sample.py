@@ -16,8 +16,6 @@ import json
 import re
 import subprocess
 from collections.abc import Callable
-from concurrent.futures import ThreadPoolExecutor
-from concurrent.futures import TimeoutError as FuturesTimeout
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
@@ -165,10 +163,12 @@ class RecordingSearchTool:
         sink: list[dict[str, Any]],
         *,
         path: Path | None = None,
+        backend: str | None = None,
     ) -> None:
         self._inner = inner
         self._sink = sink
         self._path = path
+        self._backend = (backend or "").strip().lower()
         self.failure_n = 0
 
     def _record(self, record: dict[str, Any]) -> None:
@@ -180,10 +180,14 @@ class RecordingSearchTool:
             handle.write(json.dumps(record, sort_keys=True) + "\n")
 
     async def search(self, query: str) -> list[dict[str, Any]]:
+        # Dispatch on the declared backend, never on the presence of a private
+        # attribute. TavilySearchTool and BraveSearchTool both define _api_key,
+        # so probing for it sent a Tavily secret to Brave's endpoint and turned
+        # every Tavily query into a 401 recorded as a network fault.
         api_key = getattr(self._inner, "_api_key", None)
         faulted = False
         try:
-            if isinstance(api_key, str) and api_key:
+            if self._backend == "brave" and isinstance(api_key, str) and api_key:
                 max_results = int(getattr(self._inner, "_max_results", 5) or 5)
                 hits = await asyncio.to_thread(_brave_search_sync, api_key, query, max_results)
             else:
@@ -223,33 +227,36 @@ class RecordingSearchTool:
             await aclose()
 
 
-class _TimedExtractor:
-    """Run extract() in a thread so a hung TLS read cannot block the cut.
+class _CountingExtractor:
+    """Count LLM transport faults instead of scoring them as rejections.
 
-    A timeout writes no freeze row, so both this run and any replay score the
-    pair unconfirmed. That is indistinguishable from the model reading the
-    snippet and rejecting it. ``timeout_n`` counts them so the caller can gate
-    on them instead of scoring a network fault as no acquisition.
+    The timeout is enforced by the HTTP client's own socket timeout
+    (``OpenAIClient`` builds ``httpx.Client(timeout=...)``), which is
+    authoritative: it cannot leak a worker or write a freeze row after the
+    caller has moved on. An earlier version raced a ``ThreadPoolExecutor``
+    against that client. ``shutdown(cancel_futures=True)`` cannot stop a
+    running future, so a timed-out call kept going and appended its row — some
+    of them confirmed — after the run had already counted a timeout. Capture
+    and replay then disagreed on that pair, and the recorded
+    ``llm_responses_sha256`` could be taken while a worker was still writing.
+
+    A fault is not evidence of no acquisition. ``timeout_n`` counts them so the
+    caller can gate on them.
     """
 
-    name = "timed_llm"
+    name = "counting_llm"
 
-    def __init__(self, inner: SnippetExtractor, *, timeout: float) -> None:
+    def __init__(self, inner: SnippetExtractor) -> None:
         self.inner = inner
-        self._timeout = timeout
         self.timeout_n = 0
 
     def extract(self, item: Any) -> ExtractionVerdict:
-        pool = ThreadPoolExecutor(max_workers=1, thread_name_prefix="llm-extract")
-        future = pool.submit(self.inner.extract, item)
         try:
-            return future.result(timeout=self._timeout)
-        except FuturesTimeout:
+            return self.inner.extract(item)
+        except (TimeoutError, httpx.HTTPError, OSError) as exc:
             self.timeout_n += 1
-            print("LLM extract timeout; unconfirmed here is not a rejection")
-            return ExtractionVerdict(confirmed=False, reason="LLM timeout")
-        finally:
-            pool.shutdown(wait=False, cancel_futures=True)
+            print(f"LLM extract failed ({type(exc).__name__}); unconfirmed is not a rejection")
+            return ExtractionVerdict(confirmed=False, reason="LLM transport fault")
 
 
 def bound_queries(
@@ -640,11 +647,18 @@ def gate_failures(
 
     Incomplete precision labels are not a failure; they keep ``accepted`` false.
 
-    Network faults are asymmetric on recall. A fault scores the pair
-    unconfirmed and can never manufacture a confirmation, so faults only ever
-    understate recall. A recall pass carrying faults is therefore conservative
-    and stands. A recall miss carrying faults is not a miss: the faulted pairs
-    may hold the absent confirmations, so the number is not measured.
+    Network faults are treated as asymmetric on recall: a fault scores its
+    pair unconfirmed, so in the normal case it can only understate recall. A
+    recall pass carrying faults is therefore treated as conservative, and a
+    recall miss carrying faults is treated as not measured.
+
+    This is a bounded operating convention, not a proof. ``strict_medium_high_n``
+    is not monotone in the discovered set: ``apply_c3`` matches on the company
+    key alone and credits a promotion to the existing row's pair key, so a
+    fault can raise strict recall. Exposure in the pinned events file is 11
+    company keys over 22 pair keys, and realized exposure in the held-out
+    freeze is zero. Nothing here enforces that bound - a run whose faulted
+    pairs touch an ambiguous key is outside the convention.
     """
     errors: list[str] = []
     if scored_pair_n is not None and cut_pair_n is not None and scored_pair_n != cut_pair_n:
@@ -699,7 +713,7 @@ async def _search(
         config=config,
         snippets_path=snippets,
     )
-    tool = RecordingSearchTool(inner, sink, path=record_path)
+    tool = RecordingSearchTool(inner, sink, path=record_path, backend=backend)
     try:
         rows = await process_batch(queries, tool, extractor=extractor, stop_when=stop_when)
         return rows, tool.failure_n
@@ -846,16 +860,12 @@ def main() -> int:
     cut_pairs = {(row["company_name"], row["acquirer"]) for row in bounded}
     cut_pair_n = len(cut_pairs)
     skipped_n = 0
-    skipped_pair_n = 0
     if not replay:
         recorded_queries = load_recorded_queries(snippets_path)
         if recorded_queries:
             before = len(bounded)
             bounded = drop_recorded_queries(bounded, recorded_queries)
             skipped_n = before - len(bounded)
-            skipped_pair_n = cut_pair_n - len(
-                {(row["company_name"], row["acquirer"]) for row in bounded}
-            )
     pair_n = len({(row["company_name"], row["acquirer"]) for row in bounded})
     skip_note = f", skipped {skipped_n} frozen" if skipped_n else ""
     print(
@@ -873,10 +883,7 @@ def main() -> int:
             live = build_llm_extractor(api_key=args.llm_api_key)
             if live is None:
                 raise SystemExit("OPENROUTER_API_KEY or XAI_API_KEY is required for --capture-llm")
-            extractor = _TimedExtractor(
-                RecordingLlmExtractor(live, llm_records, path=llm_path),
-                timeout=90,
-            )
+            extractor = _CountingExtractor(RecordingLlmExtractor(live, llm_records, path=llm_path))
         else:
             freeze = args.llm_freeze or llm_path
             if not freeze.is_file():
@@ -907,9 +914,12 @@ def main() -> int:
         )
     )
     llm_timeout_n = int(getattr(extractor, "timeout_n", 0))
-    scored_pair_n = (
-        len({(row["company_name"], row["acquirer"]) for row in bounded}) + skipped_pair_n
-    )
+    # Pairs that actually reached the extractor in THIS process. Frozen pairs
+    # dropped by the resume path were not scored here, so they must not be
+    # added back: doing so made scored_pair_n == cut_pair_n identically and the
+    # coverage gate could never fire. A resumed capture now fails coverage
+    # until a full replay measures the whole cut.
+    scored_pair_n = len({(row["company_name"], row["acquirer"]) for row in bounded})
     collision = apply_c3(events, discovered)
     queue = build_review_queue(collision.inserted + collision.promoted)
 

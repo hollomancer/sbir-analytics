@@ -7,6 +7,7 @@ import json
 import time
 from pathlib import Path
 
+import httpx
 import pytest
 import yaml
 
@@ -14,7 +15,7 @@ from sbir_etl.enrichers.ma_discovery.extractor import ExtractionVerdict
 
 from scripts.data.run_ma_discovery_sample import (
     RecordingSearchTool,
-    _TimedExtractor,
+    _CountingExtractor,
     bound_queries,
     build_review_queue,
     check_run_manifest,
@@ -476,20 +477,43 @@ def test_unobserved_empties_are_not_frozen(tmp_path: Path) -> None:
     assert load_recorded_queries(cut) == {"verified zero hit"}
 
 
-def test_timed_extractor_counts_timeouts() -> None:
-    """A hung extract() is counted, not silently scored as a rejection."""
+def test_counting_extractor_counts_transport_faults() -> None:
+    """A transport fault is counted, not silently scored as a rejection.
 
-    class _Hang:
-        name = "hang"
+    The socket timeout in the HTTP client is authoritative, so no worker can
+    outlive the call and append a freeze row afterwards.
+    """
+
+    class _Boom:
+        name = "boom"
 
         def extract(self, item: object) -> ExtractionVerdict:
-            time.sleep(5)
-            raise AssertionError("should not finish")
+            raise httpx.ReadTimeout("hung read")
 
-    timed = _TimedExtractor(_Hang(), timeout=0.05)
-    verdict = timed.extract(object())
+    counting = _CountingExtractor(_Boom())
+    verdict = counting.extract(object())
     assert verdict.confirmed is False
-    assert timed.timeout_n == 1
+    assert counting.timeout_n == 1
+
+
+def test_counting_extractor_writes_no_row_after_a_fault(tmp_path: Path) -> None:
+    """The freeze must not gain a row for a call the run counted as a fault.
+
+    The previous thread-based wrapper could not cancel a running future, so a
+    timed-out call still appended - sometimes a confirmed row - and capture
+    and replay then disagreed on that pair.
+    """
+    freeze = tmp_path / "llm.jsonl"
+
+    class _Boom:
+        name = "boom"
+
+        def extract(self, item: object) -> ExtractionVerdict:
+            raise httpx.ReadTimeout("hung read")
+
+    counting = _CountingExtractor(_Boom())
+    counting.extract(object())
+    assert not freeze.exists() or freeze.read_text(encoding="utf-8").strip() == ""
 
 
 @pytest.mark.asyncio
@@ -570,6 +594,61 @@ def test_main_fails_and_reports_when_search_faults(
 
     # The faulted query must stay retryable, or the rerun inherits the fault.
     assert load_recorded_queries(out / "search_snippets.jsonl") == set()
+
+
+def test_resumed_run_fails_coverage(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """A resume that scores fewer pairs than the cut must fail coverage.
+
+    End-to-end on purpose. The first version of this gate computed
+    ``scored_pair_n`` as remaining + skipped, which is identically
+    ``cut_pair_n``, so it could never fire. Calling ``gate_failures`` directly
+    with unequal values passed while the gate was dead one layer up, so the
+    check has to run through ``main`` twice against the same output directory.
+    """
+    events = tmp_path / "events.jsonl"
+    events.write_text(
+        "\n".join(
+            json.dumps(
+                {
+                    "company_name": f"Acme {i} Robotics, Inc.",
+                    "event_date": "2020-01-13",
+                    "acquirer": f"Globex {i} Corporation",
+                    "confidence": "low",
+                    "signals": {},
+                }
+            )
+            for i in range(6)
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    out = tmp_path / "out"
+    argv = [
+        "run_ma_discovery_sample.py",
+        "--events",
+        str(events),
+        "--search-backend",
+        "mock",
+        "--confirm",
+        "keyword",
+        "--output-dir",
+        str(out),
+        "--fail-on-gate",
+    ]
+    monkeypatch.setattr("sys.argv", argv)
+    main()
+    first = json.loads((out / "sample_run_summary.json").read_text(encoding="utf-8"))
+    assert first["scored_pair_n"] == first["cut_pair_n"] == 6
+
+    # Second run: every query is frozen, so nothing is scored this time.
+    monkeypatch.setattr("sys.argv", argv)
+    assert main() == 1
+    assert "coverage: scored 0 of 6" in capsys.readouterr().out
+    second = json.loads((out / "sample_run_summary.json").read_text(encoding="utf-8"))
+    assert second["scored_pair_n"] == 0
+    assert second["kill_gate"]["fully_measured"] is False
 
 
 def test_main_refuses_live_capture_without_protocol(monkeypatch: pytest.MonkeyPatch) -> None:
