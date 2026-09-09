@@ -53,8 +53,37 @@ same inputs:
 | High + Medium | 2,790 | **1,887** |
 | events total | 4,306 | 4,004 |
 
-High-plus-medium falls 32%. The 8.1% headline rate is not corrected here
-because the corrected artifacts have not been regenerated — see below.
+High-plus-medium falls 32%.
+
+**Regenerated 2026-09-09.** `data/sbir_ma_events.jsonl` now holds the corrected
+population, produced end to end from committed code:
+
+| | published | regenerated |
+|---|---:|---:|
+| high | 1,197 | **676** |
+| medium | 1,593 | **1,098** |
+| low | 1,516 | 2,230 |
+| events | 4,306 | 4,004 |
+| high + medium | 2,790 | **1,774** |
+| **exit rate (of 34,460 firms)** | **8.1%** | **5.1%** |
+| high only | 3.5% | 2.0% |
+
+Input hashes: `sbir_ma_events.jsonl` `1656f860bbb4e0dd`,
+`form_d_details.jsonl` `a6da5f4313f111ee`,
+`sec_edgar_scan.jsonl` `37b25b0c3c9e5652`.
+
+The refinement merge step did not previously exist in the repository, which is
+why the published file reproduced from no commit. It is now
+`scripts/data/apply_ma_medium_refinement.py`. 97% of the earlier directional
+verdicts were reusable; only 33 newly-medium firms needed a fresh EFTS pass.
+
+Two caveats. `data/enriched_sbir_ma_events.jsonl` is **not** regenerated — it
+needs `press.py` and a press-wire API — so it still carries the published
+numbers while `capital_events` reads it. And 420 medium events in the published
+file were promoted from low by an uncommitted step whose mechanism is still
+unknown; they are preserved at
+`data/processed/ma_events_unexplained_promotions.jsonl` and are absent from the
+regenerated file.
 
 **Not yet done.** `data/sbir_ma_events.jsonl` still holds the published
 numbers. Regeneration needs `refine_ma_medium_tier.py`, roughly 1,200-1,600
