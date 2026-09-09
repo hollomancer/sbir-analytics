@@ -164,6 +164,33 @@ Generated CSVs and manifests live under
 `data/reports/three_agency_commercialization/` in the data volume. The manifest
 pins input hashes, cutoff, bootstrap settings, cohort counts, and channel audits.
 
+**The manifest is not committed, so the figures above are not currently
+verifiable from this repository.** A 2026-09-09 review re-ran the generator
+against the inputs present in a fresh checkout and reproduced every
+award-derived figure exactly — 689 / 2,183 / 883 cohort firms and
+444 / 875 / 533 five-year eligible firms — while five of six outcome
+numerators differed, with the M&A counts low by 40 to 50 percent. Cohort
+figures come from the stable award file; the numerators come from two files
+that carry no as-of date and no hash here. That is an unpinned-input problem,
+not a logic problem.
+
+Inputs present in this checkout, for comparison against whatever generated the
+table above:
+
+| input | sha256 | as-of |
+|---|---|---|
+| `data/raw/sbir/award_data.csv` | `7511930b16dfa5c3` | 2026-05-11 |
+| `data/form_d_details.jsonl` | `a6da5f4313f111ee` | 2026-04-23 |
+| `data/sbir_ma_events.jsonl` | `6ffc8481a240b2ee` | 2026-04-24 |
+
+Two further cautions on the M&A channel specifically. `sbir_ma_events.jsonl`
+reproduces from no committed code — it was generated six days before PR #286
+merged and the generating code changed before merge. And its `high` tier is
+inflated: 407 of 1,197 high-confidence events rest on an unverified Form D
+business-combination checkbox with no named counterparty, which a pending fix
+reduces to 811. The M&A rates above will move when that lands. See issues
+#682 and #704.
+
 Related source-method notes are the
 [Form D data dictionary](form-d-data-dictionary.md),
 [Form D fundraising analysis](sbir-form-d-fundraising-analysis.md), and

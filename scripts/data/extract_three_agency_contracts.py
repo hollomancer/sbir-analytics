@@ -27,7 +27,9 @@ ARCHIVE_PATTERN = re.compile(r"^FY(?P<year>\d{4})_All_Contracts_Full_\d{8}\.zip$
 
 
 def load_analysis_module():
-    spec = importlib.util.spec_from_file_location("three_agency_commercialization_outcomes", ANALYSIS_SCRIPT)
+    spec = importlib.util.spec_from_file_location(
+        "three_agency_commercialization_outcomes", ANALYSIS_SCRIPT
+    )
     if spec is None or spec.loader is None:
         raise RuntimeError(f"cannot import {ANALYSIS_SCRIPT}")
     module = importlib.util.module_from_spec(spec)
@@ -52,12 +54,20 @@ def selected_archives(directory: Path, start_fy: int, end_fy: int) -> list[tuple
 
 
 def build_filter(cohort, output: Path) -> None:
-    values = {"uei": [], "duns": [], "company_names": []}
+    """Write the archive prefilter.
+
+    Company-name linkage is exact raw-string equality on purpose.
+    ``AwardArchiveContractExtractor._match_mask`` uppercases and trims the
+    archive's ``recipient_name`` and tests membership, so a suffix-stripped
+    ``ORGANIZATION_KEY_V1`` alias would rarely match a raw archive name, and
+    where it did match it could attribute another firm's contracts to this
+    cohort. Raw names only. UEI and DUNS aliases are exact identifiers and are
+    passed through.
+    """
+    values: dict[str, object] = {"uei": [], "duns": []}
     for alias in sorted(cohort.alias_to_firm):
         basis, _, value = alias.partition(":")
-        if basis == "name":
-            values["company_names"].append(value)
-        elif basis in values:
+        if basis in values:
             values[basis].append(value)
     values["company_names"] = sorted(cohort.raw_company_names)
     values["stats"] = {key: len(value) for key, value in values.items()}
