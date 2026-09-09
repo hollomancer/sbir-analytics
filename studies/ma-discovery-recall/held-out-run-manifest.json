@@ -16,7 +16,7 @@
   "search_backend_rerun": "snippets",
   "confirm": "llm",
   "llm_model": "x-ai/grok-4.6",
-  "outcome": "replay_pending",
+  "outcome": "replay_complete_recall_floor_missed",
   "purpose": "Fix the inputs before the number exists. The search cut is complete (1000 of 1000 unique cut queries) and the LLM freeze is on disk, so the recall for this cut is already determined by these bytes. Hashing and committing them before the replay removes any ability to shop for the result.",
   "inputs": {
     "events": {
@@ -54,5 +54,17 @@
     "Run once. A second replay against a changed freeze is a new reviewable version, not a correction.",
     "No network. Search backend is snippets and the confirmer is freeze-only.",
     "The result does not promote this cut. The blockers recorded on 2026-09-08 survive any value it returns."
-  ]
+  ],
+  "replay_result": {
+    "as_of_utc": "2026-09-09T01:25:00.621274+00:00",
+    "candidate_pairs": 1000,
+    "discovered_n": 129,
+    "discovered_medium_high_n": 45,
+    "strict_medium_high_n": 4,
+    "recall_floor": 10,
+    "recall_floor_met": false,
+    "strict_eligible_pairs_in_cut": 307,
+    "strict_recall_rate": 0.01303,
+    "note": "Cut-level recall over all 1000 pairs, computed from the freeze pinned above. Supersedes the 528-pair subset count of 2. Gates 2 and 3 are not evaluated: precision labels are unreviewed and cost is not measured by the CLI."
+  }
 }

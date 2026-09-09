@@ -356,6 +356,53 @@ def test_gate_failures_skip_incomplete_precision() -> None:
     assert any("cost per pair" in e for e in errors)
 
 
+def test_partial_coverage_fails_the_gate() -> None:
+    """Scoring a subset of the cut is not a recall number, however good it looks.
+
+    This is the defect that made the 2026-09-08 held-out run meaningless: the
+    resume path scored 528 of 1000 pairs and reported the result as recall.
+    """
+    errors = gate_failures(
+        recall_n=99,
+        recall_floor=10,
+        labels=None,
+        precision_fp_cap=0.25,
+        cost_per_pair_usd=0.01,
+        cost_cap=0.10,
+        scored_pair_n=528,
+        cut_pair_n=1000,
+    )
+    assert any("coverage" in e and "528 of 1000" in e for e in errors)
+
+
+def test_full_coverage_passes_the_gate() -> None:
+    errors = gate_failures(
+        recall_n=13,
+        recall_floor=10,
+        labels=None,
+        precision_fp_cap=0.25,
+        cost_per_pair_usd=0.01,
+        cost_cap=0.10,
+        scored_pair_n=1000,
+        cut_pair_n=1000,
+    )
+    assert errors == []
+
+
+def test_unmeasured_cost_fails_the_gate() -> None:
+    """Gate 3 must block when unmeasured, not be silently skipped."""
+    errors = gate_failures(
+        recall_n=13,
+        recall_floor=10,
+        labels=None,
+        precision_fp_cap=0.25,
+        cost_per_pair_usd=None,
+        cost_cap=0.10,
+        cost_measured=False,
+    )
+    assert any("cost per pair not measured" in e for e in errors)
+
+
 def test_faults_do_not_fail_a_recall_pass() -> None:
     """Faults only understate recall, so a pass carrying them is conservative.
 

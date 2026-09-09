@@ -36,7 +36,7 @@ frozen_artifacts:
   - path: studies/ma-discovery-recall/confirmatory-labels.jsonl
     sha256: 5c18a5fcc8c2eb0497f0ebab8546d9fc1de7684d1b99230454643dd688125eea
   - path: studies/ma-discovery-recall/held-out-run-manifest.json
-    sha256: f350b278b38d9209a7e2cbfaf10b8621b452b34f9513d6d89d5cf7a2a667d33f
+    sha256: f23abb9b54b65965548e16471ace83635d80359ceeb4117b1c1ccc5eb5eef81f
 implementation:
   - path: sbir_etl/enrichers/ma_discovery/collision.py
     symbol: apply_c3

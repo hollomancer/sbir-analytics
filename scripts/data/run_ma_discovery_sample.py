@@ -91,6 +91,30 @@ _SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
 HeadBlob = Callable[[str], bytes | None]
 
 
+def _code_version() -> str:
+    """Git description of this checkout, with a dirty flag. Never raises."""
+    try:
+        sha = subprocess.run(
+            ["git", "rev-parse", "HEAD"],
+            cwd=REPO_ROOT,
+            capture_output=True,
+            text=True,
+            check=True,
+        ).stdout.strip()
+        dirty = bool(
+            subprocess.run(
+                ["git", "status", "--porcelain"],
+                cwd=REPO_ROOT,
+                capture_output=True,
+                text=True,
+                check=True,
+            ).stdout.strip()
+        )
+    except (OSError, subprocess.SubprocessError):
+        return "unknown"
+    return f"{sha}{'-dirty' if dirty else ''}"
+
+
 def _sha256(path: Path) -> str | None:
     if not path.is_file():
         return None
@@ -608,6 +632,9 @@ def gate_failures(
     cost_cap: float,
     llm_timeout_n: int = 0,
     search_failure_n: int = 0,
+    scored_pair_n: int | None = None,
+    cut_pair_n: int | None = None,
+    cost_measured: bool = True,
 ) -> list[str]:
     """Automated gates that can fail a confirmatory/protocol run.
 
@@ -620,6 +647,13 @@ def gate_failures(
     may hold the absent confirmations, so the number is not measured.
     """
     errors: list[str] = []
+    if scored_pair_n is not None and cut_pair_n is not None and scored_pair_n != cut_pair_n:
+        errors.append(
+            f"coverage: scored {scored_pair_n} of {cut_pair_n} cut pairs; "
+            "recall is a subset count, not a cut-level number"
+        )
+    if not cost_measured:
+        errors.append("cost per pair not measured; gate 3 cannot be evaluated")
     faults = llm_timeout_n + search_failure_n
     if recall_n < recall_floor:
         if faults:
@@ -809,13 +843,19 @@ def main() -> int:
     )
     replay = args.snippets is not None
     snippets_path = args.output_dir / "search_snippets.jsonl"
+    cut_pairs = {(row["company_name"], row["acquirer"]) for row in bounded}
+    cut_pair_n = len(cut_pairs)
     skipped_n = 0
+    skipped_pair_n = 0
     if not replay:
         recorded_queries = load_recorded_queries(snippets_path)
         if recorded_queries:
             before = len(bounded)
             bounded = drop_recorded_queries(bounded, recorded_queries)
             skipped_n = before - len(bounded)
+            skipped_pair_n = cut_pair_n - len(
+                {(row["company_name"], row["acquirer"]) for row in bounded}
+            )
     pair_n = len({(row["company_name"], row["acquirer"]) for row in bounded})
     skip_note = f", skipped {skipped_n} frozen" if skipped_n else ""
     print(
@@ -867,6 +907,9 @@ def main() -> int:
         )
     )
     llm_timeout_n = int(getattr(extractor, "timeout_n", 0))
+    scored_pair_n = (
+        len({(row["company_name"], row["acquirer"]) for row in bounded}) + skipped_pair_n
+    )
     collision = apply_c3(events, discovered)
     queue = build_review_queue(collision.inserted + collision.promoted)
 
@@ -903,9 +946,22 @@ def main() -> int:
         cost_cap=cost_cap,
         llm_timeout_n=llm_timeout_n,
         search_failure_n=search_failure_n,
+        scored_pair_n=scored_pair_n,
+        cut_pair_n=cut_pair_n,
+        cost_measured=False,
     )
-    fully_measured = not llm_timeout_n and not search_failure_n
-    accepted = recall_met and precision_cap_met
+    # Emptiness that was never observed is not a measurement, wherever it came
+    # from: a fault this run, or a row captured before fault marking existed.
+    unverified_empty_n = sum(
+        1 for row in load_jsonl_rows(args.snippets or snippets_path) if row.get("unverified_empty")
+    )
+    fully_measured = (
+        not llm_timeout_n
+        and not search_failure_n
+        and not unverified_empty_n
+        and scored_pair_n == cut_pair_n
+    )
+    accepted = recall_met and precision_cap_met and not failures
     llm_n = len(llm_records)
     if not llm_n and args.confirm == "llm" and llm_path.is_file():
         llm_n = sum(1 for line in llm_path.read_text(encoding="utf-8").splitlines() if line.strip())
@@ -942,6 +998,10 @@ def main() -> int:
         "snippets_input": str(args.snippets) if args.snippets else None,
         "llm_timeout_n": llm_timeout_n,
         "search_failure_n": search_failure_n,
+        "unverified_empty_n": unverified_empty_n,
+        "scored_pair_n": scored_pair_n,
+        "cut_pair_n": cut_pair_n,
+        "code_version": _code_version(),
         "kill_gate": {
             "fully_measured": fully_measured,
             "recall_floor_met": recall_met,
