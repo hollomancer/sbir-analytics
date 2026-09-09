@@ -17,6 +17,7 @@ sys.modules["detect_sbir_ma_events"] = _mod
 _spec.loader.exec_module(_mod)
 
 assign_confidence = _mod.assign_confidence
+is_acquirer_side_only = _mod.is_acquirer_side_only
 build_signals_dict = _mod.build_signals_dict
 extract_efts_signals = _mod.extract_efts_signals
 extract_form_d_signals = _mod.extract_form_d_signals
@@ -409,3 +410,27 @@ def test_form_d_does_not_promote_an_efts_medium() -> None:
         "efts_detail": {"mention_types": ["acquisition"]},
     }
     assert assign_confidence(event) == "medium"
+
+
+def test_form_d_only_row_is_acquirer_side():
+    """Form D Item 10 is acquirer-side; with no EFTS mention there is no
+    target-side evidence at all."""
+    assert is_acquirer_side_only({"form_d_business_combination": True}) is True
+
+
+def test_form_d_with_efts_evidence_is_not_excluded():
+    """An EFTS mention is target-side evidence and keeps the row in scope."""
+    for efts in (
+        "efts_subsidiary",
+        "efts_ma_definitive",
+        "efts_acquisition_text",
+        "efts_ma_proxy",
+        "efts_ownership_active",
+    ):
+        signals = {"form_d_business_combination": True, efts: True}
+        assert is_acquirer_side_only(signals) is False, efts
+
+
+def test_row_without_a_form_d_flag_is_never_excluded():
+    assert is_acquirer_side_only({"efts_subsidiary": True}) is False
+    assert is_acquirer_side_only({}) is False

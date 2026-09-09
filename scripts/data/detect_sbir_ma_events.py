@@ -181,6 +181,35 @@ def merge_events(
     return list(merged.values())
 
 
+EFTS_SIGNAL_KEYS = (
+    "efts_subsidiary",
+    "efts_ma_definitive",
+    "efts_acquisition_text",
+    "efts_ma_proxy",
+    "efts_ownership_active",
+)
+
+
+def is_acquirer_side_only(signals: dict[str, bool]) -> bool:
+    """True when the only evidence is a Form D business-combination flag.
+
+    Form D Item 10 marks a Rule 145 transaction, a deemed offer and sale of
+    securities *by the issuer*, so the filer is the acquirer. With no EFTS
+    mention alongside it there is no target-side evidence at all, and the row
+    is evidence that the SBIR firm *bought* something.
+
+    Such rows do not belong in the exit artifact. Demoting them to low was not
+    enough: agency_private_capital/asset.py, phase2_outcomes.py, and
+    run_agency_private_capital_phase1.py all treat row presence as an exit and
+    never read confidence, so a demoted row still counted. They are written to
+    a sibling file instead, which keeps the evidence without letting an exit
+    consumer mistake it.
+    """
+    if not signals.get("form_d_business_combination"):
+        return False
+    return not any(signals.get(key) for key in EFTS_SIGNAL_KEYS)
+
+
 def assign_confidence(event: dict) -> str:
     """Grade how well the evidence supports the SBIR firm being *acquired*.
 
@@ -289,6 +318,11 @@ def main():
     parser.add_argument("--efts", default="data/sec_edgar_scan.jsonl")
     parser.add_argument("--awards", default="/tmp/sbir_awards_full.csv")
     parser.add_argument("--output", default="data/sbir_ma_events.jsonl")
+    parser.add_argument(
+        "--acquirer-side-output",
+        default="data/sbir_ma_acquirer_side.jsonl",
+        help="Rows whose only evidence is an acquirer-side Form D flag.",
+    )
     args = parser.parse_args()
 
     # Layer 1: Form D
@@ -327,8 +361,12 @@ def main():
     output_path = Path(args.output)
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
+    acquirer_side_path = Path(args.acquirer_side_output)
+    acquirer_side_path.parent.mkdir(parents=True, exist_ok=True)
+
     tiers = {"high": 0, "medium": 0, "low": 0}
-    with open(output_path, "w") as out:
+    acquirer_side_n = 0
+    with open(output_path, "w") as out, open(acquirer_side_path, "w") as aside:
         for event in merged:
             signals = build_signals_dict(event)
             confidence = assign_confidence(event)
@@ -345,6 +383,10 @@ def main():
                 "efts_detail": event.get("efts_detail"),
                 "sbir_context": sbir_context.get(event["company_name"].strip().upper()),
             }
+            if is_acquirer_side_only(signals):
+                aside.write(json.dumps(record, default=str) + "\n")
+                acquirer_side_n += 1
+                continue
             out.write(json.dumps(record, default=str) + "\n")
             tiers[confidence] += 1
 
@@ -356,6 +398,8 @@ def main():
     print(f"  Medium confidence: {tiers['medium']:,}")
     print(f"  Low confidence:    {tiers['low']:,}")
     print(f"  Output: {output_path}")
+    print(f"\n  Acquirer-side only (excluded from the exit artifact): {acquirer_side_n:,}")
+    print(f"  Output: {acquirer_side_path}")
 
 
 if __name__ == "__main__":
