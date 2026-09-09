@@ -1,0 +1,58 @@
+{
+  "_epistemic": {
+    "citable": false,
+    "tier": "exploratory",
+    "notice": "Pins the held-out 1501-2500 freeze before the replay that computes its recall. No result is recorded here. Evidence-auditor BLOCKED this cut on 2026-09-08 for reasons a replay does not clear; the replay closes the cut honestly and does not promote it."
+  },
+  "study_id": "ma-discovery-recall",
+  "protocol": "studies/ma-discovery-recall/held-out-1501.md",
+  "protocol_yaml": "studies/ma-discovery-recall/held-out-1501.yaml",
+  "as_of_utc": "2026-09-08T23:47:27.651802+00:00",
+  "candidate_pairs": 1000,
+  "skip_pairs": 1500,
+  "queries_per_pair": 1,
+  "stop_when": "dated_confirm",
+  "search_backend_capture": "brave",
+  "search_backend_rerun": "snippets",
+  "confirm": "llm",
+  "llm_model": "x-ai/grok-4.6",
+  "outcome": "replay_pending",
+  "purpose": "Fix the inputs before the number exists. The search cut is complete (1000 of 1000 unique cut queries) and the LLM freeze is on disk, so the recall for this cut is already determined by these bytes. Hashing and committing them before the replay removes any ability to shop for the result.",
+  "inputs": {
+    "events": {
+      "path": "data/sbir_ma_events.jsonl",
+      "sha256": "6ffc8481a240b2ee9bd9fdef806395d3f62e9d1f3ba12a68490d28fb53a1cf49",
+      "n": 4306,
+      "gitignored": true
+    },
+    "snippets": {
+      "path": "data/processed/ma_discovery_heldout_1501/search_snippets.jsonl",
+      "sha256": "353daaae9836b55de3a54ca77cbe9ad225a763b121c32be9db54dfd5275dee70",
+      "n": 2797,
+      "unique_queries": 1000,
+      "unverified_empty_n": 476,
+      "fault_n": 0,
+      "gitignored": true
+    },
+    "llm_responses": {
+      "path": "data/processed/ma_discovery_heldout_1501/llm_responses.jsonl",
+      "sha256": "ceb84cca972778f82a25b97d91eb14f74f5e92c862dcbc0b1bb9755dbc795223",
+      "n": 1726,
+      "filled_n": 1726,
+      "empty_n": 0,
+      "gitignored": true
+    }
+  },
+  "provenance_defects": [
+    "948 of the 1000 cut pairs were captured 2026-09-07 11:58 to 2026-09-08 02:15 by code whose state is not recoverable from git; the script had uncommitted changes at that time.",
+    "476 snippet rows are marked unverified_empty. They were captured before fault instrumentation existed and were re-queried on 2026-09-08. The marker is in the code (f34266c5) but not in the protocol note as frozen.",
+    "held-out-1501.md as currently frozen states that no Brave or LLM call had touched pairs 1501+ before commits 5fdccb7c and e64be572. That statement is false and is scheduled for correction as a superseded version.",
+    "The 2026-09-08 capture process scored 528 of 1000 pairs and reported strict_medium_high_n 2 in data/processed/ma_discovery_heldout_1501/sample_run_summary.json. That number is a subset count, not a cut-level recall, and is superseded by the replay this manifest pins."
+  ],
+  "replay_command": "uv run python scripts/data/run_ma_discovery_sample.py --protocol studies/ma-discovery-recall/held-out-1501.yaml --search-backend snippets --snippets data/processed/ma_discovery_heldout_1501/search_snippets.jsonl --llm-freeze data/processed/ma_discovery_heldout_1501/llm_responses.jsonl --run-manifest studies/ma-discovery-recall/held-out-run-manifest.json",
+  "replay_rules": [
+    "Run once. A second replay against a changed freeze is a new reviewable version, not a correction.",
+    "No network. Search backend is snippets and the confirmer is freeze-only.",
+    "The result does not promote this cut. The blockers recorded on 2026-09-08 survive any value it returns."
+  ]
+}
