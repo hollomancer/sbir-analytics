@@ -45,7 +45,14 @@ def build_ma_events(cohort: Iterable[dict], source_path: Path) -> Iterator[dict]
                 "metadata": json.dumps(
                     {
                         "signals": rec.get("signals") or {},
-                        "signal_count": rec.get("signal_count"),
+                        # Recomputed, not forwarded. The removed press stage
+                        # incremented the stored count once per press hit, and
+                        # all 18 of those hits were false positives from
+                        # unanchored substring matching, so 18 legacy rows
+                        # carry a count one above their own signals.
+                        "signal_count": sum(
+                            1 for value in (rec.get("signals") or {}).values() if value
+                        ),
                     }
                 ),
             }

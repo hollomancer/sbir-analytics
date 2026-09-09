@@ -16,24 +16,26 @@ The capital-events builder at `sbir_etl/capital_events/sources/ma_events.py:13-5
 
 Note: `detect_sbir_ma_events.py` writes `data/sbir_ma_events.jsonl`; the builder reads `data/enriched_sbir_ma_events.jsonl`.
 
-**Amended 2026-09-09: the press-wire enrichment stage is removed.** `sbir_etl.enrichers.ma_discovery.press` is deleted and the builder's input is produced by the detect and refine steps alone. Two reasons, the first structural:
+**Amended 2026-09-09: the press-wire enrichment stage is removed.** `sbir_etl.enrichers.ma_discovery.press` is deleted. It did two jobs — polling live RSS feeds for press mentions, and producing the file the capital-events builder reads. Only the first is removed; the second moves to `scripts/data/finalize_ma_events.py`, which is deterministic and makes no network calls. Two reasons for dropping the poll, the first structural:
 
 1. **It could never meet this spec's declared `pipelines` tier.** The stage polls live RSS feeds, so its output is a function of wall-clock time. `docs/steering/epistemic-tiers.md` requires a `pipelines` artifact be "reproducible from a declared data cut" and re-runnable to the same result. A live news poll is neither. The stage was exploratory-tier work wired into a pipelines-tier artifact path, and that mis-tiering is what let `enriched_sbir_ma_events.jsonl` drift out of step with its own upstream.
 2. **Its output was entirely false positives.** `PressWireClient._match_company` matches a normalized company name as an unanchored substring, so `BAL` matched "glo**bal**", `APP` matched "**app**roximately", and `ATI` matched "n**ati**onwide". All 18 matched releases in the shipped artifact were spurious; 391 of 3,980 watchlist names are five characters or fewer. Tracked as issue #708 — the matcher still affects the weekly digest, which is why `press_wire.py` itself is kept and repaired separately.
 
-`press_wire_signals` and `enriched` are dropped from the capital-event metadata. The builder's input filename is unchanged; which M&A vintage it should read is a separate, measured decision.
+`press_wire_signals` and `enriched` are dropped from the capital-event metadata. The builder's input filename is unchanged.
+
+**Restoring the producer is the same decision as choosing the vintage.** These were treated as separable and are not: the historical `enriched_sbir_ma_events.jsonl` holds 4,306 rows of which 2,790 pass the builder's high-or-medium filter, while the current detect-and-refine chain emits 4,004 of which 1,774 pass. Press contributed two metadata fields and no rows, so the 1,016-row difference is entirely the accumulated corrections to the events themselves — an acquirer-side Form D flag that no longer grades an exit, and a join filter that respects the match tier the scorer already recorded. Running `finalize_ma_events.py` lands that change. Diff before promoting the output, and record what moved.
 
 **Adopted: option C with collision rule C3.**
 
 ```
 detect_sbir_ma_events.py ─► sbir_ma_events.jsonl ─┐
-                                                  ├─► ma_discovery.press ─► enriched_sbir_ma_events.jsonl ─► capital_events.parquet (MA_EVENT)
+                                                  ├─► finalize_ma_events ─► enriched_sbir_ma_events.jsonl ─► capital_events.parquet (MA_EVENT)
 ma_discovery.orchestrator ────────────────────────┘                          ▲
        ▲                                                                     │
        └── runs only on Form-D-missing rows surfaced by detect_sbir_ma_events └── filter: confidence in {high, medium}
 ```
 
-Discovery is a candidate-expansion step that fires only for firms detect_sbir_ma_events emitted *without* Form D backing. Its output joins `sbir_ma_events.jsonl` before press enrichment, so discovered rows pick up press-wire signals the same way Form D-backed rows do. Until the press-enrichment CLI is wired up, discovery output can be concatenated directly into `enriched_sbir_ma_events.jsonl` (the file the builder reads); the field contract is the same.
+Discovery is a candidate-expansion step that fires only for firms detect_sbir_ma_events emitted *without* Form D backing. Its output joins `sbir_ma_events.jsonl` before finalization, so discovered rows reach the builder the same way Form D-backed rows do. Discovery output may also be concatenated directly into `enriched_sbir_ma_events.jsonl` (the file the builder reads); the field contract is the same.
 
 ### C3 collision rule
 
