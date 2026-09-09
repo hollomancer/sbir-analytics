@@ -231,7 +231,11 @@ not sufficient to evaluate it.
 ## Out of Scope
 
 - Composite "portfolio rank" / scoring construct — explicitly rejected.
-- Crunchbase / PitchBook integration (deferred to a future licensed-data spec).
+- Crunchbase / PitchBook / Carta *firm-level* integration (deferred to a
+  future licensed-data spec). Public aggregated report figures are listed as
+  cite-only YAML candidates in
+  [docs/research/private-capital-published-baselines.md](../../docs/research/private-capital-published-baselines.md);
+  they are not live `published_baselines.yaml` rows.
 - Causal-effect estimation. This spec is descriptive comparison only; any
   causal claims require IV / regression-discontinuity machinery beyond scope.
 - Patent rate in Phase 1 — deferred to Phase 2 (the asset does not accept

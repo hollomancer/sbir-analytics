@@ -1110,7 +1110,10 @@ The relevant literature is Lerner [L10], Howell [L11], and Kortum & Lerner
 - **Capital structure vs. comparable startup cohort**
   How does SBIR-firm capital structure benchmark against a matched cohort of
   comparable-stage privately backed startups?
-  *Deps: ER, SEC EDGAR*
+  **Status:** Not computable as a firm-level matched cohort from current Form D
+  and M&A files. Public round-size and conversion figures are recorded as
+  cited comparators only; they are not live baselines.
+  *Deps: ER, SEC EDGAR · Report: [public private-capital baseline candidates](research/private-capital-published-baselines.md) · Spec: [../specs/agency-private-capital-comparison/](../specs/agency-private-capital-comparison/)*
 
 ### F3. Inferential (Tier 3)
 
