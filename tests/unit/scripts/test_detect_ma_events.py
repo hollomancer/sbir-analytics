@@ -326,9 +326,14 @@ def test_merge_events_separate_companies():
 # --- Confidence ---
 
 
-def test_assign_confidence_form_d_is_high():
+def test_assign_confidence_form_d_alone_is_low():
+    """Superseded 2026-09-09. This asserted "high" and encoded the defect.
+
+    Form D Item 10 is acquirer-side, so the flag is not evidence the SBIR
+    firm was acquired and must not grade an exit.
+    """
     event = {"form_d_detail": {"filing_date": "2020-01-01"}, "efts_detail": None}
-    assert assign_confidence(event) == "high"
+    assert assign_confidence(event) == "low"
 
 
 def test_assign_confidence_subsidiary_is_high():
@@ -367,3 +372,40 @@ def test_build_signals_dict():
     assert signals["efts_subsidiary"] is True
     assert signals["efts_ma_definitive"] is True
     assert signals["efts_acquisition_text"] is False
+
+
+def test_form_d_combination_alone_does_not_grade_an_exit() -> None:
+    """Form D Item 10 is acquirer-side, so it must not grade an exit.
+
+    It previously returned "high" on its own, ranking a self-reported
+    boolean above EFTS full text that names a filer.
+    """
+    event = {"form_d_detail": {"filing_date": "2020-01-13"}, "efts_detail": None}
+    assert assign_confidence(event) == "low"
+
+
+def test_form_d_combination_is_still_recorded() -> None:
+    """Removed from the confidence ladder, retained as a signal.
+
+    It is real evidence of a combination in the other direction, and which
+    SBIR firms are acquiring is worth keeping.
+    """
+    event = {"form_d_detail": {"filing_date": "2020-01-13"}, "efts_detail": None}
+    assert build_signals_dict(event)["form_d_business_combination"] is True
+
+
+def test_efts_evidence_still_grades() -> None:
+    """A named-filer EFTS mention keeps its tier; only Form D changed."""
+    sub = {"form_d_detail": None, "efts_detail": {"mention_types": ["subsidiary"]}}
+    acq = {"form_d_detail": None, "efts_detail": {"mention_types": ["acquisition"]}}
+    assert assign_confidence(sub) == "high"
+    assert assign_confidence(acq) == "medium"
+
+
+def test_form_d_does_not_promote_an_efts_medium() -> None:
+    """A combination flag beside acquisition text must not lift it to high."""
+    event = {
+        "form_d_detail": {"filing_date": "2020-01-13"},
+        "efts_detail": {"mention_types": ["acquisition"]},
+    }
+    assert assign_confidence(event) == "medium"

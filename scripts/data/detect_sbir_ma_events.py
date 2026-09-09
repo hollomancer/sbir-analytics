@@ -182,13 +182,31 @@ def merge_events(
 
 
 def assign_confidence(event: dict) -> str:
-    """Assign confidence tier based on which signals fired."""
-    has_form_d = event.get("form_d_detail") is not None
+    """Grade how well the evidence supports the SBIR firm being *acquired*.
+
+    A Form D business-combination flag does not contribute. Form D Item 10
+    marks a Rule 145 transaction, which is a deemed offer and sale of
+    securities *by the issuer* to the other company's holders, so the filer is
+    the acquirer or surviving entity. A target issues nothing and has nothing
+    to report on Form D. Of 23 ``clarificationOfResponse`` texts read from
+    EDGAR on 2026-09-09, 18 state the issuer acquired, 5 describe a corporate
+    reorganization, and none describe the issuer as acquired.
+
+    The flag previously returned ``high`` on its own, which put a
+    self-reported acquirer-side boolean above EFTS full text that names a
+    filer and has passed directional review. 407 events carried it with no
+    other signal.
+
+    The flag is still recorded in ``signals.form_d_business_combination`` --
+    it is real evidence of a combination, in the other direction, and which
+    SBIR firms are doing the acquiring is a question worth keeping. It just
+    does not grade an exit.
+    """
     efts = event.get("efts_detail")
     has_efts_high = efts is not None and "subsidiary" in efts.get("mention_types", [])
     has_acq_text = efts is not None and ("acquisition" in efts.get("mention_types", []))
 
-    if has_form_d or has_efts_high:
+    if has_efts_high:
         return "high"
     elif has_acq_text:
         return "medium"
