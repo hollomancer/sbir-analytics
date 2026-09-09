@@ -5,10 +5,69 @@
 
 ## Summary
 
+> **Superseded 2026-09-09. The figures below overstate M&A exits and must not
+> be cited.** A Form D business-combination flag was graded `high` on its own.
+> Form D Item 10 marks a Rule 145 transaction, a deemed offer and sale of
+> securities *by the issuer* to the other company's holders — so the filer is
+> the **acquirer**, not the target. The pipeline counted acquirers as exits.
+> Corrected in `scripts/data/detect_sbir_ma_events.py`; see "2026-09-09
+> correction" below.
+
 Of 34,460 SBIR companies in the awards database, **2,790 (8.1%)
 show M&A signals** at high or medium confidence, and **1,197 (3.5%)
 at high confidence only**. Median time from first SBIR award to
 M&A event is **15 years** (H+M).
+
+## 2026-09-09 correction
+
+Two independent defects were found and fixed. Neither number below is a
+finding; this work is exploratory tier and non-citable.
+
+**Direction.** `assign_confidence` returned `high` on the Form D
+business-combination flag alone. Of 23 `clarificationOfResponse` texts read
+from EDGAR, 18 state the issuer acquired, 5 describe a corporate
+reorganization, and none describe the issuer as acquired. Corroborated by a
+monotone base-rate gradient with issuer size (2.1% at no revenue, 54.0% over
+$100M), a fully-subscribed-at-filing rate of 66.4% vs 30.8%, a 5.8-year median
+gap to any independent EFTS mention, and 3 of 3 testable confirmed targets
+carrying no flag. 407 events rested on this flag with no other signal.
+
+The flag is still recorded in `signals.form_d_business_combination`. It is real
+evidence of a combination in the other direction, and which SBIR firms are
+acquiring is a question worth keeping; it no longer grades an exit.
+
+**Join.** The SBIR-to-SEC join in `form_d_details.jsonl` is fuzzy on company
+name, and the detector ignored the `match_confidence.tier` already present in
+every record. 323 of the 374 business-combination records whose SEC filer name
+differs from the SBIR name under `RECIPIENT_V1` were already tier `low` — the
+scorer caught them and the consumer overrode it. Example: SBIR firm
+`3D Control Systems, Inc.` joined to filer `3D SYSTEMS CORP` (CIK 0000910638).
+
+**Effect on the tables below**, recomputed from committed code against the
+same inputs:
+
+| tier | published | corrected |
+|---|---:|---:|
+| High | 1,197 | **676** |
+| Medium | 1,593 | **1,211** |
+| High + Medium | 2,790 | **1,887** |
+| events total | 4,306 | 4,004 |
+
+High-plus-medium falls 32%. The 8.1% headline rate is not corrected here
+because the corrected artifacts have not been regenerated — see below.
+
+**Not yet done.** `data/sbir_ma_events.jsonl` still holds the published
+numbers. Regeneration needs `refine_ma_medium_tier.py`, roughly 1,200-1,600
+live SEC EDGAR fetches, and will move the medium tier by a further ~490 events
+for an unrelated reason: the shipped file was generated six days before PR #286
+merged, its generating code changed before merge, and it reproduces from no
+commit. The corrected rate should be computed once, after regeneration, rather
+than restated twice.
+
+Also outstanding: 81 surviving Form D matches await human adjudication
+(`data/processed/form_d_join_adjudication.jsonl`), stratified by qualifying
+signal because 84 of 141 survivors qualify on ZIP match alone and 58 of those
+share a ZIP with five or more SBIR firms.
 
 ## Methodology
 
@@ -92,7 +151,7 @@ original scan, so they are inherently weaker candidates.
 
 | Tier | Rule | Count |
 |------|------|-------|
-| High | Form D business combination OR EFTS `subsidiary` | 1,197 |
+| High | ~~Form D business combination OR~~ EFTS `subsidiary` | ~~1,197~~ 676 |
 | Medium | Text-confirmed acquisition direction (from original scan or expansion) | 1,593 |
 | Low | All other signals + demoted false positives | 1,516 |
 | **Total** | | **4,306** |
