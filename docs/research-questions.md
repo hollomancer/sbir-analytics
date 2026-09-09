@@ -1142,8 +1142,11 @@ Howell [L11] and Lerner [L10] questions are not estimable from that design.
   Phase I→II cohort component: 672 of 1,502 firms in the 2015–2019 vintage
   (44.7%, 95% Wilson interval 42.2%–47.3%). It does not yet answer this
   question because transition, survival, M&A, and patent channels were
-  unavailable in that run. It is not a crowd-in estimate.
-  *Deps: ER, SEC EDGAR · Refs: [L10], [L11], [L24] · Report: [NSF Phase I baseline review](research/agency-private-capital-phase1-nsf.md) · Spec: [../specs/agency-private-capital-comparison/](../specs/agency-private-capital-comparison/) (PR #321 merged, supersedes #311; agency-parameterized via the `agency_private_capital_baseline_comparison` asset in group `agency_private_capital`, with terminology changed from "VC" to "private capital")*
+  unavailable in that run. It is not a crowd-in estimate. A 2009Q1–2024Q4
+  Form D identity audit stages 311,809 issuer CIKs and 307,344 provisional
+  retained identities; exact-name SBIR exclusion has unknown recall, DERA has
+  no NAICS, and the controls are not match-ready.
+  *Deps: ER, SEC EDGAR · Refs: [L10], [L11], [L24] · Reports: [NSF Phase I baseline review](research/agency-private-capital-phase1-nsf.md), [Form D control-identity audit](research/agency-private-capital-form-d-control-universe.md) · Spec: [../specs/agency-private-capital-comparison/](../specs/agency-private-capital-comparison/) (PR #321 merged, supersedes #311; agency-parameterized via the `agency_private_capital_baseline_comparison` asset in group `agency_private_capital`, with terminology changed from "VC" to "private capital")*
 
 - <a id="f3-crowd-in-vs-crowd-out"></a>**Crowd-in vs. crowd-out**
   Does SBIR funding crowd in or crowd out subsequent private capital?

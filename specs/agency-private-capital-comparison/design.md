@@ -2,11 +2,12 @@
 
 ## Architecture
 
-Builds on existing SBIR identification, transition detection, PATLINK,
-entity-resolution pipelines, and (post-merge) the SEC EDGAR / Form D / M&A
-infrastructure landed by PR #286. New code lives in
-`packages/sbir-analytics/sbir_analytics/assets/agency_private_capital/` (an outcomes-comparison
-artifact, parallel to `follow_on_multiplier/`).
+Builds on existing SBIR identification, transition detection, and entity-resolution
+pipelines, with narrow reuse of the SBIR-focused SEC EDGAR / Form D / M&A
+infrastructure landed by PR #286. PR #286 did not deliver a maintained broad
+control producer, a complete SBIR-CIK set, or a Phase 2 PATLINK input. New code
+lives in `packages/sbir-analytics/sbir_analytics/assets/agency_private_capital/`
+(an outcomes-comparison artifact, parallel to `follow_on_multiplier/`).
 
 ## Phase 1 — Published-Baseline Comparison
 
@@ -66,66 +67,97 @@ SBIR.gov awards → filter by agency_code (default NSF: ALN ∈ {47.041, 47.084}
 
 ## Phase 2 — NSF-vs-Private-Capital Matched Cohort
 
-Gated on PR #286 merging to main. Phase 2 is a pure analysis layer over
-#286's outputs — no ingest, no parsing, no CIK resolution.
+Phase 2 remains gated on Phase 1 sign-off, higher-recall identity exclusion,
+validated matching covariates, and symmetric outcomes. It is not a pure analysis
+layer over PR #286: the broad issuer universe comes from the maintained official
+SEC DERA quarterly bulk source, and PR #286's SBIR-focused CIK evidence is not a
+complete resolution set.
 
 ### Data Flow
 
 ```
-#286 outputs:                              SBIR awards:
-  - sec_edgar_enrichment asset               - NSF filter (ALN 47.041/47.084)
-  - sbir_ma_events.jsonl                          ↓
-  - resolved CIK ↔ SBIR-company set         NSF SBIR cohort
+Official SEC DERA Form D:                 SBIR awards:
+  quarterly ZIPs, 2009Q1–2024Q4             all historical company names
        ↓                                          ↓
-filter Form D index → drop matches ↔ any SBIR co
+broad issuer staging universe            ORGANIZATION_KEY_V1 exact keys
+       ↓                                          ↓
+candidate exact-name SBIR-CIK exclusion evidence
        ↓
-non-SBIR Form D control universe
+filtered disjoint identity-only controls
+  complete_sbir_exclusion=false
+  covariates_ready=false
        ↓
-bucket by (filing year, NAICS-2, state)
+       STOP: matched asset must not consume staging
+       ↓ after future gates
+higher-recall authoritative CIK/alias union + validated SIC→NAICS-2 strategy
+       ↓                                          ↓
+eligible controls                         configured-agency treated cohort
        ↓                                          ↓
                 cohort matching (coarsened-exact)
                         ↓
-              compute outcomes on both sides:
-                - federal-contract presence (FPDS join, both sides)
-                - patent rate (PATLINK, both sides)
-                - M&A exit rate (#286 events, both sides)
-                - Phase graduation / survival (NSF only, control N/A)
+              symmetric outcome contracts:
+                - federal-contract presence (both sides; not yet wired)
+                - patent presence (both sides; not yet wired)
+                - M&A exit rate (both sides; control evidence absent)
+                - Phase graduation / survival (agency only, control N/A)
                         ↓
               cohort-vs-cohort delta + threats-to-validity
 ```
 
 ### Components
 
-5. **`NSFAwardeeFilter`** — Apply ALN 47.041 / 47.084 filter to the
-   SBIR-CIK resolution set produced by #286's `sec_edgar_enrichment`.
-   Output: NSF-CIK set + NSF-UEI set.
-6. **`PrivateCapitalControlCohortBuilder`** — Read #286's Form D index
-   table, drop any issuer whose CIK appears in the broader SBIR-CIK set
-   (not just NSF — we want the control to be capital-financed-but-no-SBIR
-   firms, period). Bucket the remainder by (filing-year, NAICS-2, state).
+5. **`AgencyAwardeeFilter`** — Apply the configured agency's ALNs (NSF initially:
+   47.041 / 47.084) to the observed SBIR award history, preserve every historical
+   organization name present there, and later join to the validated authoritative
+   CIK/alias union. Output agency CIK and UEI sets with provenance. PR #286's
+   heuristic resolution is candidate evidence, not the canonical complete set.
+6. **`PrivateCapitalControlCohortBuilder`** — The bounded prerequisite is
+   partially implemented as `scripts/data/build_form_d_control_universe.py`.
+   It reads official SEC DERA quarterly Form D bulk ZIPs over the closed
+   2009Q1–2024Q4 window and emits deterministic manifests plus:
+
+   - the broad issuer universe;
+   - candidate SBIR-CIK exclusion evidence from exact equality after normalizing
+     every historical name present in the SBIR award history and all issuer
+     names with `CompanyNameProfile.ORGANIZATION_KEY_V1`; and
+   - filtered, disjoint identity-only control staging.
+
+   Exact-name exclusion recall is unknown. The manifest therefore states
+   `complete_sbir_exclusion=false`; retained means only not exact-name-matched to
+   observed SBIR history, not "never SBIR." DERA supplies SIC and Form D industry
+   group, not NAICS. The producer performs no NAICS inference and states
+   `covariates_ready=false`. Component 6 remains open until a higher-recall
+   authoritative CIK/alias union and validated SIC-to-NAICS-2 strategy exist.
 7. **`CohortMatcher`** — Coarsened-exact matching on (vintage-year,
-   NAICS-2, state). Reports cohort balance and unmatched residuals. No
-   propensity scoring in v1 — intentionally simple and reproducible.
-8. **`MatchedCohortOutcomes`** — Joins both cohorts to FPDS contracts,
-   PATLINK patents, and #286's M&A events table. Emits per-cohort rates
-   with Wilson CIs.
+   validated NAICS-2, state). Reports cohort balance and unmatched residuals.
+   No propensity scoring in v1. The existing asset must reject component 6's
+   staging output while either manifest gate is false.
+8. **`MatchedCohortOutcomes`** — Eventually joins both cohorts to symmetric
+   federal-contract, patent, and M&A evidence and emits per-cohort rates with
+   Wilson CIs. Today the scaffold has no real FPDS or patent input, and #286's
+   M&A artifact is SBIR-only. Missing inputs are unavailable, not zero; symmetric
+   outcome sources belong in separate follow-on PRs.
 9. **`ThreatsToValidity`** — Emits the structured caveats record. Required
    entries:
    - SAFE/convertible undercount (Form D weak on these)
    - Late-stage Form D inclusion (we are intentionally broader than seed)
-   - NAICS self-report noise on Form D issuers
-   - #286's CIK-resolution recall (~28% of SBIR companies appear in EDGAR)
+   - Unknown recall of exact-name SBIR-CIK exclusion, including aliases and renames
+   - Validity of the future SIC-to-NAICS-2 mapping
    - Technical-merit vs. lawyer-access selection bias
-   - Control-cohort excludes pre-Form-D SBIR awardees who *later* raised
-     capital (timing leak)
+   - Control-cohort timing leakage
 
    This component runs *first* and gates the headline output — if any
    required caveat is missing or stale, the headline is suppressed.
 
-### Output
+### Target output
 
-- `nsf_vs_form_d_comparison.parquet` — long-format cohort-vs-cohort metrics
-- `nsf_vs_form_d_comparison.md` — headline reconciliation narrative
+These are target outputs after the identity, covariate, and outcome gates pass;
+the provisional staging producer must not trigger them.
+
+- `agency_vs_form_d_comparison.parquet` — long-format cohort-vs-cohort metrics
+- `agency_vs_form_d_matched_pairs.parquet` — matched treated-control rows
+- `agency_vs_form_d_comparison.md` — headline reconciliation narrative
+- `match_balance.json` — cohort balance and unmatched residuals
 - `threats_to_validity.json` — gating caveats record
 
 ## Methodology Notes
@@ -136,9 +168,9 @@ Per user direction: broader Form D coverage (debt, late-stage, multiple
 instrument types) is treated as feature. The framing is "private capital
 broadly" rather than "seed VC narrowly." This makes the comparison more
 robust to SAFE undercount (a seed-stage-specific blind spot) at the cost
-of a coarser instrument mix. PR #286's Form D scoring tiers are exposed
-to downstream readers via component 12 of the requirements so they can
-zoom in on a tighter slice if they want.
+of a coarser instrument mix. The DERA source provides SIC and Form D industry
+group, not NAICS. PR #286's Form D scoring tiers may be exposed to downstream
+readers only after their compatibility with the DERA schema is verified.
 
 ### Why no propensity scoring in v1
 
@@ -157,27 +189,33 @@ same posture as `follow-on-multiplier-analysis`. Causal claims (e.g., "NSF
 SBIR causes N% higher transition than private capital would have")
 require RDD or IV designs and are out of scope.
 
-### Why Phase 2 doesn't extend `VendorCrosswalk`
+### Why exact-name staging is not the identity contract
 
-Earlier draft proposed extending `VendorCrosswalk` with a CIK field. PR
-#286 already does CIK resolution (via 3-layer filtering with city
-disambiguation) and exposes the resolved set as the canonical SBIR-CIK
-mapping. Modifying `VendorCrosswalk` here would conflict with #286 or
-duplicate effort — defer any cross-cutting refactor to a follow-on once
-both branches have settled.
+The staging producer deliberately uses one auditable rule:
+`CompanyNameProfile.ORGANIZATION_KEY_V1` followed by exact equality. That rule
+produces useful candidate exclusion evidence and disjoint included/excluded CIK
+sets, but it misses aliases, renames, acquisitions, and other identity changes.
+PR #286's heuristic matching also does not establish complete recall. Phase 2
+therefore needs a separately validated, higher-recall authoritative CIK/alias
+union before it may call an issuer SBIR-excluded. Whether that union extends
+`VendorCrosswalk` or another identity component is a follow-on design decision.
 
 ## Risks
 
-- **PR #286 merges with significant changes to its output schema**: the
-  Phase 2 components reference #286's table layout. If #286's review
-  prompts schema changes before merge, Phase 2's data-access layer needs
-  a one-pass update. Cost: ~1 day of touch-up, not a blocker.
+- **False control eligibility**: exact normalized-name exclusion has unknown
+  recall. Aliases, renames, and acquisitions can leave historical SBIR firms in
+  staging. Do not consume it until the authoritative union is validated.
+- **Covariate incompatibility**: DERA has SIC and Form D industry group, not
+  NAICS. A convenient unvalidated mapping would change the match estimand. Keep
+  `covariates_ready=false` until the SIC-to-NAICS-2 strategy passes validation.
+- **Outcome asymmetry**: FPDS and patent inputs are absent, and #286's M&A events
+  cover the SBIR side only. Missing evidence must remain unavailable, not zero.
 - **NSF cohort size**: NSF SBIR is smaller than DoD; vintage-stratified
   Wilson intervals may be wide. Pre-register minimum cohort size (n=50
   per stratum) before reporting stratified rates.
 - **Form D control cohort dwarfs NSF cohort**: many more Form D filers
   than NSF awardees. Matched-cohort reporting must match 1:k or use
   weighting; document explicitly.
-- **Timing leak in control cohort**: Form D issuers may have filed *after*
-  receiving SBIR. Today's spec drops issuers matched to SBIR ever.
-  Acceptable for v1, flagged in threats-to-validity.
+- **Timing leak in control cohort**: Form D issuers may have filed after receiving
+  SBIR. The target authoritative union excludes any observed historical SBIR
+  identity; the provisional exact-name stage cannot claim that coverage.
