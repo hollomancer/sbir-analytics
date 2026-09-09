@@ -116,12 +116,10 @@ def test_orchestrator_end_to_end(tmp_path, monkeypatch):
                 "confidence": "high",
                 "acquirer": "GiantCo",
                 "signals": {},
-                "press_wire_signals": {},
                 "signal_count": 1,
                 "form_d_detail": None,
                 "efts_detail": None,
                 "sbir_context": {"agency": "DoD"},
-                "enriched": True,
             }
         )
         + "\n"

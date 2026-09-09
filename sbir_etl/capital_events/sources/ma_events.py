@@ -45,9 +45,7 @@ def build_ma_events(cohort: Iterable[dict], source_path: Path) -> Iterator[dict]
                 "metadata": json.dumps(
                     {
                         "signals": rec.get("signals") or {},
-                        "press_wire_signals": rec.get("press_wire_signals") or {},
                         "signal_count": rec.get("signal_count"),
-                        "enriched": rec.get("enriched", False),
                     }
                 ),
             }

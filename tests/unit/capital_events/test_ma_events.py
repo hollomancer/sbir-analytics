@@ -13,12 +13,10 @@ def _ma_row(name, date, confidence, acquirer=None, signals=None, press=None):
         "confidence": confidence,
         "acquirer": acquirer,
         "signals": signals or {},
-        "press_wire_signals": press or {},
         "signal_count": 1,
         "form_d_detail": None,
         "efts_detail": None,
         "sbir_context": {"agency": "DoD"},
-        "enriched": True,
     }
 
 
@@ -58,7 +56,14 @@ def test_returns_empty_when_file_missing(cohort, tmp_path):
     assert list(build_ma_events(cohort, tmp_path / "nope.jsonl")) == []
 
 
-def test_metadata_carries_signals_and_press_wire(cohort, tmp_path):
+def test_metadata_carries_signals(cohort, tmp_path):
+    """Press-wire fields were removed 2026-09-09.
+
+    This asserted press_wire_signals was a dict keyed by
+    acquisition_announcement_count. The producer wrote a list of release dicts,
+    so the contract never matched what reached disk. The stage is deprecated;
+    see the design amendment.
+    """
     src = tmp_path / "ma.jsonl"
     src.write_text(
         json.dumps(
@@ -67,7 +72,6 @@ def test_metadata_carries_signals_and_press_wire(cohort, tmp_path):
                 "2023-06-15",
                 "high",
                 signals={"form_d_business_combination": True},
-                press={"acquisition_announcement_count": 3},
             )
         )
         + "\n"
@@ -75,4 +79,3 @@ def test_metadata_carries_signals_and_press_wire(cohort, tmp_path):
     events = list(build_ma_events(cohort, src))
     meta = json.loads(events[0]["metadata"])
     assert meta["signals"]["form_d_business_combination"] is True
-    assert meta["press_wire_signals"]["acquisition_announcement_count"] == 3

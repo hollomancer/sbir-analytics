@@ -14,7 +14,14 @@ A web-search-based discovery path can recover some of those, but only if the row
 
 The capital-events builder at `sbir_etl/capital_events/sources/ma_events.py:13-55` reads `data/enriched_sbir_ma_events.jsonl` and filters on `confidence in {"high", "medium"}` (string tier, not a numeric score). The pipeline shape is fixed; discovery must conform to it.
 
-Note: `detect_sbir_ma_events.py` writes `data/sbir_ma_events.jsonl`; the builder reads `data/enriched_sbir_ma_events.jsonl`. Press-wire enrichment lives at `sbir_etl.enrichers.ma_discovery.press` and wraps `SyncPressWireClient`. Discovery integration still assumes that glue runs before the builder.
+Note: `detect_sbir_ma_events.py` writes `data/sbir_ma_events.jsonl`; the builder reads `data/enriched_sbir_ma_events.jsonl`.
+
+**Amended 2026-09-09: the press-wire enrichment stage is removed.** `sbir_etl.enrichers.ma_discovery.press` is deleted and the builder's input is produced by the detect and refine steps alone. Two reasons, the first structural:
+
+1. **It could never meet this spec's declared `pipelines` tier.** The stage polls live RSS feeds, so its output is a function of wall-clock time. `docs/steering/epistemic-tiers.md` requires a `pipelines` artifact be "reproducible from a declared data cut" and re-runnable to the same result. A live news poll is neither. The stage was exploratory-tier work wired into a pipelines-tier artifact path, and that mis-tiering is what let `enriched_sbir_ma_events.jsonl` drift out of step with its own upstream.
+2. **Its output was entirely false positives.** `PressWireClient._match_company` matches a normalized company name as an unanchored substring, so `BAL` matched "glo**bal**", `APP` matched "**app**roximately", and `ATI` matched "n**ati**onwide". All 18 matched releases in the shipped artifact were spurious; 391 of 3,980 watchlist names are five characters or fewer. Tracked as issue #708 — the matcher still affects the weekly digest, which is why `press_wire.py` itself is kept and repaired separately.
+
+`press_wire_signals` and `enriched` are dropped from the capital-event metadata. The builder's input filename is unchanged; which M&A vintage it should read is a separate, measured decision.
 
 **Adopted: option C with collision rule C3.**
 
@@ -89,7 +96,7 @@ class MAEvent(BaseModel):
 ## Out of scope for v1
 
 - Auto-tuning the confidence thresholds against a labeled set. Use the boundary thresholds above and revisit after the first manual run.
-- Press-release scraping beyond the existing `SyncPressWireClient` (in `sbir_etl/enrichers/press_wire.py`). `sbir_etl.enrichers.ma_discovery.press` wraps this client and stays in the pipeline as a sibling step.
+- Press-release scraping. The `sbir_etl.enrichers.ma_discovery.press` sibling step was removed 2026-09-09; see the amendment above. `sbir_etl/enrichers/press_wire.py` remains for the weekly digest, which is a forward-looking use a live feed suits.
 - Discovery for non-Form-D-missing firms ("would discovery surface a *better* signal for a row Form D already covered?"). Adds cost without clearly improving recall.
 - A graph loader for discovered M&A events. They flow into `capital_events.parquet` like every other source; the Neo4j path picks them up at the existing `MAEventLoader`.
 
