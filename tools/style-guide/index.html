@@ -252,9 +252,14 @@
     background: var(--surface);
   }
 
-  .grid-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(290px, 1fr)); gap: 1rem; }
+  .grid-2 {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(290px, 100%), 1fr));
+    gap: 1rem;
+  }
+  .grid-2 > *, .plate { min-width: 0; }
   .stack { display: grid; gap: 1.05rem; }
-  .note { margin: 0; color: var(--muted); font-size: 0.82rem; }
+  .note { margin: 0; color: var(--muted); font-size: 0.82rem; overflow-wrap: anywhere; }
   .inline-code, code { font-family: var(--mono); font-size: 0.78rem; }
 
   /* ---------- enforcement flags ---------- */
@@ -282,7 +287,12 @@
   .flag-key div { display: grid; gap: 0.25rem; justify-items: start; max-width: 20rem; }
 
   /* ---------- systems ---------- */
-  .systems { display: grid; grid-template-columns: repeat(auto-fit, minmax(215px, 1fr)); gap: 0.8rem; }
+  .systems {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(215px, 100%), 1fr));
+    gap: 0.8rem;
+  }
+  .systems > * { min-width: 0; }
 
   .system {
     display: grid;
@@ -327,7 +337,7 @@
   }
 
   .ctl { display: inline-flex; align-items: center; gap: 0.45rem; color: var(--muted); font-size: 0.78rem; font-weight: 650; }
-  .ctl input[type="range"] { width: 128px; accent-color: var(--dod-award); }
+  .ctl input[type="range"] { width: min(128px, 100%); accent-color: var(--dod-award); }
   .ctl input[type="checkbox"] { width: 1rem; height: 1rem; margin: 0; accent-color: var(--candidate); }
 
   .readout { color: var(--text); font-family: var(--mono); font-size: 0.74rem; font-variant-numeric: tabular-nums; }
@@ -389,6 +399,33 @@
   /* ---------- specimens ---------- */
   .type-spec { display: grid; gap: 0.3rem; padding: 0.8rem 0; border-top: 1px solid var(--border); }
   .type-spec .meta { margin: 0; color: var(--muted); font-family: var(--mono); font-size: 0.68rem; }
+
+  /* Explorer type scale, used only by the typography specimens.
+     Page chrome (.eyebrow, h3) stays denser; these match
+     tools/sbir-dib-network-explorer/styles.css. */
+  .explorer-h1 {
+    font-size: clamp(1.45rem, 3vw, 2.15rem);
+    font-weight: 650;
+    letter-spacing: -0.035em;
+  }
+  .explorer-h2 {
+    font-size: 1.25rem;
+    font-weight: 650;
+    line-height: 1.25;
+  }
+  .explorer-h3 {
+    font-size: 0.9rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+  .explorer-eyebrow {
+    margin: 0;
+    color: var(--muted);
+    font-size: 0.74rem;
+    font-weight: 700;
+    letter-spacing: 0.11em;
+    text-transform: uppercase;
+  }
 
   button.demo {
     min-height: 40px;
@@ -566,11 +603,16 @@
   @media (max-width: 880px) {
     .shell { grid-template-columns: 1fr; }
     .rail { position: static; height: auto; border-right: 0; border-bottom: 1px solid var(--border); }
-    .rail nav { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); }
+    .rail nav { grid-template-columns: repeat(auto-fit, minmax(min(150px, 100%), 1fr)); }
     .theme-switch { max-width: 250px; margin-top: 0; }
     .tok, .tok-head { grid-template-columns: 2.1rem minmax(0, 1fr) auto; }
     .tok .hex ~ .hex, .tok-head span:nth-child(4) { display: none; }
     .tok .meaning, .tok-head span:nth-child(5) { display: none; }
+    .grid-2, .systems { grid-template-columns: 1fr; }
+    .rung { grid-template-columns: 1fr; }
+    .detail-metrics { grid-template-columns: 1fr; }
+    .guardrail { flex-wrap: wrap; }
+    canvas { height: 220px; }
   }
 </style>
 </head>
@@ -725,8 +767,10 @@
         <div class="canvas-controls">
           <label class="ctl"><input type="checkbox" id="cand-toggle" />Candidate association</label>
           <label class="ctl">Obligation<input type="range" id="amount" min="3" max="9" step="0.1" value="6.4" /></label>
+          <label class="ctl">Fiscal years<input type="range" id="years" min="1" max="6" step="1" value="4" /></label>
           <span class="readout" id="amount-out"></span>
           <span class="readout" id="width-out"></span>
+          <span class="readout" id="alpha-out"></span>
         </div>
       </div>
 
@@ -734,7 +778,8 @@
         Edge thickness is logarithmic in dollars, clamped to a 0.8–5&nbsp;px band:
         <code>max(0.8, min(5, 0.8 + log10(amount + 1) / 3))</code>. The clamp is the point — a $2B
         prime contract must not visually erase a $150k Phase&nbsp;I award. Opacity separately encodes
-        persistence: <code>0.34 + min(0.36, fiscal_years × 0.07)</code>.
+        persistence: <code>0.34 + min(0.36, fiscal_years × 0.07)</code>. Both channels apply on the
+        same stroke, matching the explorer.
       </p>
     </section>
 
@@ -903,19 +948,19 @@
       <div class="stack">
         <div class="plate">
           <div class="type-spec">
-            <div style="font-size: clamp(1.45rem, 3vw, 2.15rem); letter-spacing: -0.035em; font-weight: 650;">NSF SBIR → DIB Explorer</div>
+            <div class="explorer-h1">NSF SBIR → DIB Explorer</div>
             <p class="meta">h1 · clamp(1.45rem, 3vw, 2.15rem) · tracking −0.035em</p>
           </div>
           <div class="type-spec">
-            <div style="font-size: 1.25rem; line-height: 1.25; font-weight: 650;">Select an organization</div>
+            <div class="explorer-h2">Select an organization</div>
             <p class="meta">h2 · 1.25rem / 1.25</p>
           </div>
           <div class="type-spec">
-            <div style="font-family: var(--mono); font-size: 0.72rem; font-weight: 700; letter-spacing: 0.09em; text-transform: uppercase; color: var(--muted);">Evidence and interpretation</div>
-            <p class="meta">h3 · uppercase · tracking 0.06em</p>
+            <div class="explorer-h3">Evidence and interpretation</div>
+            <p class="meta">h3 · 0.9rem · uppercase · tracking 0.06em</p>
           </div>
           <div class="type-spec">
-            <p class="eyebrow">Evidence-gated funding lineage</p>
+            <p class="explorer-eyebrow">Evidence-gated funding lineage</p>
             <p class="meta">.eyebrow · 0.74rem · weight 700 · tracking 0.11em</p>
           </div>
           <div class="type-spec">
@@ -1463,7 +1508,11 @@
 
     /* ---------------- contrast ---------------- */
     function hexToRgb(hex) {
-      var h = hex.replace("#", "");
+      var v = (hex || "").trim();
+      var rgb = v.match(/^rgba?\(\s*([.\d]+)\s*,\s*([.\d]+)\s*,\s*([.\d]+)/);
+      if (rgb) return [Number(rgb[1]), Number(rgb[2]), Number(rgb[3])];
+      var h = v.replace("#", "");
+      if (h.length === 3) h = h.charAt(0) + h.charAt(0) + h.charAt(1) + h.charAt(1) + h.charAt(2) + h.charAt(2);
       return [parseInt(h.slice(0, 2), 16), parseInt(h.slice(2, 4), 16), parseInt(h.slice(4, 6), 16)];
     }
 
@@ -1485,15 +1534,15 @@
 
     function renderContrast() {
       var dark = isDark();
-      // Read the live token so the ratios track the stylesheet; the literals
-      // are only a fallback for a stylesheet that fails to load.
+      // Read live custom properties so the ratios track stylesheet edits;
+      // TOKENS literals are only a fallback for a stylesheet that fails to load.
       var surface = cssVar("--surface") || (dark ? "#151c24" : "#ffffff");
       contrastBox.textContent = "";
 
       RECORD_TOKENS.forEach(function (name) {
         var t = TOKENS.find(function (x) { return x.name === name; });
         if (!t) return;
-        var value = dark ? t.dark : t.light;
+        var value = cssVar(name) || (dark ? t.dark : t.light);
         var r = ratio(value, surface);
 
         var row = document.createElement("div");
@@ -1501,7 +1550,7 @@
 
         var label = document.createElement("span");
         var sw = document.createElement("i");
-        sw.style.cssText = "display:inline-block;width:1rem;height:1rem;border-radius:4px;vertical-align:-2px;margin-right:.5rem;background:" + value;
+        sw.style.cssText = "display:inline-block;width:1rem;height:1rem;border-radius:4px;vertical-align:-2px;margin-right:.5rem;background:var(" + name + ")";
         var nm = document.createElement("code");
         nm.textContent = t.name;
         label.append(sw, nm);
@@ -1522,9 +1571,10 @@
       var note = document.createElement("p");
       note.className = "note";
       note.style.marginTop = "0.9rem";
-      note.textContent = dark
-        ? "Measured against --surface #151c24. Dark-theme hues are deliberately lifted to pastels; the saturated light-theme values would sit below 3:1 on this ground."
-        : "Measured against --surface #ffffff. Light-theme hues are deepened for the same reason in reverse.";
+      note.textContent = "Measured against --surface " + surface + ". " +
+        (dark
+          ? "Dark-theme hues are deliberately lifted to pastels; the saturated light-theme values would sit below 3:1 on this ground."
+          : "Light-theme hues are deepened for the same reason in reverse.");
       contrastBox.appendChild(note);
     }
 
@@ -1601,16 +1651,18 @@
     var ctx = canvas.getContext("2d");
     var candToggle = document.getElementById("cand-toggle");
     var amountInput = document.getElementById("amount");
+    var yearsInput = document.getElementById("years");
     var amountOut = document.getElementById("amount-out");
     var widthOut = document.getElementById("width-out");
+    var alphaOut = document.getElementById("alpha-out");
 
     // Column positions and shapes are the shipped kindDefinitions.
     var NODES = [
-      { label: "NSF", column: 0.07, shape: "square", token: "--agency" },
-      { label: "Award 2149…", column: 0.25, shape: "roundRect", token: "--nsf-award" },
-      { label: "Adv. materials", column: 0.43, shape: "diamond", token: "--technology" },
-      { label: "Meridian Labs", column: 0.61, shape: "circle", token: "--entity" },
-      { label: "N6833523C0142", column: 0.86, shape: "roundRect", token: "--dod-award" }
+      { label: "NSF", short: "NSF", column: 0.07, shape: "square", token: "--agency" },
+      { label: "Award 2149…", short: "Award", column: 0.25, shape: "roundRect", token: "--nsf-award" },
+      { label: "Adv. materials", short: "CET", column: 0.43, shape: "diamond", token: "--technology" },
+      { label: "Meridian Labs", short: "Entity", column: 0.61, shape: "circle", token: "--entity" },
+      { label: "N6833523C0142", short: "DoD", column: 0.86, shape: "roundRect", token: "--dod-award" }
     ];
 
     function cssVar(name) {
@@ -1650,10 +1702,13 @@
 
       var amount = Math.pow(10, parseFloat(amountInput.value));
       var lw = edgeWidth(amount);
+      var years = parseFloat(yearsInput.value);
+      var alpha = 0.34 + Math.min(0.36, years * 0.07);
       var candidate = candToggle.checked;
+      var narrow = w < 560;
       var y = h / 2 - 6;
-      var r = 11;
-      var pad = 40;
+      var r = narrow ? 8 : 11;
+      var pad = narrow ? 22 : 40;
 
       var pts = NODES.map(function (n) {
         return { x: pad + n.column * (w - pad * 2), node: n };
@@ -1666,8 +1721,10 @@
         ctx.lineTo(pts[i + 1].x, y);
         ctx.strokeStyle = last && candidate ? cssVar("--candidate") : cssVar("--edge");
         ctx.lineWidth = last ? lw : 1.4;
+        ctx.globalAlpha = alpha;
         ctx.setLineDash(last && candidate ? [7, 5] : []);
         ctx.stroke();
+        ctx.globalAlpha = 1;
       }
       ctx.setLineDash([]);
 
@@ -1677,10 +1734,10 @@
         ctx.fill();
 
         ctx.fillStyle = cssVar("--text");
-        ctx.font = "11px " + cssVar("--sans");
+        ctx.font = (narrow ? "10px " : "11px ") + cssVar("--sans");
         ctx.textAlign = "center";
         ctx.textBaseline = "top";
-        ctx.fillText(p.node.label, p.x, y + r + 10);
+        ctx.fillText(narrow ? p.node.short : p.node.label, p.x, y + r + 10);
       });
 
       var midX = (pts[pts.length - 2].x + pts[pts.length - 1].x) / 2;
@@ -1688,16 +1745,22 @@
       ctx.font = "10px " + cssVar("--mono");
       ctx.textAlign = "center";
       ctx.textBaseline = "bottom";
-      ctx.fillText(candidate ? "candidate association" : "verified observation", midX, y - 16);
+      ctx.fillText(
+        candidate ? (narrow ? "candidate" : "candidate association") : (narrow ? "verified" : "verified observation"),
+        midX,
+        y - 16
+      );
 
       amountOut.textContent = "$" + new Intl.NumberFormat("en-US", {
         notation: "compact", maximumFractionDigits: 1
       }).format(amount);
       widthOut.textContent = "lineWidth " + lw.toFixed(2) + "px";
+      alphaOut.textContent = "α " + alpha.toFixed(2);
     }
 
     candToggle.addEventListener("change", drawLineage);
     amountInput.addEventListener("input", drawLineage);
+    yearsInput.addEventListener("input", drawLineage);
     window.addEventListener("resize", drawLineage);
 
     /* ---------------- refresh ---------------- */

@@ -8,14 +8,16 @@ the prose conventions, and the epistemic tier ladder.
 
 ## Run locally
 
-From this directory:
+Open `index.html` in a browser. `file://` is enough — the page fetches nothing.
+
+A local server is optional. Any free port works; 8080 is already the network
+explorer's documented port, so pick another if both are open:
 
 ```bash
-python -m http.server 8080
+python -m http.server 8765
 ```
 
-Open <http://localhost:8080>. Unlike the network explorer, this page fetches
-nothing and also opens correctly from a `file://` URL.
+Then open <http://localhost:8765>.
 
 ## What it is
 
