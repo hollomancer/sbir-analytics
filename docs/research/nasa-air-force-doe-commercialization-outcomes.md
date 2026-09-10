@@ -1,5 +1,7 @@
 # NASA, Air Force, and DOE SBIR/STTR commercialization outcomes
 
+**Audience:** policy staff and program officers; exploratory / non-citable.
+
 **Status:** Exploratory — non-citable
 
 **Observation cutoff:** 2024-12-31
@@ -128,9 +130,10 @@ is not evidence that a program change caused the increase.
   that firm's first Phase II from the agency.
 - Contract evidence comes from USAspending Contracts_Full archives for
   FY2009–FY2025. FY2025 is needed for calendar Q4 2024. Phase I/II actions are
-  removed using research codes and known Phase I/II PIIDs. Phase III and
-  uncoded prime contracts remain. Signed transaction obligations are summed;
-  deobligation-only histories do not count as a positive signal.
+  removed using research codes and dash-stripped Phase I/II PIIDs. Coded Phase
+  III modifications of those vehicles, and uncoded primes on other PIIDs,
+  remain. Signed transaction obligations are summed; deobligation-only
+  histories do not count as a positive signal.
 - Form D uses actual amount sold, excludes incompatible industry groups, and
   collapses amendments by CIK, first-sale date, and security type. High
   confidence is primary; high plus medium is a sensitivity.

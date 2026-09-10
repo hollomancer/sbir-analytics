@@ -15,6 +15,7 @@ import argparse
 import hashlib
 import json
 import math
+import re
 from collections import defaultdict
 from collections.abc import Iterable
 from dataclasses import dataclass
@@ -26,6 +27,7 @@ import numpy as np
 import pandas as pd
 
 from sbir_etl.identity import CompanyNameProfile, normalize_company_name
+from sbir_etl.utils.identifiers import normalize_duns, normalize_uei
 
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -67,6 +69,17 @@ PHASE_I_II_RESEARCH_MARKERS = frozenset(
     }
 )
 
+PHASE_III_RESEARCH_MARKERS = frozenset(
+    {
+        "SR3",
+        "ST3",
+        "SMALL BUSINESS INNOVATION RESEARCH PROGRAM PHASE III ACTION",
+        "SMALL TECHNOLOGY TRANSFER RESEARCH PROGRAM PHASE III",
+    }
+)
+
+_BLANK_IDENTIFIERS = frozenset({"", "NAN", "NONE", "NULL", "<NA>"})
+
 
 def parse_date(value: object) -> date | None:
     if value is None or pd.isna(value):
@@ -99,7 +112,26 @@ def clean_identifier(value: object) -> str:
     if value is None or pd.isna(value):
         return ""
     text = str(value).strip().upper()
-    return "" if text in {"", "NAN", "NONE", "NULL"} else text
+    return "" if text in _BLANK_IDENTIFIERS else text
+
+
+def normalize_piid(value: object) -> str:
+    """Dash-stripping PIID key shared with award-file vs USAspending matching."""
+    text = clean_identifier(value)
+    return re.sub(r"[^A-Z0-9]", "", text) if text else ""
+
+
+def uei_alias(value: object) -> str:
+    return normalize_uei(value) or ""
+
+
+def duns_alias(value: object) -> str:
+    if value is None or pd.isna(value):
+        return ""
+    text = str(value).strip()
+    if text.endswith(".0") and text[:-2].isdigit():
+        text = text[:-2]
+    return normalize_duns(text) or ""
 
 
 def first_nonblank(*values: object) -> object | None:
@@ -189,8 +221,8 @@ def build_cohort(awards_path: Path, cutoff: date) -> CohortData:
     )
     awards = awards[awards["award_date"].map(lambda value: value is not None and value <= cutoff)]
     awards["name_alias"] = awards["Company"].map(normalized_name)
-    awards["uei_alias"] = awards["UEI"].map(clean_identifier)
-    awards["duns_alias"] = awards["Duns"].map(clean_identifier)
+    awards["uei_alias"] = awards["UEI"].map(uei_alias)
+    awards["duns_alias"] = awards["Duns"].map(duns_alias)
     awards["award_amount"] = awards["Award Amount"].map(parse_amount)
 
     union_find = UnionFind()
@@ -222,14 +254,11 @@ def build_cohort(awards_path: Path, cutoff: date) -> CohortData:
     phase2 = awards[
         awards["agency_label"].notna() & (awards["Phase"].str.strip() == "Phase II")
     ].copy()
-    anchors = (
-        phase2.groupby(["agency_label", "firm_id"], as_index=False)
-        .agg(
-            anchor_date=("award_date", "min"),
-            phase_ii_awards=("Company", "size"),
-            phase_ii_dollars=("award_amount", "sum"),
-            display_name=("Company", "first"),
-        )
+    anchors = phase2.groupby(["agency_label", "firm_id"], as_index=False).agg(
+        anchor_date=("award_date", "min"),
+        phase_ii_awards=("Company", "size"),
+        phase_ii_dollars=("award_amount", "sum"),
+        display_name=("Company", "first"),
     )
     anchors = anchors[anchors["anchor_date"] >= FORM_D_START].copy()
 
@@ -258,9 +287,7 @@ def build_cohort(awards_path: Path, cutoff: date) -> CohortData:
         & awards["Phase"].str.strip().isin({"Phase I", "Phase II"})
     ]
     contract_ids = frozenset(
-        clean_identifier(value)
-        for value in phase_i_ii["Contract"].tolist()
-        if clean_identifier(value)
+        normalize_piid(value) for value in phase_i_ii["Contract"].tolist() if normalize_piid(value)
     )
     raw_company_names = frozenset(
         str(value).strip().upper()
@@ -285,8 +312,8 @@ def match_firm(
     alias_to_firm: dict[str, str],
 ) -> tuple[str | None, str | None]:
     candidates = (
-        ("uei", clean_identifier(uei)),
-        ("duns", clean_identifier(duns)),
+        ("uei", uei_alias(uei)),
+        ("duns", duns_alias(duns)),
         ("name", normalized_name(name)),
     )
     for basis, value in candidates:
@@ -298,6 +325,19 @@ def match_firm(
 def is_phase_i_ii_research(value: object) -> bool:
     marker = str(first_nonblank(value) or "").strip().upper()
     return marker in PHASE_I_II_RESEARCH_MARKERS
+
+
+def is_phase_iii_research(value: object) -> bool:
+    marker = str(first_nonblank(value) or "").strip().upper()
+    return marker in PHASE_III_RESEARCH_MARKERS
+
+
+def is_excluded_phase_i_ii_action(
+    research: object, piid: str, phase_i_ii_contract_ids: frozenset[str]
+) -> bool:
+    if is_phase_i_ii_research(research):
+        return True
+    return bool(piid) and piid in phase_i_ii_contract_ids and not is_phase_iii_research(research)
 
 
 def load_contract_events(
@@ -313,8 +353,10 @@ def load_contract_events(
             if event_date is None or event_date > cutoff:
                 stats["invalid_or_after_cutoff"] += 1
                 continue
-            piid = clean_identifier(first_nonblank(row.get("piid"), row.get("contract_id")))
-            if is_phase_i_ii_research(row.get("research")) or piid in cohort.phase_i_ii_contract_ids:
+            piid = normalize_piid(first_nonblank(row.get("piid"), row.get("contract_id")))
+            if is_excluded_phase_i_ii_action(
+                row.get("research"), piid, cohort.phase_i_ii_contract_ids
+            ):
                 stats["phase_i_ii_excluded"] += 1
                 continue
             firm_id, basis = match_firm(
@@ -364,7 +406,9 @@ def offering_series_key(offering: dict[str, Any]) -> tuple[str, str, tuple[str, 
     raw_cik = clean_identifier(offering.get("cik"))
     cik = raw_cik.lstrip("0") or ("0" if raw_cik else "")
     first_sale = parse_date(offering.get("date_of_first_sale"))
-    securities = tuple(sorted(str(value).strip().lower() for value in offering.get("securities_types", [])))
+    securities = tuple(
+        sorted(str(value).strip().lower() for value in offering.get("securities_types", []))
+    )
     if not cik or first_sale is None:
         return None
     return cik, first_sale.isoformat(), securities
@@ -390,8 +434,15 @@ def load_form_d_events(
                 item
                 for item in record.get("offerings", [])
                 if item.get("industry_group") not in EXCLUDED_FORM_D_INDUSTRIES
-                and (parse_date(item.get("date_of_first_sale")) or parse_date(item.get("filing_date")))
-                and (parse_date(item.get("date_of_first_sale")) or parse_date(item.get("filing_date"))) <= cutoff
+                and (
+                    parse_date(item.get("date_of_first_sale"))
+                    or parse_date(item.get("filing_date"))
+                )
+                and (
+                    parse_date(item.get("date_of_first_sale"))
+                    or parse_date(item.get("filing_date"))
+                )
+                <= cutoff
             ]
             audit["legacy_filing_count"] += len(offerings)
             audit["legacy_summed_amount_sold"] += sum(
@@ -431,7 +482,16 @@ def load_form_d_events(
                         "event_key": offering.get("accession_number"),
                     }
                 )
-    return pd.DataFrame(events), dict(audit)
+    result = pd.DataFrame(events)
+    if not result.empty:
+        keys = result["event_key"]
+        missing = keys.isna() | keys.astype(str).str.strip().isin({"", "None", "nan", "NaN"})
+        if missing.any():
+            result.loc[missing, "event_key"] = [
+                f"no-accession:{index}" for index in result.index[missing]
+            ]
+        result = result.drop_duplicates(subset=["firm_id", "event_key"])
+    return result, dict(audit)
 
 
 def load_ma_events(
@@ -480,7 +540,9 @@ def add_years(value: date, years: int) -> date:
         return value.replace(month=2, day=28, year=value.year + years)
 
 
-def wilson_interval(successes: int, total: int, z: float = 1.959963984540054) -> tuple[float, float]:
+def wilson_interval(
+    successes: int, total: int, z: float = 1.959963984540054
+) -> tuple[float, float]:
     if total <= 0:
         return math.nan, math.nan
     p = successes / total
@@ -490,9 +552,7 @@ def wilson_interval(successes: int, total: int, z: float = 1.959963984540054) ->
     return max(0.0, center - margin), min(1.0, center + margin)
 
 
-def bootstrap_ratio(
-    firm_rows: pd.DataFrame, *, iterations: int, seed: int
-) -> tuple[float, float]:
+def bootstrap_ratio(firm_rows: pd.DataFrame, *, iterations: int, seed: int) -> tuple[float, float]:
     if firm_rows.empty or firm_rows["phase_ii_dollars"].sum() <= 0:
         return math.nan, math.nan
     raised = firm_rows["observed_dollars"].to_numpy(dtype=float)
@@ -529,16 +589,31 @@ def summarize_channel(
     cutoff: date,
 ) -> tuple[dict[str, Any], pd.DataFrame]:
     per_firm: list[dict[str, Any]] = []
+    empty_events = events.iloc[0:0] if not events.empty else events
+    events_by_firm: dict[Any, pd.DataFrame] = {}
+    if not events.empty:
+        for firm_id, group in events.groupby("firm_id", sort=False):
+            events_by_firm[firm_id] = group
     for row in eligible.itertuples(index=False):
         horizon_end = min(add_years(row.anchor_date, horizon), cutoff)
-        matched = events[
-            (events["firm_id"] == row.firm_id)
-            & (events["event_date"] > row.anchor_date)
-            & (events["event_date"] <= horizon_end)
-        ] if not events.empty else events
+        firm_events = events_by_firm.get(row.firm_id, empty_events)
+        matched = (
+            firm_events[
+                (firm_events["event_date"] > row.anchor_date)
+                & (firm_events["event_date"] <= horizon_end)
+            ]
+            if not firm_events.empty
+            else firm_events
+        )
         if confidence_filter == "high" and not matched.empty and "confidence" in matched:
             matched = matched[matched["confidence"] == "high"]
         observed_dollars = max(float(matched["amount"].sum()), 0.0) if not matched.empty else 0.0
+        same_agency_dollars = 0.0
+        if channel == "federal_contract" and not matched.empty:
+            same_net = float(
+                matched.loc[same_agency_contract_mask(matched, agency), "amount"].sum()
+            )
+            same_agency_dollars = min(max(same_net, 0.0), observed_dollars)
         if channel in {"federal_contract", "form_d"}:
             has_signal = observed_dollars > 0
             positive_events = matched[matched["amount"] > 0] if not matched.empty else matched
@@ -557,6 +632,7 @@ def summarize_channel(
                 "phase_ii_dollars": float(row.phase_ii_dollars),
                 "has_signal": has_signal,
                 "observed_dollars": observed_dollars,
+                "same_agency_dollars": same_agency_dollars,
                 "first_event_date": first_date,
                 "latency_days": (first_date - row.anchor_date).days if first_date else None,
             }
@@ -567,22 +643,11 @@ def summarize_channel(
     ci_low, ci_high = wilson_interval(successes, denominator)
     total_sbir = float(firm_frame["phase_ii_dollars"].sum()) if denominator else 0.0
     total_observed = float(firm_frame["observed_dollars"].sum()) if denominator else 0.0
-    same_agency_dollars = 0.0
-    if channel == "federal_contract" and not events.empty:
-        dated = events.merge(
-            eligible[["firm_id", "anchor_date"]], on="firm_id", how="inner", validate="many_to_one"
-        )
-        dated = dated[
-            (dated["event_date"] > dated["anchor_date"])
-            & dated.apply(
-                lambda row: row["event_date"]
-                <= min(add_years(row["anchor_date"], horizon), cutoff),
-                axis=1,
-            )
-        ]
-        same_agency_dollars = max(
-            float(dated.loc[same_agency_contract_mask(dated, agency), "amount"].sum()), 0.0
-        )
+    same_agency_dollars = (
+        float(firm_frame["same_agency_dollars"].sum())
+        if denominator and "same_agency_dollars" in firm_frame
+        else 0.0
+    )
     positive = firm_frame[firm_frame["observed_dollars"] > 0] if denominator else firm_frame
     boot_low, boot_high = bootstrap_ratio(
         firm_frame,
@@ -687,16 +752,13 @@ def build_outputs(
             | (firm_frame["confidence_filter"] == "high")
         )
     ]
-    overlap = (
-        primary.pivot_table(
-            index=["agency", "firm_id"],
-            columns="channel",
-            values="has_signal",
-            aggfunc="max",
-            fill_value=False,
-        )
-        .reset_index()
-    )
+    overlap = primary.pivot_table(
+        index=["agency", "firm_id"],
+        columns="channel",
+        values="has_signal",
+        aggfunc="max",
+        fill_value=False,
+    ).reset_index()
     for channel in ("federal_contract", "form_d", "ma"):
         if channel not in overlap:
             overlap[channel] = False
@@ -707,8 +769,10 @@ def build_outputs(
         or "no_observed_signal",
         axis=1,
     )
-    overlap_summary = overlap.groupby(["agency", "pathway"], as_index=False).size().rename(
-        columns={"size": "firms"}
+    overlap_summary = (
+        overlap.groupby(["agency", "pathway"], as_index=False)
+        .size()
+        .rename(columns={"size": "firms"})
     )
     return summary_frame, firm_frame, overlap_summary
 
@@ -794,10 +858,7 @@ def build_linkage_audit(
 def write_markdown(summary: pd.DataFrame, cohort: pd.DataFrame, path: Path, cutoff: date) -> None:
     headline = summary[
         (summary["horizon_years"] == PRIMARY_HORIZON)
-        & (
-            (summary["channel"] == "federal_contract")
-            | (summary["confidence_filter"] == "high")
-        )
+        & ((summary["channel"] == "federal_contract") | (summary["confidence_filter"] == "high"))
     ].copy()
     headline["rate_display"] = headline["rate"].map(lambda value: f"{100 * value:.1f}%")
     headline["leverage_display"] = headline["dollars_per_phase_ii_dollar"].map(
@@ -846,7 +907,7 @@ def write_markdown(summary: pd.DataFrame, cohort: pd.DataFrame, path: Path, cuto
             "NASA is the full NASA portfolio; Air Force is the Air Force branch of DoD; DOE includes ARPA-E. "
             "The five-year result includes only firms with a fully observable five-year follow-up period.",
             "",
-            "Federal contract dollars are signed net obligations from any awarding agency. Phase I and II SBIR/STTR actions are excluded; coded Phase III and uncoded contracts are retained. Form D amounts use actual amount sold and collapse amendments into offering series instead of summing cumulative amendments.",
+            "Federal contract dollars are signed net obligations from any awarding agency. Phase I and II SBIR/STTR actions are excluded by research marker or by a dash-stripped PIID match unless the action is coded Phase III. Form D amounts use actual amount sold and collapse amendments into offering series instead of summing cumulative amendments.",
             "",
             "## Limitations",
             "",
