@@ -8,7 +8,11 @@ from pathlib import Path
 from pydantic import ValidationError
 
 from sbir_etl.exceptions import ConfigurationError
-from sbir_etl.quality.study_manifest import StudyManifest, load_study_manifest
+from sbir_etl.quality.study_manifest import (
+    EvidenceStatus,
+    StudyManifest,
+    load_study_manifest,
+)
 
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
@@ -42,6 +46,29 @@ def _module_symbols(path: Path) -> set[str]:
         elif isinstance(node, ast.AnnAssign) and isinstance(node.target, ast.Name):
             names.add(node.target.id)
     return names
+
+
+_REQUIRES_VALIDATION_DESIGN = frozenset(
+    {EvidenceStatus.VALIDATED, EvidenceStatus.CITABLE}
+)
+
+
+def validation_design_errors(manifest: StudyManifest) -> list[str]:
+    """A study whose validation design passed must state what that design was.
+
+    Required only above ``reproducible``. A census or enumeration has no
+    pass/fail threshold, and forcing one would produce a paragraph reading
+    "n/a" rather than a check.
+    """
+    if manifest.evidence_status not in _REQUIRES_VALIDATION_DESIGN:
+        return []
+    if manifest.validation_design is None:
+        return [
+            f"evidence_status '{manifest.evidence_status}' requires a "
+            "validation_design block: addressable_population, expected_yield, "
+            "decision_threshold, threshold_derivation"
+        ]
+    return []
 
 
 def validate_manifest_references(
@@ -92,6 +119,7 @@ def validate_manifest_references(
             errors.append(
                 f"implementation symbol {reference.symbol!r} is missing from {reference.path}"
             )
+    errors.extend(validation_design_errors(manifest))
     return errors
 
 
