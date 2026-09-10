@@ -10,9 +10,9 @@ reads. The first job was removed -- a live poll cannot sit in a pipelines-tier
 path, and every one of its 18 matches was a false positive from unanchored
 substring matching. The second job is still needed, so it lives here.
 
-This step is deterministic and makes no network calls. It copies each event
-through unchanged and stamps provenance, so the builder's input is reproducible
-from a declared cut instead of from whatever the newswires carried that day.
+This step is exploratory. It copies each event through unchanged and stamps a
+git description. It records no input cut or hash, so it is not a pipelines
+producer.
 
 **Running this changes the builder's population.** The historical file was
 produced in April 2026 by a chain that reproduces from no commit; the file this

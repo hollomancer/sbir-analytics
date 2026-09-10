@@ -57,7 +57,7 @@ def test_returns_empty_when_file_missing(cohort, tmp_path):
 
 
 def test_metadata_carries_signals(cohort, tmp_path):
-    """The signals dict reaches capital-event metadata intact."""
+    """Metadata is only signals and the recomputed signal_count."""
     src = tmp_path / "ma.jsonl"
     src.write_text(
         json.dumps(
@@ -72,16 +72,12 @@ def test_metadata_carries_signals(cohort, tmp_path):
     )
     events = list(build_ma_events(cohort, src))
     meta = json.loads(events[0]["metadata"])
+    assert set(meta) == {"signals", "signal_count"}
     assert meta["signals"]["form_d_business_combination"] is True
 
 
 def test_signal_count_is_recomputed_not_forwarded(cohort, tmp_path):
-    """Legacy rows carry a press-inflated count; recompute from signals.
-
-    The removed press stage added one to signal_count per press hit, and all
-    18 of its hits were false positives, so the stored count overstates the
-    evidence on those rows.
-    """
+    """Stored signal_count is ignored; the builder counts remaining signals."""
     src = tmp_path / "ma.jsonl"
     row = _ma_row("ACME INC", "2023-06-15", "high", signals={"efts_subsidiary": True})
     row["signal_count"] = 99
