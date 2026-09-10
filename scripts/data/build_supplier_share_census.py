@@ -52,7 +52,7 @@ DEFAULT_PRIVATE_SAMPLE = REPO_ROOT / "data/private/supplier_share/validation_sam
 DESIGN_PATH = REPO_ROOT / "specs/supplier-share-census/design.md"
 AMENDMENTS_PATH = REPO_ROOT / "specs/supplier-share-census/amendments.md"
 DESIGN_SHA256 = "c14dea2a147e46b740cc46925d7a89709a45c6aedc84c5a3324e3e75528e769f"
-AMENDMENTS_SHA256 = "c1a358645131ce3792cc745f56f5b5b381384d79fde62e0a8dff1d8a76620ac9"
+AMENDMENTS_SHA256 = "657f9ad9c9c8f82466545ca994eda001620c2dc3d1eb7cb619848efa8ef25374"
 
 T_VALUES = (8, 10, 12)
 N_VALUES = (4, 6, 10)
@@ -1151,9 +1151,15 @@ def _summary_rows(
     maturity_complete = bool(total_firms and subset["headline_eligible"].all())
     headline_available = bool(maturity_complete and measurable.all())
     supplier = subset["matrix_cell"].eq("persistent_no_venture")
+    bound_movers = subset["matrix_cell"].eq("persistent_unknown_venture")
     supplier_dollars = (
         float(subset.loc[supplier, "stratum_sbir_dollars"].sum(min_count=1))
         if supplier.any()
+        else 0.0
+    )
+    bound_mover_dollars = (
+        float(subset.loc[bound_movers, "stratum_sbir_dollars"].sum(min_count=1))
+        if bound_movers.any()
         else 0.0
     )
     validation_status = (
@@ -1168,6 +1174,42 @@ def _summary_rows(
         and pd.notna(total_dollars)
         and pd.notna(supplier_dollars)
         and has_total_dollars
+        else None
+    )
+    typed_noncoverage_bound_available = maturity_complete
+    supplier_firm_share_lower_bound = (
+        float(supplier.sum() / total_firms)
+        if typed_noncoverage_bound_available and total_firms
+        else None
+    )
+    supplier_firm_share_upper_bound = (
+        float((supplier.sum() + bound_movers.sum()) / total_firms)
+        if typed_noncoverage_bound_available and total_firms
+        else None
+    )
+    supplier_firm_share_bound_width = (
+        supplier_firm_share_upper_bound - supplier_firm_share_lower_bound
+        if supplier_firm_share_lower_bound is not None
+        and supplier_firm_share_upper_bound is not None
+        else None
+    )
+    supplier_dollar_share_lower_bound = (
+        float(supplier_dollars / total_dollars)
+        if typed_noncoverage_bound_available and has_total_dollars and pd.notna(supplier_dollars)
+        else None
+    )
+    supplier_dollar_share_upper_bound = (
+        float((supplier_dollars + bound_mover_dollars) / total_dollars)
+        if typed_noncoverage_bound_available
+        and has_total_dollars
+        and pd.notna(supplier_dollars)
+        and pd.notna(bound_mover_dollars)
+        else None
+    )
+    supplier_dollar_share_bound_width = (
+        supplier_dollar_share_upper_bound - supplier_dollar_share_lower_bound
+        if supplier_dollar_share_lower_bound is not None
+        and supplier_dollar_share_upper_bound is not None
         else None
     )
     placebo_supplier_dollar_share = (
@@ -1198,6 +1240,19 @@ def _summary_rows(
         "headline_available": headline_available,
         "supplier_firm_share": supplier_firm_share,
         "supplier_dollar_share": supplier_dollar_share,
+        "typed_noncoverage_bound_available": typed_noncoverage_bound_available,
+        "supplier_firm_share_lower_bound": supplier_firm_share_lower_bound,
+        "supplier_firm_share_upper_bound": supplier_firm_share_upper_bound,
+        "supplier_firm_share_bound_width": supplier_firm_share_bound_width,
+        "supplier_dollar_share_lower_bound": supplier_dollar_share_lower_bound,
+        "supplier_dollar_share_upper_bound": supplier_dollar_share_upper_bound,
+        "supplier_dollar_share_bound_width": supplier_dollar_share_bound_width,
+        "supplier_bound_mover_firm_count": (
+            int(bound_movers.sum()) if typed_noncoverage_bound_available else None
+        ),
+        "supplier_bound_mover_dollars": (
+            bound_mover_dollars if typed_noncoverage_bound_available else None
+        ),
         "supplier_top_decile_dollar_share": (
             _supplier_concentration(subset)
             if stratification == "overall" and headline_available
@@ -1229,6 +1284,15 @@ def _summary_rows(
                 ),
                 "supplier_firm_share": None,
                 "supplier_dollar_share": None,
+                "typed_noncoverage_bound_available": None,
+                "supplier_firm_share_lower_bound": None,
+                "supplier_firm_share_upper_bound": None,
+                "supplier_firm_share_bound_width": None,
+                "supplier_dollar_share_lower_bound": None,
+                "supplier_dollar_share_upper_bound": None,
+                "supplier_dollar_share_bound_width": None,
+                "supplier_bound_mover_firm_count": None,
+                "supplier_bound_mover_dollars": None,
                 "supplier_top_decile_dollar_share": None,
                 "placebo_supplier_dollar_share": None,
                 "supplier_minus_placebo_dollar_share": None,
@@ -1324,6 +1388,11 @@ def _validate_summary(firm_grid: pd.DataFrame, summary: pd.DataFrame) -> None:
             return bool(pd.isna(left) and pd.isna(right))
         return math.isclose(left, right, rel_tol=1e-9, abs_tol=max(1.0, abs(right) * 1e-9))
 
+    def close_share(left: float, right: float) -> bool:
+        if pd.isna(left) or pd.isna(right):
+            return bool(pd.isna(left) and pd.isna(right))
+        return math.isclose(left, right, rel_tol=1e-9, abs_tol=1e-12)
+
     def summary_dollars(frame: pd.DataFrame) -> float:
         populated = frame.loc[frame["firm_count"].gt(0), "sbir_dollars"]
         return float(populated.sum(min_count=1)) if not populated.empty else 0.0
@@ -1339,6 +1408,92 @@ def _validate_summary(firm_grid: pd.DataFrame, summary: pd.DataFrame) -> None:
             raise RuntimeError(f"summary firm cells do not reconcile: {keys}")
         if not close(summary_dollars(cells), float(row["total_sbir_dollars"])):
             raise RuntimeError(f"summary dollar cells do not reconcile: {keys}")
+
+        bound_value_columns = (
+            "supplier_firm_share_lower_bound",
+            "supplier_firm_share_upper_bound",
+            "supplier_firm_share_bound_width",
+            "supplier_dollar_share_lower_bound",
+            "supplier_dollar_share_upper_bound",
+            "supplier_dollar_share_bound_width",
+            "supplier_bound_mover_firm_count",
+            "supplier_bound_mover_dollars",
+        )
+        matrix_bound_columns = (
+            "typed_noncoverage_bound_available",
+            *bound_value_columns,
+        )
+        if cells.loc[:, list(matrix_bound_columns)].notna().any().any():
+            raise RuntimeError(f"summary matrix rows contain bound values: {keys}")
+        bound_availability = row["typed_noncoverage_bound_available"]
+        if pd.isna(bound_availability):
+            raise RuntimeError(f"summary total bound availability is missing: {keys}")
+        bounds_available = bool(bound_availability)
+        expected_bounds_available = bool(
+            int(row["total_firms"]) and str(row["validation_status"]) != "window_censored"
+        )
+        if bounds_available != expected_bounds_available:
+            raise RuntimeError(f"summary bound availability does not match maturity: {keys}")
+        if not bounds_available:
+            if any(pd.notna(row[column]) for column in bound_value_columns):
+                raise RuntimeError(f"unavailable summary bounds contain values: {keys}")
+            continue
+
+        cells_by_name = cells.set_index("matrix_cell")
+        lower_cell = cells_by_name.loc["persistent_no_venture"]
+        mover_cell = cells_by_name.loc["persistent_unknown_venture"]
+        denominator_firms = int(row["total_firms"])
+        expected_lower_firms = int(lower_cell["firm_count"])
+        expected_mover_firms = int(mover_cell["firm_count"])
+        expected_lower_firm_share = expected_lower_firms / denominator_firms
+        expected_upper_firm_share = (
+            expected_lower_firms + expected_mover_firms
+        ) / denominator_firms
+        if not close_share(
+            float(row["supplier_firm_share_lower_bound"]), expected_lower_firm_share
+        ) or not close_share(
+            float(row["supplier_firm_share_upper_bound"]), expected_upper_firm_share
+        ):
+            raise RuntimeError(f"summary firm bounds do not reconcile: {keys}")
+        if (
+            not close_share(
+                float(row["supplier_firm_share_bound_width"]),
+                expected_upper_firm_share - expected_lower_firm_share,
+            )
+            or int(row["supplier_bound_mover_firm_count"]) != expected_mover_firms
+        ):
+            raise RuntimeError(f"summary firm bound width/movers do not reconcile: {keys}")
+
+        total_dollars = float(row["total_sbir_dollars"])
+        lower_dollars = float(lower_cell["sbir_dollars"])
+        mover_dollars = float(mover_cell["sbir_dollars"])
+        if not close(float(row["supplier_bound_mover_dollars"]), mover_dollars):
+            raise RuntimeError(f"summary dollar bound movers do not reconcile: {keys}")
+        if pd.notna(total_dollars) and total_dollars != 0:
+            expected_lower_dollar_share = lower_dollars / total_dollars
+            expected_upper_dollar_share = (lower_dollars + mover_dollars) / total_dollars
+            if not close_share(
+                float(row["supplier_dollar_share_lower_bound"]),
+                expected_lower_dollar_share,
+            ) or not close_share(
+                float(row["supplier_dollar_share_upper_bound"]),
+                expected_upper_dollar_share,
+            ):
+                raise RuntimeError(f"summary dollar bounds do not reconcile: {keys}")
+            if not close_share(
+                float(row["supplier_dollar_share_bound_width"]),
+                expected_upper_dollar_share - expected_lower_dollar_share,
+            ):
+                raise RuntimeError(f"summary dollar bound width does not reconcile: {keys}")
+        elif any(
+            pd.notna(row[column])
+            for column in (
+                "supplier_dollar_share_lower_bound",
+                "supplier_dollar_share_upper_bound",
+                "supplier_dollar_share_bound_width",
+            )
+        ):
+            raise RuntimeError(f"unavailable summary dollar bounds contain values: {keys}")
 
     for keys, grid in firm_grid.groupby(["t_years", "n_awards", "window_years"], sort=False):
         totals = summary.loc[
@@ -1464,6 +1619,12 @@ def _format_pct(value: object, *, digits: int = 1) -> str:
     if value is None or pd.isna(value):
         return "suppressed"
     return f"{100 * float(value):.{digits}f}%"
+
+
+def _format_pct_interval(lower: object, upper: object, *, digits: int = 1) -> str:
+    if lower is None or upper is None or pd.isna(lower) or pd.isna(upper):
+        return "suppressed"
+    return f"{_format_pct(lower, digits=digits)}-{_format_pct(upper, digits=digits)}"
 
 
 def _format_money(value: object) -> str:
@@ -1639,13 +1800,31 @@ def _render_readout(
                 f"- Venture-measurable firms: {int(central['measurable_firm_count']):,} ({_format_pct(central['measurable_firm_share'])})",
             ]
         )
+    if bool(central["typed_noncoverage_bound_available"]):
+        lines.extend(
+            [
+                "",
+                "### Supplemental typed-noncoverage interval",
+                "",
+                "Revision 4 authorizes this post-result deterministic partial-identification interval. It is not a point headline, confidence interval, preregistered result, or citable claim.",
+                "",
+                "- Firm-share interval: "
+                f"{_format_pct_interval(central['supplier_firm_share_lower_bound'], central['supplier_firm_share_upper_bound'], digits=2)}",
+                "- Cumulative-dollar-share interval: "
+                f"{_format_pct_interval(central['supplier_dollar_share_lower_bound'], central['supplier_dollar_share_upper_bound'], digits=2)}",
+                "- Upper-endpoint movers: "
+                f"{int(central['supplier_bound_mover_firm_count']):,} persistent firms / "
+                f"{_format_money(central['supplier_bound_mover_dollars'])}",
+                "- Scope: typed required-channel noncoverage only; false-negative, identity, non-Reg-D, prime/sub-tier, and physical-supply-chain uncertainty are outside this interval.",
+            ]
+        )
     lines.extend(
         [
             "",
             "## Grid status",
             "",
-            "| T | N | Window | Mature firms | Measurable | Supplier firm share | Supplier dollar share | Status |",
-            "|---:|---:|---:|---:|---:|---:|---:|---|",
+            "| T | N | Window | Mature firms | Measurable | Point firm share | Typed-noncoverage firm interval | Point dollar share | Typed-noncoverage dollar interval | Status |",
+            "|---:|---:|---:|---:|---:|---:|---:|---:|---:|---|",
         ]
     )
     grid_rows = summary.loc[
@@ -1655,7 +1834,10 @@ def _render_readout(
         lines.append(
             f"| {row.t_years} | {row.n_awards} | {row.window_years} | {row.total_firms:,} | "
             f"{_format_pct(row.measurable_firm_share)} | {_format_pct(row.supplier_firm_share)} | "
-            f"{_format_pct(row.supplier_dollar_share)} | `{row.validation_status}` |"
+            f"{_format_pct_interval(row.supplier_firm_share_lower_bound, row.supplier_firm_share_upper_bound)} | "
+            f"{_format_pct(row.supplier_dollar_share)} | "
+            f"{_format_pct_interval(row.supplier_dollar_share_lower_bound, row.supplier_dollar_share_upper_bound)} | "
+            f"`{row.validation_status}` |"
         )
     lines.extend(
         [
@@ -1773,6 +1955,22 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
             "window_years": list(WINDOW_VALUES),
             "central": list(CENTRAL_GRID),
             "random_seed": RANDOM_SEED,
+        },
+        "supplemental_bounds": {
+            "authorized_revision": 4,
+            "method": "typed_required_channel_noncoverage_partial_identification",
+            "post_result": True,
+            "point_headline_suppressed_on_incomplete_coverage": True,
+            "denominator": "all_mature_firms_or_corresponding_stratum_sbir_dollars",
+            "lower_numerator": "persistent_no_venture",
+            "upper_numerator": "persistent_no_venture_plus_persistent_unknown_venture",
+            "excluded_methods": [
+                "imputation",
+                "confidence_interval",
+                "concentration_bound",
+                "placebo_bound",
+            ],
+            "citable": False,
         },
         "inputs": {
             "sbir_awards": sbir_meta,

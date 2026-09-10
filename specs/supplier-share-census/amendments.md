@@ -75,3 +75,51 @@ the raw-byte SHA-256 of this file and the design before reading analytical input
   rebuild and supplier-share census were still incomplete. No supplier-cell firm share, dollar
   share, matrix, concentration statistic, or placebo statistic had been computed from complete
   venture inputs.
+
+## Revision 4 - Typed Required-Channel Noncoverage Bounds
+
+- **Approved:** 2026-09-10.
+- **Post-result status:** This is an explicitly post-result exploratory reporting amendment. It
+  was approved after the results listed below were visible and must not be described as
+  preregistered or confirmatory.
+- **Reason:** Required SEC filing documents can remain unavailable after deterministic retries.
+  Preserve the frozen point-headline suppression while reporting the finite-population range in
+  which those typed unknowns alone can move the observed sustained-federal-performer share.
+- **Criteria impact:** None. The denominator, identity policy, persistence and venture clauses,
+  typed-absence precedence, complete 18-cell grid, central cell, and validation gates are
+  unchanged. For every mature frozen grid/stratum total, report a supplemental deterministic
+  partial-identification interval. Its denominator is every mature firm in the stratum, or the
+  corresponding observed SBIR/STTR dollars. Its lower numerator is the
+  `persistent_no_venture` cell. Its upper numerator adds the
+  `persistent_unknown_venture` cell, whose members have no known positive venture signal. Report
+  firm and dollar endpoints, interval widths, and the upper-endpoint mover count and dollars.
+  Point supplier-share fields remain null and `headline_available=false` whenever required
+  coverage is incomplete. Matrix rows carry null bound fields. No imputation, probability model,
+  confidence-interval language, concentration bound, or placebo bound is authorized. The private
+  validation sample remains withheld unless the existing complete-measurability gate passes.
+- **Interpretive limit:** The interval bounds only typed required-channel noncoverage under the
+  frozen observed-record classifier. It does not bound false negatives in apparently searched
+  sources, identity error, non-Reg-D capital, prime/sub-tier undercoverage, commercialization,
+  dependence, supply-chain embeddedness, or physical chokepoints. All outputs remain exploratory,
+  non-citable, and validation-gated.
+- **Visibility at approval:** The PR description had already reported a central interval of
+  23.69%-23.80% of firms and 64.66%-64.84% of dollars over 20,049 mature firms, with 124
+  unresolved firms, 22 persistent upper-endpoint movers carrying $105.0M, and central cells of
+  11,584 `not_persistent_no_venture`, 48 `not_persistent_unknown_venture`, 2,179
+  `not_persistent_venture`, 4,750 `persistent_no_venture`, 22
+  `persistent_unknown_venture`, and 1,466 `persistent_venture`. The visible agency firm/dollar
+  intervals were DoD 34.67%-34.86% / 68.19%-68.36%, HHS 26.24%-26.39% / 56.81%-57.02%, NSF
+  35.52%-35.65% / 50.27%-50.49%, and Other 36.84%-37.01% / 67.89%-68.06%. Across the 18 grid
+  cells, the visible ranges were 16.73%-31.40% of firms and 59.09%-67.63% of dollars; the visible
+  central top-decile concentration range was 79.50%-79.62%. A visible mechanical Form D tier
+  sensitivity moved the central known-supplier share from 23.69% to 24.10% of firms and 64.66%
+  to 65.63% of dollars. A later fail-closed repair run had 17,477 of 20,049 mature firms
+  measurable and central cells of 11,107
+  `not_persistent_no_venture`, 525 `not_persistent_unknown_venture`, 2,179
+  `not_persistent_venture`, 4,469 `persistent_no_venture`, 303
+  `persistent_unknown_venture`, and 1,466 `persistent_venture`. The mechanically implied Revision
+  4 interval from that repaired but not freshly refined run was 22.2904%-23.8017% of firms and
+  60.6113%-64.8420% of dollars. The current M&A artifact had 3,198 direction-sensitive events,
+  zero typed-complete refinement records, 2,049 legacy-invalid verdicts, and 1,149 absent
+  verdicts. The repaired EFTS roster retained 132 document-incomplete labels. These visible facts
+  are disclosed so Revision 4 cannot be mistaken for a pre-result choice.

@@ -153,10 +153,65 @@ def test_missing_required_searches_stay_unknown_and_suppress_headline(tmp_path: 
     assert not total["headline_available"]
     assert pd.isna(total["supplier_firm_share"])
     assert pd.isna(total["supplier_dollar_share"])
+    assert total["typed_noncoverage_bound_available"]
+    assert total["supplier_firm_share_lower_bound"] == pytest.approx(0.0)
+    assert total["supplier_firm_share_upper_bound"] == pytest.approx(1 / 5)
+    assert total["supplier_firm_share_bound_width"] == pytest.approx(1 / 5)
+    assert total["supplier_dollar_share_lower_bound"] == pytest.approx(0.0)
+    assert total["supplier_dollar_share_upper_bound"] == pytest.approx(100 / 1600)
+    assert total["supplier_dollar_share_bound_width"] == pytest.approx(100 / 1600)
+    assert total["supplier_bound_mover_firm_count"] == 1
+    assert total["supplier_bound_mover_dollars"] == pytest.approx(100.0)
+    matrix = summary.loc[
+        summary["is_central_grid"]
+        & summary["stratification"].eq("overall")
+        & ~summary["matrix_cell"].eq("TOTAL")
+    ]
+    bound_columns = [
+        "typed_noncoverage_bound_available",
+        "supplier_firm_share_lower_bound",
+        "supplier_firm_share_upper_bound",
+        "supplier_firm_share_bound_width",
+        "supplier_dollar_share_lower_bound",
+        "supplier_dollar_share_upper_bound",
+        "supplier_dollar_share_bound_width",
+        "supplier_bound_mover_firm_count",
+        "supplier_bound_mover_dollars",
+    ]
+    assert matrix[bound_columns].isna().all().all()
     sample_path = tmp_path / "sample.csv"
     sample_path.write_text("stale named sample\n")
     assert not MODULE._write_validation_sample(base, grid, sample_path)
     assert not sample_path.exists()
+
+
+def test_typed_noncoverage_upper_bound_adds_only_persistent_unknown_firms() -> None:
+    base = _base(searchable=False)
+    firm_a = base["firm_id"].eq("firm-a")
+    base.loc[firm_a, ["form_d_searchable", "ma_searchable"]] = True
+    firm_b = base["firm_id"].eq("firm-b")
+    base.loc[firm_b, "form_d_signal"] = False
+
+    grid = MODULE._build_grid(base)
+    summary = MODULE._build_summary(grid)
+    MODULE._validate_summary(grid, summary)
+    total = summary.loc[
+        summary["is_central_grid"]
+        & summary["stratification"].eq("overall")
+        & summary["matrix_cell"].eq("TOTAL")
+    ].iloc[0]
+
+    assert not total["headline_available"]
+    assert pd.isna(total["supplier_firm_share"])
+    assert pd.isna(total["supplier_dollar_share"])
+    assert total["supplier_firm_share_lower_bound"] == pytest.approx(1 / 5)
+    assert total["supplier_firm_share_upper_bound"] == pytest.approx(2 / 5)
+    assert total["supplier_firm_share_bound_width"] == pytest.approx(1 / 5)
+    assert total["supplier_dollar_share_lower_bound"] == pytest.approx(100 / 1600)
+    assert total["supplier_dollar_share_upper_bound"] == pytest.approx(300 / 1600)
+    assert total["supplier_dollar_share_bound_width"] == pytest.approx(200 / 1600)
+    assert total["supplier_bound_mover_firm_count"] == 1
+    assert total["supplier_bound_mover_dollars"] == pytest.approx(200.0)
 
 
 def test_complete_searches_emit_matrix_arithmetic_sample_and_curve(tmp_path: Path) -> None:
@@ -188,6 +243,15 @@ def test_complete_searches_emit_matrix_arithmetic_sample_and_curve(tmp_path: Pat
     assert total["headline_available"]
     assert total["supplier_firm_share"] == pytest.approx(1 / 5)
     assert total["supplier_dollar_share"] == pytest.approx(100 / 1600)
+    assert total["typed_noncoverage_bound_available"]
+    assert total["supplier_firm_share_lower_bound"] == pytest.approx(1 / 5)
+    assert total["supplier_firm_share_upper_bound"] == pytest.approx(1 / 5)
+    assert total["supplier_firm_share_bound_width"] == pytest.approx(0.0)
+    assert total["supplier_dollar_share_lower_bound"] == pytest.approx(100 / 1600)
+    assert total["supplier_dollar_share_upper_bound"] == pytest.approx(100 / 1600)
+    assert total["supplier_dollar_share_bound_width"] == pytest.approx(0.0)
+    assert total["supplier_bound_mover_firm_count"] == 0
+    assert total["supplier_bound_mover_dollars"] == pytest.approx(0.0)
     assert total["supplier_top_decile_dollar_share"] == pytest.approx(0.0)
     assert pd.notna(total["placebo_supplier_dollar_share"])
     assert total["supplier_minus_placebo_dollar_share"] == pytest.approx(
@@ -253,6 +317,102 @@ def test_frozen_spec_hashes_match() -> None:
 
     assert freeze["design_sha256"] == MODULE.DESIGN_SHA256
     assert freeze["amendments_sha256"] == MODULE.AMENDMENTS_SHA256
+
+
+def test_typed_noncoverage_bounds_cover_every_nonempty_mature_stratum() -> None:
+    grid = MODULE._build_grid(_base(searchable=False))
+    summary = MODULE._build_summary(grid)
+    MODULE._validate_summary(grid, summary)
+
+    totals = summary.loc[summary["matrix_cell"].eq("TOTAL")]
+    eligible = totals.loc[
+        totals["total_firms"].gt(0) & ~totals["validation_status"].eq("window_censored")
+    ]
+    assert len(eligible) > 18
+    assert eligible["typed_noncoverage_bound_available"].all()
+    assert eligible["supplier_firm_share_lower_bound"].notna().all()
+    assert eligible["supplier_firm_share_upper_bound"].notna().all()
+    assert (
+        eligible["supplier_firm_share_lower_bound"] <= eligible["supplier_firm_share_upper_bound"]
+    ).all()
+
+
+def test_summary_validation_enforces_bound_availability_and_null_schema() -> None:
+    grid = MODULE._build_grid(_base(searchable=False))
+    summary = MODULE._build_summary(grid)
+
+    matrix_index = summary.index[~summary["matrix_cell"].eq("TOTAL")][0]
+    invalid_matrix = summary.copy()
+    invalid_matrix.loc[matrix_index, "typed_noncoverage_bound_available"] = False
+    with pytest.raises(RuntimeError, match="matrix rows contain bound values"):
+        MODULE._validate_summary(grid, invalid_matrix)
+
+    central_total = (
+        summary["is_central_grid"]
+        & summary["stratification"].eq("overall")
+        & summary["matrix_cell"].eq("TOTAL")
+    )
+    invalid_total = summary.copy()
+    invalid_total.loc[central_total, "typed_noncoverage_bound_available"] = False
+    invalid_total.loc[
+        central_total,
+        [
+            "supplier_firm_share_lower_bound",
+            "supplier_firm_share_upper_bound",
+            "supplier_firm_share_bound_width",
+            "supplier_dollar_share_lower_bound",
+            "supplier_dollar_share_upper_bound",
+            "supplier_dollar_share_bound_width",
+            "supplier_bound_mover_firm_count",
+            "supplier_bound_mover_dollars",
+        ],
+    ] = None
+    with pytest.raises(RuntimeError, match="availability does not match maturity"):
+        MODULE._validate_summary(grid, invalid_total)
+
+    invalid_share = summary.copy()
+    invalid_share.loc[central_total, "supplier_firm_share_lower_bound"] = 0.99
+    with pytest.raises(RuntimeError, match="firm bounds do not reconcile"):
+        MODULE._validate_summary(grid, invalid_share)
+
+
+def test_readout_labels_bounds_as_post_result_non_citable_interval() -> None:
+    grid = MODULE._build_grid(_base(searchable=False))
+    summary = MODULE._build_summary(grid)
+    manifest = {
+        "inputs": {
+            "sbir_awards": {
+                "rows": 6,
+                "source_company_labels": 6,
+                "canonical_firms": 6,
+                "min_award_year": 1990,
+                "max_award_year": 2026,
+                "award_amount_coverage": 1.0,
+            },
+            "contracts": {"available": True, "history_scope": "partial_snapshot"},
+            "form_d": {"available": True, "search_complete_asserted": True},
+            "ma": {
+                "events_available": True,
+                "scan_available": True,
+                "derivation_consistent": True,
+            },
+        }
+    }
+
+    readout = MODULE._render_readout(
+        manifest=manifest,
+        summary=summary,
+        validation_sample_written=False,
+    )
+
+    assert "Headline suppressed" in readout
+    assert "Supplemental typed-noncoverage interval" in readout
+    assert "post-result" in readout.lower()
+    assert (
+        "not a point headline, confidence interval, preregistered result, or citable claim"
+        in readout
+    )
+    assert "0.00%-20.00%" in readout
 
 
 def test_efts_error_rows_do_not_establish_ma_search_coverage(tmp_path: Path) -> None:
@@ -701,6 +861,15 @@ def test_populated_all_missing_dollar_cells_remain_missing() -> None:
     assert pd.isna(overall["sbir_dollars"])
     assert pd.isna(dod["sbir_dollars"])
     assert pd.isna(overall["supplier_dollar_share"])
+    assert pd.isna(overall["supplier_dollar_share_lower_bound"])
+    assert pd.isna(overall["supplier_dollar_share_upper_bound"])
+    assert pd.isna(overall["supplier_dollar_share_bound_width"])
+    assert overall["supplier_bound_mover_dollars"] == pytest.approx(0.0)
+
+    invalid_summary = summary.copy()
+    invalid_summary.loc[overall.name, "supplier_dollar_share_lower_bound"] = 0.0
+    with pytest.raises(RuntimeError, match="unavailable summary dollar bounds contain values"):
+        MODULE._validate_summary(grid, invalid_summary)
 
 
 def test_immature_cohort_share_is_window_censored() -> None:
@@ -717,3 +886,15 @@ def test_immature_cohort_share_is_window_censored() -> None:
     assert cohort["validation_status"] == "window_censored"
     assert pd.isna(cohort["supplier_firm_share"])
     assert pd.isna(cohort["supplier_dollar_share"])
+    assert not cohort["typed_noncoverage_bound_available"]
+    bound_value_columns = [
+        "supplier_firm_share_lower_bound",
+        "supplier_firm_share_upper_bound",
+        "supplier_firm_share_bound_width",
+        "supplier_dollar_share_lower_bound",
+        "supplier_dollar_share_upper_bound",
+        "supplier_dollar_share_bound_width",
+        "supplier_bound_mover_firm_count",
+        "supplier_bound_mover_dollars",
+    ]
+    assert cohort[bound_value_columns].isna().all()

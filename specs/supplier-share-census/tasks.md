@@ -21,6 +21,10 @@
 - [x] 6. Run focused quality checks and commit
   - Verify: Ruff, tier guards, docs checks, and deterministic rerun checks pass
 
+- [x] 7. Implement Revision 4 typed-noncoverage bounds
+  - Verify: every mature frozen grid/stratum reports reconciled firm/dollar endpoints and point
+    headlines remain suppressed when required coverage is incomplete
+
 ## Promotion Tasks (Not Part Of This Exploratory Slice)
 
 - [ ] P1 Restore or regenerate complete Form D and final M&A signal artifacts
