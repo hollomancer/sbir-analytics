@@ -20,6 +20,7 @@ from scripts.data.build_navy_transition_readout import (
     load_coded_inputs,
     prepare_coded_transactions,
     prepare_navy_sbir,
+    render_markdown,
 )
 
 
@@ -224,6 +225,7 @@ def test_annual_panel_separates_first_from_latest_action_and_description_cap() -
     description = description_summary(coded_awards)
     assert description["source_constraint"]["max_chars"] == 250
     assert description["source_constraint"]["post_cap_representative_n"] == 2
+    assert description["source_constraint"]["post_cap_over_cap_n"] == 1
     assert description["source_constraint"]["post_cap_over_cap_legacy_n"] == 1
     assert description["representative_nonzero_mod_n"] == 1
     assert "ge_900_count" not in description
@@ -242,6 +244,83 @@ def test_committed_readout_artifacts_exclude_the_impossible_900_character_metric
     assert "description_ge_900_rate" not in comparator
     assert "900" in comparator["excluded_description_thresholds"]
     assert "Thus 900 is cross-vintage-incomparable" in markdown
+
+
+def _minimal_readout_summary() -> dict:
+    return {
+        "study": {"data_cut": "2025-09-30", "start_fy": 2016, "end_fy": 2025},
+        "panel_a": {
+            "phase_i_award_n": 1,
+            "phase_ii_award_n": 1,
+            "coded_award_n": 2,
+            "don_awarding_award_n": 1,
+            "don_funding_award_n": 1,
+            "don_awarding_and_funding_award_n": 1,
+            "annual": [
+                {
+                    "fiscal_year": 2025,
+                    "phase_i_awards": 1,
+                    "phase_ii_awards": 1,
+                    "coded_phase_iii_first_actions": 1,
+                    "coded_phase_iii_latest_actions": 2,
+                }
+            ],
+            "description": {
+                "median_chars": 34.0,
+                "ge_40_count": 1,
+                "award_n": 2,
+                "ge_40_rate": 0.5,
+                "ge_150_count": 0,
+                "ge_150_rate": 0.0,
+                "representative_nonzero_mod_n": 1,
+                "source_constraint": {
+                    "post_cap_over_cap_legacy_n": 3,
+                    "post_cap_over_cap_n": 5,
+                },
+            },
+            "historical_dod_comparator": {"award_n": 10},
+        },
+        "panel_b": {
+            "phase_ii_award_n": 4,
+            "phase_ii_firm_n": 2,
+            "matched_phase_ii_award_n": 1,
+            "assignment_rate": 0.25,
+            "distinct_phase_iii_contract_n": 1,
+            "matched_phase_ii_firm_n": 1,
+            "reused_phase_iii_contract_n": 0,
+            "assignments_to_reused_contracts_n": 0,
+            "max_phase_ii_assignments_per_phase_iii_contract": 1,
+            "no_qualifying_signal_award_n": 3,
+            "pre_completion_assignment_n": 0,
+            "post_completion_assignment_n": 1,
+            "signed_latency_deciles": {"p50": {"days": 10, "years": 0.03}},
+        },
+        "panel_c": {
+            "status": "blocked_constant_input",
+            "award_n": 2,
+            "description_blank_n": 0,
+            "naics_missing_n": 0,
+            "psc_missing_n": 0,
+        },
+        "panel_d": {
+            "navy_firm_n": 2,
+            "form_d_positive_raise_firms": {"total": 0, "high": 0, "medium": 0},
+            "window_start": "2024-09-01",
+            "window_end": "2026-08-31",
+        },
+    }
+
+
+def test_render_markdown_requires_post_cap_over_cap_counts() -> None:
+    summary = _minimal_readout_summary()
+    markdown = render_markdown(summary)
+    assert "3 of\n5 later representatives above 250" in markdown
+    assert "locally regenerable map" in markdown
+    assert "reproducible local map" not in markdown
+
+    del summary["panel_a"]["description"]["source_constraint"]["post_cap_over_cap_n"]
+    with pytest.raises(ValueError, match="post_cap_over_cap_n"):
+        render_markdown(summary)
 
 
 def test_mechanism_panel_blocks_constant_input_and_estimates_zero_phi() -> None:
