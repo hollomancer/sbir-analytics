@@ -23,14 +23,33 @@ The defects, and what would have found each:
 | Three of four direction rules assigned role from an unanchored window | adversarial unit cases |
 | Exit date sourced from an acquirer-side Form D filing | one unit test on `merge_events` |
 | `sbir_ma_events.jsonl` reproduced from no committed code | regenerate-and-diff |
-| Form D Item 10 marks the **acquirer**, not the target | **nothing** |
+| Form D Item 10 marks the **acquirer**, not the target | ground-truth calibration — but see below, the ground truth for it does not exist here |
 
 The last row is the important one. It moved the reported exit rate from 8.1% to
 5.1% and invalidated 407 "high-confidence" events. Finding it required reading
 Form D Item 10, learning what a Rule 145 transaction is, and pulling 645
-`clarificationOfResponse` texts from EDGAR. A test suite checks that code does
-what its author meant. It cannot report that the author was wrong about what a
-source field means.
+`clarificationOfResponse` texts from EDGAR.
+
+A unit test checks that code does what its author meant, so it cannot report
+that the author was wrong about what a source field means. A **ground-truth
+calibration test** can: assert that a signal fires on cases where the answer is
+already known. That tests the claim rather than the implementation, and it is
+the only category that reaches this defect.
+
+**The repository has no ground truth that can serve it.** The obvious candidate
+is `confirmatory-run-manifest.json`, whose `strict_pairs` holds 13
+human-adjudicated acquisitions at 0/19 false positives. Testing the Form D flag
+against them appears damning -- 0 of the 4 present carry it -- but the estimand
+selects "Form-D-**missing** rows", so those pairs were chosen precisely because
+they lack a Form D signal. The test is circular and proves nothing.
+
+Every label set in the repository has the same property: `labels.jsonl`,
+`confirmatory-labels.jsonl` and `form_d_join_adjudication.jsonl` are all labels
+*on the detector's own output*, so each inherits the detector's selection. An
+acquisition list assembled independently of any signal does not exist here.
+
+Building one is a prerequisite for this category of test, not a test to write.
+It is out of scope for this design and worth its own issue.
 
 ### Tests that encoded the defect
 
@@ -63,31 +82,42 @@ risk.** Any filter built on tier will look in the wrong places.
 
 The repository holds 208 functions whose names suggest matching, classifying,
 normalising, or scoring. Auditing all of them is not a plan. The defects
-clustered in two classes, about 14 distinct files:
+clustered in two classes. Reading each candidate rather than trusting the
+grep narrows this to **six files**:
 
 **Class A — free-text role assignment.** Decides who did what to whom by
 reading prose. A false positive inverts a relationship.
 
 - `refine_ma_medium_tier.py` (`classify_direction`) — at
   `scripts/archive/data/` on `main`, moving to `scripts/data/` in #705
-- `sbir_etl/enrichers/sec_edgar/enricher.py`
-- `sbir_etl/ucc/matcher.py`
-- `sbir_etl/utils/tech_census.py`
-- `sbir_etl/reporting/local_cet_classifier.py`
-- `sbir_etl/models/sbir_identification.py`
-- `sbir_etl/supply_chain/nsf_direct.py`
-- `sbir_etl/enrichers/usaspending/client.py`
+- `sbir_etl/ucc/matcher.py` (`is_debtor_side_match`)
+- `sbir_etl/enrichers/sec_edgar/enricher.py` (`_classify_mention`)
 
 **Class B — cross-population entity matching.** Decides whether two names are
 the same firm. A false positive attributes one firm's activity to another.
 
-- `sbir_etl/enrichers/press_wire.py` (`_match_company`, known defective, #708)
-- `sbir_etl/enrichers/sec_edgar/form_d_scoring.py`
-- `sbir_etl/enrichers/company_fuzzy_matcher.py`
-- `sbir_etl/identity/company_names.py`
-- `sbir_etl/enrichers/award_history.py`
-- `sbir_etl/enrichers/pi_enrichment.py`
-- `sbir_etl/enrichers/pubmed_client.py`
+- `sbir_etl/identity/company_names.py` — `company_name_similarity` and four
+  fuzzy metrics. The canonical primitive the repository routes identity
+  through, so its blast radius is every consumer. 62 tests, **one** negative
+  assertion.
+- `sbir_etl/enrichers/press_wire.py` (`_match_company`, plain substring, 0/18
+  precision, #708)
+- `sbir_etl/enrichers/sec_edgar/form_d_scoring.py` (`token_set_ratio`)
+- `sbir_etl/enrichers/company_fuzzy_matcher.py` (`fuzz.process`)
+- `sbir_etl/ucc/matcher.py` (`classify_match`) — also class A
+
+**Excluded on audit.** An earlier draft of this list was built by grepping for
+`classif` and `match`, and swept in seven files that do not carry the risk:
+
+| file | why it is out |
+|---|---|
+| `usaspending/client.py` `classify_award_id` | parses an identifier format |
+| `models/sbir_identification.py` `classify_sbir_award` | category, not relationship |
+| `supply_chain/nsf_direct.py` `classify_nsf_award_status` | status, not relationship |
+| `utils/tech_census.py` | topic classification; a false positive mis-buckets an award rather than inverting a relationship |
+| `enrichers/award_history.py` | no cross-population name matching |
+| `enrichers/pi_enrichment.py` | no cross-population name matching |
+| `enrichers/pubmed_client.py` | no cross-population name matching |
 
 A field normaliser such as `_normalize_state` is out of scope: it cannot
 produce a false positive that reads as evidence.
@@ -158,17 +188,20 @@ contract is the wrong home for both halves.
 **PR 2 — artifact-boundary invariants.** Tests for the non-exit artifact and
 the `capital_events` builder inputs, following the exit-artifact example.
 
-**PR 3 — class-A/B audit.** Adversarial cases for each of the ~14 files, fixes
+**PR 3 — class-A/B audit.** Adversarial cases for each of the six files, fixes
 for what they find. `press_wire._match_company` first, since #708 already
 documents its 0/18 precision.
 
 ## Risks
 
-**PR 3's yield is unknown.** The M&A audit found six failures in seventeen
-cases across three rules. If that rate holds across fourteen files, PR 3
-produces more fixes than one PR should carry. Mitigation: audit all fourteen,
-fix defects that are unambiguous, open issues for anything requiring a judgment
-call, and split the PR if it exceeds roughly four files' worth of changes.
+**PR 3's yield is unknown, but the scope is now six files rather than
+fourteen.** The M&A audit found six failures in seventeen cases across three
+rules. `identity/company_names.py` is the one to watch: it is primitives tier,
+whose contract is "comprehensive tests", and it has 62 of them with a single
+negative assertion. That is the same shape as `press_wire.py`, which has 28
+tests and 0/18 precision. If the audit finds a defect there it affects every
+consumer in the repository. Mitigation: audit that file first, and split the PR
+if the findings exceed roughly four files' worth of changes.
 
 **A convention in `CLAUDE.md` is not enforcement.** Nothing fails CI when
 adversarial cases are missing. Making it enforceable would require detecting
