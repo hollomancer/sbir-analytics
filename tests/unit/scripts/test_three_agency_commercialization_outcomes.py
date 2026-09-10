@@ -250,6 +250,74 @@ def test_form_d_dedupes_shared_accession_after_identity_collapse(tmp_path):
     assert events.iloc[0]["firm_id"] == "firm-1"
 
 
+def _form_d_record(company_name: str, *, accession: str, cik: str, amount: int = 100_000) -> dict:
+    return {
+        "company_name": company_name,
+        "match_confidence": {"tier": "high"},
+        "offerings": [
+            {
+                "accession_number": accession,
+                "date_of_first_sale": "2016-06-01",
+                "filing_date": "2016-06-02",
+                "total_amount_sold": amount,
+                "industry_group": "Computers",
+                "cik": cik,
+                "securities_types": ["equity"],
+            }
+        ],
+    }
+
+
+def test_form_d_quarantines_accession_credited_to_multiple_firms(tmp_path):
+    path = tmp_path / "form_d.jsonl"
+    records = [
+        _form_d_record("Acme, Inc.", accession="0001", cik="111"),
+        _form_d_record("Other Co", accession="0001", cik="111"),
+    ]
+    path.write_text("\n".join(json.dumps(record) for record in records) + "\n", encoding="utf-8")
+    cohort = MODULE.CohortData(
+        firms=pd.DataFrame(),
+        phase_ii_awards=pd.DataFrame(),
+        alias_to_firm={
+            f"name:{MODULE.normalized_name('Acme, Inc.')}": "firm-1",
+            f"name:{MODULE.normalized_name('Other Co')}": "firm-2",
+        },
+        phase_i_ii_contract_ids=frozenset(),
+        raw_company_names=frozenset(),
+    )
+    events, audit = MODULE.load_form_d_events(path, cohort, date(2024, 12, 31))
+    assert events.empty
+    assert audit["ambiguous_accessions_quarantined"] == 1
+    assert audit["ambiguous_event_rows_dropped"] == 2
+
+
+def test_form_d_quarantines_shared_cik_with_distinct_accessions(tmp_path):
+    path = tmp_path / "form_d.jsonl"
+    records = [
+        _form_d_record("Acme, Inc.", accession="0001", cik="0000123", amount=50_000),
+        _form_d_record("Other Co", accession="0002", cik="123", amount=75_000),
+        _form_d_record("Solo LLC", accession="0003", cik="999", amount=10_000),
+    ]
+    path.write_text("\n".join(json.dumps(record) for record in records) + "\n", encoding="utf-8")
+    cohort = MODULE.CohortData(
+        firms=pd.DataFrame(),
+        phase_ii_awards=pd.DataFrame(),
+        alias_to_firm={
+            f"name:{MODULE.normalized_name('Acme, Inc.')}": "firm-1",
+            f"name:{MODULE.normalized_name('Other Co')}": "firm-2",
+            f"name:{MODULE.normalized_name('Solo LLC')}": "firm-3",
+        },
+        phase_i_ii_contract_ids=frozenset(),
+        raw_company_names=frozenset(),
+    )
+    events, audit = MODULE.load_form_d_events(path, cohort, date(2024, 12, 31))
+    assert list(events["firm_id"]) == ["firm-3"]
+    assert events.iloc[0]["amount"] == 10_000
+    assert audit["ambiguous_ciks_quarantined"] == 1
+    assert "firm-1" not in set(events["firm_id"])
+    assert "firm-2" not in set(events["firm_id"])
+
+
 def test_match_firm_uses_identity_primitives_for_uei_and_duns():
     alias_to_firm = {
         "uei:ABC123DEF456": "firm-uei",

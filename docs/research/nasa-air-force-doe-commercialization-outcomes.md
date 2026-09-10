@@ -135,8 +135,11 @@ is not evidence that a program change caused the increase.
   remain. Signed transaction obligations are summed; deobligation-only
   histories do not count as a positive signal.
 - Form D uses actual amount sold, excludes incompatible industry groups, and
-  collapses amendments by CIK, first-sale date, and security type. High
-  confidence is primary; high plus medium is a sensitivity.
+  collapses amendments by CIK, first-sale date, and security type. An accession
+  or CIK matched to more than one cohort firm is quarantined from all of them.
+  High confidence is primary; high plus medium is a sensitivity. The scorecard
+  numbers above predate this quarantine and will move when the generator is
+  re-run against the Form D file.
 - M&A events are deduplicated public-record matches. High confidence is primary;
   high plus medium is a sensitivity.
 

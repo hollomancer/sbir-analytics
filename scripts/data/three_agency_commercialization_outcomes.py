@@ -402,9 +402,13 @@ def load_contract_events(
     return result, dict(stats)
 
 
+def form_d_cik(value: object) -> str:
+    raw_cik = clean_identifier(value)
+    return raw_cik.lstrip("0") or ("0" if raw_cik else "")
+
+
 def offering_series_key(offering: dict[str, Any]) -> tuple[str, str, tuple[str, ...]] | None:
-    raw_cik = clean_identifier(offering.get("cik"))
-    cik = raw_cik.lstrip("0") or ("0" if raw_cik else "")
+    cik = form_d_cik(offering.get("cik"))
     first_sale = parse_date(offering.get("date_of_first_sale"))
     securities = tuple(
         sorted(str(value).strip().lower() for value in offering.get("securities_types", []))
@@ -412,6 +416,47 @@ def offering_series_key(offering: dict[str, Any]) -> tuple[str, str, tuple[str, 
     if not cik or first_sale is None:
         return None
     return cik, first_sale.isoformat(), securities
+
+
+def quarantine_ambiguous_form_d(
+    events: pd.DataFrame,
+) -> tuple[pd.DataFrame, dict[str, int]]:
+    """Drop offerings whose accession or CIK is credited to more than one firm."""
+    empty_audit = {
+        "ambiguous_accessions_quarantined": 0,
+        "ambiguous_ciks_quarantined": 0,
+        "ambiguous_event_rows_dropped": 0,
+    }
+    if events.empty:
+        return events, empty_audit
+    drop = pd.Series(False, index=events.index)
+    keys = events["event_key"].astype(str)
+    real_accession = ~keys.str.startswith("no-accession:")
+    accession_counts = (
+        events.loc[real_accession].groupby("event_key", dropna=False)["firm_id"].nunique()
+        if real_accession.any()
+        else pd.Series(dtype="int64")
+    )
+    conflict_accessions = accession_counts[accession_counts > 1].index
+    if len(conflict_accessions):
+        drop |= events["event_key"].isin(conflict_accessions)
+    ciks = events["cik"].fillna("").astype(str).str.strip()
+    has_cik = ciks != ""
+    cik_frame = events.loc[has_cik].assign(cik=ciks[has_cik])
+    cik_counts = (
+        cik_frame.groupby("cik", dropna=False)["firm_id"].nunique()
+        if not cik_frame.empty
+        else pd.Series(dtype="int64")
+    )
+    conflict_ciks = cik_counts[cik_counts > 1].index
+    if len(conflict_ciks):
+        drop |= ciks.isin(conflict_ciks)
+    audit = {
+        "ambiguous_accessions_quarantined": int(len(conflict_accessions)),
+        "ambiguous_ciks_quarantined": int(len(conflict_ciks)),
+        "ambiguous_event_rows_dropped": int(drop.sum()),
+    }
+    return events.loc[~drop].copy(), audit
 
 
 def load_form_d_events(
@@ -480,6 +525,7 @@ def load_form_d_events(
                         "identity_basis": basis,
                         "confidence": tier,
                         "event_key": offering.get("accession_number"),
+                        "cik": form_d_cik(offering.get("cik")),
                     }
                 )
     result = pd.DataFrame(events)
@@ -491,6 +537,8 @@ def load_form_d_events(
                 f"no-accession:{index}" for index in result.index[missing]
             ]
         result = result.drop_duplicates(subset=["firm_id", "event_key"])
+        result, quarantined = quarantine_ambiguous_form_d(result)
+        audit.update(quarantined)
     return result, dict(audit)
 
 
@@ -907,7 +955,7 @@ def write_markdown(summary: pd.DataFrame, cohort: pd.DataFrame, path: Path, cuto
             "NASA is the full NASA portfolio; Air Force is the Air Force branch of DoD; DOE includes ARPA-E. "
             "The five-year result includes only firms with a fully observable five-year follow-up period.",
             "",
-            "Federal contract dollars are signed net obligations from any awarding agency. Phase I and II SBIR/STTR actions are excluded by research marker or by a dash-stripped PIID match unless the action is coded Phase III. Form D amounts use actual amount sold and collapse amendments into offering series instead of summing cumulative amendments.",
+            "Federal contract dollars are signed net obligations from any awarding agency. Phase I and II SBIR/STTR actions are excluded by research marker or by a dash-stripped PIID match unless the action is coded Phase III. Form D amounts use actual amount sold, collapse amendments into offering series, and quarantine accessions or CIKs matched to more than one firm.",
             "",
             "## Limitations",
             "",
