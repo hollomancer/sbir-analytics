@@ -153,7 +153,10 @@ def test_missing_required_searches_stay_unknown_and_suppress_headline(tmp_path: 
     assert not total["headline_available"]
     assert pd.isna(total["supplier_firm_share"])
     assert pd.isna(total["supplier_dollar_share"])
-    assert not MODULE._write_validation_sample(base, grid, tmp_path / "sample.csv")
+    sample_path = tmp_path / "sample.csv"
+    sample_path.write_text("stale named sample\n")
+    assert not MODULE._write_validation_sample(base, grid, sample_path)
+    assert not sample_path.exists()
 
 
 def test_complete_searches_emit_matrix_arithmetic_sample_and_curve(tmp_path: Path) -> None:
@@ -213,6 +216,7 @@ def test_complete_searches_emit_matrix_arithmetic_sample_and_curve(tmp_path: Pat
     assert sample["validation_status"].eq("pending_hand_adjudication").all()
     assert sample["epistemic_tier"].eq("exploratory").all()
     assert sample["citable"].eq(False).all()
+    assert sample_path.stat().st_mode & 0o777 == 0o600
 
     figure_path = tmp_path / "cohort_curve.svg"
     MODULE._write_figure(summary, as_of_year=2026, path=figure_path)
@@ -221,6 +225,27 @@ def test_complete_searches_emit_matrix_arithmetic_sample_and_curve(tmp_path: Pat
     assert "Exploratory / non-citable" in figure
     assert "12-year cutoff" in figure
     assert "15-year cutoff" in figure
+
+
+def test_validation_sample_atomic_replace_preserves_existing_file_on_failure(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    base = _base(searchable=True)
+    grid = MODULE._build_grid(base)
+    sample_path = tmp_path / "private" / "validation_sample.csv"
+    sample_path.parent.mkdir(parents=True)
+    sample_path.write_text("human work stays recoverable\n")
+
+    def fail_replace(source, destination) -> None:
+        raise OSError("replace failed")
+
+    monkeypatch.setattr(MODULE.os, "replace", fail_replace)
+
+    with pytest.raises(OSError, match="replace failed"):
+        MODULE._write_validation_sample(base, grid, sample_path)
+
+    assert sample_path.read_text() == "human work stays recoverable\n"
+    assert not list(sample_path.parent.glob(".validation_sample.csv.*.tmp"))
 
 
 def test_frozen_spec_hashes_match() -> None:
@@ -342,6 +367,222 @@ def test_ma_coverage_requires_every_alias_and_complete_context(tmp_path: Path) -
     assert metadata["derivation_consistent"] is True
     assert metadata["scan_context_incomplete_rows"] == 1
     assert metadata["scan_covered_firms"] == 0
+
+
+def test_incomplete_event_refinement_does_not_establish_ma_search_coverage(tmp_path: Path) -> None:
+    firms = pd.DataFrame({"firm_key": ["NAME:alpha"]})
+    awards = pd.DataFrame({"source_name": ["Alpha"], "firm_key": ["NAME:alpha"]})
+    lookups = {
+        "uei": {},
+        "duns": {},
+        "exact_name": {"alpha": "NAME:alpha"},
+        "join_name": {MODULE._name_key("Alpha"): "NAME:alpha"},
+        "ambiguous": {
+            "uei": set(),
+            "duns": set(),
+            "exact_name": set(),
+            "join_name": set(),
+        },
+    }
+    signals = {
+        "form_d_business_combination": False,
+        "efts_subsidiary": False,
+        "efts_ma_definitive": False,
+        "efts_acquisition_text": True,
+        "efts_ma_proxy": False,
+        "efts_ownership_active": False,
+    }
+    events_path = tmp_path / "events.jsonl"
+    events_path.write_text(
+        json.dumps(
+            {
+                "company_name": "Alpha",
+                "signals": signals,
+                "direction": "context_incomplete",
+                "context_classification_complete": False,
+                "context_incomplete_reasons": ["document_fetch_failed"],
+                "confidence": "low",
+            }
+        )
+        + "\n"
+    )
+    scan_path = tmp_path / "efts.jsonl"
+    scan_path.write_text(
+        json.dumps(
+            {
+                "company_name": "Alpha",
+                "mention_types": ["acquisition"],
+                "context_classification_complete": True,
+            }
+        )
+        + "\n"
+    )
+    form_d_path = tmp_path / "form-d.jsonl"
+    form_d_path.write_text("")
+
+    ma_signals, metadata = MODULE._load_ma_signals(
+        events_path,
+        scan_path,
+        form_d_path,
+        awards,
+        firms,
+        lookups,
+        search_complete=False,
+    )
+
+    assert metadata["derivation_consistent"] is True
+    assert metadata["event_context_incomplete_labels"] == 1
+    assert metadata["scan_covered_firms"] == 0
+    assert not ma_signals.iloc[0]["ma_signal"]
+    assert not ma_signals.iloc[0]["ma_searchable"]
+
+
+@pytest.mark.parametrize(
+    ("direction", "confidence", "expected_signal"),
+    [("target", "medium", True), ("no_filing", "low", False)],
+)
+def test_legacy_untyped_directional_event_does_not_establish_ma_search_coverage(
+    tmp_path: Path,
+    direction: str,
+    confidence: str,
+    expected_signal: bool,
+) -> None:
+    firms = pd.DataFrame({"firm_key": ["NAME:alpha"]})
+    awards = pd.DataFrame({"source_name": ["Alpha"], "firm_key": ["NAME:alpha"]})
+    lookups = {
+        "uei": {},
+        "duns": {},
+        "exact_name": {"alpha": "NAME:alpha"},
+        "join_name": {MODULE._name_key("Alpha"): "NAME:alpha"},
+        "ambiguous": {
+            "uei": set(),
+            "duns": set(),
+            "exact_name": set(),
+            "join_name": set(),
+        },
+    }
+    signals = {
+        "form_d_business_combination": False,
+        "efts_subsidiary": False,
+        "efts_ma_definitive": False,
+        "efts_acquisition_text": True,
+        "efts_ma_proxy": False,
+        "efts_ownership_active": False,
+    }
+    events_path = tmp_path / "events.jsonl"
+    events_path.write_text(
+        json.dumps(
+            {
+                "company_name": "Alpha",
+                "signals": signals,
+                "direction": direction,
+                "confidence": confidence,
+            }
+        )
+        + "\n"
+    )
+    scan_path = tmp_path / "efts.jsonl"
+    scan_path.write_text(
+        json.dumps(
+            {
+                "company_name": "Alpha",
+                "mention_types": ["acquisition"],
+                "context_classification_complete": True,
+            }
+        )
+        + "\n"
+    )
+    form_d_path = tmp_path / "form-d.jsonl"
+    form_d_path.write_text("")
+
+    ma_signals, metadata = MODULE._load_ma_signals(
+        events_path,
+        scan_path,
+        form_d_path,
+        awards,
+        firms,
+        lookups,
+        search_complete=False,
+    )
+
+    assert metadata["derivation_consistent"] is True
+    assert metadata["event_direction_sensitive_labels"] == 1
+    assert metadata["event_context_untyped_labels"] == 1
+    assert metadata["event_context_incomplete_labels"] == 1
+    assert metadata["scan_covered_firms"] == 0
+    assert ma_signals.iloc[0]["ma_signal"] == expected_signal
+    assert not ma_signals.iloc[0]["ma_searchable"]
+
+
+def test_untyped_context_does_not_quarantine_direction_insensitive_strong_signal(
+    tmp_path: Path,
+) -> None:
+    firms = pd.DataFrame({"firm_key": ["NAME:alpha"]})
+    awards = pd.DataFrame({"source_name": ["Alpha"], "firm_key": ["NAME:alpha"]})
+    lookups = {
+        "uei": {},
+        "duns": {},
+        "exact_name": {"alpha": "NAME:alpha"},
+        "join_name": {MODULE._name_key("Alpha"): "NAME:alpha"},
+        "ambiguous": {
+            "uei": set(),
+            "duns": set(),
+            "exact_name": set(),
+            "join_name": set(),
+        },
+    }
+    signals = {
+        "form_d_business_combination": True,
+        "efts_subsidiary": False,
+        "efts_ma_definitive": False,
+        "efts_acquisition_text": False,
+        "efts_ma_proxy": False,
+        "efts_ownership_active": False,
+    }
+    events_path = tmp_path / "events.jsonl"
+    events_path.write_text(
+        json.dumps({"company_name": "Alpha", "signals": signals, "confidence": "high"})
+        + "\n"
+    )
+    scan_path = tmp_path / "efts.jsonl"
+    scan_path.write_text(
+        json.dumps(
+            {
+                "company_name": "Alpha",
+                "mention_types": [],
+                "context_classification_complete": True,
+            }
+        )
+        + "\n"
+    )
+    form_d_path = tmp_path / "form-d.jsonl"
+    form_d_path.write_text(
+        json.dumps(
+            {
+                "company_name": "Alpha",
+                "offerings": [{"is_business_combination": True}],
+            }
+        )
+        + "\n"
+    )
+
+    ma_signals, metadata = MODULE._load_ma_signals(
+        events_path,
+        scan_path,
+        form_d_path,
+        awards,
+        firms,
+        lookups,
+        search_complete=False,
+    )
+
+    assert metadata["derivation_consistent"] is True
+    assert metadata["event_direction_sensitive_labels"] == 0
+    assert metadata["event_context_untyped_labels"] == 0
+    assert metadata["event_context_incomplete_labels"] == 0
+    assert metadata["scan_covered_firms"] == 1
+    assert ma_signals.iloc[0]["ma_signal"]
+    assert ma_signals.iloc[0]["ma_searchable"]
 
 
 def test_ma_derivation_rejects_stale_confidence(tmp_path: Path) -> None:

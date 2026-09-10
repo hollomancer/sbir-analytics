@@ -14,7 +14,9 @@ import argparse
 import hashlib
 import json
 import math
+import os
 import re
+import tempfile
 from collections import Counter, defaultdict
 from dataclasses import dataclass
 from pathlib import Path
@@ -757,7 +759,32 @@ def _load_ma_signals(
         if len(firm_keys) > 1
         and _clean(events_by_name.get(label, {}).get("confidence")).lower() in {"high", "medium"}
     }
-    coverage_eligible_labels = clean_labels - ambiguous_positive_labels
+    direction_sensitive_labels = {
+        label
+        for label, event in events_by_name.items()
+        if not (
+            (event.get("signals") or {}).get("form_d_business_combination")
+            or (event.get("signals") or {}).get("efts_subsidiary")
+        )
+        and bool(
+            (event.get("signals") or {}).get("efts_acquisition_text")
+            or (event.get("signals") or {}).get("efts_ma_definitive")
+        )
+    }
+    untyped_refinement_labels = {
+        label
+        for label in direction_sensitive_labels
+        if events_by_name[label].get("context_classification_complete") is not True
+    }
+    incomplete_refinement_labels = untyped_refinement_labels | {
+        label
+        for label, event in events_by_name.items()
+        if _clean(event.get("direction")).lower() == "context_incomplete"
+        or event.get("context_classification_complete") is False
+    }
+    coverage_eligible_labels = (
+        clean_labels - ambiguous_positive_labels - incomplete_refinement_labels
+    )
     covered = {
         firm_key
         for firm_key, labels in labels_per_firm.items()
@@ -820,6 +847,9 @@ def _load_ma_signals(
         "scan_ambiguous_source_labels": sum(
             len(firm_keys) > 1 for firm_keys in firms_per_label.values()
         ),
+        "event_direction_sensitive_labels": len(direction_sensitive_labels),
+        "event_context_untyped_labels": len(untyped_refinement_labels),
+        "event_context_incomplete_labels": len(incomplete_refinement_labels),
         "scan_ambiguous_positive_labels": len(ambiguous_positive_labels),
         "scan_covered_firms": len(covered),
         "scan_attachment_methods": dict(sorted(scan_methods.items())),
@@ -1360,6 +1390,7 @@ def _write_validation_sample(base: pd.DataFrame, firm_grid: pd.DataFrame, path: 
         & firm_grid["headline_eligible"]
     ]
     if central.empty or not central["required_venture_channels_searchable"].all():
+        path.unlink(missing_ok=True)
         return False
     private = central.merge(
         base[["firm_id", "private_firm_name"]], on="firm_id", how="left", validate="one_to_one"
@@ -1406,7 +1437,26 @@ def _write_validation_sample(base: pd.DataFrame, firm_grid: pd.DataFrame, path: 
         "sample_rank",
     ]
     path.parent.mkdir(parents=True, exist_ok=True)
-    sample.loc[:, columns].to_csv(path, index=False)
+    temporary_path: Path | None = None
+    try:
+        with tempfile.NamedTemporaryFile(
+            mode="w",
+            encoding="utf-8",
+            dir=path.parent,
+            prefix=f".{path.name}.",
+            suffix=".tmp",
+            delete=False,
+        ) as handle:
+            temporary_path = Path(handle.name)
+            sample.loc[:, columns].to_csv(handle, index=False)
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.chmod(temporary_path, 0o600)
+        os.replace(temporary_path, path)
+        temporary_path = None
+    finally:
+        if temporary_path is not None:
+            temporary_path.unlink(missing_ok=True)
     return True
 
 
