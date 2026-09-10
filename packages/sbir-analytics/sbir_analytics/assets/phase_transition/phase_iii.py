@@ -186,11 +186,7 @@ def validated_phase_iii_contracts(context=None) -> Output[pd.DataFrame]:
         "total_rows": int(len(phase_iii)),
         "coverage": coverage_dict,
         "coding_coverage_warning": coding_coverage_warning,
-        # Key-compatible alias for consumers of the original checks schema. The
-        # key survives; the "note" value deliberately does not. The old text
-        # ("Treat transition rates as lower bounds") asserted a one-sided bias
-        # this readout retracts, so carrying it forward under the old key would
-        # keep serving the claim being withdrawn.
+        # Keep the alias key; do not restore the withdrawn one-sided-bias note.
         "undercount_warning": {
             **coding_coverage_warning,
             "deprecated_alias_for": "coding_coverage_warning",

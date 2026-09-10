@@ -809,6 +809,15 @@ def _fmt_rate(value: float | None) -> str:
     return "n/a" if value is None else f"{100 * value:.1f}%"
 
 
+def _required_count(mapping: dict[str, Any], key: str, *, path: str) -> int:
+    value = mapping.get(key, None)
+    if value is None:
+        raise ValueError(
+            f"{path}.{key} is required; refuse to interpolate a missing headline count"
+        )
+    return int(value)
+
+
 def render_markdown(summary: dict[str, Any]) -> str:
     study = summary["study"]
     panel_a = summary["panel_a"]
@@ -817,6 +826,18 @@ def render_markdown(summary: dict[str, Any]) -> str:
     panel_d = summary["panel_d"]
     desc = panel_a["description"]
     comparator = panel_a["historical_dod_comparator"]
+    constraint = desc.get("source_constraint")
+    if not isinstance(constraint, dict):
+        raise ValueError(
+            "panel_a.description.source_constraint is required; "
+            "refuse to interpolate a missing headline count"
+        )
+    post_cap_over_cap_legacy_n = _required_count(
+        constraint, "post_cap_over_cap_legacy_n", path="panel_a.description.source_constraint"
+    )
+    post_cap_over_cap_n = _required_count(
+        constraint, "post_cap_over_cap_n", path="panel_a.description.source_constraint"
+    )
     first_action_in_window_n = sum(
         row["coded_phase_iii_first_actions"] for row in panel_a["annual"]
     )
@@ -881,8 +902,8 @@ Latest-action descriptions: median {desc["median_chars"]:.0f} characters; ≥40,
 {desc["ge_150_count"]:,}/{desc["award_n"]:,} ({_fmt_rate(desc["ge_150_rate"])});
 {desc["representative_nonzero_mod_n"]:,} representatives are nonzero modifications.
 FPDS [requires the field and caps newly entered text at 250 characters after 2019-06-28]({FPDS_DESCRIPTION_RULE_URL});
-{desc["source_constraint"]["post_cap_over_cap_legacy_n"]:,} of
-{desc["source_constraint"]["post_cap_over_cap_n"]:,} later representatives above 250
+{post_cap_over_cap_legacy_n:,} of
+{post_cap_over_cap_n:,} later representatives above 250
 trace to pre-cap contracts. Thus 900 is cross-vintage-incomparable—not a zero or §638 standard.
 
 The **historical, unreproduced** DoD comparator (n={comparator["award_n"]:,}) reported 53.6% ≥40
@@ -951,7 +972,7 @@ Kaplan–Meier-ready metadata. The defect was in research-evaluation semantics, 
   supports finance as an outcome; [SEC methodology](https://www.sec.gov/files/dera-white-paper_regulation-d_082018.pdf)
   shows Form D is incomplete and self-reported, with no Navy-SBIR attribution here.
 
-**Bottom line.** The results are a reproducible local map of observed public signals, not a complete
+**Bottom line.** The results are a locally regenerable map of observed public signals, not a complete
 commercialization measure. Coding and identity misses can bias downward; unrelated same-firm matches,
 contract reuse, modifications, and name matching can bias upward. Nothing here identifies a mechanism.
 """

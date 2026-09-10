@@ -39,6 +39,15 @@ from dagster import Definitions
 pytestmark = [pytest.mark.fast, pytest.mark.unit]
 
 
+def test_job_description_does_not_advertise_a_km_ready_survival_frame() -> None:
+    from sbir_analytics.assets.jobs.phase_transition_job import phase_transition_latency_job
+
+    description = phase_transition_latency_job.description
+    assert "KM-ready survival" not in description
+    assert "signed completion-relative" in description
+    assert "not KM-ready" in description
+
+
 def _defs():
     from sbir_analytics.assets.jobs.phase_transition_job import phase_transition_latency_job
     from sbir_analytics.assets.phase_transition import (
