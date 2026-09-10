@@ -68,6 +68,28 @@ class MaterializationGate(BaseModel):
         return self
 
 
+class ValidationDesign(BaseModel):
+    """What the study must show, written before the data is seen.
+
+    The evidence-tier contract checks that a number is pinned, not that the
+    study could have detected the effect. ``studies/ma-discovery-recall``
+    failed three times against a recall floor of 10 that was stated as a bare
+    count and never normalised to a shrinking eligible pool; at the observed
+    rate that floor passes about 30% of the time even when the method performs
+    exactly as measured.
+
+    Required only when a manifest targets ``validated`` or ``citable``. A
+    census or an enumeration has no pass/fail threshold and does not need one.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    addressable_population: str = Field(min_length=1)
+    expected_yield: str = Field(min_length=1)
+    decision_threshold: str = Field(min_length=1)
+    threshold_derivation: str = Field(min_length=1)
+
+
 class StudyManifest(BaseModel):
     """The machine-checkable epistemic contract for one study."""
 
@@ -85,6 +107,7 @@ class StudyManifest(BaseModel):
     materialization: MaterializationGate
     permitted_claims: list[str] = Field(min_length=1)
     limitations: list[str] = Field(min_length=1)
+    validation_design: ValidationDesign | None = None
 
 
 def load_study_manifest(path: Path) -> StudyManifest:
@@ -101,5 +124,6 @@ __all__ = [
     "ImplementationReference",
     "MaterializationGate",
     "StudyManifest",
+    "ValidationDesign",
     "load_study_manifest",
 ]

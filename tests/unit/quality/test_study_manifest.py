@@ -142,3 +142,54 @@ def test_repository_study_manifests_are_valid() -> None:
     assert all(
         validate_manifest_file(path, repository_root=repository_root) == [] for path in manifests
     )
+
+
+def test_validation_design_requires_all_four_fields() -> None:
+    """A threshold with no derivation is the defect this block exists to stop.
+
+    studies/ma-discovery-recall/design.md:53-55 set a recall floor of 10 as a
+    bare count, then applied it unchanged to cuts whose eligible pools were
+    342, 503 and 307.
+    """
+    from pydantic import ValidationError as PydanticValidationError
+
+    from sbir_etl.quality.study_manifest import ValidationDesign
+
+    complete = ValidationDesign(
+        addressable_population="1,514 Form-D-missing pairs naming an acquirer",
+        expected_yield="~2.3% of eligible pairs, from pilot 9/342 and confirmatory 13/503",
+        decision_threshold="10 distinct strict medium/high pairs",
+        threshold_derivation="95% CI lower bound clears 1.5% at n=362 when k>=10",
+    )
+    assert complete.decision_threshold == "10 distinct strict medium/high pairs"
+
+    for missing in (
+        "addressable_population",
+        "expected_yield",
+        "decision_threshold",
+        "threshold_derivation",
+    ):
+        fields = {
+            "addressable_population": "x",
+            "expected_yield": "x",
+            "decision_threshold": "x",
+            "threshold_derivation": "x",
+        }
+        del fields[missing]
+        with pytest.raises(PydanticValidationError):
+            ValidationDesign(**fields)
+
+
+def test_validation_design_rejects_empty_strings() -> None:
+    """An empty derivation is the same defect wearing a value."""
+    from pydantic import ValidationError as PydanticValidationError
+
+    from sbir_etl.quality.study_manifest import ValidationDesign
+
+    with pytest.raises(PydanticValidationError):
+        ValidationDesign(
+            addressable_population="x",
+            expected_yield="x",
+            decision_threshold="x",
+            threshold_derivation="",
+        )
