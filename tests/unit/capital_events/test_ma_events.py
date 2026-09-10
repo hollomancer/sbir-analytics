@@ -6,7 +6,7 @@ import json
 from sbir_etl.capital_events.sources.ma_events import build_ma_events
 
 
-def _ma_row(name, date, confidence, acquirer=None, signals=None, press=None):
+def _ma_row(name, date, confidence, acquirer=None, signals=None):
     return {
         "company_name": name,
         "event_date": date,
