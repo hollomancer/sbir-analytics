@@ -8,7 +8,27 @@ The status vocabulary is intentionally small:
 
 - `exploratory`: useful working analysis, not a stable result;
 - `reproducible`: specified inputs and implementation can be rerun;
-- `validated`: the study's stated validation design has passed;
+- `validated`: the study's stated validation design has passed.
+  A manifest at `validated` or `citable` must carry a `validation_design` block:
+
+  ```yaml
+  validation_design:
+    addressable_population: >-
+      How many units the estimand can reach, and how that was counted.
+    expected_yield: >-
+      What the study expects to find, from what prior.
+    decision_threshold: >-
+      The number the result must clear.
+    threshold_derivation: >-
+      Why that number, and the power to clear it at the expected yield.
+  ```
+
+  Write it before capture. Its purpose is to make a study state, in advance,
+  whether it could detect the effect it is looking for.
+  `studies/ma-discovery-recall` failed three times against a recall floor of 10
+  that was never normalised to a shrinking eligible pool; at the observed
+  detection rate that floor passes about 30% of the time even when the method
+  works as measured.
 - `citable`: approved for the claims listed in its manifest;
 - `retired`: retained for provenance but superseded or no longer supported.
 

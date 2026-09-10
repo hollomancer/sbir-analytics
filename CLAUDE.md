@@ -184,6 +184,32 @@ make docs-check                        # Hygiene subset only (also included in l
 `make lint-boundaries` must stay aligned with the CI quality job's guard step. If
 Make and CI diverge, CI is authoritative and the Makefile is wrong.
 
+### Adversarial cases for matchers and classifiers
+
+Two kinds of function need tests that try to break them, because a false
+positive from either reads as evidence rather than as a crash:
+
+- **Role assignment from free text** — decides who did what to whom.
+  `classify_direction`, `ucc/matcher.is_debtor_side_match`,
+  `sec_edgar._classify_mention`.
+- **Cross-population entity matching** — decides whether two names are the same
+  firm. `identity/company_names`, `press_wire._match_company`,
+  `form_d_scoring`, `company_fuzzy_matcher`, `ucc/matcher.classify_match`.
+
+For every rule or branch that can return a positive result, write at least one
+input where that rule must **not** fire. `tests/unit/scripts/test_refine_ma_direction.py`
+is the worked example: its `ACQUIRER_SIDE_OR_NOISE` table lists phrasings where
+the subject company is the buyer, the seller, or merely mentioned.
+
+This is not a general testing rule. A field normaliser such as
+`_normalize_state` cannot produce a false positive that reads as evidence, and
+does not need it.
+
+Happy-path coverage is not a substitute and can hide the defect:
+`tests/unit/enrichers/test_press_wire.py` holds 28 tests for a matcher with
+0/18 precision, because every test asserts that matching works and none tries
+`BAL` against `"global"`.
+
 Transition scoring changes must not silently invert HIGH-threshold polarity.
 Every PR runs `tests/unit/scripts/test_phase_iii_precision_backtest.py`:
 obvious transitions stay HIGH, obvious non-transitions stay below the
