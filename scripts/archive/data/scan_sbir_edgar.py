@@ -117,7 +117,7 @@ class _ServerErrorTracker:
 
     def write(self, message):
         match = re.search(
-            r"EDGAR filing mention search failed for '(.*)':",
+            r"EDGAR filing mention search failed for '(.*?)':",
             str(message),
         )
         if match is None:
