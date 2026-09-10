@@ -104,9 +104,7 @@ def test_matching_xml_hash_parses_issuer_and_prefills_alias_agreement(
     assert row["review_outcome"] == "unreviewed"
 
 
-def test_missing_xml_stays_in_queue_without_issuer_fields(
-    tmp_path: Path, monkeypatch
-) -> None:
+def test_missing_xml_stays_in_queue_without_issuer_fields(tmp_path: Path, monkeypatch) -> None:
     row = _run_queue(tmp_path, monkeypatch, xml_bytes=None)
 
     assert row["form_d_issuer_name"] is None

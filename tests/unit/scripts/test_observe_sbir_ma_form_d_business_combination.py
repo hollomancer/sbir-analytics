@@ -38,9 +38,7 @@ def _manifest_record(**overrides: object) -> dict:
 
 
 def test_empty_body_200_is_not_a_successful_retrieval() -> None:
-    assert not _successful_xml_retrieval(
-        _manifest_record(bytes=0, sha256=None)
-    )
+    assert not _successful_xml_retrieval(_manifest_record(bytes=0, sha256=None))
     assert _successful_xml_retrieval(_manifest_record())
 
 
