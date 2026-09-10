@@ -62,6 +62,8 @@ async def process_batch(
     verifier = extractor if extractor is not None else KeywordExtractor()
     verified: list[dict[str, Any]] = []
     seen: set[tuple[str, str]] = set()
+    pending_undated: dict[tuple[str, str], dict[str, Any]] = {}
+    confirming_urls: dict[tuple[str, str], list[str]] = {}
     for row in queries:
         company = row["company_name"]
         acquirer = row["acquirer"]
@@ -70,12 +72,11 @@ async def process_batch(
             continue
         query = row["query"]
         results = await search_tool.search(query)
-        source_urls: list[str] = []
+        urls = confirming_urls.setdefault(key, [])
         undated: dict[str, Any] | None = None
+        committed = False
         for res in results:
             link = res.get("link")
-            if isinstance(link, str) and link:
-                source_urls.append(link)
             snippet = res.get("snippet", "")
             source = link if isinstance(link, str) else None
             if not snippet and not source:
@@ -90,7 +91,9 @@ async def process_batch(
             )
             if not verdict.confirmed:
                 continue
-            confidence = assign_confidence(verdict, source_count=len(source_urls))
+            if isinstance(link, str) and link and link not in urls:
+                urls.append(link)
+            confidence = assign_confidence(verdict, source_count=len(urls))
             event = {
                 "company_name": company,
                 "acquirer": acquirer,
@@ -104,15 +107,19 @@ async def process_batch(
             }
             if stop_when == "first_confirm" or confidence in {"medium", "high"}:
                 seen.add(key)
+                pending_undated.pop(key, None)
                 verified.append(event)
-                undated = None
+                committed = True
                 break
             if undated is None:
                 undated = event
-        else:
-            if undated is not None:
-                seen.add(key)
-                verified.append(undated)
+        if committed:
+            continue
+        if undated is not None and key not in pending_undated:
+            pending_undated[key] = undated
+    for key, event in pending_undated.items():
+        if key not in seen:
+            verified.append(event)
     return verified
 
 

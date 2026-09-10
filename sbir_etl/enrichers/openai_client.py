@@ -48,6 +48,14 @@ class WebSearchResult:
     source_urls: list[str] = field(default_factory=list)
 
 
+class OpenAIAuthError(RuntimeError):
+    """Terminal 401/402/403 from the chat API. Not retried."""
+
+    def __init__(self, status_code: int) -> None:
+        self.status_code = status_code
+        super().__init__(f"OpenAI API error: {status_code}")
+
+
 class OpenAIClient:
     """Synchronous OpenAI API client with retry and concurrency control.
 
@@ -57,6 +65,9 @@ class OpenAIClient:
             Controls the semaphore size. Default 4.
         timeout: HTTP request timeout in seconds.
         model: Default model for chat and web search.
+        raise_on_auth_error: If true, 401/402/403 raise ``OpenAIAuthError``.
+            Default false returns ``None`` (weekly synopsis and other shared
+            callers). M&A live capture sets this so a 402 cannot freeze.
     """
 
     def __init__(
@@ -67,12 +78,14 @@ class OpenAIClient:
         model: str = DEFAULT_MODEL,
         chat_url: str = OPENAI_CHAT_URL,
         extra_headers: dict[str, str] | None = None,
+        raise_on_auth_error: bool = False,
     ) -> None:
         self._api_key = api_key
         self._model = model
         self._timeout = timeout
         self._chat_url = chat_url
         self._extra_headers = extra_headers or {}
+        self._raise_on_auth_error = raise_on_auth_error
         self._semaphore = threading.Semaphore(max_concurrent)
         self._client = httpx.Client(timeout=timeout)
 
@@ -131,7 +144,9 @@ class OpenAIClient:
 
             if resp.status_code in {401, 402, 403}:
                 logger.warning(f"OpenAI API error: {resp.status_code} (no retry)")
-                raise RuntimeError(f"OpenAI API error: {resp.status_code}")
+                if self._raise_on_auth_error:
+                    raise OpenAIAuthError(resp.status_code)
+                return None
 
             if resp.status_code == 429 or resp.status_code >= 500:
                 if attempt < MAX_RETRIES:

@@ -26,6 +26,7 @@ class CollisionResult:
     inserted: list[dict[str, Any]] = field(default_factory=list)
     promoted: list[dict[str, Any]] = field(default_factory=list)
     confirmed_existing: list[dict[str, Any]] = field(default_factory=list)
+    applied_hits: list[dict[str, Any]] = field(default_factory=list)
 
 
 def name_key(value: str | None) -> str:
@@ -91,6 +92,7 @@ def apply_c3(
     inserted: list[dict[str, Any]] = []
     promoted: list[dict[str, Any]] = []
     confirmed_existing: list[dict[str, Any]] = []
+    applied_hits: list[dict[str, Any]] = []
 
     for hit in discovered:
         company_key = name_key(str(hit.get("company_name") or ""))
@@ -98,21 +100,26 @@ def apply_c3(
             continue
         hit_date = hit.get("event_date") or hit.get("date")
         match_idx: int | None = None
+        dateless_idx: int | None = None
         for idx, row in enumerate(rows):
             if name_key(str(row.get("company_name") or "")) != company_key:
                 continue
             existing_date = row.get("event_date")
             if parse_event_date(existing_date) is None:
-                match_idx = idx
-                break
+                if dateless_idx is None:
+                    dateless_idx = idx
+                continue
             if dates_collide(existing_date, hit_date):
                 match_idx = idx
                 break
+        if match_idx is None:
+            match_idx = dateless_idx
 
         if match_idx is None:
             inserted_row = _discovered_as_event(hit)
             rows.append(inserted_row)
             inserted.append(inserted_row)
+            applied_hits.append(hit)
             continue
 
         current = rows[match_idx]
@@ -141,16 +148,19 @@ def apply_c3(
             updated = _with_signal(current, confidence="high", signals=signals)
             rows[match_idx] = updated
             promoted.append(updated)
+            applied_hits.append(hit)
             continue
         updated = _with_signal(current, confidence="medium", signals=signals)
         rows[match_idx] = updated
         promoted.append(updated)
+        applied_hits.append(hit)
 
     return CollisionResult(
         rows=rows,
         inserted=inserted,
         promoted=promoted,
         confirmed_existing=confirmed_existing,
+        applied_hits=applied_hits,
     )
 
 

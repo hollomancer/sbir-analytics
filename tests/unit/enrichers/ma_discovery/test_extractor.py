@@ -17,6 +17,7 @@ from sbir_etl.enrichers.ma_discovery.extractor import (
     FrozenLlmExtractor,
     KeywordExtractor,
     LlmExtractor,
+    LlmTransportError,
     RecordingLlmExtractor,
     build_llm_extractor,
     build_user_prompt,
@@ -356,9 +357,31 @@ def test_recording_llm_retries_empty_freeze_rows(tmp_path) -> None:
 def test_recording_llm_does_not_persist_empty_live_payload(tmp_path) -> None:
     path = tmp_path / "llm.jsonl"
     extractor = RecordingLlmExtractor(LlmExtractor(lambda _s, _u: None), [], path=path)
-    verdict = extractor.extract(_ITEM)
-    assert verdict.confirmed is False
+    with pytest.raises(LlmTransportError):
+        extractor.extract(_ITEM)
     assert not path.exists()
+
+
+def test_build_llm_extractor_sets_raise_on_auth_error(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from sbir_etl.enrichers.openai_client import OpenAIClient
+
+    captured: dict[str, object] = {}
+    real = OpenAIClient
+
+    def _wrap(*args: object, **kwargs: object) -> OpenAIClient:
+        captured.update(kwargs)
+        return real(*args, **kwargs)
+
+    monkeypatch.setattr(
+        "sbir_etl.enrichers.ma_discovery.extractor.OpenAIClient",
+        _wrap,
+    )
+    monkeypatch.delenv("XAI_API_KEY", raising=False)
+    extractor = build_llm_extractor(api_key="sk-or-v1-test-not-used")
+    assert isinstance(extractor, LlmExtractor)
+    assert captured.get("raise_on_auth_error") is True
 
 
 def test_build_llm_extractor_returns_none_without_key(monkeypatch: pytest.MonkeyPatch) -> None:

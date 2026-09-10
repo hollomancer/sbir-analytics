@@ -4,7 +4,12 @@ from unittest.mock import Mock
 
 import pytest
 
-from sbir_etl.enrichers.openai_client import OPENAI_CHAT_URL, OpenAIClient, WebSearchResult
+from sbir_etl.enrichers.openai_client import (
+    OPENAI_CHAT_URL,
+    OpenAIAuthError,
+    OpenAIClient,
+    WebSearchResult,
+)
 
 pytestmark = pytest.mark.fast
 
@@ -105,7 +110,7 @@ class TestOpenAIClient:
         result = client.chat("sys", "usr")
         assert result is None
 
-    def test_chat_402_raises_without_retry(self):
+    def test_chat_402_returns_none_by_default(self):
         mock_http = Mock()
         mock_resp = Mock()
         mock_resp.status_code = 402
@@ -113,9 +118,41 @@ class TestOpenAIClient:
 
         client = OpenAIClient(api_key="test-key", max_concurrent=1)
         client._client = mock_http
-        with pytest.raises(RuntimeError, match="402"):
+        assert client.chat("sys", "usr") is None
+        assert mock_http.request.call_count == 1
+
+    def test_chat_402_raises_when_raise_on_auth_error(self):
+        mock_http = Mock()
+        mock_resp = Mock()
+        mock_resp.status_code = 402
+        mock_http.request.return_value = mock_resp
+
+        client = OpenAIClient(api_key="test-key", max_concurrent=1, raise_on_auth_error=True)
+        client._client = mock_http
+        with pytest.raises(OpenAIAuthError, match="402"):
             client.chat("sys", "usr")
         assert mock_http.request.call_count == 1
+
+    def test_weekly_synopsis_chat_returns_none_on_402(self):
+        from sbir_etl.reporting.weekly import llm as weekly_llm
+
+        mock_http = Mock()
+        mock_resp = Mock()
+        mock_resp.status_code = 402
+        mock_http.request.return_value = mock_resp
+        client = OpenAIClient(api_key="test-key", max_concurrent=1)
+        client._client = mock_http
+        weekly_llm._openai_client_instance = client
+        try:
+            assert weekly_llm._openai_chat("k", "sys", "usr") is None
+            synopsis = weekly_llm.generate_weekly_synopsis(
+                "k",
+                [{"Award Amount": "1", "Agency": "DoD", "Company": "Acme"}],
+                days=7,
+            )
+            assert synopsis is None
+        finally:
+            weekly_llm._openai_client_instance = None
 
     def test_web_search_success(self):
         mock_http = Mock()

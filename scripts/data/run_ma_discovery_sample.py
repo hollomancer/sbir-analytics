@@ -39,6 +39,7 @@ from sbir_etl.enrichers.ma_discovery.queries import (
     query_rows_from_events,
 )
 from sbir_etl.enrichers.ma_discovery.search import SearchTool, build_search_tool
+from sbir_etl.enrichers.openai_client import OpenAIAuthError
 from sbir_etl.exceptions import ConfigurationError
 
 
@@ -346,12 +347,17 @@ def existing_medium_high_pairs(events: list[dict[str, Any]]) -> set[tuple[str, s
 
 def strict_medium_high_n(
     events: list[dict[str, Any]],
-    mutated: list[dict[str, Any]],
+    applied_hits: list[dict[str, Any]],
 ) -> int:
-    """Count insert/promote medium/high pairs that were not already medium/high."""
+    """Count insert/promote pairs the extractor confirmed at medium or high.
+
+    Uses pre-C3 discovery confidence and the discovered pair. C3 can bump a
+    low existing row to medium on any confirm, including an undated/low
+    discovery; that promotion is not a strict-recall credit.
+    """
     already = existing_medium_high_pairs(events)
     seen: set[tuple[str, str]] = set()
-    for row in mutated:
+    for row in applied_hits:
         if row.get("confidence") not in {"medium", "high"}:
             continue
         key = pair_key(row.get("company_name"), row.get("acquirer"))
@@ -901,18 +907,21 @@ def main() -> int:
         if sha_errors:
             raise SystemExit("run-manifest SHA check failed:\n" + "\n".join(sha_errors))
 
-    discovered, search_failure_n = asyncio.run(
-        _search(
-            bounded,
-            backend=args.search_backend,
-            api_key=args.search_api_key,
-            snippets=args.snippets,
-            sink=recorded,
-            extractor=extractor,
-            record_path=None if replay else snippets_path,
-            stop_when=args.stop_when,
+    try:
+        discovered, search_failure_n = asyncio.run(
+            _search(
+                bounded,
+                backend=args.search_backend,
+                api_key=args.search_api_key,
+                snippets=args.snippets,
+                sink=recorded,
+                extractor=extractor,
+                record_path=None if replay else snippets_path,
+                stop_when=args.stop_when,
+            )
         )
-    )
+    except OpenAIAuthError as exc:
+        raise SystemExit(f"LLM auth/billing error; aborting freeze: {exc}") from exc
     llm_timeout_n = int(getattr(extractor, "timeout_n", 0))
     # Pairs that actually reached the extractor in THIS process. Frozen pairs
     # dropped by the resume path were not scored here, so they must not be
@@ -935,7 +944,7 @@ def main() -> int:
             handle.write(json.dumps(row, sort_keys=True) + "\n")
 
     medium_high = [row for row in discovered if row.get("confidence") in {"medium", "high"}]
-    strict_n = strict_medium_high_n(events, collision.inserted + collision.promoted)
+    strict_n = strict_medium_high_n(events, collision.applied_hits)
     recall_n = strict_n if args.strict_recall else len(medium_high)
     recall_floor = protocol.recall_floor if protocol is not None else 10
     recall_met = recall_n >= recall_floor

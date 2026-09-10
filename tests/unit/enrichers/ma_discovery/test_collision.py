@@ -79,6 +79,43 @@ def test_c3_promotes_medium_to_high() -> None:
     assert len(result.promoted) == 1
 
 
+def test_c3_prefers_dated_window_over_earlier_dateless() -> None:
+    existing = [
+        {
+            "company_name": "Aether Photonics",
+            "acquirer": "EFTS Unknown",
+            "event_date": None,
+            "confidence": "low",
+            "signals": {"efts_acquisition_text": True},
+        },
+        {
+            "company_name": "Aether Photonics",
+            "acquirer": "Helios Defense",
+            "event_date": "2024-03-12",
+            "confidence": "low",
+            "signals": {"efts_acquisition_text": True},
+        },
+    ]
+    result = apply_c3(
+        existing,
+        [
+            {
+                "company_name": "Aether Photonics",
+                "acquirer": "Helios Defense",
+                "event_date": "2024-03-12",
+                "confidence": "medium",
+            }
+        ],
+    )
+    assert result.rows[0]["confidence"] == "low"
+    assert result.rows[0].get("signals", {}).get("discovery_confirmed") is not True
+    assert result.rows[1]["confidence"] == "medium"
+    assert result.rows[1]["signals"]["discovery_confirmed"] is True
+    assert result.rows[1]["acquirer"] == "Helios Defense"
+    assert len(result.promoted) == 1
+    assert result.applied_hits[0]["confidence"] == "medium"
+
+
 def test_c3_does_not_overwrite_form_d_acquirer() -> None:
     existing = [
         {

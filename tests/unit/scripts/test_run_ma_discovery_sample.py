@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import json
 from pathlib import Path
+from unittest.mock import Mock
 
 import httpx
 import pytest
@@ -136,6 +137,33 @@ def test_strict_medium_high_excludes_already_medium_pairs() -> None:
         {"company_name": "SDL Inc", "acquirer": "JDS UNIPHASE CORP /CA/", "confidence": "medium"},
     ]
     assert strict_medium_high_n(events, mutated) == 1
+
+
+def test_strict_medium_high_uses_extractor_confidence_not_c3_bump() -> None:
+    events = [
+        {
+            "company_name": "Acme Robotics, Inc.",
+            "acquirer": "OldCo",
+            "confidence": "low",
+            "event_date": None,
+        }
+    ]
+    low_discovery = [
+        {
+            "company_name": "Acme Robotics, Inc.",
+            "acquirer": "Globex Corporation",
+            "confidence": "low",
+        }
+    ]
+    assert strict_medium_high_n(events, low_discovery) == 0
+    medium_discovery = [
+        {
+            "company_name": "Acme Robotics, Inc.",
+            "acquirer": "Globex Corporation",
+            "confidence": "medium",
+        }
+    ]
+    assert strict_medium_high_n(events, medium_discovery) == 1
 
 
 def test_check_run_manifest_detects_mismatch(tmp_path) -> None:
@@ -474,6 +502,55 @@ def test_unobserved_empties_are_not_frozen(tmp_path: Path) -> None:
         encoding="utf-8",
     )
     assert load_recorded_queries(cut) == {"verified zero hit"}
+
+
+def test_counting_extractor_counts_none_after_retry(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from sbir_etl.enrichers.ma_discovery.extractor import (
+        ExtractionInput,
+        LlmExtractor,
+        RecordingLlmExtractor,
+    )
+    from sbir_etl.enrichers.openai_client import OpenAIClient
+
+    freeze = tmp_path / "llm.jsonl"
+    mock_http = Mock()
+    mock_http.request.side_effect = httpx.ReadTimeout("hung read")
+    client = OpenAIClient(api_key="test-key", max_concurrent=1)
+    client._client = mock_http
+    monkeypatch.setattr("sbir_etl.enrichers.openai_client.time.sleep", lambda _s: None)
+    recording = RecordingLlmExtractor(LlmExtractor(client), [], path=freeze)
+    counting = _CountingExtractor(recording)
+    item = ExtractionInput(company="A", acquirer="B", snippet="acquired")
+    verdict = counting.extract(item)
+    assert verdict.confirmed is False
+    assert counting.timeout_n == 1
+    assert not freeze.exists()
+
+
+def test_counting_extractor_does_not_catch_auth_error(tmp_path: Path) -> None:
+    from sbir_etl.enrichers.ma_discovery.extractor import (
+        ExtractionInput,
+        LlmExtractor,
+        RecordingLlmExtractor,
+    )
+    from sbir_etl.enrichers.openai_client import OpenAIAuthError, OpenAIClient
+
+    freeze = tmp_path / "llm.jsonl"
+    mock_http = Mock()
+    mock_resp = Mock()
+    mock_resp.status_code = 402
+    mock_http.request.return_value = mock_resp
+    client = OpenAIClient(api_key="test-key", max_concurrent=1, raise_on_auth_error=True)
+    client._client = mock_http
+    recording = RecordingLlmExtractor(LlmExtractor(client), [], path=freeze)
+    counting = _CountingExtractor(recording)
+    item = ExtractionInput(company="A", acquirer="B", snippet="acquired")
+    with pytest.raises(OpenAIAuthError, match="402"):
+        counting.extract(item)
+    assert counting.timeout_n == 0
+    assert not freeze.exists()
 
 
 def test_counting_extractor_counts_transport_faults() -> None:

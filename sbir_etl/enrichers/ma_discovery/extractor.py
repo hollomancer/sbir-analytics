@@ -67,6 +67,10 @@ _JSON_OBJECT = re.compile(r"\{.*\}", re.DOTALL)
 ChatFn = Callable[[str, str], str | None]
 
 
+class LlmTransportError(TimeoutError):
+    """Chat returned no payload after retries. Not a negative verdict."""
+
+
 class ChatClient(Protocol):
     """Minimal chat surface implemented by ``OpenAIClient``."""
 
@@ -309,10 +313,7 @@ class RecordingLlmExtractor:
             return verdict_from_payload(parse_llm_payload(raw), item=item)
         raw = self.inner._chat(EXTRACTOR_SYSTEM_PROMPT, build_user_prompt(item))
         if not (isinstance(raw, str) and raw.strip()):
-            return ExtractionVerdict(
-                confirmed=False,
-                reason="LLM call returned no payload",
-            )
+            raise LlmTransportError("LLM call returned no payload")
         record = {
             "company": item.company,
             "acquirer": item.acquirer,
@@ -385,6 +386,7 @@ def build_llm_extractor(
                 "HTTP-Referer": "https://github.com/hollomancer/sbir-analytics",
                 "X-Title": "sbir-analytics ma-discovery",
             },
+            raise_on_auth_error=True,
         )
         return LlmExtractor(client, model=chosen_model)
     chosen_model = model or DEFAULT_XAI_MODEL
@@ -392,6 +394,7 @@ def build_llm_extractor(
         api_key=key,
         model=chosen_model,
         chat_url=XAI_CHAT_URL,
+        raise_on_auth_error=True,
     )
     return LlmExtractor(client, model=chosen_model)
 
