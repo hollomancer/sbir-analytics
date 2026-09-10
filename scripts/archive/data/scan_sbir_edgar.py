@@ -27,8 +27,10 @@ import asyncio
 import contextvars
 import csv
 import json
+import os
 import re
 import sys
+import tempfile
 import time
 from collections import Counter
 from collections.abc import Callable
@@ -39,7 +41,7 @@ reconfigure_stdout = getattr(sys.stdout, "reconfigure", None)
 if reconfigure_stdout is not None:
     reconfigure_stdout(line_buffering=True)
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 
 from loguru import logger
 
@@ -87,10 +89,17 @@ class _PacedEdgarAPIClient(EdgarAPIClient):
         cik: str,
         accession: str,
         filename: str,
+        *,
+        raise_on_error: bool = False,
     ) -> str | None:
         if self._disable_document_fetches:
             return None
-        text = await super().fetch_filing_document(cik, accession, filename)
+        text = await super().fetch_filing_document(
+            cik,
+            accession,
+            filename,
+            raise_on_error=raise_on_error,
+        )
         if text is None and self._document_error_callback is not None:
             self._document_error_callback()
         return text
@@ -238,30 +247,123 @@ def load_company_states(awards_csv: str) -> dict[str, str]:
     return states
 
 
-def load_checkpoint(path: Path, *, rescan_errors: bool = False) -> set[str]:
-    """Load already-scanned company names from checkpoint file.
+def _checkpoint_needs_rescan(record: dict[str, object]) -> bool:
+    """Return whether a checkpoint row is incomplete and should be replaced."""
+    mention_types = record.get("mention_types")
+    legacy_context_incomplete = (
+        record.get("context_classification_complete") is None
+        and isinstance(mention_types, list)
+        and "filing_mention" in mention_types
+    )
+    return bool(
+        record.get("had_server_errors")
+        or record.get("document_fetch_errors")
+        or record.get("context_classification_complete") is False
+        or legacy_context_incomplete
+        or record.get("error")
+    )
 
-    When *rescan_errors* is True, companies whose records have
-    ``had_server_errors`` or ``error`` are excluded from the done set
-    so they get re-scanned.
-    """
-    done: set[str] = set()
+
+def _read_checkpoint_records(path: Path) -> list[dict[str, object]]:
+    """Read valid company records from a JSONL checkpoint."""
+    records: list[dict[str, object]] = []
     if not path.exists():
-        return done
-    with open(path) as f:
+        return records
+    with open(path, encoding="utf-8") as f:
         for line in f:
             try:
-                rec = json.loads(line)
-                if rescan_errors and (
-                    rec.get("had_server_errors")
-                    or rec.get("document_fetch_errors")
-                    or rec.get("context_classification_complete") is False
-                    or rec.get("error")
-                ):
-                    continue
-                done.add(rec["company_name"])
-            except (json.JSONDecodeError, KeyError):
+                record = json.loads(line)
+            except json.JSONDecodeError:
                 continue
+            if not isinstance(record, dict):
+                continue
+            company_name = record.get("company_name")
+            if not isinstance(company_name, str) or not company_name:
+                continue
+            records.append(record)
+    return records
+
+
+def _compact_checkpoint_records(
+    records: list[dict[str, object]],
+    *,
+    requested_names: set[str],
+    rescan_errors: bool,
+) -> tuple[list[dict[str, object]], set[str]]:
+    """Choose one checkpoint row per company and identify completed requests."""
+    records_by_name: dict[str, dict[str, object]] = {}
+    for record in records:
+        company_name = record["company_name"]
+        if not isinstance(company_name, str):
+            continue
+        current = records_by_name.get(company_name)
+        retryable = _checkpoint_needs_rescan(record)
+        if current is None or _checkpoint_needs_rescan(current) or not retryable:
+            # Prefer the latest complete row. If none is complete, retain the latest attempt.
+            records_by_name[company_name] = record
+
+    retained: list[dict[str, object]] = []
+    done: set[str] = set()
+    for company_name, record in records_by_name.items():
+        if rescan_errors and company_name in requested_names and _checkpoint_needs_rescan(record):
+            continue
+        retained.append(record)
+        if company_name in requested_names:
+            done.add(company_name)
+    return retained, done
+
+
+def _write_checkpoint_atomically(path: Path, records: list[dict[str, object]]) -> None:
+    """Replace a checkpoint with complete JSONL content from a same-directory temp file."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temporary_path: Path | None = None
+    try:
+        with tempfile.NamedTemporaryFile(
+            mode="w",
+            encoding="utf-8",
+            dir=path.parent,
+            prefix=f".{path.name}.",
+            suffix=".tmp",
+            delete=False,
+        ) as out:
+            temporary_path = Path(out.name)
+            for record in records:
+                out.write(json.dumps(record) + "\n")
+            out.flush()
+            os.fsync(out.fileno())
+        os.replace(temporary_path, path)
+    finally:
+        if temporary_path is not None and temporary_path.exists():
+            temporary_path.unlink()
+
+
+def _prepare_checkpoint(
+    path: Path,
+    *,
+    requested_names: set[str],
+    resume: bool,
+    rescan_errors: bool,
+) -> set[str]:
+    """Truncate a fresh checkpoint or compact one before a resumed scan."""
+    records = _read_checkpoint_records(path) if resume or rescan_errors else []
+    retained, done = _compact_checkpoint_records(
+        records,
+        requested_names=requested_names,
+        rescan_errors=rescan_errors,
+    )
+    _write_checkpoint_atomically(path, retained)
+    return done
+
+
+def load_checkpoint(path: Path, *, rescan_errors: bool = False) -> set[str]:
+    """Load already-scanned company names from a checkpoint file."""
+    records = _read_checkpoint_records(path)
+    requested_names = {str(record["company_name"]) for record in records}
+    _, done = _compact_checkpoint_records(
+        records,
+        requested_names=requested_names,
+        rescan_errors=rescan_errors,
+    )
     return done
 
 
@@ -432,13 +534,18 @@ async def main() -> None:
         companies = companies[: args.limit]
         print(f"  Limited to first {args.limit:,}")
 
-    # Load checkpoint
-    done: set[str] = set()
+    # Prepare the checkpoint before streaming new records into it. Fresh runs
+    # start empty; resumed runs compact legacy duplicates first.
+    done = _prepare_checkpoint(
+        output_path,
+        requested_names={name for name, _ in companies},
+        resume=args.resume,
+        rescan_errors=args.rescan_errors,
+    )
     if args.resume or args.rescan_errors:
-        done = load_checkpoint(output_path, rescan_errors=args.rescan_errors)
         print(f"  Resuming: {len(done):,} already scanned")
         if args.rescan_errors:
-            print("  (re-scanning companies with server errors)")
+            print("  (re-scanning companies with incomplete or error rows)")
 
     remaining = [(name, count) for name, count in companies if name not in done]
     print(f"  {len(remaining):,} companies to scan\n")
@@ -548,7 +655,7 @@ async def main() -> None:
 
     # Process in batches to allow periodic progress reporting
     batch_size = 100
-    with open(output_path, "a") as out:
+    with open(output_path, "a", encoding="utf-8") as out:
         for batch_start in range(0, len(remaining), batch_size):
             batch = remaining[batch_start : batch_start + batch_size]
             tasks = [
