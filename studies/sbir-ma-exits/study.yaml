@@ -21,7 +21,7 @@ frozen_artifacts:
   - path: studies/sbir-ma-exits/paper.md
     sha256: 5adb16ce8789db0e7c1fd05c5111864aa0fb3222ffbafc40399610eade458ba0
   - path: studies/sbir-ma-exits/zenodo.json
-    sha256: 7b49fc5b377c950a986759028853d6a5ad175b43ae35168d149e917082c29dde
+    sha256: 6058c530908864a7dacb3a3047bee508f57dd1764e69900d64f3c851c3d64c10
   # paper.pdf is deliberately NOT frozen yet. The committed binary is a
   # ReportLab placeholder, not the documented pandoc/xelatex build; hashing it
   # would pin the placeholder. Rebuild per PUBLISH_CHECKLIST step 6, then add
