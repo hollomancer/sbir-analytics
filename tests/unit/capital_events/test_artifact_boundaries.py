@@ -31,7 +31,6 @@ def _row(name: str, confidence: str, **extra: object) -> dict:
     return row
 
 
-@pytest.mark.xfail(reason="invariant not yet held; see PR discussion", strict=True)
 def test_every_emitted_row_names_a_counterparty_or_says_why_not(tmp_path: Path) -> None:
     """A consumer reading `counterparty` cannot tell null-because-unknown from
     null-because-the-firm-was-the-buyer.
@@ -51,15 +50,7 @@ def test_every_emitted_row_names_a_counterparty_or_says_why_not(tmp_path: Path) 
         )
 
 
-@pytest.mark.xfail(
-    reason=(
-        "builder passes signal_count through unchanged from the source row; it does "
-        "not recompute it from `signals`, so legacy-inflated counts survive into the "
-        "artifact. Not anticipated as a fixed baseline by the task brief; flagged for "
-        "PR discussion rather than fixed here."
-    ),
-    strict=True,
-)
+@pytest.mark.xfail(reason="signal_count recompute lands with PR #709", strict=True)
 def test_signal_count_matches_the_signals_it_reports(tmp_path: Path) -> None:
     """Legacy rows carry a count inflated by a removed source.
 
