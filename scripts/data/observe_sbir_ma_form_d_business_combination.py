@@ -41,15 +41,22 @@ def _candidate_filings(path: Path) -> dict[str, dict[str, str]]:
     return filings
 
 
+def _successful_xml_retrieval(record: dict) -> bool:
+    """True when a manifest line is a complete retrieval (HTTP 200 with bytes).
+
+    Mirrors fetch_sbir_ma_form_d_xml._successful_xml_retrieval: an empty-body
+    200 is incomplete, and a later retry may append another status-200 line.
+    """
+    return bool(record.get("status") == 200 and record.get("bytes") and record.get("sha256"))
+
+
 def _xml_provenance(path: Path) -> dict[str, dict[str, str]]:
     provenance: dict[str, dict[str, str]] = {}
     for record in _records(path):
-        if record.get("status") != 200:
+        if not _successful_xml_retrieval(record):
             continue
-        accession = record["accession_number"]
-        if accession in provenance:
-            raise ValueError(f"Duplicate successful XML retrieval: {accession}")
-        provenance[accession] = {"sha256": record["sha256"]}
+        # Last complete retrieval wins. Do not treat an empty-body 200 as unique.
+        provenance[record["accession_number"]] = {"sha256": record["sha256"]}
     return provenance
 
 

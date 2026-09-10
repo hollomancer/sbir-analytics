@@ -40,6 +40,16 @@ def _load_candidates(path: Path) -> dict[str, dict[str, str]]:
     return candidates
 
 
+def _successful_xml_retrieval(record: dict) -> bool:
+    """True when a manifest line is a complete retrieval (HTTP 200 with bytes).
+
+    A 200 with an empty body is written as a failure (bytes 0, no SHA-256) and
+    must stay eligible for retry. A later complete line for the same accession
+    may then appear in the same manifest.
+    """
+    return bool(record.get("status") == 200 and record.get("bytes") and record.get("sha256"))
+
+
 def _completed_accessions(manifest: Path) -> set[str]:
     if not manifest.exists():
         return set()
@@ -49,9 +59,7 @@ def _completed_accessions(manifest: Path) -> set[str]:
             if not line.strip():
                 continue
             record = json.loads(line)
-            # A 200 with an empty body is written as a failure (bytes 0, no
-            # SHA-256); it must stay eligible for retry on the next run.
-            if record.get("status") == 200 and record.get("bytes"):
+            if _successful_xml_retrieval(record):
                 completed.add(record["accession_number"])
         return completed
 

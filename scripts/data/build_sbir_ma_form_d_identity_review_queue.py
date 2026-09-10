@@ -4,11 +4,18 @@
 Epistemic tier: exploratory. This script selects only Amendment 7 predicate-
 positive filings and copies bounded source-native comparison fields. It makes no
 identity determination; every output row begins unreviewed.
+
+Human adjudication requires a closed outcome, written rationale, reviewer
+identifier, timestamp, source-reference IDs, and assignment from the closed
+evidence-code list. This script emits empty `evidence_codes` and
+`source_reference_ids` for the reviewer. Prefills are not confirmations:
+`issuer_name_alias_agreement` alone must remain `unresolved`.
 """
 
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 from pathlib import Path
 from xml.etree import ElementTree
@@ -35,9 +42,9 @@ def _candidates(path: Path) -> dict[str, dict]:
     return result
 
 
-def _issuer_fields(xml_path: Path) -> tuple[str | None, str | None]:
+def _issuer_fields(xml_bytes: bytes) -> tuple[str | None, str | None]:
     try:
-        root = ElementTree.fromstring(xml_path.read_bytes())
+        root = ElementTree.fromstring(xml_bytes)
     except ElementTree.ParseError:
         return None, None
     issuer = root.find("primaryIssuer")
@@ -46,6 +53,16 @@ def _issuer_fields(xml_path: Path) -> tuple[str | None, str | None]:
     name = issuer.findtext("entityName")
     cik = issuer.findtext("cik")
     return (name.strip() if name else None, cik.strip() if cik else None)
+
+
+def _verified_xml_bytes(xml_path: Path, expected_sha256: str | None) -> bytes | None:
+    """Return XML bytes only when the on-disk SHA-256 matches the observation."""
+    if not expected_sha256 or not xml_path.is_file():
+        return None
+    xml_bytes = xml_path.read_bytes()
+    if hashlib.sha256(xml_bytes).hexdigest() != expected_sha256:
+        return None
+    return xml_bytes
 
 
 def main() -> int:
@@ -68,7 +85,10 @@ def main() -> int:
             candidate = candidates.get(accession)
             if candidate is None:
                 raise ValueError(f"Observation without candidate: {accession}")
-            issuer_name, issuer_cik = _issuer_fields(args.xml_dir / f"{accession}.xml")
+            xml_bytes = _verified_xml_bytes(
+                args.xml_dir / f"{accession}.xml", observation.get("xml_sha256")
+            )
+            issuer_name, issuer_cik = _issuer_fields(xml_bytes) if xml_bytes else (None, None)
             evidence_codes = ["exact_key_candidate"]
             if issuer_name:
                 issuer_key = normalize_company_name(
@@ -81,6 +101,7 @@ def main() -> int:
             record = {
                 "accession_number": accession,
                 "claim_status": "identity_review_queue",
+                "evidence_codes": [],
                 "form_d_filer_name": filing["filer_name"],
                 "form_d_issuer_cik": issuer_cik,
                 "form_d_issuer_name": issuer_name,
@@ -96,7 +117,8 @@ def main() -> int:
                 "reviewer_id": None,
                 "sbir_aliases": candidate["sbir_aliases"],
                 "sbir_award_identifiers": candidate["sbir_award_identifiers"],
-                "xml_sha256": observation["xml_sha256"],
+                "source_reference_ids": [],
+                "xml_sha256": observation["xml_sha256"] if xml_bytes else None,
             }
             output.write(json.dumps(record, sort_keys=True) + "\n")
     return 0
