@@ -4,7 +4,7 @@ from enum import StrEnum
 from pathlib import Path
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from ..config.yaml_io import read_yaml_mapping
 
@@ -88,6 +88,19 @@ class ValidationDesign(BaseModel):
     expected_yield: str = Field(min_length=1)
     decision_threshold: str = Field(min_length=1)
     threshold_derivation: str = Field(min_length=1)
+
+    @field_validator(
+        "addressable_population",
+        "expected_yield",
+        "decision_threshold",
+        "threshold_derivation",
+        mode="after",
+    )
+    @classmethod
+    def reject_blank(cls, v: str) -> str:
+        if not v.strip():
+            raise ValueError("must not be blank")
+        return v
 
 
 class StudyManifest(BaseModel):

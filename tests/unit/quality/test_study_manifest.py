@@ -147,9 +147,9 @@ def test_repository_study_manifests_are_valid() -> None:
 def test_validation_design_requires_all_four_fields() -> None:
     """A threshold with no derivation is the defect this block exists to stop.
 
-    studies/ma-discovery-recall/design.md:53-55 set a recall floor of 10 as a
-    bare count, then applied it unchanged to cuts whose eligible pools were
-    342, 503 and 307.
+    The M&A discovery recall study, landing with PR #705, set a recall floor
+    of 10 as a bare count, then applied it unchanged to cuts whose eligible
+    pools were 342, 503 and 307.
     """
     from pydantic import ValidationError as PydanticValidationError
 
@@ -193,3 +193,36 @@ def test_validation_design_rejects_empty_strings() -> None:
             decision_threshold="x",
             threshold_derivation="",
         )
+
+
+@pytest.mark.parametrize(
+    ("blank_field", "blank_value"),
+    [
+        ("addressable_population", "   "),
+        ("expected_yield", "  "),
+        ("decision_threshold", " "),
+        ("threshold_derivation", "\t"),
+    ],
+)
+def test_validation_design_rejects_whitespace_only_strings(
+    blank_field: str, blank_value: str
+) -> None:
+    """A whitespace-only value satisfies min_length=1 but states nothing.
+
+    A manifest claiming ``evidence_status: validated`` must not be able to pass
+    this gate by filling a field with spaces or a tab.
+    """
+    from pydantic import ValidationError as PydanticValidationError
+
+    from sbir_etl.quality.study_manifest import ValidationDesign
+
+    fields = {
+        "addressable_population": "x",
+        "expected_yield": "x",
+        "decision_threshold": "x",
+        "threshold_derivation": "x",
+    }
+    fields[blank_field] = blank_value
+
+    with pytest.raises(PydanticValidationError, match="must not be blank"):
+        ValidationDesign(**fields)
