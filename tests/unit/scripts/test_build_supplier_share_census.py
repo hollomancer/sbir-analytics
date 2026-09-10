@@ -541,8 +541,7 @@ def test_untyped_context_does_not_quarantine_direction_insensitive_strong_signal
     }
     events_path = tmp_path / "events.jsonl"
     events_path.write_text(
-        json.dumps({"company_name": "Alpha", "signals": signals, "confidence": "high"})
-        + "\n"
+        json.dumps({"company_name": "Alpha", "signals": signals, "confidence": "high"}) + "\n"
     )
     scan_path = tmp_path / "efts.jsonl"
     scan_path.write_text(
