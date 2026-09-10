@@ -223,12 +223,11 @@ def assign_confidence(event: dict) -> str:
     """Grade how well the evidence supports the SBIR firm being *acquired*.
 
     A Form D business-combination flag does not contribute. Form D Item 10
-    marks a Rule 145 transaction, which is a deemed offer and sale of
-    securities *by the issuer* to the other company's holders, so the filer is
-    the acquirer or surviving entity. A target issues nothing and has nothing
-    to report on Form D. Of 23 ``clarificationOfResponse`` texts read from
-    EDGAR on 2026-09-09, 18 state the issuer acquired, 5 describe a corporate
-    reorganization, and none describe the issuer as acquired.
+    marks a Rule 145 transaction, a deemed offer and sale of securities *by the
+    issuer*, so the filer is the acquirer; the flag is evidence the firm
+    bought something. It remains in ``signals.form_d_business_combination``,
+    and a row carrying only that flag is written to the non-exit file
+    rather than the exit artifact.
 
     The flag previously returned ``high`` on its own, which put a
     self-reported acquirer-side boolean above EFTS full text that names a
@@ -328,9 +327,9 @@ def main():
     parser.add_argument("--awards", default="/tmp/sbir_awards_full.csv")
     parser.add_argument("--output", default="data/sbir_ma_events.jsonl")
     parser.add_argument(
-        "--acquirer-side-output",
-        default="data/sbir_ma_acquirer_side.jsonl",
-        help="Rows whose only evidence is an acquirer-side Form D flag.",
+        "--non-exit-output",
+        default="data/sbir_ma_non_exit.jsonl",
+        help="Detected rows that are not evidence the SBIR firm was acquired.",
     )
     args = parser.parse_args()
 
@@ -370,12 +369,12 @@ def main():
     output_path = Path(args.output)
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
-    acquirer_side_path = Path(args.acquirer_side_output)
-    acquirer_side_path.parent.mkdir(parents=True, exist_ok=True)
+    non_exit_path = Path(args.non_exit_output)
+    non_exit_path.parent.mkdir(parents=True, exist_ok=True)
 
     tiers = {"high": 0, "medium": 0, "low": 0}
-    acquirer_side_n = 0
-    with open(output_path, "w") as out, open(acquirer_side_path, "w") as aside:
+    non_exit_n = 0
+    with open(output_path, "w") as out, open(non_exit_path, "w") as nonexit:
         for event in merged:
             signals = build_signals_dict(event)
             confidence = assign_confidence(event)
@@ -393,8 +392,9 @@ def main():
                 "sbir_context": sbir_context.get(event["company_name"].strip().upper()),
             }
             if is_acquirer_side_only(signals):
-                aside.write(json.dumps(record, default=str) + "\n")
-                acquirer_side_n += 1
+                record["non_exit_reason"] = "acquirer_side"
+                nonexit.write(json.dumps(record, default=str) + "\n")
+                non_exit_n += 1
                 continue
             out.write(json.dumps(record, default=str) + "\n")
             tiers[confidence] += 1
@@ -407,8 +407,8 @@ def main():
     print(f"  Medium confidence: {tiers['medium']:,}")
     print(f"  Low confidence:    {tiers['low']:,}")
     print(f"  Output: {output_path}")
-    print(f"\n  Acquirer-side only (excluded from the exit artifact): {acquirer_side_n:,}")
-    print(f"  Output: {acquirer_side_path}")
+    print(f"\n  Not an exit (excluded from the exit artifact): {non_exit_n:,}")
+    print(f"  Output: {non_exit_path}")
 
 
 if __name__ == "__main__":
