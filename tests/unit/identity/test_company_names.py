@@ -306,50 +306,37 @@ MUST_MATCH_TRIVIAL = [
     ("Acme  Corp", "Acme Corp", "double space only"),
 ]
 
-# Floor chosen from real scores, not asserted in advance. Under the exact
-# configuration MUST_NOT_MATCH audits -- TOKEN_SET, no normalization
-# profile, matching the two live consumers that call this primitive on raw,
-# separately-uppercased text -- the 10 MUST_MATCH pairs score 0.148-0.539,
-# and the 4 MUST_MATCH_TRIVIAL pairs score 0.188-1.000 (the pure-case pair is
-# the 0.188; the rest are >=0.941). 0.10 sits under every one of those with
-# room to spare, and still fails on a scorer that returns ~0.
+# Every consumer in this repository normalizes before comparing -- either by
+# passing a `CompanyNameProfile` or, for the two sec_edgar call sites, by
+# uppercasing manually. A test that calls `company_name_similarity` with no
+# profile at all (an earlier version of this file did) measures a
+# configuration nothing uses: it makes `token_set_ratio`'s case sensitivity
+# look like the finding, when case sensitivity is an artifact of skipping
+# normalization, not a property of the matcher. `CompanyNameProfile.
+# RECIPIENT_V1` (case fold + legal-suffix strip) is the profile used below,
+# matching how a real consumer would call this primitive.
 #
-# It is NOT a precision floor, and the gap this file's docstring asks for
-# does not hold. Under this same configuration, MUST_NOT_MATCH's ceiling
-# pairs score up to 0.882 (ADELPHI TECHNOLOGY vs ADEPT TECHNOLOGY) -- higher
-# than every single MUST_MATCH pair here (max 0.539). Three more
-# MUST_NOT_MATCH pairs (BAL/BALL CORP 0.500, ADT Pharmaceuticals/ADT Inc.
-# 0.545, plus ADELPHI/ADEPT above) also outscore most of MUST_MATCH. No
-# single threshold on this configuration separates the two tables: raising
-# the floor to catch real matches also readmits real non-matches, at a lower
-# floor than the false positives this file exists to keep out.
-#
-# The cause is not a scoring/business-logic defect: RapidFuzz's
-# `token_set_ratio` is case-sensitive with no processor applied, and this
-# call path applies none. "Acme Corporation" vs "ACME CORPORATION" -- the
-# same name, no other difference -- scores 0.188 for exactly that reason.
-# The two production consumers this configuration models
-# (`sbir_etl/enrichers/sec_edgar/enricher.py::_search_form_d_filings` and
-# `::_search_filing_mentions_filtered`) avoid this by uppercasing both sides
-# themselves before calling; MUST_NOT_MATCH's own literals are typed in
-# mixed case and are not run through that same uppercasing, so its 0.95
-# ceiling is not a faithful replay of the production call either. Full
-# analysis, including scores for two alternative configurations that were
-# rejected because they break MUST_NOT_MATCH's ceiling instead of fixing
-# this gap, is in
-# `.superpowers/sdd/2026-09-10-verification-practices/must-match-report.md`.
-MUST_MATCH_FLOOR = 0.10
+# Floor chosen from real scores, not asserted in advance. Under TOKEN_SET +
+# RECIPIENT_V1, the 10 MUST_MATCH pairs score 0.816-1.000 (WEINBERG is the
+# 0.816; the other 9 are 1.000), and the 4 MUST_MATCH_TRIVIAL pairs are all
+# 1.000. 0.75 sits under the true minimum (0.816) with margin, and still
+# fails a scorer that has regressed toward 0. It is a regression guard, not
+# a validated precision floor -- see the next comment for why no precision
+# floor exists on this data.
+MUST_MATCH_FLOOR = 0.75
 
 
 @pytest.mark.parametrize("left,right,reason", MUST_MATCH)
 def test_same_firm_scores_above_the_match_floor(left: str, right: str, reason: str) -> None:
-    """Real DUNS-confirmed name variants, scored the same way MUST_NOT_MATCH is.
+    """Real DUNS-confirmed name variants, normalized the way a real consumer would.
 
     See the module-level comment above `MUST_MATCH` for how each pair was
     classified (variant vs. rename) and the comment above `MUST_MATCH_FLOOR`
-    for why 0.10 is a regression guard, not a validated precision floor.
+    for why 0.75 is a regression guard, not a validated precision floor.
     """
-    score = company_name_similarity(left, right, metric=CompanyNameMetric.TOKEN_SET)
+    score = company_name_similarity(
+        left, right, metric=CompanyNameMetric.TOKEN_SET, profile=CompanyNameProfile.RECIPIENT_V1
+    )
     assert score >= MUST_MATCH_FLOOR, f"{left!r} vs {right!r} scored {score}: {reason}"
 
 
@@ -357,5 +344,43 @@ def test_same_firm_scores_above_the_match_floor(left: str, right: str, reason: s
 def test_trivial_same_firm_pairs_score_above_the_match_floor(
     left: str, right: str, reason: str
 ) -> None:
-    score = company_name_similarity(left, right, metric=CompanyNameMetric.TOKEN_SET)
+    score = company_name_similarity(
+        left, right, metric=CompanyNameMetric.TOKEN_SET, profile=CompanyNameProfile.RECIPIENT_V1
+    )
     assert score >= MUST_MATCH_FLOOR, f"{left!r} vs {right!r} scored {score}: {reason}"
+
+
+def test_a_must_not_match_pair_outscores_a_must_match_pair() -> None:
+    """No threshold separates MUST_MATCH from MUST_NOT_MATCH. This pins that fact.
+
+    Even with real normalization applied (`RECIPIENT_V1`, matching every live
+    consumer), "3D Control Systems, Inc." vs "3D SYSTEMS CORP" -- a
+    documented false positive, kept out of MUST_MATCH -- scores 1.000 under
+    TOKEN_SET. "WEINBERG MEDICAL PHYSICS, LLC" vs "Weinberg Medical
+    Holdings" -- a real DUNS-confirmed match -- scores 0.816, the lowest
+    score in MUST_MATCH. The false positive outranks the true positive.
+
+    This assertion is the opposite polarity of every other test in this
+    file. If it starts failing, the two pairs have swapped order -- that is
+    not "matching got fixed," it means one of these two specific scores
+    moved, and MUST_NOT_MATCH's own test (unrelated to this one) must be
+    re-checked against its 0.95 ceiling before treating that as progress. A
+    single similarity score cannot decide firm identity on this data; that
+    requires an identifier join, not a better threshold.
+    """
+    false_positive = company_name_similarity(
+        "3D Control Systems, Inc.",
+        "3D SYSTEMS CORP",
+        metric=CompanyNameMetric.TOKEN_SET,
+        profile=CompanyNameProfile.RECIPIENT_V1,
+    )
+    true_positive = company_name_similarity(
+        "WEINBERG MEDICAL PHYSICS, LLC",
+        "Weinberg Medical Holdings",
+        metric=CompanyNameMetric.TOKEN_SET,
+        profile=CompanyNameProfile.RECIPIENT_V1,
+    )
+    assert false_positive >= true_positive, (
+        f"expected the interleaving to still hold: false positive {false_positive} "
+        f"should be >= true positive {true_positive}"
+    )
