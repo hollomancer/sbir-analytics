@@ -15,6 +15,7 @@ from sbir_etl.enrichers.sec_edgar.form_d_scoring import (
     parse_form_d_xml,
     require_form_d_rule_version,
 )
+from tests.unit.identity.test_company_names import MUST_NOT_MATCH
 
 # ---------------------------------------------------------------------------
 # Sample XML (Aspen Aerogels)
@@ -434,3 +435,74 @@ def test_signal_scope_exposes_cross_filing_and_cross_cik_aggregation() -> None:
         "signals_may_span_filings": True,
         "signals_may_span_ciks": True,
     }
+
+# --- Adversarial audit: person-match path -----------------------------------
+#
+# ``compute_form_d_confidence`` has no company-name-matching function of its
+# own -- ``name_score`` is a caller-supplied float that only feeds the
+# composite ranking score, never the tier (see the "Composite" vs "Tier"
+# comments in form_d_scoring.py). The one place inside this file where a
+# fuzzy string score decides a tier is the person-match signal
+# (form_d_scoring.py:282, ``fuzz.token_set_ratio`` on PI name vs Form D
+# related-person name), gated by the tier rule at form_d_scoring.py:339-344:
+# ``person_score >= 0.7`` (or a ZIP match) gives "high"; state overlap alone
+# gives "medium"; otherwise "low".
+#
+# This section runs the identity primitive's MUST_NOT_MATCH pairs (see
+# tests/unit/identity/test_company_names.py) through that exact code path,
+# standing in for two distinct people whose names happen to share tokens the
+# way these company names do -- the only case this file has that reuses the
+# unguarded ``fuzz.token_set_ratio`` call the primitive audit was built to
+# probe. ``sbir_state``/``biz_states`` are set to non-overlapping values so
+# state_score is an explicit 0.0 rather than the None-default 0.5 fallback
+# (see test_missing_signals_default_neutral above); that isolates the tier
+# outcome to the person-match signal alone.
+#
+# Audit result (2026-09-10, re-run after #717): 8/9 pairs land on "low"
+# (score < 0.7) -- the scorer working as intended. One pair, ADELPHI
+# TECHNOLOGY / ADEPT TECHNOLOGY, scores person_score=0.8824, the same score
+# the identity primitive documents as its own worst case (0.882, see
+# test_company_names.py::test_distinct_firms_do_not_score_as_the_same_firm).
+# Under the retired `person-or-zip-v1` rule that crossed into "high". The
+# current `corroborated-person-v2` rule requires an exact ZIP or state
+# overlap before a person score alone can reach high, so this pair now stops
+# at "medium" -- the caller-threshold defect this audit found is fixed, and
+# this table pins the corrected behavior.
+FORM_D_PERSON_MATCH_EXPECTED_TIER = {
+    "3D Control Systems, Inc.": "low",
+    "ADELPHI TECHNOLOGY": "medium",  # corroboration required; see note above
+    "Nanomimetics": "low",
+    "Pronghorn Technologies": "low",
+    "ADT Pharmaceuticals": "low",
+    "COMPASS SYSTEMS": "low",
+    "Linked, Inc.": "low",
+    "BAL": "low",
+    "SiliconCore Technology, Inc.": "low",
+}
+
+
+@pytest.mark.parametrize("left,right,reason", MUST_NOT_MATCH)
+def test_person_match_tier_for_distinct_firms_used_as_names(
+    left: str, right: str, reason: str
+) -> None:
+    """Feed adversarial company-name pairs through the person-match signal.
+
+    See the module-level comment above this block for why this is the
+    right adversarial probe for this file, and for the one pair (ADELPHI
+    TECHNOLOGY / ADEPT TECHNOLOGY) that currently reaches "high".
+    """
+    result = compute_form_d_confidence(
+        name_score=0.0,
+        pi_names=[left],
+        related_persons=[{"name": right, "title": "Executive Officer"}],
+        sbir_state="CA",
+        biz_states=["NY"],
+        earliest_sbir_award_year=2015,
+        form_d_dates=[],
+        year_of_inc=None,
+    )
+    expected = FORM_D_PERSON_MATCH_EXPECTED_TIER[left]
+    assert result.tier == expected, (
+        f"{left!r} vs {right!r} scored person_score={result.person_score} "
+        f"-> tier={result.tier} (expected {expected}): {reason}"
+    )
