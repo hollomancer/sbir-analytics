@@ -48,7 +48,7 @@ def build_ma_events(cohort: Iterable[dict], source_path: Path) -> Iterator[dict]
                         # Recomputed from signals, not forwarded: legacy rows
                         # carry a stored count that includes a removed source.
                         "signal_count": sum(
-                            1 for value in (rec.get("signals") or {}).values() if value
+                            1 for value in (rec.get("signals") or {}).values() if value is True
                         ),
                     }
                 ),

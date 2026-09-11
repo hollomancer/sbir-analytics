@@ -85,3 +85,21 @@ def test_signal_count_is_recomputed_not_forwarded(cohort, tmp_path):
 
     events = list(build_ma_events(cohort, src))
     assert json.loads(events[0]["metadata"])["signal_count"] == 1
+
+
+def test_signal_count_ignores_truthy_non_boolean(cohort, tmp_path):
+    """A truthy string value (not a boolean flag) does not count as a signal."""
+    src = tmp_path / "ma.jsonl"
+    row = _ma_row(
+        "ACME INC",
+        "2023-06-15",
+        "high",
+        signals={
+            "efts_subsidiary": True,
+            "discovered_acquirer_disagrees": "SomeOtherCo",
+        },
+    )
+    src.write_text(json.dumps(row) + "\n")
+
+    events = list(build_ma_events(cohort, src))
+    assert json.loads(events[0]["metadata"])["signal_count"] == 1
