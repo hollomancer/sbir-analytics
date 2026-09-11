@@ -31,7 +31,7 @@ def test_rows_pass_through_unchanged() -> None:
         "efts_detail": {"mention_filers": ["Globex"], "mention_types": ["subsidiary"]},
         "signal_count": 1,
     }
-    out = finalize([event], code_version="abc123")
+    out = finalize([event], code_version="abc123", input_sha256="a" * 64, input_row_count=1)
     for key, value in event.items():
         assert out[0][key] == value
 
@@ -39,16 +39,31 @@ def test_rows_pass_through_unchanged() -> None:
 def test_provenance_is_stamped() -> None:
     """The historical file recorded no code version, which is how it came to
     reproduce from no commit."""
-    out = finalize([{"company_name": "Acme"}], code_version="abc123")
+    out = finalize(
+        [{"company_name": "Acme"}],
+        code_version="abc123",
+        input_sha256="a" * 64,
+        input_row_count=1,
+    )
     assert out[0]["finalized_code_version"] == "abc123"
     assert out[0]["finalized_by"] == "finalize_ma_events"
 
 
+def test_input_provenance_is_stamped() -> None:
+    """Each row records the input file's hash and row count, so the output
+    can be traced back to the exact input that produced it."""
+    events = [{"company_name": "Acme"}, {"company_name": "Globex"}]
+    out = finalize(events, code_version="abc123", input_sha256="f" * 64, input_row_count=2)
+    for row in out:
+        assert row["finalized_input_sha256"] == "f" * 64
+        assert row["finalized_input_row_count"] == 2
+
+
 def test_input_is_not_mutated() -> None:
     events = [{"company_name": "Acme", "confidence": "high"}]
-    finalize(events, code_version="abc123")
+    finalize(events, code_version="abc123", input_sha256="a" * 64, input_row_count=1)
     assert "finalized_by" not in events[0]
 
 
 def test_empty_input_is_not_an_error() -> None:
-    assert finalize([], code_version="abc123") == []
+    assert finalize([], code_version="abc123", input_sha256=None, input_row_count=0) == []

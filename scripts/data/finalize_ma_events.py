@@ -11,8 +11,9 @@ path, and every one of its 18 matches was a false positive from unanchored
 substring matching. The second job is still needed, so it lives here.
 
 This step is exploratory. It copies each event through unchanged and stamps a
-git description. It records no input cut or hash, so it is not a pipelines
-producer.
+git description plus the input file's SHA-256 and row count. It declares no
+cut, so it is not a pipelines producer -- the hash lets a later run be traced
+to the input that produced it, nothing more.
 
 **Running this changes the builder's population.** The historical file was
 produced in April 2026 by a chain that reproduces from no commit; the file this
@@ -31,6 +32,7 @@ Usage::
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import subprocess
 from collections import Counter
@@ -41,6 +43,13 @@ from typing import Any
 EPISTEMIC_TIER = "exploratory"
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
+
+
+def _sha256(path: Path) -> str | None:
+    """Hex digest of a file's bytes, or None if it does not exist."""
+    if not path.is_file():
+        return None
+    return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
 def _code_version() -> str:
@@ -67,13 +76,21 @@ def _code_version() -> str:
     return f"{sha}{'-dirty' if dirty else ''}"
 
 
-def finalize(events: list[dict[str, Any]], *, code_version: str) -> list[dict[str, Any]]:
+def finalize(
+    events: list[dict[str, Any]],
+    *,
+    code_version: str,
+    input_sha256: str | None,
+    input_row_count: int,
+) -> list[dict[str, Any]]:
     """Stamp provenance on each event. Row content is otherwise untouched."""
     out: list[dict[str, Any]] = []
     for event in events:
         row = dict(event)
         row["finalized_by"] = "finalize_ma_events"
         row["finalized_code_version"] = code_version
+        row["finalized_input_sha256"] = input_sha256
+        row["finalized_input_row_count"] = input_row_count
         out.append(row)
     return out
 
@@ -92,7 +109,12 @@ def main(argv: list[str] | None = None) -> int:
         for line in args.events.read_text(encoding="utf-8", errors="replace").splitlines()
         if line.strip()
     ]
-    finalized = finalize(events, code_version=_code_version())
+    finalized = finalize(
+        events,
+        code_version=_code_version(),
+        input_sha256=_sha256(args.events),
+        input_row_count=len(events),
+    )
 
     args.output.parent.mkdir(parents=True, exist_ok=True)
     with args.output.open("w", encoding="utf-8") as handle:
