@@ -329,16 +329,30 @@ def compute_form_d_confidence(
     )
 
     # --- Tier (rule-based on discrete signal combinations) ---
-    # Person match and address (ZIP) match are independent confirmation
-    # signals — either one is sufficient for high tier.  This is critical
-    # for HHS/NIH companies where the PI is often an academic collaborator
-    # who does not appear as an officer on the Form D filing.
-    ps = person_score if person_score is not None else 0.5
-    ads = address_score if address_score is not None else 0.5
+    # An exact ZIP match is direct identity evidence and is sufficient for
+    # high tier on its own — critical for HHS/NIH companies where the PI is
+    # often an academic collaborator who does not appear as an officer on
+    # the Form D filing.
+    #
+    # A fuzzy person-name match is not comparable in strength: ordinary name
+    # variation (a nickname, an initial, two people sharing a common given
+    # name) clears any threshold that also catches real matches — a
+    # companion audit found no score that separates the two populations.
+    # So a person match alone reaches only medium, the same tier a bare
+    # state overlap gets. It reaches high only in conjunction with a second,
+    # independent corroborating signal (exact ZIP, or state overlap paired
+    # with the person hit). Corroboration is checked against the actual
+    # signal values, never the 0.5 defaults substituted below for missing
+    # signals in the medium-tier check — two absent signals must not combine
+    # into a promotion.
     ss = state_score if state_score is not None else 0.5
-    if ps >= 0.7 or ads >= 1.0:
+    person_hit = person_score is not None and person_score >= 0.7
+    address_hit = address_score is not None and address_score >= 1.0
+    state_hit = state_score is not None and state_score >= 1.0
+    corroborated_person = person_hit and (address_hit or state_hit)
+    if address_hit or corroborated_person:
         tier = "high"
-    elif ss >= 0.5:
+    elif ss >= 0.5 or person_hit:
         tier = "medium"
     else:
         tier = "low"

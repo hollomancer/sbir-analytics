@@ -219,22 +219,46 @@ class TestComputeFormDConfidence:
         assert result.temporal_score == 0.0
         assert result.year_of_inc_score == 0.0
 
-    def test_person_match_drives_high_tier(self):
-        """Strong person match → high tier regardless of state or temporal signals."""
+    def test_person_only_match_no_longer_reaches_high(self):
+        """A fuzzy person match with no corroborating signal lands on medium, not high.
+
+        Regression test for #714: ordinary name variation (nicknames, initials,
+        shared given names) clears the person-score threshold for both true and
+        false matches, so a person hit alone must not be sufficient for high tier.
+        Here the state mismatches and there is no ZIP data, so nothing corroborates
+        the person match.
+        """
         result = compute_form_d_confidence(
             name_score=0.60,
             pi_names=["Donald Young"],
             related_persons=self._RELATED,
             sbir_state="CA",
-            biz_states=["MA"],  # state mismatch
+            biz_states=["MA"],  # state mismatch — no corroboration
             earliest_sbir_award_year=2020,
             form_d_dates=[date(2011, 12, 10)],  # big temporal gap
             year_of_inc=None,
         )
         assert result.person_score is not None
         assert result.person_score >= 0.70
-        assert result.tier == "high"
+        assert result.tier == "medium"
         assert result.state_score == 0.0
+
+    def test_person_match_with_corroboration_reaches_high(self):
+        """A fuzzy person match plus a corroborating state overlap still reaches high."""
+        result = compute_form_d_confidence(
+            name_score=0.60,
+            pi_names=["Donald Young"],
+            related_persons=self._RELATED,
+            sbir_state="MA",
+            biz_states=["MA"],  # state overlap corroborates the person hit
+            earliest_sbir_award_year=2020,
+            form_d_dates=[date(2011, 12, 10)],
+            year_of_inc=None,
+        )
+        assert result.person_score is not None
+        assert result.person_score >= 0.70
+        assert result.state_score == 1.0
+        assert result.tier == "high"
 
     def test_address_match_drives_high_tier(self):
         """ZIP match → high tier even without person match (HHS/academic PI case)."""
@@ -298,3 +322,26 @@ class TestComputeFormDConfidence:
         assert result.temporal_score is None
         assert result.year_of_inc_score is None
         assert abs(result.score - 0.515) < 0.001
+
+    def test_absent_person_and_address_never_promote_to_high(self):
+        """Missing person and address signals must never combine into high tier.
+
+        Both default to 0.5 in the composite score, but the tier rule must check
+        the real signal values — not the defaults — so two absent signals can
+        never accidentally clear the 0.7/1.0 tier thresholds. Only the real state
+        overlap here should drive the tier, and it can only reach medium.
+        """
+        result = compute_form_d_confidence(
+            name_score=0.60,
+            pi_names=[],
+            related_persons=[],
+            sbir_state="MA",
+            biz_states=["MA"],
+            earliest_sbir_award_year=2015,
+            form_d_dates=[date(2016, 1, 1)],
+            year_of_inc=None,
+        )
+        assert result.person_score is None
+        assert result.address_score is None
+        assert result.state_score == 1.0
+        assert result.tier == "medium"
