@@ -378,11 +378,20 @@ def transformed_phase_transition_survival(
     negative_time_rows = int(survival["time_days"].lt(0).sum()) if total else 0
     nonnegative_time_origin = negative_time_rows == 0
 
-    # 5-year transition view: fraction of observed events where time_days <= 5*365.
+    # 5-year transition view: fraction of the Phase II cohort (denominator
+    # unchanged) with an observed transition in [0, 5*365] completion-relative
+    # days. Rows with time_days < 0 are pre-completion transitions -- they
+    # stay in the denominator (the Phase II award is still part of the
+    # cohort) but are excluded from the numerator because they do not
+    # satisfy "within 5 years of completion".
     horizon_days = 5 * 365
     five_year_rate: float | None = None
     if total:
-        within = survival.loc[survival["event_observed"] & (survival["time_days"] <= horizon_days)]
+        within = survival.loc[
+            survival["event_observed"]
+            & (survival["time_days"] >= 0)
+            & (survival["time_days"] <= horizon_days)
+        ]
         five_year_rate = float(len(within) / total)
 
     checks = {
