@@ -818,6 +818,49 @@ def _required_count(mapping: dict[str, Any], key: str, *, path: str) -> int:
     return int(value)
 
 
+def _required_flag(mapping: dict[str, Any], key: str, *, path: str) -> bool | None:
+    """Same fail-closed contract as ``_required_count``, for a tri-state flag.
+
+    ``None`` is itself a meaningful value here (the snapshot has no observed
+    records at all), so unlike ``_required_count`` we only reject a missing
+    *key*, not a ``None`` value.
+    """
+
+    if key not in mapping:
+        raise ValueError(f"{path}.{key} is required; refuse to render an unstated coverage claim")
+    return mapping[key]
+
+
+def _panel_d_coverage_caveat(panel_d: dict[str, Any]) -> str:
+    """State any gap between the declared window_end and what the snapshots cover.
+
+    Built from the coverage booleans the builder already emits
+    (``*_snapshot_reaches_window_end``), not a hardcoded date, so the caveat
+    always matches this run's window_end and snapshot dates. Returns "" when
+    both snapshots reach window_end.
+    """
+
+    form_d_reaches = _required_flag(panel_d, "form_d_snapshot_reaches_window_end", path="panel_d")
+    efts_reaches = _required_flag(panel_d, "efts_snapshot_reaches_window_end", path="panel_d")
+
+    gaps = []
+    if form_d_reaches is not True:
+        latest = panel_d.get("form_d_latest_observed_filing")
+        gaps.append(
+            "Form D (no observed filings)" if latest is None else f"Form D (latest {latest})"
+        )
+    if efts_reaches is not True:
+        latest = panel_d.get("efts_latest_observed_mention")
+        gaps.append("EFTS (no observed mentions)" if latest is None else f"EFTS (latest {latest})")
+
+    if not gaps:
+        return ""
+    return (
+        f" The window above is stated through {panel_d['window_end']}, but the snapshots do not "
+        f"reach it: {'; '.join(gaps)}. Counts in the most recent days are not yet captured."
+    )
+
+
 def render_markdown(summary: dict[str, Any]) -> str:
     study = summary["study"]
     panel_a = summary["panel_a"]
@@ -838,6 +881,7 @@ def render_markdown(summary: dict[str, Any]) -> str:
     post_cap_over_cap_n = _required_count(
         constraint, "post_cap_over_cap_n", path="panel_a.description.source_constraint"
     )
+    panel_d_coverage_caveat = _panel_d_coverage_caveat(panel_d)
     first_action_in_window_n = sum(
         row["coded_phase_iii_first_actions"] for row in panel_a["annual"]
     )
@@ -949,7 +993,7 @@ have positive non-combination Form D filings in {panel_d["window_start"]}–{pan
 ({panel_d["form_d_positive_raise_firms"]["high"]:,} high-confidence;
 {panel_d["form_d_positive_raise_firms"]["medium"]:,} medium). This is filing participation—not
 verified capital or SBIR attribution. EFTS lacks acquisition-specific dates, blocking that branch
-and the union. No names are emitted.
+and the union. No names are emitted.{panel_d_coverage_caveat}
 
 ## Quality audit and published context
 

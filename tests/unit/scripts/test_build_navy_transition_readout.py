@@ -307,6 +307,10 @@ def _minimal_readout_summary() -> dict:
             "form_d_positive_raise_firms": {"total": 0, "high": 0, "medium": 0},
             "window_start": "2024-09-01",
             "window_end": "2026-08-31",
+            "form_d_snapshot_reaches_window_end": True,
+            "efts_snapshot_reaches_window_end": True,
+            "form_d_latest_observed_filing": "2026-08-31",
+            "efts_latest_observed_mention": "2026-08-31",
         },
     }
 
@@ -320,6 +324,40 @@ def test_render_markdown_requires_post_cap_over_cap_counts() -> None:
 
     del summary["panel_a"]["description"]["source_constraint"]["post_cap_over_cap_n"]
     with pytest.raises(ValueError, match="post_cap_over_cap_n"):
+        render_markdown(summary)
+
+
+def test_render_markdown_states_gap_when_a_snapshot_is_stale() -> None:
+    """window_end is a declared boundary, not a coverage promise. When a
+    snapshot's latest observed record falls short of it, Panel D must say so
+    instead of presenting the window as fully covered."""
+
+    summary = _minimal_readout_summary()
+    summary["panel_d"]["form_d_snapshot_reaches_window_end"] = False
+    summary["panel_d"]["form_d_latest_observed_filing"] = "2026-08-20"
+    summary["panel_d"]["efts_snapshot_reaches_window_end"] = False
+    summary["panel_d"]["efts_latest_observed_mention"] = "2026-08-21"
+
+    markdown = render_markdown(summary)
+
+    assert "the snapshots do not reach it" in markdown
+    assert "Form D (latest 2026-08-20)" in markdown
+    assert "EFTS (latest 2026-08-21)" in markdown
+
+
+def test_render_markdown_omits_gap_note_when_both_snapshots_reach_window_end() -> None:
+    summary = _minimal_readout_summary()
+    markdown = render_markdown(summary)
+
+    assert "the snapshots do not reach it" not in markdown
+    assert "not yet captured" not in markdown
+
+
+def test_render_markdown_requires_coverage_flags() -> None:
+    summary = _minimal_readout_summary()
+    del summary["panel_d"]["form_d_snapshot_reaches_window_end"]
+
+    with pytest.raises(ValueError, match="form_d_snapshot_reaches_window_end"):
         render_markdown(summary)
 
 
