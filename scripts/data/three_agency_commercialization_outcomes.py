@@ -26,7 +26,12 @@ from typing import Any
 import numpy as np
 import pandas as pd
 
-from sbir_etl.identity import CompanyNameProfile, normalize_company_name
+from sbir_etl.identity import (
+    CanonicalMergePolicy,
+    CompanyNameProfile,
+    build_canonical_company_map,
+    normalize_company_name,
+)
 from sbir_etl.utils.identifiers import normalize_duns, normalize_uei
 
 
@@ -150,30 +155,6 @@ def sha256_file(path: Path) -> str:
     return digest.hexdigest()
 
 
-class UnionFind:
-    def __init__(self) -> None:
-        self.parent: dict[str, str] = {}
-
-    def find(self, key: str) -> str:
-        self.parent.setdefault(key, key)
-        root = key
-        while self.parent[root] != root:
-            root = self.parent[root]
-        while self.parent[key] != key:
-            following = self.parent[key]
-            self.parent[key] = root
-            key = following
-        return root
-
-    def union(self, left: str, right: str) -> None:
-        left_root = self.find(left)
-        right_root = self.find(right)
-        if left_root == right_root:
-            return
-        low, high = sorted((left_root, right_root))
-        self.parent[high] = low
-
-
 def agency_label(row: pd.Series) -> str | None:
     agency = str(first_nonblank(row.get("Agency")) or "").strip()
     branch = str(first_nonblank(row.get("Branch")) or "").strip()
@@ -224,32 +205,32 @@ def build_cohort(awards_path: Path, cutoff: date) -> CohortData:
     awards["uei_alias"] = awards["UEI"].map(uei_alias)
     awards["duns_alias"] = awards["Duns"].map(duns_alias)
     awards["award_amount"] = awards["Award Amount"].map(parse_amount)
+    awards["canonical_name"] = awards["Company"].map(
+        lambda value: normalize_company_name(value, profile=CompanyNameProfile.MATCHING_V1)
+    )
+    awards = awards[awards[["uei_alias", "duns_alias", "canonical_name"]].ne("").any(axis=1)].copy()
 
-    union_find = UnionFind()
-    row_aliases: list[list[str]] = []
-    for row in awards.itertuples(index=False):
-        aliases = []
-        if row.uei_alias:
-            aliases.append(f"uei:{row.uei_alias}")
-        if row.duns_alias:
-            aliases.append(f"duns:{row.duns_alias}")
-        if row.name_alias:
-            aliases.append(f"name:{row.name_alias}")
-        row_aliases.append(aliases)
-        for alias in aliases[1:]:
-            union_find.union(aliases[0], alias)
-        if aliases:
-            union_find.find(aliases[0])
-
-    components: dict[str, set[str]] = defaultdict(set)
-    for alias in union_find.parent:
-        components[union_find.find(alias)].add(alias)
-    canonical = {root: min(values) for root, values in components.items()}
-    firm_ids: list[str | None] = []
-    for aliases in row_aliases:
-        firm_ids.append(canonical[union_find.find(aliases[0])] if aliases else None)
-    awards["firm_id"] = firm_ids
-    awards = awards[awards["firm_id"].notna()].copy()
+    # Reuse the frozen repository-wide pre-load merge policy. In particular, an
+    # identifier-bearing row self-matches before name matching, so equal names do
+    # not collapse records carrying incompatible UEI/DUNS identities.
+    identity_awards = pd.DataFrame(
+        {
+            "company_name": awards["Company"],
+            "company_uei": awards["uei_alias"].replace("", None),
+            "company_duns": awards["duns_alias"].replace("", None),
+        }
+    )
+    canonical_map = build_canonical_company_map(
+        identity_awards, policy=CanonicalMergePolicy.PRELOAD_V1
+    )
+    awards["firm_original_key"] = "NAME:" + awards["canonical_name"]
+    has_duns = awards["duns_alias"].ne("")
+    awards.loc[has_duns, "firm_original_key"] = "DUNS:" + awards.loc[has_duns, "duns_alias"]
+    has_uei = awards["uei_alias"].ne("")
+    awards.loc[has_uei, "firm_original_key"] = "UEI:" + awards.loc[has_uei, "uei_alias"]
+    awards["firm_id"] = (
+        awards["firm_original_key"].map(canonical_map).fillna(awards["firm_original_key"])
+    )
 
     phase2 = awards[
         awards["agency_label"].notna() & (awards["Phase"].str.strip() == "Phase II")
@@ -263,24 +244,23 @@ def build_cohort(awards_path: Path, cutoff: date) -> CohortData:
     anchors = anchors[anchors["anchor_date"] >= FORM_D_START].copy()
 
     cohort_firm_ids = set(anchors["firm_id"].astype(str))
-    aliases_by_firm: dict[str, set[str]] = defaultdict(set)
+    alias_candidates: dict[str, set[str]] = defaultdict(set)
     for row in awards.itertuples(index=False):
-        if str(row.firm_id) not in cohort_firm_ids:
-            continue
         aliases = {
             f"uei:{row.uei_alias}" if row.uei_alias else "",
             f"duns:{row.duns_alias}" if row.duns_alias else "",
             f"name:{row.name_alias}" if row.name_alias else "",
         }
-        aliases_by_firm[str(row.firm_id)].update(alias for alias in aliases if alias)
-    alias_to_firm: dict[str, str] = {}
-    for firm_id, aliases in aliases_by_firm.items():
         for alias in aliases:
-            existing = alias_to_firm.get(alias)
-            if existing is None or existing == firm_id:
-                alias_to_firm[alias] = firm_id
-            else:
-                alias_to_firm.pop(alias, None)
+            if alias:
+                alias_candidates[alias].add(str(row.firm_id))
+    alias_to_firm: dict[str, str] = {}
+    for alias, firm_ids in alias_candidates.items():
+        if len(firm_ids) != 1:
+            continue
+        firm_id = next(iter(firm_ids))
+        if firm_id in cohort_firm_ids:
+            alias_to_firm[alias] = firm_id
 
     phase_i_ii = awards[
         awards["firm_id"].astype(str).isin(cohort_firm_ids)
@@ -946,7 +926,7 @@ def write_markdown(summary: pd.DataFrame, cohort: pd.DataFrame, path: Path, cuto
             "",
             "- Contract activity measures subsequent federal-market participation, not proven lineage from a particular Phase II technology.",
             "- Form D captures disclosed Regulation D financing only. High-confidence matches are the headline; medium-confidence matches remain a sensitivity.",
-            "- M&A detects public-filing signals and therefore understates private or undisclosed exits.",
+            "- M&A uses public-record matches with incomplete coverage and possible identity or classification errors; the direction of net bias is unknown.",
             "- Firms may appear in more than one agency cohort; each agency clock begins at that agency's first Phase II award.",
             "",
             "## Cohort and methods",
@@ -959,7 +939,7 @@ def write_markdown(summary: pd.DataFrame, cohort: pd.DataFrame, path: Path, cuto
             "",
             "## Limitations",
             "",
-            "This is a descriptive portfolio comparison, not a causal evaluation. Agency portfolios differ in technology, mission, firm age, and selection. Identity resolution is strongest for UEI/DUNS-linked contracts and weaker for name-keyed SEC signals. Form D and M&A are public-disclosure lower bounds.",
+            "This is a descriptive portfolio comparison, not a causal evaluation. Agency portfolios differ in technology, mission, firm age, and selection. Identity resolution is strongest for UEI/DUNS-linked contracts and weaker for name-keyed SEC signals. Form D and M&A have both false-negative and false-positive risk, so neither is a one-sided bound.",
             "",
             "Detailed 3-, 5-, and 10-year estimates, confidence intervals, linkage diagnostics, and channel overlap are in the companion CSV artifacts.",
         ]
@@ -1022,6 +1002,7 @@ def main(argv: list[str] | None = None) -> int:
         "primary_horizon_years": PRIMARY_HORIZON,
         "bootstrap_iterations": BOOTSTRAP_ITERATIONS,
         "random_seed": RANDOM_SEED,
+        "canonical_identity_policy": CanonicalMergePolicy.PRELOAD_V1.value,
         "inputs": [
             {
                 "path": str(path.resolve()),

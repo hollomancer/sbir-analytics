@@ -2,7 +2,7 @@
 
 **Audience:** policy staff and program officers; exploratory / non-citable.
 
-**Status:** Exploratory — non-citable
+**Status:** Results withheld pending regeneration from pinned inputs
 
 **Observation cutoff:** 2024-12-31
 
@@ -10,195 +10,106 @@
 
 **Channels:** Non-Phase-I/II federal prime contracts, SEC Form D offerings, and public-record M&A
 
-## Bottom line
+## Current result status
 
-For firms with a fully observed five-year follow-up period, NASA and Air Force
-Phase II cohorts had almost the same incidence of subsequent non-Phase-I/II
-federal contracts: 65.8% and 65.1%, respectively. DOE's observed rate was 34.7%.
-The difference is specific to the federal customer channel. High-confidence
-Form D incidence was closer across the portfolios—5.0% for NASA, 8.2% for Air
-Force, and 8.8% for DOE—and the confidence intervals overlap.
+This page intentionally reports no scorecard, rates, counts, dollar totals, confidence intervals,
+agency comparisons, horizon comparisons, or rankings. The previously tracked results were generated
+before the current Form D ambiguity quarantine and canonical firm-roster policy. They also depended
+on Form D and M&A files whose exact producing snapshots are not pinned by a committed run manifest.
+The old values therefore cannot be reconciled to the current generator and have been withdrawn.
 
-These are public-data signals, not complete commercialization rates. A contract
-does not establish that the procured work descends from the anchor Phase II
-technology. Form D misses financing outside Regulation D, while the M&A file
-captures only publicly discoverable transactions. No observed signal therefore
-means "not found in these channels," not "did not commercialize."
+The generator remains useful for exploratory work, but a fresh local run is not enough to restore
+claims here. Results should stay suppressed until every input is frozen by hash and coverage date,
+the current code is recorded by Git commit, and channel-level and firm-level outputs reconcile to
+those inputs.
 
-## Five-year scorecard
+## Question and estimand
 
-Rates use Wilson 95% confidence intervals. Dollar ratios divide observed
-positive net obligations or Form D amount sold by the cohort's Phase II dollars
-awarded within the same five-year window. Dollar intervals are firm-level
-percentile bootstraps (1,000 draws, seed 42).
+The analysis asks how often firms in NASA, Air Force, and DOE SBIR/STTR Phase II cohorts have an
+observed signal in each of three public-data channels after their first Phase II award from that
+agency. The channels are kept separate:
 
-| Agency | Eligible firms | Federal-contract signal | Form D signal, high confidence | M&A signal, high confidence | Contract $ / Phase II $ | Form D $ / Phase II $ |
-| --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| NASA | 444 | 65.8% [61.2%, 70.0%] | 5.0% [3.3%, 7.4%] | 1.1% [0.5%, 2.6%] | 9.94x [4.17x, 18.68x] | 0.86x [0.14x, 2.19x] |
-| Air Force | 875 | 65.1% [61.9%, 68.2%] | 8.2% [6.6%, 10.2%] | 0.6% [0.2%, 1.3%] | 6.59x [4.63x, 9.36x] | 1.02x [0.53x, 1.70x] |
-| DOE | 533 | 34.7% [30.8%, 38.8%] | 8.8% [6.7%, 11.5%] | 1.7% [0.9%, 3.2%] | 0.87x [0.43x, 1.64x] | 0.59x [0.30x, 1.02x] |
+- Subsequent federal prime-contract activity measures later federal-market participation. It does
+  not establish technical lineage from the Phase II project.
+- Form D amount sold measures disclosed Regulation D financing that can be linked to the roster.
+- M&A measures candidate transactions present in the supplied public-record event file.
 
-The federal-contract intervals for NASA and Air Force overlap substantially;
-their difference should not be treated as meaningful here. DOE's interval does
-not overlap either one. Form D and M&A intervals overlap across all three
-agencies, so the point-estimate ordering is not a reliable agency ranking.
+A missing signal means only that no qualifying match was found in the supplied channel data. It is
+not evidence that a firm did not commercialize.
 
-## What the channels say
+## Cohort and identity rules
 
-### Federal-market continuation is common for NASA and Air Force firms
+- The cohort includes SBIR and STTR firms first receiving an in-scope agency Phase II on or after
+  the Form D observation start in 2009. NASA covers the full agency, Air Force is selected from the
+  DoD branch field, and DOE includes ARPA-E.
+- A firm may belong to more than one agency cohort. Each agency clock begins at that firm's first
+  Phase II award from the agency.
+- Award identities use the shared `CanonicalMergePolicy.PRELOAD_V1` primitive. UEI is the primary
+  key, DUNS is the fallback, and the policy's existing normalized-name behavior applies only after
+  identifier matching. Records with the same normalized name but incompatible UEI/DUNS identities
+  remain distinct.
+- External event linkage tries UEI, then DUNS, then an existing normalized-name alias. An alias is
+  admitted only when it resolves to one canonical firm across the complete retained award roster;
+  conflicts are not resolved by choosing a cohort member.
 
-Within five years, the analysis finds $5.48 billion in qualifying federal prime
-obligations for the NASA cohort, $12.31 billion for Air Force, and $0.86 billion
-for DOE. Only 11.1% of NASA's dollars and 33.6% of Air Force's were awarded by
-the anchor agency; DOE's same-agency share was 1.0%. The metric therefore speaks
-more to subsequent participation in the federal market than to an agency's own
-Phase III purchasing.
+## Channel measurement rules
 
-The dollar ratios are highly concentrated and should not be read as a typical
-firm's return. The ten largest firms account for 75.7% of NASA contract dollars,
-44.1% of Air Force dollars, and 63.0% of DOE dollars. Conditional on observing
-a positive contract signal, the median firm received $1.07 million for NASA,
-$1.68 million for Air Force, and $0.75 million for DOE—far below what the
-aggregate ratios might suggest. All top-ten contract firms in each portfolio
-had UEI-linked evidence; name-only links contributed less than 0.1% of each
-portfolio's five-year net contract dollars.
+Federal contract evidence comes from USAspending `Contracts_Full` archive extracts. Phase I and II
+actions are removed using research codes and normalized PIIDs; a coded Phase III action on the same
+vehicle remains eligible. Signed transaction obligations are netted per firm, and a non-positive
+firm total does not count as a signal. Same-agency dollars use the same per-firm netting rule and
+cannot exceed the firm's total positive net obligations.
 
-### Private-capital incidence is modest but similar across portfolios
+Form D uses reported amount sold, excludes incompatible industry groups, and collapses amendments
+by CIK, first-sale date, and security type. An accession or CIK linked to more than one canonical
+firm is quarantined from every candidate firm. High-confidence links are primary and high-plus-medium
+links are a sensitivity analysis.
 
-High-confidence Form D signals appear for 22 NASA firms, 72 Air Force firms,
-and 47 DOE firms in the five-year cohort. Their observed amount sold was $475
-million, $1.91 billion, and $578 million, respectively. Adding medium-confidence
-matches raises the rates to 6.3%, 9.9%, and 10.3%. That sensitivity does not
-change the broad conclusion that the three estimates are much closer than the
-federal-contract rates.
+M&A rows are deduplicated public-record matches. High-confidence links are primary and
+high-plus-medium links are a sensitivity analysis.
 
-The Form D totals differ from the repository's older all-award, all-window
-analyses because this study starts the clock at first Phase II, imposes fixed
-follow-up windows, and corrects cumulative amendments. For the matched
-three-agency universe, summing every filing would report $24.00 billion;
-collapsing amendments to the latest filing in an offering series yields $20.68
-billion, 13.9% less. Six amendments without a usable series key were excluded
-from dollar totals but retained in the audit.
-
-### Public M&A data are too sparse for agency ranking
-
-The high-confidence five-year M&A counts are five NASA firms, five Air Force
-firms, and nine DOE firms. The resulting intervals are wide and overlapping.
-This channel is best interpreted as a conservative lower bound because private
-transactions and undisclosed terms are frequently absent from public sources.
-
-## Horizon and pathway sensitivity
-
-Only firms whose entire follow-up window ends by the cutoff enter each row, so
-the 3-, 5-, and 10-year results describe progressively older award vintages.
-They are not a single cohort observed for different lengths of time.
-
-| Agency | Channel | 3-year rate | 5-year rate | 10-year rate |
-| --- | --- | ---: | ---: | ---: |
-| NASA | Federal contract | 56.6% | 65.8% | 70.6% |
-| NASA | Form D, high | 4.4% | 5.0% | 6.8% |
-| NASA | M&A, high | 0.5% | 1.1% | 2.6% |
-| Air Force | Federal contract | 51.9% | 65.1% | 68.6% |
-| Air Force | Form D, high | 9.8% | 8.2% | 6.8% |
-| Air Force | M&A, high | 0.6% | 0.6% | 3.0% |
-| DOE | Federal contract | 27.4% | 34.7% | 46.4% |
-| DOE | Form D, high | 8.0% | 8.8% | 14.2% |
-| DOE | M&A, high | 0.6% | 1.7% | 3.8% |
-
-At five years, 32.2% of NASA firms, 31.5% of Air Force firms, and 59.3% of DOE
-firms have no observed signal in any of the three headline channels. Most firms
-with a signal are found through contracts alone. This reinforces that the
-channels are complementary rather than interchangeable measures of one event.
-
-An Air Force era diagnostic finds a stable five-year contract rate (65.6% for
-2009–2016 anchors and 64.5% for 2017+ anchors) but higher high-confidence Form D
-incidence in the later group (4.4% versus 13.3%). The later group contains only
-anchors through 2019 because a full five-year window is required. Capital-market
-conditions, data coverage, and cohort composition all change over time, so this
-is not evidence that a program change caused the increase.
-
-## Cohort and measurement rules
-
-- The cohort includes SBIR and STTR firms first receiving an agency Phase II
-  from 2009 through 2024. NASA covers the full agency, Air Force is the DoD
-  branch field, and DOE includes ARPA-E.
-- A firm may appear in multiple agency cohorts. There are 689 NASA, 2,183 Air
-  Force, and 883 DOE firms before follow-up eligibility restrictions; 284 firms
-  appear in two cohorts and 37 in all three.
-- Identity is resolved across the complete SBIR/STTR award file using connected
-  UEI, DUNS, and normalized-name aliases. The agency-specific clock begins at
-  that firm's first Phase II from the agency.
-- Contract evidence comes from USAspending Contracts_Full archives for
-  FY2009–FY2025. FY2025 is needed for calendar Q4 2024. Phase I/II actions are
-  removed using research codes and dash-stripped Phase I/II PIIDs. Coded Phase
-  III modifications of those vehicles, and uncoded primes on other PIIDs,
-  remain. Signed transaction obligations are summed; deobligation-only
-  histories do not count as a positive signal.
-- Form D uses actual amount sold, excludes incompatible industry groups, and
-  collapses amendments by CIK, first-sale date, and security type. An accession
-  or CIK matched to more than one cohort firm is quarantined from all of them.
-  High confidence is primary; high plus medium is a sensitivity. The scorecard
-  numbers above predate this quarantine and will move when the generator is
-  re-run against the Form D file.
-- M&A events are deduplicated public-record matches. High confidence is primary;
-  high plus medium is a sensitivity.
+Neither Form D nor M&A is a one-sided bound. Incomplete public coverage can omit real events, while
+identity and event-classification errors can add false matches. Because those errors act in opposite
+directions, the net bias is unknown.
 
 ## Interpretation limits
 
-This is a descriptive portfolio comparison, not a causal evaluation of agency
-performance. Agencies select different technologies, missions, firm types, and
-award vintages. The analysis does not trace technical lineage from a Phase II
-project to a later procurement, financing, or acquisition. It does not observe
-commercial revenue, private contracts, conventional venture rounds not filed
-on Form D, business survival, or most undisclosed acquisitions.
+This is a descriptive portfolio comparison, not a causal evaluation of agency performance.
+Agencies select different technologies, missions, firm types, and award vintages. The analysis does
+not trace technical lineage from a Phase II project to a later procurement, financing, or
+acquisition. It does not measure commercial revenue, private-contract revenue, survival, or the
+full universe of private-capital and acquisition activity.
 
-The public contract linkage is strongest: 194,878 of 208,432 retained event rows
-matched by UEI, 5,075 by DUNS, and 8,479 by name. SEC and M&A links are name-keyed
-and therefore carry greater false-positive and false-negative risk. Treat the
-results as a reproducible screening view for policy discussion and follow-up
-validation—not as an official program scorecard.
+Contract linkage can use UEI or DUNS, whereas the supplied SEC and M&A artifacts are generally
+name-keyed. The latter channels therefore carry greater identity uncertainty. Any regenerated
+output remains exploratory and non-citable unless it is separately promoted under the repository's
+evidence-tier contract.
 
-## Reproduction and artifacts
+## Requirements before results can be restored
 
-The canonical generator is
+Before adding numerical findings back to this page, a regeneration must:
+
+1. Pin every award, contract, Form D, and M&A input by path, byte size, SHA-256, source coverage,
+   and as-of date.
+2. Record the generator Git commit, cutoff, horizons, identity policy, and random seed.
+3. Run the current identity, PIID-exclusion, contract-netting, Form D amendment, and ambiguity
+   quarantine logic.
+4. Reconcile retained input rows, unique firms, excluded rows, event dollars, and every published
+   numerator and denominator to the generated audit artifacts.
+5. Review the generated policy memo and companion CSVs together; do not copy values from an older
+   run or from an unpinned local data volume.
+
+## Generator and artifacts
+
+The canonical exploratory generator is
 [`scripts/data/three_agency_commercialization_outcomes.py`](../../scripts/data/three_agency_commercialization_outcomes.py),
 with archive extraction in
 [`scripts/data/extract_three_agency_contracts.py`](../../scripts/data/extract_three_agency_contracts.py).
 The thin exploration notebook is
 [`notebooks/explorations/b2_three_agency_commercialization_outcomes.ipynb`](../../notebooks/explorations/b2_three_agency_commercialization_outcomes.ipynb).
-Generated CSVs and manifests live under
-`data/reports/three_agency_commercialization/` in the data volume. The manifest
-pins input hashes, cutoff, bootstrap settings, cohort counts, and channel audits.
 
-**The manifest is not committed, so the figures above are not currently
-verifiable from this repository.** A 2026-09-09 review re-ran the generator
-against the inputs present in a fresh checkout and reproduced every
-award-derived figure exactly — 689 / 2,183 / 883 cohort firms and
-444 / 875 / 533 five-year eligible firms — while five of six outcome
-numerators differed, with the M&A counts low by 40 to 50 percent. Cohort
-figures come from the stable award file; the numerators come from two files
-that carry no as-of date and no hash here. That is an unpinned-input problem,
-not a logic problem.
-
-Inputs present in this checkout, for comparison against whatever generated the
-table above:
-
-| input | sha256 | as-of |
-|---|---|---|
-| `data/raw/sbir/award_data.csv` | `7511930b16dfa5c3` | 2026-05-11 |
-| `data/form_d_details.jsonl` | `a6da5f4313f111ee` | 2026-04-23 |
-| `data/sbir_ma_events.jsonl` | `6ffc8481a240b2ee` | 2026-04-24 |
-
-Two further cautions on the M&A channel specifically. `sbir_ma_events.jsonl`
-reproduces from no committed code — it was generated six days before PR #286
-merged and the generating code changed before merge. And its `high` tier is
-inflated: 407 of 1,197 high-confidence events rest on an unverified Form D
-business-combination checkbox with no named counterparty, which a pending fix
-reduces to 811. The M&A rates above will move when that lands. See issues
-#682 and #704.
-
-Related source-method notes are the
-[Form D data dictionary](form-d-data-dictionary.md),
+Generated CSVs, the generated policy memo, and the run manifest live under
+`data/reports/three_agency_commercialization/` in the data volume. They are not committed evidence.
+Related source-method notes are the [Form D data dictionary](form-d-data-dictionary.md),
 [Form D fundraising analysis](sbir-form-d-fundraising-analysis.md), and
-[M&A exit analysis](sbir-ma-exit-analysis.md). Their older headline figures are
-not directly comparable because their cohorts and observation windows differ.
+[M&A exit analysis](sbir-ma-exit-analysis.md).

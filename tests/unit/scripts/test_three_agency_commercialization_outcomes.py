@@ -17,6 +17,36 @@ sys.modules[SPEC.name] = MODULE
 SPEC.loader.exec_module(MODULE)
 
 
+def _award_row(
+    company: str,
+    *,
+    uei: str = "",
+    duns: str = "",
+    agency: str = "National Aeronautics and Space Administration",
+    branch: str = "",
+    phase: str = "Phase II",
+    contract: str = "NNX-TEST",
+) -> dict[str, str]:
+    return {
+        "Company": company,
+        "Agency": agency,
+        "Branch": branch,
+        "Phase": phase,
+        "Program": "SBIR",
+        "Contract": contract,
+        "Proposal Award Date": "2015-01-15",
+        "Award Year": "2015",
+        "Award Amount": "100000",
+        "UEI": uei,
+        "Duns": duns,
+    }
+
+
+def _write_awards(path: Path, rows: list[dict[str, str]]) -> Path:
+    pd.DataFrame(rows).to_csv(path, index=False)
+    return path
+
+
 def test_agency_scope_is_exact():
     assert (
         MODULE.agency_label(pd.Series({"Agency": "National Aeronautics and Space Administration"}))
@@ -329,3 +359,73 @@ def test_match_firm_uses_identity_primitives_for_uei_and_duns():
     assert (firm, basis) == ("firm-duns", "duns")
     firm, basis = MODULE.match_firm(duns="12-345-6789", alias_to_firm=alias_to_firm)
     assert (firm, basis) == ("firm-duns", "duns")
+
+
+def test_cohort_keeps_same_name_firms_with_incompatible_uei_and_duns_distinct(tmp_path: Path):
+    awards = _write_awards(
+        tmp_path / "awards.csv",
+        [
+            _award_row(
+                "Atlas Scientific, LLC",
+                uei="ABC123DEF456",
+                duns="111111111",
+                contract="NNX-ONE",
+            ),
+            _award_row(
+                "ATLAS SCIENTIFIC LLC",
+                uei="XYZ789GHJ012",
+                duns="222222222",
+                contract="NNX-TWO",
+            ),
+        ],
+    )
+
+    cohort = MODULE.build_cohort(awards, date(2024, 12, 31))
+
+    assert set(cohort.firms["firm_id"]) == {"UEI:ABC123DEF456", "UEI:XYZ789GHJ012"}
+    assert len(cohort.phase_ii_awards) == 2
+    name_alias = f"name:{MODULE.normalized_name('Atlas Scientific LLC')}"
+    assert name_alias not in cohort.alias_to_firm
+    assert MODULE.match_firm(name="Atlas Scientific LLC", alias_to_firm=cohort.alias_to_firm) == (
+        None,
+        None,
+    )
+    assert MODULE.match_firm(
+        uei="abc-123-def-456", name="Atlas Scientific LLC", alias_to_firm=cohort.alias_to_firm
+    ) == ("UEI:ABC123DEF456", "uei")
+    assert MODULE.match_firm(
+        duns="222-222-222", name="Atlas Scientific LLC", alias_to_firm=cohort.alias_to_firm
+    ) == ("UEI:XYZ789GHJ012", "duns")
+
+
+def test_noncohort_identifier_conflict_quarantines_cohort_name_alias(tmp_path: Path):
+    awards = _write_awards(
+        tmp_path / "awards.csv",
+        [
+            _award_row(
+                "Pioneer Systems, Inc.",
+                uei="ABC123DEF456",
+                duns="111111111",
+                contract="NNX-COHORT",
+            ),
+            _award_row(
+                "PIONEER SYSTEMS INC",
+                uei="XYZ789GHJ012",
+                duns="222222222",
+                agency="Department of Health and Human Services",
+                phase="Phase I",
+                contract="HHS-NONCOHORT",
+            ),
+        ],
+    )
+
+    cohort = MODULE.build_cohort(awards, date(2024, 12, 31))
+
+    assert list(cohort.firms["firm_id"]) == ["UEI:ABC123DEF456"]
+    name_alias = f"name:{MODULE.normalized_name('Pioneer Systems Inc')}"
+    assert name_alias not in cohort.alias_to_firm
+    assert MODULE.match_firm(name="Pioneer Systems Inc", alias_to_firm=cohort.alias_to_firm) == (
+        None,
+        None,
+    )
+    assert "uei:XYZ789GHJ012" not in cohort.alias_to_firm
