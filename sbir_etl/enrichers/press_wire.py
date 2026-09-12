@@ -1,7 +1,8 @@
 """Press wire RSS/Atom feed client for SBIR awardee news monitoring.
 
-Polls RSS/Atom feeds from PR Newswire, BusinessWire, and GlobeNewsWire
-for press releases mentioning known SBIR awardee companies. Designed
+Polls RSS/Atom feeds from PR Newswire and GlobeNewsWire for press
+releases mentioning known SBIR awardee companies. BusinessWire was
+dropped on 2026-09-09; see the note on ``FEEDS`` below. Designed
 as a leading-indicator source for commercialization events (contract
 wins, acquisitions, product launches, partnerships) that appear in
 press releases weeks/months before they surface in USAspending or FPDS.
@@ -50,10 +51,20 @@ from sbir_etl.enrichers.rate_limiting import RateLimiter
 from sbir_etl.exceptions import APIError
 from sbir_etl.identity import CompanyNameProfile, normalize_company_name
 
+DEFAULT_HEADERS: dict[str, str] = {
+    # Without a descriptive agent PRNewswire 301s and GlobeNewsWire times out,
+    # so two of three feeds returned nothing and poll still reported success.
+    "User-Agent": "sbir-analytics research (https://github.com/hollomancer/sbir-analytics)",
+    "Accept": "application/rss+xml, application/atom+xml, application/xml;q=0.9, */*;q=0.8",
+}
+
 # Feed URLs — public RSS/Atom endpoints
 FEEDS: dict[str, str] = {
     "PRNewswire": "https://www.prnewswire.com/rss/news-releases-list.rss",
-    "BusinessWire": "https://feed.businesswire.com/rss/home/?rss=G1QFDERJXkJeEFpRWA==",
+    # BusinessWire removed 2026-09-09. Its "?rss=G1QFDERJXkJeEFpRWA==" token
+    # returns a valid RSS envelope whose description reads "The channel you
+    # requested is unavailable due to an error during request processing."
+    # A replacement feed URL is needed before it can be restored.
     "GlobeNewsWire": "https://www.globenewswire.com/RSSFeed/subjectcode/01-Business%20Operations/feedTitle/GlobeNewswire%20-%20Business%20Operations",
 }
 
@@ -202,7 +213,7 @@ class PressWireClient(BaseAsyncAPIClient):
         # base_url unused — feed URLs are absolute and passed as endpoint
         self.base_url = ""
         self.rate_limit_per_minute = rate_limit_per_minute
-        self._client = http_client or httpx.AsyncClient(timeout=timeout)
+        self._client = http_client or httpx.AsyncClient(timeout=timeout, follow_redirects=True)
         self._feeds = feeds or dict(FEEDS)
         self._requested_company_names: list[str] = []
         self._watchlist: dict[str, str] = {}  # normalized -> original
@@ -213,6 +224,19 @@ class PressWireClient(BaseAsyncAPIClient):
             automatic_match_count=0,
         )
         self._seen_hashes: set[str] = set()
+
+    def _build_headers(self) -> dict[str, str]:
+        """Ask for feed XML, not JSON, and identify the client.
+
+        ``BaseAsyncAPIClient._build_headers`` requests ``application/json`` and
+        sends a bare ``SBIR-Analytics/<version>`` agent. Both are wrong for a
+        news feed: PRNewswire answered with a 301 and GlobeNewsWire timed out,
+        so two of three feeds returned nothing while ``poll`` reported success.
+        These headers are applied per request, which is the only layer that
+        takes effect -- ``_request_raw`` rebuilds them and would discard
+        anything set on the ``httpx.AsyncClient`` constructor.
+        """
+        return dict(DEFAULT_HEADERS)
 
     # ------------------------------------------------------------------
     # Watchlist management
@@ -449,11 +473,13 @@ class PressWireClient(BaseAsyncAPIClient):
             return []
 
         all_matches: list[PressRelease] = []
+        failed: list[str] = []
 
         for source, url in self._feeds.items():
             xml_text = await self._fetch_feed(source, url)
             if xml_text is None:
                 logger.warning(f"Failed to fetch {source} feed")
+                failed.append(source)
                 continue
 
             items = self._parse_feed(xml_text, source)
@@ -470,7 +496,21 @@ class PressWireClient(BaseAsyncAPIClient):
                     self._seen_hashes.add(item.content_hash)
                     all_matches.append(item)
 
-        logger.info(f"Press wire poll complete: {len(all_matches)} matches")
+        # A total fetch failure produces the same empty list as "nothing in the
+        # news matched", so it has to be raised rather than logged. Every feed
+        # silently 301'd or timed out for want of a User-Agent and this line
+        # still reported success.
+        if failed and len(failed) == len(self._feeds):
+            raise APIError(
+                f"all {len(failed)} press wire feeds failed: {', '.join(failed)}",
+                component="api.press_wire",
+            )
+        if failed:
+            logger.warning(f"{len(failed)} of {len(self._feeds)} feeds failed: {failed}")
+        logger.info(
+            f"Press wire poll complete: {len(all_matches)} matches "
+            f"from {len(self._feeds) - len(failed)} of {len(self._feeds)} feeds"
+        )
         return all_matches
 
     async def poll_all_unfiltered(self) -> list[PressRelease]:

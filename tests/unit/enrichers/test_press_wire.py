@@ -15,6 +15,7 @@ from sbir_etl.enrichers.press_wire import (
     _normalize_release_text,
 )
 from sbir_etl.enrichers.sync_wrappers import SyncPressWireClient
+from sbir_etl.exceptions import APIError
 from sbir_etl.identity import CompanyNameProfile
 
 pytestmark = pytest.mark.fast
@@ -119,10 +120,11 @@ class TestInitialization:
         assert isinstance(client, BaseAsyncAPIClient)
 
     def test_default_feeds_used_when_not_specified(self, mock_http_client: AsyncMock) -> None:
+        """BusinessWire dropped 2026-09-09; its token serves an error envelope."""
         c = PressWireClient(http_client=mock_http_client)
         assert "PRNewswire" in c._feeds
-        assert "BusinessWire" in c._feeds
         assert "GlobeNewsWire" in c._feeds
+        assert "BusinessWire" not in c._feeds
 
 
 # ==================== Watchlist ====================
@@ -438,12 +440,14 @@ class TestPoll:
 
         assert len(items) == 2  # Both items, no watchlist filter
 
-    async def test_feed_fetch_500_logged_as_empty(
+    async def test_feed_fetch_500_raises_when_it_is_the_only_feed(
         self, client: PressWireClient, mock_http_client: AsyncMock
     ) -> None:
-        """When a feed returns 5xx, poll continues with other feeds.
+        """Superseded 2026-09-09. This asserted an empty list and hid the fault.
 
-        In this test there's only one feed, so matches should be empty.
+        A 5xx on the only configured feed means nothing was observed, which is
+        not the same as observing that nothing matched. poll continues past a
+        partial failure but raises when every feed is down.
         """
         client.set_watchlist(["Acme Defense Systems"])
         resp = Mock()
@@ -453,9 +457,8 @@ class TestPoll:
             "500", request=Mock(), response=resp
         )
 
-        matches = await client.poll()
-
-        assert matches == []
+        with pytest.raises(APIError, match="all 1 press wire feeds failed"):
+            await client.poll()
 
     async def test_absolute_url_passed_through(
         self, client: PressWireClient, mock_http_client: AsyncMock
@@ -503,3 +506,51 @@ class TestSyncFacade:
             client._client._seen_hashes.add("abc")
             client.reset_seen()
             assert client._client._seen_hashes == set()
+
+
+def test_build_headers_requests_feed_xml_not_json() -> None:
+    """The base client asks for JSON, which is wrong for an RSS feed.
+
+    Without this override PRNewswire answered 301 and GlobeNewsWire timed out,
+    so two of three feeds returned nothing.
+    """
+    from sbir_etl.enrichers.press_wire import PressWireClient
+
+    headers = PressWireClient()._build_headers()
+    assert "rss+xml" in headers["Accept"]
+    assert "application/json" not in headers["Accept"]
+    assert "sbir-analytics" in headers["User-Agent"].lower()
+    assert not headers["User-Agent"].startswith("SBIR-Analytics/")
+
+
+def test_dead_businesswire_feed_is_not_configured() -> None:
+    """BusinessWire's token returns an RSS envelope carrying an error string.
+
+    It parsed as a valid feed with zero items, so the failure was invisible.
+    """
+    from sbir_etl.enrichers.press_wire import FEEDS
+
+    assert "BusinessWire" not in FEEDS
+    assert FEEDS, "at least one feed must remain configured"
+
+
+@pytest.mark.asyncio
+async def test_poll_raises_when_every_feed_fails() -> None:
+    """A total fetch failure must not look like 'nothing matched'.
+
+    Every feed failed silently for want of a User-Agent and poll still logged
+    success and returned an empty list.
+    """
+    from sbir_etl.exceptions import APIError
+    from sbir_etl.enrichers.press_wire import PressWireClient
+
+    client = PressWireClient()
+    client.set_watchlist(["Acme Robotics"])
+
+    async def _fail(source: str, url: str) -> None:
+        return None
+
+    client._fetch_feed = _fail  # type: ignore[assignment]
+    with pytest.raises(APIError, match="all .* press wire feeds failed"):
+        await client.poll()
+    await client.aclose()
