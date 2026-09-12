@@ -16,6 +16,16 @@ from sbir_etl.reporting.weekly.rendering import build_solicitation_url
 from sbir_etl.reporting.weekly.models import CompanyResearch, SolicitationTopic
 
 
+def _press_release_digest(press_release: PressRelease) -> str:
+    """Format a press hit while retaining where the company mention occurred."""
+    source = press_release.source
+    if press_release.matched_in:
+        evidence = f"matched in {press_release.matched_in}"
+        source = f"{source}; {evidence}" if source else evidence
+    published = f" ({press_release.published})" if press_release.published else ""
+    return f"- [{source}] {press_release.title}{published}"
+
+
 def _award_digest(
     award: dict,
     company_research: CompanyResearch | None = None,
@@ -113,11 +123,7 @@ def _award_digest(
         if oc_parts:
             parts.append("State corporation filing (OpenCorporates): " + " | ".join(oc_parts))
     if press_releases:
-        pr_summaries = []
-        for pr in press_releases[:3]:
-            pr_summaries.append(
-                f"- [{pr.source}] {pr.title}" + (f" ({pr.published})" if pr.published else "")
-            )
+        pr_summaries = [_press_release_digest(pr) for pr in press_releases[:3]]
         parts.append("Recent press releases:\n" + "\n".join(pr_summaries))
     return "\n".join(parts)
 

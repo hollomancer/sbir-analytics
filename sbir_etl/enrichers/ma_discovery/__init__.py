@@ -1,4 +1,4 @@
-"""M&A discovery toolkit: query generation, verification, and press merge.
+"""M&A discovery toolkit: query generation and verification.
 
 Epistemic tier: pipelines. Relocated from the paused #371 scripts.
 Search backends are pluggable via ``SearchTool``. A typed snippet extractor
@@ -20,7 +20,6 @@ from sbir_etl.enrichers.ma_discovery.extractor import (
     pair_names_match,
 )
 from sbir_etl.enrichers.ma_discovery.orchestrator import process_batch
-from sbir_etl.enrichers.ma_discovery.press import enrich_ma_events, merge_press_signals
 from sbir_etl.enrichers.ma_discovery.queries import generate_queries, query_rows_from_events
 from sbir_etl.enrichers.ma_discovery.search import (
     BraveSearchTool,
@@ -56,9 +55,7 @@ __all__ = [
     "build_llm_extractor",
     "build_search_tool",
     "pair_names_match",
-    "enrich_ma_events",
     "generate_queries",
-    "merge_press_signals",
     "process_batch",
     "query_rows_from_events",
     "verify_acquisition",

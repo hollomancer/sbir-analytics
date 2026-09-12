@@ -4,7 +4,7 @@ from enum import StrEnum
 from pathlib import Path
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from ..config.yaml_io import read_yaml_mapping
 
@@ -68,6 +68,36 @@ class MaterializationGate(BaseModel):
         return self
 
 
+class ValidationDesign(BaseModel):
+    """What the study must show, written before the data is seen.
+
+    The evidence-tier contract checks that a result is pinned. This block also
+    records whether the study could distinguish success from failure for its
+    addressable population. For a census or enumeration, the fields describe
+    expected coverage and reconciliation criteria rather than an effect size.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    addressable_population: str = Field(min_length=1)
+    expected_yield: str = Field(min_length=1)
+    decision_threshold: str = Field(min_length=1)
+    threshold_derivation: str = Field(min_length=1)
+
+    @field_validator(
+        "addressable_population",
+        "expected_yield",
+        "decision_threshold",
+        "threshold_derivation",
+        mode="after",
+    )
+    @classmethod
+    def reject_blank(cls, v: str) -> str:
+        if not v.strip():
+            raise ValueError("must not be blank")
+        return v
+
+
 class StudyManifest(BaseModel):
     """The machine-checkable epistemic contract for one study."""
 
@@ -85,6 +115,16 @@ class StudyManifest(BaseModel):
     materialization: MaterializationGate
     permitted_claims: list[str] = Field(min_length=1)
     limitations: list[str] = Field(min_length=1)
+    validation_design: ValidationDesign | None = None
+
+    @model_validator(mode="after")
+    def require_validation_design_after_reproducible(self) -> "StudyManifest":
+        if self.evidence_status in {EvidenceStatus.VALIDATED, EvidenceStatus.CITABLE}:
+            if self.validation_design is None:
+                raise ValueError(
+                    f"evidence_status '{self.evidence_status}' requires a validation_design block"
+                )
+        return self
 
 
 def load_study_manifest(path: Path) -> StudyManifest:
@@ -101,5 +141,6 @@ __all__ = [
     "ImplementationReference",
     "MaterializationGate",
     "StudyManifest",
+    "ValidationDesign",
     "load_study_manifest",
 ]

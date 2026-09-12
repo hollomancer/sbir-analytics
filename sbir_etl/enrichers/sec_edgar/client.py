@@ -253,6 +253,7 @@ class EdgarAPIClient(BaseAsyncAPIClient):
         *,
         forms: str = "8-K",
         limit: int = 20,
+        raise_on_error: bool = False,
     ) -> list[dict[str, Any]]:
         """Search EFTS for mentions of a company name inside filing text.
 
@@ -267,6 +268,9 @@ class EdgarAPIClient(BaseAsyncAPIClient):
             limit: Maximum results to return. Sent to EFTS as ``size``; the
                 server default page is 100, so a ``limit`` above 100 now
                 returns hits that the pre-``size`` request could not.
+            raise_on_error: Re-raise an API failure instead of returning an
+                empty result. This lets coverage-sensitive callers distinguish
+                a measured empty search from an unmeasured request failure.
 
         Returns:
             List of filing mention dicts with: filer_cik, filer_name,
@@ -314,6 +318,8 @@ class EdgarAPIClient(BaseAsyncAPIClient):
             return results
         except APIError as e:
             logger.warning(f"EDGAR filing mention search failed for '{company_name}': {e}")
+            if raise_on_error:
+                raise
             return []
 
     async def search_form_d_filings(
@@ -372,6 +378,8 @@ class EdgarAPIClient(BaseAsyncAPIClient):
         cik: str,
         accession: str,
         filename: str,
+        *,
+        raise_on_error: bool = False,
     ) -> str | None:
         """Fetch the text content of a specific filing document.
 
@@ -379,6 +387,9 @@ class EdgarAPIClient(BaseAsyncAPIClient):
             cik: CIK (zero-padded or not).
             accession: Accession number (e.g., '0001049521-20-000067').
             filename: Document filename within the filing.
+            raise_on_error: Raise an ``APIError`` when the document could not
+                be fetched instead of returning ``None``. The default preserves
+                the historical best-effort client contract.
 
         Returns:
             Raw text content with HTML stripped, or None on error.
@@ -409,10 +420,24 @@ class EdgarAPIClient(BaseAsyncAPIClient):
         try:
             response = await _do_fetch()
             if response.status_code != 200:
+                if raise_on_error:
+                    raise APIError(
+                        "SEC filing document request failed",
+                        api_name=self.api_name,
+                        endpoint=url,
+                        http_status=response.status_code,
+                    )
                 return None
             return _strip_html(response.text)
         except (httpx.HTTPError, httpx.TimeoutException) as e:
             logger.debug(f"Failed to fetch filing document {url}: {e}")
+            if raise_on_error:
+                raise APIError(
+                    "SEC filing document request failed",
+                    api_name=self.api_name,
+                    endpoint=url,
+                    cause=e,
+                ) from e
             return None
 
     async def fetch_form_d_xml(

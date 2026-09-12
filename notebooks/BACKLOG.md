@@ -39,6 +39,15 @@ As in Wave 1, these are companion views over the canonical artifacts — the scr
 the repeatable computation layer, and each notebook degrades to a "run the generator first"
 message when an artifact is absent.
 
+## Wave 3 — companion notebooks added
+
+| Candidate investigation | Starting source | Notebook |
+|---|---|---|
+| Supplier-share census | `build_supplier_share_census.py` | `examples/supplier_share_census_review.ipynb` |
+
+The supplier-share companion keeps missing venture-search coverage visible, reviews the frozen
+sensitivity grid, and never substitutes notebook calculations for the canonical producer.
+
 ## Active explorations
 
 Question-driven work under `notebooks/explorations/`. These are not companions to a
@@ -50,6 +59,7 @@ canonical generator; they stay `exploratory` and non-citable until explicitly pr
 | STTR partner-type × commercialization channels | B1 / B3 — among STTR Phase II firms, do observed Phase III / Form D / M&A rates differ by a coarse RI partner-type heuristic? | `explorations/b1_sttr_partner_type_commercialization.ipynb` | Active. Not RQ2; not the frozen partner-type classifier. |
 | STTR spinout-vs-subcontract (RQ1) data availability | B2/RQ1 (spec-local anchor, distinct from the canonical B2) — is the public data the frozen classification cascade would consume actually present locally, independent of the `open-questions.md` freeze gate? | `explorations/sttr_rq1_data_availability.ipynb` | Active. Input-availability probe only; does not implement or run the cascade. |
 | Top-10 incumbent repeat-winner displacement exposure | A-CP7 — how much Phase I capacity do the ten highest *prior*-award-count firms absorb, and what is the mechanical reallocation capacity toward first-time and low-volume incumbents? | `explorations/a_cp7_top10_repeat_winner_displacement.ipynb` | Active. Exploratory crowd-out **proxies** only; no applicant file, not causal, not a Status upgrade. |
+| NASA–Air Force–DOE post-Phase-II commercialization outcomes | B2 / B3 / F1–F3 — how do observed federal-contract, Form D, and public M&A signals compare after first Phase II? | `explorations/b2_three_agency_commercialization_outcomes.ipynb` | Active. Canonical generator-backed analysis; exploratory and non-citable. |
 | M&A snippet extractor eval | F1 M&A exit / F2 acquirer-type (inventory) — does the keyword verifier miss suffix-stripped names and confirm talks-only, and is a structured LLM prompt worth an opt-in next PR? | `explorations/ma_discovery_extractor_eval.ipynb` | Active. Exploratory / non-citable. Default path is fixtures + keyword + gold-replay mock; live OpenAI is env-flagged and off. |
 | M&A discovery sample-run review | F2 / A4 — Form-D-missing web-search confirmation under `studies/ma-discovery-recall`. | (CLI: `scripts/data/run_ma_discovery_sample.py`) | Blocked on a licensed snippet cut and a 20-row human medium-row review. Exploratory; not Computable. |
 
