@@ -35,6 +35,7 @@ class CompanyNameProfile(StrEnum):
 
     ORGANIZATION_KEY_V1 = "organization-key-v1"
     MATCHING_V1 = "matching-v1"
+    PRESS_WIRE_WATCHLIST_V1 = "press-wire-watchlist-v1"
     RECIPIENT_V1 = "recipient-v1"
     ENTITY_RESOLUTION_V1 = "entity-resolution-v1"
     GROUNDTRUTH_V1 = "groundtruth-v1"
@@ -184,6 +185,12 @@ _TRAILING_DESIGNATORS = frozenset(
     }
 )
 
+_PRESS_WIRE_TRAILING_DESIGNATOR_V1 = re.compile(
+    r"(?:,\s*|\s+)(?:incorporated|incorporation|inc|corp|corporation|llc|llp|lp|ltd|limited"
+    r"|plc|co|company)\.?\s*$",
+    re.IGNORECASE,
+)
+
 
 def _matching_v1(
     value: Any,
@@ -237,6 +244,23 @@ def _organization_key_v1(value: Any) -> str:
     return " ".join(tokens).upper()
 
 
+def _press_wire_watchlist_v1(value: Any) -> str:
+    """Normalize a feed watchlist identity while preserving brand punctuation.
+
+    Unlike fuzzy-match profiles, this exact-mention profile retains punctuation
+    that can distinguish a brand (for example, the ``+`` in ``SKY+``). It strips
+    one trailing legal designator to preserve the press-wire client's historical
+    behavior. Release prose is not a company identity and must not use this
+    profile.
+    """
+    text = unicodedata.normalize("NFKD", str(value).strip().lower())
+    text = "".join(ch for ch in text if not unicodedata.combining(ch))
+    for pattern, replacement in _DOTTED_DESIGNATORS:
+        text = pattern.sub(replacement, text)
+    text = " ".join(text.split())
+    return _PRESS_WIRE_TRAILING_DESIGNATOR_V1.sub("", text).rstrip(" ,")
+
+
 def normalize_company_name(
     value: Any,
     *,
@@ -251,6 +275,8 @@ def normalize_company_name(
         return _organization_key_v1(value)
     if profile is CompanyNameProfile.MATCHING_V1:
         return _matching_v1(value, remove_suffixes=False, abbreviations=abbreviations)
+    if profile is CompanyNameProfile.PRESS_WIRE_WATCHLIST_V1:
+        return _press_wire_watchlist_v1(value)
     if profile is CompanyNameProfile.RECIPIENT_V1:
         return _matching_v1(value, remove_suffixes=True, abbreviations=abbreviations)
 

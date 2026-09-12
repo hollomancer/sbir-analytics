@@ -42,7 +42,7 @@ from .lens_patents import LensPatentClient, LensPatentRecord
 from .opencorporates import CorporateRecord, Officer, OpenCorporatesClient
 from .openalex_client import OpenAlexClient, OpenAlexRecord
 from .orcid_client import ORCIDClient, ORCIDRecord
-from .press_wire import PressRelease, PressWireClient
+from .press_wire import PressRelease, PressWireClient, WatchlistCoverage
 from .pubmed_client import PubMedClient, PubMedRecord
 from .rate_limiting import RateLimiter
 from .sam_gov.client import SAMGovAPIClient
@@ -410,11 +410,15 @@ class SyncPressWireClient(_SyncFacade):
         )
 
     # Watchlist management is pure Python — no need to route through run_sync
-    def set_watchlist(self, company_names: list[str]) -> None:
-        self._client.set_watchlist(company_names)
+    @property
+    def watchlist_report(self) -> WatchlistCoverage:
+        return self._client.watchlist_report
 
-    def add_to_watchlist(self, company_name: str) -> None:
-        self._client.add_to_watchlist(company_name)
+    def set_watchlist(self, company_names: list[str]) -> WatchlistCoverage:
+        return self._client.set_watchlist(company_names)
+
+    def add_to_watchlist(self, company_name: str) -> WatchlistCoverage:
+        return self._client.add_to_watchlist(company_name)
 
     def reset_seen(self) -> None:
         self._client.reset_seen()

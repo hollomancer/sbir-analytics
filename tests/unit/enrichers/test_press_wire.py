@@ -1,9 +1,4 @@
-"""Tests for PressWireClient (async) and SyncPressWireClient.
-
-Pure parsing/normalization helpers (``_content_hash``, ``_normalize``)
-are unchanged after the migration. The client tests use the
-``AsyncMock``-based pattern established in the earlier migrations.
-"""
+"""Tests for PressWireClient (async) and SyncPressWireClient."""
 
 from __future__ import annotations
 
@@ -13,11 +8,14 @@ import httpx
 import pytest
 
 from sbir_etl.enrichers.press_wire import (
+    PressRelease,
     PressWireClient,
+    WatchlistReviewReason,
     _content_hash,
-    _normalize,
+    _normalize_release_text,
 )
 from sbir_etl.enrichers.sync_wrappers import SyncPressWireClient
+from sbir_etl.identity import CompanyNameProfile
 
 pytestmark = pytest.mark.fast
 
@@ -57,17 +55,15 @@ SAMPLE_ATOM = """<?xml version="1.0" encoding="UTF-8"?>
 # ==================== Pure helpers (unchanged) ====================
 
 
-class TestNormalize:
-    def test_strips_common_suffixes(self):
-        assert _normalize("Acme Defense Inc.") == "acme defense"
-        assert _normalize("Nova Quantum LLC") == "nova quantum"
-        assert _normalize("Big Corp Corporation") == "big corp"
-
+class TestReleaseTextNormalization:
     def test_lowercases(self):
-        assert _normalize("ACME DEFENSE") == "acme defense"
+        assert _normalize_release_text("ACME DEFENSE") == "acme defense"
 
-    def test_no_suffix(self):
-        assert _normalize("Acme Defense") == "acme defense"
+    def test_preserves_company_suffix_in_prose(self):
+        assert _normalize_release_text("Acme Defense Inc.") == "acme defense inc."
+
+    def test_removes_diacritics_and_collapses_whitespace(self):
+        assert _normalize_release_text("  CAFÉ+   wins  ") == "cafe+ wins"
 
 
 class TestContentHash:
@@ -147,6 +143,222 @@ class TestWatchlist:
         client.set_watchlist(["Acme Defense Inc."])
         assert "acme defense" in client._watchlist
         assert client._watchlist["acme defense"] == "Acme Defense Inc."
+
+    def test_press_release_positional_constructor_remains_compatible(self) -> None:
+        release = PressRelease(
+            "Title",
+            "https://example.test",
+            "2026-09-12",
+            "Summary",
+            "Newswire",
+            "Acme",
+            "content-hash",
+        )
+
+        assert release.content_hash == "content-hash"
+        assert release.matched_in == ""
+
+
+# ==================== Matching: literal boundary, length floor, evidence ====================
+#
+# Issue #708: unanchored substring matching gave 0/18 precision on the
+# shipped `enriched_sbir_ma_events.jsonl` artifact. Real false positives:
+# BAL matched inside "global", APP inside "approximately", ATI inside
+# "nationwide", DRI inside "alexandria", Ert inside "hardwareintegrierte".
+# All five of those watchlist names normalize to 3 characters or fewer, so
+# the length floor alone would block them. The tests below isolate each
+# defense: the floor (short names excluded from the watchlist entirely) and
+# the literal-boundary pattern (a 4+ char name still must not match as a
+# substring of a longer word).
+
+
+class TestLengthFloor:
+    def test_short_names_are_reported_for_human_review(self, client: PressWireClient) -> None:
+        report = client.set_watchlist(["BAL", "APP, Inc", "ATI, INC.", "DRI", "Ert"])
+
+        assert client._watchlist == {}
+        assert report.requested_count == 5
+        assert report.automatic_match_count == 0
+        assert report.automatic_coverage == 0.0
+        assert report.profile is CompanyNameProfile.PRESS_WIRE_WATCHLIST_V1
+        assert client.watchlist_report is report
+        assert [
+            (item.company_name, item.normalized_name, item.reason)
+            for item in report.review_required
+        ] == [
+            ("BAL", "bal", WatchlistReviewReason.SHORT_NAME),
+            ("APP, Inc", "app", WatchlistReviewReason.SHORT_NAME),
+            ("ATI, INC.", "ati", WatchlistReviewReason.SHORT_NAME),
+            ("DRI", "dri", WatchlistReviewReason.SHORT_NAME),
+            ("Ert", "ert", WatchlistReviewReason.SHORT_NAME),
+        ]
+
+    def test_names_at_floor_are_kept(self, client: PressWireClient) -> None:
+        report = client.set_watchlist(["SKY+"])
+
+        assert client._watchlist == {"sky+": "SKY+"}
+        assert report.requested_count == 1
+        assert report.automatic_match_count == 1
+        assert report.automatic_coverage == 1.0
+        assert report.review_required == ()
+
+    def test_add_to_watchlist_updates_review_report(self, client: PressWireClient) -> None:
+        client.set_watchlist(["Acme Defense Systems"])
+        report = client.add_to_watchlist("Ert")
+
+        assert len(client._watchlist) == 1
+        assert "ert" not in client._watchlist
+        assert report.requested_count == 2
+        assert report.automatic_match_count == 1
+        assert report.review_required[0].reason is WatchlistReviewReason.SHORT_NAME
+
+    def test_blank_name_is_reported_for_human_review(self, client: PressWireClient) -> None:
+        report = client.set_watchlist(["", "Acme Defense"])
+
+        assert report.automatic_match_count == 1
+        assert [item.reason for item in report.review_required] == [
+            WatchlistReviewReason.EMPTY_NAME
+        ]
+
+    def test_curated_common_name_requires_human_review(self, client: PressWireClient) -> None:
+        report = client.set_watchlist(["Connect", "Acme Defense"])
+
+        assert "connect" not in client._watchlist
+        assert report.automatic_match_count == 1
+        assert [
+            (item.company_name, item.normalized_name, item.reason)
+            for item in report.review_required
+        ] == [("Connect", "connect", WatchlistReviewReason.CURATED_COMMON_NAME)]
+        item = PressRelease(
+            title="New platform will connect teams across the enterprise",
+            link="https://x",
+        )
+        assert client._match_company(item) is None
+
+
+class TestWordBoundaryMatching:
+    """Adversarial cases: a watchlist name must not match as a substring of
+    an unrelated longer word, even when it clears the length floor."""
+
+    def test_bali_does_not_match_inside_globalization(self, client: PressWireClient) -> None:
+        client.set_watchlist(["Bali"])  # normalizes to "bali", a substring of "globalization"
+        item = PressRelease(
+            title="Firm expands globalization strategy", link="https://x", summary=None
+        )
+        assert client._match_company(item) is None
+
+    def test_cast_does_not_match_inside_broadcast(self, client: PressWireClient) -> None:
+        client.set_watchlist(["Cast"])  # "cast" is a substring of "broadcast"
+        item = PressRelease(
+            title="Network to broadcast the event live", link="https://x", summary=None
+        )
+        assert client._match_company(item) is None
+
+    def test_nova_does_not_match_inside_renovation(self, client: PressWireClient) -> None:
+        client.set_watchlist(["Nova"])
+        item = PressRelease(title="Downtown renovation project completed", link="https://x")
+        assert client._match_company(item) is None
+
+    def test_rice_does_not_match_inside_prices(self, client: PressWireClient) -> None:
+        client.set_watchlist(["Rice"])  # "rice" is a substring of "prices"
+        item = PressRelease(
+            title="Report cites rising commodity prices", link="https://x", summary=None
+        )
+        assert client._match_company(item) is None
+
+    def test_nference_does_not_match_inside_conference(self, client: PressWireClient) -> None:
+        client.set_watchlist(["NFERENCE, INC."])
+        item = PressRelease(
+            title="Natural Resources Conference at UH Law",
+            link="https://x",
+        )
+
+        assert client._match_company(item) is None
+
+    def test_real_company_name_matches_real_headline(self, client: PressWireClient) -> None:
+        client.set_watchlist(["Acme Defense"])
+        item = PressRelease(
+            title="Acme Defense Awarded $5M DoD Contract for Next-Gen Sensors",
+            link="https://x",
+            summary=None,
+        )
+        assert client._match_company(item) == ("Acme Defense", "title")
+
+    def test_multiword_name_matches_with_trailing_punctuation(
+        self, client: PressWireClient
+    ) -> None:
+        client.set_watchlist(["Nova Quantum"])
+        item = PressRelease(
+            title="Nova Quantum, a leading firm, announced a merger",
+            link="https://x",
+            summary=None,
+        )
+        assert client._match_company(item) == ("Nova Quantum", "title")
+
+    def test_name_ending_in_punctuation_matches_literal_name(self, client: PressWireClient) -> None:
+        client.set_watchlist(["SKY+"])
+        item = PressRelease(
+            title="SKY+ selected for autonomous-flight program",
+            link="https://x",
+        )
+
+        assert client._match_company(item) == ("SKY+", "title")
+
+    def test_name_ending_in_punctuation_still_rejects_prefix_collision(
+        self, client: PressWireClient
+    ) -> None:
+        client.set_watchlist(["SKY+"])
+        item = PressRelease(
+            title="BlueSKY+ selected for autonomous-flight program",
+            link="https://x",
+        )
+
+        assert client._match_company(item) is None
+
+
+class TestMatchEvidence:
+    """Title vs. summary are recorded as separate evidence (issue #708,
+    item 3). Either location still counts as a match; the location is
+    recorded, not used to accept/reject."""
+
+    def test_title_only_match(self, client: PressWireClient) -> None:
+        client.set_watchlist(["Acme Defense"])
+        item = PressRelease(
+            title="Acme Defense wins new contract", link="https://x", summary="No mention here."
+        )
+        result = client._match_company(item)
+        assert result == ("Acme Defense", "title")
+
+    def test_summary_only_match(self, client: PressWireClient) -> None:
+        client.set_watchlist(["Acme Defense"])
+        item = PressRelease(
+            title="Local firm wins new contract",
+            link="https://x",
+            summary="Acme Defense will deliver sensors under the award.",
+        )
+        result = client._match_company(item)
+        assert result == ("Acme Defense", "summary")
+
+    def test_title_and_summary_match(self, client: PressWireClient) -> None:
+        client.set_watchlist(["Acme Defense"])
+        item = PressRelease(
+            title="Acme Defense wins new contract",
+            link="https://x",
+            summary="Acme Defense will deliver sensors under the award.",
+        )
+        result = client._match_company(item)
+        assert result == ("Acme Defense", "title+summary")
+
+    async def test_poll_records_matched_in(
+        self, client: PressWireClient, mock_http_client: AsyncMock
+    ) -> None:
+        client.set_watchlist(["Acme Defense Systems"])
+        mock_http_client.get.return_value = _mock_response(200, SAMPLE_RSS)
+
+        matches = await client.poll()
+
+        assert len(matches) == 1
+        assert matches[0].matched_in == "summary"
 
 
 # ==================== Parsing ====================
@@ -269,8 +481,12 @@ class TestSyncFacade:
 
     def test_watchlist_on_sync_facade(self) -> None:
         with SyncPressWireClient(feeds={"Test": "https://test/rss"}) as client:
-            client.set_watchlist(["Acme"])
-            client.add_to_watchlist("Nova")
+            initial_report = client.set_watchlist(["Acme"])
+            updated_report = client.add_to_watchlist("Nova")
+
+            assert initial_report.automatic_match_count == 1
+            assert updated_report.automatic_match_count == 2
+            assert client.watchlist_report == updated_report
             assert len(client._client._watchlist) == 2
 
     def test_poll_delegates_to_async(self) -> None:
