@@ -36,6 +36,7 @@ Usage (sync)::
 from __future__ import annotations
 
 import hashlib
+import re
 import xml.etree.ElementTree as ET
 from dataclasses import dataclass, field
 
@@ -62,6 +63,15 @@ NS = {
 
 DEFAULT_RATE_LIMIT_PER_MINUTE = 30
 
+# Below this length, even a word-boundary match is weak evidence: a normalized
+# watchlist name of 1-3 characters (e.g. "bal", "app", "dri") is likely to
+# collide with an unrelated short word used as a standalone token somewhere in
+# a press release. Names shorter than this floor are excluded from matching
+# entirely rather than matched with lower confidence, since there is no
+# curated allowlist of legitimate short company names (e.g. ticker-style
+# names like "IBM") to exempt from the floor.
+_MIN_NORMALIZED_NAME_LENGTH = 4
+
 
 @dataclass
 class PressRelease:
@@ -73,6 +83,7 @@ class PressRelease:
     summary: str | None = None
     source: str = ""  # Which wire service
     matched_company: str = ""  # Which watchlist company matched
+    matched_in: str = ""  # Where the match occurred: "title", "summary", or "title+summary"
     content_hash: str = ""  # For dedup across feeds
 
 
@@ -93,7 +104,9 @@ def _content_hash(title: str, link: str) -> str:
 def _normalize(name: str) -> str:
     """Normalize company name for matching.
 
-    Strips common suffixes and lowercases for substring matching.
+    Strips common suffixes and lowercases. Also used to normalize press
+    release title/summary text; matching against the result is done with
+    word-boundary patterns (see ``_boundary_pattern``), not substring search.
     """
     lower = name.lower().strip()
     for suffix in (
@@ -114,6 +127,16 @@ def _normalize(name: str) -> str:
         if lower.endswith(suffix):
             lower = lower[: -len(suffix)].rstrip(" ,")
     return lower
+
+
+def _boundary_pattern(normalized_name: str) -> re.Pattern[str]:
+    """Compile a whole-word/whole-phrase match pattern for a normalized name.
+
+    Anchored with ``\\b`` on both ends so a short name can only match a
+    standalone token (or token sequence), never a substring inside a longer
+    word — e.g. ``bal`` must not match inside ``global``.
+    """
+    return re.compile(rf"\b{re.escape(normalized_name)}\b")
 
 
 class PressWireClient(BaseAsyncAPIClient):
@@ -156,6 +179,7 @@ class PressWireClient(BaseAsyncAPIClient):
         self._client = http_client or httpx.AsyncClient(timeout=timeout)
         self._feeds = feeds or dict(FEEDS)
         self._watchlist: dict[str, str] = {}  # normalized -> original
+        self._patterns: dict[str, re.Pattern[str]] = {}  # normalized -> compiled boundary pattern
         self._seen_hashes: set[str] = set()
 
     # ------------------------------------------------------------------
@@ -165,15 +189,42 @@ class PressWireClient(BaseAsyncAPIClient):
     def set_watchlist(self, company_names: list[str]) -> None:
         """Set the list of company names to watch for in press releases.
 
-        Names are normalized (lowercased, common suffixes stripped) for
-        substring matching against feed items.
+        Names are normalized (lowercased, common suffixes stripped) and
+        matched as a whole word/phrase, never a substring. Names that
+        normalize below ``_MIN_NORMALIZED_NAME_LENGTH`` characters are
+        excluded — see the constant's docstring for why.
         """
-        self._watchlist = {_normalize(name): name for name in company_names}
+        self._watchlist = {}
+        self._patterns = {}
+        skipped = 0
+        for name in company_names:
+            normalized = _normalize(name)
+            if len(normalized) < _MIN_NORMALIZED_NAME_LENGTH:
+                skipped += 1
+                continue
+            self._watchlist[normalized] = name
+            self._patterns[normalized] = _boundary_pattern(normalized)
+        if skipped:
+            logger.debug(
+                f"Press wire watchlist: skipped {skipped} names below the "
+                f"{_MIN_NORMALIZED_NAME_LENGTH}-character match floor"
+            )
         logger.info(f"Press wire watchlist set: {len(self._watchlist)} companies")
 
     def add_to_watchlist(self, company_name: str) -> None:
-        """Add a single company to the watchlist."""
-        self._watchlist[_normalize(company_name)] = company_name
+        """Add a single company to the watchlist.
+
+        No-op if the name normalizes below ``_MIN_NORMALIZED_NAME_LENGTH``.
+        """
+        normalized = _normalize(company_name)
+        if len(normalized) < _MIN_NORMALIZED_NAME_LENGTH:
+            logger.debug(
+                f"Press wire watchlist: skipped short name below the "
+                f"{_MIN_NORMALIZED_NAME_LENGTH}-character match floor: {company_name!r}"
+            )
+            return
+        self._watchlist[normalized] = company_name
+        self._patterns[normalized] = _boundary_pattern(normalized)
 
     # ------------------------------------------------------------------
     # Feed fetching
@@ -274,15 +325,39 @@ class PressWireClient(BaseAsyncAPIClient):
     # Matching
     # ------------------------------------------------------------------
 
-    def _match_company(self, item: PressRelease) -> str | None:
+    def _match_company(self, item: PressRelease) -> tuple[str, str] | None:
         """Check if a press release mentions a watchlist company.
 
-        Uses normalized substring matching against title and summary.
+        Matches a normalized watchlist name as a whole word/phrase (word
+        boundaries on both ends) so a short name cannot match a substring
+        inside an unrelated longer word. Title and summary are checked
+        separately: a title hit is stronger evidence than a summary-only
+        hit, so the match location is returned alongside the company name
+        rather than collapsed into a single yes/no. This does not change
+        whether a match counts — a summary-only hit still returns a match —
+        it only records where the evidence came from for downstream
+        consumers that want to weight headline mentions higher.
+
+        Returns:
+            ``(original_name, matched_in)`` for the first watchlist hit, or
+            ``None``. ``matched_in`` is one of ``"title"``, ``"summary"``,
+            or ``"title+summary"``.
         """
-        searchable = _normalize(f"{item.title} {item.summary or ''}")
+        title_text = _normalize(item.title)
+        summary_text = _normalize(item.summary or "")
         for normalized_name, original_name in self._watchlist.items():
-            if normalized_name in searchable:
-                return original_name
+            pattern = self._patterns[normalized_name]
+            title_hit = bool(pattern.search(title_text))
+            summary_hit = bool(pattern.search(summary_text))
+            if not (title_hit or summary_hit):
+                continue
+            if title_hit and summary_hit:
+                matched_in = "title+summary"
+            elif title_hit:
+                matched_in = "title"
+            else:
+                matched_in = "summary"
+            return original_name, matched_in
         return None
 
     # ------------------------------------------------------------------
@@ -317,7 +392,7 @@ class PressWireClient(BaseAsyncAPIClient):
 
                 matched = self._match_company(item)
                 if matched:
-                    item.matched_company = matched
+                    item.matched_company, item.matched_in = matched
                     self._seen_hashes.add(item.content_hash)
                     all_matches.append(item)
 

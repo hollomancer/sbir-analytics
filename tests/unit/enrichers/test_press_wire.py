@@ -13,6 +13,7 @@ import httpx
 import pytest
 
 from sbir_etl.enrichers.press_wire import (
+    PressRelease,
     PressWireClient,
     _content_hash,
     _normalize,
@@ -147,6 +148,136 @@ class TestWatchlist:
         client.set_watchlist(["Acme Defense Inc."])
         assert "acme defense" in client._watchlist
         assert client._watchlist["acme defense"] == "Acme Defense Inc."
+
+
+# ==================== Matching: word boundary, length floor, evidence ====================
+#
+# Issue #708: unanchored substring matching gave 0/18 precision on the
+# shipped `enriched_sbir_ma_events.jsonl` artifact. Real false positives:
+# BAL matched inside "global", APP inside "approximately", ATI inside
+# "nationwide", DRI inside "alexandria", Ert inside "hardwareintegrierte".
+# All five of those watchlist names normalize to 3 characters or fewer, so
+# the length floor alone would block them. The tests below isolate each
+# defense: the floor (short names excluded from the watchlist entirely) and
+# the word-boundary pattern (a 4+ char name still must not match as a
+# substring of a longer word).
+
+
+class TestLengthFloor:
+    def test_short_names_excluded_from_watchlist(self, client: PressWireClient) -> None:
+        client.set_watchlist(["BAL", "APP, Inc", "ATI, INC.", "DRI", "Ert"])
+        assert client._watchlist == {}
+
+    def test_names_at_floor_are_kept(self, client: PressWireClient) -> None:
+        # "Bali" normalizes to 4 characters — right at the floor.
+        client.set_watchlist(["Bali"])
+        assert "bali" in client._watchlist
+
+    def test_add_to_watchlist_skips_short_name(self, client: PressWireClient) -> None:
+        client.set_watchlist(["Acme Defense Systems"])
+        client.add_to_watchlist("Ert")
+        assert len(client._watchlist) == 1
+        assert "ert" not in client._watchlist
+
+
+class TestWordBoundaryMatching:
+    """Adversarial cases: a watchlist name must not match as a substring of
+    an unrelated longer word, even when it clears the length floor."""
+
+    def test_bal_does_not_match_inside_global(self, client: PressWireClient) -> None:
+        client.set_watchlist(["Bali"])  # normalizes to "bali", a substring of "globalization"
+        item = PressRelease(
+            title="Firm expands globalization strategy", link="https://x", summary=None
+        )
+        assert client._match_company(item) is None
+
+    def test_cast_does_not_match_inside_broadcast(self, client: PressWireClient) -> None:
+        client.set_watchlist(["Cast"])  # "cast" is a substring of "broadcast"
+        item = PressRelease(
+            title="Network to broadcast the event live", link="https://x", summary=None
+        )
+        assert client._match_company(item) is None
+
+    def test_nova_does_not_match_inside_renovation(self, client: PressWireClient) -> None:
+        client.set_watchlist(["Nova"])
+        item = PressRelease(title="Downtown renovation project completed", link="https://x")
+        assert client._match_company(item) is None
+
+    def test_rice_does_not_match_inside_prices(self, client: PressWireClient) -> None:
+        client.set_watchlist(["Rice"])  # "rice" is a substring of "prices"
+        item = PressRelease(
+            title="Report cites rising commodity prices", link="https://x", summary=None
+        )
+        assert client._match_company(item) is None
+
+    def test_real_company_name_matches_real_headline(self, client: PressWireClient) -> None:
+        client.set_watchlist(["Acme Defense"])
+        item = PressRelease(
+            title="Acme Defense Awarded $5M DoD Contract for Next-Gen Sensors",
+            link="https://x",
+            summary=None,
+        )
+        result = client._match_company(item)
+        assert result is not None
+        assert result[0] == "Acme Defense"
+
+    def test_multiword_name_matches_with_trailing_punctuation(
+        self, client: PressWireClient
+    ) -> None:
+        client.set_watchlist(["Nova Quantum"])
+        item = PressRelease(
+            title="Nova Quantum, a leading firm, announced a merger",
+            link="https://x",
+            summary=None,
+        )
+        result = client._match_company(item)
+        assert result is not None
+        assert result[0] == "Nova Quantum"
+
+
+class TestMatchEvidence:
+    """Title vs. summary are recorded as separate evidence (issue #708,
+    item 3). Either location still counts as a match; the location is
+    recorded, not used to accept/reject."""
+
+    def test_title_only_match(self, client: PressWireClient) -> None:
+        client.set_watchlist(["Acme Defense"])
+        item = PressRelease(
+            title="Acme Defense wins new contract", link="https://x", summary="No mention here."
+        )
+        result = client._match_company(item)
+        assert result == ("Acme Defense", "title")
+
+    def test_summary_only_match(self, client: PressWireClient) -> None:
+        client.set_watchlist(["Acme Defense"])
+        item = PressRelease(
+            title="Local firm wins new contract",
+            link="https://x",
+            summary="Acme Defense will deliver sensors under the award.",
+        )
+        result = client._match_company(item)
+        assert result == ("Acme Defense", "summary")
+
+    def test_title_and_summary_match(self, client: PressWireClient) -> None:
+        client.set_watchlist(["Acme Defense"])
+        item = PressRelease(
+            title="Acme Defense wins new contract",
+            link="https://x",
+            summary="Acme Defense will deliver sensors under the award.",
+        )
+        result = client._match_company(item)
+        assert result == ("Acme Defense", "title+summary")
+
+    async def test_poll_records_matched_in(
+        self, client: PressWireClient, mock_http_client: AsyncMock
+    ) -> None:
+        client.set_watchlist(["Acme Defense Systems"])
+        mock_http_client.get.return_value = _mock_response(200, SAMPLE_RSS)
+
+        matches = await client.poll()
+
+        assert len(matches) == 1
+        assert matches[0].matched_in in {"title", "summary", "title+summary"}
 
 
 # ==================== Parsing ====================
