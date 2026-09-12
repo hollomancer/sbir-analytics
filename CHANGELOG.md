@@ -10,6 +10,36 @@ version.
 
 ## [Unreleased]
 
+## [0.12.0] — 2026-08-31
+
+### Fixed
+
+- `validated_phase_iii_contracts` and the `phase_transition_pairs`/survival
+  assets now write their parquet unconditionally, including when the frame
+  is empty. Skipping the write on an empty result left the previous parquet
+  on disk beside a freshly written `checks.json` reporting `total_rows: 0`,
+  so a legitimate zero-row run looked like a stale one (#692).
+- `load_form_d_control_universe` refuses Form D control-universe staging
+  products (a `.provisional.jsonl`/`.identity-staging.jsonl` filename,
+  staging-shaped records, or a sibling manifest reporting an unready gate)
+  instead of loading them silently on a mismatched identity key (#692).
+- Form D amendment filings no longer inflate `total_form_d_raised` and
+  `offering_count` by being summed alongside the filing they amend. The fix
+  is a documented lower bound, not exact chain collapse — that is blocked on
+  locating the SEC file number that links an amendment to its original (#692).
+- The phase-transition report read latency from `pairs` (one row per matched
+  contract) while reading the transition rate and agency counts from
+  `survival` (one row per Phase II award), mixing two denominators under one
+  transition vocabulary. All three now read `survival` (#692).
+
+### Changed
+
+- Consolidated three reviewed spec proposals into the specs that already own
+  the surface they touch, rather than three new registry entries:
+  `specs/phase-iii-source-materialization/tasks.md` gained the transition
+  source/lineage work, and a new `specs/sec-source-fidelity/` spec covers
+  EDGAR event-date and Form D source fidelity (#692).
+
 ## [0.11.0] — 2026-08-26
 
 ### Added

@@ -12,6 +12,7 @@ containing a contact email address.
 from __future__ import annotations
 
 import os
+from collections.abc import Callable
 from html.parser import HTMLParser
 from typing import Any, cast
 
@@ -130,6 +131,12 @@ class EdgarAPIClient(BaseAsyncAPIClient):
         )
         self.timeout = cast(int, self.api_config.get("timeout_seconds", 30))
         self.rate_limit_per_minute = cast(int, self.api_config.get("rate_limit_per_minute", 600))
+        # Optional hook the enricher calls when a mention carries an incomplete
+        # filing reference (no doc_id, accession, filename, or CIK), so a scan
+        # can type that mention as not searchable instead of silently missing.
+        # Declared here so callers set a public attribute, not a private one
+        # read back through __dict__.
+        self.context_incomplete_callback: Callable[[], None] | None = None
 
         # SEC requires a User-Agent with contact info for fair access.
         # Accept contact_email directly from config, or look it up from env.
@@ -246,6 +253,7 @@ class EdgarAPIClient(BaseAsyncAPIClient):
         *,
         forms: str = "8-K",
         limit: int = 20,
+        raise_on_error: bool = False,
     ) -> list[dict[str, Any]]:
         """Search EFTS for mentions of a company name inside filing text.
 
@@ -257,7 +265,12 @@ class EdgarAPIClient(BaseAsyncAPIClient):
         Args:
             company_name: Company name to search for in filing text.
             forms: Filing types to search (comma-separated, e.g., "8-K,10-K").
-            limit: Maximum results to return.
+            limit: Maximum results to return. Sent to EFTS as ``size``; the
+                server default page is 100, so a ``limit`` above 100 now
+                returns hits that the pre-``size`` request could not.
+            raise_on_error: Re-raise an API failure instead of returning an
+                empty result. This lets coverage-sensitive callers distinguish
+                a measured empty search from an unmeasured request failure.
 
         Returns:
             List of filing mention dicts with: filer_cik, filer_name,
@@ -270,6 +283,8 @@ class EdgarAPIClient(BaseAsyncAPIClient):
             "startdt": "2000-01-01",
             "enddt": "2026-12-31",
             "forms": forms,
+            "from": 0,
+            "size": limit,
         }
         try:
             response = await self._make_request("GET", "/search-index", params=params)
@@ -303,6 +318,8 @@ class EdgarAPIClient(BaseAsyncAPIClient):
             return results
         except APIError as e:
             logger.warning(f"EDGAR filing mention search failed for '{company_name}': {e}")
+            if raise_on_error:
+                raise
             return []
 
     async def search_form_d_filings(
@@ -361,6 +378,8 @@ class EdgarAPIClient(BaseAsyncAPIClient):
         cik: str,
         accession: str,
         filename: str,
+        *,
+        raise_on_error: bool = False,
     ) -> str | None:
         """Fetch the text content of a specific filing document.
 
@@ -368,6 +387,9 @@ class EdgarAPIClient(BaseAsyncAPIClient):
             cik: CIK (zero-padded or not).
             accession: Accession number (e.g., '0001049521-20-000067').
             filename: Document filename within the filing.
+            raise_on_error: Raise an ``APIError`` when the document could not
+                be fetched instead of returning ``None``. The default preserves
+                the historical best-effort client contract.
 
         Returns:
             Raw text content with HTML stripped, or None on error.
@@ -398,10 +420,24 @@ class EdgarAPIClient(BaseAsyncAPIClient):
         try:
             response = await _do_fetch()
             if response.status_code != 200:
+                if raise_on_error:
+                    raise APIError(
+                        "SEC filing document request failed",
+                        api_name=self.api_name,
+                        endpoint=url,
+                        http_status=response.status_code,
+                    )
                 return None
             return _strip_html(response.text)
         except (httpx.HTTPError, httpx.TimeoutException) as e:
             logger.debug(f"Failed to fetch filing document {url}: {e}")
+            if raise_on_error:
+                raise APIError(
+                    "SEC filing document request failed",
+                    api_name=self.api_name,
+                    endpoint=url,
+                    cause=e,
+                ) from e
             return None
 
     async def fetch_form_d_xml(

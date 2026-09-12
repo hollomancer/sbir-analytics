@@ -90,6 +90,8 @@ silently change a notebook's tier:
   sensitivity and agency-cohort comparisons against published private-capital baselines.
 - [`firm_commercialization_audit_review.ipynb`](examples/firm_commercialization_audit_review.ipynb)
   — per-firm §638(qq) benchmark verdicts as traceable evidence bundles with reviewer annotations.
+- [`supplier_share_census_review.ipynb`](examples/supplier_share_census_review.ipynb) — frozen-grid
+  supplier-share matrices, suppression state, agency slices, and cohort-censoring diagnostics.
 
 The examples are completed exploratory companion views over canonical artifacts. Their source
 scripts continue to be the repeatable computation layer. In the repository's
