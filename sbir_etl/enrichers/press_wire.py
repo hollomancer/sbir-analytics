@@ -1,7 +1,8 @@
 """Press wire RSS/Atom feed client for SBIR awardee news monitoring.
 
-Polls RSS/Atom feeds from PR Newswire, BusinessWire, and GlobeNewsWire
-for press releases mentioning known SBIR awardee companies. Designed
+Polls RSS/Atom feeds from PR Newswire and GlobeNewsWire for press
+releases mentioning known SBIR awardee companies. BusinessWire was
+dropped on 2026-09-09; see the note on ``FEEDS`` below. Designed
 as a leading-indicator source for commercialization events (contract
 wins, acquisitions, product launches, partnerships) that appear in
 press releases weeks/months before they surface in USAspending or FPDS.
