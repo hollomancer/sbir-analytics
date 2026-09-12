@@ -68,7 +68,11 @@ Source: [Carta VC Fund Performance Q4 2025](https://carta.com/data/vc-fund-perfo
 | id | cohort_metric (missing) | point_estimate | as_of | page / URL |
 |---|---|---:|---|---|
 | `carta_seed_to_a_q2_2024_6q` | `form_d_follow_on_within_horizon` | 0.206 | 2025 | Fund Performance Q4 2025, Market context. Q2 2024 seed vintage; Series A within six quarters. |
-| `carta_seed_to_a_q2_2022_6q` | `form_d_follow_on_within_horizon` | 0.096 | 2025 | Same report, same horizon, Q2 2022 vintage. Kept as a second row so reconcile can show vintage sensitivity instead of overwriting. |
+
+The same report is internally inconsistent for the Q2 2022 vintage at six
+quarters: the heatmap labels the cell **9.4%**, while the accompanying prose
+says **9.6%**. Neither value is retained as a registry candidate until Carta
+publishes an unambiguous correction.
 
 ```yaml
 # Cite-only. Do not load until form_d_follow_on_within_horizon exists.
@@ -87,18 +91,6 @@ Source: [Carta VC Fund Performance Q4 2025](https://carta.com/data/vc-fund-perfo
     US headquarters only. Historical vintages can revise as new companies
     join Carta.
 
-- id: carta_seed_to_a_q2_2022_6q
-  cohort_metric: form_d_follow_on_within_horizon
-  label: "Carta seed → Series A within six quarters, Q2 2022 vintage"
-  kind: rate
-  point_estimate: 0.096
-  as_of: "2025"
-  population: "US Carta cap-table companies that raised a seed round in Q2 2022"
-  citation: "Carta (2026). VC Fund Performance Q4 2025."
-  citation_url: "https://carta.com/data/vc-fund-performance-q4-2025-full-report/"
-  notes: |
-    Same estimand as carta_seed_to_a_q2_2024_6q, earlier vintage. The 9.6%
-    vs 20.6% gap is why a single 0.33 constant is not a usable comparator.
 ```
 
 ### Carta — does not fit `kind: rate`
@@ -160,7 +152,7 @@ $100 million also cannot explain a median.
 
 | Candidate family | `outcomes.py` gap | Notes |
 |---|---|---|
-| Carta seed → A conversion | `form_d_follow_on_within_horizon` | Closest SBIR analogue is a later, larger Form D after an earlier one, in a seed-size bucket, with an explicit horizon. That is not Phase I → II. NSF 2015–2019 Phase I → II is 44.7% at five years; Carta seed → A is 9.6–20.6% at ~18 months. Do not pair them. |
+| Carta seed → A conversion | `form_d_follow_on_within_horizon` | Closest SBIR analogue is a later, larger Form D after an earlier one, in a seed-size bucket, with an explicit horizon. That is not Phase I → II. NSF 2015–2019 Phase I → II is 44.7% at five years; the retained Carta Q2 2024 candidate is 20.6% at ~18 months. Do not pair them. |
 | Carta / Yearbook round size | `median_form_d_offering_size` | Form D offering amount is the current field. Stratify by size bucket, not by Series A/B labels Form D does not carry. Yearbook deal values (p. 103–104) pair here; Yearbook pre-money (p. 29) does not. |
 | Yearbook time-to-IPO | `median_years_first_award_to_ma` | `ma_exit_rate` exists; a median duration does not. IPO is not in the 8-K M&A file. |
 | Carta dilution, Carta post-money, Yearbook pre-money | none | Form D does not report percent sold or valuation. Leave as context, not a reconcile pair. |
