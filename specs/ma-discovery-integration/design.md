@@ -16,26 +16,61 @@ The capital-events builder at `sbir_etl/capital_events/sources/ma_events.py:13-5
 
 Note: `detect_sbir_ma_events.py` writes `data/sbir_ma_events.jsonl`; the builder reads `data/enriched_sbir_ma_events.jsonl`.
 
-**Amended 2026-09-09: the press-wire enrichment stage is removed.** `sbir_etl.enrichers.ma_discovery.press` is deleted. It did two jobs — polling live RSS feeds for press mentions, and producing the file the capital-events builder reads. Only the first is removed. The writer of `enriched_sbir_ma_events.jsonl` is now `scripts/data/finalize_ma_events.py` (`exploratory`): it copies rows and stamps a git description, with no declared cut or hash. Detect writes `sbir_ma_events.jsonl`; refinement writes `sbir_ma_medium_refined.jsonl`. Two reasons for dropping the poll, the first structural:
+**Amended 2026-09-12: the press-wire enrichment stage is removed.**
+`sbir_etl.enrichers.ma_discovery.press` is deleted. It combined a live RSS poll
+with a write to the deterministic M&A artifact path. Two reasons for dropping
+the poll, the first structural:
 
 1. **It could never meet this spec's declared `pipelines` tier.** The stage polls live RSS feeds, so its output is a function of wall-clock time. `docs/steering/epistemic-tiers.md` requires a `pipelines` artifact be "reproducible from a declared data cut" and re-runnable to the same result. A live news poll is neither. The stage was exploratory-tier work wired into a pipelines-tier artifact path, and that mis-tiering is what let `enriched_sbir_ma_events.jsonl` drift out of step with its own upstream.
 2. **Its output was entirely false positives.** `PressWireClient._match_company` matches a normalized company name as an unanchored substring, so `BAL` matched "glo**bal**", `APP` matched "**app**roximately", and `ATI` matched "n**ati**onwide". All 18 matched releases in the shipped artifact were spurious; 391 of 3,980 watchlist names are five characters or fewer. Tracked as issue #708 — the matcher still affects the weekly digest, which is why `press_wire.py` itself is kept and repaired separately.
 
-`press_wire_signals` and `enriched` are dropped from the capital-event metadata. The builder's input filename is unchanged.
+`press_wire_signals` and `enriched` are dropped from capital-event metadata.
+`signal_count` is recomputed from literal boolean signal values so descriptive
+string payloads cannot inflate it. The builder's input filename is unchanged.
 
-**Restoring the producer is the same decision as choosing the vintage.** These were treated as separable and are not: the historical `enriched_sbir_ma_events.jsonl` holds 4,306 rows of which 2,790 pass the builder's high-or-medium filter, while the current detect-and-refine chain emits 4,004 of which 1,774 pass. Press contributed two metadata fields and no rows, so the 1,016-row difference is entirely the accumulated corrections to the events themselves — an acquirer-side Form D flag that no longer grades an exit, and a join filter that respects the match tier the scorer already recorded. Running `finalize_ma_events.py` lands that change. Diff before promoting the output, and record what moved.
+The canonical writer already exists at
+`scripts/archive/data/apply_ma_direction_refinement.py`. It requires exactly one
+typed refinement for every direction-sensitive base event, rejects duplicate or
+missing company records, and atomically writes `enriched_sbir_ma_events.jsonl`.
+It remains exploratory; the declared source cut and hashes belong in the run
+manifest, not in this deferred design. A copy-only finalizer must not bypass that
+bridge.
 
-**Adopted: option C with collision rule C3.**
+The active artifact path is:
 
 ```
-detect_sbir_ma_events.py ─► sbir_ma_events.jsonl ─┐
-                                                  ├─► finalize_ma_events ─► enriched_sbir_ma_events.jsonl ─► capital_events.parquet (MA_EVENT)
-ma_discovery.orchestrator ────────────────────────┘                          ▲
-       ▲                                                                     │
-       └── runs only on Form-D-missing rows surfaced by detect_sbir_ma_events └── filter: confidence in {high, medium}
+detect_sbir_ma_events.py ─► sbir_ma_events.jsonl
+                                  │
+                                  ├─► refine_ma_medium_tier.py
+                                  │        │
+                                  │        ▼
+                                  │   sbir_ma_medium_refined.jsonl
+                                  │        │
+                                  ▼        ▼
+                       apply_ma_direction_refinement.py
+                                  │
+                                  ▼
+                     enriched_sbir_ma_events.jsonl
+                                  │
+                                  ▼
+                      capital_events.parquet (MA_EVENT)
 ```
 
-Discovery is a candidate-expansion step that fires only for firms detect_sbir_ma_events emitted *without* Form D backing. Its output joins `sbir_ma_events.jsonl` before finalization, so discovered rows reach the builder the same way Form D-backed rows do. Discovery output may also be concatenated directly into `enriched_sbir_ma_events.jsonl` (the file the builder reads); the field contract is the same.
+**Proposed, deferred integration: option C with collision rule C3.**
+
+```
+detect_sbir_ma_events.py ─► candidate event set ─► strict refinement/apply bridge
+                                      ▲                         │
+ma_discovery.orchestrator ────────────┘                         ▼
+  (not yet wired)                              enriched_sbir_ma_events.jsonl
+```
+
+Discovery is a candidate-expansion step that would fire only for firms
+`detect_sbir_ma_events.py` emitted *without* Form D backing. Before a discovered
+row can reach the builder, it must join the base event set and pass the same
+exact-coverage directional-refinement bridge. Direct concatenation into
+`enriched_sbir_ma_events.jsonl` is not permitted because it would bypass that
+boundary.
 
 ### C3 collision rule
 
@@ -50,7 +85,15 @@ When a discovered row matches an existing `sbir_ma_events.jsonl` row on `(compan
 
 Discovery never *lowers* a confidence and never *overwrites* a Form D-derived acquirer. If the LLM extractor disagrees with Form D on the acquirer name, the Form D value wins and the discovered acquirer is recorded as `signals.discovered_acquirer_disagrees = "<discovered_name>"`.
 
-**Why `signals` and not a new top-level field:** `sbir_etl/capital_events/sources/ma_events.py` builds the emitted `CapitalEvent.metadata` from a fixed set of keys (`signals`, `signal_count`). Any flag placed in a *new* top-level field on `enriched_sbir_ma_events.jsonl` would be silently dropped at the builder step. Adding flags inside `signals` propagates them into `capital_events.parquet` without changing the builder. The existing `signals` dict is `dict[str, bool]` — extending it with one additional `str` value (`discovered_acquirer_disagrees`) is the smallest accommodating change; if a strict-type contract is preferred, that disagreement payload can move to `signals.discovered_acquirer_disagrees: bool` plus a sibling `signals.discovered_acquirer_name: str` written by the orchestrator.
+**Why `signals` and not a new top-level field:**
+`sbir_etl/capital_events/sources/ma_events.py` builds the emitted
+`CapitalEvent.metadata` from a fixed set of keys (`signals`, `signal_count`). Any
+flag placed in a *new* top-level field on `enriched_sbir_ma_events.jsonl` would
+be silently dropped at the builder step. Adding flags inside `signals`
+propagates them into `capital_events.parquet` without changing the builder. The
+builder counts only values that are literally boolean `true`; a descriptive
+string such as `discovered_acquirer_disagrees` is retained as provenance but is
+not counted as a confirming signal.
 
 ### Per-discovered-row confidence (new rows, no collision)
 
@@ -98,7 +141,7 @@ class MAEvent(BaseModel):
 ## Out of scope for v1
 
 - Auto-tuning the confidence thresholds against a labeled set. Use the boundary thresholds above and revisit after the first manual run.
-- Press-release scraping. The `sbir_etl.enrichers.ma_discovery.press` sibling step was removed 2026-09-09; see the amendment above. `sbir_etl/enrichers/press_wire.py` remains for the weekly digest, which is a forward-looking use a live feed suits.
+- Press-release scraping. The `sbir_etl.enrichers.ma_discovery.press` sibling step was removed 2026-09-12; see the amendment above. `sbir_etl/enrichers/press_wire.py` remains for the weekly digest, which is a forward-looking use a live feed suits.
 - Discovery for non-Form-D-missing firms ("would discovery surface a *better* signal for a row Form D already covered?"). Adds cost without clearly improving recall.
 - A graph loader for discovered M&A events. They flow into `capital_events.parquet` like every other source; the Neo4j path picks them up at the existing `MAEventLoader`.
 
