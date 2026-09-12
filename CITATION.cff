@@ -1,7 +1,8 @@
 cff-version: 1.2.0
 message: >-
-  Cite this repository for the software and data-processing methods. Cite the
-  preferred research citation below for the SBIR M&A preprint.
+  Cite this repository for the software and data-processing methods. The SBIR
+  M&A preprint in studies/sbir-ma-exits/ is exploratory. It is not approved for
+  citation as evidence, so this file declares no preferred research citation.
 title: SBIR/STTR Commercialization Analytics
 type: software
 authors:
@@ -14,23 +15,3 @@ url: https://github.com/hollomancer/sbir-analytics
 license: MIT
 version: 0.11.0
 date-released: 2026-08-26
-preferred-citation:
-  type: unpublished
-  authors:
-    - family-names: Hollomon
-      given-names: Conrad
-      affiliation: Independent researcher
-      email: hollomancer@protonmail.ch
-  title: >-
-    Observed M&A Signals among SBIR Awardees: A Lower-Bound Analysis of SEC
-    Form D and EDGAR Full-Text Filings
-  year: 2026
-  version: 1.0.0
-  notes: >-
-    Evidence status: exploratory. This package preserves a dated, exploratory
-    repository finding. It does not promote the analysis to validated or
-    citable evidence under the repository's study rules. The figures are not
-    approved for citation as evidence.
-  # Replace with `doi:` at checklist step 5.
-  url: >-
-    https://github.com/hollomancer/sbir-analytics/blob/main/studies/sbir-ma-exits/paper.md

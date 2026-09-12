@@ -231,7 +231,7 @@ The analysis also does not estimate missing statutory Phase III records. The GAO
 | Source draft | `docs/research/sbir-ma-exit-analysis.md` |
 | Source draft blob | `81cabe1175711b36ff1bce778b0e0d5b61f5dc62` |
 
-The paper cites the repository as its code and method supplement. The repository's `CITATION.cff` names this paper as its preferred research citation.
+The paper cites the repository as its code and method supplement. The repository's `CITATION.cff` declares no preferred research citation. It directs citation software to the repository, not to this paper, because this paper is exploratory.
 
 ## Packaging procedure
 

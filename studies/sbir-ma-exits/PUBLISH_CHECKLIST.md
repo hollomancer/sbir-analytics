@@ -22,7 +22,10 @@ The repository inventory classifies the M&A rate and timing findings as a dated 
    ```bash
    sha256sum studies/sbir-ma-exits/paper.md
    ```
-5. Add the reserved DOI to `CITATION.cff` under `preferred-citation`.
+5. Do not add the DOI to `CITATION.cff`. That file declares no
+   `preferred-citation` on purpose. The paper is exploratory, and
+   `preferred-citation` tells citation software to cite the paper instead of
+   the repository. Leave the field absent.
 6. Rebuild the PDF from the repository root:
 
    ```bash
@@ -53,10 +56,10 @@ The repository inventory classifies the M&A rate and timing findings as a dated 
 16. Upload `studies/sbir-ma-exits/paper.pdf` as the paper file.
 17. Preview the public record. Check title, abstract, keywords, version `1.0.0`, license, author, and related identifier.
 18. Publish the Zenodo record.
-19. After publication, verify that the DOI resolves and matches the PDF footer and `CITATION.cff`.
+19. After publication, verify that the DOI resolves and matches the PDF footer.
 
 ## Collected unverified items
 
-- `10.5281/zenodo.XXXXXXX` Reserved Zenodo DOI placeholder in `paper.md` and `CITATION.cff`. It does not exist until a human reserves it.
+- `10.5281/zenodo.XXXXXXX` Reserved Zenodo DOI placeholder in `paper.md`. It does not exist until a human reserves it.
 - `[UNVERIFIED — human review]` Final out-of-sample false-positive rate for accepted M&A detections. The committed diagnostics do not supply this value.
 - `[UNVERIFIED — human review]` Exact frozen input snapshot and hash for the 34,460-firm denominator. The committed documents state the denominator, but the input bytes are not committed.

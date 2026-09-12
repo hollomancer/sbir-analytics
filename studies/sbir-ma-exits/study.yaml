@@ -19,7 +19,7 @@ frozen_artifacts:
   # a number or drops the Scope-and-status section pass CI green. paper.md and
   # zenodo.json are the two artifacts that actually leave the repository.
   - path: studies/sbir-ma-exits/paper.md
-    sha256: 5adb16ce8789db0e7c1fd05c5111864aa0fb3222ffbafc40399610eade458ba0
+    sha256: e327b636fae4dc54215abe7bd98f7f4bfe4b54ec1438edff4283e20b3d4f99b6
   - path: studies/sbir-ma-exits/zenodo.json
     sha256: 6058c530908864a7dacb3a3047bee508f57dd1764e69900d64f3c851c3d64c10
   # paper.pdf is deliberately NOT frozen yet. The committed binary is a
