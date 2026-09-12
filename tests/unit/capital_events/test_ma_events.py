@@ -6,19 +6,17 @@ import json
 from sbir_etl.capital_events.sources.ma_events import build_ma_events
 
 
-def _ma_row(name, date, confidence, acquirer=None, signals=None, press=None):
+def _ma_row(name, date, confidence, acquirer=None, signals=None):
     return {
         "company_name": name,
         "event_date": date,
         "confidence": confidence,
         "acquirer": acquirer,
         "signals": signals or {},
-        "press_wire_signals": press or {},
         "signal_count": 1,
         "form_d_detail": None,
         "efts_detail": None,
         "sbir_context": {"agency": "DoD"},
-        "enriched": True,
     }
 
 
@@ -58,7 +56,8 @@ def test_returns_empty_when_file_missing(cohort, tmp_path):
     assert list(build_ma_events(cohort, tmp_path / "nope.jsonl")) == []
 
 
-def test_metadata_carries_signals_and_press_wire(cohort, tmp_path):
+def test_metadata_carries_signals(cohort, tmp_path):
+    """Metadata is only signals and the recomputed signal_count."""
     src = tmp_path / "ma.jsonl"
     src.write_text(
         json.dumps(
@@ -67,12 +66,40 @@ def test_metadata_carries_signals_and_press_wire(cohort, tmp_path):
                 "2023-06-15",
                 "high",
                 signals={"form_d_business_combination": True},
-                press={"acquisition_announcement_count": 3},
             )
         )
         + "\n"
     )
     events = list(build_ma_events(cohort, src))
     meta = json.loads(events[0]["metadata"])
+    assert set(meta) == {"signals", "signal_count"}
     assert meta["signals"]["form_d_business_combination"] is True
-    assert meta["press_wire_signals"]["acquisition_announcement_count"] == 3
+
+
+def test_signal_count_is_recomputed_not_forwarded(cohort, tmp_path):
+    """Stored signal_count is ignored; the builder counts remaining signals."""
+    src = tmp_path / "ma.jsonl"
+    row = _ma_row("ACME INC", "2023-06-15", "high", signals={"efts_subsidiary": True})
+    row["signal_count"] = 99
+    src.write_text(json.dumps(row) + "\n")
+
+    events = list(build_ma_events(cohort, src))
+    assert json.loads(events[0]["metadata"])["signal_count"] == 1
+
+
+def test_signal_count_ignores_truthy_non_boolean(cohort, tmp_path):
+    """A truthy string value (not a boolean flag) does not count as a signal."""
+    src = tmp_path / "ma.jsonl"
+    row = _ma_row(
+        "ACME INC",
+        "2023-06-15",
+        "high",
+        signals={
+            "efts_subsidiary": True,
+            "discovered_acquirer_disagrees": "SomeOtherCo",
+        },
+    )
+    src.write_text(json.dumps(row) + "\n")
+
+    events = list(build_ma_events(cohort, src))
+    assert json.loads(events[0]["metadata"])["signal_count"] == 1
