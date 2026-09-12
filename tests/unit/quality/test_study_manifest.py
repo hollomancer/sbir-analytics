@@ -5,7 +5,11 @@ import pytest
 import yaml
 from pydantic import ValidationError
 
-from sbir_etl.quality.study_manifest import EvidenceStatus, load_study_manifest
+from sbir_etl.quality.study_manifest import (
+    EvidenceStatus,
+    ValidationDesign,
+    load_study_manifest,
+)
 from scripts.ci.validate_study_manifests import validate_manifest_file
 
 
@@ -142,3 +146,108 @@ def test_repository_study_manifests_are_valid() -> None:
     assert all(
         validate_manifest_file(path, repository_root=repository_root) == [] for path in manifests
     )
+
+
+def test_validation_design_requires_all_four_fields() -> None:
+    """A threshold with no derivation is incomplete by construction."""
+    complete = ValidationDesign(
+        addressable_population="1,514 Form-D-missing pairs naming an acquirer",
+        expected_yield="~2.3% of eligible pairs, from pilot 9/342 and confirmatory 13/503",
+        decision_threshold="10 distinct strict medium/high pairs",
+        threshold_derivation="95% CI lower bound clears 1.5% at n=362 when k>=10",
+    )
+    assert complete.decision_threshold == "10 distinct strict medium/high pairs"
+
+    for missing in (
+        "addressable_population",
+        "expected_yield",
+        "decision_threshold",
+        "threshold_derivation",
+    ):
+        fields = {
+            "addressable_population": "x",
+            "expected_yield": "x",
+            "decision_threshold": "x",
+            "threshold_derivation": "x",
+        }
+        del fields[missing]
+        with pytest.raises(ValidationError):
+            ValidationDesign(**fields)
+
+
+def test_validation_design_rejects_empty_strings() -> None:
+    """An empty derivation is the same defect wearing a value."""
+    with pytest.raises(ValidationError):
+        ValidationDesign(
+            addressable_population="x",
+            expected_yield="x",
+            decision_threshold="x",
+            threshold_derivation="",
+        )
+
+
+@pytest.mark.parametrize(
+    ("blank_field", "blank_value"),
+    [
+        ("addressable_population", "   "),
+        ("expected_yield", "  "),
+        ("decision_threshold", " "),
+        ("threshold_derivation", "\t"),
+    ],
+)
+def test_validation_design_rejects_whitespace_only_strings(
+    blank_field: str, blank_value: str
+) -> None:
+    """A whitespace-only value satisfies min_length=1 but states nothing.
+
+    A manifest claiming ``evidence_status: validated`` must not be able to pass
+    this gate by filling a field with spaces or a tab.
+    """
+    fields = {
+        "addressable_population": "x",
+        "expected_yield": "x",
+        "decision_threshold": "x",
+        "threshold_derivation": "x",
+    }
+    fields[blank_field] = blank_value
+
+    with pytest.raises(ValidationError, match="must not be blank"):
+        ValidationDesign(**fields)
+
+
+VALIDATION_DESIGN = {
+    "addressable_population": "Every row in the frozen cohort.",
+    "expected_yield": "At least 95% source coverage.",
+    "decision_threshold": "All reconciliations pass and coverage is at least 95%.",
+    "threshold_derivation": "The frozen design identifies 95% as the minimum useful coverage.",
+}
+
+
+@pytest.mark.parametrize("status", [EvidenceStatus.VALIDATED, EvidenceStatus.CITABLE])
+def test_promoted_manifest_requires_validation_design(
+    tmp_path: Path, status: EvidenceStatus
+) -> None:
+    raw = _manifest("a" * 64)
+    raw["evidence_status"] = status.value
+    path = _write(tmp_path, "example-study/study.yaml", yaml.safe_dump(raw))
+
+    with pytest.raises(ValidationError, match="requires a validation_design block"):
+        load_study_manifest(path)
+
+    errors = validate_manifest_file(path, repository_root=tmp_path)
+    assert any("requires a validation_design block" in error for error in errors)
+
+
+@pytest.mark.parametrize("status", [EvidenceStatus.VALIDATED, EvidenceStatus.CITABLE])
+def test_promoted_manifest_loads_with_validation_design(
+    tmp_path: Path, status: EvidenceStatus
+) -> None:
+    raw = _manifest("a" * 64)
+    raw["evidence_status"] = status.value
+    raw["validation_design"] = VALIDATION_DESIGN
+    path = _write(tmp_path, "example-study/study.yaml", yaml.safe_dump(raw))
+
+    manifest = load_study_manifest(path)
+
+    assert manifest.evidence_status is status
+    assert manifest.validation_design is not None

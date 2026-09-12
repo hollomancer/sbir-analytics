@@ -80,6 +80,15 @@ gated on Phase 1 sign-off and its missing real-data input contracts.
   2/3/5/unbounded sensitivity, UEI/DUNS/name coverage, and output hashes. Keep
   this task open until the estimand and identity approach are accepted and the
   required missing outcome channels are resolved.
+- [ ] 1.9 Public aggregated private-capital baselines (cite-only). Candidate
+  YAML rows, pairing gaps, and source URLs:
+  [docs/research/private-capital-published-baselines.md](../../docs/research/private-capital-published-baselines.md).
+  Do not load a row into `published_baselines.yaml` until (a) a matching
+  `outcomes.py` metric exists, (b) `_ATTRIBUTION` and `_CAVEAT` exist for the
+  pair, and (c) the entry is a handful of attributed data points rather than a
+  transcribed table. Licensed firm-level vendor data stays out of scope.
+  Yearbook organization names stay out of live config unless PR #599 is
+  explicitly reversed.
 
 ## Phase 2 — Agency-vs-Private-Capital Matched Cohort
 
