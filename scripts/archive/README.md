@@ -13,7 +13,8 @@ Archived 2026-07-02 as part of the scripts/ triage:
   Their published outputs live in `docs/research/`. The Form D leverage
   bootstrap (`bootstrap_form_d_leverage_ci.py`) was restored to
   `scripts/data/` when `studies/form-d-fundraising` entered
-  `reproducible`.
+  `reproducible`; that study is now retired and the bootstrap refuses to run
+  while its v2 rebuild gate is closed.
 - `validation/` — manual spot-check validators referenced only by archived
   docs.
 - Top level — `extract_federal_contracts.py` (superseded extraction path),

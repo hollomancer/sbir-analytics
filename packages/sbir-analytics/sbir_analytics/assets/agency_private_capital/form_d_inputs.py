@@ -19,7 +19,10 @@ from typing import Any
 
 import pandas as pd
 
-from sbir_etl.enrichers.sec_edgar.form_d_scoring import EXCLUDED_INDUSTRY_GROUPS
+from sbir_etl.enrichers.sec_edgar.form_d_scoring import (
+    EXCLUDED_INDUSTRY_GROUPS,
+    require_form_d_tier_rule,
+)
 from sbir_etl.identity import CompanyNameProfile, normalize_company_name
 
 
@@ -79,9 +82,15 @@ def load_form_d_matches(
 ) -> pd.DataFrame:
     """Normalize SBIR-matched Form D records to one row per matched company."""
 
+    records = read_jsonl(path)
+    for record in records:
+        require_form_d_tier_rule(
+            record.get("match_confidence"),
+            context=f"Form D record {record.get('company_name') or '<unnamed>'!r}",
+        )
     rows = [
         row
-        for row in _iter_company_form_d_rows(read_jsonl(path), matched_to_sbir=True)
+        for row in _iter_company_form_d_rows(records, matched_to_sbir=True)
         if _keep_row(row, tier_filter=tier_filter, year_min=year_min, year_max=year_max)
     ]
     return _frame(rows)
@@ -198,7 +207,7 @@ def _iter_company_form_d_rows(
         # double-counts. Collapsing chains exactly needs the SEC file number, which
         # these records do not carry, so sum originals only and fall back to the
         # largest restatement when a chain reaches us as amendments alone. That is
-        # a documented lower bound, not an exact total.
+        # an interim heuristic, not an exact total or one-sided bound.
         originals = [o for o in kept_offerings if not o.get("is_amendment")]
         amendments = [o for o in kept_offerings if o.get("is_amendment")]
         counted = originals or amendments
@@ -234,6 +243,9 @@ def _iter_company_form_d_rows(
             "issuer_key": normalize_name(issuer_name),
             "form_d_cik": str(cik or first.get("cik") or "").lstrip("0"),
             "tier": tier,
+            "tier_rule_version": (
+                (rec.get("match_confidence") or {}).get("rule_version") if matched_to_sbir else None
+            ),
             "matched_to_sbir": matched_to_sbir,
             "state": _state_code(state),
             "industry_group": industry_group or "Unknown",
@@ -329,6 +341,7 @@ def _frame(rows: list[dict[str, Any]]) -> pd.DataFrame:
         "issuer_key",
         "form_d_cik",
         "tier",
+        "tier_rule_version",
         "matched_to_sbir",
         "state",
         "industry_group",

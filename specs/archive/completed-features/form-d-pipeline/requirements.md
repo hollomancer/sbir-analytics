@@ -1,8 +1,11 @@
 # Requirements — Form D Private Capital Pipeline
 
-> **Status:** Implemented on `main`. PR #286 merged. Methodology commit `f65abb89`.
-> Canonical analysis: [`docs/research/sbir-form-d-fundraising-analysis.md`](../../../../docs/research/sbir-form-d-fundraising-analysis.md).
-> Supports inventory questions **F1** and **F3** in [docs/research-questions.md](../../../../docs/research-questions.md).
+> **Historical status:** PR #286 implemented `person-or-zip-v1` at methodology commit
+> `f65abb89`. That rule and its numerical results were retired on 2026-09-12. This archived
+> file preserves the former acceptance criteria; it does not describe current
+> `corroborated-person-v2` behavior and supports no current F3 result. See the
+> [retired study](../../../../studies/form-d-fundraising/study.yaml) and
+> [rebuild gates](../../../../docs/research/sbir-form-d-fundraising-analysis.md).
 
 **Research question anchor:** F1 (Form D fundraising profile of SBIR awardees), F3 (private-to-SBIR leverage ratio)
 **Answers for:** entrepreneurial finance researchers, defense industrial base analysts
@@ -12,11 +15,8 @@
 
 ## Done when
 
-> An entrepreneurial finance researcher can state: "3,640 high-confidence SBIR-firm
-> Form D matches (PI name score ≥ 0.7 OR ZIP match). Private-to-SBIR leverage ratio:
-> $1.82x (95% bootstrap CI [1.65, 2.02]) using total SBIR program spending as the
-> denominator; $9.48x [8.26, 10.85] per matched firm. Two-signal tiering documented
-> in `docs/research/sbir-form-d-fundraising-analysis.md`."
+> Historical criterion, withdrawn: publish the v1 cohort and leverage estimates. No
+> numerical result is current until the successor v2 study passes its closed gates.
 
 ---
 
@@ -27,18 +27,14 @@ filings and computes the private-to-SBIR leverage ratio — the private capital 
 dollar of SBIR funding received. It is the private-capital mirror to NASEM's 4:1
 DoD-contract leverage ratio.
 
-**Matching methodology:** Company name fuzzy matching with two independent confirmation
+**Historical v1 matching methodology:** Company name fuzzy matching with two independent confirmation
 signals — PI-to-Form-D-executive name score (≥ 0.7 = high) and ZIP code overlap. Either
 signal alone qualifies a match as high-confidence. State overlap only = medium confidence.
 Pooled Investment Fund vehicles and other structurally incompatible industry groups are
 excluded.
 
-**Key findings (methodology commit `f65abb89`):**
-- 3,640 high-confidence matches across 219K SBIR awards
-- High-tier leverage: $1.82x [1.65, 2.02] (total-program denominator)
-- Per-firm leverage: $9.48x [8.26, 10.85] (matched-firm denominator)
-- HHS/NIH companies use ZIP matching as the primary confirmation signal (PI often
-  doesn't appear as a Form D officer)
+**Historical findings:** withdrawn from current documentation. Git history preserves
+the v1 values; they must not be relabeled as v2 results.
 
 ---
 

@@ -199,9 +199,10 @@ provisional identity staging only.
     option / convertible) and offering-size buckets so downstream readers
     can zoom in on the noisy seed-stage subset if they want. Reuse #286's
     scoring tiers only after verifying that they apply to the DERA source schema.
-13. **SHOULD** reproduce #286's published 1.82x SBIR-to-Form-D leverage
-    ratio scoped to the configured agency only, as a cross-check on the
-    dataset slice.
+13. **SHALL NOT** use #286's retired `person-or-zip-v1` leverage result as a
+    cross-check. Any future cross-check SHALL require one pinned
+    `corroborated-person-v2` input, reject unversioned or mixed tiers, and stay
+    unavailable until the `form-d-fundraising` filing/CIK aggregation gates close.
 
 ### Phase 2 Gate Condition
 

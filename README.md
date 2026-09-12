@@ -130,7 +130,7 @@ repository, start with these documents in order:
    practical findings from using EDGAR to detect SBIR-related exits and
    financing signals.
 6. [SBIR Form D fundraising analysis](docs/research/sbir-form-d-fundraising-analysis.md):
-   the private-capital lens on awardee commercialization.
+   the retired historical private-capital study and its gated v2 rebuild protocol.
 7. [Phase transition latency](docs/phase-transition-latency.md): how the repo
    thinks about timing from SBIR awards to follow-on federal contracts.
 8. [SBIR identification methodology](docs/sbir-identification-methodology.md):

@@ -20,7 +20,7 @@ class UCCStatus(StrEnum):
 
 
 class CohortRow(TypedDict):
-    """Form D high-confidence cohort entry."""
+    """Versioned Form D high-tier cohort entry."""
 
     company_name: str
     state: str  # primary SBIR address state
@@ -32,6 +32,7 @@ class CohortRow(TypedDict):
     total_award_amount: float
     form_d_filing_count: int
     form_d_total_raised: float
+    form_d_tier_rule_version: str
 
 
 class UCCFiling(TypedDict):

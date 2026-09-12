@@ -1,5 +1,11 @@
-"""Tests for Form D high-confidence cohort export."""
+"""Tests for the versioned Form D high-tier cohort export."""
 
+from types import SimpleNamespace
+
+import pytest
+
+from sbir_etl.enrichers.sec_edgar.form_d_scoring import FORM_D_TIER_RULE_VERSION
+from sbir_etl.ucc import export_cohort as _mod
 from sbir_etl.ucc.export_cohort import build_cohort_rows
 
 
@@ -10,7 +16,10 @@ def _form_d_record(name, state, zip_code, amount, tier, has_name_match, has_zip_
         "issuer_state": state,
         "issuer_zip": zip_code,
         "total_amount_sold": amount,
-        "match_confidence": {"tier": tier},
+        "match_confidence": {
+            "rule_version": FORM_D_TIER_RULE_VERSION,
+            "tier": tier,
+        },
         "name_match": has_name_match,
         "zip_match": has_zip_match,
     }
@@ -37,6 +46,7 @@ def test_keeps_high_tier_with_name_match():
     assert rows[0]["company_name"] == "Acme Inc"
     assert rows[0]["state"] == "CA"
     assert rows[0]["agency"] == "DoD"
+    assert rows[0]["form_d_tier_rule_version"] == FORM_D_TIER_RULE_VERSION
 
 
 def test_keeps_high_tier_with_zip_match_only():
@@ -131,3 +141,22 @@ def test_aggregates_award_history_per_firm():
     assert rows[0]["first_award_year"] == 2019
     assert rows[0]["last_award_year"] == 2022
     assert rows[0]["total_award_amount"] == 1_150_000
+
+
+def test_refuses_unversioned_details():
+    record = _form_d_record("ACME INC", "CA", "94000", 1_000_000, "high", True, False)
+    del record["match_confidence"]["rule_version"]
+
+    with pytest.raises(ValueError, match="Rescore the complete input"):
+        list(build_cohort_rows([record], []))
+
+
+def test_closed_parent_study_blocks_cohort_materialization(monkeypatch):
+    manifest = SimpleNamespace(
+        study_id="form-d-fundraising",
+        materialization=SimpleNamespace(allowed=False, blockers=["issuer-scope review required"]),
+    )
+    monkeypatch.setattr(_mod, "load_study_manifest", lambda _path: manifest)
+
+    with pytest.raises(RuntimeError, match="issuer-scope review required"):
+        _mod.require_materialization_allowed()

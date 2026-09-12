@@ -37,8 +37,11 @@ from rapidfuzz import fuzz
 
 from sbir_etl.enrichers.sec_edgar.client import EdgarAPIClient
 from sbir_etl.enrichers.sec_edgar.form_d_scoring import (
+    FORM_D_TIER_RULE_VERSION,
     compute_form_d_confidence,
+    describe_form_d_signal_scope,
     parse_form_d_xml,
+    require_form_d_tier_rule,
 )
 
 
@@ -68,8 +71,12 @@ def load_award_data(awards_csv: str) -> tuple[dict[str, int], dict[str, str]]:
     return years, zips
 
 
-def load_checkpoint(path: Path) -> set[str]:
-    """Load already-processed company names from output file."""
+def load_checkpoint(
+    path: Path,
+    *,
+    expected_rule_version: str = FORM_D_TIER_RULE_VERSION,
+) -> set[str]:
+    """Load completed companies, refusing a mixed or stale scoring checkpoint."""
     done: set[str] = set()
     if not path.exists():
         return done
@@ -77,6 +84,11 @@ def load_checkpoint(path: Path) -> set[str]:
         for line in f:
             try:
                 rec = json.loads(line)
+                require_form_d_tier_rule(
+                    rec.get("match_confidence"),
+                    expected_rule_version=expected_rule_version,
+                    context=f"Cannot resume {path}: company {rec.get('company_name')!r}",
+                )
                 done.add(rec["company_name"])
             except (json.JSONDecodeError, KeyError):
                 continue
@@ -88,23 +100,33 @@ async def main() -> None:
         description="Fetch Form D XML details and compute confidence scores",
     )
     parser.add_argument(
-        "--input", default="data/form_d_index.jsonl",
+        "--input",
+        default="data/form_d_index.jsonl",
         help="Input JSONL from fetch_form_d_index.py",
     )
     parser.add_argument(
-        "--output", default="data/form_d_details.jsonl",
+        "--output",
+        default="data/form_d_details.jsonl",
         help="Output JSONL with XML details and confidence scores",
     )
-    parser.add_argument("--awards", default="/tmp/sbir_awards_full.csv",
-                        help="SBIR awards CSV (for earliest award year)")
-    parser.add_argument("--latest-only", action="store_true",
-                        help="Fetch only the latest Form D filing per company")
-    parser.add_argument("--resume", action="store_true",
-                        help="Resume from existing output")
-    parser.add_argument("--concurrency", type=int, default=2,
-                        help="Companies to process concurrently (default 2, archive server is strict)")
-    parser.add_argument("--contact-email", default="conrad@hollomon.dev",
-                        help="Email for SEC User-Agent")
+    parser.add_argument(
+        "--awards",
+        default="/tmp/sbir_awards_full.csv",
+        help="SBIR awards CSV (for earliest award year)",
+    )
+    parser.add_argument(
+        "--latest-only", action="store_true", help="Fetch only the latest Form D filing per company"
+    )
+    parser.add_argument("--resume", action="store_true", help="Resume from existing output")
+    parser.add_argument(
+        "--concurrency",
+        type=int,
+        default=2,
+        help="Companies to process concurrently (default 2, archive server is strict)",
+    )
+    parser.add_argument(
+        "--contact-email", default="conrad@hollomon.dev", help="Email for SEC User-Agent"
+    )
     args = parser.parse_args()
 
     input_path = Path(args.input)
@@ -188,9 +210,7 @@ async def main() -> None:
                 filing_date = filing["date_filed"]
 
                 # Compute name score from filer name vs SBIR name
-                score = fuzz.token_set_ratio(
-                    name.upper(), filing["filer_name"].upper()
-                ) / 100.0
+                score = fuzz.token_set_ratio(name.upper(), filing["filer_name"].upper()) / 100.0
                 if score > best_name_score:
                     best_name_score = score
 
@@ -205,7 +225,9 @@ async def main() -> None:
                 except ValueError:
                     fd_date = date.today()
                 parsed = parse_form_d_xml(
-                    xml_text, accession_number=accession, filing_date=fd_date,
+                    xml_text,
+                    accession_number=accession,
+                    filing_date=fd_date,
                 )
                 if parsed is None:
                     continue
@@ -241,9 +263,7 @@ async def main() -> None:
             )
 
             # Compute total raised across all offerings
-            total_raised = sum(
-                o.get("total_amount_sold") or 0 for o in offerings
-            )
+            total_raised = sum(o.get("total_amount_sold") or 0 for o in offerings)
 
             rec = {
                 "company_name": name,
@@ -251,6 +271,7 @@ async def main() -> None:
                 "offering_count": len(offerings),
                 "total_raised": total_raised if total_raised > 0 else None,
                 "match_confidence": confidence.model_dump(),
+                "match_confidence_scope": describe_form_d_signal_scope(offerings),
                 "offerings": offerings,
             }
 
@@ -264,7 +285,7 @@ async def main() -> None:
     batch_size = 100
     with open(output_path, "a" if args.resume else "w") as out:
         for batch_start in range(0, len(remaining), batch_size):
-            batch = remaining[batch_start:batch_start + batch_size]
+            batch = remaining[batch_start : batch_start + batch_size]
             tasks = [process_company(c, out) for c in batch]
             await asyncio.gather(*tasks)
 
@@ -286,9 +307,9 @@ async def main() -> None:
     print(f"\n{'=' * 60}")
     print(f"FORM D XML PASS COMPLETE — {total:,} companies in {elapsed / 60:.1f} min")
     print(f"{'=' * 60}")
-    print(f"High confidence:   {tiers['high']:,} ({tiers['high']/max(total,1)*100:.1f}%)")
-    print(f"Medium confidence:  {tiers['medium']:,} ({tiers['medium']/max(total,1)*100:.1f}%)")
-    print(f"Low confidence:     {tiers['low']:,} ({tiers['low']/max(total,1)*100:.1f}%)")
+    print(f"High confidence:   {tiers['high']:,} ({tiers['high'] / max(total, 1) * 100:.1f}%)")
+    print(f"Medium confidence:  {tiers['medium']:,} ({tiers['medium'] / max(total, 1) * 100:.1f}%)")
+    print(f"Low confidence:     {tiers['low']:,} ({tiers['low'] / max(total, 1) * 100:.1f}%)")
     print(f"XML fetch errors:   {fetch_errors:,}")
     print(f"Output:             {output_path}")
 

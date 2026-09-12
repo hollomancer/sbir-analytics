@@ -95,9 +95,8 @@ def summarize_per_firm(events: pd.DataFrame, cohort: list[dict]) -> pd.DataFrame
 
         # Strict pathway sequence: first Phase II SBIR award -> first Form D
         # filing -> first M&A event, with each step strictly after the
-        # previous (gap > 0 days). Flags a commercialization-pathway cohort
-        # (~86 firms / 2.4% of the 3,639-firm Form D high-confidence cohort
-        # at time of writing).
+        # previous (gap > 0 days). Historical cohort counts came from the
+        # retired person-or-ZIP rule and are intentionally not embedded here.
         #
         # We compute `first_*` dates via groupby().min() on the raw string
         # event_date column. Empty strings ("") would sort before any ISO

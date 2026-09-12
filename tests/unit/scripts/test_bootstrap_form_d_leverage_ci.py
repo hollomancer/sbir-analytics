@@ -3,11 +3,15 @@
 from __future__ import annotations
 
 import importlib.util
+import json
 import sys
 from pathlib import Path
+from types import SimpleNamespace
 
 import numpy as np
 import pytest
+
+from sbir_etl.enrichers.sec_edgar.form_d_scoring import FORM_D_TIER_RULE_VERSION
 
 
 # Load the script as a module (it lives outside the package tree).
@@ -272,3 +276,54 @@ class TestEndToEnd:
         # CIs should bracket the points
         assert result["per_matched_firm"]["ci_lo"] <= 5.0 <= result["per_matched_firm"]["ci_hi"]
         assert result["program_level"]["ci_lo"] <= 0.5 <= result["program_level"]["ci_hi"]
+
+
+def test_form_d_loader_refuses_unversioned_tiers(tmp_path: Path) -> None:
+    path = tmp_path / "details.jsonl"
+    path.write_text(
+        json.dumps(
+            {
+                "company_name": "Legacy Co",
+                "match_confidence": {"tier": "high"},
+                "offerings": [],
+            }
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ValueError, match="Rescore the complete input"):
+        _mod.load_form_d_per_firm(path, 2009, 2024)
+
+
+def test_form_d_loader_accepts_current_rule_version(tmp_path: Path) -> None:
+    path = tmp_path / "details.jsonl"
+    path.write_text(
+        json.dumps(
+            {
+                "company_name": "Current Co",
+                "match_confidence": {
+                    "tier": "high",
+                    "rule_version": FORM_D_TIER_RULE_VERSION,
+                },
+                "offerings": [],
+            }
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    loaded = _mod.load_form_d_per_firm(path, 2009, 2024)
+
+    assert loaded["CURRENT CO"]["tier"] == "high"
+
+
+def test_closed_study_manifest_blocks_materialization(monkeypatch) -> None:
+    manifest = SimpleNamespace(
+        study_id="form-d-fundraising",
+        materialization=SimpleNamespace(allowed=False, blockers=["v2 rebuild required"]),
+    )
+    monkeypatch.setattr(_mod, "load_study_manifest", lambda _path: manifest)
+
+    with pytest.raises(RuntimeError, match="v2 rebuild required"):
+        _mod.require_materialization_allowed()

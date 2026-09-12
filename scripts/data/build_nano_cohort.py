@@ -40,6 +40,10 @@ ANALYSIS_DIR = DATA / "analysis"
 ANALYSIS_DIR.mkdir(parents=True, exist_ok=True)
 
 sys.path.insert(0, str(REPO))
+from sbir_etl.enrichers.sec_edgar.form_d_scoring import (  # noqa: E402
+    FORM_D_TIER_RULE_VERSION,
+    require_form_d_rule_version,
+)
 from sbir_etl.utils.text_normalization import normalize_name  # noqa: E402
 
 # ---------------------------------------------------------------------------
@@ -115,8 +119,8 @@ KEYWORD_PATTERNS = [
     r"\bnano(?:scale|sized?|enabled?|structured?)\b",
     # Molecular-scale materials and structures
     r"\bcarbon nanotube[s]?\b",
-    r"\bCNT[s]?\b",              # ambiguous but acceptable in title+abstract context
-    r"\bgraphene\b",              # most graphene R&D is nanotech; broad but defensible
+    r"\bCNT[s]?\b",  # ambiguous but acceptable in title+abstract context
+    r"\bgraphene\b",  # most graphene R&D is nanotech; broad but defensible
     r"\bfullerene[s]?\b",
     r"\bquantum dot[s]?\b",
     r"\bquantum confinement\b",
@@ -124,8 +128,8 @@ KEYWORD_PATTERNS = [
     r"\bnanostructured\b",
     r"\bsingle.?wall(?:ed)? (?:carbon )?nanotube[s]?\b",
     r"\bmulti.?wall(?:ed)? (?:carbon )?nanotube[s]?\b",
-    r"\bMEMS\b",                 # micro-electromechanical systems — borderline but standard
-    r"\bNEMS\b",                 # nano-electromechanical systems
+    r"\bMEMS\b",  # micro-electromechanical systems — borderline but standard
+    r"\bNEMS\b",  # nano-electromechanical systems
     # Deposition / fabrication processes exclusively nano-scale
     r"\batomic layer deposition\b",
     r"\bALD\b",
@@ -142,7 +146,7 @@ KEYWORD_PATTERNS = [
     r"\bnano-encapsul\w+\b",
     r"\bnanoencapsul\w+\b",
     # Sub-nanometer / angstrom descriptors
-    r"\bsub-?\s*(?:\d+\s*)?nm\b",        # sub-nm, sub-10nm
+    r"\bsub-?\s*(?:\d+\s*)?nm\b",  # sub-nm, sub-10nm
     r"\bangstrom.?scale\b",
 ]
 
@@ -176,10 +180,10 @@ def keyword_match(text: str) -> list[str]:
 #   Both are captured here. Disagreement is reported, not resolved.
 # ---------------------------------------------------------------------------
 CET_NANOTECH_TERMS = {
-    "nanotechnology": "Advanced Manufacturing",      # from cet_analyzer.py hardcoded
+    "nanotechnology": "Advanced Manufacturing",  # from cet_analyzer.py hardcoded
     "nanomaterials": "Advanced Engineering Materials",  # from taxonomy.yaml
     "graphene": "Advanced Engineering Materials",
-    "carbon fiber": "Advanced Engineering Materials",   # borderline nanotech but listed
+    "carbon fiber": "Advanced Engineering Materials",  # borderline nanotech but listed
 }
 CET_COMPILED = {
     re.compile(r"\b" + re.escape(k) + r"\b", re.IGNORECASE): v
@@ -242,7 +246,8 @@ def load_phase2_awards(awards_csv: Path) -> list[dict]:
                 continue
             rows.append(
                 {
-                    "award_id": row.get("Contract", "").strip() or row.get("Agency Tracking Number", "").strip(),
+                    "award_id": row.get("Contract", "").strip()
+                    or row.get("Agency Tracking Number", "").strip(),
                     "agency": row.get("Agency", "").strip(),
                     "branch": row.get("Branch", "").strip(),
                     "program": row.get("Program", "").strip(),
@@ -311,8 +316,13 @@ def load_b82_assignees(path: Path) -> dict[str, dict]:
                 continue
             rec = by_norm.setdefault(
                 norm,
-                {"orgs": set(), "patent_ids": set(), "grant_dates": [], "filing_dates": [],
-                 "subclasses": set()},
+                {
+                    "orgs": set(),
+                    "patent_ids": set(),
+                    "grant_dates": [],
+                    "filing_dates": [],
+                    "subclasses": set(),
+                },
             )
             rec["orgs"].add(row["assignee_organization"])
             rec["patent_ids"].add(row["patent_id"])
@@ -363,7 +373,8 @@ def load_phase3_digest(digest_csv: Path) -> dict[str, dict]:
                     "firm_name": row.get("firm_name", ""),
                     "phase3_awards_n": _safe_int(row.get("phase3_awards_n", "")),
                     "phase3_total_usd": _safe_float(row.get("phase3_total_usd", "")),
-                    "has_fy_phase3": row.get("has_fy_phase3", "").strip().lower() in ("true", "1", "yes"),
+                    "has_fy_phase3": row.get("has_fy_phase3", "").strip().lower()
+                    in ("true", "1", "yes"),
                     "fy_contracts_in_fpds": _safe_int(row.get("fy_contracts_in_fpds", "")),
                     "fy_grants_in_fabs": _safe_int(row.get("fy_grants_in_fabs", "")),
                 }
@@ -400,7 +411,7 @@ def load_ma_signals(jsonl_path: Path) -> dict[str, dict]:
 
 
 def load_form_d_signals(jsonl_path: Path) -> dict[str, dict]:
-    """Load Form D high-confidence matches keyed by company name.
+    """Load versioned Form D record-high matches keyed by company name.
 
     form_d_high_conf_cohort.jsonl is a pre-filtered file where all records are
     already high-confidence; fields are denormalized (no match_confidence nesting).
@@ -418,13 +429,18 @@ def load_form_d_signals(jsonl_path: Path) -> dict[str, dict]:
                 name = rec.get("company_name", "").strip().upper()
                 if not name:
                     continue
+                rule_version = require_form_d_rule_version(
+                    rec.get("form_d_tier_rule_version"),
+                    context=f"Form D cohort record {name!r}",
+                )
                 total_raised = _safe_float(str(rec.get("form_d_total_raised", "") or ""))
                 filing_count = _safe_int(str(rec.get("form_d_filing_count", "") or ""))
                 by_name[name] = {
                     "form_d_total_raised": total_raised,
                     "form_d_filing_count": filing_count,
                     "form_d_latest_date": "",
-                    "form_d_confidence": "high",  # all records in this file are high-conf
+                    "form_d_confidence": "high",  # record-level tier, not validation
+                    "form_d_tier_rule_version": rule_version,
                 }
             except json.JSONDecodeError:
                 pass
@@ -491,9 +507,9 @@ def enrich_cohort_with_signals(
         r["sig_fpds_phase3_usd"] = dig.get("phase3_total_usd", 0.0)
 
         # Channel 2: Any subsequent federal obligation (broader — includes uncoded P3)
-        r["sig_any_federal_obligation"] = dig.get("fy_contracts_in_fpds", 0) > 0 or dig.get(
-            "fy_grants_in_fabs", 0
-        ) > 0
+        r["sig_any_federal_obligation"] = (
+            dig.get("fy_contracts_in_fpds", 0) > 0 or dig.get("fy_grants_in_fabs", 0) > 0
+        )
 
         # Channel 3: M&A signal (8-K Items 1.01/2.01 via SEC EDGAR)
         # Note: includes low/medium/high confidence; split into tiers for reporting
@@ -505,11 +521,12 @@ def enrich_cohort_with_signals(
         r["sig_ma_event_date"] = ma.get("ma_event_date", "")
         r["sig_ma_acquirer"] = ma.get("ma_acquirer", "")
 
-        # Channel 4: Form D capital raise (investor signal, not direct P3 evidence)
+        # Channel 4: Form D candidate-offering signal, not validated identity or P3 evidence.
         fd = form_d_signals.get(company_upper, {})
         r["sig_form_d_detected"] = bool(fd)
         r["sig_form_d_total_raised"] = fd.get("form_d_total_raised", 0.0)
         r["sig_form_d_latest_date"] = fd.get("form_d_latest_date", "")
+        r["sig_form_d_tier_rule_version"] = fd.get("form_d_tier_rule_version", "")
 
         # Union signal (DO NOT report as "transition rate" — see methodology doc)
         r["sig_any_positive"] = any(
@@ -582,9 +599,19 @@ def plot_venn_overlap(kw_ids: set, cet_ids: set, cpc_ids: set, out_path: Path) -
 
     # Draw circles
     circles = [
-        plt.Circle((0.38, 0.55), 0.28, alpha=0.35, color="#2196F3", label=f"Keyword (n={len(kw_ids):,})"),
-        plt.Circle((0.62, 0.55), 0.28, alpha=0.35, color="#FF9800", label=f"CET-proxy (n={len(cet_ids):,})"),
-        plt.Circle((0.50, 0.30), 0.28, alpha=0.35, color="#4CAF50", label=f"CPC B82Y/B82B (n={len(cpc_ids):,})"),
+        plt.Circle(
+            (0.38, 0.55), 0.28, alpha=0.35, color="#2196F3", label=f"Keyword (n={len(kw_ids):,})"
+        ),
+        plt.Circle(
+            (0.62, 0.55), 0.28, alpha=0.35, color="#FF9800", label=f"CET-proxy (n={len(cet_ids):,})"
+        ),
+        plt.Circle(
+            (0.50, 0.30),
+            0.28,
+            alpha=0.35,
+            color="#4CAF50",
+            label=f"CPC B82Y/B82B (n={len(cpc_ids):,})",
+        ),
     ]
     for c in circles:
         ax.add_patch(c)
@@ -595,7 +622,16 @@ def plot_venn_overlap(kw_ids: set, cet_ids: set, cpc_ids: set, out_path: Path) -
     ax.text(0.50, 0.63, str(kw_cet), ha="center", va="center", fontsize=10)
     ax.text(0.30, 0.35, str(kw_cpc), ha="center", va="center", fontsize=10)
     ax.text(0.70, 0.35, str(cet_cpc), ha="center", va="center", fontsize=10)
-    ax.text(0.50, 0.47, str(all3), ha="center", va="center", fontsize=12, fontweight="bold", color="white")
+    ax.text(
+        0.50,
+        0.47,
+        str(all3),
+        ha="center",
+        va="center",
+        fontsize=12,
+        fontweight="bold",
+        color="white",
+    )
 
     ax.set_xlim(0, 1)
     ax.set_ylim(0, 1)
@@ -615,13 +651,15 @@ def plot_venn_overlap(kw_ids: set, cet_ids: set, cpc_ids: set, out_path: Path) -
     print(f"  Saved: {out_path}")
 
 
-def plot_transition_channels(kw_enriched: list[dict], cet_enriched: list[dict], out_path: Path) -> None:
+def plot_transition_channels(
+    kw_enriched: list[dict], cet_enriched: list[dict], out_path: Path
+) -> None:
     """Bar chart: transition signal by channel, by method cohort."""
     channels = {
         "FPDS-coded\nPhase III": "sig_fpds_phase3_coded",
         "Any federal\nobligation": "sig_any_federal_obligation",
         "M&A signal\n(med+high)": "sig_ma_medium_high",
-        "Form D\n(high-conf)": "sig_form_d_detected",
+        "Form D\n(v2 record-high)": "sig_form_d_detected",
         "Union\n(any positive)": "sig_any_positive",
     }
 
@@ -638,8 +676,22 @@ def plot_transition_channels(kw_enriched: list[dict], cet_enriched: list[dict], 
 
     width = 0.35
     fig, ax = plt.subplots(figsize=(10, 6))
-    bars1 = ax.bar([i - width / 2 for i in x], kw_vals, width, label=f"Keyword (n={len(kw_enriched):,})", color="#2196F3", alpha=0.85)
-    bars2 = ax.bar([i + width / 2 for i in x], cet_vals, width, label=f"CET-proxy (n={len(cet_enriched):,})", color="#FF9800", alpha=0.85)
+    bars1 = ax.bar(
+        [i - width / 2 for i in x],
+        kw_vals,
+        width,
+        label=f"Keyword (n={len(kw_enriched):,})",
+        color="#2196F3",
+        alpha=0.85,
+    )
+    bars2 = ax.bar(
+        [i + width / 2 for i in x],
+        cet_vals,
+        width,
+        label=f"CET-proxy (n={len(cet_enriched):,})",
+        color="#FF9800",
+        alpha=0.85,
+    )
 
     ax.set_xticks(x)
     ax.set_xticklabels(labels, fontsize=10)
@@ -657,7 +709,14 @@ def plot_transition_channels(kw_enriched: list[dict], cet_enriched: list[dict], 
     for bar in [*bars1, *bars2]:
         h = bar.get_height()
         if h > 1:
-            ax.text(bar.get_x() + bar.get_width() / 2, h + 0.5, f"{h:.1f}%", ha="center", va="bottom", fontsize=8)
+            ax.text(
+                bar.get_x() + bar.get_width() / 2,
+                h + 0.5,
+                f"{h:.1f}%",
+                ha="center",
+                va="bottom",
+                fontsize=8,
+            )
 
     fig.tight_layout()
     fig.savefig(out_path, dpi=150)
@@ -671,7 +730,10 @@ def _git_branch() -> str:
 
         out = subprocess.run(
             ["git", "rev-parse", "--abbrev-ref", "HEAD"],
-            capture_output=True, text=True, cwd=REPO, timeout=5,
+            capture_output=True,
+            text=True,
+            cwd=REPO,
+            timeout=5,
         ).stdout.strip()
         return out or "unknown"
     except Exception:
@@ -760,6 +822,7 @@ def write_methodology_doc(
             "subsidiaries, university assignees produce false negatives). Treat CPC cohort "
             "membership as high-precision, unknown-recall."
         )
+
         # --- §5D firm-level triangulation: de-grain both cohorts to firms ---
         def _firm_rate(enriched: list[dict], field: str) -> tuple[int, int, float]:
             firms: dict[str, bool] = {}
@@ -774,21 +837,27 @@ def write_methodology_doc(
         kw_firm_fpds: dict[str, bool] = {}
         for r in kw_enriched:
             fname = r["company"].strip().upper()
-            kw_firm_fpds[fname] = kw_firm_fpds.get(fname, False) or bool(r.get("sig_fpds_phase3_coded"))
+            kw_firm_fpds[fname] = kw_firm_fpds.get(fname, False) or bool(
+                r.get("sig_fpds_phase3_coded")
+            )
         with_pat = [f for f in kw_firm_fpds if f in both_firms]
         without_pat = [f for f in kw_firm_fpds if f not in both_firms]
         with_rate = 100 * sum(1 for f in with_pat if kw_firm_fpds[f]) / max(1, len(with_pat))
-        without_rate = 100 * sum(1 for f in without_pat if kw_firm_fpds[f]) / max(1, len(without_pat))
+        without_rate = (
+            100 * sum(1 for f in without_pat if kw_firm_fpds[f]) / max(1, len(without_pat))
+        )
         inter_by_id = {r["award_id"]: r for r in cpc_enriched if r["award_id"] in kw_ids}
-        inter_fpds_rate = 100 * sum(
-            1 for r in inter_by_id.values() if r.get("sig_fpds_phase3_coded")
-        ) / max(1, len(inter_by_id))
+        inter_fpds_rate = (
+            100
+            * sum(1 for r in inter_by_id.values() if r.get("sig_fpds_phase3_coded"))
+            / max(1, len(inter_by_id))
+        )
 
         firm_rate_rows = []
         for field, label in [
             ("sig_fpds_phase3_coded", "FPDS-coded Phase III"),
             ("sig_any_federal_obligation", "Any federal obligation"),
-            ("sig_form_d_detected", "Form D (high-confidence)"),
+            ("sig_form_d_detected", "Form D (v2 record-high; unvalidated)"),
             ("sig_ma_medium_high", "M&A signal (med+high)"),
         ]:
             kp, kn, kr = _firm_rate(kw_enriched, field)
@@ -799,18 +868,28 @@ def write_methodology_doc(
         # --- §5E: what the patent lens implies about Methods A and B ---
         # Test 1: do C-only firms' award abstracts contain near-nano vocabulary A lacks?
         near_nano_patterns = [
-            r"\bthin[\- ]?film", r"\bquantum well", r"\bself[\- ]assembl",
-            r"\batomic force microscop", r"\bphotonic crystal", r"\bsuperlattice",
-            r"\bmonolayer", r"\b2d material", r"\bepitax", r"\bcolloid", r"\baerosol",
-            r"\bmicrofluidic", r"\bthermoelectric", r"\bmetamaterial", r"\bplasmon",
+            r"\bthin[\- ]?film",
+            r"\bquantum well",
+            r"\bself[\- ]assembl",
+            r"\batomic force microscop",
+            r"\bphotonic crystal",
+            r"\bsuperlattice",
+            r"\bmonolayer",
+            r"\b2d material",
+            r"\bepitax",
+            r"\bcolloid",
+            r"\baerosol",
+            r"\bmicrofluidic",
+            r"\bthermoelectric",
+            r"\bmetamaterial",
+            r"\bplasmon",
         ]
         near_nano_compiled = [re.compile(p, re.IGNORECASE) for p in near_nano_patterns]
         cpc_firm_names = {r["company"].strip().upper() for r in cpc_cohort}
-        c_only_awards = [
-            r for r in cpc_cohort if r["company"].strip().upper() not in kw_firm_set
-        ]
+        c_only_awards = [r for r in cpc_cohort if r["company"].strip().upper() not in kw_firm_set]
         near_nano_hits = sum(
-            1 for r in c_only_awards
+            1
+            for r in c_only_awards
             if any(
                 p.search(" ".join([r.get("title", ""), r.get("abstract", "")]))
                 for p in near_nano_compiled
@@ -849,9 +928,11 @@ def write_methodology_doc(
         post_share_filing = _post_award_share(firm_first_filing)
         post_share_grant = _post_award_share(firm_first_grant)
         filing_both = [f for f in firm_first_filing if f in firm_first_award]
-        pre_share_filing = 100 * sum(
-            1 for f in filing_both if firm_first_filing[f] < firm_first_award[f]
-        ) / max(1, len(filing_both))
+        pre_share_filing = (
+            100
+            * sum(1 for f in filing_both if firm_first_filing[f] < firm_first_award[f])
+            / max(1, len(filing_both))
+        )
         same_share_filing = 100 - post_share_filing - pre_share_filing
 
         cpc_signals_section = f"""### 5C. CPC cohort (n={len(cpc_enriched):,})
@@ -864,12 +945,12 @@ rates against §5A/§5B, which are award-text cohorts, without accounting for gr
 
 | Channel | Signal-positive | % | Coverage caveat |
 |---|---|---|---|
-| FPDS-coded Phase III contract | {cpc_sigs["sig_fpds_phase3_coded"]} | {100*cpc_sigs["sig_fpds_phase3_coded"]/max(1,len(cpc_enriched)):.1f}% | Known undercount |
-| Any subsequent federal obligation | {cpc_sigs["sig_any_federal_obligation"]} | {100*cpc_sigs["sig_any_federal_obligation"]/max(1,len(cpc_enriched)):.1f}% | Broad; per-firm |
-| M&A signal — medium+high only | {cpc_sigs["sig_ma_medium_high"]} | {100*cpc_sigs["sig_ma_medium_high"]/max(1,len(cpc_enriched)):.1f}% | Preferred M&A signal tier |
-| M&A signal — high conf only | {cpc_sigs["sig_ma_high_conf"]} | {100*cpc_sigs["sig_ma_high_conf"]/max(1,len(cpc_enriched)):.1f}% | Narrowest M&A signal |
-| Form D (high-confidence) | {cpc_sigs["sig_form_d_detected"]} | {100*cpc_sigs["sig_form_d_detected"]/max(1,len(cpc_enriched)):.1f}% | Investment signal only |
-| **Union (any positive)** | **{cpc_sigs["sig_any_positive"]}** | **{100*cpc_sigs["sig_any_positive"]/max(1,len(cpc_enriched)):.1f}%** | **See caution above** |
+| FPDS-coded Phase III contract | {cpc_sigs["sig_fpds_phase3_coded"]} | {100 * cpc_sigs["sig_fpds_phase3_coded"] / max(1, len(cpc_enriched)):.1f}% | Known undercount |
+| Any subsequent federal obligation | {cpc_sigs["sig_any_federal_obligation"]} | {100 * cpc_sigs["sig_any_federal_obligation"] / max(1, len(cpc_enriched)):.1f}% | Broad; per-firm |
+| M&A signal — medium+high only | {cpc_sigs["sig_ma_medium_high"]} | {100 * cpc_sigs["sig_ma_medium_high"] / max(1, len(cpc_enriched)):.1f}% | Preferred M&A signal tier |
+| M&A signal — high conf only | {cpc_sigs["sig_ma_high_conf"]} | {100 * cpc_sigs["sig_ma_high_conf"] / max(1, len(cpc_enriched)):.1f}% | Narrowest M&A signal |
+| Form D (v2 record-high) | {cpc_sigs["sig_form_d_detected"]} | {100 * cpc_sigs["sig_form_d_detected"] / max(1, len(cpc_enriched)):.1f}% | Candidate offering signal; identity and aggregation unvalidated |
+| **Union (any positive)** | **{cpc_sigs["sig_any_positive"]}** | **{100 * cpc_sigs["sig_any_positive"] / max(1, len(cpc_enriched)):.1f}%** | **See caution above** |
 
 ### 5D. Firm-level triangulation (keyword × CPC)
 
@@ -895,8 +976,8 @@ prolific-firm inflation in §5C:
 4. **The double-confirmed subset is the strongest cohort.** The {len(inter_by_id):,} unique awards
    that are both text-matched and from patent-verified firms show {inter_fpds_rate:.1f}%
    FPDS-coded Phase III — use this subset for headline claims.
-5. **Coverage asymmetry:** the keyword method catches {100*len(both_firms)/max(1,cpc_firms):.0f}%
-   of patent-verified nanotech firms; {100*len(both_firms)/max(1,len(kw_firm_set)):.0f}% of keyword-cohort firms hold B82 patents
+5. **Coverage asymmetry:** the keyword method catches {100 * len(both_firms) / max(1, cpc_firms):.0f}%
+   of patent-verified nanotech firms; {100 * len(both_firms) / max(1, len(kw_firm_set)):.0f}% of keyword-cohort firms hold B82 patents
    (examiner under-assignment of B82 and small-firm non-patenting both suppress this).
 
 **Caveat:** the "any federal obligation" channel under-measures the CPC cohort — the prospect
@@ -1003,6 +1084,11 @@ will produce false negatives.
 
     doc = f"""# Nanotechnology SBIR/STTR Phase II → Phase III Transition: Methodology Note
 
+> Form D inputs must carry `{FORM_D_TIER_RULE_VERSION}`. A record-level high
+> tier is not identity validation, and filing/CIK plus amendment-chain
+> aggregation remain unresolved. Any earlier unversioned Form D values are
+> retired historical results.
+
 **Status:** Provisional — all figures subject to revision
 **Audience:** S&T policy leaders, methodology review
 **Repo branch:** `{_git_branch()}`
@@ -1018,7 +1104,7 @@ will produce false negatives.
 | SBIR.gov `award_data.csv` | SBIR/STTR awards (all phases) | Local | Title/abstract completeness varies; some abstracts blank |
 | USAspending Phase III prospect digest | Firm-level FPDS/FABS aggregates | Local CSV | Per-firm, not per-award; FPDS Phase III coding sparse outside DoD (GAO-24-106398) |
 | SEC EDGAR M&A signals | 8-K Items 1.01/2.01 | `sec_edgar_scan.jsonl` (35k firms, complete) | A subsequent scan wrote a summary showing 0 detections due to HTTP 500 errors — that summary file is not representative; the JSONL is the authoritative source and has 99.9% cohort coverage |
-| SEC Form D (high-confidence) | Regulation D capital raises | Local JSONL | High-confidence subset only; ~35% match rate for NSF cohort from prior analysis |
+| SEC Form D (v2 record-high) | Regulation D offering signal | Local JSONL | Identity unvalidated; confidence may span filings/CIKs; amendment totals unresolved |
 {uspto_source_row}
 | Published external budget reference (FY26 Supplement) | Agency nanotech SBIR/STTR totals | **UNVERIFIED reference** | Methodology not published; our classification will not reconcile exactly |
 
@@ -1052,7 +1138,7 @@ nanotechnology program reporting. CNT as bare acronym may match non-nanotech con
 flagged but retained. Exclusion of bare "nano" prevents matching "nanosecond" and "nanosat."
 
 **Cohort size:** {len(kw_cohort):,} Phase II awards (all years)
-**External-reference window (FY2020–2023, 9 agencies):** {sum(1 for r in kw_cohort if EXT_REF_AGENCY_MAP.get(r.get('agency','')) and 2020 <= r.get('award_year',0) <= 2023):,} awards
+**External-reference window (FY2020–2023, 9 agencies):** {sum(1 for r in kw_cohort if EXT_REF_AGENCY_MAP.get(r.get("agency", "")) and 2020 <= r.get("award_year", 0) <= 2023):,} awards
 
 ---
 
@@ -1111,11 +1197,11 @@ reconciliation is not expected.
 
 ### 4A. Keyword Cohort vs Published Reference
 
-{ext_ref_table(kw_ext_ref, 'keyword')}
+{ext_ref_table(kw_ext_ref, "keyword")}
 
 ### 4B. CET Proxy Cohort vs Published Reference
 
-{ext_ref_table(cet_ext_ref, 'cet')}
+{ext_ref_table(cet_ext_ref, "cet")}
 
 **Methodological choice note [HIGH]:** We do not tune the keyword list or CET proxy to close
 the delta. The gap itself is informative: it represents awards the reference counts as
@@ -1133,24 +1219,24 @@ Each channel has different coverage gaps and none is authoritative.
 
 | Channel | Signal-positive | % | Coverage caveat |
 |---|---|---|---|
-| FPDS-coded Phase III contract | {kw_sigs["sig_fpds_phase3_coded"]} | {100*kw_sigs["sig_fpds_phase3_coded"]/max(1,len(kw_enriched)):.1f}% | Known undercount; DoD ~67% of coded P3 in this cohort (GAO-24-106398) |
-| Any subsequent federal obligation | {kw_sigs["sig_any_federal_obligation"]} | {100*kw_sigs["sig_any_federal_obligation"]/max(1,len(kw_enriched)):.1f}% | Broad; includes non-P3 task orders; per-firm not per-award |
-| M&A signal — all tiers | {kw_sigs["sig_ma_detected"]} | {100*kw_sigs["sig_ma_detected"]/max(1,len(kw_enriched)):.1f}% | Exact name match; inflated by low-conf matches (~49% of total) |
-| M&A signal — medium+high only | {kw_sigs["sig_ma_medium_high"]} | {100*kw_sigs["sig_ma_medium_high"]/max(1,len(kw_enriched)):.1f}% | More reliable; may still reflect prior EDGAR scan errors |
-| M&A signal — high conf only | {kw_sigs["sig_ma_high_conf"]} | {100*kw_sigs["sig_ma_high_conf"]/max(1,len(kw_enriched)):.1f}% | Narrowest; recommend using this tier for any cited figure |
-| Form D (high-confidence) | {kw_sigs["sig_form_d_detected"]} | {100*kw_sigs["sig_form_d_detected"]/max(1,len(kw_enriched)):.1f}% | Investment signal only; not direct P3 evidence |
-| **Union (any positive)** | **{kw_sigs["sig_any_positive"]}** | **{100*kw_sigs["sig_any_positive"]/max(1,len(kw_enriched)):.1f}%** | **See caution above — do not report as rate** |
+| FPDS-coded Phase III contract | {kw_sigs["sig_fpds_phase3_coded"]} | {100 * kw_sigs["sig_fpds_phase3_coded"] / max(1, len(kw_enriched)):.1f}% | Known undercount; DoD ~67% of coded P3 in this cohort (GAO-24-106398) |
+| Any subsequent federal obligation | {kw_sigs["sig_any_federal_obligation"]} | {100 * kw_sigs["sig_any_federal_obligation"] / max(1, len(kw_enriched)):.1f}% | Broad; includes non-P3 task orders; per-firm not per-award |
+| M&A signal — all tiers | {kw_sigs["sig_ma_detected"]} | {100 * kw_sigs["sig_ma_detected"] / max(1, len(kw_enriched)):.1f}% | Exact name match; inflated by low-conf matches (~49% of total) |
+| M&A signal — medium+high only | {kw_sigs["sig_ma_medium_high"]} | {100 * kw_sigs["sig_ma_medium_high"] / max(1, len(kw_enriched)):.1f}% | More reliable; may still reflect prior EDGAR scan errors |
+| M&A signal — high conf only | {kw_sigs["sig_ma_high_conf"]} | {100 * kw_sigs["sig_ma_high_conf"] / max(1, len(kw_enriched)):.1f}% | Narrowest; recommend using this tier for any cited figure |
+| Form D (v2 record-high) | {kw_sigs["sig_form_d_detected"]} | {100 * kw_sigs["sig_form_d_detected"] / max(1, len(kw_enriched)):.1f}% | Candidate offering signal; identity and aggregation unvalidated |
+| **Union (any positive)** | **{kw_sigs["sig_any_positive"]}** | **{100 * kw_sigs["sig_any_positive"] / max(1, len(kw_enriched)):.1f}%** | **See caution above — do not report as rate** |
 
 ### 5B. CET proxy cohort (n={len(cet_enriched):,})
 
 | Channel | Signal-positive | % | Coverage caveat |
 |---|---|---|---|
-| FPDS-coded Phase III contract | {cet_sigs["sig_fpds_phase3_coded"]} | {100*cet_sigs["sig_fpds_phase3_coded"]/max(1,len(cet_enriched)):.1f}% | Known undercount |
-| Any subsequent federal obligation | {cet_sigs["sig_any_federal_obligation"]} | {100*cet_sigs["sig_any_federal_obligation"]/max(1,len(cet_enriched)):.1f}% | Broad; per-firm |
-| M&A signal — medium+high only | {cet_sigs["sig_ma_medium_high"]} | {100*cet_sigs["sig_ma_medium_high"]/max(1,len(cet_enriched)):.1f}% | Preferred M&A signal tier |
-| M&A signal — high conf only | {cet_sigs["sig_ma_high_conf"]} | {100*cet_sigs["sig_ma_high_conf"]/max(1,len(cet_enriched)):.1f}% | Narrowest M&A signal |
-| Form D (high-confidence) | {cet_sigs["sig_form_d_detected"]} | {100*cet_sigs["sig_form_d_detected"]/max(1,len(cet_enriched)):.1f}% | Investment signal only |
-| **Union (any positive)** | **{cet_sigs["sig_any_positive"]}** | **{100*cet_sigs["sig_any_positive"]/max(1,len(cet_enriched)):.1f}%** | **See caution above** |
+| FPDS-coded Phase III contract | {cet_sigs["sig_fpds_phase3_coded"]} | {100 * cet_sigs["sig_fpds_phase3_coded"] / max(1, len(cet_enriched)):.1f}% | Known undercount |
+| Any subsequent federal obligation | {cet_sigs["sig_any_federal_obligation"]} | {100 * cet_sigs["sig_any_federal_obligation"] / max(1, len(cet_enriched)):.1f}% | Broad; per-firm |
+| M&A signal — medium+high only | {cet_sigs["sig_ma_medium_high"]} | {100 * cet_sigs["sig_ma_medium_high"] / max(1, len(cet_enriched)):.1f}% | Preferred M&A signal tier |
+| M&A signal — high conf only | {cet_sigs["sig_ma_high_conf"]} | {100 * cet_sigs["sig_ma_high_conf"] / max(1, len(cet_enriched)):.1f}% | Narrowest M&A signal |
+| Form D (v2 record-high) | {cet_sigs["sig_form_d_detected"]} | {100 * cet_sigs["sig_form_d_detected"] / max(1, len(cet_enriched)):.1f}% | Candidate offering signal; identity and aggregation unvalidated |
+| **Union (any positive)** | **{cet_sigs["sig_any_positive"]}** | **{100 * cet_sigs["sig_any_positive"] / max(1, len(cet_enriched)):.1f}%** | **See caution above** |
 
 ---
 
@@ -1197,8 +1283,10 @@ the following taxonomy classifies why transition status is indeterminate.
 
 {caveat_5}
 
-6. **Form D is an investment signal, not a transition signal [HIGH].** A Form D filing indicates capital
-   raised, which may correlate with commercialization but does not prove Phase III transition.
+6. **Form D is candidate offering evidence, not a validated transition signal
+   [EXPLORATORY].** A v2 record-high link can still pool signals across filings
+   or CIKs, and amendment-chain totals remain unresolved. It does not by itself
+   prove identity, capital raised, or Phase III transition.
 
 7. **Phase II prospect digest is per-firm [HIGH].** A single UEI can have multiple Phase II awards.
    Transition signals in the digest apply at firm level; per-award attribution is not possible
@@ -1242,8 +1330,10 @@ def main() -> int:
     print("Building CPC cohort (Method C)...")
     cpc_cohort = build_cpc_cohort(awards)
     if cpc_cohort:
-        print(f"  {len(cpc_cohort):,} awards matched (B82 assignee ↔ firm name, "
-              f"{len({r['company'].upper() for r in cpc_cohort}):,} firms)")
+        print(
+            f"  {len(cpc_cohort):,} awards matched (B82 assignee ↔ firm name, "
+            f"{len({r['company'].upper() for r in cpc_cohort}):,} firms)"
+        )
     else:
         print("  0 awards (B82 extract absent — see methodology doc)")
 
@@ -1258,7 +1348,7 @@ def main() -> int:
 
     print("Loading Form D signals...")
     form_d_signals = load_form_d_signals(DATA / "form_d_high_conf_cohort.jsonl")
-    print(f"  {len(form_d_signals):,} firms with high-confidence Form D")
+    print(f"  {len(form_d_signals):,} firms with v2 record-high Form D (unvalidated)")
 
     print("Enriching cohorts with transition signals...")
     kw_enriched = enrich_cohort_with_signals(kw_cohort, digest, ma_signals, form_d_signals)
@@ -1290,13 +1380,20 @@ def main() -> int:
     cpc_ids = {r["award_id"] for r in cpc_cohort}
 
     plot_venn_overlap(kw_ids, cet_ids, cpc_ids, ANALYSIS_DIR / "nano_cohort_overlap.png")
-    plot_transition_channels(kw_enriched, cet_enriched, ANALYSIS_DIR / "nano_transition_channels.png")
+    plot_transition_channels(
+        kw_enriched, cet_enriched, ANALYSIS_DIR / "nano_transition_channels.png"
+    )
 
     print("Writing methodology doc...")
     write_methodology_doc(
-        kw_cohort, cet_cohort, cpc_cohort,
-        kw_enriched, cet_enriched, cpc_enriched,
-        kw_ext_ref, cet_ext_ref,
+        kw_cohort,
+        cet_cohort,
+        cpc_cohort,
+        kw_enriched,
+        cet_enriched,
+        cpc_enriched,
+        kw_ext_ref,
+        cet_ext_ref,
         DOCS / "nano-phase3-methodology.md",
     )
 
@@ -1316,7 +1413,7 @@ def main() -> int:
         ("sig_fpds_phase3_coded", "  FPDS Phase III coded"),
         ("sig_any_federal_obligation", "  Any federal obligation"),
         ("sig_ma_detected", "  M&A detected"),
-        ("sig_form_d_detected", "  Form D (high-conf)"),
+        ("sig_form_d_detected", "  Form D (v2 record-high; unvalidated)"),
         ("sig_any_positive", "  Union (any)"),
     ]:
         n = sum(1 for r in kw_enriched if r.get(field))
