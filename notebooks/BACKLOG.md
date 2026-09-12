@@ -73,3 +73,24 @@ canonical generator; they stay `exploratory` and non-citable until explicitly pr
 | STTR spinout-vs-subcontract (RQ1) data availability | B2/RQ1 (spec-local anchor, distinct from the canonical B2) — is the public data the frozen classification cascade would consume actually present locally, independent of the `open-questions.md` freeze gate? | `explorations/sttr_rq1_data_availability.ipynb` | Active. Input-availability probe only; does not implement or run the cascade. |
 | Top-10 incumbent repeat-winner displacement exposure | A-CP7 — how much Phase I capacity do the ten highest *prior*-award-count firms absorb, and what is the mechanical reallocation capacity toward first-time and low-volume incumbents? | `explorations/a_cp7_top10_repeat_winner_displacement.ipynb` | Active. Exploratory crowd-out **proxies** only; no applicant file, not causal, not a Status upgrade. |
 | NASA–Air Force–DOE post-Phase-II commercialization outcomes | B2 / B3 / F1–F3 — how do observed federal-contract, Form D, and public M&A signals compare after first Phase II? | `explorations/b2_three_agency_commercialization_outcomes.ipynb` | Active. Canonical generator-backed analysis; exploratory and non-citable. |
+
+## Keep automated — not notebook candidates
+
+- Downloads and external ingestion: `download_sbir.py`, `download_sam_gov.py`,
+  `download_uspto.py`, `download_uspto_browser.py`, `extract_b82_patents.py`.
+- Refresh and pipeline checks: `profile_sbir_inputs.py`, `awards_refresh_validation.py`,
+  `run_sbir_ingestion_checks.py`, `run_sbir_enrichment_check.py`.
+- Neo4j operations: `reset_neo4j_sbir.py`, `run_neo4j_sbir_load.py`,
+  `run_neo4j_smoke_checks.py`.
+- Recurring products and migrations: `weekly_awards_report.py`,
+  `build_phase3_prospect_digest.py`, `migrate_nano_report_artifacts.py`.
+- Publication verification: `nano_verify_report_figures.py`, `verify_tech_area_figures.py`.
+
+## Promotion queue
+
+Large research scripts should be made library-first when revisited. The notebook is the caller and
+narrative—not the destination for another 500–1,000 lines of embedded business logic. In
+particular, extract reusable computations from `build_tech_area_cohort.py`,
+`nano_prime_acquisitions.py`, and `run_benchmark_analysis.py` before expanding their notebook
+companions. Promotion is explicit tier work under `docs/steering/epistemic-tiers.md`; a companion
+notebook does not make its source artifacts citable.
