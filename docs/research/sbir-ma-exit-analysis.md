@@ -81,7 +81,8 @@ Input hashes: `sbir_ma_events.jsonl` `1656f860bbb4e0dd`,
 
 The refinement merge step did not previously exist in the repository, which is
 why the published file reproduced from no commit. It is now
-`scripts/data/apply_ma_medium_refinement.py`. 97% of the earlier directional
+`scripts/archive/data/apply_ma_direction_refinement.py`, which landed on
+`main` independently via PR #669. 97% of the earlier directional
 verdicts were reusable; only 33 newly-medium firms needed a fresh EFTS pass.
 
 Two caveats. `data/enriched_sbir_ma_events.jsonl` is **not** regenerated — it
