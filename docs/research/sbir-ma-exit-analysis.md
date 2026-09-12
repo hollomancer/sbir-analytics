@@ -5,10 +5,108 @@
 
 ## Summary
 
+> **Superseded 2026-09-09. The figures below overstate M&A exits and must not
+> be cited.** A Form D business-combination flag was graded `high` on its own.
+> Form D Item 10 marks a Rule 145 transaction, a deemed offer and sale of
+> securities *by the issuer* to the other company's holders — so the filer is
+> the **acquirer**, not the target. The pipeline counted acquirers as exits.
+> Corrected in `scripts/data/detect_sbir_ma_events.py`; see "2026-09-09
+> correction" below.
+
 Of 34,460 SBIR companies in the awards database, **2,790 (8.1%)
 show M&A signals** at high or medium confidence, and **1,197 (3.5%)
 at high confidence only**. Median time from first SBIR award to
 M&A event is **15 years** (H+M).
+
+## 2026-09-09 correction
+
+Two independent defects were found and fixed. Neither number below is a
+finding; this work is exploratory tier and non-citable.
+
+**Direction.** `assign_confidence` returned `high` on the Form D
+business-combination flag alone. Of 23 `clarificationOfResponse` texts read
+from EDGAR, 18 state the issuer acquired, 5 describe a corporate
+reorganization, and none describe the issuer as acquired. Corroborated by a
+monotone base-rate gradient with issuer size (2.1% at no revenue, 54.0% over
+$100M), a fully-subscribed-at-filing rate of 66.4% vs 30.8%, a 5.8-year median
+gap to any independent EFTS mention, and 3 of 3 testable confirmed targets
+carrying no flag. 407 events rested on this flag with no other signal.
+
+The flag is still recorded in `signals.form_d_business_combination`. It is real
+evidence of a combination in the other direction, and which SBIR firms are
+acquiring is a question worth keeping; it no longer grades an exit.
+
+**Join.** The SBIR-to-SEC join in `form_d_details.jsonl` is fuzzy on company
+name, and the detector ignored the `match_confidence.tier` already present in
+every record. 323 of the 374 business-combination records whose SEC filer name
+differs from the SBIR name under `RECIPIENT_V1` were already tier `low` — the
+scorer caught them and the consumer overrode it. Example: SBIR firm
+`3D Control Systems, Inc.` joined to filer `3D SYSTEMS CORP` (CIK 0000910638).
+
+**Effect on the tables below**, recomputed from committed code against the
+same inputs:
+
+| tier | published | corrected |
+|---|---:|---:|
+| High | 1,197 | **676** |
+| Medium | 1,593 | **1,211** |
+| High + Medium | 2,790 | **1,887** |
+| events total | 4,306 | 4,004 |
+
+High-plus-medium falls 32%.
+
+**Regenerated 2026-09-09, then superseded the same day.** The figures in this
+subsection came from a chain run at commit `7205798b`, before three later
+corrections: the directional classifier was returning `target` for
+active-voice acquirer sentences, acquirer-side rows were still reaching exit
+consumers that never read `confidence`, and a Form D filing date could become
+the exit date. **Treat every number below as provisional.** A regeneration at
+final HEAD is pending and its result will replace them.
+
+For the record, the superseded run produced:
+
+| | published | regenerated |
+|---|---:|---:|
+| high | 1,197 | **676** |
+| medium | 1,593 | **1,098** |
+| low | 1,516 | 2,230 |
+| events | 4,306 | 4,004 |
+| high + medium | 2,790 | **1,774** |
+| **exit rate (of 34,460 firms)** | **8.1%** | **5.1%** |
+| high only | 3.5% | 2.0% |
+
+Input hashes: `sbir_ma_events.jsonl` `1656f860bbb4e0dd`,
+`form_d_details.jsonl` `a6da5f4313f111ee`,
+`sec_edgar_scan.jsonl` `37b25b0c3c9e5652`.
+
+The refinement merge step did not previously exist in the repository, which is
+why the published file reproduced from no commit. It is now
+`scripts/archive/data/apply_ma_direction_refinement.py`, which landed on
+`main` independently via PR #669. 97% of the earlier directional
+verdicts were reusable; only 33 newly-medium firms needed a fresh EFTS pass.
+
+Two caveats. `data/enriched_sbir_ma_events.jsonl` is **not** regenerated — it
+needs `press.py` and a press-wire API — so it still carries the published
+numbers while `capital_events` reads it. And 420 medium events in the published
+file were promoted from low by an uncommitted step whose mechanism is still
+unknown; they are preserved at
+`data/processed/ma_events_unexplained_promotions.jsonl` and are absent from the
+regenerated file.
+
+**Regeneration status.** `data/sbir_ma_events.jsonl` was regenerated at
+`7205798b` and is not the published April population, but it also predates the
+three corrections listed above, so it is not final either. Regeneration needs `refine_ma_medium_tier.py`, roughly 1,200-1,600
+live SEC EDGAR fetches, and will move the medium tier by a further ~490 events
+for an unrelated reason: the shipped file was generated six days before PR #286
+merged, its generating code changed before merge, and it reproduces from no
+commit. The corrected rate should be computed once, after regeneration, rather
+than restated twice.
+
+Also outstanding: 141 high-tier Form D combination records survive the join
+filter, of which 81 are sampled for human adjudication
+(`data/processed/form_d_join_adjudication.jsonl`), stratified by qualifying
+signal because 84 of 141 survivors qualify on ZIP match alone and 58 of those
+share a ZIP with five or more SBIR firms.
 
 ## Methodology
 
@@ -89,6 +187,12 @@ is expected — these events were never text-classified in the
 original scan, so they are inherently weaker candidates.
 
 ## Confidence Tiers (Final)
+
+> **Superseded — every count in this table and every figure below it.** These
+> are the April 2026 numbers. A partial edit had left the table not adding up;
+> the original values are restored here so the published record is at least
+> internally consistent. The corrected counts are pending a regeneration at
+> final HEAD and are not yet written anywhere in this note.
 
 | Tier | Rule | Count |
 |------|------|-------|
@@ -289,6 +393,6 @@ identity; Form D gives deal size.
 - Events dataset: `data/sbir_ma_events.jsonl` (4,306 records)
 - Medium-tier refinement: `data/sbir_ma_medium_refined.jsonl` (1,178 records)
 - Low-tier expansion: `data/sbir_ma_low_refined.jsonl` (1,450 records)
-- Detection script: `scripts/archive/data/detect_sbir_ma_events.py`
-- Refinement script: `scripts/archive/data/refine_ma_medium_tier.py`
+- Detection script: `scripts/data/detect_sbir_ma_events.py`
+- Refinement script: `scripts/data/refine_ma_medium_tier.py`
 - Analysis script: `scripts/archive/data/analyze_sbir_ma_exits.py`

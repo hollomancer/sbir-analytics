@@ -449,11 +449,21 @@ NASEM calls this quantity the *leverage ratio*.
 
 > **Implementation note — M&A detection is script-driven, not orchestrated.**
 > M&A event detection runs as a CLI script
-> (`scripts/archive/data/detect_sbir_ma_events.py`), not as a Dagster asset. The
+> (`scripts/data/detect_sbir_ma_events.py`), not as a Dagster asset. The
 > script merges two signals: Form D filings (entity_type-based
 > business-combination heuristics) and an SEC EDGAR full-text mention scan across
 > multiple filing types — operationally 8-K, 10-K, DEFM14A, PREM14A, SC TO-T, and
-> SC 14D9 (see `scripts/archive/data/refine_ma_medium_tier.py`).
+> SC 14D9 (see `scripts/data/refine_ma_medium_tier.py`).
+>
+> **The Form D business-combination flag does not grade an exit.** Form D Item
+> 10 marks a Rule 145 transaction, a deemed offer and sale of securities *by
+> the issuer*, so the filer is the acquirer. It is retained as an acquirer-side
+> signal: rows that survive the SBIR-to-SEC match filter and carry only that
+> flag are written to `data/sbir_ma_non_exit.jsonl` rather than the exit
+> artifact, alongside rows the directional refiner finds are not acquisitions
+> of the firm, while rows whose match falls below the `high` tier are dropped
+> before any event is built. Do not wire Form D combinations into A1/A3/A4
+> exit questions.
 >
 > The orchestrated graph has no continuous M&A-event materialization. Rerunning
 > the script is how the M&A signal feeding the vulnerability (A1/A3/A4) and

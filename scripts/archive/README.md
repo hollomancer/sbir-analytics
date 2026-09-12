@@ -13,7 +13,11 @@ Archived 2026-07-02 as part of the scripts/ triage:
   Their published outputs live in `docs/research/`. The Form D leverage
   bootstrap (`bootstrap_form_d_leverage_ci.py`) was restored to
   `scripts/data/` when `studies/form-d-fundraising` entered
-  `reproducible`.
+  `reproducible`. The M&A event detector (`detect_sbir_ma_events.py`) was
+  restored to `scripts/data/` in 2026-09 because it is the producer of
+  `data/sbir_ma_events.jsonl` and is still being changed. Editing a producer
+  in place changes what the archive reproduces, so an actively maintained
+  producer does not belong here.
 - `validation/` — manual spot-check validators referenced only by archived
   docs.
 - Top level — `extract_federal_contracts.py` (superseded extraction path),

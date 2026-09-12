@@ -5,8 +5,8 @@ Extracts signals from Form D business combinations and EFTS mention
 classifications, merges into a unified events dataset with confidence tiers.
 
 Usage:
-    python scripts/archive/data/detect_sbir_ma_events.py
-    python scripts/archive/data/detect_sbir_ma_events.py --form-d data/form_d_details.jsonl
+    python scripts/data/detect_sbir_ma_events.py
+    python scripts/data/detect_sbir_ma_events.py --form-d data/form_d_details.jsonl
 """
 
 import argparse
@@ -18,18 +18,49 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 
+# Match tier accepted from form_d_details.jsonl. capital_events/sources/form_d.py
+# hardcodes the same value, so the two paths keep the same records.
+KEEP_MATCH_TIER = "high"
+
+
+def has_business_combination(record: dict) -> bool:
+    """Return whether a form_d_details.jsonl record has any combination offering."""
+    return any(o.get("is_business_combination") for o in record.get("offerings") or [])
+
+
 def extract_form_d_signals(records: list[dict]) -> list[dict]:
     """Extract M&A events from Form D business combination flags.
 
     For each company with at least one is_business_combination offering,
     produces one event using the earliest combo filing date.
+
+    A record is used only when its SBIR-to-SEC match tier is ``high``. The
+    join is fuzzy, and ``form_d_details.jsonl`` already carries the
+    multi-signal verdict from ``compute_form_d_confidence`` in
+    ``match_confidence.tier``. Without this filter a filing by an unrelated
+    company is attributed to an SBIR firm. When this filter landed such a row
+    was then graded ``high``; the Form D flag no longer grades an exit, so an
+    unmatched filing now yields a low-tier acquirer-side row, or with this
+    filter no row at all. Measured
+    2026-09-08, 323 of the 374 business-combination records whose SEC filer
+    name does not match the SBIR name under RECIPIENT_V1 were already tier
+    ``low``. ``capital_events/sources/form_d.py`` keeps records on the same
+    single value.
+
+    ``high`` is not a score threshold. ``form_d_scoring.py`` assigns it when
+    the best PI-to-officer name score is at least 0.7 **or** the SBIR ZIP
+    matches a Form D ZIP; ``medium`` on state overlap alone; ``low``
+    otherwise. Filer-name similarity is not used to assign the tier. So a
+    ``high`` record may be ZIP-only, which is weak where many SBIR firms share
+    a ZIP. The event carries ``match_person_score`` and ``match_address_score``
+    so a consumer can tell the two apart.
     """
     events = []
     for r in records:
-        combos = [
-            o for o in r.get("offerings", [])
-            if o.get("is_business_combination")
-        ]
+        confidence = r.get("match_confidence") or {}
+        if confidence.get("tier") != KEEP_MATCH_TIER:
+            continue
+        combos = [o for o in r.get("offerings") or [] if o.get("is_business_combination")]
         if not combos:
             continue
 
@@ -42,17 +73,24 @@ def extract_form_d_signals(records: list[dict]) -> list[dict]:
         for o in combos:
             all_persons.extend(o.get("related_persons", []))
 
-        events.append({
-            "company_name": r["company_name"],
-            "event_date": str(earliest.get("filing_date", ""))[:10],
-            "source": "form_d",
-            "form_d_detail": {
-                "filing_date": str(earliest.get("filing_date", ""))[:10],
-                "total_amount_sold": total_sold if total_sold > 0 else None,
-                "combo_count": len(combos),
-                "related_persons": all_persons,
-            },
-        })
+        events.append(
+            {
+                "company_name": r["company_name"],
+                "event_date": str(earliest.get("filing_date", ""))[:10],
+                "source": "form_d",
+                "form_d_detail": {
+                    "filing_date": str(earliest.get("filing_date", ""))[:10],
+                    "total_amount_sold": total_sold if total_sold > 0 else None,
+                    "combo_count": len(combos),
+                    "related_persons": all_persons,
+                    # Which signal earned the high tier. Recording the tier itself
+                    # would be useless here — every kept record is "high". These
+                    # two separate a ZIP-only match from a person-confirmed one.
+                    "match_person_score": confidence.get("person_score"),
+                    "match_address_score": confidence.get("address_score"),
+                },
+            }
+        )
 
     return events
 
@@ -81,17 +119,19 @@ def extract_efts_signals(records: list[dict]) -> list[dict]:
         tier_order = {"high": 0, "medium": 1, "low": 2}
         best_tier = min(ma_hits.values(), key=lambda t: tier_order[t])
 
-        events.append({
-            "company_name": r["company_name"],
-            "event_date": r.get("latest_mention_date", ""),
-            "source": "efts",
-            "efts_detail": {
-                "mention_filers": r.get("mention_filers", []),
-                "mention_types": sorted(ma_hits.keys()),
-                "latest_mention_date": r.get("latest_mention_date", ""),
-                "efts_tier": best_tier,
-            },
-        })
+        events.append(
+            {
+                "company_name": r["company_name"],
+                "event_date": r.get("latest_mention_date", ""),
+                "source": "efts",
+                "efts_detail": {
+                    "mention_filers": r.get("mention_filers", []),
+                    "mention_types": sorted(ma_hits.keys()),
+                    "latest_mention_date": r.get("latest_mention_date", ""),
+                    "efts_tier": best_tier,
+                },
+            }
+        )
 
     return events
 
@@ -128,9 +168,15 @@ def merge_events(
         efts_date = e["event_date"]
         if name in merged:
             existing = merged[name]
-            existing_date = existing["event_date"]
-            # A valid date beats an empty one; when both valid, take the earlier.
-            if efts_date and (not existing_date or efts_date < existing_date):
+            # The EFTS date wins whenever there is one, even if it is later.
+            # The competing date comes from a Form D business-combination
+            # filing, which is acquirer-side: it dates the issuer raising
+            # capital to buy something, not the SBIR firm being acquired.
+            # Taking the earlier of the two put an acquirer-side date on the
+            # exit for 30 of 36 overlapping companies - nLight Photonics was
+            # dated 2013 from a Form D while its target-side evidence is 2026.
+            # The Form D date is still available in form_d_detail.
+            if efts_date:
                 existing["event_date"] = efts_date
             existing["efts_detail"] = e["efts_detail"]
         else:
@@ -144,18 +190,60 @@ def merge_events(
     return list(merged.values())
 
 
-def assign_confidence(event: dict) -> str:
-    """Assign confidence tier based on which signals fired."""
-    has_form_d = event.get("form_d_detail") is not None
-    efts = event.get("efts_detail")
-    has_efts_high = (
-        efts is not None and "subsidiary" in efts.get("mention_types", [])
-    )
-    has_acq_text = efts is not None and (
-        "acquisition" in efts.get("mention_types", [])
-    )
+EFTS_SIGNAL_KEYS = (
+    "efts_subsidiary",
+    "efts_ma_definitive",
+    "efts_acquisition_text",
+    "efts_ma_proxy",
+    "efts_ownership_active",
+)
 
-    if has_form_d or has_efts_high:
+
+def is_acquirer_side_only(signals: dict[str, bool]) -> bool:
+    """True when the only evidence is a Form D business-combination flag.
+
+    Form D Item 10 marks a Rule 145 transaction, a deemed offer and sale of
+    securities *by the issuer*, so the filer is the acquirer. With no EFTS
+    mention alongside it there is no target-side evidence at all, and the row
+    is evidence that the SBIR firm *bought* something.
+
+    Such rows do not belong in the exit artifact. Demoting them to low was not
+    enough: agency_private_capital/asset.py, phase2_outcomes.py, and
+    run_agency_private_capital_phase1.py all treat row presence as an exit and
+    never read confidence, so a demoted row still counted. They are written to
+    a sibling file instead, which keeps the evidence without letting an exit
+    consumer mistake it.
+    """
+    if not signals.get("form_d_business_combination"):
+        return False
+    return not any(signals.get(key) for key in EFTS_SIGNAL_KEYS)
+
+
+def assign_confidence(event: dict) -> str:
+    """Grade how well the evidence supports the SBIR firm being *acquired*.
+
+    A Form D business-combination flag does not contribute. Form D Item 10
+    marks a Rule 145 transaction, a deemed offer and sale of securities *by the
+    issuer*, so the filer is the acquirer; the flag is evidence the firm
+    bought something. It remains in ``signals.form_d_business_combination``,
+    and a row carrying only that flag is written to the non-exit file
+    rather than the exit artifact.
+
+    The flag previously returned ``high`` on its own, which put a
+    self-reported acquirer-side boolean above EFTS full text that names a
+    filer and has passed directional review. 407 events carried it with no
+    other signal.
+
+    The flag is still recorded in ``signals.form_d_business_combination`` --
+    it is real evidence of a combination, in the other direction, and which
+    SBIR firms are doing the acquiring is a question worth keeping. It just
+    does not grade an exit.
+    """
+    efts = event.get("efts_detail")
+    has_efts_high = efts is not None and "subsidiary" in efts.get("mention_types", [])
+    has_acq_text = efts is not None and ("acquisition" in efts.get("mention_types", []))
+
+    if has_efts_high:
         return "high"
     elif has_acq_text:
         return "medium"
@@ -238,6 +326,11 @@ def main():
     parser.add_argument("--efts", default="data/sec_edgar_scan.jsonl")
     parser.add_argument("--awards", default="/tmp/sbir_awards_full.csv")
     parser.add_argument("--output", default="data/sbir_ma_events.jsonl")
+    parser.add_argument(
+        "--non-exit-output",
+        default="data/sbir_ma_non_exit.jsonl",
+        help="Detected rows that are not evidence the SBIR firm was acquired.",
+    )
     args = parser.parse_args()
 
     # Layer 1: Form D
@@ -246,8 +339,14 @@ def main():
     with open(args.form_d) as f:
         for line in f:
             form_d_records.append(json.loads(line))
+    combo_records = sum(1 for r in form_d_records if has_business_combination(r))
     form_d_events = extract_form_d_signals(form_d_records)
-    print(f"  Form D business combinations: {len(form_d_events)} companies")
+    dropped = combo_records - len(form_d_events)
+    print(
+        f"  Form D business combinations: {len(form_d_events)} companies kept, "
+        f"{dropped} dropped on match tier != {KEEP_MATCH_TIER} "
+        f"(of {combo_records} combination records)"
+    )
 
     # Layer 2: EFTS
     print("Loading EFTS scan data...")
@@ -270,8 +369,12 @@ def main():
     output_path = Path(args.output)
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
+    non_exit_path = Path(args.non_exit_output)
+    non_exit_path.parent.mkdir(parents=True, exist_ok=True)
+
     tiers = {"high": 0, "medium": 0, "low": 0}
-    with open(output_path, "w") as out:
+    non_exit_n = 0
+    with open(output_path, "w") as out, open(non_exit_path, "w") as nonexit:
         for event in merged:
             signals = build_signals_dict(event)
             confidence = assign_confidence(event)
@@ -288,17 +391,24 @@ def main():
                 "efts_detail": event.get("efts_detail"),
                 "sbir_context": sbir_context.get(event["company_name"].strip().upper()),
             }
+            if is_acquirer_side_only(signals):
+                record["non_exit_reason"] = "acquirer_side"
+                nonexit.write(json.dumps(record, default=str) + "\n")
+                non_exit_n += 1
+                continue
             out.write(json.dumps(record, default=str) + "\n")
             tiers[confidence] += 1
 
     total = sum(tiers.values())
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print(f"M&A EXIT DETECTION COMPLETE — {total:,} events")
-    print(f"{'='*60}")
+    print(f"{'=' * 60}")
     print(f"  High confidence:   {tiers['high']:,}")
     print(f"  Medium confidence: {tiers['medium']:,}")
     print(f"  Low confidence:    {tiers['low']:,}")
     print(f"  Output: {output_path}")
+    print(f"\n  Not an exit (excluded from the exit artifact): {non_exit_n:,}")
+    print(f"  Output: {non_exit_path}")
 
 
 if __name__ == "__main__":
