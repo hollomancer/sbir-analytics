@@ -24,11 +24,9 @@ The status vocabulary is intentionally small:
   ```
 
   Write it before capture. Its purpose is to make a study state, in advance,
-  whether it could detect the effect it is looking for.
-  The M&A discovery recall study, landing with PR #705, failed three times
-  against a recall floor of 10 that was never normalised to a shrinking
-  eligible pool; at the observed detection rate that floor passes about 30%
-  of the time even when the method works as measured.
+  whether it could distinguish success from failure. For a census or
+  enumeration, describe expected coverage and reconciliation criteria instead
+  of inventing an effect size.
 - `citable`: approved for the claims listed in its manifest;
 - `retired`: retained for provenance but superseded or no longer supported.
 

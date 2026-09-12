@@ -71,15 +71,10 @@ class MaterializationGate(BaseModel):
 class ValidationDesign(BaseModel):
     """What the study must show, written before the data is seen.
 
-    The evidence-tier contract checks that a number is pinned, not that the
-    study could have detected the effect. ``studies/ma-discovery-recall``
-    failed three times against a recall floor of 10 that was stated as a bare
-    count and never normalised to a shrinking eligible pool; at the observed
-    rate that floor passes about 30% of the time even when the method performs
-    exactly as measured.
-
-    Required only when a manifest targets ``validated`` or ``citable``. A
-    census or an enumeration has no pass/fail threshold and does not need one.
+    The evidence-tier contract checks that a result is pinned. This block also
+    records whether the study could distinguish success from failure for its
+    addressable population. For a census or enumeration, the fields describe
+    expected coverage and reconciliation criteria rather than an effect size.
     """
 
     model_config = ConfigDict(extra="forbid")
@@ -121,6 +116,15 @@ class StudyManifest(BaseModel):
     permitted_claims: list[str] = Field(min_length=1)
     limitations: list[str] = Field(min_length=1)
     validation_design: ValidationDesign | None = None
+
+    @model_validator(mode="after")
+    def require_validation_design_after_reproducible(self) -> "StudyManifest":
+        if self.evidence_status in {EvidenceStatus.VALIDATED, EvidenceStatus.CITABLE}:
+            if self.validation_design is None:
+                raise ValueError(
+                    f"evidence_status '{self.evidence_status}' requires a validation_design block"
+                )
+        return self
 
 
 def load_study_manifest(path: Path) -> StudyManifest:

@@ -200,19 +200,18 @@ positive from either reads as evidence rather than as a crash:
   `ucc/matcher.classify_match`.
 
 For every rule or branch that can return a positive result, write at least one
-input where that rule must **not** fire. `tests/unit/scripts/test_refine_ma_direction.py`,
-landing with PR #705, is the worked example: its `ACQUIRER_SIDE_OR_NOISE` table lists phrasings where
+input where that rule must **not** fire. The adversarial cases in
+`tests/unit/scripts/archive/test_refine_ma_medium_tier.py` cover phrasings where
 the subject company is the buyer, the seller, or merely mentioned.
 
 This is not a general testing rule. A field normaliser such as
 `_normalize_state` cannot produce a false positive that reads as evidence, and
 does not need it.
 
-Happy-path coverage is not a substitute and can hide the defect:
-`tests/unit/enrichers/test_press_wire.py` holds 25 tests for a matcher with
-0/18 precision (all 18 rows in `data/enriched_sbir_ma_events.jsonl` with
-non-empty `press_wire_signals` were hand-inspected as false positives), because
-every test asserts that matching works and none tries `BAL` against `"global"`.
+Happy-path coverage is not a substitute. A substring matcher can accept `BAL`
+inside `global`, and a role classifier can accept an acquirer as its target,
+while every positive example still passes. Include negative near-collisions and
+role reversals that exercise the same production decision path.
 
 Transition scoring changes must not silently invert HIGH-threshold polarity.
 Every PR runs `tests/unit/scripts/test_phase_iii_precision_backtest.py`:
