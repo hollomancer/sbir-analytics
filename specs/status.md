@@ -32,13 +32,19 @@ bypassing lifecycle review; the status and rationale still require human judgmen
   addressing; do not restore the old broad lint job by default.
 - **`agency-private-capital-comparison` — Active.** The NSF Phase 1 real-data
   gate is materialized for review but remains non-citable and unsigned. Phase 2
-  stays gated on Phase 1 sign-off, a reproducible Form D control-universe
-  producer, and symmetric FPDS/PATLINK/M&A outcome inputs. Also owns Form D
-  input fidelity in its own `form_d_inputs.py` loader (tasks F.1-F.3, from
-  PR #691): the staging-input refusal shipped in v0.12.0, and exact
-  amendment-chain collapse is blocked on locating the SEC file number. Note that
-  v0.12.0 changed `total_form_d_raised` and `offering_count` after the Phase 1
-  artifacts were materialized.
+  now has a maintained, deterministic 2009Q1–2024Q4 SEC DERA Form D staging
+  producer, but task 2.2 remains open: exact-name SBIR exclusion has unknown
+  recall (`complete_sbir_exclusion=false`), DERA has no NAICS and the staging
+  covariates are not ready (`covariates_ready=false`), and the existing matched
+  asset refuses to consume it (see below). Phase 2 stays gated on Phase 1
+  sign-off, a higher-recall authoritative CIK/alias union, a validated
+  SIC-to-NAICS-2 strategy, and symmetric FPDS/patent/M&A outcome inputs. Also
+  owns Form D input fidelity in its own `form_d_inputs.py` loader (tasks
+  F.1-F.3, from PR #691): the staging-input refusal shipped in v0.12.0 and is
+  now reinforced by the staging producer's own refusal above; exact
+  amendment-chain collapse is blocked on locating the SEC file number. Note
+  that v0.12.0 changed `total_form_d_raised` and `offering_count` after the
+  Phase 1 artifacts were materialized.
 - **`bea-nipa-tax-rates` — Active.** The NIPA provider exists; the remaining
   work is the on-disk cache and removal of hardcoded effective-rate consumers.
 - **`company-categorization` — Maintenance.** About 80% complete. Evaluate the
@@ -163,6 +169,12 @@ bypassing lifecycle review; the status and rationale still require human judgmen
   completed M&A detection. Start only when FY match-rate reporting is requested.
 - **`state-local-tax-rates` — Maintenance.** Existing hardcoded 2024 provider
   works. Remaining work is data-file/provenance cleanup for fiscal v2.
+- **`supplier-share-census` — Active.** Exploratory, non-citable F2 census of
+  observed federal persistence versus observed venture signals. The frozen
+  sensitivity grid, deterministic producer, and post-result Revision 4 typed-noncoverage bounds
+  are authorized; point headlines remain suppressed on incomplete coverage, and citation remains
+  gated on complete Form D/EFTS search coverage, a stratified hand review,
+  face-validity anchors, and negative-control review.
 - **`sttr-spinout-linkage` — Active.** Phase 0 design frozen as Revision 1 (exploratory,
   non-citable); implementation (`tasks.md` Phase 1) is unblocked. Proposes a deterministic
   public-data classifier splitting each STTR SBC↔RI relationship into spinout vs.

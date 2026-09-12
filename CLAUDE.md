@@ -13,8 +13,17 @@ an archive candidate even when it still has unchecked tasks.
 
 ## Communication
 
-Write in plain language everywhere: chat replies, commit messages, PR bodies,
-docstrings, notebook narrative, and analysis write-ups.
+Default to the Federal Plain Language Guidelines (plainlanguage.gov) everywhere:
+chat replies, commit messages, PR bodies, docstrings, notebook narrative, and
+analysis write-ups.
+
+Technical documents use the ASD-STE100 Simplified Technical English writing rules
+instead. A document is technical when the reader will execute it or a machine will
+consume it: the server runbook (`docs/deployment/`), study contracts (`studies/`),
+and the contracts in `docs/steering/`. One instruction per sentence; imperative for
+steps; one meaning per word; procedural sentences at 20 words or fewer. The STE
+dictionary is licensed and not in this repo — apply the writing rules, do not claim
+STE compliance.
 
 - Lead with the finding or the change, then the reasoning. Short, concrete sentences.
 - Prefer ordinary words. Keep the terms that carry real precision here (tier names,
@@ -174,6 +183,35 @@ make docs-check                        # Hygiene subset only (also included in l
 
 `make lint-boundaries` must stay aligned with the CI quality job's guard step. If
 Make and CI diverge, CI is authoritative and the Makefile is wrong.
+
+### Adversarial cases for matchers and classifiers
+
+Two kinds of function need tests that try to break them, because a false
+positive from either reads as evidence rather than as a crash:
+
+- **Role assignment from free text** — decides who did what to whom.
+  `classify_direction`, `ucc/matcher.is_debtor_side_match`,
+  `sec_edgar._classify_mention`.
+- **Cross-population entity matching** — decides whether two names are the same
+  firm. `identity/company_names` (`company_name_similarity`,
+  `normalize_company_name`), `press_wire._match_company`,
+  `form_d_scoring.compute_form_d_confidence`,
+  `company_fuzzy_matcher` (`build_block_key`, `enrich_awards_with_companies`),
+  `ucc/matcher.classify_match`.
+
+For every rule or branch that can return a positive result, write at least one
+input where that rule must **not** fire. The adversarial cases in
+`tests/unit/scripts/archive/test_refine_ma_medium_tier.py` cover phrasings where
+the subject company is the buyer, the seller, or merely mentioned.
+
+This is not a general testing rule. A field normaliser such as
+`_normalize_state` cannot produce a false positive that reads as evidence, and
+does not need it.
+
+Happy-path coverage is not a substitute. A substring matcher can accept `BAL`
+inside `global`, and a role classifier can accept an acquirer as its target,
+while every positive example still passes. Include negative near-collisions and
+role reversals that exercise the same production decision path.
 
 Transition scoring changes must not silently invert HIGH-threshold polarity.
 Every PR runs `tests/unit/scripts/test_phase_iii_precision_backtest.py`:

@@ -50,7 +50,7 @@ streaming = ["remotezip>=0.12.0,<1.0.0"]
 phonetic = ["jellyfish>=1.0.0,<2.0.0"]
 # Process memory monitoring (falls back to timing-only if absent)
 monitoring = ["psutil>=5.9.0,<8.0.0"]
-viz = ["plotly>=5.18.0,<7.0.0"]  # Quality dashboards and HTML reports
+viz = ["plotly>=5.18.0,<8.0.0"]  # Quality dashboards and HTML reports
 dev = [
     "pytest>=9.0.3,<10.0.0",
     "pytest-asyncio>=0.23.0,<2.0.0",

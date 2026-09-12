@@ -1,7 +1,8 @@
 """Press wire RSS/Atom feed client for SBIR awardee news monitoring.
 
-Polls RSS/Atom feeds from PR Newswire, BusinessWire, and GlobeNewsWire
-for press releases mentioning known SBIR awardee companies. Designed
+Polls RSS/Atom feeds from PR Newswire and GlobeNewsWire for press
+releases mentioning known SBIR awardee companies. BusinessWire was
+dropped on 2026-09-09; see the note on ``FEEDS`` below. Designed
 as a leading-indicator source for commercialization events (contract
 wins, acquisitions, product launches, partnerships) that appear in
 press releases weeks/months before they surface in USAspending or FPDS.
@@ -36,8 +37,11 @@ Usage (sync)::
 from __future__ import annotations
 
 import hashlib
+import re
+import unicodedata
 import xml.etree.ElementTree as ET
 from dataclasses import dataclass, field
+from enum import StrEnum
 
 import httpx
 from loguru import logger
@@ -45,11 +49,22 @@ from loguru import logger
 from sbir_etl.enrichers.base_client import BaseAsyncAPIClient
 from sbir_etl.enrichers.rate_limiting import RateLimiter
 from sbir_etl.exceptions import APIError
+from sbir_etl.identity import CompanyNameProfile, normalize_company_name
+
+DEFAULT_HEADERS: dict[str, str] = {
+    # Without a descriptive agent PRNewswire 301s and GlobeNewsWire times out,
+    # so two of three feeds returned nothing and poll still reported success.
+    "User-Agent": "sbir-analytics research (https://github.com/hollomancer/sbir-analytics)",
+    "Accept": "application/rss+xml, application/atom+xml, application/xml;q=0.9, */*;q=0.8",
+}
 
 # Feed URLs — public RSS/Atom endpoints
 FEEDS: dict[str, str] = {
     "PRNewswire": "https://www.prnewswire.com/rss/news-releases-list.rss",
-    "BusinessWire": "https://feed.businesswire.com/rss/home/?rss=G1QFDERJXkJeEFpRWA==",
+    # BusinessWire removed 2026-09-09. Its "?rss=G1QFDERJXkJeEFpRWA==" token
+    # returns a valid RSS envelope whose description reads "The channel you
+    # requested is unavailable due to an error during request processing."
+    # A replacement feed URL is needed before it can be restored.
     "GlobeNewsWire": "https://www.globenewswire.com/RSSFeed/subjectcode/01-Business%20Operations/feedTitle/GlobeNewswire%20-%20Business%20Operations",
 }
 
@@ -61,6 +76,60 @@ NS = {
 }
 
 DEFAULT_RATE_LIMIT_PER_MINUTE = 30
+
+# Below this length, even a bounded literal match is weak evidence: a normalized
+# watchlist name of 1-3 characters (e.g. "bal", "app", "dri") is likely to
+# collide with an unrelated short word used as a standalone token somewhere in
+# a press release. Names shorter than this floor are held for human review
+# rather than matched with lower confidence, since there is no curated
+# allowlist of legitimate short company names (e.g. ticker-style names like
+# "IBM") to exempt from the floor.
+_MIN_NORMALIZED_NAME_LENGTH = 4
+_WATCHLIST_PROFILE = CompanyNameProfile.PRESS_WIRE_WATCHLIST_V1
+
+# This is a deliberately narrow, human-curated list of observed ordinary-word
+# collisions. It is not a dictionary and does not claim to identify every
+# ambiguous company name. Changing it changes automatic matching output and
+# therefore requires a new watchlist/profile version.
+_CURATED_COMMON_NAMES_V1 = frozenset({"connect"})
+
+
+class WatchlistReviewReason(StrEnum):
+    """Reasons an identity is held outside automatic press-wire matching."""
+
+    EMPTY_NAME = "empty-name"
+    SHORT_NAME = "short-name"
+    CURATED_COMMON_NAME = "curated-common-name"
+
+
+@dataclass(frozen=True)
+class WatchlistReviewItem:
+    """A company identity that requires human review instead of auto-matching."""
+
+    company_name: str
+    normalized_name: str
+    reason: WatchlistReviewReason
+
+
+@dataclass(frozen=True)
+class WatchlistCoverage:
+    """Structured coverage report for one configured watchlist.
+
+    ``review_required`` identities need release-level human adjudication; the
+    automatic matcher does not treat a watchlist-level approval as sufficient.
+    """
+
+    profile: CompanyNameProfile
+    requested_count: int
+    automatic_match_count: int
+    review_required: tuple[WatchlistReviewItem, ...] = ()
+
+    @property
+    def automatic_coverage(self) -> float:
+        """Share of requested identities eligible for automatic matching."""
+        if not self.requested_count:
+            return 0.0
+        return self.automatic_match_count / self.requested_count
 
 
 @dataclass
@@ -74,6 +143,7 @@ class PressRelease:
     source: str = ""  # Which wire service
     matched_company: str = ""  # Which watchlist company matched
     content_hash: str = ""  # For dedup across feeds
+    matched_in: str = ""  # Where the match occurred: "title", "summary", or "title+summary"
 
 
 @dataclass
@@ -90,30 +160,20 @@ def _content_hash(title: str, link: str) -> str:
     return hashlib.sha256(f"{title}|{link}".encode()).hexdigest()[:16]
 
 
-def _normalize(name: str) -> str:
-    """Normalize company name for matching.
+def _normalize_release_text(text: str) -> str:
+    """Normalize feed prose without applying company-identity rules."""
+    normalized = unicodedata.normalize("NFKD", text.strip().lower())
+    normalized = "".join(ch for ch in normalized if not unicodedata.combining(ch))
+    return " ".join(normalized.split())
 
-    Strips common suffixes and lowercases for substring matching.
+
+def _boundary_pattern(normalized_name: str) -> re.Pattern[str]:
+    """Compile a punctuation-safe literal boundary pattern for a company name.
+
+    Word-character lookarounds prevent substring matches while allowing a
+    literal name to begin or end in punctuation, as ``SKY+`` and ``.NET`` do.
     """
-    lower = name.lower().strip()
-    for suffix in (
-        " inc",
-        " inc.",
-        " llc",
-        " corp",
-        " corp.",
-        " corporation",
-        " company",
-        " co.",
-        " ltd",
-        " ltd.",
-        " lp",
-        " l.p.",
-        " plc",
-    ):
-        if lower.endswith(suffix):
-            lower = lower[: -len(suffix)].rstrip(" ,")
-    return lower
+    return re.compile(rf"(?<!\w){re.escape(normalized_name)}(?!\w)")
 
 
 class PressWireClient(BaseAsyncAPIClient):
@@ -153,27 +213,117 @@ class PressWireClient(BaseAsyncAPIClient):
         # base_url unused — feed URLs are absolute and passed as endpoint
         self.base_url = ""
         self.rate_limit_per_minute = rate_limit_per_minute
-        self._client = http_client or httpx.AsyncClient(timeout=timeout)
+        self._client = http_client or httpx.AsyncClient(timeout=timeout, follow_redirects=True)
         self._feeds = feeds or dict(FEEDS)
+        self._requested_company_names: list[str] = []
         self._watchlist: dict[str, str] = {}  # normalized -> original
+        self._patterns: dict[str, re.Pattern[str]] = {}  # normalized -> compiled boundary pattern
+        self._watchlist_report = WatchlistCoverage(
+            profile=_WATCHLIST_PROFILE,
+            requested_count=0,
+            automatic_match_count=0,
+        )
         self._seen_hashes: set[str] = set()
+
+    def _build_headers(self) -> dict[str, str]:
+        """Ask for feed XML, not JSON, and identify the client.
+
+        ``BaseAsyncAPIClient._build_headers`` requests ``application/json`` and
+        sends a bare ``SBIR-Analytics/<version>`` agent. Both are wrong for a
+        news feed: PRNewswire answered with a 301 and GlobeNewsWire timed out,
+        so two of three feeds returned nothing while ``poll`` reported success.
+        These headers are applied per request, which is the only layer that
+        takes effect -- ``_request_raw`` rebuilds them and would discard
+        anything set on the ``httpx.AsyncClient`` constructor.
+        """
+        return dict(DEFAULT_HEADERS)
 
     # ------------------------------------------------------------------
     # Watchlist management
     # ------------------------------------------------------------------
 
-    def set_watchlist(self, company_names: list[str]) -> None:
+    @property
+    def watchlist_report(self) -> WatchlistCoverage:
+        """Return coverage and human-review exclusions for the active watchlist."""
+        return self._watchlist_report
+
+    @staticmethod
+    def _review_reason(normalized_name: str) -> WatchlistReviewReason | None:
+        if not normalized_name:
+            return WatchlistReviewReason.EMPTY_NAME
+        if len(normalized_name) < _MIN_NORMALIZED_NAME_LENGTH:
+            return WatchlistReviewReason.SHORT_NAME
+        if normalized_name in _CURATED_COMMON_NAMES_V1:
+            return WatchlistReviewReason.CURATED_COMMON_NAME
+        return None
+
+    def _configure_watchlist(self) -> WatchlistCoverage:
+        self._watchlist = {}
+        self._patterns = {}
+        review_required: list[WatchlistReviewItem] = []
+        automatic_match_count = 0
+
+        for name in self._requested_company_names:
+            normalized = normalize_company_name(name, profile=_WATCHLIST_PROFILE)
+            reason = self._review_reason(normalized)
+            if reason is not None:
+                review_required.append(
+                    WatchlistReviewItem(
+                        company_name=name,
+                        normalized_name=normalized,
+                        reason=reason,
+                    )
+                )
+                continue
+            automatic_match_count += 1
+            self._watchlist[normalized] = name
+            self._patterns[normalized] = _boundary_pattern(normalized)
+
+        self._watchlist_report = WatchlistCoverage(
+            profile=_WATCHLIST_PROFILE,
+            requested_count=len(self._requested_company_names),
+            automatic_match_count=automatic_match_count,
+            review_required=tuple(review_required),
+        )
+        if review_required:
+            reason_counts = ", ".join(
+                f"{reason.value}={sum(item.reason is reason for item in review_required)}"
+                for reason in WatchlistReviewReason
+                if any(item.reason is reason for item in review_required)
+            )
+            logger.warning(
+                "Press wire watchlist: {}/{} identities require human review and are excluded "
+                "from automatic matching ({})",
+                len(review_required),
+                len(self._requested_company_names),
+                reason_counts,
+            )
+        logger.info(
+            "Press wire watchlist set: {}/{} identities eligible as {} unique patterns",
+            automatic_match_count,
+            len(self._requested_company_names),
+            len(self._watchlist),
+        )
+        return self._watchlist_report
+
+    def set_watchlist(self, company_names: list[str]) -> WatchlistCoverage:
         """Set the list of company names to watch for in press releases.
 
-        Names are normalized (lowercased, common suffixes stripped) for
-        substring matching against feed items.
+        Identities use the explicit press-wire profile. Short, blank, and
+        curated common-word identities are returned in a structured report for
+        human review and are not automatically matched.
         """
-        self._watchlist = {_normalize(name): name for name in company_names}
-        logger.info(f"Press wire watchlist set: {len(self._watchlist)} companies")
+        self._requested_company_names = list(company_names)
+        return self._configure_watchlist()
 
-    def add_to_watchlist(self, company_name: str) -> None:
-        """Add a single company to the watchlist."""
-        self._watchlist[_normalize(company_name)] = company_name
+    def add_to_watchlist(self, company_name: str) -> WatchlistCoverage:
+        """Add a company and return the updated automatic-coverage report.
+
+        A risky identity is recorded for human review but does not enter the
+        automatic matcher.
+        """
+        self._requested_company_names.append(company_name)
+        return self._configure_watchlist()
 
     # ------------------------------------------------------------------
     # Feed fetching
@@ -274,15 +424,38 @@ class PressWireClient(BaseAsyncAPIClient):
     # Matching
     # ------------------------------------------------------------------
 
-    def _match_company(self, item: PressRelease) -> str | None:
+    def _match_company(self, item: PressRelease) -> tuple[str, str] | None:
         """Check if a press release mentions a watchlist company.
 
-        Uses normalized substring matching against title and summary.
+        Matches a normalized watchlist name as a bounded literal so it cannot
+        match a substring inside an unrelated longer word. Title and summary
+        are checked separately: a title hit is stronger evidence than a summary-only
+        hit, so the match location is returned alongside the company name
+        rather than collapsed into a single yes/no. This does not change
+        whether a match counts — a summary-only hit still returns a match —
+        it only records where the evidence came from for downstream
+        consumers that want to weight headline mentions higher.
+
+        Returns:
+            ``(original_name, matched_in)`` for the first watchlist hit, or
+            ``None``. ``matched_in`` is one of ``"title"``, ``"summary"``,
+            or ``"title+summary"``.
         """
-        searchable = _normalize(f"{item.title} {item.summary or ''}")
+        title_text = _normalize_release_text(item.title)
+        summary_text = _normalize_release_text(item.summary or "")
         for normalized_name, original_name in self._watchlist.items():
-            if normalized_name in searchable:
-                return original_name
+            pattern = self._patterns[normalized_name]
+            title_hit = bool(pattern.search(title_text))
+            summary_hit = bool(pattern.search(summary_text))
+            if not (title_hit or summary_hit):
+                continue
+            if title_hit and summary_hit:
+                matched_in = "title+summary"
+            elif title_hit:
+                matched_in = "title"
+            else:
+                matched_in = "summary"
+            return original_name, matched_in
         return None
 
     # ------------------------------------------------------------------
@@ -300,11 +473,13 @@ class PressWireClient(BaseAsyncAPIClient):
             return []
 
         all_matches: list[PressRelease] = []
+        failed: list[str] = []
 
         for source, url in self._feeds.items():
             xml_text = await self._fetch_feed(source, url)
             if xml_text is None:
                 logger.warning(f"Failed to fetch {source} feed")
+                failed.append(source)
                 continue
 
             items = self._parse_feed(xml_text, source)
@@ -317,11 +492,25 @@ class PressWireClient(BaseAsyncAPIClient):
 
                 matched = self._match_company(item)
                 if matched:
-                    item.matched_company = matched
+                    item.matched_company, item.matched_in = matched
                     self._seen_hashes.add(item.content_hash)
                     all_matches.append(item)
 
-        logger.info(f"Press wire poll complete: {len(all_matches)} matches")
+        # A total fetch failure produces the same empty list as "nothing in the
+        # news matched", so it has to be raised rather than logged. Every feed
+        # silently 301'd or timed out for want of a User-Agent and this line
+        # still reported success.
+        if failed and len(failed) == len(self._feeds):
+            raise APIError(
+                f"all {len(failed)} press wire feeds failed: {', '.join(failed)}",
+                component="api.press_wire",
+            )
+        if failed:
+            logger.warning(f"{len(failed)} of {len(self._feeds)} feeds failed: {failed}")
+        logger.info(
+            f"Press wire poll complete: {len(all_matches)} matches "
+            f"from {len(self._feeds) - len(failed)} of {len(self._feeds)} feeds"
+        )
         return all_matches
 
     async def poll_all_unfiltered(self) -> list[PressRelease]:

@@ -150,13 +150,15 @@ class TestSearchFilingMentions:
         """Verify the company name is quoted for exact phrase matching."""
         client._make_request = AsyncMock(return_value={"hits": {"hits": []}})
 
-        await client.search_filing_mentions("Acme Corp")
+        await client.search_filing_mentions("Acme Corp", limit=37)
         call_args = client._make_request.call_args
         # _make_request(method, endpoint, params) — params is positional arg 3
         params = (
             call_args.args[2] if len(call_args.args) > 2 else call_args.kwargs.get("params", {})
         )
         assert params["q"] == '"Acme Corp"'
+        assert params["from"] == 0
+        assert params["size"] == 37
 
     @pytest.mark.asyncio
     async def test_returns_empty_on_error(self, client):
@@ -167,6 +169,17 @@ class TestSearchFilingMentions:
         )
         results = await client.search_filing_mentions("Test")
         assert results == []
+
+    @pytest.mark.asyncio
+    async def test_can_raise_search_error_for_coverage_sensitive_callers(self, client):
+        from sbir_etl.exceptions import APIError
+
+        client._make_request = AsyncMock(
+            side_effect=APIError("Error", api_name="sec_edgar", http_status=500)
+        )
+
+        with pytest.raises(APIError, match="Error"):
+            await client.search_filing_mentions("Test", raise_on_error=True)
 
 
 class TestSearchFormDFilings:
@@ -280,6 +293,59 @@ class TestGetRecentFilings:
 
         filings = await client.get_recent_filings("99999")
         assert filings == []
+
+
+class TestFetchFilingDocument:
+    @pytest.mark.asyncio
+    async def test_non_200_preserves_best_effort_default(self, client, mock_http_client):
+        mock_response = MagicMock()
+        mock_response.status_code = 404
+        mock_http_client.get = AsyncMock(return_value=mock_response)
+
+        result = await client.fetch_filing_document("12345", "0001-24-001", "doc.htm")
+
+        assert result is None
+
+    @pytest.mark.asyncio
+    async def test_can_raise_non_200_for_coverage_sensitive_callers(self, client, mock_http_client):
+        from sbir_etl.exceptions import APIError
+
+        mock_response = MagicMock()
+        mock_response.status_code = 404
+        mock_http_client.get = AsyncMock(return_value=mock_response)
+
+        with pytest.raises(APIError, match="filing document request failed"):
+            await client.fetch_filing_document(
+                "12345", "0001-24-001", "doc.htm", raise_on_error=True
+            )
+
+    @pytest.mark.asyncio
+    async def test_request_error_preserves_best_effort_default(self, client, mock_http_client):
+        client.api_config["retry_attempts"] = 1
+        request = httpx.Request("GET", "https://www.sec.gov/example")
+        mock_http_client.get = AsyncMock(side_effect=httpx.ConnectError("offline", request=request))
+
+        result = await client.fetch_filing_document("12345", "0001-24-001", "doc.htm")
+
+        assert result is None
+
+    @pytest.mark.asyncio
+    async def test_can_raise_request_error_for_coverage_sensitive_callers(
+        self, client, mock_http_client
+    ):
+        from sbir_etl.exceptions import APIError
+
+        client.api_config["retry_attempts"] = 1
+        request = httpx.Request("GET", "https://www.sec.gov/example")
+        failure = httpx.ConnectError("offline", request=request)
+        mock_http_client.get = AsyncMock(side_effect=failure)
+
+        with pytest.raises(APIError, match="filing document request failed") as raised:
+            await client.fetch_filing_document(
+                "12345", "0001-24-001", "doc.htm", raise_on_error=True
+            )
+
+        assert raised.value.cause is failure
 
 
 class TestFetchFormDXml:

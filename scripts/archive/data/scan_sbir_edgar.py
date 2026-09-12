@@ -11,6 +11,10 @@ Usage:
     # Resume from checkpoint
     python scripts/archive/data/scan_sbir_edgar.py --awards /tmp/sbir_awards_full.csv --resume
 
+    # Scan only the inbound M&A channels, paced below the SEC fair-access ceiling
+    python scripts/archive/data/scan_sbir_edgar.py \
+        --awards /tmp/sbir_awards_full.csv --ma-only --requests-per-second 8
+
     # Skip document fetches (faster, counts only)
     python scripts/archive/data/scan_sbir_edgar.py --awards /tmp/sbir_awards_full.csv --no-doc-fetch
 
@@ -20,17 +24,24 @@ Usage:
 
 import argparse
 import asyncio
+import contextvars
 import csv
 import json
+import os
+import re
 import sys
+import tempfile
 import time
 from collections import Counter
+from collections.abc import Callable
 from pathlib import Path
 
-# Force unbuffered stdout
-sys.stdout.reconfigure(line_buffering=True)
+# Force line-buffered progress output when the stream supports reconfiguration.
+reconfigure_stdout = getattr(sys.stdout, "reconfigure", None)
+if reconfigure_stdout is not None:
+    reconfigure_stdout(line_buffering=True)
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 
 from loguru import logger
 
@@ -41,10 +52,61 @@ from sbir_etl.enrichers.sec_edgar.enricher import enrich_company
 # The client's rate limiter (600 req/min) is the real throttle; this just
 # keeps enough requests in-flight to fill the rate budget.
 DEFAULT_CONCURRENCY = 8
+DEFAULT_REQUESTS_PER_SECOND = 8.0
+
+
+class _PacedEdgarAPIClient(EdgarAPIClient):
+    """Apply a per-second ceiling in addition to the client's minute limit."""
+
+    def __init__(
+        self,
+        *args,
+        requests_per_second: float,
+        document_error_callback: Callable[[], None] | None = None,
+        disable_document_fetches: bool = False,
+        **kwargs,
+    ):
+        super().__init__(*args, **kwargs)
+        self._minimum_interval = 1.0 / requests_per_second
+        self._spacing_lock = asyncio.Lock()
+        self._next_request_at = 0.0
+        self._document_error_callback = document_error_callback
+        self.context_incomplete_callback = document_error_callback
+        self._disable_document_fetches = disable_document_fetches
+
+    async def _wait_for_rate_limit(self) -> None:
+        async with self._spacing_lock:
+            await super()._wait_for_rate_limit()
+            loop = asyncio.get_running_loop()
+            now = loop.time()
+            if self._next_request_at > now:
+                await asyncio.sleep(self._next_request_at - now)
+                now = loop.time()
+            self._next_request_at = now + self._minimum_interval
+
+    async def fetch_filing_document(
+        self,
+        cik: str,
+        accession: str,
+        filename: str,
+        *,
+        raise_on_error: bool = False,
+    ) -> str | None:
+        if self._disable_document_fetches:
+            return None
+        text = await super().fetch_filing_document(
+            cik,
+            accession,
+            filename,
+            raise_on_error=raise_on_error,
+        )
+        if text is None and self._document_error_callback is not None:
+            self._document_error_callback()
+        return text
 
 
 class _ServerErrorTracker:
-    """Thread-safe loguru sink that tracks which companies hit HTTP 5xx.
+    """Thread-safe loguru sink that tracks failed mention searches.
 
     In concurrent mode, multiple companies are in-flight at once, so we
     match the company name from the log message instead of using a simple
@@ -53,6 +115,7 @@ class _ServerErrorTracker:
 
     def __init__(self):
         self._affected: set[str] = set()
+        self._document_affected: set[str] = set()
         self._active_companies: set[str] = set()
 
     def register(self, company_name: str) -> None:
@@ -62,15 +125,25 @@ class _ServerErrorTracker:
         self._active_companies.discard(company_name)
 
     def write(self, message):
-        if "HTTP 5" not in message:
+        match = re.search(
+            r"EDGAR filing mention search failed for '(.*?)':",
+            str(message),
+        )
+        if match is None:
             return
-        for name in self._active_companies:
-            if name in message:
-                self._affected.add(name)
-                return
+        name = match.group(1)
+        if name in self._active_companies:
+            self._affected.add(name)
 
     def had_error(self, company_name: str) -> bool:
         return company_name in self._affected
+
+    def mark_document_error(self, company_name: str | None) -> None:
+        if company_name in self._active_companies:
+            self._document_affected.add(company_name)
+
+    def had_document_error(self, company_name: str) -> bool:
+        return company_name in self._document_affected
 
 
 def load_companies(awards_csv: str) -> list[tuple[str, int]]:
@@ -97,21 +170,59 @@ def load_company_cities(awards_csv: str) -> dict[str, str]:
 
 
 _STATE_NAME_TO_CODE = {
-    "ALABAMA": "AL", "ALASKA": "AK", "ARIZONA": "AZ", "ARKANSAS": "AR",
-    "CALIFORNIA": "CA", "COLORADO": "CO", "CONNECTICUT": "CT", "DELAWARE": "DE",
-    "FLORIDA": "FL", "GEORGIA": "GA", "HAWAII": "HI", "IDAHO": "ID",
-    "ILLINOIS": "IL", "INDIANA": "IN", "IOWA": "IA", "KANSAS": "KS",
-    "KENTUCKY": "KY", "LOUISIANA": "LA", "MAINE": "ME", "MARYLAND": "MD",
-    "MASSACHUSETTS": "MA", "MICHIGAN": "MI", "MINNESOTA": "MN",
-    "MISSISSIPPI": "MS", "MISSOURI": "MO", "MONTANA": "MT", "NEBRASKA": "NE",
-    "NEVADA": "NV", "NEW HAMPSHIRE": "NH", "NEW JERSEY": "NJ",
-    "NEW MEXICO": "NM", "NEW YORK": "NY", "NORTH CAROLINA": "NC",
-    "NORTH DAKOTA": "ND", "OHIO": "OH", "OKLAHOMA": "OK", "OREGON": "OR",
-    "PENNSYLVANIA": "PA", "RHODE ISLAND": "RI", "SOUTH CAROLINA": "SC",
-    "SOUTH DAKOTA": "SD", "TENNESSEE": "TN", "TEXAS": "TX", "UTAH": "UT",
-    "VERMONT": "VT", "VIRGINIA": "VA", "WASHINGTON": "WA",
-    "WEST VIRGINIA": "WV", "WISCONSIN": "WI", "WYOMING": "WY",
-    "DISTRICT OF COLUMBIA": "DC", "PUERTO RICO": "PR", "GUAM": "GU",
+    "ALABAMA": "AL",
+    "ALASKA": "AK",
+    "ARIZONA": "AZ",
+    "ARKANSAS": "AR",
+    "CALIFORNIA": "CA",
+    "COLORADO": "CO",
+    "CONNECTICUT": "CT",
+    "DELAWARE": "DE",
+    "FLORIDA": "FL",
+    "GEORGIA": "GA",
+    "HAWAII": "HI",
+    "IDAHO": "ID",
+    "ILLINOIS": "IL",
+    "INDIANA": "IN",
+    "IOWA": "IA",
+    "KANSAS": "KS",
+    "KENTUCKY": "KY",
+    "LOUISIANA": "LA",
+    "MAINE": "ME",
+    "MARYLAND": "MD",
+    "MASSACHUSETTS": "MA",
+    "MICHIGAN": "MI",
+    "MINNESOTA": "MN",
+    "MISSISSIPPI": "MS",
+    "MISSOURI": "MO",
+    "MONTANA": "MT",
+    "NEBRASKA": "NE",
+    "NEVADA": "NV",
+    "NEW HAMPSHIRE": "NH",
+    "NEW JERSEY": "NJ",
+    "NEW MEXICO": "NM",
+    "NEW YORK": "NY",
+    "NORTH CAROLINA": "NC",
+    "NORTH DAKOTA": "ND",
+    "OHIO": "OH",
+    "OKLAHOMA": "OK",
+    "OREGON": "OR",
+    "PENNSYLVANIA": "PA",
+    "RHODE ISLAND": "RI",
+    "SOUTH CAROLINA": "SC",
+    "SOUTH DAKOTA": "SD",
+    "TENNESSEE": "TN",
+    "TEXAS": "TX",
+    "UTAH": "UT",
+    "VERMONT": "VT",
+    "VIRGINIA": "VA",
+    "WASHINGTON": "WA",
+    "WEST VIRGINIA": "WV",
+    "WISCONSIN": "WI",
+    "WYOMING": "WY",
+    "DISTRICT OF COLUMBIA": "DC",
+    "PUERTO RICO": "PR",
+    "GUAM": "GU",
     "VIRGIN ISLANDS": "VI",
 }
 
@@ -136,27 +247,123 @@ def load_company_states(awards_csv: str) -> dict[str, str]:
     return states
 
 
-def load_checkpoint(path: Path, *, rescan_errors: bool = False) -> set[str]:
-    """Load already-scanned company names from checkpoint file.
+def _checkpoint_needs_rescan(record: dict[str, object]) -> bool:
+    """Return whether a checkpoint row is incomplete and should be replaced."""
+    mention_types = record.get("mention_types")
+    legacy_context_incomplete = (
+        record.get("context_classification_complete") is None
+        and isinstance(mention_types, list)
+        and "filing_mention" in mention_types
+    )
+    return bool(
+        record.get("had_server_errors")
+        or record.get("document_fetch_errors")
+        or record.get("context_classification_complete") is False
+        or legacy_context_incomplete
+        or record.get("error")
+    )
 
-    When *rescan_errors* is True, companies whose records have
-    ``had_server_errors`` or ``error`` are excluded from the done set
-    so they get re-scanned.
-    """
-    done: set[str] = set()
+
+def _read_checkpoint_records(path: Path) -> list[dict[str, object]]:
+    """Read valid company records from a JSONL checkpoint."""
+    records: list[dict[str, object]] = []
     if not path.exists():
-        return done
-    with open(path) as f:
+        return records
+    with open(path, encoding="utf-8") as f:
         for line in f:
             try:
-                rec = json.loads(line)
-                if rescan_errors and (
-                    rec.get("had_server_errors") or rec.get("error")
-                ):
-                    continue
-                done.add(rec["company_name"])
-            except (json.JSONDecodeError, KeyError):
+                record = json.loads(line)
+            except json.JSONDecodeError:
                 continue
+            if not isinstance(record, dict):
+                continue
+            company_name = record.get("company_name")
+            if not isinstance(company_name, str) or not company_name:
+                continue
+            records.append(record)
+    return records
+
+
+def _compact_checkpoint_records(
+    records: list[dict[str, object]],
+    *,
+    requested_names: set[str],
+    rescan_errors: bool,
+) -> tuple[list[dict[str, object]], set[str]]:
+    """Choose one checkpoint row per company and identify completed requests."""
+    records_by_name: dict[str, dict[str, object]] = {}
+    for record in records:
+        company_name = record["company_name"]
+        if not isinstance(company_name, str):
+            continue
+        current = records_by_name.get(company_name)
+        retryable = _checkpoint_needs_rescan(record)
+        if current is None or _checkpoint_needs_rescan(current) or not retryable:
+            # Prefer the latest complete row. If none is complete, retain the latest attempt.
+            records_by_name[company_name] = record
+
+    retained: list[dict[str, object]] = []
+    done: set[str] = set()
+    for company_name, record in records_by_name.items():
+        if rescan_errors and company_name in requested_names and _checkpoint_needs_rescan(record):
+            continue
+        retained.append(record)
+        if company_name in requested_names:
+            done.add(company_name)
+    return retained, done
+
+
+def _write_checkpoint_atomically(path: Path, records: list[dict[str, object]]) -> None:
+    """Replace a checkpoint with complete JSONL content from a same-directory temp file."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temporary_path: Path | None = None
+    try:
+        with tempfile.NamedTemporaryFile(
+            mode="w",
+            encoding="utf-8",
+            dir=path.parent,
+            prefix=f".{path.name}.",
+            suffix=".tmp",
+            delete=False,
+        ) as out:
+            temporary_path = Path(out.name)
+            for record in records:
+                out.write(json.dumps(record) + "\n")
+            out.flush()
+            os.fsync(out.fileno())
+        os.replace(temporary_path, path)
+    finally:
+        if temporary_path is not None and temporary_path.exists():
+            temporary_path.unlink()
+
+
+def _prepare_checkpoint(
+    path: Path,
+    *,
+    requested_names: set[str],
+    resume: bool,
+    rescan_errors: bool,
+) -> set[str]:
+    """Truncate a fresh checkpoint or compact one before a resumed scan."""
+    records = _read_checkpoint_records(path) if resume or rescan_errors else []
+    retained, done = _compact_checkpoint_records(
+        records,
+        requested_names=requested_names,
+        rescan_errors=rescan_errors,
+    )
+    _write_checkpoint_atomically(path, retained)
+    return done
+
+
+def load_checkpoint(path: Path, *, rescan_errors: bool = False) -> set[str]:
+    """Load already-scanned company names from a checkpoint file."""
+    records = _read_checkpoint_records(path)
+    requested_names = {str(record["company_name"]) for record in records}
+    _, done = _compact_checkpoint_records(
+        records,
+        requested_names=requested_names,
+        rescan_errors=rescan_errors,
+    )
     return done
 
 
@@ -244,16 +451,20 @@ async def run_city_pass(args) -> None:
                     rate = (i + 1) / elapsed
                     eta = (len(remaining) - i - 1) / rate / 60
                     print(
-                        f"  {i+1:,}/{len(remaining):,} ({rate:.1f}/s, ETA {eta:.0f}min) "
+                        f"  {i + 1:,}/{len(remaining):,} ({rate:.1f}/s, ETA {eta:.0f}min) "
                         f"confirmed={confirmed} unconfirmed={unconfirmed} no_city={no_city}"
                     )
 
     elapsed = time.time() - start_time
-    print(f"\n{'='*60}")
-    print(f"CITY QUALIFICATION COMPLETE — {len(remaining):,} companies in {elapsed/60:.1f} min")
-    print(f"{'='*60}")
-    print(f"Confirmed (name+city match):   {confirmed} ({confirmed/max(1,confirmed+unconfirmed)*100:.0f}%)")
-    print(f"Unconfirmed (name only):       {unconfirmed} ({unconfirmed/max(1,confirmed+unconfirmed)*100:.0f}%)")
+    print(f"\n{'=' * 60}")
+    print(f"CITY QUALIFICATION COMPLETE — {len(remaining):,} companies in {elapsed / 60:.1f} min")
+    print(f"{'=' * 60}")
+    print(
+        f"Confirmed (name+city match):   {confirmed} ({confirmed / max(1, confirmed + unconfirmed) * 100:.0f}%)"
+    )
+    print(
+        f"Unconfirmed (name only):       {unconfirmed} ({unconfirmed / max(1, confirmed + unconfirmed) * 100:.0f}%)"
+    )
     print(f"No city data:                  {no_city}")
     print(f"Output: {output_path}")
 
@@ -261,23 +472,49 @@ async def run_city_pass(args) -> None:
 async def main() -> None:
     parser = argparse.ArgumentParser(description="Scan SBIR awardees against SEC EDGAR")
     parser.add_argument("--awards", required=True, help="Path to SBIR awards CSV")
-    parser.add_argument("--output", default="data/sec_edgar_scan.jsonl",
-                        help="Output JSONL checkpoint file")
-    parser.add_argument("--resume", action="store_true",
-                        help="Resume from existing checkpoint")
-    parser.add_argument("--city-pass", action="store_true",
-                        help="Run city qualification pass on existing scan results")
-    parser.add_argument("--no-doc-fetch", action="store_true",
-                        help="Skip document fetches for context classification")
-    parser.add_argument("--limit", type=int, default=0,
-                        help="Scan only first N companies (0=all)")
-    parser.add_argument("--rescan-errors", action="store_true",
-                        help="Re-scan companies that had server errors in previous run")
-    parser.add_argument("--concurrency", type=int, default=DEFAULT_CONCURRENCY,
-                        help=f"Companies to enrich concurrently (default {DEFAULT_CONCURRENCY})")
-    parser.add_argument("--contact-email", default="conrad@hollomon.dev",
-                        help="Email for SEC User-Agent")
+    parser.add_argument(
+        "--output", default="data/sec_edgar_scan.jsonl", help="Output JSONL checkpoint file"
+    )
+    parser.add_argument("--resume", action="store_true", help="Resume from existing checkpoint")
+    parser.add_argument(
+        "--city-pass",
+        action="store_true",
+        help="Run city qualification pass on existing scan results",
+    )
+    parser.add_argument(
+        "--no-doc-fetch",
+        action="store_true",
+        help="Skip document fetches for context classification",
+    )
+    parser.add_argument(
+        "--ma-only",
+        action="store_true",
+        help="Skip CIK/XBRL enrichment; scan only inbound M&A mentions",
+    )
+    parser.add_argument("--limit", type=int, default=0, help="Scan only first N companies (0=all)")
+    parser.add_argument(
+        "--rescan-errors",
+        action="store_true",
+        help="Re-scan companies that had search request errors in previous run",
+    )
+    parser.add_argument(
+        "--concurrency",
+        type=int,
+        default=DEFAULT_CONCURRENCY,
+        help=f"Companies to enrich concurrently (default {DEFAULT_CONCURRENCY})",
+    )
+    parser.add_argument(
+        "--requests-per-second",
+        type=float,
+        default=DEFAULT_REQUESTS_PER_SECOND,
+        help=f"SEC request pacing ceiling (default {DEFAULT_REQUESTS_PER_SECOND:g})",
+    )
+    parser.add_argument(
+        "--contact-email", default="conrad@hollomon.dev", help="Email for SEC User-Agent"
+    )
     args = parser.parse_args()
+    if args.requests_per_second <= 0:
+        parser.error("--requests-per-second must be positive")
 
     # Dispatch city qualification pass
     if args.city_pass:
@@ -294,19 +531,30 @@ async def main() -> None:
     print(f"  {len(companies):,} unique companies, {total_awards:,} awards")
 
     if args.limit:
-        companies = companies[:args.limit]
+        companies = companies[: args.limit]
         print(f"  Limited to first {args.limit:,}")
 
-    # Load checkpoint
-    done: set[str] = set()
+    # Prepare the checkpoint before streaming new records into it. Fresh runs
+    # start empty; resumed runs compact legacy duplicates first.
+    done = _prepare_checkpoint(
+        output_path,
+        requested_names={name for name, _ in companies},
+        resume=args.resume,
+        rescan_errors=args.rescan_errors,
+    )
     if args.resume or args.rescan_errors:
-        done = load_checkpoint(output_path, rescan_errors=args.rescan_errors)
         print(f"  Resuming: {len(done):,} already scanned")
         if args.rescan_errors:
-            print("  (re-scanning companies with server errors)")
+            print("  (re-scanning companies with incomplete or error rows)")
 
     remaining = [(name, count) for name, count in companies if name not in done]
     print(f"  {len(remaining):,} companies to scan\n")
+
+    # Track request and document failures at the company task grain.
+    error_tracker = _ServerErrorTracker()
+    current_company: contextvars.ContextVar[str | None] = contextvars.ContextVar(
+        "efts_current_company", default=None
+    )
 
     # Initialize client
     config = {
@@ -317,21 +565,23 @@ async def main() -> None:
         "timeout_seconds": 30,
         "contact_email": args.contact_email,
     }
-    client = EdgarAPIClient(config=config)
+    client = _PacedEdgarAPIClient(
+        config=config,
+        requests_per_second=args.requests_per_second,
+        document_error_callback=lambda: error_tracker.mark_document_error(current_company.get()),
+        disable_document_fetches=args.no_doc_fetch,
+    )
 
-    # Monkey-patch out document fetches if requested
+    # Document-free scans are diagnostics only and cannot establish M&A absence.
     if args.no_doc_fetch:
-        async def _no_fetch(*a, **kw):
-            return None
-        client.fetch_filing_document = _no_fetch
         print("  Document fetches DISABLED (counts only)\n")
 
-    # Scan — track server errors per company via loguru sink
-    error_tracker = _ServerErrorTracker()
+    # Scan — track failed mention searches per company via loguru sink
     tracker_id = logger.add(error_tracker, level="WARNING", format="{message}")
 
     with_mentions = 0
     server_errors = 0
+    document_errors = 0
     errors = 0
     start_time = time.time()
     processed = len(done)
@@ -339,17 +589,28 @@ async def main() -> None:
     semaphore = asyncio.Semaphore(args.concurrency)
 
     async def _enrich_one(
-        i: int, name: str, award_count: int, out,
+        i: int,
+        name: str,
+        award_count: int,
+        out,
     ) -> None:
-        nonlocal with_mentions, server_errors, errors, processed
+        nonlocal with_mentions, server_errors, document_errors, errors, processed
 
         async with semaphore:
             error_tracker.register(name)
+            context_token = current_company.set(name)
             try:
-                p = await enrich_company(client, name, award_count=award_count)
+                p = await enrich_company(
+                    client,
+                    name,
+                    award_count=award_count,
+                    resolve_cik=not args.ma_only,
+                    fetch_financials=not args.ma_only,
+                )
 
                 has_mention = p.mention_count > 0
                 had_errors = error_tracker.had_error(name)
+                had_document_errors = error_tracker.had_document_error(name)
 
                 rec = {
                     "company_name": name,
@@ -357,17 +618,26 @@ async def main() -> None:
                     "mention_count": p.mention_count,
                     "mention_filers": p.mention_filers[:5],
                     "mention_types": p.mention_types,
-                    "latest_mention_date": str(p.latest_mention_date) if p.latest_mention_date else None,
+                    "latest_mention_date": str(p.latest_mention_date)
+                    if p.latest_mention_date
+                    else None,
                     "mention_noise_score": p.mention_noise_score,
+                    "context_classification_complete": bool(
+                        not args.no_doc_fetch and not had_document_errors
+                    ),
                 }
                 if had_errors:
                     rec["had_server_errors"] = True
+                if had_document_errors:
+                    rec["document_fetch_errors"] = True
 
                 async with write_lock:
                     if has_mention:
                         with_mentions += 1
                     if had_errors:
                         server_errors += 1
+                    if had_document_errors:
+                        document_errors += 1
                     out.write(json.dumps(rec) + "\n")
                     out.flush()
                     processed += 1
@@ -380,13 +650,14 @@ async def main() -> None:
                     out.flush()
                     processed += 1
             finally:
+                current_company.reset(context_token)
                 error_tracker.unregister(name)
 
     # Process in batches to allow periodic progress reporting
     batch_size = 100
-    with open(output_path, "a") as out:
+    with open(output_path, "a", encoding="utf-8") as out:
         for batch_start in range(0, len(remaining), batch_size):
-            batch = remaining[batch_start:batch_start + batch_size]
+            batch = remaining[batch_start : batch_start + batch_size]
             tasks = [
                 _enrich_one(batch_start + j, name, count, out)
                 for j, (name, count) in enumerate(batch)
@@ -401,6 +672,7 @@ async def main() -> None:
                 f"  {processed:,}/{len(companies):,} "
                 f"({rate:.1f}/s, ETA {eta_min:.0f}min) "
                 f"mentions={with_mentions} err={errors} 5xx={server_errors}"
+                f" doc_err={document_errors}"
             )
 
     elapsed = time.time() - start_time
@@ -408,12 +680,16 @@ async def main() -> None:
     await client.aclose()
 
     # Summary
-    print(f"\n{'='*60}")
-    print(f"SCAN COMPLETE — {processed:,} companies in {elapsed/60:.1f} min")
-    print(f"{'='*60}")
-    print(f"SEC filing mentions:  {with_mentions:,} ({with_mentions/len(remaining)*100:.1f}%)")
+    print(f"\n{'=' * 60}")
+    print(f"SCAN COMPLETE — {processed:,} companies in {elapsed / 60:.1f} min")
+    print(f"{'=' * 60}")
+    print(
+        f"SEC filing mentions:  {with_mentions:,} "
+        f"({with_mentions / max(len(remaining), 1) * 100:.1f}%)"
+    )
     print(f"Errors:               {errors:,}")
-    print(f"Server errors (5xx):  {server_errors:,} (rescan with --rescan-errors)")
+    print(f"Document fetch errors:{document_errors:,}")
+    print(f"Search request errors: {server_errors:,} (rescan with --rescan-errors)")
     print(f"Output:               {output_path}")
     print("Note: Form D sourced separately via fetch_form_d_index.py")
 
@@ -425,8 +701,11 @@ async def main() -> None:
         "with_mentions": with_mentions,
         "errors": errors,
         "server_errors": server_errors,
+        "search_errors": server_errors,
         "elapsed_seconds": elapsed,
         "doc_fetch_enabled": not args.no_doc_fetch,
+        "ma_only": args.ma_only,
+        "requests_per_second": args.requests_per_second,
     }
     with open(summary_path, "w") as f:
         json.dump(summary, f, indent=2)
