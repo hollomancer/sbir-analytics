@@ -429,3 +429,184 @@ def test_noncohort_identifier_conflict_quarantines_cohort_name_alias(tmp_path: P
         None,
     )
     assert "uei:XYZ789GHJ012" not in cohort.alias_to_firm
+
+
+def test_ma_loader_preserves_signal_but_marks_form_d_only_as_non_independent(tmp_path):
+    ma_path = tmp_path / "enriched_ma.jsonl"
+    ma_path.write_text(
+        json.dumps(
+            {
+                "company_name": "ACME",
+                "event_date": "2018-01-01",
+                "confidence": "high",
+                "acquirer": None,
+                "signals": {"form_d_business_combination": True},
+                "cross_enrichment": {
+                    "relationship_id": "ma_test",
+                    "evidence_sources": ["form_d"],
+                    "independent_of_form_d": False,
+                },
+            }
+        )
+        + "\n"
+    )
+    cohort = MODULE.CohortData(
+        firms=pd.DataFrame(),
+        phase_ii_awards=pd.DataFrame(),
+        alias_to_firm={"name:ACME": "name:ACME"},
+        phase_i_ii_contract_ids=set(),
+        raw_company_names=set(),
+    )
+    events, audit = MODULE.load_ma_events(ma_path, cohort, date(2024, 12, 31))
+    assert len(events) == 1
+    assert bool(events.iloc[0]["independent_of_form_d"]) is False
+    assert events.iloc[0]["relationship_id"] == "ma_test"
+    assert audit["form_d_only"] == 1
+    assert audit.get("unclassified", 0) == 0
+
+
+def test_ma_loader_splits_unclassified_from_form_d_only(tmp_path):
+    ma_path = tmp_path / "enriched_ma.jsonl"
+    ma_path.write_text(
+        json.dumps(
+            {
+                "company_name": "ACME",
+                "event_date": "2018-01-01",
+                "confidence": "high",
+                "acquirer": None,
+                "signals": {},
+                "cross_enrichment": {
+                    "relationship_id": "ma_unclassified",
+                    "evidence_sources": [],
+                    "independent_of_form_d": False,
+                },
+            }
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    cohort = MODULE.CohortData(
+        firms=pd.DataFrame(),
+        phase_ii_awards=pd.DataFrame(),
+        alias_to_firm={"name:ACME": "name:ACME"},
+        phase_i_ii_contract_ids=set(),
+        raw_company_names=set(),
+    )
+    events, audit = MODULE.load_ma_events(ma_path, cohort, date(2024, 12, 31))
+    assert len(events) == 1
+    assert bool(events.iloc[0]["independent_of_form_d"]) is False
+    assert audit.get("form_d_only", 0) == 0
+    assert audit["unclassified"] == 1
+    assert MODULE.ma_provenance_audit_bucket(["form_d"]) == "form_d_only"
+    assert MODULE.ma_provenance_audit_bucket([]) == "unclassified"
+    assert MODULE.ma_provenance_audit_bucket(["efts"]) == "independent_of_form_d"
+
+
+def test_ma_summary_reports_observed_and_independent_signals_separately():
+    eligible = pd.DataFrame(
+        [{"firm_id": "name:ACME", "anchor_date": date(2015, 1, 1), "phase_ii_dollars": 1}]
+    )
+    events = pd.DataFrame(
+        [
+            {
+                "firm_id": "name:ACME",
+                "event_date": date(2018, 1, 1),
+                "amount": 0.0,
+                "confidence": "high",
+                "independent_of_form_d": False,
+            }
+        ]
+    )
+    summary, firms = MODULE.summarize_channel(
+        eligible,
+        events,
+        agency="NASA",
+        horizon=5,
+        channel="ma",
+        confidence_filter="high",
+        cutoff=date(2024, 12, 31),
+    )
+    assert summary["firms_with_signal"] == 1
+    assert summary["firms_with_independent_signal"] == 0
+    assert bool(firms.iloc[0]["has_signal"]) is True
+    assert bool(firms.iloc[0]["independent_signal"]) is False
+
+
+def test_overlap_does_not_double_count_form_d_derived_ma_as_independent_channel():
+    common = {
+        "agency": "NASA",
+        "horizon_years": 5,
+        "confidence_filter": "high",
+        "firm_id": "name:ACME",
+    }
+    firms = pd.DataFrame(
+        [
+            {
+                **common,
+                "channel": "federal_contract",
+                "has_signal": False,
+                "independent_signal": False,
+            },
+            {**common, "channel": "form_d", "has_signal": True, "independent_signal": True},
+            {**common, "channel": "ma", "has_signal": True, "independent_signal": False},
+        ]
+    )
+    overlap = MODULE.build_channel_overlap(firms)
+    assert overlap.iloc[0]["pathway"] == "form_d"
+    assert overlap.iloc[0]["ma_any_signal_firms"] == 1
+    assert overlap.iloc[0]["ma_same_source_only_firms"] == 1
+
+
+def test_generated_memo_labels_ma_as_candidate_and_form_d_amount_as_not_value(tmp_path):
+    rows = []
+    for agency in MODULE.AGENCY_LABELS:
+        for channel, confidence in (
+            ("federal_contract", "all"),
+            ("form_d", "high"),
+            ("ma", "high"),
+        ):
+            rows.append(
+                {
+                    "agency": agency,
+                    "horizon_years": MODULE.PRIMARY_HORIZON,
+                    "channel": channel,
+                    "confidence_filter": confidence,
+                    "eligible_firms": 10,
+                    "firms_with_independent_signal": 1,
+                    "rate": 0.1,
+                    "dollars_per_phase_ii_dollar": 0.0,
+                }
+            )
+    output = tmp_path / "memo.md"
+    MODULE.write_markdown(pd.DataFrame(rows), pd.DataFrame(), output, date(2024, 12, 31))
+    memo = output.read_text()
+    assert "M&A candidate rate (high)" in memo
+    assert "unvalidated public-record candidates" in memo
+    assert "not company, enterprise, or exit value" in memo
+    assert MODULE.FORM_D_CHANNEL_AMOUNT_SOLD_MEASURE == "exempt_securities_sold"
+
+
+def test_write_markdown_guards_zero_eligible_firms(tmp_path):
+    rows = []
+    for agency in MODULE.AGENCY_LABELS:
+        for channel, confidence in (
+            ("federal_contract", "all"),
+            ("form_d", "high"),
+            ("ma", "high"),
+        ):
+            rows.append(
+                {
+                    "agency": agency,
+                    "horizon_years": MODULE.PRIMARY_HORIZON,
+                    "channel": channel,
+                    "confidence_filter": confidence,
+                    "eligible_firms": 0,
+                    "firms_with_independent_signal": 0,
+                    "rate": 0.0,
+                    "dollars_per_phase_ii_dollar": 0.0,
+                }
+            )
+    output = tmp_path / "memo.md"
+    MODULE.write_markdown(pd.DataFrame(rows), pd.DataFrame(), output, date(2024, 12, 31))
+    memo = output.read_text()
+    assert "n/a" in memo

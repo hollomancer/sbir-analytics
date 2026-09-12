@@ -5,7 +5,7 @@ Epistemic tier: exploratory. Outputs are non-citable.
 
 The firm-agency cohort is anchored on each firm's first SBIR or STTR Phase II
 award. Three observed channels remain separate: federal prime contracts, SEC
-Form D offerings, and public-filing M&A signals. A missing signal is not a
+Form D offerings, and unvalidated public-filing M&A candidates. A missing signal is not a
 negative commercialization finding.
 """
 
@@ -26,6 +26,12 @@ from typing import Any
 import numpy as np
 import pandas as pd
 
+from sbir_etl.capital_events.cross_enrichment import (
+    CANDIDATE_STATUS,
+    FORM_D_CHANNEL_AMOUNT_SOLD_MEASURE,
+    evidence_sources,
+    is_independent_of_form_d,
+)
 from sbir_etl.identity import (
     CanonicalMergePolicy,
     CompanyNameProfile,
@@ -522,6 +528,17 @@ def load_form_d_events(
     return result, dict(audit)
 
 
+def ma_provenance_audit_bucket(sources: Iterable[str]) -> str:
+    """Split Form-D-only rows from rows with no recognized underlying source."""
+
+    source_set = {str(source) for source in sources if source}
+    if "form_d" in source_set and all(source == "form_d" for source in source_set):
+        return "form_d_only"
+    if not source_set:
+        return "unclassified"
+    return "independent_of_form_d"
+
+
 def load_ma_events(
     path: Path, cohort: CohortData, cutoff: date
 ) -> tuple[pd.DataFrame, dict[str, int]]:
@@ -544,6 +561,12 @@ def load_ma_events(
             if firm_id is None:
                 stats["unmatched"] += 1
                 continue
+            cross_enrichment = record.get("cross_enrichment") or {}
+            sources = cross_enrichment.get("evidence_sources") or evidence_sources(record)
+            independent = cross_enrichment.get("independent_of_form_d")
+            if independent is None:
+                independent = is_independent_of_form_d(record)
+            stats[ma_provenance_audit_bucket(sources)] += 1
             events.append(
                 {
                     "firm_id": firm_id,
@@ -552,6 +575,9 @@ def load_ma_events(
                     "identity_basis": basis,
                     "confidence": confidence,
                     "acquirer": record.get("acquirer"),
+                    "evidence_sources": ",".join(sorted(sources)),
+                    "independent_of_form_d": bool(independent),
+                    "relationship_id": cross_enrichment.get("relationship_id"),
                 }
             )
             stats["matched"] += 1
@@ -649,6 +675,11 @@ def summarize_channel(
         else:
             has_signal = not matched.empty
             first_date = matched["event_date"].min() if has_signal else None
+        independent_signal = has_signal
+        if channel == "ma" and has_signal:
+            independent_signal = bool(
+                matched.get("independent_of_form_d", pd.Series(False, index=matched.index)).any()
+            )
         per_firm.append(
             {
                 "agency": agency,
@@ -659,6 +690,7 @@ def summarize_channel(
                 "anchor_date": row.anchor_date,
                 "phase_ii_dollars": float(row.phase_ii_dollars),
                 "has_signal": has_signal,
+                "independent_signal": independent_signal,
                 "observed_dollars": observed_dollars,
                 "same_agency_dollars": same_agency_dollars,
                 "first_event_date": first_date,
@@ -690,6 +722,9 @@ def summarize_channel(
         "confidence_filter": confidence_filter,
         "eligible_firms": denominator,
         "firms_with_signal": successes,
+        "firms_with_independent_signal": int(firm_frame["independent_signal"].sum())
+        if denominator
+        else 0,
         "rate": successes / denominator if denominator else math.nan,
         "rate_ci_low": ci_low,
         "rate_ci_high": ci_high,
@@ -712,6 +747,61 @@ def summarize_channel(
         else math.nan,
     }
     return record, firm_frame
+
+
+def build_channel_overlap(firm_frame: pd.DataFrame) -> pd.DataFrame:
+    """Summarize independent five-year pathways without double-counting Form D-derived M&A."""
+
+    primary = firm_frame[
+        (firm_frame["horizon_years"] == PRIMARY_HORIZON)
+        & (
+            (firm_frame["channel"] == "federal_contract")
+            | (firm_frame["confidence_filter"] == "high")
+        )
+    ]
+    overlap = primary.pivot_table(
+        index=["agency", "firm_id"],
+        columns="channel",
+        values="has_signal",
+        aggfunc="max",
+        fill_value=False,
+    ).reset_index()
+    for channel in ("federal_contract", "form_d", "ma"):
+        if channel not in overlap:
+            overlap[channel] = False
+    ma_primary = primary[primary["channel"] == "ma"]
+    if ma_primary.empty:
+        ma_independent = pd.DataFrame(columns=["agency", "firm_id", "ma_independent"])
+    else:
+        ma_independent = (
+            ma_primary.pivot_table(
+                index=["agency", "firm_id"],
+                values="independent_signal",
+                aggfunc="max",
+                fill_value=False,
+            )
+            .rename(columns={"independent_signal": "ma_independent"})
+            .reset_index()
+        )
+    overlap = overlap.merge(ma_independent, on=["agency", "firm_id"], how="left")
+    overlap["ma_independent"] = overlap["ma_independent"].fillna(False).astype(bool)
+    overlap["ma_any_signal"] = overlap["ma"].astype(bool)
+    overlap["ma_same_source_only"] = overlap["ma_any_signal"] & ~overlap["ma_independent"]
+    overlap["pathway"] = overlap.apply(
+        lambda row: "+".join(
+            channel
+            for channel in ("federal_contract", "form_d", "ma")
+            if row[channel if channel != "ma" else "ma_independent"]
+        )
+        or "no_observed_signal",
+        axis=1,
+    )
+    overlap_summary = overlap.groupby(["agency", "pathway"], as_index=False).agg(
+        firms=("firm_id", "size"),
+        ma_any_signal_firms=("ma_any_signal", "sum"),
+        ma_same_source_only_firms=("ma_same_source_only", "sum"),
+    )
+    return overlap_summary
 
 
 def build_outputs(
@@ -772,37 +862,7 @@ def build_outputs(
                 firm_results.append(firms)
     summary_frame = pd.DataFrame(summaries)
     firm_frame = pd.concat(firm_results, ignore_index=True)
-
-    primary = firm_frame[
-        (firm_frame["horizon_years"] == PRIMARY_HORIZON)
-        & (
-            (firm_frame["channel"] == "federal_contract")
-            | (firm_frame["confidence_filter"] == "high")
-        )
-    ]
-    overlap = primary.pivot_table(
-        index=["agency", "firm_id"],
-        columns="channel",
-        values="has_signal",
-        aggfunc="max",
-        fill_value=False,
-    ).reset_index()
-    for channel in ("federal_contract", "form_d", "ma"):
-        if channel not in overlap:
-            overlap[channel] = False
-    overlap["pathway"] = overlap.apply(
-        lambda row: "+".join(
-            channel for channel in ("federal_contract", "form_d", "ma") if row[channel]
-        )
-        or "no_observed_signal",
-        axis=1,
-    )
-    overlap_summary = (
-        overlap.groupby(["agency", "pathway"], as_index=False)
-        .size()
-        .rename(columns={"size": "firms"})
-    )
-    return summary_frame, firm_frame, overlap_summary
+    return summary_frame, firm_frame, build_channel_overlap(firm_frame)
 
 
 def build_vintage_diagnostics(firm_results: pd.DataFrame) -> pd.DataFrame:
@@ -889,10 +949,19 @@ def write_markdown(summary: pd.DataFrame, cohort: pd.DataFrame, path: Path, cuto
         & ((summary["channel"] == "federal_contract") | (summary["confidence_filter"] == "high"))
     ].copy()
     headline["rate_display"] = headline["rate"].map(lambda value: f"{100 * value:.1f}%")
+    headline["independent_rate_display"] = [
+        f"{100 * row.firms_with_independent_signal / row.eligible_firms:.1f}%"
+        if row.eligible_firms
+        else "n/a"
+        for row in headline.itertuples()
+    ]
     headline["leverage_display"] = headline["dollars_per_phase_ii_dollar"].map(
         lambda value: f"{value:.2f}x"
     )
     pivot_rate = headline.pivot(index="agency", columns="channel", values="rate_display")
+    pivot_independent_rate = headline.pivot(
+        index="agency", columns="channel", values="independent_rate_display"
+    )
     pivot_leverage = headline.pivot(index="agency", columns="channel", values="leverage_display")
     lines = [
         "# NASA, Air Force, and DOE SBIR/STTR commercialization outcomes",
@@ -905,8 +974,8 @@ def write_markdown(summary: pd.DataFrame, cohort: pd.DataFrame, path: Path, cuto
         "",
         "A zero means no signal was observed in these public-data channels; it does not mean the firm did not commercialize.",
         "",
-        "| Agency | Eligible firms | Contract rate | Form D rate (high) | M&A rate (high) | Contract $ / Phase II $ | Form D $ / Phase II $ |",
-        "|---|---:|---:|---:|---:|---:|---:|",
+        "| Agency | Eligible firms | Contract rate | Form D rate (high) | M&A candidate rate (high) | M&A candidate independent of Form D | Contract $ / Phase II $ | Form D $ / Phase II $ |",
+        "|---|---:|---:|---:|---:|---:|---:|---:|",
     ]
     for agency in AGENCY_LABELS:
         eligible = int(
@@ -917,6 +986,7 @@ def write_markdown(summary: pd.DataFrame, cohort: pd.DataFrame, path: Path, cuto
         lines.append(
             f"| {agency} | {eligible:,} | {pivot_rate.loc[agency, 'federal_contract']} | "
             f"{pivot_rate.loc[agency, 'form_d']} | {pivot_rate.loc[agency, 'ma']} | "
+            f"{pivot_independent_rate.loc[agency, 'ma']} | "
             f"{pivot_leverage.loc[agency, 'federal_contract']} | {pivot_leverage.loc[agency, 'form_d']} |"
         )
     lines.extend(
@@ -925,8 +995,8 @@ def write_markdown(summary: pd.DataFrame, cohort: pd.DataFrame, path: Path, cuto
             "## Reading the comparison",
             "",
             "- Contract activity measures subsequent federal-market participation, not proven lineage from a particular Phase II technology.",
-            "- Form D captures disclosed Regulation D financing only. High-confidence matches are the headline; medium-confidence matches remain a sensitivity.",
-            "- M&A uses public-record matches with incomplete coverage and possible identity or classification errors; the direction of net bias is unknown.",
+            "- Form D captures disclosed Regulation D financing only. Amount sold measures exempt securities sold; it is not company, enterprise, or exit value. High-confidence matches are the headline; medium-confidence matches remain a sensitivity.",
+            "- M&A rows are unvalidated public-record candidates, not verified legal exits. Coverage is incomplete and identity or classification errors are possible, so the direction of net bias is unknown. Independent-pathway counts exclude candidates derived only from the same Form D filing.",
             "- Firms may appear in more than one agency cohort; each agency clock begins at that agency's first Phase II award.",
             "",
             "## Cohort and methods",
@@ -935,11 +1005,11 @@ def write_markdown(summary: pd.DataFrame, cohort: pd.DataFrame, path: Path, cuto
             "NASA is the full NASA portfolio; Air Force is the Air Force branch of DoD; DOE includes ARPA-E. "
             "The five-year result includes only firms with a fully observable five-year follow-up period.",
             "",
-            "Federal contract dollars are signed net obligations from any awarding agency. Phase I and II SBIR/STTR actions are excluded by research marker or by a dash-stripped PIID match unless the action is coded Phase III. Form D amounts use actual amount sold, collapse amendments into offering series, and quarantine accessions or CIKs matched to more than one firm.",
+            "Federal contract dollars are signed net obligations from any awarding agency. Phase I and II SBIR/STTR actions are excluded by research marker or by a dash-stripped PIID match unless the action is coded Phase III. Form D amounts use actual exempt securities sold, collapse amendments into offering series, and quarantine accessions or CIKs matched to more than one firm. A business-combination flag does not convert that amount into deal value.",
             "",
             "## Limitations",
             "",
-            "This is a descriptive portfolio comparison, not a causal evaluation. Agency portfolios differ in technology, mission, firm age, and selection. Identity resolution is strongest for UEI/DUNS-linked contracts and weaker for name-keyed SEC signals. Form D and M&A have both false-negative and false-positive risk, so neither is a one-sided bound.",
+            "This is a descriptive portfolio comparison, not a causal evaluation. Agency portfolios differ in technology, mission, firm age, and selection. Identity resolution is strongest for UEI/DUNS-linked contracts and weaker for name-keyed SEC signals. Form D and M&A have both false-negative and false-positive risk, so neither is a one-sided bound. M&A candidates require transaction-level review of identity, closing status, and source terms before they can be described as exits.",
             "",
             "Detailed 3-, 5-, and 10-year estimates, confidence intervals, linkage diagnostics, and channel overlap are in the companion CSV artifacts.",
         ]
@@ -997,6 +1067,14 @@ def main(argv: list[str] | None = None) -> int:
     manifest = {
         "epistemic_tier": "exploratory",
         "citable": False,
+        "ma_candidate_status": CANDIDATE_STATUS,
+        "measure_definitions": {
+            "form_d_amount_sold": FORM_D_CHANNEL_AMOUNT_SOLD_MEASURE,
+            "form_d_amount_sold_is_deal_value": False,
+            "ma_legal_event_validated": False,
+            "ma_deal_terms_captured": False,
+            "ma_enterprise_value_observed": False,
+        },
         "cutoff": args.cutoff.isoformat(),
         "horizons_years": sorted(set(args.horizons)),
         "primary_horizon_years": PRIMARY_HORIZON,

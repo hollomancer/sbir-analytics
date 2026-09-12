@@ -1,4 +1,4 @@
-"""M&A events → CapitalEvent builder.
+"""M&A candidates → CapitalEvent builder.
 
 Reads enriched_sbir_ma_events.jsonl. Filters to high+medium confidence.
 The file uses field name `confidence` (not `tier`).
@@ -14,7 +14,7 @@ _KEEP_CONFIDENCES = {"high", "medium"}
 
 
 def build_ma_events(cohort: Iterable[dict], source_path: Path) -> Iterator[dict]:
-    """Yield CapitalEvent rows for high+medium-confidence MA events."""
+    """Yield CapitalEvent rows for high+medium-confidence M&A candidates."""
     if not source_path.exists():
         return
     cohort_names = {row["company_name"] for row in cohort}
@@ -55,6 +55,13 @@ def build_ma_events(cohort: Iterable[dict], source_path: Path) -> Iterator[dict]
                         "signal_count": sum(
                             1 for value in (rec.get("signals") or {}).values() if value is True
                         ),
+                        "candidate_status": (rec.get("cross_enrichment") or {}).get(
+                            "candidate_status", "unvalidated_public_record_candidate"
+                        ),
+                        "legal_event_validated": (rec.get("cross_enrichment") or {}).get(
+                            "legal_event_validated", False
+                        ),
+                        "cross_enrichment": rec.get("cross_enrichment") or {},
                     }
                 ),
             }
