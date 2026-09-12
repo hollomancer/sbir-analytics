@@ -24,6 +24,7 @@ from sbir_etl.reporting.weekly.llm_digests import (
     _company_history_digest,
     _pi_history_digest,
     _pi_external_digest,
+    _press_release_digest,
 )
 
 
@@ -559,11 +560,7 @@ def generate_company_diligence(
         # Recent press releases (press wire feeds)
         pr_list = press_releases.get(key) if press_releases else None
         if pr_list:
-            pr_parts = []
-            for pr in pr_list[:5]:
-                pr_parts.append(
-                    f"- [{pr.source}] {pr.title}" + (f" ({pr.published})" if pr.published else "")
-                )
+            pr_parts = [_press_release_digest(pr) for pr in pr_list[:5]]
             context_parts.append("Recent press releases:\n" + "\n".join(pr_parts))
 
         user = (

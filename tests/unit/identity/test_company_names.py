@@ -32,6 +32,11 @@ from sbir_etl.identity import (
             "Café Technologies, Incorporated",
             "cafe technologies inc",
         ),
+        (
+            CompanyNameProfile.PRESS_WIRE_WATCHLIST_V1,
+            "Café+ Technologies, L.L.C.",
+            "cafe+ technologies",
+        ),
         (CompanyNameProfile.RECIPIENT_V1, "Café Technologies, Inc.", "cafe technologies"),
         (CompanyNameProfile.ENTITY_RESOLUTION_V1, "O'Brien & Associates Inc", "OBRIEN ASSOCIATES"),
         (CompanyNameProfile.GROUNDTRUTH_V1, "Acme Photonics, L.L.C.", "ACME PHOTONICS"),
@@ -62,6 +67,24 @@ def test_matching_profile_accepts_explicit_abbreviation_dictionary() -> None:
     )
 
     assert normalized == "adv tech inc"
+
+
+@pytest.mark.parametrize(
+    ("raw", "expected"),
+    [
+        ("SKY+", "sky+"),
+        ("C++, Inc.", "c++"),
+        (".NET Systems LLC", ".net systems"),
+        ("Big Corp Corporation", "big corp"),
+    ],
+)
+def test_press_wire_profile_preserves_brand_punctuation_and_strips_one_designator(
+    raw: str,
+    expected: str,
+) -> None:
+    assert (
+        normalize_company_name(raw, profile=CompanyNameProfile.PRESS_WIRE_WATCHLIST_V1) == expected
+    )
 
 
 @pytest.mark.parametrize(
