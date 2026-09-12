@@ -1,0 +1,109 @@
+# SBIR M&A Dated Signal Study — Design
+
+## Decision
+
+This is a prospective, **exploratory** pre-run protocol for a new study. Its
+fixed source-row selection cutoff is **2026-08-29 UTC**. It neither restores nor compares
+against the unrecoverable April 2026 snapshot: historic award counts, event
+totals, match percentages, and their source files are excluded from every
+future input and verification step.
+
+The authorized flow completed one private, raw SBIR.gov firm-frame retrieval
+under Amendments 1 and 3 and its limited cutoff audit under Amendment 2. Both
+retrievals were byte-identical. The audit failed: each response identified an
+August 1 snapshot while two `Proposal Award Date` values fall after the planned
+August 29 cutoff. It therefore cannot establish a complete as-of prospective
+firm frame. Amendment 4 accepts the pinned object only as a retrieval-defined
+private selection using `Proposal Award Date <= 2026-08-29`; the study remains
+intentionally closed to analysis and materialization:
+
+```text
+pre-run protocol + Amendments 1–3 + empty exploratory notebook + closed study gate
+    -> two private official SBIR.gov retrieval attempts [byte-identical]
+    -> private provenance and cutoff check [failed twice]
+    -> pinned retrieval-defined source-row selection [accepted, not complete]
+    -> private SEC Form D index source cut [acquired]
+    -> private exact-key candidate ledger and candidate XML [acquired]
+    -> private, accession-grain Form D predicate observation [authorized]
+    -> private review queue for predicate-positive candidate filings [authorized]
+    -> no confirmed identity, event creation, aggregation, or materialization
+```
+
+## Prospective run contract
+
+Before any source retrieval, an amendment must be committed and reviewed. It
+must identify:
+
+1. the SBIR firm-frame source, its coverage, extraction method, and inclusion
+   and exclusion rules;
+2. every candidate M&A-signal source, its permitted use/license and collection
+   timestamps, and its known coverage limitations through the planned cutoff;
+3. source byte hashes, byte sizes, record counts, schema versions, and an
+   immutable local manifest;
+4. a candidate-level audit table with source IDs/URLs, observed dates, identity
+   rationale, alias handling, duplicate/deal rules, exclusion reasons, and
+   source-specific uncertainty; and
+5. a declared descriptive estimand before aggregation.
+
+An unavailable, incomplete, or post-cutoff-only source is not permission to
+substitute a nearby vintage or infer missing observations. Amendment 4 permits
+one explicit alternative: a pinned provider object can define a retrieval-based
+selection, provided all downstream artifacts retain its completeness limits.
+Amendments 5 and 6 separately authorize the private SEC Form D index source cut,
+the exact-key candidate ledger, and candidate XML retrieval. Amendment 7 permits
+only an accession-grain observation of the source-declared Form D
+business-combination field. It does not authorize identity resolution, an M&A
+signal or event, aggregation, or any other network acquisition.
+Amendment 8 authorizes a restricted, filing-level identity-review queue for
+predicate-positive candidates. The approved materials lack a shared stable
+identifier, so exact-name consistency is not confirmation and no firm identity
+is established without separately authorized corroborating evidence.
+
+## Identity and observation boundary
+
+The future unit may only be declared after the firm frame and source schemas
+are reviewed. Candidate matches retain raw names and stable source identifiers;
+normalization can generate candidates but cannot independently establish a
+firm, a transaction, or a completed acquisition. Candidate events must retain
+the source-observed date and distinguish that date from announcement, signing,
+and closing dates when known.
+
+The prospective utility `scripts/data/sbir_ma_signal_counts_by_fy.py` may be
+considered only after the source contract is approved. Its historic JSONL
+contract is a signal-observation diagnostic, not a source-acquisition path and
+not an exit-rate implementation.
+
+## Validation and promotion runway
+
+The notebook and manifest remain exploratory/non-citable. Before a result
+leaves the repository as a numerical claim, a distinct evidence-tier promotion
+must complete all of the following:
+
+| Gate | Required proof |
+|---|---|
+| Frozen protocol | Pre-run design and amendments fixed at recorded content hashes. |
+| Input integrity | SHA-256, sizes, record counts, schemas, and output hash enforced at materialization. |
+| Blocking checks | Source cutoff, schema, uniqueness, provenance, and reconciliation failures stop publication. |
+| Estimand | A written quantity, denominator, observation window, and explicit failure modes. |
+| Human validation | Blinded independent adjudication, sample design, error estimates where applicable, and documented disagreement resolution. |
+| Claim review | Privacy/license clearance and independent human methods review approve exact permitted language. |
+
+Only a later manifest promoted through `reproducible`, `validated`, and
+`citable` as its verified evidence warrants may authorize external numerical
+claims. A signal count does not become an acquisition, exit, incidence,
+agency-effect, comparator, vintage-adjusted, or survival result by promotion
+alone; each needs its own declared estimand and validation.
+
+## Explicit exclusions
+
+This protocol excludes discovery/search services, LLM extraction, source
+reconstruction, vintage adjustment, survival analysis, external comparators,
+agency-specific comparisons or causal attribution, public datasets, and live
+Dagster operations. It does not modify the historical M&A specifications.
+
+## Verification
+
+This documentation slice is complete when the requirements, design, task list,
+study manifest, and cleared notebook agree on the cutoff, closed gate,
+exploratory tier, non-citability, conditional acquisition, and exclusions.
+`make docs-check` and `scripts/ci/validate_study_manifests.py` must pass.

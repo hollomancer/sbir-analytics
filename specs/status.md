@@ -156,6 +156,15 @@ bypassing lifecycle review; the status and rationale still require human judgmen
   `pipelines` (2026-08-15). Award identity and path
   attribution landed. Cold-start bounds, source-normalization provenance, and
   ranking/auditability phases remain.
+- **`sbir-ma-dated-signal-study` — Active pre-run protocol.** A new,
+  explicitly exploratory and non-citable F1 study with a planned 2026-08-29 UTC
+  cutoff. It does not reproduce the unrecoverable April analysis. Sources are
+  acquired privately under operator authorization (amendments 1, 3, 5, 6); a
+  source-field predicate (amendment 7) and a filing-level identity review queue
+  (amendment 8) are the current private ceiling. Identity resolution,
+  aggregation, materialization, numerical analysis, and any public claim remain
+  blocked on separate human source/privacy/license approval, a frozen input and
+  estimand contract, and blinded validation.
 - **`sbir-ma-match-rate-by-fy` — Gated backlog.** Analysis-only F2 follow-up on
   completed M&A detection. Start only when FY match-rate reporting is requested.
 - **`state-local-tax-rates` — Maintenance.** Existing hardcoded 2024 provider
