@@ -4,7 +4,12 @@ from unittest.mock import Mock
 
 import pytest
 
-from sbir_etl.enrichers.openai_client import OpenAIClient, WebSearchResult
+from sbir_etl.enrichers.openai_client import (
+    OPENAI_CHAT_URL,
+    OpenAIAuthError,
+    OpenAIClient,
+    WebSearchResult,
+)
 
 pytestmark = pytest.mark.fast
 
@@ -26,6 +31,67 @@ class TestOpenAIClient:
         result = client.chat("system", "user")
 
         assert result == "Hello world"
+        assert mock_http.request.call_args.args[1] == OPENAI_CHAT_URL
+
+    def test_chat_uses_override_chat_url(self):
+        mock_http = Mock()
+        mock_resp = Mock()
+        mock_resp.status_code = 200
+        mock_resp.json.return_value = {
+            "choices": [{"message": {"content": "ok"}}],
+            "usage": {},
+        }
+        mock_resp.raise_for_status = Mock()
+        mock_http.request.return_value = mock_resp
+
+        client = OpenAIClient(
+            api_key="test-key",
+            chat_url="https://api.x.ai/v1/chat/completions",
+        )
+        client._client = mock_http
+        assert client.chat("system", "user") == "ok"
+        assert mock_http.request.call_args.args[1] == "https://api.x.ai/v1/chat/completions"
+        headers = mock_http.request.call_args.kwargs["headers"]
+        assert headers["Authorization"] == "Bearer test-key"
+        payload = mock_http.request.call_args.kwargs["json"]
+        assert "max_tokens" not in payload
+
+    def test_chat_sends_max_tokens_when_set(self):
+        mock_http = Mock()
+        mock_resp = Mock()
+        mock_resp.status_code = 200
+        mock_resp.json.return_value = {
+            "choices": [{"message": {"content": "ok"}}],
+            "usage": {},
+        }
+        mock_resp.raise_for_status = Mock()
+        mock_http.request.return_value = mock_resp
+
+        client = OpenAIClient(api_key="test-key")
+        client._client = mock_http
+        assert client.chat("system", "user", max_tokens=2048) == "ok"
+        assert mock_http.request.call_args.kwargs["json"]["max_tokens"] == 2048
+
+    def test_extra_headers_are_sent(self):
+        mock_http = Mock()
+        mock_resp = Mock()
+        mock_resp.status_code = 200
+        mock_resp.json.return_value = {
+            "choices": [{"message": {"content": "ok"}}],
+            "usage": {},
+        }
+        mock_resp.raise_for_status = Mock()
+        mock_http.request.return_value = mock_resp
+
+        client = OpenAIClient(
+            api_key="sk-or-test",
+            chat_url="https://openrouter.ai/api/v1/chat/completions",
+            extra_headers={"HTTP-Referer": "https://example.com"},
+        )
+        client._client = mock_http
+        client.chat("system", "user")
+        headers = mock_http.request.call_args.kwargs["headers"]
+        assert headers["HTTP-Referer"] == "https://example.com"
 
     def test_chat_failure_returns_none(self):
         import httpx
@@ -43,6 +109,50 @@ class TestOpenAIClient:
         # Will retry and eventually return None
         result = client.chat("sys", "usr")
         assert result is None
+
+    def test_chat_402_returns_none_by_default(self):
+        mock_http = Mock()
+        mock_resp = Mock()
+        mock_resp.status_code = 402
+        mock_http.request.return_value = mock_resp
+
+        client = OpenAIClient(api_key="test-key", max_concurrent=1)
+        client._client = mock_http
+        assert client.chat("sys", "usr") is None
+        assert mock_http.request.call_count == 1
+
+    def test_chat_402_raises_when_raise_on_auth_error(self):
+        mock_http = Mock()
+        mock_resp = Mock()
+        mock_resp.status_code = 402
+        mock_http.request.return_value = mock_resp
+
+        client = OpenAIClient(api_key="test-key", max_concurrent=1, raise_on_auth_error=True)
+        client._client = mock_http
+        with pytest.raises(OpenAIAuthError, match="402"):
+            client.chat("sys", "usr")
+        assert mock_http.request.call_count == 1
+
+    def test_weekly_synopsis_chat_returns_none_on_402(self):
+        from sbir_etl.reporting.weekly import llm as weekly_llm
+
+        mock_http = Mock()
+        mock_resp = Mock()
+        mock_resp.status_code = 402
+        mock_http.request.return_value = mock_resp
+        client = OpenAIClient(api_key="test-key", max_concurrent=1)
+        client._client = mock_http
+        weekly_llm._openai_client_instance = client
+        try:
+            assert weekly_llm._openai_chat("k", "sys", "usr") is None
+            synopsis = weekly_llm.generate_weekly_synopsis(
+                "k",
+                [{"Award Amount": "1", "Agency": "DoD", "Company": "Acme"}],
+                days=7,
+            )
+            assert synopsis is None
+        finally:
+            weekly_llm._openai_client_instance = None
 
     def test_web_search_success(self):
         mock_http = Mock()

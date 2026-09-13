@@ -1,0 +1,89 @@
+{
+  "_epistemic": {
+    "citable": false,
+    "tier": "exploratory",
+    "notice": "Tracked hash manifest for the 500-pair validation cut. Snippet and LLM JSONL stay gitignored."
+  },
+  "study_id": "ma-discovery-recall",
+  "as_of_utc": "2026-09-01T23:18:19.152402+00:00",
+  "candidate_pairs": 500,
+  "queries_per_pair": 1,
+  "search_backend_capture": "brave",
+  "search_backend_rerun": "snippets",
+  "confirm": "llm",
+  "llm_model": "x-ai/grok-4.6",
+  "rerun": {
+    "command": "uv run python scripts/data/run_ma_discovery_sample.py --search-backend snippets --snippets data/processed/ma_discovery/search_snippets.jsonl --confirm llm --max-candidates 500 --queries-per-pair 1 --events data/sbir_ma_events.jsonl --output-dir data/processed/ma_discovery",
+    "live_search": false,
+    "live_llm": false,
+    "note": "RecordingLlmExtractor resumes from llm_responses.jsonl; a complete freeze must not call OpenRouter."
+  },
+  "inputs": {
+    "events": {
+      "path": "data/sbir_ma_events.jsonl",
+      "sha256": "6ffc8481a240b2ee9bd9fdef806395d3f62e9d1f3ba12a68490d28fb53a1cf49",
+      "n": 4306,
+      "bytes": 3773732,
+      "gitignored": true
+    },
+    "snippets": {
+      "path": "data/processed/ma_discovery/search_snippets.jsonl",
+      "sha256": "02f416413b7561cc69cf6727871e70e5cbbac75e99040fd1a996775fba0ceec0",
+      "n": 1194,
+      "unique_queries": 500,
+      "bytes": 568206,
+      "gitignored": true,
+      "retention": "private research freeze; not redistributed"
+    },
+    "llm_responses": {
+      "path": "data/processed/ma_discovery/llm_responses.jsonl",
+      "sha256": "1a4c11f3e3ec64a0408ecca0e728669b6d374ac495ab00be4c0079059252064e",
+      "n": 745,
+      "bytes": 699416,
+      "gitignored": true,
+      "retention": "private research freeze; not redistributed"
+    }
+  },
+  "outputs": {
+    "discovered_acquisitions": {
+      "path": "data/processed/ma_discovery/discovered_acquisitions.jsonl",
+      "sha256": "19df4aaba9c2c7452d1ef474dc570f423d80b22a3ec6d25a9d61fa6c98725db0",
+      "n": 75,
+      "medium_n": 16,
+      "high_n": 1,
+      "gitignored": true
+    },
+    "labels": {
+      "path": "studies/ma-discovery-recall/labels.jsonl",
+      "sha256": "99ac5c225821b7471323d137cfb1836be68264cd041bac3a07b59ef29eaa5fca",
+      "n": 16,
+      "true_n": 14,
+      "false_n": 1,
+      "ambiguous_n": 1,
+      "fp_rate": 0.06666666666666667,
+      "gitignored": false
+    }
+  },
+  "c3": {
+    "inserted_n": 74,
+    "promoted_n": 1,
+    "confirmed_existing_n": 0,
+    "medium_high_insert_n": 16,
+    "medium_high_promote_n": 1,
+    "medium_high_insert_or_promote_n": 17
+  },
+  "kill_gate": {
+    "recall_floor_met": true,
+    "recall_n": 17,
+    "precision_review_complete": true,
+    "precision_fp_rate": 0.06666666666666667,
+    "precision_cap_met": true,
+    "cost_per_pair_usd": 0.017776604,
+    "cost_per_pair_cap_usd": 0.1,
+    "cost_per_pair_cap_met": true,
+    "cost_run_usd": 8.888302,
+    "cost_run_cap_usd": 5.0,
+    "cost_run_cap_met": false,
+    "cost_run_cap_note": "Frozen design still requires $5 / 200 pairs. This 500-pair spend is an exploratory measurement after that envelope was already missed."
+  }
+}

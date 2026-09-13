@@ -1,0 +1,109 @@
+{
+  "_epistemic": {
+    "citable": false,
+    "tier": "exploratory",
+    "notice": "Held-out confirmatory cut. Strict recall 13>=10, FP 0/19, cost under cap. Exploratory until evidence-auditor. Not citable."
+  },
+  "study_id": "ma-discovery-recall",
+  "protocol": "studies/ma-discovery-recall/confirmatory-design.md",
+  "as_of_utc": "2026-09-07T04:08:45.676820+00:00",
+  "candidate_pairs": 1000,
+  "skip_pairs": 500,
+  "queries_per_pair": 1,
+  "stop_when": "dated_confirm",
+  "search_backend_capture": "brave",
+  "search_backend_rerun": "snippets",
+  "confirm": "llm",
+  "llm_model": "x-ai/grok-4.6",
+  "outcome": "confirmatory_gates_met",
+  "inputs": {
+    "events": {
+      "path": "data/sbir_ma_events.jsonl",
+      "sha256": "6ffc8481a240b2ee9bd9fdef806395d3f62e9d1f3ba12a68490d28fb53a1cf49",
+      "n": 4306,
+      "gitignored": true
+    },
+    "snippets": {
+      "path": "data/processed/ma_discovery_confirmatory/search_snippets.jsonl",
+      "sha256": "2bc028243f084c9612f05d53077bfbbc6cfcc64b81de23f9ca732aa6d4679b8e",
+      "n": 2369,
+      "unique_queries": 1000,
+      "gitignored": true
+    },
+    "llm_responses": {
+      "path": "data/processed/ma_discovery_confirmatory/llm_responses.jsonl",
+      "sha256": "ffbe743dbff9b53a4463f48e4e1f7b15be1a73a9bf70d3c52fa6fd29c8cbb2c4",
+      "n": 1831,
+      "filled_n": 1753,
+      "empty_n": 78,
+      "gitignored": true,
+      "note": "Compacted to one row per (company, acquirer, source_url), preferring a non-empty raw_response. 78 empty URL keys remain; every such pair has a filled reply on another URL."
+    }
+  },
+  "outputs": {
+    "discovered_acquisitions": {
+      "path": "data/processed/ma_discovery_confirmatory/discovered_acquisitions.jsonl",
+      "sha256": "7d6750ec376c95241639556a5bfd9fb69435c47e616bdd2619d421e2343e8552",
+      "n": 140,
+      "low_n": 84,
+      "medium_n": 52,
+      "high_n": 4,
+      "gitignored": true
+    },
+    "review_queue": {
+      "path": "data/processed/ma_discovery_confirmatory/review_queue.jsonl",
+      "sha256": "5c18a5fcc8c2eb0497f0ebab8546d9fc1de7684d1b99230454643dd688125eea",
+      "n": 20,
+      "note": "First 20 medium rows, labeled. Same bytes as studies/ma-discovery-recall/confirmatory-labels.jsonl.",
+      "gitignored": true
+    },
+    "labels": {
+      "path": "studies/ma-discovery-recall/confirmatory-labels.jsonl",
+      "sha256": "5c18a5fcc8c2eb0497f0ebab8546d9fc1de7684d1b99230454643dd688125eea",
+      "n": 20,
+      "true_n": 19,
+      "false_n": 0,
+      "ambiguous_n": 1,
+      "fp_rate": 0.0,
+      "gitignored": false
+    }
+  },
+  "c3": {
+    "inserted_n": 138,
+    "promoted_n": 2,
+    "discovered_medium_high_n": 56,
+    "strict_medium_high_n": 13
+  },
+  "kill_gate": {
+    "recall_floor_met": true,
+    "recall_n": 13,
+    "recall_rule": "strict",
+    "precision_review_complete": true,
+    "precision_fp_rate": 0.0,
+    "precision_cap_met": true,
+    "cost_per_pair_usd": 0.01864,
+    "cost_per_pair_cap_usd": 0.1,
+    "cost_per_pair_cap_met": true,
+    "cost_note": "Brave 1000 queries x $5/1k = $5.00. First LLM capture ~$7.61 on the original key; tail completion $6.03 on the refill key (includes smoke chats). Total ~$18.64 / 1000 pairs."
+  },
+  "incomplete_llm": {
+    "empty_raw_response_n": 78,
+    "pairs_with_no_filled_response": 0,
+    "note": "Empty URL keys are leftover hits on pairs that already have a filled reply. Stop-until-dated does not require every hit. No pair in the cut is without a filled freeze row."
+  },
+  "strict_pairs": [
+    ["CAPELLA SPACE CORP", "IonQ, Inc.", "2025-07-15"],
+    ["PAXVAX, INC.", "Emergent BioSolutions Inc.", "2018-10-04"],
+    ["ILLUMIGEN BIOSCIENCES, INC.", "CUBIST PHARMACEUTICALS INC", "2007-12-24"],
+    ["Tfr Technologies, Inc.", "TRIQUINT SEMICONDUCTOR INC", "2004-12-14"],
+    ["Epitope Inc.", "ORASURE TECHNOLOGIES INC", "2000-09-29"],
+    ["Ascent Technology", "CIBER INC", "2004-05-24"],
+    ["MIRNA THERAPEUTICS, INC.", "SYNLOGIC, INC.", "2017-08-28"],
+    ["PHASE MATRIX, INC.", "NATIONAL INSTRUMENTS CORP /DE/", "2011-05-23"],
+    ["TELIC OPTICS, INC.", "AXSYS TECHNOLOGIES INC", "2004-04-12"],
+    ["Cybermation Inc.", "CA, INC.", "2006-05-09"],
+    ["Parivid, LLC", "MOMENTA PHARMACEUTICALS INC", "2007-05-10"],
+    ["HYPERCUBE", "WEST CORP", "2012-03-26"],
+    ["NewTek", "PALTALK, INC.", "2025-01-02"]
+  ]
+}
