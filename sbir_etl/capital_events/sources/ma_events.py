@@ -33,6 +33,11 @@ def build_ma_events(cohort: Iterable[dict], source_path: Path) -> Iterator[dict]
             confidence = rec.get("confidence")
             if confidence not in _KEEP_CONFIDENCES:
                 continue
+            acquirer = rec.get("acquirer")
+            if not acquirer:
+                # A row with no acquirer cannot support an exit claim; a consumer
+                # cannot distinguish unknown-acquirer from firm-was-the-buyer.
+                continue
             event_date = rec.get("event_date") or ""
             yield {
                 "company_name": name,
@@ -40,7 +45,7 @@ def build_ma_events(cohort: Iterable[dict], source_path: Path) -> Iterator[dict]
                 "event_type": EventType.MA_EVENT.value,
                 "event_subtype": confidence,
                 "amount_usd": None,
-                "counterparty": rec.get("acquirer"),
+                "counterparty": acquirer,
                 "source_id": f"{name}__{event_date}",
                 "metadata": json.dumps(
                     {
