@@ -9,7 +9,9 @@ serving studies at `reproducible` and above.
 changes what a study must record so that `reproducible` remains a checkable
 claim when an input is a live source.
 
-**Status:** proposed. No schema change is implemented in this spec.
+**Status:** active. Requirements are settled; no schema change is implemented
+here. Design decisions that must be made before implementation are listed under
+Open questions, and the registry entry in `specs/status.md` says the same.
 
 ## The problem, from a real case
 
@@ -55,10 +57,13 @@ resolves in one comparison:
 | same | moved | the pipeline changed — a regression |
 | moved | same | drift that did not reach the kept set |
 
-`studies/transition-scoring/study.yaml` recorded its source as the string
-`"/tmp/gsa_award_grain"` — a path, on a temp filesystem, now gone. So the
-repository measured the drift and then threw the measurement away, and the
-2026-09-13 rebuild is undiagnosable as a result.
+`specs/phase3-notice-corpus-fusion/corpus.manifest.json` records its `sources`
+as `["/tmp/gsa_award_grain", "data/derived/phase3_firm_seed.parquet"]` — the
+first a path on a temp filesystem, now gone. `studies/transition-scoring/study.yaml`
+pins that manifest as a frozen artifact, so the study's provenance chain
+terminates in a dead path rather than in the retrieval manifest that recorded
+`rows_scanned`. The repository measured the drift and then threw the measurement
+away, and the 2026-09-13 rebuild is undiagnosable as a result.
 
 This will recur for every study whose inputs include USAspending bulk archives,
 SEC EDGAR full-text search, SAM.gov, the GSA archive, or any other live public
@@ -68,16 +73,26 @@ source. It is not specific to `transition-scoring`.
 
 ### R1 — A live-upstream study pins a retrieval manifest, not a path
 
-A study whose inputs include a source outside this repository must list the
-retrieval manifest for that source in `frozen_artifacts`. The manifest must
+A study that claims `reproducible` or above, and whose inputs include a source
+outside this repository, must list the retrieval manifest for that source in
+`frozen_artifacts`. A study at `exploratory` is encouraged to and not required
+to; the obligation attaches with the claim, not with the data source. This is
+the same scope the retrofit clause below states, written once rather than twice. The manifest must
 record, per retrieved object: the URL, the fetch timestamp, and at least one
 upstream-size measure taken before this repository's own filtering
 (`rows_scanned` or equivalent).
 
-The producers already emit these. The change is that the study pins one instead
-of naming a directory.
+The GSA producers already emit these: `recover_award_grain.py`,
+`pull_gsa_archive.py`, and `extract_phase3_selflabeled.py` all write `url`,
+`fetched_at`, `rows_scanned`, and `rows_kept`. For those, the change is that the
+study pins one instead of naming a directory, and the cost is near zero.
 
-Cost is near zero: the manifests are small JSON files and are already written.
+This is **not** true of every live source the problem statement names. The
+USAspending bulk-archive extractor, EDGAR full-text search, and SAM.gov do not
+today emit a manifest in this shape. R1 therefore implies producer work for
+those sources, and that work is part of implementing this spec rather than a
+precondition already satisfied. Design must enumerate which producers need it
+before R1 binds a study that uses them.
 
 ### R2 — A study declares what reproduction means for it
 
@@ -93,13 +108,29 @@ that visible.
 
 ### R3 — The check distinguishes drift from regression
 
-A rebuild comparison must report which of the four cells above it landed in.
-Upstream drift within the declared tolerance is recorded and passes. A change
-in kept rows at constant upstream size fails regardless of tolerance, because
-that is this repository's behaviour changing, not the world's.
+A rebuild comparison must report which of the four cells above it landed in,
+and must state the grain at which each measure was taken. The 2x2 is a triage
+aid, not a proof: `rows_scanned` and `rows_kept` can both hold steady while the
+*identity* of the kept rows changes, and an upstream can revise a record in
+place without changing any count. Equal counts are evidence of agreement, not a
+demonstration of it.
 
-Collapsing both into one numeric comparison is what makes today's 137-versus-138
-uninterpretable.
+The binding rules are therefore narrower than the table alone suggests:
+
+- Constant upstream measure with changed kept rows **fails**, regardless of
+  tolerance. That is this repository's behaviour changing, not the world's.
+- Moved upstream measure with kept rows inside the R2 band **passes and is
+  recorded as drift**, provided the comparison also reports a row-identity
+  check at the declared grain, not only counts.
+- Any cell in which the identity check disagrees while counts agree **fails**,
+  and is the case the counts alone would have hidden.
+
+Design must fix the grain per source kind: a notice id for the GSA archive, an
+accession for EDGAR, an award key for USAspending. A count-only comparison is
+not sufficient at any tier this spec serves.
+
+Collapsing drift and regression into one numeric comparison is what makes
+today's 137-versus-138 uninterpretable.
 
 ### R4 — Nothing here weakens an existing contract
 
@@ -107,6 +138,29 @@ uninterpretable.
 A study with no live upstream declares no tolerance and is checked exactly as
 it is today. Tolerance applies only to quantities derived from a declared live
 source.
+
+## Done when
+
+`primitives` requires comprehensive tests, so completion is defined by
+observable checks rather than by the prose above being agreed. This spec is
+complete when all of the following hold:
+
+1. `StudyManifest` accepts a live-source declaration carrying a pinned retrieval
+   manifest and a reproduction tolerance, and rejects each of: a declaration
+   naming a manifest absent from `frozen_artifacts`; a tolerance with no
+   derivation; a tolerance band stated for a quantity the study does not report.
+2. A study at `reproducible` or above with a declared live source and no pinned
+   retrieval manifest fails `validate_study_manifests.py`.
+3. The comparison reports a classification for each of the four cells, and tests
+   exercise all four plus the counts-agree-identity-disagrees case named in R3.
+4. Tolerance boundary tests exist on both sides of a declared band, including
+   equality at the boundary.
+5. `transition-scoring` carries a declaration whose rebuild comparison returns a
+   determinate verdict for the 2026-09-13 rebuild — currently the motivating
+   case and currently unanswerable.
+
+Item 5 is the acceptance test that matters: if the mechanism cannot classify the
+rebuild that motivated it, it has not solved the problem.
 
 ## Explicitly out of scope
 
