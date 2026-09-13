@@ -236,6 +236,43 @@ def test_first_positive_post_phase_ii_event_uses_a_positive_transaction(
     assert firm["first_post_phase_ii_positive_non_phase_i_ii_action_date"] == pd.Timestamp(
         "2016-02-05"
     )
+    assert (
+        firm["first_post_phase_ii_target_origin_award_maximum_award_gross_positive_obligations"]
+        == 50.0
+    )
+
+
+def test_zero_post_phase_ii_origin_awards_keep_sensitivity_schema(tmp_path: Path) -> None:
+    cohort = _cohort(UEI_A)
+    contracts = _load_contracts(
+        tmp_path,
+        cohort,
+        [
+            _transaction(
+                "TX-PRE",
+                action_date="2014-06-01",
+                obligation_amount=100.0,
+            ),
+        ],
+    )
+
+    _, tables = mod.build_archive_analysis_tables(
+        cohort=cohort,
+        contracts=contracts,
+        sam=_empty_sam(),
+        recent=_empty_recent(),
+        analysis_date=date(2020, 1, 1),
+        coverage_end=pd.Timestamp("2020-01-01"),
+    )
+
+    firm = tables["firm_evidence"].iloc[0]
+    assert pd.isna(firm["first_post_phase_ii_target_origin_award_date"])
+    assert pd.isna(
+        firm["first_post_phase_ii_target_origin_award_maximum_award_gross_positive_obligations"]
+    )
+    sensitivity = tables["transition_threshold_sensitivity"]
+    assert not sensitivity.empty
+    assert (sensitivity["entities"] == 0).all()
 
 
 def test_clean_pre_index_and_literal_first_target_entry_flags_remain_distinct(

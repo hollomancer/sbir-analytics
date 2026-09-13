@@ -3,7 +3,7 @@
 
 Epistemic tier: exploratory (non-citable).
 
-The analysis keeps four observables separate:
+The analysis keeps five observables separate:
 
 * a current, active SAM.gov registration that lists a target NAICS code;
 * any target-coded federal prime action awarded to an exact-UEI SBIR entity;
@@ -971,9 +971,18 @@ def _first_event_bundle(
     date_column: str,
     prefix: str,
 ) -> pd.DataFrame:
+    columns = [
+        "firm_uei",
+        f"{prefix}_date",
+        f"{prefix}_codes",
+        f"{prefix}_award_keys",
+        f"{prefix}_gross_positive_obligations",
+        f"{prefix}_phase_iii_marker",
+        f"{prefix}_maximum_award_gross_positive_obligations",
+    ]
     usable = frame.loc[frame[date_column].notna()].copy()
     if usable.empty:
-        return pd.DataFrame(columns=["firm_uei", f"{prefix}_date", f"{prefix}_codes"])
+        return pd.DataFrame(columns=columns)
     usable["_first_date"] = usable.groupby("firm_uei")[date_column].transform("min")
     tied = usable.loc[usable[date_column].eq(usable["_first_date"])].copy()
     maximum_tied_award = (
