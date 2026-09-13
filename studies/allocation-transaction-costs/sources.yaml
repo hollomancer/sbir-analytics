@@ -126,10 +126,12 @@ inventory_only:
     publisher: Science and Engineering Ethics (American Institute of Biological Sciences survey)
     evidence_class: behavioral_survey
     note: >-
-      Only published US measurement of reviewer hours per grant application:
-      4.5–5.0 hours of pre-meeting time per assignment, 874 respondents. Cited
+      Published US measurement of reviewer hours per grant application we
+      located: 4.5 hours (fewer than seven panels) and 5.0 hours (seven or
+      more panels) of pre-meeting time per assignment, 874 respondents. Cited
       for the review.reviewer_hours grid. Panel review of NIH-style
-      applications, not NSF ad hoc mail review.
+      applications, not NSF ad hoc mail review. The survey does not provide a
+      mechanism-specific SBIR versus R01 estimate.
 
   - source_id: sbir_consultant_list_prices_2026
     url: https://sbirgrantwriters.com/sbir-blog-grant-writing-services-compared-2026

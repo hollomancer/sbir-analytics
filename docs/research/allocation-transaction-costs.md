@@ -48,7 +48,7 @@ duration convention.
 | Phase I vs Phase II vs Fast Track vs STTR | Separated in Table #215 | Administrative counts |
 | Applicant hours, SBIR firms | Not observed | — |
 | Applicant hours, university R01 PIs | FDP 2018 time-use survey; wrong population for SBIR | Behavioral survey, transfer only |
-| Reviewer hours | Reviewer *count* is a convention (~3); hours are scenarios | Proxy + assumption |
+| Reviewer hours | Reviewer *count* is a convention (~3). AIBS/Gallo et al. 2019 measures 4.5 (fewer than seven panels) and 5.0 (seven or more) pre-meeting hours per NIH-style panel-review assignment; the 2/4/8 grid is unchanged. The survey does not provide a mechanism-specific SBIR vs R01 estimate. | Behavioral survey (panel review) + scenario grid |
 | Agency selection cost | 3% statutory SBIR admin ceiling only; CSR budget not allocatable | Statutory cap / missing |
 | PRA burden hours | Not used | Administrative estimate, refused |
 | University F&A rates | Not used | Wrong construct, refused |
@@ -175,7 +175,7 @@ transaction cost.
 | Gap | Why it binds | Smallest collection |
 |---|---|---|
 | SBIR/STTR applicant hours by phase | Break-even is identified; the ranking is not | Time-use survey of applicants, including unfunded firms |
-| Reviewer hours by mechanism | Review cost uses scenarios | CSR / agency reviewer time logs |
+| Reviewer hours by mechanism | AIBS/Gallo et al. 2019 is not SBIR- vs R01-specific; review cost still uses the 2/4/8 grid | CSR / agency reviewer time logs |
 | Allocated agency selection cost | `GC` is missing | Agency cost accounting that splits SBIR from R01 review |
 | NSF Project Pitch counts | Full-proposal rates understate NSF burden | NSF pitch invitations and time |
 | DoD research-grant application series | No matched comparator | A defined 6.1/6.2 or BAA denominator |

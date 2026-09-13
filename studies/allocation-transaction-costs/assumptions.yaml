@@ -37,6 +37,8 @@ applicant_hour_citations:
   nih_sbir_phase_i:
     evidence_class: assumption_grid
     population: unobserved_small_business
+    source_id: sbir_consultant_list_prices_2026
+    url: https://sbirgrantwriters.com/sbir-blog-grant-writing-services-compared-2026
     note: >-
       No public time-use survey of NIH SBIR applicants matches FDP quality.
       The 20–200 hour grid is a sensitivity range, not a point estimate.
@@ -84,19 +86,21 @@ review:
   reviewer_hours: [2, 4, 8]
   reviewer_hours_note: >-
     NIH CSR typically assigns about three reviewers. The 2/4/8 grid is retained
-    as a scenario range, but it is no longer true that hours per review are
-    unpublished; see reviewer_hour_citations for the one published US
-    per-application measurement, which falls inside the grid.
+    as a scenario range; see reviewer_hour_citations for the published US
+    per-application measurement we located, which falls inside the grid.
   reviewer_hour_citations:
     aibs_gallo_2019:
       evidence_class: behavioral_survey
       population: us_grant_reviewers_panel_review
-      observed_pre_meeting_hours_per_application: [4.5, 5.0]
+      source_id: aibs_gallo_2019
+      observed_pre_meeting_hours_per_application:
+        fewer_than_seven_panels: 4.5
+        seven_or_more_panels: 5.0
       note: >-
-        Gallo, Sullivan and Glisson (2019), "The Participation and Motivations
-        of Grant Peer Reviewers: A Comprehensive Survey", Science and
-        Engineering Ethics, doi:10.1007/s11948-019-00123-1. AIBS survey, 874
-        respondents. Time spent per assignment reviewing each application
+        Gallo, Thompson, Schmaling and Glisson (2019), "The Participation and
+        Motivations of Grant Peer Reviewers: A Comprehensive Survey", Science
+        and Engineering Ethics, doi:10.1007/s11948-019-00123-1. AIBS survey,
+        874 respondents. Time spent per assignment reviewing each application
         before the meeting was 4.5 +/- 0.08 hours for reviewers serving on
         fewer than seven panels and 5.0 +/- 0.08 hours for those on seven or
         more. Total annual grant-review time was 47 +/- 2 and 132 +/- 3 hours
@@ -104,7 +108,8 @@ review:
         totals add meeting hours (panel days x 8) and 8 hours of travel for
         face-to-face panels, so hours per review inclusive of meeting time sit
         nearer the top of the 2/4/8 grid. Measured on panel review of
-        NIH-style applications, not on NSF ad hoc mail review. The paper's
+        NIH-style applications, not on NSF ad hoc mail review. The survey does
+        not provide a mechanism-specific SBIR versus R01 estimate. The paper's
         aggregate annual totals do not reconcile cleanly with its
         per-application figures, so only the per-application measurement is
         cited here.
