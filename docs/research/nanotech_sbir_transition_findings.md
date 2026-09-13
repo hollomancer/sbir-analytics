@@ -1,8 +1,16 @@
 # Nanotechnology SBIR/STTR Phase II: Commercialization Pathways and Measurement Limits
 
+> **Form D dependency withdrawn (2026-09-12):** All Form D rates, dollar
+> summaries, timing summaries, overlaps, pathway comparisons, and composite
+> percentages on this page used the unversioned cohort now identified as
+> `person-or-zip-v1`. They are retired historical values and must not be
+> attributed to `corroborated-person-v2`. Tables remain only as a dated
+> provenance snapshot; no Form D-dependent headline is current until the
+> parent study's filing/CIK and amendment-chain gates close.
+
 **Role:** Technical appendix (not the policy-leader-facing default)  
 **Policy brief (start here):** [`nanotech_sbir_policy_brief.md`](nanotech_sbir_policy_brief.md)  
-**Status:** Provisional — figures are bounded estimates, not rates  
+**Status:** Provisional; Form D-dependent figures retired pending v2 rebuild
 **Data through:** FY2025 (SBIR.gov); FY2024 (USAspending); SEC EDGAR (ongoing); USPTO PatentsView (March 2026 release)  
 **Publication format:** [`specs/tech-area-transition-report/publication-format.md`](../../specs/tech-area-transition-report/publication-format.md)
 

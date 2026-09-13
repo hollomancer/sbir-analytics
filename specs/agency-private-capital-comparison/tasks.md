@@ -148,8 +148,9 @@ on a pinned real-data run.
   `agency_vs_form_d_comparison.md`, `threats_to_validity.json`.
 - [ ] 2.7 Add security-type / offering-size decomposition view. Reuse #286's
   Form D scoring tiers only after verifying compatibility with the DERA schema.
-  Cross-check by reproducing #286's published 1.82x SBIR-to-Form-D leverage
-  ratio scoped to the configured agency only.
+  Do not reproduce the retired `person-or-zip-v1` headline as a cross-check.
+  Require one pinned `corroborated-person-v2` version and keep the result
+  unavailable until the fundraising study's filing/CIK aggregation gates close.
 - [ ] 2.8 Extend the unit + integration scaffold tests under
   `tests/unit/agency_private_capital/` and
   `tests/integration/agency_private_capital/` to exercise the validated real
@@ -194,13 +195,15 @@ alongside them stays in `specs/edgar-event-date-fidelity/`, which touches
   - Verify: a notebook showing an original and its amendments grouped by the
     proposed key against real filings.
 
-- [ ] F.3 Replace the interim amendment lower bound with exact chain collapse.
+- [ ] F.3 Replace the interim amendment heuristic with exact chain collapse.
   - Blocked on F.2. Amendments restate *cumulative* offering totals rather than
     adding to them, so summing an original alongside its amendments
     double-counted `total_form_d_raised` and `offering_count`. The interim fix
     shipped in v0.12.0 sums originals only, falling back to the largest
     restatement for amendment-only chains — on a 5/8/10 chain it reports 5 where
-    the correct answer is 10. It is a documented lower bound, not a total.
+    the correct answer is 10. Because multiple originals can also represent
+    distinct offerings, the shortcut has no proven one-sided error direction;
+    it is neither an exact total nor a defensible lower bound.
   - Replace that behavior, do not layer over it; delete its code comment with it.
   - Note for Phase 1 sign-off: v0.12.0 changed `total_form_d_raised` and
     `offering_count` after the Phase 1 artifacts were materialized. Re-check any

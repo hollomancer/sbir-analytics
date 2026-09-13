@@ -1,12 +1,9 @@
 #!/usr/bin/env python3
-"""Export the Form D high-confidence SBIR cohort.
+"""Export a versioned Form D high-tier SBIR cohort.
 
-Reproduces the cohort defined in
-docs/research/sbir-form-d-fundraising-analysis.md:
-
-  high-confidence tier in form_d_details.jsonl,
-  AND (company name matches an SBIR firm OR Form D issuer ZIP matches
-       an SBIR firm's ZIP)
+The exporter refuses unversioned or stale match tiers. A current high tier is
+still record-level candidate evidence, not proof of same-filing or issuer
+identity.
 
 Aggregates SBIR award history per firm. Writes
 $SBIR_DATA_DIR/form_d_high_conf_cohort.jsonl.
@@ -33,10 +30,28 @@ from collections import Counter, defaultdict
 from collections.abc import Iterable, Iterator
 from pathlib import Path
 
+from sbir_etl.enrichers.sec_edgar.form_d_scoring import (
+    FORM_D_TIER_RULE_VERSION,
+    require_form_d_tier_rule,
+)
+from sbir_etl.quality.study_manifest import load_study_manifest
 from sbir_etl.ucc._common import data_path
 
 # Threshold for treating person_score as a "name match" (matches tier rule).
 _PERSON_SCORE_THRESHOLD = 0.7
+_STUDY_MANIFEST_PATH = (
+    Path(__file__).resolve().parents[2] / "studies" / "form-d-fundraising" / "study.yaml"
+)
+
+
+def require_materialization_allowed(path: Path = _STUDY_MANIFEST_PATH) -> None:
+    """Refuse a new cohort while its parent Form D study gate is closed."""
+
+    manifest = load_study_manifest(path)
+    if manifest.materialization.allowed:
+        return
+    blockers = "; ".join(manifest.materialization.blockers)
+    raise RuntimeError(f"Study {manifest.study_id!r} materialization is blocked: {blockers}")
 
 
 def build_cohort_rows(
@@ -47,7 +62,7 @@ def build_cohort_rows(
 
     Expects pre-normalized records (see _normalize_form_d / _normalize_sbir_award
     for real-data normalization). Each record must have:
-      - match_confidence.tier
+      - match_confidence.tier and match_confidence.rule_version
       - name_match (bool)
       - zip_match (bool)
       - issuer_zip (str, 5-digit)
@@ -70,7 +85,11 @@ def build_cohort_rows(
 
     seen_firms: set[str] = set()
     for rec in form_d_records:
-        tier = (rec.get("match_confidence") or {}).get("tier")
+        confidence = require_form_d_tier_rule(
+            rec.get("match_confidence"),
+            context=f"Form D record {rec.get('company_name') or '<unnamed>'!r}",
+        )
+        tier = confidence.get("tier")
         if tier != "high":
             continue
         has_name = bool(rec.get("name_match"))
@@ -111,6 +130,7 @@ def build_cohort_rows(
             "total_award_amount": sum(amounts),
             "form_d_filing_count": int(rec.get("offering_count") or 1),
             "form_d_total_raised": float(rec.get("total_amount_sold") or 0),
+            "form_d_tier_rule_version": FORM_D_TIER_RULE_VERSION,
         }
 
 
@@ -201,6 +221,8 @@ def main() -> int:
     parser.add_argument("--sbir-awards", type=Path, default=data_path("raw/sbir/award_data.csv"))
     parser.add_argument("--out", type=Path, default=data_path("form_d_high_conf_cohort.jsonl"))
     args = parser.parse_args()
+
+    require_materialization_allowed()
 
     form_d = [_normalize_form_d(r) for r in _read_jsonl(args.form_d_details)]
     awards = list(_read_sbir_awards(args.sbir_awards))

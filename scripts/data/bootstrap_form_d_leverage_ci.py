@@ -1,15 +1,16 @@
 #!/usr/bin/env python3
-"""Compute bootstrap confidence intervals for two leverage-ratio interpretations.
+"""Compute bootstrap intervals for two Form D leverage-ratio interpretations.
 
-The published doc ``docs/research/sbir-form-d-fundraising-analysis.md`` reports
-the headline ratio as a single point estimate (``1.82x`` for the high-confidence
-cohort). That number is the program-wide ratio Form D $ / total SBIR program $.
+The ``form-d-fundraising`` study is currently retired and its materialization
+gate is closed. This command refuses to run while that gate is closed and also
+refuses unversioned or stale match tiers. Historical v1 headline values are not
+defaults or validation targets.
 
 A second interpretation — the **per-matched-firm** leverage — divides Form D $
 only by the SBIR $ of firms that actually match in Form D. These two ratios
-answer different questions and produce very different headline numbers:
+answer different questions:
 
-- **Program-level (reproduces doc's 1.82x):**
+- **Program-level:**
   Numerator = sum of Form D ``total_amount_sold`` from matched-cohort firms
   (after year + industry filters).
   Denominator = sum of ALL federal SBIR ``Award Amount`` in the year window
@@ -24,10 +25,6 @@ answer different questions and produce very different headline numbers:
   Interpretation: "For SBIR awardees who go on to raise Form-D-detected
   private capital, what's their leverage per SBIR dollar received?"
 
-The denominator gap is large: ~$51B program total vs. ~$8.7B for the
-high-tier matched cohort. So a ratio of 1.82x at program level corresponds
-to ~10.7x at the per-matched-firm level.
-
 Bootstrap methodology:
 - Resampling unit: firm. Each iteration draws N firms with replacement
   from the matched cohort (N = cohort size), then recomputes both ratios.
@@ -37,7 +34,7 @@ Bootstrap methodology:
 - For the per-matched-firm ratio, both numerator and denominator depend
   on the resample; both move together.
 
-Cohort definitions and filters match the published doc:
+Cohort definitions and filters:
 - Tier filter: ``high`` only and ``high + medium``
 - Industry exclusions: ``EXCLUDED_INDUSTRY_GROUPS`` applied at offering level
 - Year window: 2009-2024 (excludes 2025 partial year)
@@ -63,9 +60,18 @@ from typing import Any
 
 import numpy as np
 
+from sbir_etl.enrichers.sec_edgar.form_d_scoring import (
+    FORM_D_TIER_RULE_VERSION,
+    require_form_d_tier_rule,
+)
+from sbir_etl.quality.study_manifest import load_study_manifest
+
 
 YEAR_MIN = 2009
 YEAR_MAX = 2024
+STUDY_MANIFEST_PATH = (
+    Path(__file__).resolve().parents[2] / "studies" / "form-d-fundraising" / "study.yaml"
+)
 
 EXCLUDED_INDUSTRY_GROUPS = frozenset(
     {
@@ -105,15 +111,34 @@ def _parse_amount(s: str | None) -> float | None:
         return None
 
 
+def require_materialization_allowed(path: Path = STUDY_MANIFEST_PATH) -> None:
+    """Fail closed when the study contract does not authorize a result run."""
+
+    manifest = load_study_manifest(path)
+    if manifest.materialization.allowed:
+        return
+    blockers = "; ".join(manifest.materialization.blockers)
+    raise RuntimeError(f"Study {manifest.study_id!r} materialization is blocked: {blockers}")
+
+
 def load_form_d_per_firm(
-    path: Path, year_min: int, year_max: int
+    path: Path,
+    year_min: int,
+    year_max: int,
+    *,
+    expected_rule_version: str = FORM_D_TIER_RULE_VERSION,
 ) -> dict[str, dict[str, Any]]:
     """Aggregate Form D ``total_amount_sold`` per firm with year + industry filters."""
     per_firm: dict[str, dict[str, Any]] = {}
     for line in open(path):
         r = json.loads(line)
         name = _norm_name(r.get("company_name"))
-        tier = r.get("match_confidence", {}).get("tier")
+        confidence = require_form_d_tier_rule(
+            r.get("match_confidence"),
+            expected_rule_version=expected_rule_version,
+            context=f"Form D record {name or '<unnamed>'!r}",
+        )
+        tier = confidence.get("tier")
         if not name or not tier:
             continue
         raised = 0.0
@@ -163,9 +188,7 @@ def load_sbir_program_and_per_firm(
             per_agency[agency] += amt
             if not name:
                 continue
-            entry = per_firm.setdefault(
-                name, {"award_total": 0.0, "agencies": defaultdict(float)}
-            )
+            entry = per_firm.setdefault(name, {"award_total": 0.0, "agencies": defaultdict(float)})
             entry["award_total"] += amt
             entry["agencies"][agency] += amt
 
@@ -177,7 +200,7 @@ def load_sbir_program_and_per_firm(
             e["dominant_agency"] = "Unknown"
 
     print(
-        f"  SBIR program total: ${program_total/1e9:.2f}B  "
+        f"  SBIR program total: ${program_total / 1e9:.2f}B  "
         f"({len(per_firm):,} firms, {len(per_agency)} agencies)",
         file=sys.stderr,
     )
@@ -264,11 +287,15 @@ def bootstrap_two_views(
         return out
 
     out["program_level"] = {
-        "point_estimate": float(raised.sum() / program_denominator) if program_denominator > 0 else 0.0
+        "point_estimate": float(raised.sum() / program_denominator)
+        if program_denominator > 0
+        else 0.0
     }
     if compute_per_firm:
         out["per_matched_firm"] = {
-            "point_estimate": float(raised.sum() / sbir_matched.sum()) if sbir_matched.sum() > 0 else 0.0
+            "point_estimate": float(raised.sum() / sbir_matched.sum())
+            if sbir_matched.sum() > 0
+            else 0.0
         }
 
     program_ratios = np.empty(n_iter)
@@ -309,7 +336,8 @@ def cohort_arrays(
     require_sbir: bool = False,
 ) -> tuple[np.ndarray, np.ndarray]:
     rows = [
-        r for r in cohort
+        r
+        for r in cohort
         if r["tier"] in tier_filter and (not require_sbir or r["has_sbir_in_window"])
     ]
     raised = np.array([r["raised"] for r in rows], dtype=float)
@@ -349,117 +377,130 @@ def by_agency(
 
 
 def write_markdown(snapshot: dict[str, Any], path: Path) -> None:
-    L = []
-    L.append("# Form D leverage ratio — bootstrap confidence intervals")
-    L.append("")
-    L.append(f"**Source:** {snapshot['form_d_path']} + {snapshot['sbir_path']}")
-    L.append(f"**Year window:** {snapshot['year_min']}-{snapshot['year_max']}")
-    L.append(f"**Bootstrap iterations:** {snapshot['bootstrap_iterations']:,}")
-    L.append("**Resampling unit:** firm")
-    L.append(f"**RNG seed:** {snapshot['seed']}")
-    L.append("")
-
-    L.append("## Two ratio interpretations")
-    L.append("")
-    L.append("The published doc reports the **program-level** ratio (Form D $ / total program SBIR $) as 1.82x for the high cohort. A complementary **per-matched-firm** ratio (Form D $ / matched-firm SBIR $) answers a different question and produces a much larger number because the denominator excludes the ~63% of SBIR program spending that goes to firms with no Form D activity.")
-    L.append("")
-    L.append("Neither is wrong. They answer different questions:")
-    L.append("- **Program-level** ≈ \"What fraction of total federal SBIR investment is followed by Form-D-detected private capital across the matched-firm cohort?\"")
-    L.append("- **Per-matched-firm** ≈ \"For SBIR awardees who go on to raise Form-D-detected private capital, what's their leverage per SBIR dollar received?\"")
-    L.append("")
-
-    L.append("## Headline ratios")
-    L.append("")
-    L.append(f"Program total SBIR $ in window: **${snapshot['program_total_sbir_usd']/1e9:.2f}B** (denominator for program-level ratios)")
-    L.append("")
-    L.append("### Doc-cohort (all matched firms, includes firms whose SBIR is outside the window)")
-    L.append("")
-    L.append("This reproduces the published doc's methodology: the cohort is all 3,640 high-tier (and 4,760 H+M) Form D matches, regardless of whether their SBIR awards fall in the 2009-2024 window.")
-    L.append("")
-    L.append("Only the program-level ratio is reported here. The per-matched-firm ratio is omitted because mixing time-window semantics (Form D from all 3,640 matched firms, SBIR from the 3,236 inner-join subset) would produce a hybrid number that doesn't cleanly answer either framing question. See the inner-joined table below for the per-firm leverage.")
-    L.append("")
-    L.append("| Cohort | Firms | Form D $ | Program-level ratio (95% CI) |")
-    L.append("|---|---|---|---|")
-    for k, label in [("high_only_all_matched", "High only"), ("high_plus_medium_all_matched", "High + Medium")]:
-        r = snapshot[k]
-        pl = r["program_level"]
-        L.append(
-            f"| {label} | {r['n_firms']:,} | ${r['raised_total_usd']/1e9:.2f}B | "
-            f"**{pl['point_estimate']:.3f}x** [{pl['ci_lo']:.3f}, {pl['ci_hi']:.3f}] |"
+    lines = [
+        "# Form D leverage ratio — bootstrap intervals",
+        "",
+        f"**Source:** {snapshot['form_d_path']} + {snapshot['sbir_path']}",
+        f"**Form D tier rule:** `{snapshot['form_d_tier_rule_version']}`",
+        f"**Year window:** {snapshot['year_min']}-{snapshot['year_max']}",
+        f"**Bootstrap iterations:** {snapshot['bootstrap_iterations']:,}",
+        "**Resampling unit:** firm",
+        f"**RNG seed:** {snapshot['seed']}",
+        "",
+        "> These intervals cover firm resampling only. They do not validate match identity, ",
+        "> same-filing corroboration, CIK aggregation, Form D reporting, or missing private capital.",
+        "",
+        "## Two ratio interpretations",
+        "",
+        "- **Program-level:** Form D dollars divided by all SBIR dollars in the window.",
+        "- **Per-matched-firm:** Form D dollars divided by in-window SBIR dollars for matched firms.",
+        "",
+        f"Program SBIR denominator: **${snapshot['program_total_sbir_usd'] / 1e9:.2f}B**.",
+        "",
+        "## All matched records",
+        "",
+        "| Cohort | Firms | Form D $ | Program-level ratio (95% bootstrap interval) |",
+        "|---|---:|---:|---:|",
+    ]
+    for key, label in [
+        ("high_only_all_matched", "High only"),
+        ("high_plus_medium_all_matched", "High + medium"),
+    ]:
+        result = snapshot[key]
+        program = result["program_level"]
+        lines.append(
+            f"| {label} | {result['n_firms']:,} | ${result['raised_total_usd'] / 1e9:.2f}B | "
+            f"{program['point_estimate']:.3f}x "
+            f"[{program['ci_lo']:.3f}, {program['ci_hi']:.3f}] |"
         )
-    L.append("")
-    L.append("**Reproduces published doc:** the program-level high-only point estimate matches the doc's headline 1.82x exactly.")
-    L.append("")
 
-    L.append("### Inner-joined cohort (only firms with SBIR awards in window)")
-    L.append("")
-    L.append("This cohort drops Form D matches whose SBIR-side activity is entirely outside the 2009-2024 window. The per-matched-firm ratio is only well-defined for this cohort (would be undefined for firms with $0 in-window SBIR).")
-    L.append("")
-    L.append("| Cohort | Firms | Form D $ | Matched SBIR $ | Program-level (95% CI) | Per-matched-firm (95% CI) |")
-    L.append("|---|---|---|---|---|---|")
-    for k, label in [("high_only_sbir_in_window", "High only"), ("high_plus_medium_sbir_in_window", "High + Medium")]:
-        r = snapshot[k]
-        pl = r["program_level"]
-        pf = r["per_matched_firm"]
-        L.append(
-            f"| {label} | {r['n_firms']:,} | "
-            f"${r['raised_total_usd']/1e9:.2f}B | ${r['matched_sbir_total_usd']/1e9:.2f}B | "
-            f"**{pl['point_estimate']:.3f}x** [{pl['ci_lo']:.3f}, {pl['ci_hi']:.3f}] | "
-            f"**{pf['point_estimate']:.3f}x** [{pf['ci_lo']:.3f}, {pf['ci_hi']:.3f}] |"
+    lines.extend(
+        [
+            "",
+            "## Records with in-window SBIR awards",
+            "",
+            ("| Cohort | Firms | Form D $ | Matched SBIR $ | Program-level | Per-matched-firm |"),
+            "|---|---:|---:|---:|---:|---:|",
+        ]
+    )
+    for key, label in [
+        ("high_only_sbir_in_window", "High only"),
+        ("high_plus_medium_sbir_in_window", "High + medium"),
+    ]:
+        result = snapshot[key]
+        program = result["program_level"]
+        per_firm = result["per_matched_firm"]
+        lines.append(
+            f"| {label} | {result['n_firms']:,} | ${result['raised_total_usd'] / 1e9:.2f}B | "
+            f"${result['matched_sbir_total_usd'] / 1e9:.2f}B | "
+            f"{program['point_estimate']:.3f}x "
+            f"[{program['ci_lo']:.3f}, {program['ci_hi']:.3f}] | "
+            f"{per_firm['point_estimate']:.3f}x "
+            f"[{per_firm['ci_lo']:.3f}, {per_firm['ci_hi']:.3f}] |"
         )
-    L.append("")
 
-    L.append("## Per-agency ratios (high-only cohort)")
-    L.append("")
-    L.append("Each firm is attributed to its dominant SBIR funding agency (by award $).")
-    L.append("Program denominator for each agency = total program SBIR $ from that agency in the window.")
-    L.append("")
-    L.append("| Agency | Firms (w/ Form D) | Agency program $B | Form D $B | Program-level (95% CI) | Per-firm (95% CI) |")
-    L.append("|---|---|---|---|---|---|")
-    for r in snapshot["by_agency_high_only"]:
-        pl = r["program_level"]
-        pf = r["per_matched_firm"]
-        L.append(
-            f"| {r['agency']} | {r['n_firms']:,} ({r['n_with_form_d']:,}) | "
-            f"{r['program_sbir_total_usd']/1e9:.2f} | {r['raised_total_usd']/1e9:.2f} | "
-            f"**{pl['point_estimate']:.3f}x** [{pl['ci_lo']:.3f}, {pl['ci_hi']:.3f}] | "
-            f"**{pf['point_estimate']:.3f}x** [{pf['ci_lo']:.3f}, {pf['ci_hi']:.3f}] |"
+    lines.extend(
+        [
+            "",
+            "## Per-agency high-tier results",
+            "",
+            "Each firm is assigned to its dominant SBIR agency by award dollars.",
+            "",
+            (
+                "| Agency | Firms (positive Form D) | Agency SBIR $B | Form D $B | "
+                "Program-level | Per-matched-firm |"
+            ),
+            "|---|---:|---:|---:|---:|---:|",
+        ]
+    )
+    for result in snapshot["by_agency_high_only"]:
+        program = result["program_level"]
+        per_firm = result["per_matched_firm"]
+        lines.append(
+            f"| {result['agency']} | {result['n_firms']:,} ({result['n_with_form_d']:,}) | "
+            f"{result['program_sbir_total_usd'] / 1e9:.2f} | "
+            f"{result['raised_total_usd'] / 1e9:.2f} | "
+            f"{program['point_estimate']:.3f}x "
+            f"[{program['ci_lo']:.3f}, {program['ci_hi']:.3f}] | "
+            f"{per_firm['point_estimate']:.3f}x "
+            f"[{per_firm['ci_lo']:.3f}, {per_firm['ci_hi']:.3f}] |"
         )
-    L.append("")
 
-    L.append("## Interpretation guidance")
-    L.append("")
-    L.append("**Reading the CIs.** A 95% bootstrap CI of [1.5, 2.1] on a 1.82x point estimate means: under the firm-level resampling assumption, the headline is statistically distinguishable from 1.0x (no leverage) but not from 2.0x. A wider CI (e.g. [1.2, 2.5]) means there's enough heterogeneity in the matched cohort that the point estimate is sensitive to which specific firms are in it.")
-    L.append("")
-    L.append("**NASEM 4:1 comparison.** The doc disclaims that the headline 1.82x is not directly comparable to NASEM's 4:1 because they measure different channels (private Reg D capital vs. follow-on federal contracts). With CIs now available, the gap is also large enough that 1.82x is clearly distinguishable from 4:1 at the 95% level — the channels differ, not just the central estimates.")
-    L.append("")
-    L.append("**Per-agency CI widths.** Small-cohort agencies (Commerce, EPA, DOT) have very wide CIs reflecting the small sample of matched firms. The narrow CIs on HHS, DoD, NSF reflect their large matched cohorts and are the agencies where the published per-agency ratios are most credible.")
-    L.append("")
-    L.append("## Methodology notes")
-    L.append("")
-    L.append("- **Resampling unit is the firm**, not the offering. Each bootstrap iteration samples N firms with replacement from the cohort of size N.")
-    L.append("- **Program-level denominator is constant** across bootstrap iterations (it doesn't depend on which firms are in the matched cohort). So the program-level CI reflects only numerator (Form D $) variability — i.e., variability in which matched firms are in the cohort sample.")
-    L.append("- **Per-matched-firm denominator varies** with each resample, so both numerator and denominator move together. CIs are wider but capture the true sampling variability of the firm-level ratio.")
-    L.append("- **Industry exclusions** match `sbir_etl.enrichers.sec_edgar.form_d_scoring.EXCLUDED_INDUSTRY_GROUPS` and are applied at the *offering* level. Per-firm Form D totals are re-aggregated from filtered offerings.")
-    L.append("- **Per-agency cohort** attributes each firm to its dominant SBIR agency by award $. Multi-agency firms are not double-counted.")
-    L.append("- **CIs quantify sampling uncertainty only.** They do NOT account for measurement error in `total_amount_sold` (self-reported on Form D, not SEC-verified), nor matching error in the SBIR ↔ Form D name join. Add another 5-15% for those if pushed on credibility.")
+    lines.extend(
+        [
+            "",
+            "## Interpretation limits",
+            "",
+            "- Form D amounts are self-reported and are not verified by the SEC.",
+            "- The intervals do not include identity or amount-reporting error.",
+            "- A company-level confidence record may pool signals across filings or CIKs.",
+            "- Non-detection is not zero private capital.",
+            "- Program-level and per-matched-firm ratios answer different questions.",
+        ]
+    )
 
     path.parent.mkdir(parents=True, exist_ok=True)
     with open(path, "w") as f:
-        f.write("\n".join(L) + "\n")
+        f.write("\n".join(lines) + "\n")
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
     parser.add_argument("--form-d-path", type=Path, default=Path("data/form_d_details.jsonl"))
     parser.add_argument("--sbir-path", type=Path, default=Path("data/raw/sbir/award_data.csv"))
     parser.add_argument("--year-min", type=int, default=YEAR_MIN)
     parser.add_argument("--year-max", type=int, default=YEAR_MAX)
     parser.add_argument("--n-iter", type=int, default=1000)
     parser.add_argument("--seed", type=int, default=42)
-    parser.add_argument("--output-json", type=Path, default=Path("reports/ml/form_d_leverage_ci.json"))
+    parser.add_argument(
+        "--output-json", type=Path, default=Path("reports/ml/form_d_leverage_ci.json")
+    )
     parser.add_argument("--output-md", type=Path, default=Path("reports/ml/form_d_leverage_ci.md"))
     args = parser.parse_args()
+
+    require_materialization_allowed()
 
     if not args.form_d_path.exists() or not args.sbir_path.exists():
         print("ERROR: input file(s) not found", file=sys.stderr)
@@ -476,9 +517,8 @@ def main() -> int:
 
     print(f"\nBootstrapping with {args.n_iter:,} iterations...", file=sys.stderr)
 
-    # All-matched cohort: program-level only (reproduces doc; per-firm
-    # would be a hybrid that mixes time-window semantics — see build_cohort
-    # docstring for why)
+    # All-matched cohort: program-level only. A per-firm ratio here would be a
+    # hybrid that mixes time-window semantics; see build_cohort's docstring.
     raised_h, sbir_h = cohort_arrays(cohort, {"high"}, require_sbir=False)
     high_only_program = bootstrap_two_views(
         raised_h, sbir_h, program_total, args.n_iter, rng, compute_per_firm=False
@@ -491,15 +531,20 @@ def main() -> int:
 
     # Inner-join cohort: program-level AND per-matched-firm
     raised_h_inner, sbir_h_inner = cohort_arrays(cohort, {"high"}, require_sbir=True)
-    high_only_perfirm = bootstrap_two_views(raised_h_inner, sbir_h_inner, program_total, args.n_iter, rng)
+    high_only_perfirm = bootstrap_two_views(
+        raised_h_inner, sbir_h_inner, program_total, args.n_iter, rng
+    )
 
     raised_hm_inner, sbir_hm_inner = cohort_arrays(cohort, {"high", "medium"}, require_sbir=True)
-    h_plus_m_perfirm = bootstrap_two_views(raised_hm_inner, sbir_hm_inner, program_total, args.n_iter, rng)
+    h_plus_m_perfirm = bootstrap_two_views(
+        raised_hm_inner, sbir_hm_inner, program_total, args.n_iter, rng
+    )
 
     per_agency = by_agency(cohort, {"high"}, agency_program, args.n_iter, rng)
 
     snapshot = {
-        "schema_version": "3",
+        "schema_version": "4",
+        "form_d_tier_rule_version": FORM_D_TIER_RULE_VERSION,
         "form_d_path": str(args.form_d_path),
         "sbir_path": str(args.sbir_path),
         "year_min": args.year_min,
@@ -529,10 +574,16 @@ def main() -> int:
         r = snapshot[key]
         pl = r["program_level"]
         print(f"\n  {label} (n={r['n_firms']:,}):", file=sys.stderr)
-        print(f"    program-level: {pl['point_estimate']:.3f}x [{pl['ci_lo']:.3f}, {pl['ci_hi']:.3f}]", file=sys.stderr)
+        print(
+            f"    program-level: {pl['point_estimate']:.3f}x [{pl['ci_lo']:.3f}, {pl['ci_hi']:.3f}]",
+            file=sys.stderr,
+        )
         if "per_matched_firm" in r:
             pf = r["per_matched_firm"]
-            print(f"    per-firm:      {pf['point_estimate']:.3f}x [{pf['ci_lo']:.3f}, {pf['ci_hi']:.3f}]", file=sys.stderr)
+            print(
+                f"    per-firm:      {pf['point_estimate']:.3f}x [{pf['ci_lo']:.3f}, {pf['ci_hi']:.3f}]",
+                file=sys.stderr,
+            )
 
     print(f"\nWrote {args.output_json} and {args.output_md}", file=sys.stderr)
     return 0

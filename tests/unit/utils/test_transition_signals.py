@@ -1,9 +1,15 @@
 """Unit tests for transition signal enrichment helpers."""
 
+import json
+
+import pytest
+
 from sbir_etl.utils.transition_signals import (
     classify_deficiency,
     enrich_cohort_with_signals,
+    load_form_d_signals,
 )
+from sbir_etl.enrichers.sec_edgar.form_d_scoring import FORM_D_TIER_RULE_VERSION
 
 
 def test_classify_entity_resolution():
@@ -58,3 +64,30 @@ def test_enrich_ma_requires_signal_count():
         {},
     )
     assert out[0]["sig_ma_detected"] is False
+
+
+def test_load_form_d_signals_requires_and_exposes_rule_version(tmp_path):
+    path = tmp_path / "cohort.jsonl"
+    path.write_text(
+        json.dumps(
+            {
+                "company_name": "Acme",
+                "form_d_total_raised": 1,
+                "form_d_filing_count": 1,
+                "form_d_tier_rule_version": FORM_D_TIER_RULE_VERSION,
+            }
+        )
+        + "\n"
+    )
+
+    loaded = load_form_d_signals(path)
+
+    assert loaded["ACME"]["form_d_tier_rule_version"] == FORM_D_TIER_RULE_VERSION
+
+
+def test_load_form_d_signals_refuses_unversioned_cohort(tmp_path):
+    path = tmp_path / "cohort.jsonl"
+    path.write_text(json.dumps({"company_name": "Legacy"}) + "\n")
+
+    with pytest.raises(ValueError, match="Rescore the complete input"):
+        load_form_d_signals(path)

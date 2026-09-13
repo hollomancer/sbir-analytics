@@ -86,7 +86,7 @@ beyond the documented study or pilot.
 
 | Source | Current use | Maturity |
 | --- | --- | --- |
-| SEC EDGAR and Form D | Public-company ownership, disclosed fundraising, and transaction signals | Research workflows; public-filer lower bound |
+| SEC EDGAR and Form D | Public-company ownership, disclosed fundraising, and transaction signals | Exploratory; incomplete coverage plus identity, filing/CIK, and amendment-chain gates |
 | State UCC filings | Secured-debt and financing-pathway pilots | State-specific exploratory pilots |
 | Public M&A and capital-event evidence | Unified firm event timeline | Local Parquet research output; see [Capital events](capital-events.md) |
 | FFATA/FSRS subawards | Prime-to-awardee attribution | Specified recovery work; not a general scheduled source |

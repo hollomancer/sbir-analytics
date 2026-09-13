@@ -8,7 +8,7 @@
 
 **Primary window:** Five years after a firm's first Phase II award from the agency
 
-**Channels:** Non-Phase-I/II federal prime contracts, SEC Form D offerings, and public-record M&A
+**Channels:** Non-Phase-I/II federal prime contracts, SEC Form D offerings, and public-record M&A candidates
 
 ## Current result status
 

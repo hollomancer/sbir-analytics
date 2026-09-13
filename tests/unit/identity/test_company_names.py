@@ -170,3 +170,217 @@ def test_rapidfuzz_adapters_preserve_historical_score_scale_and_process_api() ->
 def test_legacy_matching_constants_are_shared_identity_objects() -> None:
     assert legacy_matching.ENHANCED_ABBREVIATIONS is ENHANCED_ABBREVIATIONS
     assert legacy_matching.SUFFIX_TOKENS is SUFFIX_TOKENS
+
+
+# --- Adversarial audit -------------------------------------------------------
+#
+# Pairs that must NOT be treated as the same firm. Drawn from real false
+# positives found in the Form D join on 2026-09-08, plus the short-name
+# collisions that make `press_wire._match_company` 0/18.
+
+MUST_NOT_MATCH = [
+    ("3D Control Systems, Inc.", "3D SYSTEMS CORP", "real Form D false positive"),
+    ("ADELPHI TECHNOLOGY", "ADEPT TECHNOLOGY", "real Form D false positive"),
+    ("Nanomimetics", "NANOMETRICS", "real Form D false positive"),
+    ("Pronghorn Technologies", "PROCORE TECHNOLOGIES", "real Form D false positive"),
+    ("ADT Pharmaceuticals", "ADT Inc.", "real Form D false positive"),
+    ("COMPASS SYSTEMS", "Compass, Inc.", "real Form D false positive"),
+    ("Linked, Inc.", "LINKEDIN CORP", "real Form D false positive"),
+    ("BAL", "BALL CORP", "real Form D false positive"),
+    ("SiliconCore Technology, Inc.", "SILICON STORAGE TECHNOLOGY INC", "shared tokens"),
+]
+
+
+@pytest.mark.parametrize("left,right,reason", MUST_NOT_MATCH)
+def test_distinct_firms_do_not_score_as_the_same_firm(left: str, right: str, reason: str) -> None:
+    """Every pair here was a real attribution error or is one waiting to happen.
+
+    This asserts a documented ceiling, not a target. If a pair scores above it,
+    the number in this assertion is the thing to change deliberately, with the
+    consumer thresholds re-checked.
+
+    ``metric`` has no default on ``company_name_similarity`` (deliberately --
+    a primitives-tier contract does not get to pick a hidden default policy).
+    ``TOKEN_SET`` is used here because it is the metric two live consumers
+    (`sbir_etl/enrichers/sec_edgar/enricher.py::_search_form_d_filings` and
+    `::_search_filing_mentions_filtered`) apply directly with no normalization
+    profile -- the exact shape of the real Form D false positives above. No
+    profile is passed for the same reason: those two call sites pass raw,
+    manually-uppercased text.
+
+    Audit result (2026-09-10): 0/9 pairs score >= 0.95 under this
+    configuration; the highest is 0.882 (ADELPHI TECHNOLOGY vs ADEPT
+    TECHNOLOGY). The primitive's raw, unprofiled score stays well under this
+    ceiling for every pair here. The defect is not here -- see
+    `.superpowers/sdd/2026-09-10-verification-practices/task-5-report.md` for
+    the consumers whose own thresholds (80, 85, 90, 0.92) sit inside the range
+    these pairs actually score once each consumer's own profile normalization
+    is applied.
+    """
+    score = company_name_similarity(left, right, metric=CompanyNameMetric.TOKEN_SET)
+    assert score < 0.95, f"{left!r} vs {right!r} scored {score}: {reason}"
+
+
+# --- Positive counterpart -----------------------------------------------------
+#
+# `MUST_NOT_MATCH` has no positive twin, so a matcher that rejects everything
+# passes it for free. These pairs are the recall check.
+#
+# Source (2026-09-11, full corpus, not a sample): group
+# `data/raw/sbir/award_data.csv` (219,501 rows) by `Duns` and find DUNS values
+# carrying more than one distinct `Company` string -- one legal entity written
+# more than one way. 15 DUNS groups match; one of them is `Duns == "0"`, a
+# missing-data sentinel shared by 3 unrelated firms (4 rows total across the
+# whole file), not a real identifier, and is excluded as junk. The remaining
+# 14 real DUNS carry exactly one pair of names each.
+#
+# Not every one of those 14 belongs here. Two kinds appear:
+#   - name variants: the same name rendered differently (suffix, case, an
+#     article, a dropped/added token). A matcher should bridge these.
+#   - renames/rebrands: the same legal entity under an unrelated name. A name
+#     matcher cannot and should not bridge these -- only an identifier join
+#     can, and putting them here would force thresholds down until
+#     MUST_NOT_MATCH breaks again (see #713, #714).
+#
+# Excluded as renames (4 of 14), with the call:
+#   - "ALTRAZEAL LIFE SCIENCES INC" / "Uluru Inc." -- zero shared token,
+#     unrelated brand names.
+#   - "Joule Therapeutics, Inc" / "TARN BIOSCIENCES, INC." -- zero shared
+#     token, unrelated brand names.
+#   - "RGBSI AEROSPACE & DEFENSE LLC" /
+#     "Rapid Global Business Solutions Inc (RGBSI) Aerospace & Defense" --
+#     the full string self-declares the initialism in a parenthetical, but no
+#     normalization profile in this codebase expands company-specific
+#     acronyms, so no available text comparison bridges "RGBSI" to "Rapid
+#     Global Business Solutions Inc" (it needs an abbreviation lookup, not a
+#     string metric). Functions as a rename for this primitive; excluded.
+#   - "GAMMA ALLOYS INC" / "Gamma Technology, LLC" -- borderline, called NOT a
+#     match. The only shared token, "Gamma", is a generic scientific prefix
+#     (compare "Compass"/"Silicon" in MUST_NOT_MATCH) reused across unrelated
+#     firms; "Alloys" and "Technology" name unrelated businesses. Matching on
+#     one generic token is the exact false-positive shape MUST_NOT_MATCH
+#     exists to catch.
+#
+# Kept as a variant (1 of 14 borderline, called a match): "WEINBERG MEDICAL
+# PHYSICS, LLC" / "Weinberg Medical Holdings" -- unlike Gamma, the shared
+# span is two words ("Weinberg Medical"), and "Weinberg" is a distinctive
+# surname, not a generic word. "Physics" vs "Holdings" reads as an operating
+# company renaming itself into a holding-company structure while keeping its
+# founder-derived name, not a rebrand to an unrelated identity.
+#
+# The other 9 of 14 are unambiguous variants: 6 are byte-for-byte identical
+# after `CompanyNameProfile.RECIPIENT_V1` normalization (case, punctuation,
+# and legal-suffix differences only); 3 keep a distinctive token but add a
+# suffix, an article, or drop a descriptor word.
+MUST_MATCH = [
+    ("Mystic Spear", "MYSTIC SPEAR, LLC", "DUNS 017854463: case + suffix"),
+    (
+        "Convergent Manufacturing Technologies US",
+        "CONVERGENT MANUFACTURING TECHNOLOGIES US INC",
+        "DUNS 079729780: case + suffix",
+    ),
+    ("Qunnect LLC", "QUNNECT, INC", "DUNS 080969063: case + suffix swap"),
+    ("SPZ TECHNOLOGIE LLC", "SPZ Technologie, LLC", "DUNS 081020673: case only"),
+    ("TIAMI NETWORKS", "Tiami, LLC", "DUNS 084613536: suffix, descriptor word dropped"),
+    ("Aromha Inc", "AROMHA, INC.", "DUNS 118263562: case + punctuation"),
+    ("AnySignal, Inc.", "ANYSIGNAL INC", "DUNS 118694667: case + punctuation"),
+    ("NAVSYS Corporation", "THE NAVSYS CORPORATION", "DUNS 182097444: article + case"),
+    ("RAM Photonics", "RAM PHOTONICS INDUSTRIAL, LLC", "DUNS 831819979: token subset"),
+    (
+        "WEINBERG MEDICAL PHYSICS, LLC",
+        "Weinberg Medical Holdings",
+        "DUNS 809594661: borderline, called a match -- see reasoning above",
+    ),
+]
+
+# Trivially-true pairs: identical strings, pure case, and punctuation-only
+# differences. Cheap, and they catch a catastrophic regression (e.g. the
+# scorer always returning 0.0) even without touching real data.
+#
+# One of these -- pure case, no other difference -- turned out not to be
+# trivial. See the floor discussion below.
+MUST_MATCH_TRIVIAL = [
+    ("Acme Corporation", "Acme Corporation", "identical strings"),
+    ("Acme Corporation", "ACME CORPORATION", "pure case difference"),
+    ("Acme Inc.", "Acme Inc", "trailing period only"),
+    ("Acme  Corp", "Acme Corp", "double space only"),
+]
+
+# Every consumer in this repository normalizes before comparing -- either by
+# passing a `CompanyNameProfile` or, for the two sec_edgar call sites, by
+# uppercasing manually. A test that calls `company_name_similarity` with no
+# profile at all (an earlier version of this file did) measures a
+# configuration nothing uses: it makes `token_set_ratio`'s case sensitivity
+# look like the finding, when case sensitivity is an artifact of skipping
+# normalization, not a property of the matcher. `CompanyNameProfile.
+# RECIPIENT_V1` (case fold + legal-suffix strip) is the profile used below,
+# matching how a real consumer would call this primitive.
+#
+# Floor chosen from real scores, not asserted in advance. Under TOKEN_SET +
+# RECIPIENT_V1, the 10 MUST_MATCH pairs score 0.816-1.000 (WEINBERG is the
+# 0.816; the other 9 are 1.000), and the 4 MUST_MATCH_TRIVIAL pairs are all
+# 1.000. 0.75 sits under the true minimum (0.816) with margin, and still
+# fails a scorer that has regressed toward 0. It is a regression guard, not
+# a validated precision floor -- see the next comment for why no precision
+# floor exists on this data.
+MUST_MATCH_FLOOR = 0.75
+
+
+@pytest.mark.parametrize("left,right,reason", MUST_MATCH)
+def test_same_firm_scores_above_the_match_floor(left: str, right: str, reason: str) -> None:
+    """Real DUNS-confirmed name variants, normalized the way a real consumer would.
+
+    See the module-level comment above `MUST_MATCH` for how each pair was
+    classified (variant vs. rename) and the comment above `MUST_MATCH_FLOOR`
+    for why 0.75 is a regression guard, not a validated precision floor.
+    """
+    score = company_name_similarity(
+        left, right, metric=CompanyNameMetric.TOKEN_SET, profile=CompanyNameProfile.RECIPIENT_V1
+    )
+    assert score >= MUST_MATCH_FLOOR, f"{left!r} vs {right!r} scored {score}: {reason}"
+
+
+@pytest.mark.parametrize("left,right,reason", MUST_MATCH_TRIVIAL)
+def test_trivial_same_firm_pairs_score_above_the_match_floor(
+    left: str, right: str, reason: str
+) -> None:
+    score = company_name_similarity(
+        left, right, metric=CompanyNameMetric.TOKEN_SET, profile=CompanyNameProfile.RECIPIENT_V1
+    )
+    assert score >= MUST_MATCH_FLOOR, f"{left!r} vs {right!r} scored {score}: {reason}"
+
+
+def test_a_must_not_match_pair_outscores_a_must_match_pair() -> None:
+    """No threshold separates MUST_MATCH from MUST_NOT_MATCH. This pins that fact.
+
+    Even with real normalization applied (`RECIPIENT_V1`, matching every live
+    consumer), "3D Control Systems, Inc." vs "3D SYSTEMS CORP" -- a
+    documented false positive, kept out of MUST_MATCH -- scores 1.000 under
+    TOKEN_SET. "WEINBERG MEDICAL PHYSICS, LLC" vs "Weinberg Medical
+    Holdings" -- a real DUNS-confirmed match -- scores 0.816, the lowest
+    score in MUST_MATCH. The false positive outranks the true positive.
+
+    This assertion is the opposite polarity of every other test in this
+    file. If it starts failing, the two pairs have swapped order -- that is
+    not "matching got fixed," it means one of these two specific scores
+    moved, and MUST_NOT_MATCH's own test (unrelated to this one) must be
+    re-checked against its 0.95 ceiling before treating that as progress. A
+    single similarity score cannot decide firm identity on this data; that
+    requires an identifier join, not a better threshold.
+    """
+    false_positive = company_name_similarity(
+        "3D Control Systems, Inc.",
+        "3D SYSTEMS CORP",
+        metric=CompanyNameMetric.TOKEN_SET,
+        profile=CompanyNameProfile.RECIPIENT_V1,
+    )
+    true_positive = company_name_similarity(
+        "WEINBERG MEDICAL PHYSICS, LLC",
+        "Weinberg Medical Holdings",
+        metric=CompanyNameMetric.TOKEN_SET,
+        profile=CompanyNameProfile.RECIPIENT_V1,
+    )
+    assert false_positive >= true_positive, (
+        f"expected the interleaving to still hold: false positive {false_positive} "
+        f"should be >= true positive {true_positive}"
+    )

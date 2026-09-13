@@ -8,6 +8,8 @@ from pathlib import Path
 
 import pandas as pd
 
+from sbir_etl.enrichers.sec_edgar.form_d_scoring import FORM_D_TIER_RULE_VERSION
+
 
 def _write_cohort(path: Path, rows: list[dict]) -> None:
     with path.open("w") as f:
@@ -34,6 +36,7 @@ def test_orchestrator_end_to_end(tmp_path, monkeypatch):
                 "total_award_amount": 1_500_000.0,
                 "form_d_filing_count": 1,
                 "form_d_total_raised": 25_000_000.0,
+                "form_d_tier_rule_version": FORM_D_TIER_RULE_VERSION,
             }
         ],
     )
@@ -85,7 +88,12 @@ def test_orchestrator_end_to_end(tmp_path, monkeypatch):
         json.dumps(
             {
                 "company_name": "ACME INC",
-                "match_confidence": {"tier": "high", "person_score": 1.0, "address_score": 1},
+                "match_confidence": {
+                    "rule_version": FORM_D_TIER_RULE_VERSION,
+                    "tier": "high",
+                    "person_score": 1.0,
+                    "address_score": 1,
+                },
                 "total_raised": 5_000_000.0,
                 "offering_count": 1,
                 "form_d_cik": "0001",
@@ -170,7 +178,11 @@ def test_orchestrator_end_to_end(tmp_path, monkeypatch):
 
     result = subprocess.run(
         [sys.executable, "scripts/data/build_capital_events.py"],
-        env={"SBIR_DATA_DIR": str(tmp_path), "PATH": "/usr/bin:/bin"},
+        env={
+            "SBIR_DATA_DIR": str(tmp_path),
+            "PATH": "/usr/bin:/bin",
+            "PYTHONPATH": str(Path(__file__).resolve().parents[3]),
+        },
         capture_output=True,
         text=True,
     )

@@ -1,56 +1,82 @@
-# Form D fundraising leverage — frozen design
+# Form D fundraising leverage — Revision 1 frozen design
 
-This is the frozen method for `studies/form-d-fundraising`. It records the
-estimand and computation path. It does not authorize citation.
+**Lifecycle status:** retired pending a complete v2 rebuild.
+**Tier rule:** `corroborated-person-v2`.
+**Current numerical result:** none.
 
-## Estimand
+This revision replaces the historical 2026-04-23 design for purposes of any new
+materialization. The historical result used `person-or-zip-v1`; it is not a result under
+this design and is not authorized for citation. The retirement and visible-result record
+is in [`amendments.md`](amendments.md).
 
-Among SBIR/STTR awardees in calendar years 2009–2024, estimate two
-lower-bound private-to-SBIR leverage ratios from SEC Form D
-`totalAmountSold` (capital actually sold, not offering amount):
+## Intended estimand
 
-1. **Program-level ratio.** Numerator: Form D dollars from matched firms
-   after year and industry-group filters. Denominator: all SBIR.gov award
-   dollars in the same window, including firms with no Form D match.
-2. **Per-matched-firm ratio.** Numerator: Form D dollars from the subset
-   of matched firms that have at least one in-window SBIR award.
-   Denominator: SBIR.gov award dollars for that same subset.
+Among SBIR/STTR awardees in calendar years 2009–2024, estimate two descriptive ratios from
+SEC Form D `totalAmountSold` after year and excluded-industry filters:
 
-Each ratio is reported at two match-confidence filters: high only, and
-high + medium. Uncertainty is a firm-level percentile bootstrap (1,000
-iterations, seed 42).
+1. **Program-level ratio.** Form D dollars from matched firms divided by all SBIR.gov award
+   dollars in the window.
+2. **Per-matched-firm ratio.** Form D dollars from matched firms with an in-window SBIR award
+   divided by SBIR.gov dollars for that same subset.
 
-A zero or missing Form D match is non-detection, never proof that the
-firm raised no private capital. The ratios are not NASEM's DoD follow-on
-federal-contract leverage and are not comparable to it.
+Each ratio would be reported for high and high-plus-medium match tiers with a firm-level
+percentile bootstrap using 1,000 iterations and seed 42. The bootstrap covers firm resampling
+only. It does not cover identity error, Form D reporting error, or missing private capital.
 
-## Data cut
+Neither ratio is a lower bound: false-positive identity links and filing aggregation can move
+the numerator upward, while missed or non-Form-D capital can move it downward. The ratios are
+not NASEM's federal-contract follow-on leverage.
 
-- SBIR.gov bulk awards (`Award Year` 2009–2024; 2025 excluded as a partial
-  year).
-- Form D match records at `data/form_d_details.jsonl`, scored by
-  `compute_form_d_confidence` under the 2026-04-23 two-signal rule
-  (high = PI–executive name score ≥ 0.7 or ZIP match; medium = state
-  match *or* missing state evidence; a state mismatch is low).
-- Industry groups excluded at offering grain: Insurance, Lodging and
-  Conventions, Other Travel, Pooled Investment Fund, Restaurants,
-  Retailing, Tourism and Travel Services.
+## Named tier rules
 
-Inputs are local and gitignored. Re-running requires those files.
+- `person-or-zip-v1` is the retired historical rule: a person score of at least 0.7 or an exact
+  ZIP match reached high.
+- `corroborated-person-v2` is the current rule: exact ZIP reaches high; a person score of at
+  least 0.7 reaches high only with an exact ZIP or state overlap; person alone reaches medium.
 
-## Computation
+Every `match_confidence` object must persist `rule_version`. Unversioned, mixed-version, or
+unsupported inputs fail before analysis. `scripts/data/rescore_form_d_details.py` can apply a
+named rule deterministically from stored person, address, and state scores without network
+access. Its atomic rewrite is a tier migration, not a new identity validation.
 
-`scripts/data/bootstrap_form_d_leverage_ci.py` loads the two files, joins
-on uppercase stripped company name, applies the filters above, and writes
-the bootstrap snapshot. The dated findings record is
-`docs/research/sbir-form-d-fundraising-analysis.md`.
+## Filing and issuer boundary
+
+The legacy detail producer pooled persons, states, ZIPs, dates, and incorporation evidence across
+all filings attached to a company record before assigning one tier. Those filings can span more
+than one CIK. Consequently, a v2 person-plus-state result can combine signals observed in
+different filings or issuers. A shared CIK between a PIF-side and operating-side record can also
+indicate record aggregation or an unresolved entity relationship; it is not automatic
+corroboration.
+
+Migrated records expose `match_confidence_scope`, including whether their signals may span
+filings or CIKs. No high tier is described as trustworthy solely because it satisfies the
+record-level v2 Boolean rule.
+
+## Closed materialization gate
+
+The study may be reactivated only after all of the following are recorded:
+
+1. Pin the complete Form D-detail and SBIR input bytes by SHA-256, size, and row count.
+2. Rescore the complete Form D corpus to `corroborated-person-v2`; prove exact input/output row
+   coverage and one rule version across every output record.
+3. Rebuild confidence at a declared filing/issuer grain, or quarantine and quantify every record
+   whose corroborating signals may span filings or CIKs.
+4. Resolve offering/amendment-chain aggregation at a declared SEC identifier grain so a filing is
+   not counted twice or attributed to multiple SBIR firms without quarantine.
+5. Run a realistic person-collision review and a version-2 PIF/CIK cross-link audit. These are
+   identity diagnostics, not validation by themselves.
+6. Recompute every ratio, interval, agency decomposition, pathway cohort, and dependent report
+   from the same pinned v2 materialization. Record output hashes and refreeze this contract before
+   restoring any number.
+
+Until those gates pass, `bootstrap_form_d_leverage_ci.py` refuses materialization and all former
+headline, agency, confidence-tier, and PIF-exposure numbers remain suppressed.
 
 ## What would make the estimate wrong
 
-- Treating non-filers as true zeros rather than undetected capital.
-- Using `totalOfferingAmount` instead of `totalAmountSold`.
-- Mixing the program-level and per-matched-firm denominators.
-- Comparing the ratio to NASEM's 4:1 federal-contract leverage as if they
-  measured the same channel.
-- A name-join collision or miss that moves a large issuer across the
-  match-confidence filter.
+- Treating non-detection as zero private capital.
+- Treating `totalOfferingAmount` as capital sold.
+- Mixing the two denominators.
+- Treating a record-level person/state conjunction as proof of same-filing identity.
+- Combining multiple issuer CIKs or amendment restatements as independent capital flows.
+- Calling a high tier validated without a human identity review.

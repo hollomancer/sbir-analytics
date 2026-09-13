@@ -129,8 +129,9 @@ class EdgarFormDFiling(BaseModel):
     """Form D (Regulation D) filing by a private company.
 
     Private companies raising capital under Reg D must file Form D with the SEC.
-    Presence of Form D filings indicates venture/angel capital raises — a strong
-    signal for company health, growth trajectory, and potential acquisition interest.
+    A filing is evidence of a Regulation D offering. It does not by itself prove
+    venture/angel financing, validate an SBIR-company identity link, or establish
+    commercialization.
     """
 
     cik: str = Field(..., description="CIK assigned to the Form D filer")
@@ -203,6 +204,11 @@ class FormDOffering(BaseModel):
 class FormDMatchConfidence(BaseModel):
     """Confidence assessment for a Form D match to an SBIR company."""
 
+    rule_version: str = Field(
+        ...,
+        min_length=1,
+        description="Named Form D tier-assignment rule used for this score",
+    )
     tier: str = Field(..., description="'high', 'medium', or 'low'")
     score: float = Field(..., ge=0.0, le=1.0, description="Composite confidence score")
 

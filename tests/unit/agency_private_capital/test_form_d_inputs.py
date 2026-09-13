@@ -11,6 +11,7 @@ from sbir_analytics.assets.agency_private_capital.form_d_inputs import (
     load_form_d_matches,
     normalize_name,
 )
+from sbir_etl.enrichers.sec_edgar.form_d_scoring import FORM_D_TIER_RULE_VERSION
 
 
 pytestmark = pytest.mark.fast
@@ -34,7 +35,10 @@ def test_load_form_d_matches_keeps_high_non_excluded_offerings(tmp_path) -> None
             {
                 "company_name": "Acme Corp",
                 "form_d_cik": "0000123",
-                "match_confidence": {"tier": "high"},
+                "match_confidence": {
+                    "rule_version": FORM_D_TIER_RULE_VERSION,
+                    "tier": "high",
+                },
                 "offerings": [
                     {
                         "entity_name": "ACME CORP",
@@ -57,7 +61,10 @@ def test_load_form_d_matches_keeps_high_non_excluded_offerings(tmp_path) -> None
             {
                 "company_name": "Low Match",
                 "form_d_cik": "0000456",
-                "match_confidence": {"tier": "low"},
+                "match_confidence": {
+                    "rule_version": FORM_D_TIER_RULE_VERSION,
+                    "tier": "low",
+                },
                 "offerings": [
                     {
                         "filing_date": "2021-01-01",
@@ -78,6 +85,7 @@ def test_load_form_d_matches_keeps_high_non_excluded_offerings(tmp_path) -> None
     assert row["form_d_cik"] == "123"
     assert row["total_form_d_raised"] == 1_000_000
     assert row["first_form_d_year"] == 2021
+    assert row["tier_rule_version"] == FORM_D_TIER_RULE_VERSION
 
 
 def test_load_form_d_control_universe_excludes_sbir_ciks(tmp_path) -> None:
@@ -229,7 +237,10 @@ def test_amendments_do_not_inflate_totals(tmp_path) -> None:
             {
                 "company_name": "Acme Corp",
                 "form_d_cik": "0000123",
-                "match_confidence": {"tier": "high"},
+                "match_confidence": {
+                    "rule_version": FORM_D_TIER_RULE_VERSION,
+                    "tier": "high",
+                },
                 "offerings": [
                     {
                         "entity_name": "ACME CORP",
@@ -270,7 +281,10 @@ def test_amendment_only_chain_uses_largest_restatement(tmp_path) -> None:
             {
                 "company_name": "Beta Labs",
                 "form_d_cik": "0000456",
-                "match_confidence": {"tier": "high"},
+                "match_confidence": {
+                    "rule_version": FORM_D_TIER_RULE_VERSION,
+                    "tier": "high",
+                },
                 "offerings": [
                     {
                         "entity_name": "BETA LABS",
@@ -295,3 +309,26 @@ def test_amendment_only_chain_uses_largest_restatement(tmp_path) -> None:
 
     assert len(frame) == 1
     assert frame.loc[0, "total_form_d_raised"] == 3_500_000
+
+
+def test_load_form_d_matches_refuses_unversioned_tier(tmp_path) -> None:
+    path = tmp_path / "form_d_details.jsonl"
+    _write_jsonl(
+        path,
+        [
+            {
+                "company_name": "Legacy Corp",
+                "form_d_cik": "123",
+                "match_confidence": {"tier": "high"},
+                "offerings": [
+                    {
+                        "filing_date": "2021-01-01",
+                        "industry_group": "Technology",
+                    }
+                ],
+            }
+        ],
+    )
+
+    with pytest.raises(ValueError, match="Rescore the complete input"):
+        load_form_d_matches(path)

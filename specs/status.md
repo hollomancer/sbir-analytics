@@ -96,10 +96,12 @@ bypassing lifecycle review; the status and rationale still require human judgmen
   as the reference adapter, and `usaspending_refresh_batch` on the job.
   Per-source adapters stay split (#443 NIH RePORTER, then SAM/PatentsView).
   Tasks 6.1–6.2 remain optional Phase 2 expansion.
-- **`ma-discovery-integration` — Deferred.** The #371 toolkit now lives at
-  `sbir_etl/enrichers/ma_discovery/` (issue #446, toolkit relocation). Search
-  backend, LLM extractor, and collision policy remain unbuilt. Revisit only
-  when M&A recall becomes a selected research priority.
+- **`ma-discovery-integration` — Active.** M&A recall is a selected F2/A4
+  implementation target. Fail-closed search, C3, pair-name guards, and the
+  `ma-discovery-recall` study (exploratory; materialization closed) are in
+  tree. The held-out confirmatory cut met strict recall (13>=10), FP 0/19,
+  and the cost cap. evidence_status stays exploratory pending
+  evidence-auditor. Candidate discovery stays non-citable.
 - **`modular-analysis-platform` — Maintenance.** Pipelines-tier contracts
   and registry so a new tech-census or transition-cohort profile is
   YAML-only (issue #441). HTTP is out of scope per ADR-004. Weekly awards

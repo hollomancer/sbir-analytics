@@ -1,7 +1,15 @@
 # Nanotechnology SBIR/STTR Phase II Outcomes: What Policy Leaders Can Safely Conclude
 
+> **Form D dependency withdrawn (2026-09-12):** Every private-raise,
+> Form-D-overlap, and combined observable-signal figure below used the
+> unversioned cohort now identified as `person-or-zip-v1`. Those figures—and
+> any conclusion comparing agencies through that channel—are retired, not v2
+> findings. The remaining page is a historical snapshot until rebuilt from the
+> pinned `corroborated-person-v2` materialization required by the
+> `form-d-fundraising` study gate.
+
 **Prepared for:** S&T policy leaders
-**Status:** Provisional; figures are bounded estimates, not final program rates
+**Status:** Provisional; Form D-dependent figures are retired pending v2 rebuild
 **Data through:** FY2025 SBIR.gov awards, FY2024 USAspending records, SEC EDGAR scans, and the March 2026 PatentsView release
 **Technical appendix:** [`nanotech_sbir_transition_findings.md`](nanotech_sbir_transition_findings.md), [`nano-phase3-methodology.md`](../nano-phase3-methodology.md)
 

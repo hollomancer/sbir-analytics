@@ -3,6 +3,10 @@
 import sys
 from pathlib import Path
 
+import pytest
+
+from sbir_etl.enrichers.sec_edgar.form_d_scoring import FORM_D_TIER_RULE_VERSION
+
 sys.path.insert(0, str(Path(__file__).resolve().parents[4] / "scripts" / "archive" / "data"))
 
 from detect_sbir_ma_events import (
@@ -18,7 +22,10 @@ def test_extract_form_d_signals_finds_business_combination():
     records = [
         {
             "company_name": "ACME INC",
-            "match_confidence": {"tier": "high"},
+            "match_confidence": {
+                "rule_version": FORM_D_TIER_RULE_VERSION,
+                "tier": "high",
+            },
             "offerings": [
                 {
                     "filing_date": "2019-03-15",
@@ -42,13 +49,17 @@ def test_extract_form_d_signals_finds_business_combination():
     assert e["event_date"] == "2019-03-15"
     assert e["form_d_detail"]["total_amount_sold"] == 25_000_000
     assert e["form_d_detail"]["related_persons"][0]["name"] == "Jane Doe"
+    assert e["form_d_detail"]["tier_rule_version"] == FORM_D_TIER_RULE_VERSION
 
 
 def test_extract_form_d_signals_skips_non_combo():
     records = [
         {
             "company_name": "BORING INC",
-            "match_confidence": {"tier": "medium"},
+            "match_confidence": {
+                "rule_version": FORM_D_TIER_RULE_VERSION,
+                "tier": "medium",
+            },
             "offerings": [
                 {
                     "filing_date": "2020-06-01",
@@ -67,7 +78,10 @@ def test_extract_form_d_signals_uses_earliest_combo_date():
     records = [
         {
             "company_name": "MULTI INC",
-            "match_confidence": {"tier": "high"},
+            "match_confidence": {
+                "rule_version": FORM_D_TIER_RULE_VERSION,
+                "tier": "high",
+            },
             "offerings": [
                 {
                     "filing_date": "2021-06-01",
@@ -87,6 +101,19 @@ def test_extract_form_d_signals_uses_earliest_combo_date():
     events = extract_form_d_signals(records)
     assert len(events) == 1
     assert events[0]["event_date"] == "2020-01-15"
+
+
+def test_extract_form_d_signals_refuses_unversioned_tiers():
+    with pytest.raises(ValueError, match="Rescore the complete input"):
+        extract_form_d_signals(
+            [
+                {
+                    "company_name": "LEGACY INC",
+                    "match_confidence": {"tier": "high"},
+                    "offerings": [],
+                }
+            ]
+        )
 
 
 # --- EFTS extraction ---
