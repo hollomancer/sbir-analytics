@@ -58,4 +58,11 @@ limitations:
     measures panel review of NIH-style applications and reports pre-meeting
     time separately from meeting and travel time. It does not measure
     SBIR/STTR versus R01 reviewer hours.
+  - Transaction cost per awarded dollar is mechanically dominated by the
+    reciprocal of the success rate, so its ranking is driven as much by the
+    success-rate denominator as by any hour assumption. Reviewers of the
+    comparable UK estimate (Pollitt 2026) made this point about the headline
+    13% figure there, and it applies with equal force here. Hours per award,
+    dollars per award, and cost per awarded dollar are therefore reported
+    separately and must not be collapsed into one efficiency claim.
   - This study is reproducible, not validated or citable.
