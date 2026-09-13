@@ -21,10 +21,14 @@ The status vocabulary is intentionally small:
     expected_yield: >-
       What the study expects to find, from what prior.
     decision_threshold: >-
-      The rate the result must clear.
+      What the result must clear, in the quantity threshold_basis names.
     threshold_derivation: >-
-      Why that rate, and the power to clear it at the expected yield.
+      Why that level, and the power to clear it at the expected yield.
     threshold_basis: proportion          # or count_on_frozen_population
+    threshold_value: 0.60                # the same threshold as a number;
+    #   checked against the basis, so a count floor cannot be filed as a
+    #   proportion. A proportion basis takes a value in (0, 1]; a count basis
+    #   takes a whole number.
     # frozen_population_artifact: studies/<id>/eligible_units.csv
     #   required when threshold_basis is count_on_frozen_population; must
     #   also appear in frozen_artifacts.

@@ -22,9 +22,15 @@ version.
   some other pinned file as its design, and its `confirmatory` flag must be true
   to promote. `confirmatory` asserts the design was frozen before the run; the
   schema does not verify that ordering and the auditor checks it against git.
-  `ValidationDesign` gains `threshold_basis` (required at `validated` and
-  above) and `frozen_population_artifact` (required for count thresholds and
-  checked against `frozen_artifacts`). Existing manifests below `validated`
+  `ValidationDesign` gains `threshold_basis` and `threshold_value` (both
+  required at `validated` and above) and `frozen_population_artifact`
+  (required for count thresholds and checked against `frozen_artifacts`).
+  `decision_threshold` stays prose, so `threshold_value` restates the same
+  threshold as a number the basis is checked against: a count floor can no
+  longer be filed under `threshold_basis: proportion`. The inventory guard
+  now demotes a `validated` manifest whose `threshold_met` is false to
+  `computable`, so a recorded miss cannot surface as a `Validated` answer in
+  `docs/research-questions.md`. Existing manifests below `validated`
   load unchanged. Documented post-hoc analyses are reportable and are no
   longer an audit BLOCK by themselves; presenting one as confirmatory still is.
   (`studies/README.md`, `docs/steering/epistemic-tiers.md`,

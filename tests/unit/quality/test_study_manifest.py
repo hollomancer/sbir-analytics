@@ -223,6 +223,7 @@ VALIDATION_DESIGN = {
     "decision_threshold": "All reconciliations pass and coverage is at least 95%.",
     "threshold_derivation": "The frozen design identifies 95% as the minimum useful coverage.",
     "threshold_basis": "proportion",
+    "threshold_value": 0.95,
 }
 
 VALIDATION_RESULT = {
@@ -398,6 +399,7 @@ def test_validated_records_a_missed_threshold_but_citable_rejects_it(tmp_path: P
 def test_count_threshold_requires_a_frozen_population() -> None:
     """A count floor over a shrinking population is unreachable for the wrong reasons."""
     fields = {key: value for key, value in VALIDATION_DESIGN.items() if key != "threshold_basis"}
+    fields["threshold_value"] = 10  # a count basis needs a whole-number threshold
     with pytest.raises(ValidationError, match="requires frozen_population_artifact"):
         ValidationDesign(**fields, threshold_basis=ThresholdBasis.COUNT_ON_FROZEN_POPULATION)
     design = ValidationDesign(
@@ -413,6 +415,7 @@ def test_frozen_population_artifact_must_be_pinned(tmp_path: Path) -> None:
     raw["validation_design"].update(
         {
             "threshold_basis": "count_on_frozen_population",
+            "threshold_value": 10,
             "frozen_population_artifact": "studies/example-study/eligible_pairs.csv",
         }
     )
@@ -443,3 +446,45 @@ def test_validation_result_interval_must_be_coherent(override: dict, message: st
     fields.update(override)
     with pytest.raises(ValidationError, match=message):
         ValidationResult(**fields)
+
+
+@pytest.mark.parametrize("field", ["design_path", "metric", "interval_method"])
+def test_validation_result_rejects_blank_strings(field: str) -> None:
+    """min_length=1 admits "   "; ValidationDesign already rejects it."""
+    fields = dict(VALIDATION_RESULT)
+    fields[field] = "   "
+    with pytest.raises(ValidationError, match="must not be blank"):
+        ValidationResult(**fields)
+
+
+def test_count_floor_cannot_be_filed_as_a_proportion() -> None:
+    """decision_threshold is prose, so the basis is checked against a number.
+
+    A count floor such as "10 distinct pairs" written under
+    threshold_basis: proportion is the exact shape that sank ma-discovery-recall.
+    """
+    fields = dict(VALIDATION_DESIGN)
+    fields.update(decision_threshold="At least 10 distinct pairs.", threshold_value=10)
+    with pytest.raises(ValidationError, match="requires threshold_value in"):
+        ValidationDesign(**fields)
+
+
+def test_count_basis_requires_a_whole_number_threshold() -> None:
+    fields = dict(VALIDATION_DESIGN)
+    fields.update(
+        threshold_basis="count_on_frozen_population",
+        threshold_value=10.5,
+        frozen_population_artifact="specs/example.md",
+    )
+    with pytest.raises(ValidationError, match="requires a whole-number"):
+        ValidationDesign(**fields)
+
+
+@pytest.mark.parametrize("status", [EvidenceStatus.VALIDATED, EvidenceStatus.CITABLE])
+def test_promoted_manifest_requires_threshold_value(tmp_path: Path, status: EvidenceStatus) -> None:
+    raw = _promoted(status)
+    del raw["validation_design"]["threshold_value"]
+    path = _write(tmp_path, "example-study/study.yaml", yaml.safe_dump(raw))
+
+    with pytest.raises(ValidationError, match="requires validation_design.threshold_value"):
+        load_study_manifest(path)

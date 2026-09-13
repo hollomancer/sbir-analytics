@@ -101,7 +101,35 @@ class ValidationDesign(BaseModel):
     decision_threshold: str = Field(min_length=1)
     threshold_derivation: str = Field(min_length=1)
     threshold_basis: ThresholdBasis | None = None
+    threshold_value: float | None = Field(default=None, gt=0.0)
     frozen_population_artifact: str | None = Field(default=None, min_length=1)
+
+    @model_validator(mode="after")
+    def threshold_value_agrees_with_its_basis(self) -> "ValidationDesign":
+        """Keep the declared basis and the quantity it is stated in consistent.
+
+        ``decision_threshold`` is prose, so a count floor written as "10
+        distinct pairs" can sit under ``threshold_basis: proportion`` and no
+        text check would catch it. ``threshold_value`` restates the same
+        threshold as a number the basis can be checked against.
+        """
+        if self.threshold_basis is None or self.threshold_value is None:
+            return self
+        if self.threshold_basis is ThresholdBasis.PROPORTION and self.threshold_value > 1.0:
+            raise ValueError(
+                f"threshold_basis 'proportion' requires threshold_value in (0, 1]; "
+                f"got {self.threshold_value}. A floor stated as a count needs "
+                "threshold_basis 'count_on_frozen_population'."
+            )
+        if (
+            self.threshold_basis is ThresholdBasis.COUNT_ON_FROZEN_POPULATION
+            and self.threshold_value != int(self.threshold_value)
+        ):
+            raise ValueError(
+                f"threshold_basis 'count_on_frozen_population' requires a whole-number "
+                f"threshold_value; got {self.threshold_value}"
+            )
+        return self
 
     @model_validator(mode="after")
     def count_threshold_requires_frozen_population(self) -> "ValidationDesign":
@@ -165,6 +193,13 @@ class ValidationResult(BaseModel):
     threshold_met: bool
     confirmatory: bool
     post_hoc_analyses: list[str] = Field(default_factory=list)
+
+    @field_validator("design_path", "metric", "interval_method", mode="after")
+    @classmethod
+    def reject_blank(cls, v: str) -> str:
+        if not v.strip():
+            raise ValueError("must not be blank")
+        return v
 
     @property
     def point_estimate(self) -> float:
@@ -235,6 +270,11 @@ class StudyManifest(BaseModel):
         if design is not None and design.threshold_basis is None:
             raise ValueError(
                 f"evidence_status '{status}' requires validation_design.threshold_basis"
+            )
+        if design is not None and design.threshold_value is None:
+            raise ValueError(
+                f"evidence_status '{status}' requires validation_design.threshold_value, "
+                "the decision threshold restated as a number its basis can be checked against"
             )
         result = self.validation_result
         if result is None:
