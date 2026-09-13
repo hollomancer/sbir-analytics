@@ -4,13 +4,14 @@ These contracts define the row-level shape of the four phase-transition assets:
 
 - ``PhaseIIAward``: unified Phase II population (contracts + grants, reconciled
   against SBIR.gov when federal-system phase coding is missing).
-- ``PhaseIIIContract``: FPDS Phase III contract rows (known undercount — the
-  ``sbir_phase`` flag is sparse outside of DoD).
+- ``PhaseIIIContract``: FPDS Phase III-coded contract rows (the coding channel
+  is incomplete and inconsistent, especially outside of DoD).
 - ``PhaseTransitionPair``: one row per matched (Phase II, Phase III) pair.
   Multi-award firms emit all valid pairs; views for "earliest" and
   "any-within-5-years" are derived downstream.
-- ``PhaseTransitionSurvival``: one row per Phase II award with a
-  time-to-event-or-censor frame suitable for Kaplan-Meier fitting.
+- ``PhaseTransitionSurvival``: one row per Phase II award with signed
+  completion-relative event-or-cutoff time. Negative events require a separate
+  stratum or a different nonnegative origin before Kaplan-Meier fitting.
 """
 
 from __future__ import annotations
@@ -135,10 +136,11 @@ class PhaseTransitionPair(BaseModel):
 
 
 class PhaseTransitionSurvival(BaseModel):
-    """One row per Phase II award with a KM-ready time-to-event frame.
+    """One row per Phase II award with signed event-or-cutoff follow-up.
 
     Phase IIs without a matched Phase III are right-censored at the configured
-    data-cut date.
+    data-cut date. This row contract does not by itself assert that the chosen
+    time origin or censoring process satisfies a survival estimator's assumptions.
     """
 
     phase_ii_award_id: str = Field(...)

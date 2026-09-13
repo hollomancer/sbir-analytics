@@ -5,13 +5,18 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
+import pytest
 from sklearn.metrics import roc_auc_score
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "scripts" / "phase3_benchmark"))
 
 from auc_by_target_length import auc_by_length_decile, per_firm_auc  # noqa: E402
 from dod_transition_inventory import target_text_coverage  # noqa: E402
-from dod_within_retrieval import build_asof_pairs, floor_coverage, within_dod_auc  # noqa: E402
+from dod_within_retrieval import (  # noqa: E402
+    build_asof_pairs,
+    length_threshold_coverage,
+    within_dod_auc,
+)
 from retrieval_metrics import tie_corrected_auc  # noqa: E402
 from text_richness_2x2 import (
     _asof_texts,
@@ -125,10 +130,13 @@ def test_paired_bootstrap_ci_brackets_mean_and_zero_for_null_effect():
     assert lo <= mean <= hi and lo < 0 < hi  # CI straddles 0 for a null effect
 
 
-def test_floor_coverage_thresholds():
-    lengths = np.array([40, 100, 200, 600, 1000])
-    cov = floor_coverage(lengths, (150, 900))
-    assert cov[150] == 60.0 and cov[900] == 20.0
+def test_description_length_threshold_coverage():
+    lengths = np.array([40, 100, 200, 250, 1000])
+    cov = length_threshold_coverage(lengths, (150, 250))
+    assert cov[150] == 60.0 and cov[250] == 40.0
+
+    with pytest.raises(ValueError, match="250-character cap"):
+        length_threshold_coverage(lengths, (900,))
 
 
 def test_dod_pairs_are_asof_and_keep_same_target_row_metadata():

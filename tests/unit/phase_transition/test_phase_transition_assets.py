@@ -1070,10 +1070,62 @@ def test_pairs_and_survival_end_to_end():
     s = survival.set_index("phase_ii_award_id")
     assert bool(s.loc["C_II_1", "event_observed"]) is True
     assert bool(s.loc["C_II_2", "event_observed"]) is False
+    # The raw completion-relative frame preserves prevalent events; callers
+    # must stratify them or choose a nonnegative origin before Kaplan-Meier.
+    assert s.loc["C_II_3", "time_days"] < 0
     # Censored row's event_date equals the data-cut date.
     assert s.loc["C_II_2", "event_date"] == data_cut
     # time_days for censored row = data_cut - phase_ii_end_date.
     assert s.loc["C_II_2", "time_days"] == (data_cut - date(2023, 6, 30)).days
+
+
+def test_five_year_rate_excludes_pre_completion_transitions_from_numerator_only(
+    tmp_path, monkeypatch
+):
+    """A Phase III action dated before its Phase II award completes has
+    negative ``time_days``. It must not count as a within-5-year transition,
+    but the Phase II award itself must stay in the denominator: it is still
+    part of the cohort, it just does not have a qualifying post-completion
+    transition within the window.
+    """
+
+    import json
+
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("SBIR_ETL__PHASE_TRANSITION__DATA_CUT_DATE", "2026-04-17")
+    from dagster import build_asset_context
+
+    from sbir_analytics.assets.phase_transition.pairs import (
+        _build_pairs,
+        transformed_phase_transition_survival,
+    )
+    from sbir_analytics.assets.phase_transition.phase_ii import _prepare_contract_rows
+    from sbir_analytics.assets.phase_transition.phase_iii import _prepare_phase_iii_rows
+
+    contracts = _contracts_fixture()
+    phase_ii = _prepare_contract_rows(contracts)
+    phase_iii = _prepare_phase_iii_rows(contracts)
+    pairs = _build_pairs(phase_ii, phase_iii)
+
+    out = transformed_phase_transition_survival(
+        context=build_asset_context(),
+        validated_phase_ii_awards=phase_ii,
+        transformed_phase_ii_iii_pairs=pairs,
+    )
+
+    survival = out.value.set_index("phase_ii_award_id")
+    # C_II_3's matched Phase III action predates its own Phase II completion.
+    assert survival.loc["C_II_3", "time_days"] < 0
+    assert bool(survival.loc["C_II_3", "event_observed"]) is True
+
+    checks_path = tmp_path / "data/processed/phase_transition_survival.checks.json"
+    checks = json.loads(checks_path.read_text())
+
+    # 4 Phase II awards total (denominator). Only C_II_1 and C_II_4 have a
+    # nonnegative, within-horizon observed transition (numerator = 2).
+    # C_II_3 is excluded from the numerator, not from the denominator.
+    assert checks["total_phase_ii"] == 4
+    assert checks["within_5_year_rate"] == 0.5
 
 
 def test_build_pairs_no_double_counting_on_duns_when_uei_already_matched():
