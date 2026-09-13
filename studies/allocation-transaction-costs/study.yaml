@@ -54,7 +54,8 @@ limitations:
     serial filers and first-time applicants are unlikely to share one
     distribution, so a single grid understates dispersion.
   - Reviewer hours per application are now anchored by one published US survey
-    (AIBS, Gallo 2019) rather than being wholly assumed, but that survey
+    (AIBS, Gallo et al. 2019) rather than being wholly assumed, but that survey
     measures panel review of NIH-style applications and reports pre-meeting
-    time separately from meeting and travel time.
+    time separately from meeting and travel time. It does not measure
+    SBIR/STTR versus R01 reviewer hours.
   - This study is reproducible, not validated or citable.
