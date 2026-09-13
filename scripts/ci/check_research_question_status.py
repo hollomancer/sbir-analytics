@@ -30,7 +30,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from sbir_etl.exceptions import ConfigurationError
-from sbir_etl.quality.study_manifest import EvidenceStatus, load_study_manifest
+from sbir_etl.quality.study_manifest import EvidenceStatus, StudyManifest, load_study_manifest
 
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
@@ -201,12 +201,34 @@ def load_question_study_ranks(
         manifest = load_study_manifest(path)
         if manifest.evidence_status is EvidenceStatus.RETIRED:
             continue
+        authorized = authorizing_status(manifest)
         for question in manifest.research_questions:
             key = question.strip().upper()
             current = best.get(key)
-            if current is None or STATUS_RANK[manifest.evidence_status] > STATUS_RANK[current]:
-                best[key] = manifest.evidence_status
+            if current is None or STATUS_RANK[authorized] > STATUS_RANK[current]:
+                best[key] = authorized
     return best
+
+
+def authorizing_status(manifest: StudyManifest) -> EvidenceStatus:
+    """Return the inventory rank a manifest authorizes.
+
+    The manifest rank ``validated`` means the preregistered test ran as written
+    and its outcome is on the record; it does not mean the threshold was met.
+    The inventory word ``Validated`` in ``docs/research-questions.md`` does mean
+    that -- it defines the rank as a design that has passed. A study that
+    honestly records a miss therefore authorizes only ``computable``, so a
+    failed method cannot surface as a validated answer.
+
+    ``citable`` already requires ``threshold_met`` at the schema level, so it
+    needs no demotion here.
+    """
+    if manifest.evidence_status is not EvidenceStatus.VALIDATED:
+        return manifest.evidence_status
+    result = manifest.validation_result
+    if result is not None and not result.threshold_met:
+        return EvidenceStatus.REPRODUCIBLE
+    return manifest.evidence_status
 
 
 def study_authorizes(status: EvidenceStatus | None, required: EvidenceStatus) -> bool:
