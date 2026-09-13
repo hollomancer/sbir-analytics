@@ -2,12 +2,16 @@ import hashlib
 from pathlib import Path
 
 import pytest
+import copy
+
 import yaml
 from pydantic import ValidationError
 
 from sbir_etl.quality.study_manifest import (
     EvidenceStatus,
     ThresholdBasis,
+    LiveSource,
+    ReproductionTolerance,
     ValidationDesign,
     ValidationResult,
     load_study_manifest,
@@ -488,3 +492,87 @@ def test_promoted_manifest_requires_threshold_value(tmp_path: Path, status: Evid
 
     with pytest.raises(ValidationError, match="requires validation_design.threshold_value"):
         load_study_manifest(path)
+
+
+REPRODUCTION = {
+    "live_sources": [
+        {
+            "name": "GSA contract-opportunity archive",
+            "retrieval_manifest": "specs/example.md",
+            "upstream_measure": "rows_scanned",
+            "identity_grain": "notice_id",
+        }
+    ],
+    "tolerances": [
+        {
+            "quantity": "positives",
+            "absolute_band": 2,
+            "derivation": "One revised notice per rebuild is expected; two is the observed ceiling.",
+        }
+    ],
+}
+
+
+def test_live_source_manifest_must_be_pinned(tmp_path: Path) -> None:
+    """Naming a path that is not frozen is what left the motivating rebuild unclassifiable."""
+    raw = _manifest("a" * 64)
+    raw["reproduction"] = copy.deepcopy(REPRODUCTION)
+    raw["reproduction"]["live_sources"][0]["retrieval_manifest"] = "data/not-pinned.json"
+    path = _write(tmp_path, "example-study/study.yaml", yaml.safe_dump(raw))
+
+    with pytest.raises(ValidationError, match="not listed in frozen_artifacts"):
+        load_study_manifest(path)
+
+
+def test_live_source_with_a_pinned_manifest_loads(tmp_path: Path) -> None:
+    raw = _manifest("a" * 64)
+    raw["reproduction"] = copy.deepcopy(REPRODUCTION)
+    path = _write(tmp_path, "example-study/study.yaml", yaml.safe_dump(raw))
+
+    manifest = load_study_manifest(path)
+
+    assert manifest.reproduction is not None
+    assert manifest.reproduction.live_sources[0].identity_grain == "notice_id"
+
+
+@pytest.mark.parametrize(
+    "field", ["name", "retrieval_manifest", "upstream_measure", "identity_grain"]
+)
+def test_live_source_rejects_blank_fields(field: str) -> None:
+    fields = dict(REPRODUCTION["live_sources"][0])
+    fields[field] = "   "
+    with pytest.raises(ValidationError, match="must not be blank"):
+        LiveSource(**fields)
+
+
+@pytest.mark.parametrize("field", ["quantity", "derivation"])
+def test_tolerance_rejects_blank_fields(field: str) -> None:
+    fields = dict(REPRODUCTION["tolerances"][0])
+    fields[field] = "\t"
+    with pytest.raises(ValidationError, match="must not be blank"):
+        ReproductionTolerance(**fields)
+
+
+def test_tolerance_requires_a_derivation() -> None:
+    """A band with no stated basis is not a contract, per R2."""
+    with pytest.raises(ValidationError):
+        ReproductionTolerance(quantity="positives", absolute_band=2)
+
+
+def test_duplicate_tolerance_quantities_are_rejected(tmp_path: Path) -> None:
+    """Two bands for one quantity makes the contract ambiguous."""
+    raw = _manifest("a" * 64)
+    raw["reproduction"] = copy.deepcopy(REPRODUCTION)
+    raw["reproduction"]["tolerances"].append(dict(raw["reproduction"]["tolerances"][0]))
+    path = _write(tmp_path, "example-study/study.yaml", yaml.safe_dump(raw))
+
+    with pytest.raises(ValidationError, match="duplicate reproduction tolerance"):
+        load_study_manifest(path)
+
+
+def test_a_study_without_live_sources_is_unaffected(tmp_path: Path) -> None:
+    """R4: nothing here changes a study that declares no live source."""
+    raw = _manifest("a" * 64)
+    path = _write(tmp_path, "example-study/study.yaml", yaml.safe_dump(raw))
+
+    assert load_study_manifest(path).reproduction is None
