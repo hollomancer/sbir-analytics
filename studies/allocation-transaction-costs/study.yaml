@@ -1,0 +1,50 @@
+schema_version: 1
+study_id: allocation-transaction-costs
+title: NIH SBIR/STTR versus R01-equivalent allocation transaction costs
+evidence_status: reproducible
+research_questions:
+  - C4
+estimand: >-
+  Among NIH competing applications in overlapping fiscal years, estimate
+  transaction hours per funded award, transaction dollars per funded award,
+  and transaction cost per dollar awarded for NIH SBIR/STTR phases versus
+  NIH R01-equivalent grants under declared duration conventions and hour
+  assumptions, plus the break-even SBIR applicant-hour threshold at which
+  cost per awarded dollar equals. Not a welfare estimate, not a quality
+  measure, and not a causal effect of offering SBIR instead of R01s.
+frozen_artifacts:
+  - path: studies/allocation-transaction-costs/design.md
+    sha256: 2a2b28054de33b8aa1f57916f6fb5997124b3788e592596f3346e6f085f07afd
+implementation:
+  - path: scripts/data/allocation_transaction_costs.py
+    symbol: main
+  - path: scripts/data/allocation_transaction_costs.py
+    symbol: breakeven_sbir_hours
+  - path: scripts/data/allocation_transaction_costs.py
+    symbol: run
+identity_policy:
+  strategy: >-
+    Grain is published mechanism-year statistics. No firm matching and no
+    award-level identity resolution.
+  version: mechanism-year-v1
+  negative_evidence_allowed: false
+materialization:
+  allowed: true
+  blockers: []
+permitted_claims:
+  - Given the frozen design, committed NIH tables, and assumptions YAML, the
+    mechanism-year metrics and break-even hours are deterministic.
+  - The NIH comparison is a break-even and sensitivity result over declared
+    hour and duration assumptions, not a directional efficiency ranking.
+  - Anything that leaves the repository must be labeled non-citable.
+limitations:
+  - Applicant and reviewer hours are assumed, not observed for SBIR firms.
+  - FDP Faculty Workload Survey hours describe university PIs, not small
+    businesses; transferring them is an assumption.
+  - Duration convention (annual R01 size versus multi-year project total)
+    moves the ranking.
+  - Agency selection cost is missing; the 3% SBIR administrative-funding
+    allowance is a statutory ceiling on extra admin, not total cost.
+  - Success-rate denominators follow NIH competing-application rules and are
+    not NSF funding rates.
+  - This study is reproducible, not validated or citable.

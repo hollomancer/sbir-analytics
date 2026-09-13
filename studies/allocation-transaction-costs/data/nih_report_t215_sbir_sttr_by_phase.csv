@@ -1,0 +1,108 @@
+agency,mechanism,program,phase,fiscal_year,applications,awards,success_rate,dollars_awarded,mean_award_size,award_size_basis,source_id
+NIH,nih_sbir_phase_i,SBIR,I,2015,3425,514,0.1500729927,117110555,227841.5467,competing_year_total_funding,nih_report_t215_2025
+NIH,nih_sbir_fast_track,SBIR,Fast Track,2015,337,66,0.1958456973,18157545,275114.3182,competing_year_total_funding,nih_report_t215_2025
+NIH,nih_sbir_phase_ii,SBIR,II,2015,442,163,0.3687782805,113088150,693792.3313,competing_year_total_funding,nih_report_t215_2025
+NIH,nih_sbir_phase_ii_direct,SBIR,II-Direct,2015,347,65,0.1873198847,55150363,848467.1231,competing_year_total_funding,nih_report_t215_2025
+NIH,nih_sbir_phase_iib,SBIR,IIB,2015,34,13,0.3823529412,11708214,900631.8462,competing_year_total_funding,nih_report_t215_2025
+NIH,nih_sttr_phase_i,STTR,I,2015,911,149,0.1635565313,33782224,226726.3356,competing_year_total_funding,nih_report_t215_2025
+NIH,nih_sttr_fast_track,STTR,Fast Track,2015,61,10,0.1639344262,2171909,217190.9,competing_year_total_funding,nih_report_t215_2025
+NIH,nih_sttr_phase_ii,STTR,II,2015,87,31,0.3563218391,21597183,696683.3226,competing_year_total_funding,nih_report_t215_2025
+NIH,nih_sbir_phase_i,SBIR,I,2016,4178,526,0.1258975586,121272849,230556.7471,competing_year_total_funding,nih_report_t215_2025
+NIH,nih_sbir_fast_track,SBIR,Fast Track,2016,512,67,0.130859375,17348139,258927.4478,competing_year_total_funding,nih_report_t215_2025
+NIH,nih_sbir_phase_ii,SBIR,II,2016,628,193,0.3073248408,146728352,760250.5285,competing_year_total_funding,nih_report_t215_2025
+NIH,nih_sbir_phase_ii_direct,SBIR,II-Direct,2016,497,84,0.1690140845,74799524,890470.5238,competing_year_total_funding,nih_report_t215_2025
+NIH,nih_sbir_phase_iib,SBIR,IIB,2016,69,22,0.3188405797,18677290,848967.7273,competing_year_total_funding,nih_report_t215_2025
+NIH,nih_sbir_crp,SBIR,CRP,2016,67,15,0.223880597,9135503,609033.5333,competing_year_total_funding,nih_report_t215_2025
+NIH,nih_sttr_phase_i,STTR,I,2016,1341,191,0.1424310216,44316736,232024.7958,competing_year_total_funding,nih_report_t215_2025
+NIH,nih_sttr_fast_track,STTR,Fast Track,2016,109,16,0.1467889908,4866290,304143.125,competing_year_total_funding,nih_report_t215_2025
+NIH,nih_sttr_phase_ii,STTR,II,2016,120,37,0.3083333333,29089887,786213.1622,competing_year_total_funding,nih_report_t215_2025
+NIH,nih_sttr_phase_iib,STTR,IIB,2016,1,1,1,875076,875076,competing_year_total_funding,nih_report_t215_2025
+NIH,nih_sbir_phase_i,SBIR,I,2017,3508,549,0.1564994299,130684068,238040.1967,competing_year_total_funding,nih_report_t215_2025
+NIH,nih_sbir_fast_track,SBIR,Fast Track,2017,536,101,0.1884328358,33615578,332827.505,competing_year_total_funding,nih_report_t215_2025
+NIH,nih_sbir_phase_ii,SBIR,II,2017,525,194,0.3695238095,151035773,778534.9124,competing_year_total_funding,nih_report_t215_2025
+NIH,nih_sbir_phase_ii_direct,SBIR,II-Direct,2017,397,109,0.274559194,94532103,867267,competing_year_total_funding,nih_report_t215_2025
+NIH,nih_sbir_phase_iib,SBIR,IIB,2017,53,21,0.3962264151,18813316,895872.1905,competing_year_total_funding,nih_report_t215_2025
+NIH,nih_sbir_crp,SBIR,CRP,2017,90,26,0.2888888889,17543972,674768.1538,competing_year_total_funding,nih_report_t215_2025
+NIH,nih_sttr_phase_i,STTR,I,2017,1049,169,0.1611058151,40460681,239412.3136,competing_year_total_funding,nih_report_t215_2025
+NIH,nih_sttr_fast_track,STTR,Fast Track,2017,88,15,0.1704545455,4140054,276003.6,competing_year_total_funding,nih_report_t215_2025
+NIH,nih_sttr_phase_ii,STTR,II,2017,88,34,0.3863636364,25306914,744321,competing_year_total_funding,nih_report_t215_2025
+NIH,nih_sttr_phase_iib,STTR,IIB,2017,0,0,,0,,competing_year_total_funding,nih_report_t215_2025
+NIH,nih_sbir_phase_i,SBIR,I,2018,3607,665,0.1843637372,164092776,246756.0541,competing_year_total_funding,nih_report_t215_2025
+NIH,nih_sbir_fast_track,SBIR,Fast Track,2018,731,148,0.2024623803,42420240,286623.2432,competing_year_total_funding,nih_report_t215_2025
+NIH,nih_sbir_phase_ii,SBIR,II,2018,531,224,0.4218455744,176948384,789948.1429,competing_year_total_funding,nih_report_t215_2025
+NIH,nih_sbir_phase_iib,SBIR,IIB,2018,87,33,0.3793103448,37019207,1121794.152,competing_year_total_funding,nih_report_t215_2025
+NIH,nih_sbir_crp,SBIR,CRP,2018,2,2,1,1605501,802750.5,competing_year_total_funding,nih_report_t215_2025
+NIH,nih_sttr_phase_i,STTR,I,2018,1011,211,0.2087042532,52320567,247964.7725,competing_year_total_funding,nih_report_t215_2025
+NIH,nih_sttr_fast_track,STTR,Fast Track,2018,129,27,0.2093023256,8767497,324722.1111,competing_year_total_funding,nih_report_t215_2025
+NIH,nih_sttr_phase_ii,STTR,II,2018,78,27,0.3461538462,20972412,776756,competing_year_total_funding,nih_report_t215_2025
+NIH,nih_sttr_phase_iib,STTR,IIB,2018,1,0,0,0,,competing_year_total_funding,nih_report_t215_2025
+NIH,nih_sbir_phase_i,SBIR,I,2019,3513,671,0.1910048392,173271772,258229.1684,competing_year_total_funding,nih_report_t215_2025
+NIH,nih_sbir_fast_track,SBIR,Fast Track,2019,665,159,0.2390977444,56331160,354284.0252,competing_year_total_funding,nih_report_t215_2025
+NIH,nih_sbir_phase_ii,SBIR,II,2019,466,192,0.4120171674,154561019,805005.3073,competing_year_total_funding,nih_report_t215_2025
+NIH,nih_sbir_phase_ii_direct,SBIR,II-Direct,2019,213,25,0.117370892,21356324,854252.96,competing_year_total_funding,nih_report_t215_2025
+NIH,nih_sbir_phase_iib,SBIR,IIB,2019,95,41,0.4315789474,45075609,1099405.098,competing_year_total_funding,nih_report_t215_2025
+NIH,nih_sbir_crp,SBIR,CRP,2019,0,0,,0,,competing_year_total_funding,nih_report_t215_2025
+NIH,nih_sttr_phase_i,STTR,I,2019,950,192,0.2021052632,48554208,252886.5,competing_year_total_funding,nih_report_t215_2025
+NIH,nih_sttr_fast_track,STTR,Fast Track,2019,107,19,0.1775700935,4767367,250914.0526,competing_year_total_funding,nih_report_t215_2025
+NIH,nih_sttr_phase_ii,STTR,II,2019,75,30,0.4,22412051,747068.3667,competing_year_total_funding,nih_report_t215_2025
+NIH,nih_sttr_phase_iib,STTR,IIB,2019,2,1,0.5,1011590,1011590,competing_year_total_funding,nih_report_t215_2025
+NIH,nih_sbir_phase_i,SBIR,I,2020,3620,450,0.1243093923,122375161,271944.8022,competing_year_total_funding,nih_report_t215_2025
+NIH,nih_sbir_fast_track,SBIR,Fast Track,2020,637,108,0.169544741,45233516,418828.8519,competing_year_total_funding,nih_report_t215_2025
+NIH,nih_sbir_phase_ii,SBIR,II,2020,570,174,0.3052631579,158434872,910545.2414,competing_year_total_funding,nih_report_t215_2025
+NIH,nih_sbir_phase_ii_direct,SBIR,II-Direct,2020,588,112,0.1904761905,103621112,925188.5,competing_year_total_funding,nih_report_t215_2025
+NIH,nih_sbir_phase_iib,SBIR,IIB,2020,102,38,0.3725490196,40707283,1071244.289,competing_year_total_funding,nih_report_t215_2025
+NIH,nih_sbir_crp,SBIR,CRP,2020,53,6,0.1132075472,4057444,676240.6667,competing_year_total_funding,nih_report_t215_2025
+NIH,nih_sttr_phase_i,STTR,I,2020,1066,186,0.1744840525,52804650,283895.9677,competing_year_total_funding,nih_report_t215_2025
+NIH,nih_sttr_fast_track,STTR,Fast Track,2020,106,20,0.1886792453,7033717,351685.85,competing_year_total_funding,nih_report_t215_2025
+NIH,nih_sttr_phase_ii,STTR,II,2020,95,26,0.2736842105,22102158,850083,competing_year_total_funding,nih_report_t215_2025
+NIH,nih_sttr_phase_iib,STTR,IIB,2020,4,1,0.25,1000000,1000000,competing_year_total_funding,nih_report_t215_2025
+NIH,nih_sbir_phase_i,SBIR,I,2021,3971,459,0.1155880131,139398098,303699.5599,competing_year_total_funding,nih_report_t215_2025
+NIH,nih_sbir_fast_track,SBIR,Fast Track,2021,682,101,0.1480938416,37969505,375935.6931,competing_year_total_funding,nih_report_t215_2025
+NIH,nih_sbir_phase_ii,SBIR,II,2021,489,149,0.3047034765,137917147,925618.4362,competing_year_total_funding,nih_report_t215_2025
+NIH,nih_sbir_phase_ii_direct,SBIR,II-Direct,2021,851,130,0.1527614571,128407779,987752.1462,competing_year_total_funding,nih_report_t215_2025
+NIH,nih_sbir_phase_iib,SBIR,IIB,2021,90,25,0.2777777778,27031330,1081253.2,competing_year_total_funding,nih_report_t215_2025
+NIH,nih_sbir_crp,SBIR,CRP,2021,121,23,0.1900826446,20696018,899826.8696,competing_year_total_funding,nih_report_t215_2025
+NIH,nih_sttr_phase_i,STTR,I,2021,1163,188,0.1616509028,58076152,308915.7021,competing_year_total_funding,nih_report_t215_2025
+NIH,nih_sttr_fast_track,STTR,Fast Track,2021,146,20,0.1369863014,6984838,349241.9,competing_year_total_funding,nih_report_t215_2025
+NIH,nih_sttr_phase_ii,STTR,II,2021,96,30,0.3125,26005357,866845.2333,competing_year_total_funding,nih_report_t215_2025
+NIH,nih_sttr_phase_iib,STTR,IIB,2021,7,1,0.1428571429,853858,853858,competing_year_total_funding,nih_report_t215_2025
+NIH,nih_sbir_phase_i,SBIR,I,2022,3080,457,0.1483766234,142399861,311597.07,competing_year_total_funding,nih_report_t215_2025
+NIH,nih_sbir_fast_track,SBIR,Fast Track,2022,532,95,0.1785714286,34657267,364813.3368,competing_year_total_funding,nih_report_t215_2025
+NIH,nih_sbir_phase_ii,SBIR,II,2022,385,135,0.3506493506,124822528,924611.3185,competing_year_total_funding,nih_report_t215_2025
+NIH,nih_sbir_phase_ii_direct,SBIR,II-Direct,2022,705,150,0.2127659574,148255460,988369.7333,competing_year_total_funding,nih_report_t215_2025
+NIH,nih_sbir_phase_iib,SBIR,IIB,2022,71,22,0.3098591549,24803421,1127428.227,competing_year_total_funding,nih_report_t215_2025
+NIH,nih_sbir_crp,SBIR,CRP,2022,95,23,0.2421052632,16138712,701683.1304,competing_year_total_funding,nih_report_t215_2025
+NIH,nih_sttr_phase_i,STTR,I,2022,996,185,0.1857429719,57721955,312010.5676,competing_year_total_funding,nih_report_t215_2025
+NIH,nih_sttr_fast_track,STTR,Fast Track,2022,146,29,0.198630137,9999155,344798.4483,competing_year_total_funding,nih_report_t215_2025
+NIH,nih_sttr_phase_ii,STTR,II,2022,73,29,0.397260274,28040464,966912.5517,competing_year_total_funding,nih_report_t215_2025
+NIH,nih_sttr_phase_iib,STTR,IIB,2022,1,0,0,0,,competing_year_total_funding,nih_report_t215_2025
+NIH,nih_sbir_phase_i,SBIR,I,2023,3014,472,0.1566025216,152878895,323895.964,competing_year_total_funding,nih_report_t215_2025
+NIH,nih_sbir_fast_track,SBIR,Fast Track,2023,510,92,0.1803921569,33664945,365923.3152,competing_year_total_funding,nih_report_t215_2025
+NIH,nih_sbir_phase_ii,SBIR,II,2023,379,132,0.3482849604,134070466,1015685.348,competing_year_total_funding,nih_report_t215_2025
+NIH,nih_sbir_phase_ii_direct,SBIR,II-Direct,2023,831,170,0.2045728039,172013630,1011844.882,competing_year_total_funding,nih_report_t215_2025
+NIH,nih_sbir_phase_iib,SBIR,IIB,2023,113,41,0.3628318584,47162820,1150312.683,competing_year_total_funding,nih_report_t215_2025
+NIH,nih_sbir_crp,SBIR,CRP,2023,100,24,0.24,24324485,1013520.208,competing_year_total_funding,nih_report_t215_2025
+NIH,nih_sttr_phase_i,STTR,I,2023,935,171,0.1828877005,55106080,322257.7778,competing_year_total_funding,nih_report_t215_2025
+NIH,nih_sttr_fast_track,STTR,Fast Track,2023,105,29,0.2761904762,10995022,379138.6897,competing_year_total_funding,nih_report_t215_2025
+NIH,nih_sttr_phase_ii,STTR,II,2023,78,22,0.2820512821,22145869,1006630.409,competing_year_total_funding,nih_report_t215_2025
+NIH,nih_sttr_phase_iib,STTR,IIB,2023,2,0,0,0,,competing_year_total_funding,nih_report_t215_2025
+NIH,nih_sbir_phase_i,SBIR,I,2024,3718,369,0.09924690694,122077692,330833.8537,competing_year_total_funding,nih_report_t215_2025
+NIH,nih_sbir_fast_track,SBIR,Fast Track,2024,613,74,0.1207177814,27958593,377818.8243,competing_year_total_funding,nih_report_t215_2025
+NIH,nih_sbir_phase_ii,SBIR,II,2024,417,112,0.2685851319,115394701,1030309.83,competing_year_total_funding,nih_report_t215_2025
+NIH,nih_sbir_phase_ii_direct,SBIR,II-Direct,2024,1133,148,0.1306266549,154085364,1041117.324,competing_year_total_funding,nih_report_t215_2025
+NIH,nih_sbir_phase_iib,SBIR,IIB,2024,134,36,0.2686567164,43211443,1200317.861,competing_year_total_funding,nih_report_t215_2025
+NIH,nih_sbir_crp,SBIR,CRP,2024,117,29,0.2478632479,23240066,801381.5862,competing_year_total_funding,nih_report_t215_2025
+NIH,nih_sttr_phase_i,STTR,I,2024,1070,163,0.1523364486,55875830,342796.5031,competing_year_total_funding,nih_report_t215_2025
+NIH,nih_sttr_fast_track,STTR,Fast Track,2024,145,29,0.2,11167449,385084.4483,competing_year_total_funding,nih_report_t215_2025
+NIH,nih_sttr_phase_ii,STTR,II,2024,95,20,0.2105263158,18781214,939060.7,competing_year_total_funding,nih_report_t215_2025
+NIH,nih_sttr_phase_iib,STTR,IIB,2024,5,1,0.2,631721,631721,competing_year_total_funding,nih_report_t215_2025
+NIH,nih_sbir_phase_i,SBIR,I,2025,4468,349,0.07811101164,123120118,352779.7077,competing_year_total_funding,nih_report_t215_2025
+NIH,nih_sbir_fast_track,SBIR,Fast Track,2025,763,62,0.08125819135,24561668,396155.9355,competing_year_total_funding,nih_report_t215_2025
+NIH,nih_sbir_phase_ii,SBIR,II,2025,408,90,0.2205882353,99895597,1109951.078,competing_year_total_funding,nih_report_t215_2025
+NIH,nih_sbir_phase_ii_direct,SBIR,II-Direct,2025,1344,154,0.1145833333,171642474,1114561.519,competing_year_total_funding,nih_report_t215_2025
+NIH,nih_sbir_phase_iib,SBIR,IIB,2025,123,30,0.243902439,34485379,1149512.633,competing_year_total_funding,nih_report_t215_2025
+NIH,nih_sbir_crp,SBIR,CRP,2025,147,24,0.1632653061,24134206,1005591.917,competing_year_total_funding,nih_report_t215_2025
+NIH,nih_sttr_phase_i,STTR,I,2025,1390,175,0.1258992806,60344708,344826.9029,competing_year_total_funding,nih_report_t215_2025
+NIH,nih_sttr_fast_track,STTR,Fast Track,2025,169,18,0.1065088757,6824208,379122.6667,competing_year_total_funding,nih_report_t215_2025
+NIH,nih_sttr_phase_ii,STTR,II,2025,99,27,0.2727272727,25807976,955850.963,competing_year_total_funding,nih_report_t215_2025
+NIH,nih_sttr_phase_iib,STTR,IIB,2025,4,2,0.5,2399984,1199992,competing_year_total_funding,nih_report_t215_2025
