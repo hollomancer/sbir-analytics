@@ -143,3 +143,17 @@ inventory_only:
       non-citable. Competing vendors profiling each other, list prices rather
       than transaction prices, left-censored toward productized services
       because most providers publish nothing. Not used in any computed series.
+
+  - source_id: nsf_merit_review_survey_2021
+    url: https://nsf-gov-resources.nsf.gov/2023-10/2021-Merit-Review-Survey-Report-Final_508.pdf
+    publisher: U.S. National Science Foundation
+    evidence_class: behavioral_survey
+    note: >-
+      2021 Merit Review Survey, published October 2023. Applicants reported an
+      average of 126 hours preparing their most recent proposal (N = 13,731),
+      with regression-adjusted directorate estimates of 78-104 hours. Reviewers
+      reported an average of 7 hours reading, writing, and submitting their most
+      recent review (N = 11,696), explicitly excluding travel to and
+      participation in panel discussion. A survey rather than a PRA estimate,
+      so it is usable as an hour citation. NSF rather than NIH: cited as
+      corroboration for the hour grids, not used in any computed series.
