@@ -36,8 +36,31 @@ mutable. That is incompatible with `reproducible` as written: the same code
 against the same inputs produces different scores after anyone edits it, and
 nothing in the manifest would detect that.
 
-**This is a decision, not a task.** Someone chose mutability, presumably because
-the weights are tuned operationally. Three ways out:
+**Decided 2026-09-13: identify by digest, do not freeze the file.**
+
+The named-profile option was recommended first and was wrong for this codebase.
+It assumes a central loader to resolve a profile name; there is none. Config
+reaches the scorer as a plain dict passed to ``TransitionDetector(config=...)``,
+so a profile registry would bind nothing that a caller could not bypass.
+
+``Config.scoring_digest`` now hashes the ``to_detector_config()`` surface -- by
+construction, exactly the values that reach ``TransitionScorer``, and nothing
+operational like ``batch_size_contracts`` that cannot move a score. The
+committed ``detection.yaml`` digests to
+``779cf5bc662997c83da3080b747372b9556821c0f23bd0d3362606c3fba15009``, which the
+study cites and ``tests/unit/transition/test_scoring_config_digest.py`` enforces.
+A weight change fails that test rather than silently producing a different
+number.
+
+One thing this surfaced: the digest has no structured home in ``StudyManifest``.
+``frozen_artifacts`` means *these exact bytes* and the validator correctly
+rejected a config-surface digest filed there; ``extra="forbid"`` rules out an ad
+hoc field. It is recorded in ``limitations`` with the enforcing test registered
+under ``implementation``. A manifest field for "the configuration identity a
+result was measured under" would be a real addition, adjacent to what #726 added
+for validation results.
+
+The three options considered were:
 
 - **Freeze the file** as a `frozen_artifacts` entry. Cheapest to verify,
   costliest operationally — tuning then requires an amendment.
