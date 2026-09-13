@@ -436,6 +436,7 @@ def test_signal_scope_exposes_cross_filing_and_cross_cik_aggregation() -> None:
         "signals_may_span_ciks": True,
     }
 
+
 # --- Adversarial audit: person-match path -----------------------------------
 #
 # ``compute_form_d_confidence`` has no company-name-matching function of its
