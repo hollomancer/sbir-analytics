@@ -89,7 +89,7 @@ These ranks are the only backing for reserved **Status** words in
 | Inventory Status | Required `evidence_status` |
 |---|---|
 | `Computable` / `Partially computable` | `reproducible` or higher |
-| `Validated` | `validated` or higher |
+| `Validated` | `validated` with a met threshold, or `citable` |
 | `Citable` | `citable` |
 
 An exploratory study does not authorize `Computable`. CI

@@ -200,14 +200,24 @@ bypassing lifecycle review; the status and rationale still require human judgmen
   into weekly reporting modules. Remaining work is injection, coverage, and
   alias cleanup.
 
+<<<<<<< HEAD
 - **`upstream-drift-reproduction` — Active.** Proposed contract change so
+=======
+- **`upstream-drift-reproduction` — Active.** Contract change so
+>>>>>>> origin/main
   `reproducible` stays checkable when an input is a live public source. Motivated
   by a real rebuild: `transition-scoring`'s fusion corpus regenerated to 822 rows
   / 137 positives / 100 firms against a frozen 828 / 138 / 101, and the
   difference is undiagnosable because the study pinned the string
   `/tmp/gsa_award_grain` rather than the retrieval manifest that recorded
   `rows_scanned` per fiscal year. No schema change is implemented yet; the open
+<<<<<<< HEAD
   questions in the spec name where tolerance would live and when it is checked.
+=======
+  questions in the spec name where tolerance would live and when it is checked;
+  design must settle those two before implementation starts, and the spec's
+  "Done when" section states the checks that prove it complete.
+>>>>>>> origin/main
 ## Archive Candidates
 
 `ucc1-financing-analysis` was archived on 2026-08-07 under

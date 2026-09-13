@@ -43,7 +43,7 @@ matching `evidence_status` (or higher). CI enforces the pairing
 | Status rank | Required study `evidence_status` | Meaning |
 |---|---|---|
 | `Computable` (including `Partially computable`) | `reproducible`, `validated`, or `citable` | The repository can emit a bounded result from the named study. |
-| `Validated` | `validated` or `citable` | The study's stated validation design has passed. |
+| `Validated` | `validated` with `validation_result.threshold_met: true`, or `citable` | The study's stated validation design has passed. |
 | `Citable` | `citable` | Approved for the claims listed in that study's manifest. |
 
 `Computable` is not a finding. An exploratory study does not authorize it.
