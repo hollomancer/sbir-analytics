@@ -1,7 +1,7 @@
 # Allocation transaction costs — Requirements
 
 > **Lifecycle status:** Active (see `specs/status.md`)
-> **Spec-file progress:** In progress
+> **Spec-file progress:** Complete
 > Anchors inventory question **C4** in [docs/research-questions.md](../../docs/research-questions.md).
 
 **Target epistemic tier:** `exploratory`

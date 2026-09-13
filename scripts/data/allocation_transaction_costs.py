@@ -125,7 +125,7 @@ def refuse_forbidden_hour_source(evidence_class: str) -> None:
 
 
 def applicant_hours_from_source(hours: float, evidence_class: str) -> float:
-    """Accept a hour value only when its evidence class is not forbidden."""
+    """Accept an hour value only when its evidence class is not forbidden."""
 
     refuse_forbidden_hour_source(evidence_class)
     return hours

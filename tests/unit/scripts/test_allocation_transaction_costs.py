@@ -12,8 +12,11 @@ from scripts.data.allocation_transaction_costs import (
     applicant_hours_from_source,
     breakeven_reviewer_hours,
     breakeven_sbir_hours,
+    load_all_duration_rows,
     load_assumptions,
     load_mechanism_years,
+    load_sources,
+    metrics_table,
     run,
     success_rate,
     transaction_cost,
@@ -138,33 +141,41 @@ def test_pra_and_fa_hours_are_refused() -> None:
 
 
 def test_sbir_and_sttr_are_not_combined() -> None:
-    rows = [
-        _row(mechanism="nih_sbir_phase_i", program="SBIR", applications=100, awards=10),
-        _row(
-            mechanism="nih_sttr_phase_i",
-            program="STTR",
-            applications=50,
-            awards=8,
-            dollars_awarded=1_600_000,
-            mean_award_size=200_000,
-        ),
-        _row(
-            mechanism="nih_sbir_phase_ii",
-            program="SBIR",
-            phase="II",
-            applications=20,
-            awards=8,
-            dollars_awarded=8_000_000,
-            mean_award_size=1_000_000,
-        ),
-    ]
+    sources = load_sources(STUDY / "sources.yaml")
+    assumptions = load_assumptions(STUDY / "assumptions.yaml")
+    rows = load_all_duration_rows(sources, assumptions, repository_root=REPO)
     keys = {(row.program, row.phase, row.mechanism) for row in rows}
     assert ("SBIR", "I", "nih_sbir_phase_i") in keys
     assert ("STTR", "I", "nih_sttr_phase_i") in keys
-    assert len(keys) == 3
-    combined_success = success_rate(150, 18)
-    sbir_only = success_rate(100, 10)
-    assert combined_success != pytest.approx(sbir_only)
+    assert ("SBIR", "II", "nih_sbir_phase_ii") in keys
+    assert ("STTR", "II", "nih_sttr_phase_ii") in keys
+    assert all(row.program in {"SBIR", "STTR", "R01-equivalent"} for row in rows)
+
+    sbir_i = next(
+        row
+        for row in rows
+        if row.mechanism == "nih_sbir_phase_i" and row.duration_convention == "annual_award_size"
+    )
+    sttr_i = next(
+        row
+        for row in rows
+        if row.mechanism == "nih_sttr_phase_i"
+        and row.fiscal_year == sbir_i.fiscal_year
+        and row.duration_convention == "annual_award_size"
+    )
+    combined_success = success_rate(
+        sbir_i.applications + sttr_i.applications, sbir_i.awards + sttr_i.awards
+    )
+    assert sbir_i.success_rate is not None
+    assert combined_success != pytest.approx(sbir_i.success_rate)
+
+    metric_keys = {
+        (row["program"], row["phase"], row["mechanism"]) for row in metrics_table(rows, assumptions)
+    }
+    assert ("SBIR", "I", "nih_sbir_phase_i") in metric_keys
+    assert ("STTR", "I", "nih_sttr_phase_i") in metric_keys
+    assert ("SBIR", "II", "nih_sbir_phase_ii") in metric_keys
+    assert ("STTR", "II", "nih_sttr_phase_ii") in metric_keys
 
 
 def test_loader_refuses_sha_mismatch(tmp_path: Path) -> None:
