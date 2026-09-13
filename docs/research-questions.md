@@ -106,19 +106,20 @@ lists below may name only those ranks or an explicit refusal.
 - **Policymakers** — Congress, OMB, agency leadership, congressional defense
   committees. Unlabeled follow-on contracts
   ([B2](#b2-unlabeled-follow-on)) and unrecorded Phase III
-  ([B3](#b3-unrecorded-phase-iii)); private-to-SBIR Form D leverage
-  ([F3](#f3-form-d-leverage)). All three are `Computable` under a
-  `reproducible` study, not validated or citable.
+  ([B3](#b3-unrecorded-phase-iii)) are `Computable` under a `reproducible`
+  study, not validated or citable. Private-to-SBIR Form D leverage
+  ([F3](#f3-form-d-leverage)) is **Not computable** after retirement
+  of its stale identity-rule materialization.
 - **SBIR program managers** — NSF, NIH, DoD, DOE, SBA program offices. The
   same [B2](#b2-unlabeled-follow-on) and [B3](#b3-unrecorded-phase-iii)
   census proxies. STTR partner type ([B1](#b1-sttr-partner-types)) and
   spinout vs. subcontract ([B2](#b2-sttr-spinout)) are **Not computable**
   (Phase 0 design only).
 - **Investors** — VC, PE, angels, family offices, corporate VC.
-  Private-to-SBIR leverage ([F3](#f3-form-d-leverage)). Crowd-in vs.
-  crowd-out ([F3](#f3-crowd-in-vs-crowd-out)) and Lerner geography
-  ([F3](#f3-lerner-geography)) are **Not estimable** from the Form D
-  study design.
+  Private-to-SBIR leverage ([F3](#f3-form-d-leverage)) is **Not
+  computable**. Crowd-in vs. crowd-out ([F3](#f3-crowd-in-vs-crowd-out))
+  and Lerner geography ([F3](#f3-lerner-geography)) are **Not estimable**
+  from the Form D study design.
 - **OSTP / congressional oversight** — OSTP, armed-services, science, and
   small-business committees. No Section A question has a reserved Status
   or a study contract. There is no start-here item in A.
@@ -1065,14 +1066,16 @@ The relevant literature is Lerner [L10], Howell [L11], and Kortum & Lerner
   What fraction of SBIR awardees show secured-debt activity (UCC-1 filings), and
   what mix of equipment finance, depository-bank lending, and venture debt do
   those filings represent, by lender?
-  UCC-1 complements Form D's equity view. The CA-only pilot found equipment and
-  community-bank patterns, and an absence of venture-debt lenders in the CA
-  channel.
+  **Status:** Not computable. The CA-only pilot used the retired v1
+  Form D cohort; its cohort-dependent lender mix and rates are suppressed.
+  Its state-portal access observations remain a source-method note.
   *Deps: ER, UCC-1 · Spec: [../specs/archive/completed-features/ucc1-financing-analysis/](../specs/archive/completed-features/ucc1-financing-analysis/) (PRs #303 / #305 merged)*
 
 - **Unified capital-event timeline**
   What does a single firm history look like when federal awards, private
   placements, M&A, and patent events are placed on one timeline?
+  **Status:** Implemented historically, but the Form D-selected cohort and its
+  pathway counts are retired pending the pinned v2 rebuild.
   *Deps: ER, SEC EDGAR, UCC-1, M&A signals · Spec: (PR #307 merged)*
 
 - **M&A exit rate by agency**
@@ -1129,9 +1132,10 @@ The relevant literature is Lerner [L10], Howell [L11], and Kortum & Lerner
 
 ### F3. Inferential (Tier 3)
 
-The Form D study answers a descriptive leverage ratio. It does not identify
-who would have raised capital in the absence of an SBIR award, so the
-Howell [L11] and Lerner [L10] questions are not estimable from that design.
+The retired Form D study defined a descriptive leverage ratio. It does not
+currently support a result, and it never identified who would have raised
+capital without an SBIR award. The Howell [L11] and Lerner [L10] questions
+remain outside that design.
 
 #### Disclosed Form D leverage
 
@@ -1140,11 +1144,13 @@ Howell [L11] and Lerner [L10] questions are not estimable from that design.
   funding) by agency, vintage, and firm size?
   Sometimes described as the private-side counterpart of NASEM's federal-contract
   leverage [L1]; it is not that quantity.
-  **Status:** Computable as a Form D lower bound under the
-  `form-d-fundraising` study (`reproducible`, not validated, not citable).
-  The 1.82×–2.37× program-level ratios measure disclosed Regulation D
-  capital, not NASEM's federal-contract leverage, and are not a 4:1
-  reproduction.
+  **Status:** Not computable. The `form-d-fundraising` study is
+  `retired`: its historical result used `person-or-zip-v1`, the complete input
+  is not pinned in the repository, and no issuer-scoped
+  `corroborated-person-v2` rebuild exists. Former numerical results are
+  suppressed. A future ratio would measure disclosed Regulation D capital,
+  not NASEM's federal-contract leverage, and would not be a one-sided lower
+  bound while identity and filing-aggregation error remain unresolved.
   *Deps: ER, ID, SEC EDGAR · Refs: [L1] · Spec: [../specs/archive/completed-features/form-d-pipeline/](../specs/archive/completed-features/form-d-pipeline/), [../specs/agency-private-capital-comparison/](../specs/agency-private-capital-comparison/) · Study: [form-d-fundraising](../studies/form-d-fundraising/study.yaml)*
 
 #### Causal questions this design cannot answer
@@ -1218,21 +1224,19 @@ M&A). Classified-work exposure remains a manual political-sensitivity vetting
 factor, not an automated pipeline screen — there is no vulnerability signal for
 it.
 
-### Form D fundraising analysis (reproducible study, not citable)
+### Form D fundraising analysis (retired; no current result)
 
 **Audience:** F-area analysts, investor researchers, and policy staff studying
 program-wide private-capital leverage.
 
 **Format:**
 
-- `docs/research/sbir-form-d-fundraising-analysis.md` — findings record, on
-  `main`. Includes Appendix A (firm-level bootstrap CIs, PR #338) and Appendix B
-  (PIF cross-link integrity audit, PR #341).
+- `docs/research/sbir-form-d-fundraising-analysis.md` — retirement notice and
+  successor rebuild gates; former numerical tables are suppressed.
 - [`studies/form-d-fundraising/study.yaml`](../studies/form-d-fundraising/study.yaml)
-  — study contract (`reproducible`, not citable).
-- `docs/research/dod-form-d-leverage.md` — DoD Branch decomposition, per-firm and
-  time-series and acquirer-type follow-ups, and the Form D vs. FPDS substitution
-  test (PRs #342 / #343 / #350).
+  — retired study contract with a closed materialization gate.
+- `docs/research/dod-form-d-leverage.md` — retirement notice for the historical
+  DoD branch, per-firm, time-series, acquirer-type, and substitution outputs.
 - `docs/research/form-d-data-dictionary.md` — field reference.
 
 **Pulls from:** F1 (Form D profile), F3 (private-to-SBIR leverage), A1/A4
@@ -1349,8 +1353,9 @@ explicit refusals; other audience pointers moved to research targets. F3 is
 split into the Form D leverage estimand and causal questions that design
 cannot answer. E4–E6 are marked operational. F1 M&A point estimates were
 removed from the inventory. A-CP13 is not an implementation item.
-`form-d-fundraising` is the third study contract and the second at
-`reproducible` (on F3). The 2026-08-11 citation audit added [L34]–[L48] from
+`form-d-fundraising` was retired on 2026-09-12 after its person-match rule
+changed and its unpinned result could not be rebuilt; F3 is no longer marked
+computable. The 2026-08-11 citation audit added [L34]–[L48] from
 the 2019–2026 literature map and pinned [L1] to its published DOI. Git history
 preserves earlier editorial and section-consolidation notes.
 

@@ -91,38 +91,35 @@ Show the high-level pipeline:
 The point is not to show every asset. The point is to show that the architecture
 can connect policy questions to evidence.
 
-### Segment 2 — Outcome signals the pipeline can already explain (10 minutes)
+### Segment 2 — Outcome evidence boundaries (10 minutes)
 
-Use three concrete findings as the "why this matters" portion.
+Use the Form D lifecycle repair to show how the repository withdraws a result
+when its identity rule changes.
 
 #### A. Private capital after SBIR
 
-Show the Form D analysis as a program-wide capital-formation signal:
+Do not present a leverage number. The historical study used
+`person-or-zip-v1`; it is retired until a pinned, issuer-scoped
+`corroborated-person-v2` materialization passes the rebuild gates.
 
-- High-confidence matched firms: `$1.82` in Form-D-detected private capital per
-  `$1` of total federal SBIR funding.
-- High + medium confidence: `$2.37` per `$1`.
-- Explain the denominator choice clearly: program-wide ratio and matched-firm
-  ratio answer different questions.
+- Show that every new confidence object records its tier-rule version.
+- Show that the offline rescorer is deterministic and atomic.
+- Explain that record-level corroboration can still span filings or CIKs and
+  therefore is not validation.
 
 Policy interpretation:
 
-> This does not prove the award caused the raise. It does show which awardee
-> cohorts later appear in a regulated private-capital disclosure system.
+> No current Form D leverage finding is authorized. The useful demonstration is
+> the evidence gate, not a stale number.
 
 #### B. Branch / subportfolio heterogeneity
 
-Use the DoD branch Form D decomposition as an example of why aggregate
-benchmarks can hide important policy structure:
-
-- Air Force appears much higher in Form-D-detected private-capital leverage.
-- Navy appears lower in Form-D-detected private capital, with evidence of
-  alternative commercialization or substitution channels.
+The DoD branch decomposition used the same retired v1 cohort. Defer its branch
+comparisons until the common v2 rebuild is complete.
 
 Policy interpretation:
 
-> The useful policy finding is not "Agency X is good or bad." It is that one
-> aggregate program can contain multiple commercialization pathways.
+> Branch differences are a future analysis target, not a current finding.
 
 #### C. M&A and acquisition signals
 
@@ -340,17 +337,17 @@ reproducible — not a spec or a research target.
 | Artifact | What it shows | Where |
 |---|---|---|
 | Commercialization Benchmark CLI | Live §638(qq)(3) eligibility, sensitivity, and per-company evaluation against real award data | `scripts/run_benchmark.py` (`evaluate` / `sensitivity` / `company` subcommands), backed by `sbir_etl/models/benchmark_models.py` |
-| Form D private-capital leverage | For every $1 of federal SBIR funding, SBIR companies raised $1.82–$2.37 in private capital via SEC Reg D (95% bootstrap CIs, 3,640–4,760 companies) | `docs/research/sbir-form-d-fundraising-analysis.md` |
-| DoD branch leverage heterogeneity | Aggregate DoD Form D leverage (1.01x) masks a ~9x spread — Air Force 2.12x vs. Navy 0.41x, tied to a federal-contract substitution channel | `docs/research/dod-form-d-leverage.md` |
+| Form D private-capital leverage | Retired v1 study; no current numerical result. Demonstrates versioned identity rules and a closed evidence gate. | `docs/research/sbir-form-d-fundraising-analysis.md` |
+| DoD branch leverage heterogeneity | Historical v1 decomposition; suppress until rebuilt from the same pinned v2 cohort. | `docs/research/dod-form-d-leverage.md` |
 | Cross-agency CET portfolio composition | Federal SBIR portfolio broken out by the 21-area NSTC-2025Q1 technology taxonomy, across all 11 agencies | `config/cet/taxonomy.yaml`, `packages/sbir-ml/sbir_ml/ml/config/taxonomy_loader.py`, spec at `specs/cross-agency-taxonomy/` |
 | SEC EDGAR outcomes plain-English guide | Explains, in non-technical terms, how the pipeline detects acquisitions/investment/public-filer status for SBIR firms — good leave-behind reading | [sec-edgar-for-policy-makers.md](sec-edgar-for-policy-makers.md) |
 
 ### Suggested flow
 
-1. **Open together (5 min):** the Form D leverage finding and the DoD
-   branch-heterogeneity breakdown, framed as "this pipeline finds things a
-   quadrennial NASEM review can't, because it runs continuously." Works for
-   both audiences as an opener.
+1. **Open together (5 min):** use the retired Form D and DoD pages to show the
+   evidence lifecycle: a rule changed, stale numbers were withdrawn, and the
+   successor build now fails closed on explicit identity and aggregation gates.
+   Do not display or paraphrase the former numerical findings.
 2. **Split for ~10 minutes each:**
    - *SBA track:* run the benchmark CLI live against real award data (the
      commands in section 4, Segment 3); walk through one company's

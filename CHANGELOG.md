@@ -10,6 +10,18 @@ version.
 
 ## [Unreleased]
 
+### Fixed
+
+- Versioned the Form D tier rule as `corroborated-person-v2`, added a
+  deterministic atomic offline rescorer, and made current downstream consumers
+  reject unversioned or mixed-rule detail rows.
+- Retired the historical `person-or-zip-v1` fundraising result and dependent
+  cohort reports because their local inputs cannot be pinned or fully rebuilt;
+  the replacement study now fails closed on filing/CIK and amendment-chain
+  aggregation gates.
+- Corrected the v0.12.0 Form D amendment shortcut's interpretation: without a
+  filing-number chain key it is an interim heuristic, not a proven lower bound.
+
 ## [0.12.0] — 2026-08-31
 
 ### Fixed

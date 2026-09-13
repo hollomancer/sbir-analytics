@@ -31,8 +31,11 @@ from datetime import date
 from pathlib import Path
 
 import matplotlib
+
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
+
+from sbir_etl.enrichers.sec_edgar.form_d_scoring import require_form_d_tier_rule
 
 REPO = Path(__file__).resolve().parents[2]
 DATA = REPO / "data"
@@ -48,6 +51,7 @@ def parse_date(s: str) -> date | None:
     for fmt in ("%Y-%m-%d", "%m/%d/%Y", "%Y/%m/%d"):
         try:
             from datetime import datetime
+
             return datetime.strptime(s.strip(), fmt).date()
         except ValueError:
             continue
@@ -86,18 +90,28 @@ def load_form_d_high_conf(jsonl_path: Path) -> dict[str, dict]:
                 rec = json.loads(line)
             except json.JSONDecodeError:
                 continue
-            if rec.get("match_confidence", {}).get("tier") != "high":
+            confidence = require_form_d_tier_rule(
+                rec.get("match_confidence"),
+                context=f"Form D record {rec.get('company_name') or '<unnamed>'!r}",
+            )
+            if confidence.get("tier") != "high":
                 continue
+            scope = rec.get("match_confidence_scope")
+            if not isinstance(scope, dict):
+                raise ValueError(
+                    f"Form D record {rec.get('company_name') or '<unnamed>'!r} has no "
+                    "match_confidence_scope; rescore the complete input first."
+                )
             name = rec.get("company_name", "").strip().upper()
             if not name:
                 continue
-            offerings = [
-                o for o in rec.get("offerings", [])
-                if o.get("filing_date")
-            ]
+            offerings = [o for o in rec.get("offerings", []) if o.get("filing_date")]
             by_name[name] = {
                 "cik": rec.get("form_d_cik", ""),
-                "match_score": rec.get("match_confidence", {}).get("score", 0.0),
+                "match_score": confidence.get("score", 0.0),
+                "tier_rule_version": confidence["rule_version"],
+                "signals_may_span_filings": bool(scope.get("signals_may_span_filings")),
+                "signals_may_span_ciks": bool(scope.get("signals_may_span_ciks")),
                 "offerings": offerings,
             }
     return by_name
@@ -113,7 +127,8 @@ def temporal_join(award: dict, form_d: dict) -> dict | None:
         return None
 
     post_offerings = [
-        o for o in form_d["offerings"]
+        o
+        for o in form_d["offerings"]
         if parse_date(o.get("filing_date", "")) and parse_date(o["filing_date"]) > end_date
     ]
     if not post_offerings:
@@ -124,16 +139,16 @@ def temporal_join(award: dict, form_d: dict) -> dict | None:
     first_date = parse_date(first["filing_date"])
     lag_days = (first_date - end_date).days
 
-    total_raised = sum(
-        float(o.get("total_amount_sold") or 0) for o in post_offerings
-    )
-    sec_types = sorted({
-        t for o in post_offerings for t in o.get("securities_types", [])
-    })
+    total_raised = sum(float(o.get("total_amount_sold") or 0) for o in post_offerings)
+    sec_types = sorted({t for o in post_offerings for t in o.get("securities_types", [])})
 
     return {
         "form_d_cik": form_d["cik"],
         "form_d_match_score": form_d["match_score"],
+        "form_d_tier_rule_version": form_d["tier_rule_version"],
+        "form_d_signals_may_span_filings": form_d["signals_may_span_filings"],
+        "form_d_signals_may_span_ciks": form_d["signals_may_span_ciks"],
+        "form_d_amount_aggregation_status": "unresolved-amendment-chain",
         "phase_ii_end_date": end_date.isoformat(),
         "phase_ii_end_source": end_source,
         "form_d_post_p2_offerings_n": len(post_offerings),
@@ -253,24 +268,31 @@ def main() -> int:
     print("FORM D TEMPORAL ANALYSIS — KEYWORD COHORT")
     print("=" * 60)
     print(f"Total nanotech Phase II awards:     {total:,}")
-    print(f"Awards with high-conf Form D match: {total - stats['no_form_d_match']:,} ({100*(total-stats['no_form_d_match'])/total:.1f}%)")
+    print(
+        "Awards with record-level v2-high Form D match: "
+        f"{total - stats['no_form_d_match']:,} "
+        f"({100 * (total - stats['no_form_d_match']) / total:.1f}%)"
+    )
+    print("  Identity is not validated; aggregate-scope rows require quarantine/review.")
     print()
     print("Of matched awards:")
-    print(f"  Post-Phase II Form D (any):       {n_match:,} ({100*n_match/total:.1f}% of cohort)")
+    print(
+        f"  Post-Phase II Form D (any):       {n_match:,} ({100 * n_match / total:.1f}% of cohort)"
+    )
     print(f"    of which, award now mature:     {n_mature:,}")
     print(f"    of which, award still active:   {n_active:,}  ← temporal filter is weaker here")
     print(f"  All offerings predate Phase II:   {n_predate:,}  ← would inflate unadjusted count")
     print(f"  No date anchor available:         {stats['form_d_match_no_anchor']:,}")
     print()
-    # Unadjusted rate comes from the cohort CSV's own sig_form_d_detected column
-    # (written by build_nano_cohort.py) so it tracks upstream changes.
-    if awards and "sig_form_d_detected" in awards[0]:
-        unadj_n = sum(1 for r in awards if r.get("sig_form_d_detected") == "True")
-        print(f"Unadjusted Form D rate (build_nano_cohort):  {100*unadj_n/total:.1f}% ({unadj_n} awards)")
-    else:
-        print("Unadjusted Form D rate (build_nano_cohort):  n/a — sig_form_d_detected column absent")
-    print(f"Temporally-filtered rate (this script):      {100*n_match/total:.1f}% ({n_match} awards)")
-    print(f"Mature-only (strongest claim):               {100*n_mature/total:.1f}% ({n_mature} awards)")
+    # The cohort CSV's historical sig_form_d_detected column has no rule version;
+    # do not print it beside a v2 result as though the populations were comparable.
+    print("Unadjusted Form D rate (legacy cohort flag): suppressed — unversioned")
+    print(
+        f"Temporally-filtered rate (this script):      {100 * n_match / total:.1f}% ({n_match} awards)"
+    )
+    print(
+        f"Mature-only temporal subset:                 {100 * n_mature / total:.1f}% ({n_mature} awards)"
+    )
     print()
 
     # By agency
@@ -284,7 +306,9 @@ def main() -> int:
     print("Post-Phase II Form D by agency:")
     for ag, c in sorted(agency_counts.items(), key=lambda x: -x[1]["post_p2"]):
         if c["post_p2"] > 0:
-            print(f"  {ag[:45]:<45} {c['post_p2']:>4} / {c['total']:>4} ({100*c['post_p2']/c['total']:.1f}%)")
+            print(
+                f"  {ag[:45]:<45} {c['post_p2']:>4} / {c['total']:>4} ({100 * c['post_p2'] / c['total']:.1f}%)"
+            )
 
     # Capital raised distribution
     amounts = [
@@ -296,11 +320,11 @@ def main() -> int:
         amounts_sorted = sorted(amounts)
         n = len(amounts_sorted)
         print()
-        print("Post-Phase II capital raised:")
-        print(f"  Median:  ${amounts_sorted[n//2]/1e6:.2f}M")
-        print(f"  75th:    ${amounts_sorted[int(n*0.75)]/1e6:.2f}M")
-        print(f"  90th:    ${amounts_sorted[int(n*0.90)]/1e6:.2f}M")
-        print(f"  Total:   ${sum(amounts)/1e6:.1f}M across {n} awards")
+        print("Post-Phase II reported amount sold (amendment aggregation unresolved):")
+        print(f"  Median:  ${amounts_sorted[n // 2] / 1e6:.2f}M")
+        print(f"  75th:    ${amounts_sorted[int(n * 0.75)] / 1e6:.2f}M")
+        print(f"  90th:    ${amounts_sorted[int(n * 0.90)] / 1e6:.2f}M")
+        print(f"  Total:   ${sum(amounts) / 1e6:.1f}M across {n} awards")
 
     # Lag distribution
     lags = [
@@ -313,9 +337,11 @@ def main() -> int:
         n = len(lags_sorted)
         print()
         print("Lag from Phase II end to first Form D offering:")
-        print(f"  Median:  {lags_sorted[n//2]} days ({lags_sorted[n//2]//365:.1f} yr)")
-        print(f"  25th:    {lags_sorted[n//4]} days")
-        print(f"  75th:    {lags_sorted[int(n*0.75)]} days ({lags_sorted[int(n*0.75)]//365:.1f} yr)")
+        print(f"  Median:  {lags_sorted[n // 2]} days ({lags_sorted[n // 2] // 365:.1f} yr)")
+        print(f"  25th:    {lags_sorted[n // 4]} days")
+        print(
+            f"  75th:    {lags_sorted[int(n * 0.75)]} days ({lags_sorted[int(n * 0.75)] // 365:.1f} yr)"
+        )
         neg = sum(1 for lag in lags if lag < 0)
         if neg:
             print(f"  NOTE: {neg} negative lags — Phase II end_date is fallback estimate")
@@ -344,17 +370,31 @@ def main() -> int:
                 ag_rates.append(100 * c["post_p2"] / c["total"])
         bars = ax2.barh(ag_labels, ag_rates, color="#FF9800", alpha=0.85)
         ax2.set_xlabel("% with post-Phase II Form D", fontsize=11)
-        ax2.set_title("Post-Phase II Form D rate by agency\n(high-confidence matches, temporally filtered)", fontsize=10)
-        ax2.axvline(100 * n_match / total, color="gray", linestyle="--", linewidth=1,
-                    label=f"Cohort avg {100*n_match/total:.1f}%")
+        ax2.set_title(
+            "Post-Phase II Form D rate by agency\n(high-confidence matches, temporally filtered)",
+            fontsize=10,
+        )
+        ax2.axvline(
+            100 * n_match / total,
+            color="gray",
+            linestyle="--",
+            linewidth=1,
+            label=f"Cohort avg {100 * n_match / total:.1f}%",
+        )
         ax2.legend(fontsize=9)
         for bar, rate in zip(bars, ag_rates, strict=False):
-            ax2.text(rate + 0.3, bar.get_y() + bar.get_height() / 2,
-                     f"{rate:.1f}%", va="center", fontsize=9)
+            ax2.text(
+                rate + 0.3,
+                bar.get_y() + bar.get_height() / 2,
+                f"{rate:.1f}%",
+                va="center",
+                fontsize=9,
+            )
 
         fig.suptitle(
             f"{paths.area_id}: Form D private investment (temporally filtered)",
-            fontsize=12, fontweight="bold",
+            fontsize=12,
+            fontweight="bold",
         )
         fig.tight_layout()
         fig_path = paths.analysis_dir / fig_name

@@ -18,6 +18,7 @@ from sbir_analytics.assets.agency_private_capital.form_d_inputs import (
 from sbir_analytics.assets.agency_private_capital.matching import CohortMatcher
 from sbir_analytics.assets.agency_private_capital.phase2_outcomes import MatchedCohortOutcomes
 from sbir_analytics.assets.agency_private_capital.threats import ThreatsToValidity
+from sbir_etl.enrichers.sec_edgar.form_d_scoring import FORM_D_TIER_RULE_VERSION
 
 
 pytestmark = pytest.mark.integration
@@ -49,7 +50,10 @@ def test_phase2_pipeline_produces_pairs_outcomes_and_threats(tmp_path) -> None:
             {
                 "company_name": "Acme Corp",
                 "form_d_cik": "0000123",
-                "match_confidence": {"tier": "high"},
+                "match_confidence": {
+                    "rule_version": FORM_D_TIER_RULE_VERSION,
+                    "tier": "high",
+                },
                 "offerings": [
                     {
                         "entity_name": "ACME CORP",

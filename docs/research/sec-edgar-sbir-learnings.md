@@ -3,6 +3,13 @@
 **Date:** 2026-04-19/22
 **PR:** #227
 
+> **Historical note (2026-09-12):** The fetch and API observations below remain
+> useful, but the unversioned Form D cohort and tier counts were produced under
+> the retired `person-or-zip-v1` rule. They are not current v2 findings. Current
+> records must carry `corroborated-person-v2`, and no aggregate Form D result is
+> authorized until the filing/CIK and amendment-chain gates in the
+> `form-d-fundraising` study are closed.
+
 ## What We Built
 
 Two-pipeline SEC EDGAR enrichment for SBIR awardees:
@@ -84,7 +91,8 @@ correctly identifies acquisitions, subsidiaries, contracts, and competitors.
 ### Form D (Regulation D Private Capital Raises)
 
 - Filed *after* securities are sold (not just offered)
-- SBIR companies with Form D = raised venture/angel capital
+- A candidate SBIR-to-Form-D link is evidence of a disclosed Regulation D
+  filing, not proof of identity or specifically venture/angel capital.
 - **Bulk index approach** (replaced EFTS queries): download EDGAR quarterly
   `form.idx` files (761K total Form D entries, 72 quarters, 19 seconds) and
   match company names locally. Produces 10,405 candidate matches vs 3,992
@@ -115,52 +123,40 @@ cutting fetch volume ~3-4x.
 
 ### Form D Confidence Scoring
 
-**Problem**: Binary state filtering is the wrong tool for Form D entity
-disambiguation. Tightening state-match kills true positives from
-relocations; loosening it readmits homographs. Wrong axis of optimization.
-
-**Solution**: Rule-based tier assignment using discrete signal combinations
-instead of a weighted composite score. Exploratory clustering (GMM, k-means
-on the 4-signal vector) confirmed that the signals are fundamentally discrete
-— person match is bimodal (yes/no), state is binary — and natural clusters
-map directly to signal combinations.
+The scorer uses named rules over discrete signal combinations. Every current
+`match_confidence` object persists `rule_version`; the weighted composite is
+retained for within-tier ordering but does not assign the tier.
 
 **Signals computed** (all retained in the record as metadata):
 
 | Signal | Role | Notes |
 |--------|------|-------|
 | Name fuzzy ≥ 85% | Baseline gate | Required for index matching |
-| PI ↔ related_person match | **Primary tier driver** | Bimodal; strongest discriminator |
-| ZIP code match (SBIR ↔ Form D) | **Primary tier driver** | PI-independent; 100% coverage both sides |
-| biz_states ∩ SBIR state | **Secondary tier driver** | Binary match/miss |
+| PI ↔ related_person match | Tier input | Fuzzy names can collide; not sufficient alone under v2 |
+| ZIP code match (SBIR ↔ Form D) | Tier input | Sufficient for record-level v2 high, but not identity validation |
+| biz_states ∩ SBIR state | Tier input | Corroborates a person hit; state alone is medium |
 | Form D date vs SBIR award date | Metadata only | ≤2yr=1.0, 2-5yr=0.5, >5yr=0.0 |
 | year_of_inc ≤ SBIR award year | Metadata only | Missing 29% of the time |
 
-**Tier assignment** (rule-based, two independent confirmation signals):
+**Current tier assignment (`corroborated-person-v2`):**
 
-| Tier | Rule | Count | Rate |
-|------|------|-------|------|
-| High | person_score ≥ 0.7 OR address_score = 1.0 | 3,640 | 35.0% |
-| Medium | neither person nor address match, state_score ≥ 0.5 | 1,120 | 10.8% |
-| Low | no confirming signal | 5,645 | 54.3% |
+| Tier | Record-level rule |
+|---|---|
+| High | Exact ZIP, or person score at least 0.7 plus exact state overlap |
+| Medium | Person hit without corroboration, state overlap alone, or missing state evidence |
+| Low | No person/ZIP hit and an observed state mismatch |
 
-Person match and address (ZIP) match are independent confirmation
-signals — either alone is sufficient for high tier. This is critical
-for HHS/NIH companies where the SBIR PI is often an academic
-collaborator (8.5% have `.edu` emails) who does not appear as an
-officer on the Form D filing. Address matching promoted 1,620
-companies from medium to high tier, improving HHS high-only ratio
-from 0.70x to 2.66x.
+The retired `person-or-zip-v1` rule allowed a fuzzy person hit alone to
+reach high. Its counts and agency ratios are suppressed rather than relabeled
+as v2 because the complete historical inputs are absent from this checkout.
 
 The composite score is still computed (weighted sum of all 6 signals)
 and stored for within-tier ranking, but it no longer drives tier
 assignment. Missing signals default to 0.5 (neutral).
 
-**Why temporal was removed as a tier driver**: 81% of records score 1.0
-on temporal — it doesn't discriminate. Removing it demotes ~797 records
-from medium to low that had no confirming signal beyond name + timing,
-while promoting ~95 records with strong person matches that were being
-held back by low composite scores.
+Temporal and incorporation signals remain metadata rather than tier drivers.
+Historical distribution and promotion/demotion counts were measured on the
+retired v1 materialization and are not current results.
 
 **Signals explicitly excluded from tier assignment**:
 - `jurisdiction_of_inc = DE` — near-universal for VC-track companies,
@@ -169,21 +165,20 @@ held back by low composite scores.
   kept as metadata for downstream filtering.
 - `year_of_inc_score` — missing 29% of the time; kept as metadata.
 
-**Industry group exclusions**: Offerings in groups structurally
-incompatible with SBIR companies are excluded from analysis: Insurance,
+**Industry group exclusions**: The historical analysis excluded Insurance,
 Lodging/Conventions, Travel/Tourism, Pooled Investment Fund, Restaurants,
-Retailing. These are 85-100% low-tier (name-collision false positives).
+and Retailing. That filter does not validate the remaining identity links.
 
 ### PI Name Matching
 
 **Dead end for EFTS full-text search**: Searching PI names in filing prose
 returns zero hits — PIs are researchers, not mentioned in corporate filings.
 
-**Effective for Form D person matching**: SBIR PI names (97.8% coverage,
-98.1% clean "First Last" format) matched against Form D `relatedPersons`
-(officers, directors, promoters) is the strongest disambiguation signal.
-Two unrelated companies filing Form D almost never share a named officer
-with an SBIR PI.
+**Useful but collision-prone for Form D person matching**: SBIR PI names can
+be compared with Form D `relatedPersons` (officers, directors, promoters).
+Realistic distinct-person pairs such as Robert/Roberta Chen and John/Jonathan
+Smith can clear the fuzzy threshold. A person hit therefore needs state or ZIP
+corroboration to reach v2 high and still requires identity review.
 
 Name normalization: strip "Dr.", "Ph.D.", "Mr.", "Jr.", single-letter
 initials ("R."), duplicated names. Match via `rapidfuzz.token_set_ratio`
@@ -199,20 +194,10 @@ is the right shape for entity resolution.
 **EFTS city co-occurrence**: `"Company Name" AND "City"` reduces
 noise by 73-95% for generic company names in EFTS mention search.
 
-**Form D ZIP matching**: SBIR address (100% coverage) matched against
-Form D issuer address (100% coverage) by 5-digit ZIP code. This is
-the strongest PI-independent confirmation signal:
-
-| Tier | HHS ZIP match | DoD ZIP match |
-|------|--------------|--------------|
-| High (person-based) | 70% | 59% |
-| Medium (state-only) | 67% | 46% |
-| Low (name-only) | 0% | 0% |
-
-The 0% low-tier match rate validates that low-tier records are almost
-entirely false positives. The 67% HHS medium-tier match rate confirmed
-that most HHS medium-tier companies were genuine matches that failed
-person matching because their PI was academic.
+**Form D ZIP matching**: The scorer compares the five-digit SBIR ZIP with
+pooled Form D issuer ZIPs. Exact ZIP is the strongest PI-independent v2
+signal, but shared addresses and cross-filing/multi-CIK pooling mean it is not
+automatic proof of identity. Historical agency/tier ZIP rates are suppressed.
 
 **biz_states** (from Form D EFTS metadata or XML) is principal place of
 business, not registered agent. Used as a tier signal (state match =

@@ -6,6 +6,7 @@ from sbir_etl.ucc.schema import (
     UCCFiling,
     UCCStatus,
 )
+from sbir_etl.enrichers.sec_edgar.form_d_scoring import FORM_D_TIER_RULE_VERSION
 
 
 def test_filing_type_enum_values():
@@ -53,5 +54,6 @@ def test_cohort_row_minimum_fields():
         "total_award_amount": 1_249_992.0,
         "form_d_filing_count": 1,
         "form_d_total_raised": 7_000_000.0,
+        "form_d_tier_rule_version": FORM_D_TIER_RULE_VERSION,
     }
     assert row["company_name"] == "Acme Inc"

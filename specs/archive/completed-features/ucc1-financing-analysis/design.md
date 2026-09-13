@@ -1,5 +1,9 @@
 # UCC-1 Financing Analysis — Design
 
+> **Historical v1 dependency:** This design consumed the retired
+> `person-or-zip-v1` Form D cohort. The numerical pilot is suppressed pending a
+> pinned, aggregation-reviewed `corroborated-person-v2` rebuild.
+
 ## Goal
 
 CA-only pilot of a debt-side complement to the Form D equity analysis.

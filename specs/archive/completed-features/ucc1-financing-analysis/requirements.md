@@ -1,5 +1,10 @@
 # UCC-1 Financing Analysis — Requirements
 
+> **Historical v1 dependency:** This archived pilot used the retired
+> `person-or-zip-v1` Form D cohort. Its cohort-dependent counts, rates, and
+> extrapolations are not current v2 findings; see the linked pilot page for the
+> closed rebuild conditions.
+
 **Target epistemic tier:** `evidence`
 
 > **Status:** Pilot complete — PRs #303 / #305 merged. CA-only pilot found
@@ -22,9 +27,9 @@
 
 ## Background
 
-The Form D analysis (`docs/research/sbir-form-d-fundraising-analysis.md`)
-measures private *equity* raised by SBIR firms via Reg D — ~$1.82–$2.37 per
-$1 of SBIR funding. It misses private *debt* entirely: venture debt
+The historical Form D analysis attempted to measure private capital disclosed
+under Reg D. Its v1 ratio is retired and suppressed. Form D also misses much
+private *debt*: venture debt
 (SVB, Hercules, Trinity, Western Alliance), equipment financing, and
 asset-backed lines.
 

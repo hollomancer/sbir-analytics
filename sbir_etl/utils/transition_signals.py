@@ -19,6 +19,8 @@ import json
 from datetime import date
 from pathlib import Path
 
+from sbir_etl.enrichers.sec_edgar.form_d_scoring import require_form_d_rule_version
+
 
 EPISTEMIC_TIER = "exploratory"
 
@@ -106,7 +108,7 @@ def load_ma_signals(jsonl_path: Path) -> dict[str, dict]:
 
 
 def load_form_d_signals(jsonl_path: Path) -> dict[str, dict]:
-    """Load Form D high-confidence matches keyed by company name."""
+    """Load versioned Form D record-high candidates keyed by company name."""
     by_name: dict[str, dict] = {}
     if not jsonl_path.exists():
         return by_name
@@ -120,6 +122,10 @@ def load_form_d_signals(jsonl_path: Path) -> dict[str, dict]:
                 name = rec.get("company_name", "").strip().upper()
                 if not name:
                     continue
+                rule_version = require_form_d_rule_version(
+                    rec.get("form_d_tier_rule_version"),
+                    context=f"Form D cohort record {name!r}",
+                )
                 by_name[name] = {
                     "form_d_total_raised": _safe_float(
                         str(rec.get("form_d_total_raised", "") or "")
@@ -127,6 +133,7 @@ def load_form_d_signals(jsonl_path: Path) -> dict[str, dict]:
                     "form_d_filing_count": _safe_int(str(rec.get("form_d_filing_count", "") or "")),
                     "form_d_latest_date": "",
                     "form_d_confidence": "high",
+                    "form_d_tier_rule_version": rule_version,
                 }
             except json.JSONDecodeError:
                 pass
@@ -183,6 +190,7 @@ def enrich_cohort_with_signals(
         r["sig_form_d_detected"] = bool(fd)
         r["sig_form_d_total_raised"] = fd.get("form_d_total_raised", 0.0)
         r["sig_form_d_latest_date"] = fd.get("form_d_latest_date", "")
+        r["sig_form_d_tier_rule_version"] = fd.get("form_d_tier_rule_version", "")
 
         r["sig_any_positive"] = any(
             [
@@ -264,7 +272,7 @@ def enrich_from_artifacts(
         ("sig_fpds_phase3_coded", "FPDS Phase III coded"),
         ("sig_any_federal_obligation", "Any federal obligation"),
         ("sig_ma_detected", "M&A detected"),
-        ("sig_form_d_detected", "Form D (high-conf)"),
+        ("sig_form_d_detected", "Form D (v2 record-high; unvalidated)"),
         ("sig_any_positive", "Union (any)"),
     ]:
         n = sum(1 for r in enriched if r.get(field))
