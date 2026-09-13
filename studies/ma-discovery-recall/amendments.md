@@ -121,3 +121,63 @@ closed. Inventory F2/A4 is not edited. `citable` is out of scope.
 
 Live capture is refused unless `--protocol` is hashed in HEAD. This
 amendment is Commit A of that cut: protocol only, zero results.
+
+## Amendment — held-out 1501 recorded as non-confirmatory (2026-09-13)
+
+**Authority:** evidence audit, 2026-09-13, on the single question of whether
+`validation_result.confirmatory` could be `true` for the held-out 1501-2500 run.
+
+**Verdict: it cannot, and the reason is dispositive rather than a judgement.**
+`study.yaml` pins `held-out-1501.md` at `e7090020...`. Those bytes first exist
+in git at `9bcb6dc9`, 2026-09-09 07:30:41 -0400. The replay's own
+`replay_result.as_of_utc` is 2026-09-09T01:25:00Z, which is 2026-09-08 21:25
+EDT, and the capture ran 09-07 11:58 to 09-08 02:15. The pinned design postdates
+the run it is supposed to have preregistered by about ten hours, and the capture
+by about two days. `confirmatory` asserts the design bytes were fixed in git
+before the evaluated run; they were not.
+
+The schema does not catch this. `StudyManifest` only checks that
+`design_sha256` matches the pinned `frozen_artifacts` entry, which is exactly
+the check its own docstring tells the auditor not to rely on.
+
+**What holds, and is worth stating.** `held-out-1501.yaml` is byte-identical
+from `0023e204` to `main`: `recall_floor: 10`, `skip_pairs: 1500`,
+`max_candidates: 1000`, `stop_when: dated_confirm`, `strict_recall: true`. The
+diff on `held-out-1501.md` from `0023e204` forward is a pure insertion, 89 added
+lines with zero deletions or modifications. The estimand, the cut, the stop rule
+and the floor of 10 were fixed before capture and were not moved to fit a 4.
+Reporting the miss is honest and useful; it is the *confirmatory* label that
+fails.
+
+**Falling back to the pre-capture hash would be worse, not better.** Pinning
+`b983466f...` so the design predates the run would assert confirmation against a
+design the execution violated: that version authorizes no retry class, and the
+run re-queried 476 rows under one.
+
+**Recorded end state.** `evidence_status` stays `exploratory`.
+`validation_result` carries the numbers with `confirmatory: false` and
+`threshold_met: false`, and five `post_hoc_analyses` entries. A full design and
+result block validates at `exploratory`, so no recorded detail is lost by
+declining the promotion.
+
+### Merge-strategy lesson, recorded because it will recur
+
+`0023e204` — "hash held-out-1501 protocol before capture" — is not reachable
+from `main`. PR #699 was squash-merged, so `0023e204`, `1fc7d936`, `bb7c2ac3`,
+`82b7a210` and `9bcb6dc9` all collapsed into `fff0cef3`, and the freeze ordering
+is legible only in the deleted branch's history. That is a real provenance
+problem on its own merits, and it is *not* what blocked this cut.
+
+Any future protocol must be hashed in a commit that survives the merge strategy,
+and its digest pinned in `study.yaml` in the same PR, before capture, so the
+ordering reads from `main` alone.
+
+### What would have to be true for a later cut to be confirmatory
+
+1. The design hash pinned in `study.yaml` on a commit reachable from `main`.
+2. Every fault marker and retry class declared in that design before capture.
+3. Capture performed by committed code, with its commit SHA recorded in the run
+   manifest.
+4. The evaluated design hash unchanged between freeze and replay.
+
+None of the four hold for held-out 1501-2500.

@@ -1,127 +1,67 @@
-# Promotion plan — `ma-discovery-recall`
+# Promotion plan — `ma-discovery-recall` — CLOSED
 
-**From:** `exploratory`
-**To:** `validated` with `validation_result.threshold_met: false`, or a recorded
-post-hoc result that leaves the study at `exploratory`.
+**Outcome:** the study stays `exploratory`. The held-out 1501-2500 result is
+recorded with `confirmatory: false`, `threshold_met: false`, and five
+`post_hoc_analyses` entries. Implemented 2026-09-13.
 
-This study was blocked four times. Two of those blocks were process defects the
-discipline was right to catch. The other two were the shape of the gate, and
-PR #726 changed that shape: a count floor now has to declare the frozen
-population it is taken over, and `validated` now means the preregistered test
-ran and its outcome is on the record, not that the threshold was met.
+This plan originally proposed promoting to `validated` with a missed threshold,
+on the reasoning that PR #726 made a fair-test-that-failed a legitimate
+`validated` end state. That reasoning is sound and the promotion still fails,
+for a reason the plan did not consider.
 
-Everything this promotion needs is already frozen. The work is one manifest
-edit and one decision.
+## Why it fails
 
-## What is already in place
+`study.yaml` pins `held-out-1501.md` at `e7090020...`. Those bytes first exist
+in git at `9bcb6dc9`, **2026-09-09 07:30:41 EDT**. The replay ran
+**2026-09-08 21:25 EDT**; the capture ran 09-07 to 09-08.
 
-| Requirement | Where it comes from | State |
-|---|---|---|
-| `threshold_basis: count_on_frozen_population` | `recall_floor` is a count, not a rate | derivable |
-| `threshold_value: 10` | `held-out-1501.yaml` `recall_floor` | pinned |
-| `frozen_population_artifact` | `studies/ma-discovery-recall/held-out-1501.yaml`, which pins `events_sha256` | already in `frozen_artifacts` |
-| `design_path` | `studies/ma-discovery-recall/held-out-1501.md` | already in `frozen_artifacts` |
-| The result itself | `held-out-run-manifest.json` → `replay_result` | recorded |
+The pinned design postdates the run it is supposed to have preregistered by
+about ten hours. `confirmatory` asserts the design bytes were fixed in git
+before the evaluated run, so it is false on the schema's plain wording, and
+`StudyManifest` refuses to promote a study whose result is not confirmatory.
 
-## The number to record
+No weighing of the recorded provenance defects is required. The plan's central
+question — whether a frozen design carrying a false sentence still counts as
+frozen — was the wrong question.
 
-From `replay_result` in `held-out-run-manifest.json`:
+## What the plan got wrong, recorded so the errors are not repeated
 
-```
-strict_medium_high_n:        4
-strict_eligible_pairs_in_cut: 307
-strict_recall_rate:          0.01303
-recall_floor:                10
-recall_floor_met:            false
-```
+1. **It classified two of the four recorded defects as "instrument" problems.**
+   Both are design-compliance problems. The `unverified_empty` retry class was
+   introduced after 948 of 1000 rows existed and applied to 476 of them; retry
+   eligibility must be pre-specified, and re-querying changes the snippets
+   freeze that determines the number.
+2. **It stated that the frozen bytes still carry the uncorrected claim.** They
+   do not. The pinned `e7090020` contains the correction and the superseded
+   hash. The sentence quoted was from `provenance_defects[2]`, written in the
+   present tense against an earlier version — so a frozen manifest now
+   misdescribes another frozen artifact, which is its own defect and is recorded
+   as a fifth post-hoc entry.
+3. **It presented `4 of 307` as the preregistered metric.** The denominator is a
+   replay output. The preregistered gate is a count floor of 10 over the
+   1000-pair cut. The interval is a post-hoc enumeration and is labelled as one.
+   It does not change the outcome: 4 is below 10 on any denominator.
 
-As a `validation_result` block that is `4/307`, point estimate `0.01303`,
-Wilson 95% `[0.0051, 0.0330]`, `threshold_met: false`.
+## What holds
 
-Note the two quantities are not the same test. The floor of 10 is a count over
-the cut; `4/307` is the strict recall rate. The manifest records the rate with
-its interval and the count as the threshold, which is why `threshold_basis` has
-to be `count_on_frozen_population` and why the floor needs its population named.
+`held-out-1501.yaml` is byte-identical from `0023e204` to `main`, and the diff
+on `held-out-1501.md` from that commit forward is a pure insertion — 89 lines
+added, nothing deleted or modified. The estimand, cut, stop rule, and the floor
+of 10 were fixed before capture and were not moved to fit a 4. **The miss is
+real and honestly reported.** Only the confirmatory label fails.
 
-## The decision this turns on
+## Where the numbers now live
 
-`StudyManifest` refuses to promote a study whose `validation_result.confirmatory`
-is false: a post-hoc result may be reported but cannot promote. So the whole
-promotion reduces to one question.
+`study.yaml` carries a full `validation_design` and `validation_result` at
+`exploratory` — the schema's early return allows it, so declining the promotion
+costs no recorded detail. `amendments.md` records the audit, the merge-strategy
+lesson, and the four conditions a later cut would have to meet.
 
-**Can `confirmatory: true` be asserted honestly?**
+## The separate finding
 
-The argument for yes: `held-out-1501.md` was hashed and committed before the
-capture ran. That is what `confirmatory` means in the schema docstring — the
-design bytes were fixed in git before the evaluated run.
-
-The arguments against are recorded in the run manifest's own
-`provenance_defects`, by the people who ran it:
-
-1. **948 of the 1000 cut pairs were captured by code whose state is not
-   recoverable from git** — the script had uncommitted changes at capture time.
-   The design was frozen; the instrument was not.
-2. **476 snippet rows are marked `unverified_empty`**, captured before fault
-   instrumentation existed and re-queried afterwards.
-3. **The frozen `held-out-1501.md` contains a statement that is false** — it
-   says no Brave or LLM call had touched pairs 1501+ before two named commits,
-   and 948 of them had. A superseded-hash note records the correction, but the
-   frozen bytes still carry the original claim.
-4. The earlier 528-pair capture reported `strict_medium_high_n: 2` and is
-   superseded by the 1000-pair replay.
-
-Defect 1 does not bear on preregistration, but defect 3 does: a design whose
-frozen text misdescribes what had already touched the held-out population is
-not obviously a design that was fixed before the run in the sense the gate
-cares about.
-
-**This is an evidence-auditor call, not a schema question, and it should be
-made before any manifest edit.**
-
-### Secondary obstacle: the freeze ordering is no longer visible on `main`
-
-`0023e204` — "hash held-out-1501 protocol before capture" — is not reachable
-from `main`. PR #699 was squash-merged, so on `main` the protocol and the
-results arrive in a single commit, `fff0cef3`. The ordering is real and it is in
-the PR's commit history; it is not in `main`'s.
-
-Any future mechanical check of `confirmatory` has to read the originating PR's
-commits, not `main`'s. A check that reads `main` would fail on honest work.
-
-## Two possible end states
-
-**A. `validated`, threshold not met.** If the auditor accepts `confirmatory:
-true`, add `threshold_basis`, `threshold_value`, `frozen_population_artifact`,
-and the `validation_result` block. The study authorizes `Computable` — not
-`Validated`, because the threshold missed. The four-times-blocked study becomes
-a finished, reportable finding about the method.
-
-**B. `exploratory`, result recorded post-hoc.** If the auditor rejects it, put
-the same numbers under `post_hoc_analyses`, leave `evidence_status` at
-`exploratory`, and record why the result cannot be confirmatory. PR #726 made
-post-hoc analyses reportable rather than a blocking defect, so this is a real
-end state and not a refusal.
-
-Both are better than the current state, which is a study with five open
-blockers and no recorded outcome.
-
-## Steps
-
-1. **Run `evidence-auditor` on the `confirmatory` question alone**, with the
-   four `provenance_defects` and the squash-merge note above as its input.
-   Output: A or B.
-2. Amend `amendments.md` with the auditor's determination and the reasoning,
-   including the `0023e204` ordering and where it is visible.
-3. Edit `study.yaml` for the chosen end state.
-4. Under A only: close or restate the five `materialization.blockers`, since
-   two of them ("did not pass", "floor is not reachable") become the recorded
-   result rather than open blockers.
-5. `uv run python scripts/ci/validate_study_manifests.py` and
-   `uv run python scripts/ci/check_research_question_status.py`.
-
-## What this plan does not do
-
-It does not rerun the capture, change the recall floor, or reinterpret the
-result. The number is `4` against a floor of `10` either way. `replay_rules` in
-the run manifest is explicit that a second replay against a changed freeze is a
-new reviewable version, not a correction.
+`0023e204` is not reachable from `main`: PR #699 was squash-merged and five
+commits collapsed into `fff0cef3`. The freeze ordering is legible only in a
+deleted branch. That is a genuine provenance problem, it will recur, and it is
+recorded in `amendments.md` — but it is **not** what blocked this cut. Restoring
+the pre-capture hash would make things worse, since that version authorizes no
+retry class and the run re-queried 476 rows under one.
