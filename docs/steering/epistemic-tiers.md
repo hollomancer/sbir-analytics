@@ -221,7 +221,7 @@ tier labels:
 | research-questions.md says | Required `studies/*/study.yaml` |
 |---|---|
 | `Citable` | `evidence_status: citable` |
-| `Validated` | `validated` or `citable` |
+| `Validated` | `validated` with `validation_result.threshold_met: true`, or `citable` |
 | `Computable` / `Partially computable` | `reproducible` or higher |
 | Exploratory / partial / inventory target | none required |
 
