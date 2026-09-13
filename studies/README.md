@@ -110,3 +110,9 @@ A `validated` study whose `threshold_met` is `false` is a legitimate and useful 
 it says the preregistered test was run fairly and the method did not clear its own bar.
 That is a finding, and it may be cited as one. What it may not do is authorize the
 substantive claim the design was meant to support, and it does not become `citable`.
+
+External analysis providers (see
+[`docs/research/external-analysis.md`](../docs/research/external-analysis.md)) are
+execution backends, not study contracts. Imported artifacts live under
+`studies/<id>/exploratory/external/<provider>/<run-id>/` and are always
+`exploratory` / not citable. They cannot promote the study.
