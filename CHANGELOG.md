@@ -10,6 +10,54 @@ version.
 
 ## [Unreleased]
 
+## [0.13.0] — 2026-09-12
+
+### Breaking
+
+- Removed the press-wire enrichment stage from M&A discovery. Deleted
+  `sbir_etl/enrichers/ma_discovery/press.py`; `enrich_ma_events` and
+  `merge_press_signals` are gone from the package's public exports. All 18 of
+  the stage's matches were false positives, so no true signal is lost.
+- Changed the Form D high-tier rule. A person-name score of at least 0.7 no
+  longer reaches `high` on its own; it now needs an exact ZIP or a state
+  overlap. The historical rule is retired as `person-or-zip-v1` and the current
+  one is `corroborated-person-v2`. Every `match_confidence` object must persist
+  `rule_version`; unversioned or mixed-version inputs fail before analysis.
+- `build_ma_events` no longer emits rows whose `acquirer` is empty. A row that
+  cannot name a counterparty cannot support an exit claim, and a consumer could
+  not tell unknown-acquirer from firm-was-the-buyer.
+- Study manifests at `validated` or `citable` now require a `validation_design`
+  block naming the addressable population, expected yield, decision threshold,
+  and how that threshold was derived. Manifests below that status are
+  unaffected.
+
+### Added
+
+- `sbir_etl/capital_events/cross_enrichment.py`: a provenance layer that links
+  Form D and M&A candidate records and reports whether M&A evidence is
+  independent of the Form D filing it came from. M&A metadata now carries
+  `candidate_status`, `legal_event_validated`, and `cross_enrichment`.
+- Fail-closed M&A discovery with a confirmatory recall floor, a blocking
+  coverage gate, and freeze/replay support for sample runs.
+- Artifact-boundary tests that assert what M&A consumers rely on: every emitted
+  event names a counterparty, `signal_count` matches the signals it reports,
+  and a missing input yields `[]` rather than an error.
+- Adversarial must-not-match cases for the company-matching functions, drawn
+  from real production attribution errors, alongside DUNS-confirmed positives.
+- An audited Form D control-identity universe and an exploratory supplier-share
+  census.
+- Exploratory NASA, Air Force, and DOE post-Phase-II commercialization outcomes
+  analysis.
+- Automated GitHub release publishing from a pushed tag.
+
+### Fixed
+
+- Press-wire watchlist matching used unanchored substring comparison, so every
+  match it produced was a false positive. Matching is now word-boundary
+  anchored with a four-character floor, and each hit records where it matched.
+- Restored the press-wire feeds. BusinessWire's feed returns an error envelope
+  and is dropped until a replacement URL exists; PR Newswire and GlobeNewsWire
+  poll normally.
 ### Fixed
 
 - Versioned the Form D tier rule as `corroborated-person-v2`, added a
