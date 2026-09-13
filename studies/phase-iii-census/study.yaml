@@ -15,6 +15,8 @@ frozen_artifacts:
     sha256: 05d1850df6c33ead6d15a34137a4aa202273820a3191b83da0fca007324fe752
   - path: specs/phase-iii-census/amendments.md
     sha256: 6ea0768468de67703a4ada3aebd428d44e04e0d0cf9057d8698f9bbb0ee1b313
+  - path: studies/phase-iii-census/validation-design.md
+    sha256: f3a156922d75e4d25c7d1f03232a062e8019960224cdc49f83af18f8c6a6af5f
 implementation:
   - path: packages/sbir-analytics/sbir_analytics/assets/phase_iii_census/assets.py
     symbol: phase_iii_census

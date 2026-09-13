@@ -270,7 +270,7 @@ def test_placebo_tables_use_one_memory_safe_census_call(
     assignment = build_placebo_assignment(pairs)
     calls: list[tuple[pd.DataFrame, date]] = []
 
-    def fake_assignment(frame: pd.DataFrame) -> PlaceboAssignment:
+    def fake_assignment(frame: pd.DataFrame, seed: int = PLACEBO_SEED) -> PlaceboAssignment:
         assert frame is pairs
         return assignment
 
@@ -299,3 +299,51 @@ def test_placebo_census_tables_match_shared_builder(pairs: pd.DataFrame) -> None
 
     pd.testing.assert_frame_equal(actual_dropoff, expected_dropoff)
     pd.testing.assert_frame_equal(actual_sensitivity, expected_sensitivity)
+
+
+def test_default_seed_is_unchanged_when_no_seed_is_passed(pairs: pd.DataFrame) -> None:
+    """The single materialized placebo must not move because the seed is now a parameter."""
+    assert build_placebo_assignment(pairs).mapping_sha256 == (
+        build_placebo_assignment(pairs, seed=PLACEBO_SEED).mapping_sha256
+    )
+
+
+def test_a_different_seed_draws_a_different_assignment(pairs: pd.DataFrame) -> None:
+    """One draw gives a direction; a distribution needs draws that actually differ."""
+    frozen = build_placebo_assignment(pairs, seed=PLACEBO_SEED)
+    other = build_placebo_assignment(pairs, seed=PLACEBO_SEED + 1)
+
+    assert other.mapping_sha256 != frozen.mapping_sha256
+    assert other.audit["seed"].eq(PLACEBO_SEED + 1).all()
+
+
+def test_each_seed_is_reproducible(pairs: pd.DataFrame) -> None:
+    """A recorded distribution is only auditable if every draw can be rebuilt."""
+    for seed in (PLACEBO_SEED + 1, PLACEBO_SEED + 2, 7):
+        assert (
+            build_placebo_assignment(pairs, seed=seed).mapping_sha256
+            == build_placebo_assignment(pairs, seed=seed).mapping_sha256
+        )
+
+
+def test_every_seed_preserves_the_placebo_invariants(pairs: pd.DataFrame) -> None:
+    """A seeded draw is still cross-firm and still date-multiset preserving.
+
+    A permutation distribution is only a valid null if every draw in it obeys
+    the same construction rules as the frozen one.
+    """
+    for seed in range(PLACEBO_SEED, PLACEBO_SEED + 5):
+        assignment = build_placebo_assignment(pairs, seed=seed)
+        audit = assignment.audit
+        assert audit["recipient_firm_uei"].ne(audit["donor_firm_uei"]).all()
+        # Preservation is at unique-award grain, not pair grain: an award fans
+        # out to several pairs, so moving a date between awards of unequal
+        # fanout legitimately changes the pair-level multiset. The null this
+        # builds is therefore a null over award-grain dates.
+        assert _date_multiset(audit["permuted_prior_end"]) == _date_multiset(
+            audit["original_prior_end"]
+        )
+        pd.testing.assert_frame_equal(
+            assignment.permuted_pairs.drop(columns="prior_period_of_performance_end"),
+            pairs.drop(columns="prior_period_of_performance_end"),
+        )
