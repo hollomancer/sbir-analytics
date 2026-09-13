@@ -1,0 +1,122 @@
+schema_version: 1
+retrieved_on: "2026-09-12"
+
+tables:
+  - source_id: nih_report_t215_2025
+    path: studies/allocation-transaction-costs/data/nih_report_t215_sbir_sttr_by_phase.csv
+    sha256: 472b42ed09a9d29d871003342347feda5eee1db3480294dcbabbb1a2baed66be
+    publisher: NIH Office of Extramural Research, Division of Statistical Analysis and Reporting
+    title: >-
+      Table #215: NIH SBIR and STTR Grants — Competing Applications, Awards,
+      Success Rates, and Total Funding by Phase, Fiscal Years 2015–2025
+    url: https://report.nih.gov/reportweb/web/displayreport?rId=584
+    file_url: >-
+      https://report.nih.gov/sites/report/files/docs/T215%202025%20SBIR%20and%20STTR_Appl_Awds_Succ_Fund%20by%20Phase.xlsx
+    report_id: "T215 / RePORT rId=584"
+    retrieved_on: "2026-09-12"
+    data_last_updated: "2026-02-18"
+    evidence_class: administrative_count
+    format: mechanism_year_csv
+    activity_codes:
+      SBIR: [R43, R44, SB1, U43, U44]
+      STTR: [R41, R42, UT1, UT2]
+    years: [2015, 2016, 2017, 2018, 2019, 2020, 2021, 2022, 2023, 2024, 2025]
+    definition_verbatim: >-
+      Success rates are the number of competing applications funded divided by
+      the number of competing applications reviewed, counting one application
+      per project per fiscal year. Total Funding is competing-year funding for
+      those awards. Phase I, Fast Track, Phase II Regular, Direct Phase II,
+      Phase IIB, and CRP are separate rows. Aggregate "Total Phase II" rows in
+      FY2025 were dropped so they are not double-counted.
+    denominator_notes: >-
+      Applications are competing applications reviewed, not unique firms and not
+      including withdrawn applications. Mean award size is Total Funding / awards
+      for that phase-year (competing-year dollars, not a multi-year project total
+      except insofar as NIH records the competing action). Direct Phase II,
+      Phase IIB, Fast Track, and CRP are not combined with Regular Phase II.
+
+  - source_id: nih_databook_r01_equivalent
+    path: studies/allocation-transaction-costs/data/nih_databook_r01_equivalent.csv
+    sha256: 897ddb6642bf0ebccd72a248e0dc4068cf6772610f9fb19fc92a8d49c54048ab
+    publisher: NIH Office of Extramural Research, Division of Statistical Analysis and Reporting
+    title: >-
+      NIH Data Book report 29 (R01-equivalent competing applications, awards,
+      success rates) joined to report 158 (R01-equivalent average size, current
+      dollars)
+    url: https://report.nih.gov/nihdatabook/report/29
+    related_urls:
+      - https://report.nih.gov/nihdatabook/report/158
+      - https://report.nih.gov/nihdatabook/category/10
+    report_id: "Data Book 29 + 158"
+    retrieved_on: "2026-09-12"
+    data_last_updated: "2026-03"
+    evidence_class: administrative_count
+    format: mechanism_year_csv
+    activity_codes: [DP1, DP2, DP5, R01, R37, R56, RF1, RL1, U01, "R35 (select NIGMS/NHGRI PAs)"]
+    years: [1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019, 2020, 2021, 2022, 2023, 2024, 2025]
+    definition_verbatim: >-
+      R01-equivalent grants are defined as activity codes DP1, DP2, DP5, R01,
+      R37, R56, RF1, RL1, U01 and R35 from select NIGMS and NHGRI program
+      announcements. Not all of these activities may be in use by NIH every year.
+    denominator_notes: >-
+      Success rate is awards / applications, recomputed from the Data Book counts
+      rather than the rounded published percentage. Average size (report 158) is
+      the published annual average in current dollars and covers the R01-equivalent
+      portfolio, including non-competing continuations. dollars_awarded in this
+      table is competing awards times that annual average — an annual-dollar
+      convention, not a 4–5 year project total. The project_total duration
+      convention multiplies this average by assumed years in assumptions.yaml.
+
+inventory_only:
+  - source_id: nih_success_rate_definition
+    url: https://report.nih.gov/reportweb/web/displayreport?rId=558
+    publisher: NIH DSAR
+    evidence_class: administrative_count
+    note: Official success-rate definition PDF (December 2023).
+
+  - source_id: sba_fy22_annual_report
+    url: https://www.sbir.gov/sites/default/files/SBA_FY22_SBIR_STTR_Annual_Report.pdf
+    publisher: U.S. Small Business Administration
+    evidence_class: administrative_count
+    note: >-
+      Agency-by-phase proposal counts, selection rates, and obligations. Used for
+      the other-agency assessment, not the NIH normalized series.
+
+  - source_id: gao_25_107942
+    url: https://www.gao.gov/products/gao-25-107942
+    publisher: U.S. Government Accountability Office
+    evidence_class: administrative_count
+    note: >-
+      FY2023 proposal counts and acceptance rates for open versus conventional
+      topics at DoD, DOE, and HHS.
+
+  - source_id: nsf_seed_fund_review
+    url: https://seedfund.nsf.gov/apply/review-decision/
+    publisher: National Science Foundation
+    evidence_class: administrative_count
+    note: >-
+      NSF SBIR Phase I full-proposal funding rates historically 10–20%. Project
+      Pitch invitation rates are not an official published series.
+
+  - source_id: fdp_fws_2018
+    url: https://thefdp.org/wp-content/uploads/FDP-FWS-2018-Primary-Report.pdf
+    publisher: Federal Demonstration Partnership
+    evidence_class: behavioral_survey
+    note: >-
+      University PI time-use on federal projects. Wrong applicant population for
+      SBIR firms. Used only as a cited range for R01 hour scenarios.
+
+  - source_id: usc_638_admin_allowance
+    url: https://www.law.cornell.edu/uscode/text/15/638
+    publisher: United States Code
+    evidence_class: statutory_cap
+    note: >-
+      Not more than 3 percent of SBIR program funds may be used for
+      administration, outreach, reporting, and related activities. Incremental
+      statutory ceiling, not total agency selection cost.
+
+  - source_id: nih_page_limits
+    url: https://grants.nih.gov/grants/how-to-apply-application-guide/format-and-write/page-limits.htm
+    publisher: NIH Office of Extramural Research
+    evidence_class: proxy
+    note: Formal proposal page limits used in the complexity index, not hours.

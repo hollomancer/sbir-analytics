@@ -23,6 +23,12 @@ ordering (the policy briefs are the model); a doc declared for maintainers may
 be as technical as it needs to be. Technical appendices linked from a plain
 brief count as maintainer-facing.
 
+## R&D allocation costs
+
+| Output | Questions | Evidence status | Data covered |
+| --- | --- | --- | --- |
+| [Allocation transaction costs](allocation-transaction-costs.md) | C4 | Reproducible study (`studies/allocation-transaction-costs`); not approved for citation | NIH SBIR/STTR vs R01-equivalent, FY2015–2025 |
+
 ## Capital formation, exits, and firm pathways
 
 | Output | Questions | Evidence status | Data covered |

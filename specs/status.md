@@ -30,6 +30,10 @@ bypassing lifecycle review; the status and rationale still require human judgmen
   blocking security scan are restored. The remaining decisions concern periodic
   scanning and whether the large pre-existing Markdown-formatting backlog is worth
   addressing; do not restore the old broad lint job by default.
+- **`allocation-transaction-costs` — Active.** Exploratory NIH SBIR Phase I
+  versus R01-equivalent transaction-cost study. Target tier is `exploratory`;
+  the study contract is `reproducible` and non-citable. NSF/DOE/NASA/DoD
+  series, Dagster, and evidence promotion are out of scope.
 - **`agency-private-capital-comparison` — Active.** The NSF Phase 1 real-data
   gate is materialized for review but remains non-citable and unsigned. Phase 2
   now has a maintained, deterministic 2009Q1–2024Q4 SEC DERA Form D staging

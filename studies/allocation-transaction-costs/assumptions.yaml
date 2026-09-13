@@ -1,0 +1,107 @@
+schema_version: 1
+# Every number that is not a source field lives here. The calculator must not
+# invent additional numeric constants for the model.
+
+comparison:
+  treatment_mechanism: nih_sbir_phase_i
+  control_mechanism: nih_r01_equivalent
+  agency: NIH
+
+per_million_dollars: 1000000
+
+applicant_hour_scenarios:
+  nih_sbir_phase_i: [20, 40, 60, 80, 100, 150, 200]
+  nih_sttr_phase_i: [20, 40, 60, 80, 100, 150, 200]
+  nih_sbir_phase_ii: [40, 80, 120, 160, 200]
+  nih_sttr_phase_ii: [40, 80, 120, 160, 200]
+  nih_sbir_fast_track: [40, 80, 120, 160, 200]
+  nih_sttr_fast_track: [40, 80, 120, 160, 200]
+  nih_sbir_phase_ii_direct: [40, 80, 120, 160, 200]
+  nih_sbir_phase_iib: [40, 80, 120, 160, 200]
+  nih_sbir_crp: [20, 40, 80, 120]
+  nih_sttr_phase_iib: [40, 80, 120, 160, 200]
+  nih_r01_equivalent: [80, 120, 160, 200]
+
+applicant_hour_citations:
+  nih_r01_equivalent:
+    evidence_class: behavioral_survey
+    population: university_pi_transfer
+    note: >-
+      FDP 2018 Faculty Workload Survey (Schneider): proposal preparation was
+      16.0% of research time; PIs reported a mean 54.3-hour work week and about
+      27 hours reserved for research, with a median of 4 proposals in 3 years.
+      A back-of-envelope transfer is ~170 hours per proposal
+      (0.16 × 27 hours/week × 52 weeks × 3 years / 4 proposals). That is not
+      observed SBIR-firm time. The 80–200 hour grid brackets that transfer.
+    url: https://thefdp.org/wp-content/uploads/FDP-FWS-2018-Primary-Report.pdf
+  nih_sbir_phase_i:
+    evidence_class: assumption_grid
+    population: unobserved_small_business
+    note: >-
+      No public time-use survey of NIH SBIR applicants matches FDP quality.
+      The 20–200 hour grid is a sensitivity range, not a point estimate.
+
+labor_rates:
+  - id: bls_medical_scientist_mean_hourly
+    usd_per_hour: 53.99
+    evidence_class: accounting
+    citation: >-
+      BLS Occupational Employment and Wage Statistics, May 2023, SOC 19-1042
+      Medical Scientists, Except Epidemiologists, mean hourly wage.
+    url: https://www.bls.gov/oes/2023/may/oes191042.htm
+  - id: nih_cap_hourly
+    usd_per_hour: 108.51
+    evidence_class: statutory_cap
+    citation: >-
+      NIH salary cap FY2025 Executive Level II $225,700 / 2080 hours
+      (NOT-OD-25-049). Fully loaded PI-equivalent ceiling, not a mean wage.
+    url: https://grants.nih.gov/grants/guide/notice-files/NOT-OD-25-049.html
+
+default_labor_rate_id: bls_medical_scientist_mean_hourly
+
+review:
+  reviewers_per_application:
+    nih_r01_equivalent: [3]
+    nih_sbir_phase_i: [3]
+    nih_sttr_phase_i: [3]
+    nih_sbir_phase_ii: [3]
+    nih_sttr_phase_ii: [3]
+    nih_sbir_fast_track: [3]
+    nih_sttr_fast_track: [3]
+    nih_sbir_phase_ii_direct: [3]
+    nih_sbir_phase_iib: [3]
+    nih_sbir_crp: [3]
+    nih_sttr_phase_iib: [3]
+  reviewer_hours: [2, 4, 8]
+  reviewer_hours_note: >-
+    NIH CSR typically assigns about three reviewers. Hours per review are not
+    published as a time-use survey; 2/4/8 are scenarios.
+  reviewer_labor_rate_id: bls_medical_scientist_mean_hourly
+
+agency_cost:
+  mode: missing
+  sbir_admin_allowance_ceiling: 0.03
+  sbir_admin_allowance_note: >-
+    15 U.S.C. §638 allows not more than 3 percent of SBIR program funds for
+    administration, outreach, reporting, and related activities. This is an
+    incremental statutory ceiling, not total NIH selection cost, and is not
+    comparable to the CSR budget. Default GC is missing. The ceiling may be
+    attached to the SBIR side only as a lower-bound sensitivity.
+
+duration:
+  conventions: [annual_award_size, project_total]
+  r01_project_years: 4
+  r01_project_years_sensitivity: [3, 5]
+  r01_project_years_note: >-
+    NIH Data Book average R01-equivalent size is an annual figure. SBIR Phase I
+    Total Funding / awards is a competing-year (approximately project) figure.
+    annual_award_size uses each series as published. project_total multiplies
+    the R01 annual average by r01_project_years and leaves SBIR Phase I unchanged.
+
+sensitivity:
+  success_rate_relative_shocks: [-0.25, 0.0, 0.25]
+  award_size_relative_shocks: [-0.25, 0.0, 0.25]
+
+forbidden_hour_sources:
+  - pra_estimate
+  - fa_rate
