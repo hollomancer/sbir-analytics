@@ -47,4 +47,14 @@ limitations:
     allowance is a statutory ceiling on extra admin, not total cost.
   - Success-rate denominators follow NIH competing-application rules and are
     not NSF funding rates.
+  - Applicant hours are modelled as one grid per mechanism, but the applicant
+    population is bimodal. SBA reports that 68 firms, 1.4% of companies winning
+    a Phase II in FY17–FY21, took 20% of Phase II awards, and that 2% of FY22
+    Phase I awardees took 14% of Phase I awards. Marginal proposal hours for
+    serial filers and first-time applicants are unlikely to share one
+    distribution, so a single grid understates dispersion.
+  - Reviewer hours per application are now anchored by one published US survey
+    (AIBS, Gallo 2019) rather than being wholly assumed, but that survey
+    measures panel review of NIH-style applications and reports pre-meeting
+    time separately from meeting and travel time.
   - This study is reproducible, not validated or citable.
