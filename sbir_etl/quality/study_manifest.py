@@ -1,5 +1,6 @@
 """Versioned contracts for research studies and externally citable evidence."""
 
+import hashlib
 from enum import StrEnum
 from pathlib import Path
 from typing import Literal
@@ -7,6 +8,12 @@ from typing import Literal
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from ..config.yaml_io import read_yaml_mapping
+
+
+def sha256_file(path: Path) -> str:
+    """Return the SHA-256 hex digest of a file's exact bytes."""
+
+    return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
 class EvidenceStatus(StrEnum):
@@ -143,4 +150,5 @@ __all__ = [
     "StudyManifest",
     "ValidationDesign",
     "load_study_manifest",
+    "sha256_file",
 ]

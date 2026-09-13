@@ -86,6 +86,12 @@ uncoded lineage proxy is not proof of a statutory Phase III award.
 
 The maintained pipeline guide is [SBIR fiscal analysis](../fiscal/sbir-fiscal-pipeline-guide.md).
 
+## External analysis
+
+| Output | Questions | Evidence status | Data covered |
+| --- | --- | --- | --- |
+| [External analysis](external-analysis.md) | operator tooling | Exploratory provider output; never citable on import | Frozen study bundle uploaded only with `--allow-external-upload` |
+
 ## Technology-area reports
 
 Start with the policy brief for a plain summary. The findings and method documents

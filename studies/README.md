@@ -52,3 +52,9 @@ the `validated` rank.
 Promotion changes the manifest only after the study meets the next status's requirements.
 A manifest does not make an analysis citable by itself, and a closed materialization gate
 must name the unresolved blocker.
+
+External analysis providers (see
+[`docs/research/external-analysis.md`](../docs/research/external-analysis.md)) are
+execution backends, not study contracts. Imported artifacts live under
+`studies/<id>/exploratory/external/<provider>/<run-id>/` and are always
+`exploratory` / not citable. They cannot promote the study.

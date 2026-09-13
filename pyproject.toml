@@ -70,6 +70,10 @@ dev = [
     "pre-commit>=3.5.0,<5.0.0",
     "testcontainers[neo4j]>=4.0.0,<5.0.0",
 ]
+# Edison Analysis — optional external research backend. Operator-only; not
+# part of stack-dev, the Dagster graph, or normal CI. Requires an explicit
+# --allow-external-upload before any network call.
+edison = ["sbir-analytics[edison]"]
 # Meta-extra for full local stack — installs all first-party packages.
 # Use with: uv sync --extra stack-dev  (requires workspace checkout)
 stack-dev = [

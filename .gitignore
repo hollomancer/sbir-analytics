@@ -175,6 +175,9 @@ artifacts/
 # Additional data formats
 *.parquet
 !tests/fixtures/naics_index_fixture.parquet
+
+# Dataset copies staged for external analysis. Manifests and reports may be committed.
+studies/**/exploratory/external/**/bundle/data/
 *.feather
 *.duckdb.wal
 
