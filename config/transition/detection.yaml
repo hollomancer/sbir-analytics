@@ -6,6 +6,14 @@
 #
 # Corresponding code: packages/sbir-ml/sbir_ml/transition/__init__.py (Config)
 # Loaded by: sbir_ml.transition.load_config()
+#
+# This file stays editable. Because it does, the values that determine a score
+# are identified by digest rather than by freezing the file: Config.scoring_digest()
+# hashes the to_detector_config() surface, and studies/transition-scoring/study.yaml
+# pins the digest its recorded result was measured under. Changing any weight,
+# threshold, or timing window below changes that digest and fails
+# tests/unit/transition/test_scoring_config_digest.py -- which is the intended
+# signal, not an obstacle. Re-pin the study deliberately when the change is real.
 
 # -- Vendor matching ---------------------------------------------------------
 fuzzy_threshold: 0.90          # primary fuzzy name match threshold (0.0-1.0)

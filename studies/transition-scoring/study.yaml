@@ -22,6 +22,8 @@ frozen_artifacts:
   - path: specs/phase3-notice-corpus-fusion/refit_ladder.json
     sha256: a525b4e7a8d662e85d0f27609ae2d8fe05d08c589e72beac58e8dcdb1bdde5c0
 implementation:
+  - path: packages/sbir-ml/sbir_ml/transition/__init__.py
+    symbol: scoring_config_digest
   - path: packages/sbir-ml/sbir_ml/transition/detection/scoring.py
     symbol: TransitionScorer
   - path: packages/sbir-ml/sbir_ml/transition/detection/detector.py
@@ -58,8 +60,16 @@ limitations:
     remains an open question in docs/steering/ml-methodology-review.md.
   - Recall is unknown; no estimate of missed transitions exists at any tier.
   - Composite scoring weights are hand-set expert judgment in
-    config/transition/detection.yaml, not learned or validated coefficients, and
-    that live configuration is deliberately tunable, so it is not pinned here.
+    config/transition/detection.yaml, not learned or validated coefficients. That
+    configuration stays tunable, so the values are identified by digest rather
+    than frozen. Config.scoring_digest hashes the to_detector_config surface, and
+    a result is only comparable to another result carrying the same digest.
+    The digest at the time of writing is
+    779cf5bc662997c83da3080b747372b9556821c0f23bd0d3362606c3fba15009, enforced by
+    tests/unit/transition/test_scoring_config_digest.py. A weight change moves
+    the digest and fails that test, which is the intended signal; it does not by
+    itself invalidate any recorded result, but a result measured under a
+    different digest is a different measurement.
   - The frozen fusion coefficients apply to notice-to-award ranking, a different
     subsystem from the composite TransitionScorer; the 0.674 held-out top-1 figure
     does not transfer to composite scores, and the fusion label set is small
