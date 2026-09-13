@@ -30,7 +30,10 @@ The status vocabulary is intentionally small:
     #   also appear in frozen_artifacts.
 
   validation_result:
-    design_sha256: <hash of the design as pinned before the run>
+    design_path: studies/<id>/design.md
+    #   the frozen artifact that was evaluated; a study may pin several
+    #   designs (a pilot and a confirmatory one), so it is named, not inferred
+    design_sha256: <hash of that design as pinned before the run>
     evaluated_on: 2026-09-13
     metric: strict recall on held-out pairs
     numerator: 13
@@ -60,8 +63,11 @@ The status vocabulary is intentionally small:
      number the study emits carries this result alongside it. A reader
      discounts a 13/19; a reader cannot discount "passed".
   3. **Confirmatory and post-hoc are both reportable, and only one promotes.**
-     `confirmatory: true` asserts that `design_sha256` was fixed in git before
-     the evaluated run, and it must match a `frozen_artifacts` entry. Analyses
+     `design_path` and `design_sha256` must match a `frozen_artifacts` entry
+     exactly -- the hash must belong to the design the result names, not merely
+     to some pinned file. `confirmatory: true` additionally asserts those bytes
+     were fixed in git before the evaluated run; the schema does not check that
+     ordering, so the auditor verifies it against history. Analyses
      run after the data were seen — an enlarged cut, a restated cost cap, a
      changed eligibility rule — are listed under `post_hoc_analyses` and may be
      reported anywhere the study is reported, labelled as such. They cannot be

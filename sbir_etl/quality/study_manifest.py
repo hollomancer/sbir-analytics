@@ -136,14 +136,24 @@ class ValidationResult(BaseModel):
     A result is recorded with its uncertainty and travels with every number the
     study emits. ``threshold_met`` is recorded, not required: ``validated`` means
     the design was run as written and its outcome is on the record; ``citable``
-    additionally requires the threshold to have been met. ``confirmatory`` is
-    true only when ``design_sha256`` was fixed in git before the evaluated run;
-    a result from a design changed after data were seen may be reported under
-    ``post_hoc_analyses`` but cannot be confirmatory.
+    additionally requires the threshold to have been met.
+
+    ``design_path`` and ``design_sha256`` together name the exact bytes that were
+    evaluated, and the manifest checks that pair against ``frozen_artifacts``. A
+    study may pin several designs -- a pilot and a confirmatory one -- so the path
+    is required rather than inferred.
+
+    ``confirmatory`` asserts that those bytes were fixed in git before the
+    evaluated run. **The schema does not verify that claim**: it checks only that
+    the hash matches the pinned design. Establishing that the freeze predates
+    ``evaluated_on`` is an auditor step against git history. A result from a
+    design changed after data were seen may be reported under
+    ``post_hoc_analyses`` but must not be marked confirmatory.
     """
 
     model_config = ConfigDict(extra="forbid")
 
+    design_path: str = Field(min_length=1)
     design_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
     evaluated_on: date
     metric: str = Field(min_length=1)
@@ -234,11 +244,17 @@ class StudyManifest(BaseModel):
                 f"evidence_status '{status}' requires a confirmatory validation_result; a "
                 "post-hoc result may be reported but cannot promote a study"
             )
-        frozen_hashes = {artifact.sha256 for artifact in self.frozen_artifacts}
-        if result.design_sha256 not in frozen_hashes:
+        frozen_by_path = {artifact.path: artifact.sha256 for artifact in self.frozen_artifacts}
+        pinned_sha = frozen_by_path.get(result.design_path)
+        if pinned_sha is None:
             raise ValueError(
-                "validation_result.design_sha256 does not match any frozen artifact; the "
-                "evaluated design must be pinned in frozen_artifacts"
+                f"validation_result.design_path {result.design_path!r} is not listed in "
+                "frozen_artifacts; the evaluated design must be pinned"
+            )
+        if pinned_sha != result.design_sha256:
+            raise ValueError(
+                f"validation_result.design_sha256 does not match the frozen hash of "
+                f"{result.design_path!r}; the evaluated design is not the pinned one"
             )
         if self.evidence_status is EvidenceStatus.CITABLE and not result.threshold_met:
             raise ValueError(

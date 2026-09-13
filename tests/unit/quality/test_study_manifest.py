@@ -226,6 +226,7 @@ VALIDATION_DESIGN = {
 }
 
 VALIDATION_RESULT = {
+    "design_path": "specs/example.md",
     "design_sha256": "a" * 64,
     "evaluated_on": "2026-09-13",
     "metric": "source coverage of the frozen cohort",
@@ -294,9 +295,7 @@ def test_promoted_manifest_requires_validation_result(
 
 
 @pytest.mark.parametrize("status", [EvidenceStatus.VALIDATED, EvidenceStatus.CITABLE])
-def test_promoted_manifest_requires_threshold_basis(
-    tmp_path: Path, status: EvidenceStatus
-) -> None:
+def test_promoted_manifest_requires_threshold_basis(tmp_path: Path, status: EvidenceStatus) -> None:
     raw = _promoted(status)
     del raw["validation_design"]["threshold_basis"]
     path = _write(tmp_path, "example-study/study.yaml", yaml.safe_dump(raw))
@@ -333,14 +332,43 @@ def test_post_hoc_result_cannot_promote(tmp_path: Path, status: EvidenceStatus) 
 
 
 @pytest.mark.parametrize("status", [EvidenceStatus.VALIDATED, EvidenceStatus.CITABLE])
-def test_result_design_hash_must_be_a_frozen_artifact(
+def test_result_design_hash_must_match_the_pinned_design(
     tmp_path: Path, status: EvidenceStatus
 ) -> None:
     raw = _promoted(status)
     raw["validation_result"]["design_sha256"] = "b" * 64
     path = _write(tmp_path, "example-study/study.yaml", yaml.safe_dump(raw))
 
-    with pytest.raises(ValidationError, match="does not match any frozen artifact"):
+    with pytest.raises(ValidationError, match="does not match the frozen hash"):
+        load_study_manifest(path)
+
+
+@pytest.mark.parametrize("status", [EvidenceStatus.VALIDATED, EvidenceStatus.CITABLE])
+def test_result_design_path_must_be_pinned(tmp_path: Path, status: EvidenceStatus) -> None:
+    raw = _promoted(status)
+    raw["validation_result"]["design_path"] = "specs/not-pinned.md"
+    path = _write(tmp_path, "example-study/study.yaml", yaml.safe_dump(raw))
+
+    with pytest.raises(ValidationError, match="is not listed in frozen_artifacts"):
+        load_study_manifest(path)
+
+
+@pytest.mark.parametrize("status", [EvidenceStatus.VALIDATED, EvidenceStatus.CITABLE])
+def test_design_hash_of_a_different_frozen_artifact_is_rejected(
+    tmp_path: Path, status: EvidenceStatus
+) -> None:
+    """A study pins several designs; the hash must belong to the one it names.
+
+    Matching any frozen hash would let a study cite its own amendments log --
+    the file that by definition records changes made after the design froze --
+    as the evaluated design.
+    """
+    raw = _promoted(status)
+    raw["frozen_artifacts"].append({"path": "specs/amendments.md", "sha256": "c" * 64})
+    raw["validation_result"]["design_sha256"] = "c" * 64
+    path = _write(tmp_path, "example-study/study.yaml", yaml.safe_dump(raw))
+
+    with pytest.raises(ValidationError, match="does not match the frozen hash"):
         load_study_manifest(path)
 
 
@@ -348,8 +376,13 @@ def test_validated_records_a_missed_threshold_but_citable_rejects_it(tmp_path: P
     """validated means the preregistered test ran and its outcome is on the record."""
     raw = _promoted(EvidenceStatus.VALIDATED)
     raw["validation_result"].update(
-        {"numerator": 4, "denominator": 10, "interval_low": 0.168, "interval_high": 0.687,
-         "threshold_met": False}
+        {
+            "numerator": 4,
+            "denominator": 10,
+            "interval_low": 0.168,
+            "interval_high": 0.687,
+            "threshold_met": False,
+        }
     )
     path = _write(tmp_path, "example-study/study.yaml", yaml.safe_dump(raw))
     manifest = load_study_manifest(path)
@@ -366,9 +399,7 @@ def test_count_threshold_requires_a_frozen_population() -> None:
     """A count floor over a shrinking population is unreachable for the wrong reasons."""
     fields = {key: value for key, value in VALIDATION_DESIGN.items() if key != "threshold_basis"}
     with pytest.raises(ValidationError, match="requires frozen_population_artifact"):
-        ValidationDesign(
-            **fields, threshold_basis=ThresholdBasis.COUNT_ON_FROZEN_POPULATION
-        )
+        ValidationDesign(**fields, threshold_basis=ThresholdBasis.COUNT_ON_FROZEN_POPULATION)
     design = ValidationDesign(
         **fields,
         threshold_basis=ThresholdBasis.COUNT_ON_FROZEN_POPULATION,
@@ -406,7 +437,9 @@ def test_frozen_population_artifact_must_be_pinned(tmp_path: Path) -> None:
 )
 def test_validation_result_interval_must_be_coherent(override: dict, message: str) -> None:
     fields = dict(VALIDATION_RESULT)
-    fields.update({"numerator": 9, "denominator": 10, "interval_low": 0.596, "interval_high": 0.982})
+    fields.update(
+        {"numerator": 9, "denominator": 10, "interval_low": 0.596, "interval_high": 0.982}
+    )
     fields.update(override)
     with pytest.raises(ValidationError, match=message):
         ValidationResult(**fields)

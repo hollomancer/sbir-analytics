@@ -17,8 +17,11 @@ version.
   threshold was met. `citable` additionally requires `threshold_met: true`.
   `StudyManifest` gains a `validation_result` block (numerator, denominator,
   interval, method, `threshold_met`, `confirmatory`, `post_hoc_analyses`),
-  required at `validated` and above, whose `design_sha256` must match a frozen
-  artifact and whose `confirmatory` flag must be true to promote.
+  required at `validated` and above. Its `design_path` and `design_sha256` must
+  match one `frozen_artifacts` entry exactly, so a result cannot cite the hash of
+  some other pinned file as its design, and its `confirmatory` flag must be true
+  to promote. `confirmatory` asserts the design was frozen before the run; the
+  schema does not verify that ordering and the auditor checks it against git.
   `ValidationDesign` gains `threshold_basis` (required at `validated` and
   above) and `frozen_population_artifact` (required for count thresholds and
   checked against `frozen_artifacts`). Existing manifests below `validated`
