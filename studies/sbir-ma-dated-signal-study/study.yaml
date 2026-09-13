@@ -67,3 +67,22 @@ limitations:
     A signal is not an acquisition, exit, rate, survival outcome, agency effect,
     comparator result, or causal finding without a separately frozen and
     validated evidence-tier design.
+  - >-
+    Both retrievals report an August 1 snapshot while the inclusive selection
+    boundary is 2026-08-29, so the final 28 days of the declared window are
+    systematically incomplete. The cutoff check is recorded as failed for this
+    reason.
+  - >-
+    Form D selection applies date_filed <= 2026-08-29 and the index coverage
+    floor begins in 2009 Q1. Absence of an earlier filing is not evidence that
+    no earlier filing exists.
+  - >-
+    The observation window is differential: award dates run from the 1980s (and
+    one 1905 value) to 2026 while Form D observation spans 2009 through
+    2026-08-29, so any per-firm signal share is a function of award vintage
+    rather than of firm behaviour alone.
+  - >-
+    The Amendment 4 accepted input is the private object with SHA-256
+    efdf7ca5a398703002ebb33345275b0f68e50af3c5db361d48a2456266a23628, retrieved
+    2026-08-30. The bytes are not committed, so nothing in this repository can
+    reproduce the selection from them.

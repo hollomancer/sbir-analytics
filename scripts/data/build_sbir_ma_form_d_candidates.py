@@ -4,6 +4,12 @@
 Epistemic tier: exploratory. This script creates candidate linkages only; it
 does not resolve firm identity, retrieve XML, evaluate Form D predicates, or
 produce a numerical result.
+
+Ledger grain is ``(name_key, accession)``, not one row per filing. EDGAR emits
+one index line per filer on a multi-filer submission, so one accession can
+appear under two filer-name spellings that normalize to different keys. Row
+count is therefore not a filing count; the consumers collapse to one row per
+accession and report how many rows they collapsed.
 """
 
 from __future__ import annotations
@@ -97,6 +103,8 @@ def main() -> int:
     seen: set[tuple[str, str]] = set()
     written = 0
     with args.output.open("w", encoding="utf-8") as output:
+        matched_keys: set[str] = set()
+        matched_accessions: set[str] = set()
         for key, filing in _form_d_entries(args.form_d_index_dir):
             source = sbir.get(key)
             if source is None:
@@ -121,8 +129,15 @@ def main() -> int:
             }
             output.write(json.dumps(record, sort_keys=True) + "\n")
             written += 1
-    print(f"SBIR exact-name keys: {len(sbir):,}")
-    print(f"Candidate Form D filings: {written:,}")
+            matched_keys.add(key)
+            matched_accessions.add(str(filing["accession_number"]))
+    # Three distinct quantities that were previously collapsed into two labels.
+    # `written` is the ledger row count at (name_key, accession) grain, which is
+    # not a filing count when one accession matches two filer-name spellings.
+    print(f"Selected-row name keys: {len(sbir):,}")
+    print(f"Name keys with at least one candidate: {len(matched_keys):,}")
+    print(f"Candidate ledger rows (name_key, accession): {written:,}")
+    print(f"Distinct candidate accessions: {len(matched_accessions):,}")
     print(f"Output: {args.output}")
     return 0
 

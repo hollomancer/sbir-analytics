@@ -73,11 +73,16 @@
   - Verify: every ledger entry states its `FORM_D_JOIN_V1` exact-key rationale
     and source identifiers; XML provenance records success or failure without
     interpreting any candidate as an event.
-  - Verify: the private ledger contains 1,800 exact-key candidate names and
-    5,744 candidate filings; the private retrieval manifest records HTTP 200
-    for all 5,744 distinct candidate accessions. These are private ledger
-    provenance counts at name-key and accession grain, not firm, event, or
-    outcome counts.
+  - Verify, using the builder's own labels so the figures cannot drift from
+    what it prints: `Name keys with at least one candidate: 1,800`,
+    `Candidate ledger rows (name_key, accession): 5,744`, and
+    `Distinct candidate accessions: 5,744`; the private retrieval manifest
+    records HTTP 200 for all 5,744 distinct candidate accessions. Ledger rows
+    and distinct accessions are equal in this cut only because it contains no
+    multi-filer submission; they are separate quantities. `Selected-row name
+    keys` is a fourth, larger count and is not the candidate-name figure.
+    These are private ledger provenance counts at name-key and accession
+    grain, not firm, event, or outcome counts.
 - [x] Apply the Amendment 7 accession-grain XML predicate.
   - Verify: each private output row reconciles to one retrieved candidate XML,
     preserves its SHA-256, and is `true`, `false`, or `unavailable` without a

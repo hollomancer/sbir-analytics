@@ -32,14 +32,26 @@ def _records(path: Path) -> list[dict]:
         return [json.loads(line) for line in handle if line.strip()]
 
 
-def _candidates(path: Path) -> dict[str, dict]:
+def _candidates(path: Path) -> tuple[dict[str, dict], int]:
+    """Return one candidate per accession, and how many ledger rows were collapsed.
+
+    The ledger is written at ``(name_key, accession)`` grain, so one accession
+    appears once per filer-name spelling that normalized to a distinct key --
+    EDGAR emits one index line per filer on a multi-filer submission. Rejecting
+    the repeat would abort the pipeline on any cut that contains one. Collapse
+    to the lowest name_key so the choice is deterministic, and return the
+    collapsed count so the caller can report it.
+    """
     result: dict[str, dict] = {}
+    collapsed = 0
     for record in _records(path):
         accession = record["form_d_index"]["accession_number"]
         if accession in result:
-            raise ValueError(f"Duplicate candidate accession: {accession}")
+            collapsed += 1
+            if str(record.get("name_key", "")) >= str(result[accession].get("name_key", "")):
+                continue
         result[accession] = record
-    return result
+    return result, collapsed
 
 
 def _issuer_fields(xml_bytes: bytes) -> tuple[str | None, str | None]:
@@ -73,9 +85,10 @@ def main() -> int:
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
 
-    candidates = _candidates(args.candidates)
+    candidates, collapsed_rows = _candidates(args.candidates)
     observations = _records(args.observations)
     args.output.parent.mkdir(parents=True, exist_ok=True)
+    queued = 0
 
     with args.output.open("w", encoding="utf-8") as output:
         for observation in observations:
@@ -121,6 +134,11 @@ def main() -> int:
                 "xml_sha256": observation["xml_sha256"] if xml_bytes else None,
             }
             output.write(json.dumps(record, sort_keys=True) + "\n")
+            queued += 1
+
+    print(f"Distinct candidate accessions: {len(candidates):,}")
+    print(f"Ledger rows collapsed to a single accession: {collapsed_rows:,}")
+    print(f"Queued rows (predicate_status == 'true'): {queued:,}")
     return 0
 
 

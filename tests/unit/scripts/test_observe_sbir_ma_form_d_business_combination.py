@@ -2,7 +2,11 @@ import hashlib
 import json
 from pathlib import Path
 
+import pytest
+
 from scripts.data.observe_sbir_ma_form_d_business_combination import (
+    _candidate_filings,
+    _predicate,
     _successful_xml_retrieval,
     _xml_provenance,
     main,
@@ -133,3 +137,82 @@ def test_observe_rebuilds_ledger_from_retried_empty_body_manifest(
             "xml_sha256": XML_SHA256,
         }
     ]
+
+
+def _wrap(value: str) -> bytes:
+    return (
+        b"<edgarSubmission><offeringData><businessCombinationTransaction>"
+        b"<isBusinessCombinationTransaction>"
+        + value.encode()
+        + b"</isBusinessCombinationTransaction>"
+        b"</businessCombinationTransaction></offeringData></edgarSubmission>"
+    )
+
+
+@pytest.mark.parametrize(
+    "text,expected",
+    [
+        ("true", "true"),
+        ("TRUE", "true"),
+        (" true ", "true"),
+        # XML Schema boolean lexical space is {true, false, 1, 0}. A filing that
+        # encodes 1 must not be recorded as a negative observation in a study
+        # whose manifest sets negative_evidence_allowed: false.
+        ("1", "true"),
+        ("false", "false"),
+        ("0", "false"),
+        # Outside the lexical space is not evidence either way.
+        ("yes", "unavailable"),
+        ("", "unavailable"),
+    ],
+)
+def test_predicate_covers_the_xsd_boolean_lexical_space(text: str, expected: str) -> None:
+    assert _predicate(_wrap(text)) == expected
+
+
+def test_predicate_is_unavailable_when_the_element_is_missing() -> None:
+    assert _predicate(b"<edgarSubmission><offeringData /></edgarSubmission>") == "unavailable"
+
+
+def test_predicate_is_unavailable_on_malformed_xml() -> None:
+    assert _predicate(b"<edgarSubmission><offeringData>") == "unavailable"
+
+
+def test_predicate_is_unavailable_on_a_fetched_error_page() -> None:
+    """A namespaced or HTML body must not read as a negative observation."""
+    assert _predicate(b"<html><body>404 Not Found</body></html>") == "unavailable"
+
+
+def test_repeated_accession_collapses_deterministically(tmp_path: Path) -> None:
+    """One accession can appear under two filer-name spellings; do not abort.
+
+    EDGAR emits one index line per filer on a multi-filer submission, so the
+    ledger's (name_key, accession) grain admits a repeat. Rejecting it aborted
+    the pipeline on any cut that contained one.
+    """
+    rows = [
+        {
+            "name_key": "zeta corp",
+            "form_d_index": {
+                "accession_number": ACCESSION,
+                "cik": "1",
+                "filing_date": "2024-01-02",
+                "form_type": "D",
+            },
+        },
+        {
+            "name_key": "alpha corp",
+            "form_d_index": {
+                "accession_number": ACCESSION,
+                "cik": "1",
+                "filing_date": "2024-01-02",
+                "form_type": "D",
+            },
+        },
+    ]
+    path = _write_jsonl(tmp_path / "candidates.jsonl", rows)
+
+    filings, collapsed = _candidate_filings(path)
+
+    assert collapsed == 1
+    assert list(filings) == [ACCESSION]

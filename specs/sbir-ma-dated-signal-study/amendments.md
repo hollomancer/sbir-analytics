@@ -175,9 +175,19 @@ materialization, a numerical result, or a public release.
   XML retrieval manifest records HTTP 200, record
   `form_d_business_combination_v1` as `true` only when the XML element at
   `offeringData/businessCombinationTransaction/isBusinessCombinationTransaction`
-  has text `true`, case-insensitively after trimming. Record `false` when that
-  element is present with another value. Record `unavailable` for missing,
-  malformed, or provenance-mismatched XML; do not coerce it to `false`.
+  has text `true` or `1`, case-insensitively after trimming. Record `false`
+  when it has text `false` or `0`. Record `unavailable` for missing, malformed,
+  or provenance-mismatched XML, and for any other text; do not coerce it to
+  `false`.
+
+  **Revision 1 (2026-09-13).** The rule first written here recorded `false` for
+  any present value other than `true`. `isBusinessCombinationTransaction` is an
+  XML Schema boolean, whose lexical space is `{true, false, 1, 0}`, so a filing
+  encoding `1` would have been recorded as a negative observation in a study
+  whose manifest sets `negative_evidence_allowed: false`. The predicate now
+  maps the full lexical space and leaves anything outside it `unavailable`. No
+  recorded observation changes unless a rerun encounters a `1` or `0` encoding,
+  which the original rule would have misread.
 - **Private output:** Write one ignored, accession-grain predicate ledger that
   contains the accession, CIK, index filing date, XML SHA-256, parser/predicate
   version, predicate status, and the exact XML path. It must contain no raw XML,

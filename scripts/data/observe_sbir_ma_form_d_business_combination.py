@@ -25,20 +25,35 @@ def _records(path: Path) -> list[dict]:
         return [json.loads(line) for line in handle if line.strip()]
 
 
-def _candidate_filings(path: Path) -> dict[str, dict[str, str]]:
+def _candidate_filings(path: Path) -> tuple[dict[str, dict[str, str]], int]:
+    """Return one filing per accession, and how many ledger rows were collapsed.
+
+    The ledger is written at ``(name_key, accession)`` grain, so one accession
+    appears once per filer-name spelling that normalized to a distinct key --
+    EDGAR emits one index line per filer on a multi-filer submission. Rejecting
+    the repeat would abort the pipeline on any cut that contains one. Collapse
+    to the lowest name_key so the choice is deterministic, and return the
+    collapsed count so the caller can report it.
+    """
     filings: dict[str, dict[str, str]] = {}
+    chosen_key: dict[str, str] = {}
+    collapsed = 0
     for record in _records(path):
         filing = record["form_d_index"]
         accession = filing["accession_number"]
+        name_key = str(record.get("name_key", ""))
         if accession in filings:
-            raise ValueError(f"Duplicate candidate accession: {accession}")
+            collapsed += 1
+            if name_key >= chosen_key[accession]:
+                continue
+        chosen_key[accession] = name_key
         filings[accession] = {
             "accession_number": accession,
             "cik": filing["cik"],
             "filing_date": filing["filing_date"],
             "form_type": filing["form_type"],
         }
-    return filings
+    return filings, collapsed
 
 
 def _successful_xml_retrieval(record: dict) -> bool:
@@ -60,6 +75,15 @@ def _xml_provenance(path: Path) -> dict[str, dict[str, str]]:
     return provenance
 
 
+# `isBusinessCombinationTransaction` is an XML Schema boolean, whose lexical
+# space is {true, false, 1, 0}. Reading anything other than "true" as false
+# would record a filing that encodes `1` as a negative observation, in a study
+# whose manifest sets negative_evidence_allowed: false. A value outside the
+# lexical space is not evidence either way and stays `unavailable`.
+_XSD_BOOLEAN_TRUE = frozenset({"true", "1"})
+_XSD_BOOLEAN_FALSE = frozenset({"false", "0"})
+
+
 def _predicate(xml_bytes: bytes) -> str:
     """Return the tri-state source-field observation authorized by Amendment 7."""
     try:
@@ -70,7 +94,12 @@ def _predicate(xml_bytes: bytes) -> str:
     element = root.find(PREDICATE_PATH)
     if element is None or element.text is None:
         return "unavailable"
-    return "true" if element.text.strip().lower() == "true" else "false"
+    text = element.text.strip().lower()
+    if text in _XSD_BOOLEAN_TRUE:
+        return "true"
+    if text in _XSD_BOOLEAN_FALSE:
+        return "false"
+    return "unavailable"
 
 
 def main() -> int:
@@ -81,9 +110,21 @@ def main() -> int:
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
 
-    candidates = _candidate_filings(args.candidates)
+    candidates, collapsed_rows = _candidate_filings(args.candidates)
     provenance = _xml_provenance(args.xml_manifest)
     args.output.parent.mkdir(parents=True, exist_ok=True)
+
+    # Counts that carry no predicate information. Without them a run in which
+    # PREDICATE_PATH never resolves -- a namespaced primary_doc.xml, a schema
+    # change, a fetched error page -- writes `unavailable` for every row and is
+    # indistinguishable from a clean run that observed nothing.
+    counts = {
+        "rows": 0,
+        "no_provenance_line": 0,
+        "missing_xml_file": 0,
+        "sha_mismatch": 0,
+        "predicate_unresolved": 0,
+    }
 
     with args.output.open("w", encoding="utf-8") as output:
         for accession, filing in candidates.items():
@@ -91,11 +132,20 @@ def main() -> int:
             status = "unavailable"
             xml_sha256 = None
             expected = provenance.get(accession)
-            if expected and xml_path.exists():
+            counts["rows"] += 1
+            if expected is None:
+                counts["no_provenance_line"] += 1
+            elif not xml_path.exists():
+                counts["missing_xml_file"] += 1
+            else:
                 xml_bytes = xml_path.read_bytes()
                 xml_sha256 = hashlib.sha256(xml_bytes).hexdigest()
-                if xml_sha256 == expected["sha256"]:
+                if xml_sha256 != expected["sha256"]:
+                    counts["sha_mismatch"] += 1
+                else:
                     status = _predicate(xml_bytes)
+                    if status == "unavailable":
+                        counts["predicate_unresolved"] += 1
 
             record = {
                 **filing,
@@ -106,6 +156,13 @@ def main() -> int:
                 "xml_sha256": xml_sha256,
             }
             output.write(json.dumps(record, sort_keys=True) + "\n")
+
+    print(f"Candidate rows: {counts['rows']}")
+    print(f"Ledger rows collapsed to a single accession: {collapsed_rows}")
+    print(f"Rows with no complete provenance line: {counts['no_provenance_line']}")
+    print(f"Rows with a missing XML file: {counts['missing_xml_file']}")
+    print(f"Rows with an XML SHA mismatch: {counts['sha_mismatch']}")
+    print(f"Rows where the predicate element did not resolve: {counts['predicate_unresolved']}")
     return 0
 
 
