@@ -53,6 +53,7 @@ from sbir_etl.validators.sbir_awards import validate_sbir_awards
 
 
 EPISTEMIC_TIER = "exploratory"
+DEFAULT_AS_OF_DATE = date(2026, 9, 10)
 DEFAULT_IDENTITY_CROSSWALK = (
     Path(__file__).resolve().parents[2]
     / "data/reference/defense_critical_naics_identity_crosswalk.csv"
@@ -92,6 +93,9 @@ IDENTITY_CROSSWALK_COLUMNS = [
     "corporate_relation",
     "corporate_event_date",
     "corporate_event_date_basis",
+    "later_legal_event_type",
+    "later_legal_event_date",
+    "later_legal_event_date_basis",
     "successor_or_acquirer_name",
     "contract_relationship",
     "attribution_treatment",
@@ -125,7 +129,7 @@ IDENTITY_ATTRIBUTION_VALUES = {
     "temporal_split_required",
     "unresolved_exclude_from_original_firm_claims",
 }
-IDENTITY_DATE_BASIS_VALUES = {"announced", "closed", "effective", "unknown"}
+IDENTITY_DATE_BASIS_VALUES = {"announced", "closed", "effective", "filed", "unknown"}
 IDENTITY_CONFIDENCE_VALUES = {"H", "M", "L"}
 
 PHASE_I_II_TEXT = re.compile(
@@ -206,9 +210,16 @@ def _clean_award_id(value: Any) -> str:
 
 
 def _first_nonblank(values: pd.Series) -> str:
+    """Return the first usable value from a deterministically ordered group.
+
+    Callers sort their records by the relevant domain key before grouping.  This
+    helper deliberately preserves that order rather than treating source-file
+    order as an implicit tie breaker.
+    """
+
     usable = values.dropna().astype(str).str.strip()
     usable = usable[usable.ne("")]
-    return usable.iloc[-1] if not usable.empty else ""
+    return usable.iloc[0] if not usable.empty else ""
 
 
 @dataclass(frozen=True)
@@ -261,7 +272,11 @@ def load_sbir_cohort(path: Path, cutoff: date) -> SbirCohort:
         else None
     )
     exact = awards.loc[awards["firm_uei"].notna()].copy()
-    exact = exact.sort_values(["award_year", "award_date"], na_position="first")
+    exact = exact.sort_values(
+        ["firm_uei", "award_year", "award_date", "award_key", "company_name"],
+        na_position="first",
+        kind="stable",
+    )
     exact["is_phase_i"] = exact["phase"].eq("Phase I").astype(int)
     exact["is_phase_ii"] = exact["phase"].eq("Phase II").astype(int)
     exact["phase_i_dollars"] = exact["award_amount"].where(exact["is_phase_i"].eq(1), 0.0)
@@ -491,6 +506,10 @@ def load_sam_target_evidence(path: Path, sbir_ueis: set[str]) -> SamResult:
             ]
         )
     if not evidence.empty:
+        evidence = evidence.sort_values(
+            ["firm_uei", "registration_status", "legal_business_name"],
+            kind="stable",
+        )
         evidence = (
             evidence.groupby(["firm_uei", "registration_status"], as_index=False)
             .agg(
@@ -578,6 +597,59 @@ class HistoricalContractResult:
     coverage_end: pd.Timestamp
 
 
+def _validate_archive_coverage_start(source_manifest: dict[str, Any]) -> tuple[int, int]:
+    """Require the manifest to support the clean cohort's FY2009 baseline.
+
+    The target ledger is already filtered to the exact-UEI and target-NAICS
+    cohort, so its earliest remaining transaction cannot demonstrate the
+    underlying archive start.  The archive manifest must declare the fiscal
+    years that were searched instead.  The named cut uses FY2009--FY2025
+    archives, plus the FY2026 source tail tracked separately below.
+    """
+
+    coverage = source_manifest.get("coverage")
+    if not isinstance(coverage, dict):
+        raise ValueError("historical target ledger has no declared archive coverage")
+    declared_years = coverage.get("archive_fiscal_years")
+    if not isinstance(declared_years, list) or not declared_years:
+        raise ValueError("historical target ledger has no declared archive fiscal years")
+
+    fiscal_years: list[int] = []
+    for value in declared_years:
+        match = re.fullmatch(r"(?:FY)?(\d{4})", str(value).strip(), flags=re.IGNORECASE)
+        if match is None:
+            raise ValueError("historical target ledger has invalid archive fiscal years")
+        fiscal_years.append(int(match.group(1)))
+    first_fiscal_year = min(fiscal_years)
+    last_fiscal_year = max(fiscal_years)
+    if first_fiscal_year != 2009 or last_fiscal_year < 2025:
+        raise ValueError(
+            "historical target ledger archive coverage must begin in FY2009 "
+            "and extend through at least FY2025"
+        )
+
+    for field in (
+        "archive_coverage_start",
+        "archive_coverage_start_date",
+        "fy2009_source_min_action_date",
+    ):
+        if field not in coverage:
+            continue
+        try:
+            declared_start = date.fromisoformat(str(coverage[field]))
+        except (TypeError, ValueError):
+            raise ValueError(
+                f"historical target ledger has invalid {field} coverage date"
+            ) from None
+        if declared_start != ARCHIVE_COVERAGE_START:
+            raise ValueError(
+                "historical target ledger exact coverage start does not match "
+                f"required FY2009 start {ARCHIVE_COVERAGE_START.isoformat()}"
+            )
+
+    return first_fiscal_year, last_fiscal_year
+
+
 def load_historical_contract_evidence(
     path: Path,
     cohort: SbirCohort,
@@ -631,6 +703,9 @@ def load_historical_contract_evidence(
     declared_codes = set(source_manifest.get("filter", {}).get("target_naics_codes", []))
     if declared_codes != set(TARGET_NAICS):
         raise ValueError("historical target ledger target codes do not match this analysis")
+    archive_start_fiscal_year, archive_end_fiscal_year = _validate_archive_coverage_start(
+        source_manifest
+    )
 
     expected_ueis = set(cohort.firms["firm_uei"])
     filter_info = source_manifest.get("filter", {})
@@ -742,9 +817,11 @@ def load_historical_contract_evidence(
         & raw["obligation_amount"].gt(0)
     )
     keys = ["firm_uei", "award_group_key", "naics_code"]
-    first = raw.sort_values(
-        ["firm_uei", "award_group_key", "naics_code", "action_date", "transaction_unique_id"]
-    ).drop_duplicates(keys)
+    raw = raw.sort_values(
+        ["firm_uei", "award_group_key", "naics_code", "action_date", "transaction_unique_id"],
+        kind="stable",
+    )
+    first = raw.drop_duplicates(keys)
     first = first.set_index(keys)
     grouped = raw.groupby(keys, sort=True, dropna=False)
     evidence = grouped.agg(
@@ -831,6 +908,8 @@ def load_historical_contract_evidence(
         "target_prime_entities": int(raw["firm_uei"].nunique()),
         "target_prime_awards": int(raw[["firm_uei", "award_group_key"]].drop_duplicates().shape[0]),
         "coverage_start": ARCHIVE_COVERAGE_START.isoformat(),
+        "archive_start_fiscal_year": archive_start_fiscal_year,
+        "archive_end_fiscal_year": archive_end_fiscal_year,
         "coverage_end": coverage_end.date().isoformat(),
         "target_action_max_date": target_action_end.date().isoformat(),
         "signed_target_obligations": float(raw["obligation_amount"].sum()),
@@ -1081,11 +1160,34 @@ def load_identity_crosswalk(path: Path | None) -> tuple[pd.DataFrame, dict[str, 
         invalid = sorted(set(reviews[column]) - allowed)
         if invalid:
             raise ValueError(f"identity crosswalk has invalid {column} values: {invalid}")
-    for column in ("corporate_event_date", "reviewed_at"):
+    optional_allowed_fields = {
+        "later_legal_event_type": IDENTITY_RELATION_VALUES,
+        "later_legal_event_date_basis": IDENTITY_DATE_BASIS_VALUES,
+    }
+    for column, allowed in optional_allowed_fields.items():
+        invalid = sorted({value for value in reviews[column] if value} - allowed)
+        if invalid:
+            raise ValueError(f"identity crosswalk has invalid {column} values: {invalid}")
+    for column in ("corporate_event_date", "later_legal_event_date", "reviewed_at"):
         nonblank = reviews[column].ne("")
         parsed = pd.to_datetime(reviews.loc[nonblank, column], format="%Y-%m-%d", errors="coerce")
         if parsed.isna().any():
             raise ValueError(f"identity crosswalk has invalid ISO dates in {column}")
+    for date_column, basis_column in (
+        ("corporate_event_date", "corporate_event_date_basis"),
+        ("later_legal_event_date", "later_legal_event_date_basis"),
+    ):
+        if (reviews[basis_column].eq("filed") & reviews[date_column].eq("")).any():
+            raise ValueError(f"identity crosswalk has filed {basis_column} without {date_column}")
+    temporal_split = reviews["attribution_treatment"].eq("temporal_split_required")
+    invalid_temporal_split = temporal_split & (
+        reviews["corporate_event_date"].eq("") | reviews["corporate_event_date_basis"].eq("unknown")
+    )
+    if invalid_temporal_split.any():
+        raise ValueError(
+            "temporal_split_required identity reviews require a dated, non-unknown "
+            "corporate_event_date attribution boundary"
+        )
     documented = reviews["corporate_relation"].ne("unknown")
     if (documented & reviews["evidence_locator"].eq("")).any():
         raise ValueError("documented identity reviews require an evidence locator")
@@ -1319,10 +1421,27 @@ def build_archive_analysis_tables(
         ),
         target_deobligations=("target_deobligations", "sum"),
         last_target_action_date=("last_target_action_date", "max"),
-        phase_iii_marker_awards=("phase_iii_marker", "sum"),
+    )
+    phase_iii_awards = (
+        contracts.loc[contracts["phase_iii_marker"]]
+        .groupby("firm_uei", as_index=False)
+        .agg(phase_iii_marker_awards=("award_group_key", "nunique"))
+    )
+    contract_rollup = contract_rollup.merge(phase_iii_awards, on="firm_uei", how="left")
+    contract_rollup["phase_iii_marker_awards"] = (
+        contract_rollup["phase_iii_marker_awards"].fillna(0).astype(int)
     )
     latest_contract_name = (
-        contracts.sort_values(["last_target_action_date", "firm_uei"])
+        contracts.sort_values(
+            [
+                "firm_uei",
+                "last_target_action_date",
+                "award_group_key",
+                "naics_code",
+                "recipient_name",
+            ],
+            kind="stable",
+        )
         .drop_duplicates("firm_uei", keep="last")[["firm_uei", "recipient_name"]]
         .rename(columns={"recipient_name": "latest_target_contract_recipient_name"})
     )
@@ -1854,7 +1973,15 @@ def parse_args() -> argparse.Namespace:
         help=("Optional tracked manual review file; absent candidate keys remain unreviewed"),
     )
     parser.add_argument("--output-dir", type=Path, required=True)
-    parser.add_argument("--as-of", type=date.fromisoformat, default=date.today())
+    parser.add_argument(
+        "--as-of",
+        type=date.fromisoformat,
+        default=DEFAULT_AS_OF_DATE,
+        help=(
+            "Analysis cutoff (YYYY-MM-DD). Defaults to the named 2026-09-10 "
+            "exploratory cut; pass an explicit date for another cut."
+        ),
+    )
     return parser.parse_args()
 
 

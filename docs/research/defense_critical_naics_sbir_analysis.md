@@ -2,6 +2,11 @@
 
 **Status:** exploratory and non-citable
 
+**Prepared for:** Preliminary research and outreach planning.
+
+**Audience:** SBA program staff, defense-industrial-base ecosystem partners, policy researchers, and
+research maintainers; not eligibility or contract adjudicators.
+
 **Analysis date:** September 10, 2026
 
 **SBIR input archive date:** September 7, 2026 (not a source-declared data-through date)
@@ -257,13 +262,15 @@ gross-positive dollars** and **all four low-continuity entities in the 205-entit
 Those groups do not overlap in this cut, producing 14 reviewed pairs. They cover **96.9% of flagged
 dollars**, but the dollar- and cohort-targeted selection is not a representative sample.
 
-The tracked crosswalk documents a supported acquisition, merger, or name-change history for every
-one of the 14 priority pairs. It does **not** establish federal contract novation for any of them:
-all 14 carry `contract_relationship = not_established`. The current attribution treatments are 11
-`temporal_split_required`, one `same_entity_continuity`, and two
-`unresolved_exclude_from_original_firm_claims`. The remaining **92 candidates are unreviewed**.
-An absent crosswalk row means only that review has not been completed; it is not negative evidence
-of an acquisition, name change, novation, or continuity.
+The tracked crosswalk documents a supported corporate history for every one of the 14 priority
+pairs. It does **not** establish federal contract novation for any of them: all 14 carry
+`contract_relationship = not_established`. Nine rows require an evidence-supported temporal
+boundary; one has documented same-entity continuity; and four are unresolved for firm-specific
+attribution. Progeny Systems is unresolved because primary sources place the acquisition in July
+or August 2022 but do not support an exact boundary date. Talley Defense Systems is unresolved
+because its durable source supports only March 2007, not an exact control-change day. The remaining
+**92 candidates are unreviewed**. An absent crosswalk row means only that review has not been
+completed; it is not negative evidence of an acquisition, name change, novation, or continuity.
 
 The clean cohort is less exposed but not exempt: **201 of 205** entities meet the 0.90 continuity
 threshold, while the other four are included in the reviewed priority tranche.
@@ -286,13 +293,43 @@ novation was required. This study treats novation or a federal change-of-name re
 established only with contract-specific Government evidence, such as an executed agreement,
 an SF 30 incorporating the agreement, or an equivalent contracting-office record.
 
+### Attribution boundary versus later legal event
+
+The crosswalk keeps the existing `corporate_event_date` and
+`corporate_event_date_basis` fields for backward compatibility. For a
+`temporal_split_required` row, they now mean the earliest supported ownership or business-transfer
+boundary that prevents an automatic original-SBIR-firm claim. They are not a contract-transfer
+date, a novation date, or proof that the successor received a particular contract.
+
+The separate `later_legal_event_type`, `later_legal_event_date`, and
+`later_legal_event_date_basis` fields preserve a later merger, conversion, or name change that
+previously could have been mistaken for the attribution boundary. A `filed` basis means a filing
+date, not an effective date. For rows with a later legal event, `evidence_locator` is the principal
+source for the boundary and `secondary_evidence_locator` identifies the later event; source limits
+remain in `review_notes`.
+
+| Pair | Corporate attribution boundary | Later legal event | Source caveat |
+|---|---|---|---|
+| Photon Research / Raytheon | Acquisition closed 2004-10-06 | Merger certificate filed 2012-12-18 | The SEC record identifies the filing; neither source identifies a contract transfer. |
+| OASYS / BAE | Acquisition closed 2010-10-20 | Merger effective 2014-12-18 | The later date comes from a USPTO assignment history displayed by Google Patents. |
+| Talley / Nammo | No day-level boundary (March 2007 reported) | Name change effective 2019-10-08 | The state report confirms March 2007 only. The reported 2007-03-30 announcement is not retained as a boundary because it lacks a durable locatable source. |
+| Martin Electronics / Nammo Perry | Chemring acquisition closed 2008-08-04 | Name-change amendment filed 2020-05-15 | The later Florida date is a filing date and follows a second, 2020 acquisition. |
+| Amherst Systems / Northrop | Business assets transferred to Comptek 1999-03-26 | Certificate of merger filed 2022-11-18 | The 2022 event comes from BizProfile, a third-party directory that says it extracted New York Department of State data. |
+| Oregon Iron Works / Vigor Works | Merger announced 2014-05-21 | Name change effective 2015-08-07 | The announcement expected a later closing, so it is a conservative boundary only. |
+| Integrity Applications / KBR Wyle | KBR acquisition closed 2020-10-05 | Merger effective 2023-06-28 | The later merger is recorded in a USPTO assignment history. |
+
+For Progeny Systems and Talley Defense Systems, the available evidence leaves the boundary date
+blank. Their rows are therefore `unresolved_exclude_from_original_firm_claims`, rather than
+date-free temporal splits. This rule prevents an invented day from changing attribution.
+
 ### Evidence and attribution rules
 
 - Preserve the raw observation first: dollars and actions remain valid as exact-UEI procurement
   records even when corporate attribution is unresolved.
 - Review the full identity-pair key, not the UEI or a company-name fragment alone. Record the
-  corporate relation, event date and date basis, same-entity assessment, confidence, sources, and
-  reviewer notes. Low similarity alone never supplies a relation.
+  corporate relation, attribution-boundary date and basis, later legal event when known,
+  same-entity assessment, confidence, sources, and reviewer notes. Low similarity alone never
+  supplies a relation.
 - Keep `corporate_relation` separate from `contract_relationship`. Corporate sources can support
   the former; only contract-specific Government evidence can confirm novation or a federal
   change-of-name agreement.
@@ -300,9 +337,9 @@ an SF 30 incorporating the agreement, or an equivalent contracting-office record
 
   | Treatment | Current rows | Permitted use |
   |---|---:|---|
-  | `temporal_split_required` | 11 | Split actions at the supported corporate-event date and label pre- and post-event identity explicitly before making firm-specific claims. If an exact event date is unresolved, defer the split and the claim. |
+  | `temporal_split_required` | 9 | Keep actions in pre- and post-boundary buckets while retaining the raw exact-UEI observations. Exclude post-boundary actions from original-SBIR-firm outcomes unless contract-specific evidence supports that claim. Do not call those actions successor dollars from corporate history alone. |
   | `same_entity_continuity` | 1 | Aggregate as one entity only with documented same-entity continuity, while retaining the former/current names and corporate-event provenance; do not describe this as confirmed novation. |
-  | `unresolved_exclude_from_original_firm_claims` | 2 | Keep UEI-level observations, but exclude the pair from original-SBIR-firm, successor, or acquirer attribution until legal and contract continuity is resolved. |
+  | `unresolved_exclude_from_original_firm_claims` | 4 | Keep UEI-level observations, but exclude the pair from original-SBIR-firm, successor, or acquirer attribution until legal and contract continuity is resolved. |
   | Unreviewed | 92 | Retain in the review queue and UEI-level totals; do not default missing review to either continuity or acquisition, and omit from claims that require resolved identity. |
 
 ### Scope boundaries
