@@ -8,6 +8,7 @@ import pytest
 from sbir_etl.enrichers.company_fuzzy_matcher import enrich_awards_with_companies
 from sbir_etl.utils.text_normalization import normalize_company_name
 from tests.factories import DataFrameBuilder
+from tests.unit.identity.test_company_names import MUST_NOT_MATCH
 
 
 pytestmark = pytest.mark.fast
@@ -377,3 +378,37 @@ def test_normalize_company_name_extended():
     assert normalize_company_name("The XYZ Company, LLC") == "the xyz company llc"
     assert normalize_company_name("  Multiple   Spaces  ") == "multiple spaces"
     assert normalize_company_name("123 Tech Inc") == "123 tech inc"
+
+
+# --- Adversarial audit: fuzzy-auto acceptance --------------------------------
+#
+# ``enrich_awards_with_companies`` has exactly one function that returns a
+# positive match decision: itself. The score comes from
+# ``rapidfuzz.process.extract`` using ``rapidfuzz_token_set_100`` (the
+# identity primitive's own scorer -- reused here, not forked) over names run
+# through this module's own ``normalize_name`` (forked from
+# ``sbir_etl.identity.normalize_company_name``; see module docstring). A
+# match is auto-accepted ("fuzzy-auto") at ``best_score >= high_threshold``;
+# ``high_threshold`` defaults to 90 and every real caller of this function
+# uses that default. A score in [low_threshold, 90) only produces
+# "fuzzy-candidate" -- flagged for human review, not an auto-accepted
+# match -- so it is out of scope for this audit.
+#
+# Audit result (2026-09-10): at the real default threshold (90), 0/9
+# MUST_NOT_MATCH pairs reach "fuzzy-auto". The closest is SiliconCore
+# Technology, Inc. vs SILICON STORAGE TECHNOLOGY INC at 89 -- one point
+# below auto-accept, landing on "fuzzy-candidate" instead. The defect is
+# not here: see
+# `.superpowers/sdd/2026-09-10-verification-practices/task-6-report.md`.
+@pytest.mark.parametrize("left,right,reason", MUST_NOT_MATCH)
+def test_distinct_firms_do_not_auto_accept(left: str, right: str, reason: str) -> None:
+    awards = pd.DataFrame([{"company": left, "UEI": "", "Duns": "", "award_id": "X"}])
+    companies = pd.DataFrame([{"company": right, "UEI": "", "Duns": "", "industry": "x"}])
+
+    enriched = enrich_awards_with_companies(awards, companies)
+
+    method = enriched["_match_method"].iloc[0]
+    score = enriched["_match_score"].iloc[0]
+    assert method != "fuzzy-auto", (
+        f"{left!r} vs {right!r} auto-accepted at score {score} (method={method}): {reason}"
+    )
