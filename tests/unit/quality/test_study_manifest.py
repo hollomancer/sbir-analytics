@@ -7,7 +7,9 @@ from pydantic import ValidationError
 
 from sbir_etl.quality.study_manifest import (
     EvidenceStatus,
+    ThresholdBasis,
     ValidationDesign,
+    ValidationResult,
     load_study_manifest,
 )
 from scripts.ci.validate_study_manifests import validate_manifest_file
@@ -220,6 +222,20 @@ VALIDATION_DESIGN = {
     "expected_yield": "At least 95% source coverage.",
     "decision_threshold": "All reconciliations pass and coverage is at least 95%.",
     "threshold_derivation": "The frozen design identifies 95% as the minimum useful coverage.",
+    "threshold_basis": "proportion",
+}
+
+VALIDATION_RESULT = {
+    "design_sha256": "a" * 64,
+    "evaluated_on": "2026-09-13",
+    "metric": "source coverage of the frozen cohort",
+    "numerator": 97,
+    "denominator": 100,
+    "interval_low": 0.914,
+    "interval_high": 0.991,
+    "interval_method": "Wilson 95%",
+    "threshold_met": True,
+    "confirmatory": True,
 }
 
 
@@ -245,9 +261,152 @@ def test_promoted_manifest_loads_with_validation_design(
     raw = _manifest("a" * 64)
     raw["evidence_status"] = status.value
     raw["validation_design"] = VALIDATION_DESIGN
+    raw["validation_result"] = VALIDATION_RESULT
     path = _write(tmp_path, "example-study/study.yaml", yaml.safe_dump(raw))
 
     manifest = load_study_manifest(path)
 
     assert manifest.evidence_status is status
     assert manifest.validation_design is not None
+    assert manifest.validation_result is not None
+    assert manifest.validation_result.point_estimate == pytest.approx(0.97)
+
+
+def _promoted(status: EvidenceStatus) -> dict:
+    raw = _manifest("a" * 64)
+    raw["evidence_status"] = status.value
+    raw["validation_design"] = dict(VALIDATION_DESIGN)
+    raw["validation_result"] = dict(VALIDATION_RESULT)
+    return raw
+
+
+@pytest.mark.parametrize("status", [EvidenceStatus.VALIDATED, EvidenceStatus.CITABLE])
+def test_promoted_manifest_requires_validation_result(
+    tmp_path: Path, status: EvidenceStatus
+) -> None:
+    """A design alone says what would count; promotion needs what was found."""
+    raw = _promoted(status)
+    del raw["validation_result"]
+    path = _write(tmp_path, "example-study/study.yaml", yaml.safe_dump(raw))
+
+    with pytest.raises(ValidationError, match="requires a validation_result block"):
+        load_study_manifest(path)
+
+
+@pytest.mark.parametrize("status", [EvidenceStatus.VALIDATED, EvidenceStatus.CITABLE])
+def test_promoted_manifest_requires_threshold_basis(
+    tmp_path: Path, status: EvidenceStatus
+) -> None:
+    raw = _promoted(status)
+    del raw["validation_design"]["threshold_basis"]
+    path = _write(tmp_path, "example-study/study.yaml", yaml.safe_dump(raw))
+
+    with pytest.raises(ValidationError, match="requires validation_design.threshold_basis"):
+        load_study_manifest(path)
+
+
+def test_reproducible_manifest_may_omit_threshold_basis_and_result(tmp_path: Path) -> None:
+    """Existing designs written before the result block keep loading below validated."""
+    raw = _manifest("a" * 64)
+    raw["validation_design"] = {
+        key: value for key, value in VALIDATION_DESIGN.items() if key != "threshold_basis"
+    }
+    path = _write(tmp_path, "example-study/study.yaml", yaml.safe_dump(raw))
+
+    manifest = load_study_manifest(path)
+
+    assert manifest.validation_design is not None
+    assert manifest.validation_design.threshold_basis is None
+    assert manifest.validation_result is None
+
+
+@pytest.mark.parametrize("status", [EvidenceStatus.VALIDATED, EvidenceStatus.CITABLE])
+def test_post_hoc_result_cannot_promote(tmp_path: Path, status: EvidenceStatus) -> None:
+    """A result from a design changed after the data were seen is reportable, not confirmatory."""
+    raw = _promoted(status)
+    raw["validation_result"]["confirmatory"] = False
+    raw["validation_result"]["post_hoc_analyses"] = ["Enlarged the cut from 200 to 500 pairs."]
+    path = _write(tmp_path, "example-study/study.yaml", yaml.safe_dump(raw))
+
+    with pytest.raises(ValidationError, match="requires a confirmatory validation_result"):
+        load_study_manifest(path)
+
+
+@pytest.mark.parametrize("status", [EvidenceStatus.VALIDATED, EvidenceStatus.CITABLE])
+def test_result_design_hash_must_be_a_frozen_artifact(
+    tmp_path: Path, status: EvidenceStatus
+) -> None:
+    raw = _promoted(status)
+    raw["validation_result"]["design_sha256"] = "b" * 64
+    path = _write(tmp_path, "example-study/study.yaml", yaml.safe_dump(raw))
+
+    with pytest.raises(ValidationError, match="does not match any frozen artifact"):
+        load_study_manifest(path)
+
+
+def test_validated_records_a_missed_threshold_but_citable_rejects_it(tmp_path: Path) -> None:
+    """validated means the preregistered test ran and its outcome is on the record."""
+    raw = _promoted(EvidenceStatus.VALIDATED)
+    raw["validation_result"].update(
+        {"numerator": 4, "denominator": 10, "interval_low": 0.168, "interval_high": 0.687,
+         "threshold_met": False}
+    )
+    path = _write(tmp_path, "example-study/study.yaml", yaml.safe_dump(raw))
+    manifest = load_study_manifest(path)
+    assert manifest.validation_result is not None
+    assert manifest.validation_result.threshold_met is False
+
+    raw["evidence_status"] = EvidenceStatus.CITABLE.value
+    path = _write(tmp_path, "example-study/study.yaml", yaml.safe_dump(raw))
+    with pytest.raises(ValidationError, match="requires validation_result.threshold_met"):
+        load_study_manifest(path)
+
+
+def test_count_threshold_requires_a_frozen_population() -> None:
+    """A count floor over a shrinking population is unreachable for the wrong reasons."""
+    fields = {key: value for key, value in VALIDATION_DESIGN.items() if key != "threshold_basis"}
+    with pytest.raises(ValidationError, match="requires frozen_population_artifact"):
+        ValidationDesign(
+            **fields, threshold_basis=ThresholdBasis.COUNT_ON_FROZEN_POPULATION
+        )
+    design = ValidationDesign(
+        **fields,
+        threshold_basis=ThresholdBasis.COUNT_ON_FROZEN_POPULATION,
+        frozen_population_artifact="studies/example-study/eligible_pairs.csv",
+    )
+    assert design.frozen_population_artifact is not None
+
+
+def test_frozen_population_artifact_must_be_pinned(tmp_path: Path) -> None:
+    raw = _promoted(EvidenceStatus.VALIDATED)
+    raw["validation_design"].update(
+        {
+            "threshold_basis": "count_on_frozen_population",
+            "frozen_population_artifact": "studies/example-study/eligible_pairs.csv",
+        }
+    )
+    path = _write(tmp_path, "example-study/study.yaml", yaml.safe_dump(raw))
+    with pytest.raises(ValidationError, match="is not listed in frozen_artifacts"):
+        load_study_manifest(path)
+
+    raw["frozen_artifacts"].append(
+        {"path": "studies/example-study/eligible_pairs.csv", "sha256": "c" * 64}
+    )
+    path = _write(tmp_path, "example-study/study.yaml", yaml.safe_dump(raw))
+    assert load_study_manifest(path).validation_design is not None
+
+
+@pytest.mark.parametrize(
+    ("override", "message"),
+    [
+        ({"numerator": 11}, "numerator cannot exceed denominator"),
+        ({"interval_low": 0.99}, "interval_low cannot exceed interval_high"),
+        ({"interval_low": 0.98, "interval_high": 0.99}, "lies outside the reported interval"),
+    ],
+)
+def test_validation_result_interval_must_be_coherent(override: dict, message: str) -> None:
+    fields = dict(VALIDATION_RESULT)
+    fields.update({"numerator": 9, "denominator": 10, "interval_low": 0.596, "interval_high": 0.982})
+    fields.update(override)
+    with pytest.raises(ValidationError, match=message):
+        ValidationResult(**fields)

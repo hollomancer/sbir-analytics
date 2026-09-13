@@ -10,6 +10,23 @@ version.
 
 ## [Unreleased]
 
+### Changed
+
+- `validated` now means the preregistered validation design was run as written
+  and its result is recorded with uncertainty; it no longer implies the
+  threshold was met. `citable` additionally requires `threshold_met: true`.
+  `StudyManifest` gains a `validation_result` block (numerator, denominator,
+  interval, method, `threshold_met`, `confirmatory`, `post_hoc_analyses`),
+  required at `validated` and above, whose `design_sha256` must match a frozen
+  artifact and whose `confirmatory` flag must be true to promote.
+  `ValidationDesign` gains `threshold_basis` (required at `validated` and
+  above) and `frozen_population_artifact` (required for count thresholds and
+  checked against `frozen_artifacts`). Existing manifests below `validated`
+  load unchanged. Documented post-hoc analyses are reportable and are no
+  longer an audit BLOCK by themselves; presenting one as confirmatory still is.
+  (`studies/README.md`, `docs/steering/epistemic-tiers.md`,
+  `.claude/agents/evidence-auditor.md`.)
+
 ## [0.13.0] — 2026-09-12
 
 ### Breaking
