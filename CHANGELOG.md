@@ -10,7 +10,9 @@ version.
 
 ## [Unreleased]
 
-### Changed
+## [0.14.0] — 2026-09-13
+
+### Breaking
 
 - `validated` now means the preregistered validation design was run as written
   and its result is recorded with uncertainty; it no longer implies the
