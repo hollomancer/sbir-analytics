@@ -40,6 +40,15 @@ applicant_hour_citations:
     note: >-
       No public time-use survey of NIH SBIR applicants matches FDP quality.
       The 20–200 hour grid is a sensitivity range, not a point estimate.
+      One indirect market signal exists, and it is neither an observation nor
+      citable: published 2026 list prices for outsourced SBIR proposal
+      preparation cluster at $3,000–$17,000 for a full Phase I, with a single
+      fully published flat price of $5,995. Divided by published writer rates
+      of $50–180 per hour that implies roughly 33–120 outsourced hours for the
+      portion a firm buys, before any PI technical content, which cannot be
+      outsourced. Source is vendor marketing pages, list prices rather than
+      transaction prices, left-censored because most providers publish nothing.
+      It brackets inside the existing grid and must not be used to narrow it.
 
 labor_rates:
   - id: bls_medical_scientist_mean_hourly
@@ -74,8 +83,32 @@ review:
     nih_sttr_phase_iib: [3]
   reviewer_hours: [2, 4, 8]
   reviewer_hours_note: >-
-    NIH CSR typically assigns about three reviewers. Hours per review are not
-    published as a time-use survey; 2/4/8 are scenarios.
+    NIH CSR typically assigns about three reviewers. The 2/4/8 grid is retained
+    as a scenario range, but it is no longer true that hours per review are
+    unpublished; see reviewer_hour_citations for the one published US
+    per-application measurement, which falls inside the grid.
+  reviewer_hour_citations:
+    aibs_gallo_2019:
+      evidence_class: behavioral_survey
+      population: us_grant_reviewers_panel_review
+      observed_pre_meeting_hours_per_application: [4.5, 5.0]
+      note: >-
+        Gallo, Sullivan and Glisson (2019), "The Participation and Motivations
+        of Grant Peer Reviewers: A Comprehensive Survey", Science and
+        Engineering Ethics, doi:10.1007/s11948-019-00123-1. AIBS survey, 874
+        respondents. Time spent per assignment reviewing each application
+        before the meeting was 4.5 +/- 0.08 hours for reviewers serving on
+        fewer than seven panels and 5.0 +/- 0.08 hours for those on seven or
+        more. Total annual grant-review time was 47 +/- 2 and 132 +/- 3 hours
+        respectively. These are pre-meeting hours only; the paper's annual
+        totals add meeting hours (panel days x 8) and 8 hours of travel for
+        face-to-face panels, so hours per review inclusive of meeting time sit
+        nearer the top of the 2/4/8 grid. Measured on panel review of
+        NIH-style applications, not on NSF ad hoc mail review. The paper's
+        aggregate annual totals do not reconcile cleanly with its
+        per-application figures, so only the per-application measurement is
+        cited here.
+      url: https://doi.org/10.1007/s11948-019-00123-1
   reviewer_labor_rate_id: bls_medical_scientist_mean_hourly
 
 agency_cost:

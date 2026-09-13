@@ -120,3 +120,24 @@ inventory_only:
     publisher: NIH Office of Extramural Research
     evidence_class: proxy
     note: Formal proposal page limits used in the complexity index, not hours.
+
+  - source_id: aibs_gallo_2019
+    url: https://doi.org/10.1007/s11948-019-00123-1
+    publisher: Science and Engineering Ethics (American Institute of Biological Sciences survey)
+    evidence_class: behavioral_survey
+    note: >-
+      Only published US measurement of reviewer hours per grant application:
+      4.5–5.0 hours of pre-meeting time per assignment, 874 respondents. Cited
+      for the review.reviewer_hours grid. Panel review of NIH-style
+      applications, not NSF ad hoc mail review.
+
+  - source_id: sbir_consultant_list_prices_2026
+    url: https://sbirgrantwriters.com/sbir-blog-grant-writing-services-compared-2026
+    publisher: Vendor marketing pages (SBIR Grant Writers; FundUnlocked)
+    evidence_class: vendor_list_price
+    note: >-
+      Published 2026 prices for outsourced SBIR proposal preparation, recorded
+      only as an indirect market signal on applicant hours and explicitly
+      non-citable. Competing vendors profiling each other, list prices rather
+      than transaction prices, left-censored toward productized services
+      because most providers publish nothing. Not used in any computed series.
