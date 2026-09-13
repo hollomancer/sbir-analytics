@@ -6,7 +6,7 @@ import json
 from sbir_etl.capital_events.sources.ma_events import build_ma_events
 
 
-def _ma_row(name, date, confidence, acquirer="GLOBEX CORP", signals=None):
+def _ma_row(name, date, confidence, acquirer="GLOBEX CORP", signals=None, cross_enrichment=None):
     return {
         "company_name": name,
         "event_date": date,
@@ -17,6 +17,7 @@ def _ma_row(name, date, confidence, acquirer="GLOBEX CORP", signals=None):
         "form_d_detail": None,
         "efts_detail": None,
         "sbir_context": {"agency": "DoD"},
+        "cross_enrichment": cross_enrichment or {},
     }
 
 
@@ -66,14 +67,28 @@ def test_metadata_carries_signals(cohort, tmp_path):
                 "2023-06-15",
                 "high",
                 signals={"form_d_business_combination": True},
+                cross_enrichment={
+                    "relationship_id": "ma_test",
+                    "independent_of_form_d": False,
+                },
             )
         )
         + "\n"
     )
     events = list(build_ma_events(cohort, src))
     meta = json.loads(events[0]["metadata"])
-    assert set(meta) == {"signals", "signal_count"}
+    assert set(meta) == {
+        "signals",
+        "signal_count",
+        "candidate_status",
+        "legal_event_validated",
+        "cross_enrichment",
+    }
     assert meta["signals"]["form_d_business_combination"] is True
+    assert meta["candidate_status"] == "unvalidated_public_record_candidate"
+    assert meta["legal_event_validated"] is False
+    assert meta["cross_enrichment"]["relationship_id"] == "ma_test"
+    assert meta["cross_enrichment"]["independent_of_form_d"] is False
 
 
 def test_signal_count_is_recomputed_not_forwarded(cohort, tmp_path):
