@@ -105,6 +105,9 @@ explain how firms were selected and what the results cannot show.
 
 ## Research planning and communication
 
+- [Literature replication roadmap](literature-replication-roadmap.md) — exact published-sample
+  replications followed by separately reported current-data extensions, ordered from public-data
+  descriptive studies through restricted-data causal studies.
 - [Literature map and citation audit](literature-map/README.md) — research published
   from 2019–2026 and missing coverage across question areas A–F. The CSV is
   refreshed weekly from OpenAlex (`make literature-map`); authored memos are not.
