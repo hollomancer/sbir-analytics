@@ -153,13 +153,38 @@ def _mapping_digest(audit: pd.DataFrame) -> str:
     return hashlib.sha256(serialized).hexdigest()
 
 
+def assignment_identity(audit: pd.DataFrame) -> str:
+    """SHA-256 of the donor mapping with ``seed`` omitted.
+
+    ``_mapping_digest`` includes ``seed`` so the recorded R15 digest stays
+    byte-identical. Distinct seeds then produce distinct ``mapping_sha256``
+    values even when every donor is the same; this identity is what can
+    detect a collapsed null.
+    """
+
+    records = [
+        {
+            "recipient_award_id": row.recipient_award_id,
+            "recipient_firm_uei": row.recipient_firm_uei,
+            "donor_award_id": row.donor_award_id,
+            "donor_firm_uei": row.donor_firm_uei,
+            "original_prior_end": _date_json(row.original_prior_end),
+            "permuted_prior_end": _date_json(row.permuted_prior_end),
+            "date_value_changed": bool(row.date_value_changed),
+        }
+        for row in audit.sort_values("recipient_award_id", kind="stable").itertuples(index=False)
+    ]
+    serialized = json.dumps(records, sort_keys=True, separators=(",", ":")).encode()
+    return hashlib.sha256(serialized).hexdigest()
+
+
 def _cross_firm_assignment(
     unique_awards: pd.DataFrame, *, seed: int = PLACEBO_SEED
 ) -> pd.DataFrame:
     """Build the frozen randomized cyclic assignment (not a uniform derangement).
 
-    ``seed`` defaults to the R15 seed so the recorded single-draw assignment is
-    unchanged; R16 passes the members of its preregistered seed list here.
+    ``seed`` defaults to ``PLACEBO_SEED`` so callers that omit it reproduce the
+    frozen R15 mapping.
     """
 
     firm_counts = unique_awards["recipient_firm_uei"].value_counts()

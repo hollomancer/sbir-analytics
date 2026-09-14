@@ -313,6 +313,20 @@ def test_default_seed_is_the_frozen_r15_seed_and_is_recorded(pairs: pd.DataFrame
     assert set(default.audit["seed"]) == {20260801}
 
 
+def test_assignment_identity_omits_seed_and_detects_the_same_mapping(
+    pairs: pd.DataFrame,
+) -> None:
+    first = build_placebo_assignment(pairs, seed=20260802)
+    cloned = first.audit.copy()
+    cloned["seed"] = 20260803
+
+    assert placebo_module.assignment_identity(first.audit) == placebo_module.assignment_identity(
+        cloned
+    )
+    assert first.mapping_sha256 != placebo_module._mapping_digest(cloned)
+    assert len(placebo_module.assignment_identity(first.audit)) == 64
+
+
 def test_different_seeds_change_the_assignment_but_keep_every_invariant(
     pairs: pd.DataFrame,
 ) -> None:

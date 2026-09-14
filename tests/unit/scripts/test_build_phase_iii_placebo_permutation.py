@@ -289,10 +289,36 @@ def test_recorded_r15_constants_are_the_published_final_stage_values() -> None:
     """Guard the transcription of placebo-results-2026-08-03.md."""
 
     recorded = MODULE.R15_RECORDED
-    assert recorded["assignment_mapping_sha256"].startswith("c1c97a9c7f1c8110")
+    assert recorded["assignment_mapping_sha256"] == (
+        "c1c97a9c7f1c81105a17dc21888afb7493311605405272672608d950c9250119"
+    )
     assert recorded["placebo_final"]["surviving_pairs"] == 546_242
     assert recorded["placebo_final"]["distinct_firms"] == 1_985
     assert recorded["placebo_final"]["distinct_contracts"] == 21_357
+    assert recorded["placebo_final"]["total_obligated_dollars"] == 46_386_904_542.06
     assert recorded["actual_final"]["surviving_pairs"] == 727_292
     assert recorded["actual_final"]["distinct_firms"] == 2_369
     assert recorded["actual_final"]["distinct_contracts"] == 28_665
+    assert recorded["actual_final"]["total_obligated_dollars"] == 55_080_851_466.46
+
+
+def test_store_with_collapsed_assignment_identity_is_refused(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """mapping_sha256 includes seed, so a planted collapsed null is only visible via identity."""
+
+    pairs = _pairs()
+    _wire(monkeypatch, pairs, draws=2)
+    MODULE.run(tmp_path, owner_approved=True, draws=2)
+    store = tmp_path / "draw_store"
+    path = store / MODULE.STORE_NAMES["mapping_digests"]
+    frame = pd.read_parquet(path)
+    assert frame["mapping_sha256"].nunique() == 2
+    assert frame["assignment_identity"].nunique() == 2
+    planted = frame.copy()
+    planted["assignment_identity"] = planted["assignment_identity"].iloc[0]
+    planted.to_parquet(path, index=False)
+    monkeypatch.setattr(MODULE.perm, "run_permutation_draws", _refuse_draws)
+
+    with pytest.raises(CensusInputError, match="same assignment"):
+        MODULE.run(tmp_path, owner_approved=True, draws=2)

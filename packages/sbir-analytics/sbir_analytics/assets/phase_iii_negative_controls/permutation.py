@@ -1,17 +1,11 @@
-"""Permutation separation for the Phase III census placebo (R16).
+"""Permutation separation for the Phase III census placebo.
 
-R15 ran one fixed-seed cross-firm derangement and recorded direction only. This
-module runs the same frozen placebo family over a preregistered seed list and
-records, for each draw, the final-stage census metrics and the six sensitivity
-cells, so the actual frame can be placed in an empirical null.
-
-Every predicate is the frozen one from ``phase_iii_census.criteria``. What this
-module adds is bookkeeping: the three clauses that do not read the permuted
-completion date are evaluated once, and each draw evaluates only the two that
-do. Because every core clause is a row-wise predicate, the final survivor set is
-the intersection of all five regardless of order, so the per-draw final stage
-is identical to the last row of ``build_census_tables``. That identity is
-covered by fixture tests against the shared builder.
+Every predicate is the frozen one from ``phase_iii_census.criteria``. The three
+clauses that do not read the permuted completion date are evaluated once, and
+each draw evaluates only the two that do. Core clauses are row-wise, so the
+final survivor set is their intersection regardless of order: the per-draw
+final stage matches the last row of ``build_census_tables``. Fixture tests
+cover that identity against the shared builder.
 """
 
 from __future__ import annotations
@@ -32,7 +26,7 @@ from ..phase_iii_census.criteria import (
     summarize_survivors,
     validate_pair_frame,
 )
-from .placebo import PLACEBO_SEED, build_placebo_assignment
+from .placebo import PLACEBO_SEED, assignment_identity, build_placebo_assignment
 
 #: Core clauses whose predicate reads ``prior_period_of_performance_end``.
 #: Only these change under the placebo; the rest are evaluated once per frame.
@@ -53,6 +47,7 @@ R16_THRESHOLD_LOWER_BOUND = 0.95
 
 FINAL_STAGE_COLUMNS = ("seed", "stage", *METRIC_COLUMNS)
 CELL_COLUMNS = ("seed", "cell_id", "time_window", "agency_match", *METRIC_COLUMNS)
+DIGEST_COLUMNS = ("seed", "mapping_sha256", "assignment_identity")
 
 
 def preregistered_seeds(draws: int = R16_DRAWS, first_seed: int = R16_FIRST_SEED) -> list[int]:
@@ -66,13 +61,6 @@ def preregistered_seeds(draws: int = R16_DRAWS, first_seed: int = R16_FIRST_SEED
             "the design was written and is excluded from the confirmatory sample"
         )
     return [first_seed + i for i in range(draws)]
-
-
-def _clause_masks(pairs: pd.DataFrame, data_cut_date: date) -> dict[str, pd.Series]:
-    return {
-        clause.clause_id: clause.predicate(pairs, data_cut_date).fillna(False).astype(bool)
-        for clause in CORE_CLAUSES
-    }
 
 
 def date_independent_mask(pairs: pd.DataFrame, data_cut_date: date) -> pd.Series:
@@ -162,10 +150,18 @@ def run_permutation_draws(
         )
         final_rows.append(_final_row(int(seed), R16_FINAL_CLAUSE_ID, summary))
         cell_frames.append(cells.assign(seed=int(seed))[list(CELL_COLUMNS)])
-        digests.append({"seed": int(seed), "mapping_sha256": assignment.mapping_sha256})
+        digests.append(
+            {
+                "seed": int(seed),
+                "mapping_sha256": assignment.mapping_sha256,
+                "assignment_identity": assignment_identity(assignment.audit),
+            }
+        )
         if on_draw is not None:
             on_draw(int(seed))
 
+    mapping_digests = pd.DataFrame(digests, columns=list(DIGEST_COLUMNS))
+    require_distinct_assignments(mapping_digests, len(seeds))
     return PermutationDraws(
         actual_final=actual_final,
         actual_cells=actual_cells,
@@ -175,8 +171,29 @@ def run_permutation_draws(
             if cell_frames
             else pd.DataFrame(columns=list(CELL_COLUMNS))
         ),
-        mapping_digests=pd.DataFrame(digests, columns=["seed", "mapping_sha256"]),
+        mapping_digests=mapping_digests,
     )
+
+
+def require_distinct_assignments(digests: pd.DataFrame, expected: int) -> None:
+    """Refuse a collapsed null: the same donor mapping under different seeds.
+
+    ``mapping_sha256`` includes seed, so it is unique whenever the seeds are.
+    The seed-independent identity is what this check uses. Persist it on the
+    draw store; a check that only runs inside ``run_permutation_draws`` cannot
+    see a planted complete store.
+    """
+
+    if expected == 0:
+        return
+    if "assignment_identity" not in digests.columns:
+        raise CensusInputError(
+            "mapping digests are missing assignment_identity; a collapsed null cannot be detected"
+        )
+    if digests["assignment_identity"].nunique() != expected:
+        raise CensusInputError(
+            "two permutation seeds produced the same assignment; refusing to continue"
+        )
 
 
 def wilson_interval(successes: int, trials: int, confidence: float = 0.95) -> tuple[float, float]:

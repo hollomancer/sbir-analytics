@@ -15,6 +15,7 @@ from sbir_analytics.assets.phase_iii_census.criteria import (
 from sbir_analytics.assets.phase_iii_negative_controls import permutation as perm
 from sbir_analytics.assets.phase_iii_negative_controls.placebo import (
     PLACEBO_SEED,
+    PlaceboAssignment,
     build_placebo_assignment,
 )
 
@@ -157,7 +158,53 @@ def test_run_records_one_row_one_cell_table_and_one_digest_per_seed(pairs: pd.Da
     assert list(draws.placebo_final.columns) == list(perm.FINAL_STAGE_COLUMNS)
     assert Counter(draws.placebo_cells["seed"]) == dict.fromkeys(seeds, 6)
     assert draws.mapping_digests["mapping_sha256"].nunique() == 3
+    assert draws.mapping_digests["assignment_identity"].nunique() == 3
+    assert list(draws.mapping_digests.columns) == list(perm.DIGEST_COLUMNS)
     assert (draws.placebo_final["stage"] == perm.R16_FINAL_CLAUSE_ID).all()
+
+
+def test_run_refuses_identical_donor_mappings_under_different_seeds(
+    pairs: pd.DataFrame, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """mapping_sha256 includes seed, so a collapsed null is only visible via identity."""
+
+    first = build_placebo_assignment(pairs, seed=20260802)
+    second_audit = first.audit.copy()
+    second_audit["seed"] = 20260803
+    second_audit["mapping_sha256"] = "b" * 64
+    second = PlaceboAssignment(
+        audit=second_audit,
+        permuted_pairs=first.permuted_pairs.copy(),
+        mapping_sha256="b" * 64,
+    )
+    assignments = {20260802: first, 20260803: second}
+
+    def fake_build(_pairs: pd.DataFrame, *, seed: int) -> PlaceboAssignment:
+        return assignments[int(seed)]
+
+    monkeypatch.setattr(perm, "build_placebo_assignment", fake_build)
+    with pytest.raises(CensusInputError, match="same assignment"):
+        perm.run_permutation_draws(pairs, DATA_CUT, [20260802, 20260803])
+
+
+def test_require_distinct_assignments_rejects_a_collapsed_null() -> None:
+    distinct = pd.DataFrame(
+        {
+            "seed": [20260802, 20260803],
+            "mapping_sha256": ["a" * 64, "b" * 64],
+            "assignment_identity": ["c" * 64, "d" * 64],
+        }
+    )
+    perm.require_distinct_assignments(distinct, 2)
+
+    collapsed = distinct.copy()
+    collapsed["assignment_identity"] = "c" * 64
+    with pytest.raises(CensusInputError, match="same assignment"):
+        perm.require_distinct_assignments(collapsed, 2)
+
+    missing = distinct.drop(columns="assignment_identity")
+    with pytest.raises(CensusInputError, match="assignment_identity"):
+        perm.require_distinct_assignments(missing, 2)
 
 
 def test_run_refuses_duplicate_seeds(pairs: pd.DataFrame) -> None:

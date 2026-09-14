@@ -432,6 +432,9 @@ def run(
         return status
 
     require_complete_store(existing, seeds)
+    # mapping_sha256 includes seed, so it cannot detect a collapsed null after
+    # resume; assignment_identity is persisted on the store for this check.
+    perm.require_distinct_assignments(existing["mapping_digests"], draws)
     final = existing["placebo_final"].sort_values("seed", kind="stable").reset_index(drop=True)
     cells = (
         existing["placebo_cells"]
@@ -439,10 +442,6 @@ def run(
         .reset_index(drop=True)
     )
     digests = existing["mapping_digests"].sort_values("seed", kind="stable").reset_index(drop=True)
-    if digests["mapping_sha256"].nunique() != draws:
-        raise CensusInputError(
-            "two preregistered seeds produced the same assignment; refusing to summarise"
-        )
     actual = perm.run_permutation_draws(pairs, data_cut, [])
     complete = perm.PermutationDraws(
         actual_final=actual.actual_final,
