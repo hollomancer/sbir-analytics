@@ -38,17 +38,15 @@ TARGET_SIDE_EFTS_SIGNALS = (
 
 
 def is_acquirer_side_only(signals: dict[str, bool]) -> bool:
-    """True when the only evidence is a Form D business-combination flag.
+    """True when Form D Item 10 fired and no TARGET_SIDE_EFTS_SIGNALS did.
 
-    Form D Item 10 marks a Rule 145 transaction -- a deemed offer and sale of
-    securities *by the issuer* -- so the filer is the acquirer. With no
-    target-side EFTS mention alongside it, the row is evidence the SBIR firm
-    *bought* something, which is the opposite of an exit.
+    Item 10 marks a Rule 145 transaction -- a deemed offer and sale of
+    securities *by the issuer* -- so the filer is the acquirer, and on its own
+    the flag is evidence the SBIR firm *bought* something.
 
-    Demoting such rows to low is not enough. Several consumers treat row
-    presence in the exit artifact as an exit and never read confidence, so a
-    demoted row still counts. They are written to a sibling file instead, which
-    keeps the evidence without letting an exit consumer mistake it.
+    Low-grade EFTS mentions do not change that. A row carrying
+    ``efts_ma_proxy`` or ``efts_ownership_active`` alongside the flag is still
+    acquirer-side by this predicate: neither is target-side evidence.
     """
     if not signals.get("form_d_business_combination"):
         return False
@@ -70,17 +68,22 @@ def extract_form_d_signals(
     it graded away, and the count of drops is reported so the filter is visible.
     """
     events = []
-    dropped_on_tier = 0
+    dropped_combo_rows = 0
     for r in records:
         confidence = require_form_d_tier_rule(
             r.get("match_confidence"),
             expected_rule_version=expected_rule_version,
             context=f"Form D record {r.get('company_name') or '<unnamed>'!r}",
         )
-        if confidence.get("tier") != KEEP_MATCH_TIER:
-            dropped_on_tier += 1
-            continue
         combos = [o for o in r.get("offerings", []) if o.get("is_business_combination")]
+        if confidence.get("tier") != KEEP_MATCH_TIER:
+            # Count only rows the gate actually removes from the event
+            # population. This function reads the full Form D detail file, most
+            # of which is fundraising-only and would never have become an event,
+            # so counting every non-high record would overstate the filter.
+            if combos:
+                dropped_combo_rows += 1
+            continue
         if not combos:
             continue
 
@@ -108,8 +111,11 @@ def extract_form_d_signals(
             }
         )
 
-    if dropped_on_tier:
-        print(f"  dropped {dropped_on_tier} Form D records below match tier {KEEP_MATCH_TIER!r}")
+    if dropped_combo_rows:
+        print(
+            f"  dropped {dropped_combo_rows} business-combination records below "
+            f"match tier {KEEP_MATCH_TIER!r}"
+        )
     return events
 
 
@@ -338,6 +344,11 @@ def main():
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
     non_exit_path = Path(args.non_exit_output)
+    if non_exit_path.resolve() == output_path.resolve():
+        raise SystemExit(
+            "--output and --non-exit-output resolve to the same file; the two "
+            "handles would truncate and overwrite each other"
+        )
     non_exit_path.parent.mkdir(parents=True, exist_ok=True)
 
     tiers = {"high": 0, "medium": 0, "low": 0}
