@@ -343,3 +343,21 @@ def test_different_seeds_change_the_assignment_but_keep_every_invariant(
         assert len(assignment.permuted_pairs) == len(pairs)
         non_date = [c for c in pairs.columns if c != "prior_period_of_performance_end"]
         pd.testing.assert_frame_equal(assignment.permuted_pairs[non_date], pairs[non_date])
+
+
+def test_each_seed_rebuilds_to_the_same_assignment(pairs: pd.DataFrame) -> None:
+    """A recorded distribution is only auditable if every draw can be rebuilt.
+
+    The design records 500 draws with a per-seed ``mapping_sha256``. The
+    surrounding tests establish that distinct seeds diverge and that invariants
+    hold; none establishes that one seed returns the same assignment twice. A
+    nondeterministic draw would satisfy all of them and still leave the recorded
+    distribution impossible to reconstruct from its seeds.
+    """
+    for seed in (PLACEBO_SEED, 20260802, 20261301):
+        first = build_placebo_assignment(pairs, seed=seed)
+        second = build_placebo_assignment(pairs, seed=seed)
+
+        assert first.mapping_sha256 == second.mapping_sha256
+        pd.testing.assert_frame_equal(first.audit, second.audit)
+        pd.testing.assert_frame_equal(first.permuted_pairs, second.permuted_pairs)
