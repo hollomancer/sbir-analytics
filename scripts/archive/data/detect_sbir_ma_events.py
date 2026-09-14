@@ -22,6 +22,38 @@ from sbir_etl.enrichers.sec_edgar.form_d_scoring import (  # noqa: E402
     require_form_d_tier_rule,
 )
 
+# Only high-tier identity matches enter the exit artifact. The scorer already
+# graded these; carrying medium and low forward re-admits joins it rejected.
+KEEP_MATCH_TIER = "high"
+
+# EFTS mention types that are evidence the SBIR firm was the *target*.
+# ma_proxy ("may be a comparable-table entry") and ownership_active (">5% stake
+# with intent") are graded Low in the signal memo and are not target-side
+# evidence, so they do not rescue an otherwise acquirer-side row.
+TARGET_SIDE_EFTS_SIGNALS = (
+    "efts_subsidiary",
+    "efts_ma_definitive",
+    "efts_acquisition_text",
+)
+
+
+def is_acquirer_side_only(signals: dict[str, bool]) -> bool:
+    """True when the only evidence is a Form D business-combination flag.
+
+    Form D Item 10 marks a Rule 145 transaction -- a deemed offer and sale of
+    securities *by the issuer* -- so the filer is the acquirer. With no
+    target-side EFTS mention alongside it, the row is evidence the SBIR firm
+    *bought* something, which is the opposite of an exit.
+
+    Demoting such rows to low is not enough. Several consumers treat row
+    presence in the exit artifact as an exit and never read confidence, so a
+    demoted row still counts. They are written to a sibling file instead, which
+    keeps the evidence without letting an exit consumer mistake it.
+    """
+    if not signals.get("form_d_business_combination"):
+        return False
+    return not any(signals.get(key) for key in TARGET_SIDE_EFTS_SIGNALS)
+
 
 def extract_form_d_signals(
     records: list[dict],
@@ -32,14 +64,22 @@ def extract_form_d_signals(
 
     For each company with at least one is_business_combination offering,
     produces one event using the earliest combo filing date.
+
+    Records whose identity match did not reach KEEP_MATCH_TIER are dropped. The
+    scorer already rejected those joins; carrying them forward re-admits matches
+    it graded away, and the count of drops is reported so the filter is visible.
     """
     events = []
+    dropped_on_tier = 0
     for r in records:
         confidence = require_form_d_tier_rule(
             r.get("match_confidence"),
             expected_rule_version=expected_rule_version,
             context=f"Form D record {r.get('company_name') or '<unnamed>'!r}",
         )
+        if confidence.get("tier") != KEEP_MATCH_TIER:
+            dropped_on_tier += 1
+            continue
         combos = [o for o in r.get("offerings", []) if o.get("is_business_combination")]
         if not combos:
             continue
@@ -68,6 +108,8 @@ def extract_form_d_signals(
             }
         )
 
+    if dropped_on_tier:
+        print(f"  dropped {dropped_on_tier} Form D records below match tier {KEEP_MATCH_TIER!r}")
     return events
 
 
@@ -161,13 +203,18 @@ def merge_events(
 
 
 def assign_confidence(event: dict) -> str:
-    """Assign confidence tier based on which signals fired."""
-    has_form_d = event.get("form_d_detail") is not None
+    """Grade how well the evidence supports the SBIR firm being *acquired*.
+
+    A Form D business-combination flag does not contribute. Item 10 is filed by
+    the acquirer, so on its own it is evidence in the wrong direction; grading
+    it `high` inflated the exit population with rows that record purchases.
+    Only target-side EFTS evidence earns a tier.
+    """
     efts = event.get("efts_detail")
     has_efts_high = efts is not None and "subsidiary" in efts.get("mention_types", [])
     has_acq_text = efts is not None and ("acquisition" in efts.get("mention_types", []))
 
-    if has_form_d or has_efts_high:
+    if has_efts_high:
         return "high"
     elif has_acq_text:
         return "medium"
@@ -250,6 +297,14 @@ def main():
     parser.add_argument("--efts", default="data/sec_edgar_scan.jsonl")
     parser.add_argument("--awards", default="/tmp/sbir_awards_full.csv")
     parser.add_argument("--output", default="data/sbir_ma_events.jsonl")
+    parser.add_argument(
+        "--non-exit-output",
+        default="data/sbir_ma_non_exit.jsonl",
+        help=(
+            "Rows whose only evidence is an acquirer-side Form D flag. Written "
+            "here rather than to --output so an exit consumer cannot count them."
+        ),
+    )
     args = parser.parse_args()
 
     # Layer 1: Form D
@@ -282,8 +337,12 @@ def main():
     output_path = Path(args.output)
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
+    non_exit_path = Path(args.non_exit_output)
+    non_exit_path.parent.mkdir(parents=True, exist_ok=True)
+
     tiers = {"high": 0, "medium": 0, "low": 0}
-    with open(output_path, "w") as out:
+    non_exit_n = 0
+    with open(output_path, "w") as out, open(non_exit_path, "w") as non_exit:
         for event in merged:
             signals = build_signals_dict(event)
             confidence = assign_confidence(event)
@@ -300,6 +359,11 @@ def main():
                 "efts_detail": event.get("efts_detail"),
                 "sbir_context": sbir_context.get(event["company_name"].strip().upper()),
             }
+            if is_acquirer_side_only(signals):
+                record["non_exit_reason"] = "acquirer_side"
+                non_exit.write(json.dumps(record, default=str) + "\n")
+                non_exit_n += 1
+                continue
             out.write(json.dumps(record, default=str) + "\n")
             tiers[confidence] += 1
 
@@ -311,6 +375,7 @@ def main():
     print(f"  Medium confidence: {tiers['medium']:,}")
     print(f"  Low confidence:    {tiers['low']:,}")
     print(f"  Output: {output_path}")
+    print(f"  Acquirer-side (not exits): {non_exit_n:,} -> {non_exit_path}")
 
 
 if __name__ == "__main__":

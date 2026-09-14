@@ -11,6 +11,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[4] / "scripts" / "archiv
 
 from detect_sbir_ma_events import (
     assign_confidence,
+    is_acquirer_side_only,
     build_signals_dict,
     extract_efts_signals,
     extract_form_d_signals,
@@ -231,9 +232,51 @@ def test_merge_events_separate_companies():
 # --- Confidence ---
 
 
-def test_assign_confidence_form_d_is_high():
+def test_assign_confidence_form_d_alone_is_not_high():
+    """Form D Item 10 is filed by the acquirer, so alone it is wrong-direction evidence.
+
+    This test previously asserted `high`, which is the defect: grading an
+    acquirer-side flag as strong exit evidence inflated the exit population with
+    rows recording purchases by the SBIR firm.
+    """
     event = {"form_d_detail": {"filing_date": "2020-01-01"}, "efts_detail": None}
+    assert assign_confidence(event) == "low"
+
+
+def test_form_d_with_target_side_efts_still_reaches_high():
+    """A Form D flag alongside target-side evidence is not demoted."""
+    event = {
+        "form_d_detail": {"filing_date": "2020-01-01"},
+        "efts_detail": {"mention_types": ["subsidiary"]},
+    }
     assert assign_confidence(event) == "high"
+
+
+def test_acquirer_side_only_routes_out_of_the_exit_artifact():
+    """A lone Form D flag is written to the sibling file, not the exit file."""
+    assert is_acquirer_side_only({"form_d_business_combination": True})
+
+
+def test_target_side_efts_keeps_a_row_in_the_exit_artifact():
+    for signal in ("efts_subsidiary", "efts_ma_definitive", "efts_acquisition_text"):
+        assert not is_acquirer_side_only({"form_d_business_combination": True, signal: True}), (
+            signal
+        )
+
+
+def test_low_grade_efts_mentions_do_not_rescue_an_acquirer_side_row():
+    """ma_proxy and ownership_active are graded Low and are not target-side.
+
+    A comparable-table entry or a >5% stake with intent is not evidence the SBIR
+    firm was acquired, so neither keeps an otherwise acquirer-side row in the
+    exit artifact.
+    """
+    for signal in ("efts_ma_proxy", "efts_ownership_active"):
+        assert is_acquirer_side_only({"form_d_business_combination": True, signal: True}), signal
+
+
+def test_a_row_without_a_form_d_flag_is_never_acquirer_side_only():
+    assert not is_acquirer_side_only({"efts_subsidiary": True})
 
 
 def test_assign_confidence_subsidiary_is_high():
