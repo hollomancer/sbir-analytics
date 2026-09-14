@@ -153,8 +153,14 @@ def _mapping_digest(audit: pd.DataFrame) -> str:
     return hashlib.sha256(serialized).hexdigest()
 
 
-def _cross_firm_assignment(unique_awards: pd.DataFrame) -> pd.DataFrame:
-    """Build the frozen randomized cyclic assignment (not a uniform derangement)."""
+def _cross_firm_assignment(
+    unique_awards: pd.DataFrame, *, seed: int = PLACEBO_SEED
+) -> pd.DataFrame:
+    """Build the frozen randomized cyclic assignment (not a uniform derangement).
+
+    ``seed`` defaults to the R15 seed so the recorded single-draw assignment is
+    unchanged; R16 passes the members of its preregistered seed list here.
+    """
 
     firm_counts = unique_awards["recipient_firm_uei"].value_counts()
     award_count = len(unique_awards)
@@ -167,7 +173,7 @@ def _cross_firm_assignment(unique_awards: pd.DataFrame) -> pd.DataFrame:
             "half of the unique prior awards (or fewer than two firms are present)"
         )
 
-    rng = np.random.default_rng(PLACEBO_SEED)
+    rng = np.random.default_rng(seed)
     firms = np.array(sorted(firm_counts.index), dtype=object)
     ordered_firms = firms[rng.permutation(len(firms))]
     ordered_groups: list[pd.DataFrame] = []
@@ -189,7 +195,7 @@ def _cross_firm_assignment(unique_awards: pd.DataFrame) -> pd.DataFrame:
     audit["date_value_changed"] = _null_safe_changed(
         audit["original_prior_end"], audit["permuted_prior_end"]
     )
-    audit["seed"] = PLACEBO_SEED
+    audit["seed"] = int(seed)
     audit = audit[
         [column for column in ASSIGNMENT_AUDIT_COLUMNS if column != "mapping_sha256"]
     ].sort_values("recipient_award_id", kind="stable", ignore_index=True)
@@ -198,12 +204,12 @@ def _cross_firm_assignment(unique_awards: pd.DataFrame) -> pd.DataFrame:
     return audit[list(ASSIGNMENT_AUDIT_COLUMNS)]
 
 
-def build_placebo_assignment(pairs: pd.DataFrame) -> PlaceboAssignment:
+def build_placebo_assignment(pairs: pd.DataFrame, *, seed: int = PLACEBO_SEED) -> PlaceboAssignment:
     """Assign each unique award a fixed-seed date donor from another firm."""
 
     _require_columns(pairs)
     unique_awards = _unique_prior_awards(pairs)
-    audit = _cross_firm_assignment(unique_awards)
+    audit = _cross_firm_assignment(unique_awards, seed=seed)
     date_by_award = audit.set_index("recipient_award_id")["permuted_prior_end"]
     award_keys = pairs["prior_award_id"].map(_text)
     output = pairs.copy()
@@ -240,19 +246,23 @@ def build_placebo_assignment(pairs: pd.DataFrame) -> PlaceboAssignment:
     )
 
 
-def permute_prior_end_dates_across_firms(pairs: pd.DataFrame) -> pd.DataFrame:
+def permute_prior_end_dates_across_firms(
+    pairs: pd.DataFrame, *, seed: int = PLACEBO_SEED
+) -> pd.DataFrame:
     """Return the pair frame with the frozen cross-firm award-date assignment."""
 
-    return build_placebo_assignment(pairs).permuted_pairs
+    return build_placebo_assignment(pairs, seed=seed).permuted_pairs
 
 
 def build_placebo_study_tables(
     pairs: pd.DataFrame,
     data_cut_date: date,
+    *,
+    seed: int = PLACEBO_SEED,
 ) -> PlaceboCensusTables:
     """Build the assignment and run its frame through one memory-safe census pass."""
 
-    assignment = build_placebo_assignment(pairs)
+    assignment = build_placebo_assignment(pairs, seed=seed)
     dropoff, sensitivity = build_census_tables(assignment.permuted_pairs, data_cut_date)
     return PlaceboCensusTables(
         assignment=assignment,

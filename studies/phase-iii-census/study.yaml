@@ -12,9 +12,11 @@ estimand: >-
   proxies under every preregistered time-window and agency-continuity cell.
 frozen_artifacts:
   - path: specs/phase-iii-census/design.md
-    sha256: 05d1850df6c33ead6d15a34137a4aa202273820a3191b83da0fca007324fe752
+    sha256: 2cb6df153315514db8baacf412c1fa6ccd9b30421d70cee58ea49920bf5d9e2c
   - path: specs/phase-iii-census/amendments.md
-    sha256: 6ea0768468de67703a4ada3aebd428d44e04e0d0cf9057d8698f9bbb0ee1b313
+    sha256: eb5f6b070b0f9597b7e72ca1a7e4aa134983e6c5a12482f8aa8f71670f46e99c
+  - path: studies/phase-iii-census/validation-design.md
+    sha256: 7f6e304aa613849c28e17576970b3f5a056561960f9ffc7e75976c2fd847d0f8
 implementation:
   - path: packages/sbir-analytics/sbir_analytics/assets/phase_iii_census/assets.py
     symbol: phase_iii_census
@@ -24,13 +26,41 @@ implementation:
     symbol: run
   - path: scripts/data/build_phase_iii_placebo.py
     symbol: run
+  - path: scripts/data/build_phase_iii_placebo_permutation.py
+    symbol: run
 identity_policy:
   strategy: exact normalized UEI only; no name or DUNS fallback
-  version: phase-0-r15
+  version: phase-0-r16
   negative_evidence_allowed: false
 materialization:
   allowed: true
   blockers: []
+validation_design:
+  addressable_population: >-
+    The frozen exact-UEI SBIR Phase II award-to-contract pair universe at the
+    2026-02-06 data cut (53,890,816 pairs; 72,996 unique prior awards; 8,938
+    firms), compared against 500 placebo frames drawn from the frozen R15
+    cross-firm completion-date derangement family with seeds 20260802-20261301.
+  expected_yield: >-
+    One final-cumulative-clause metric row and six sensitivity cells per seed,
+    plus the same for the actual frame; an exceedance share with a Wilson 95%
+    interval for the primary statistic and for each secondary metric and cell.
+  decision_threshold: >-
+    Threshold met if and only if the Wilson 95% lower bound on the share of
+    draws in which the actual frame strictly exceeds the placebo frame on
+    surviving_pairs at the final cumulative clause (exact_naics_or_psc_lineage)
+    is at least 0.95. Ties are not exceedances. Secondary metrics and cells
+    carry no threshold; dollar totals are descriptive.
+  threshold_derivation: >-
+    0.95 is the conventional one-sided level for an observed value sitting in
+    the upper tail of an empirical null; it was fixed without reference to any
+    draw beyond the single R15 sign, and the R15 seed is excluded from the
+    confirmatory sample because its result was visible. Requiring the interval
+    lower bound rather than the point estimate follows the #726 rule that a
+    validated result carries its uncertainty. With N = 500 the rule tolerates
+    at most 15 non-exceedances.
+  threshold_basis: proportion
+  threshold_value: 0.95
 permitted_claims:
   - The estimand, criteria, and implementation are frozen and fixture-verified.
   - The complete February cumulative ladder and all six sensitivity cells were
@@ -44,6 +74,10 @@ limitations:
   - The materialized placebo is one non-uniform cyclic derangement, not an inferential
     permutation distribution; labeled validation remains unresolved, so no headline
     census cell, undercount claim, or statutory Phase III interpretation is authorized.
+  - A permutation-separation validation design (Revision 16) is frozen but has not run;
+    no validation result is recorded and the rank is unchanged. When it runs, a met
+    threshold will mean separation from the frozen placebo family, not that the proxy
+    identifies statutory Phase III awards.
   - Negative-control inference is restricted to the frozen exact-match common-support
     subset and does not generalize to unmatched Phase II firms.
   - Exact UEI matching misses acquisitions, successors, and UEI changes.

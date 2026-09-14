@@ -161,8 +161,9 @@ def test_output_builder_uses_shared_census_path_once_per_arm(
     assignment = PlaceboAssignment(audit, permuted, "b" * 64)
     calls: list[pd.DataFrame] = []
 
-    def fake_assignment(frame: pd.DataFrame) -> PlaceboAssignment:
+    def fake_assignment(frame: pd.DataFrame, *, seed: int) -> PlaceboAssignment:
         assert frame is pairs
+        assert seed == placebo_module.PLACEBO_SEED
         return assignment
 
     def fake_census(frame: pd.DataFrame, _cut: date):

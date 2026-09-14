@@ -270,8 +270,9 @@ def test_placebo_tables_use_one_memory_safe_census_call(
     assignment = build_placebo_assignment(pairs)
     calls: list[tuple[pd.DataFrame, date]] = []
 
-    def fake_assignment(frame: pd.DataFrame) -> PlaceboAssignment:
+    def fake_assignment(frame: pd.DataFrame, *, seed: int) -> PlaceboAssignment:
         assert frame is pairs
+        assert seed == placebo_module.PLACEBO_SEED
         return assignment
 
     def fake_tables(frame: pd.DataFrame, data_cut: date) -> tuple[pd.DataFrame, pd.DataFrame]:
@@ -299,3 +300,32 @@ def test_placebo_census_tables_match_shared_builder(pairs: pd.DataFrame) -> None
 
     pd.testing.assert_frame_equal(actual_dropoff, expected_dropoff)
     pd.testing.assert_frame_equal(actual_sensitivity, expected_sensitivity)
+
+
+def test_default_seed_is_the_frozen_r15_seed_and_is_recorded(pairs: pd.DataFrame) -> None:
+    """Omitting ``seed`` must reproduce the R15 assignment byte for byte."""
+
+    default = build_placebo_assignment(pairs)
+    explicit = build_placebo_assignment(pairs, seed=placebo_module.PLACEBO_SEED)
+
+    assert placebo_module.PLACEBO_SEED == 20260801
+    assert default.mapping_sha256 == explicit.mapping_sha256
+    assert set(default.audit["seed"]) == {20260801}
+
+
+def test_different_seeds_change_the_assignment_but_keep_every_invariant(
+    pairs: pd.DataFrame,
+) -> None:
+    first = build_placebo_assignment(pairs, seed=20260802)
+    second = build_placebo_assignment(pairs, seed=20260803)
+
+    assert first.mapping_sha256 != second.mapping_sha256
+    assert set(first.audit["seed"]) == {20260802}
+    for assignment in (first, second):
+        assert (assignment.audit["recipient_firm_uei"] != assignment.audit["donor_firm_uei"]).all()
+        assert _date_multiset(assignment.audit["original_prior_end"]) == _date_multiset(
+            assignment.audit["permuted_prior_end"]
+        )
+        assert len(assignment.permuted_pairs) == len(pairs)
+        non_date = [c for c in pairs.columns if c != "prior_period_of_performance_end"]
+        pd.testing.assert_frame_equal(assignment.permuted_pairs[non_date], pairs[non_date])
