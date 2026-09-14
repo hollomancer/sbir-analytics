@@ -220,6 +220,76 @@ class ValidationResult(BaseModel):
         return self
 
 
+class LiveSource(BaseModel):
+    """One input this study reads from outside the repository.
+
+    A live source cannot be frozen by bytes: it is updated by someone else, on
+    their schedule. What can be frozen is the *retrieval* -- the record of what
+    was fetched, when, and how large the upstream was at that moment. That
+    record is what turns a later difference into a diagnosable one.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    name: str = Field(min_length=1)
+    retrieval_manifest: str = Field(min_length=1)
+    upstream_measure: str = Field(min_length=1)
+    identity_grain: str = Field(min_length=1)
+
+    @field_validator("name", "retrieval_manifest", "upstream_measure", "identity_grain")
+    @classmethod
+    def reject_blank(cls, v: str) -> str:
+        if not v.strip():
+            raise ValueError("must not be blank")
+        return v
+
+
+class ReproductionTolerance(BaseModel):
+    """How far one reported quantity may move on a rebuild and still agree.
+
+    ``derivation`` carries the same weight as ``threshold_derivation`` in
+    ``ValidationDesign``: a band with no stated basis is not a contract, and a
+    band wide enough to admit any rebuild is a defect the derivation is meant to
+    expose.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    quantity: str = Field(min_length=1)
+    absolute_band: int = Field(ge=0)
+    derivation: str = Field(min_length=1)
+
+    @field_validator("quantity", "derivation")
+    @classmethod
+    def reject_blank(cls, v: str) -> str:
+        if not v.strip():
+            raise ValueError("must not be blank")
+        return v
+
+
+class ReproductionContract(BaseModel):
+    """What reproduction means for a study whose inputs include a live source.
+
+    ``reproducible`` reads as bit-exact, which is unachievable against a source
+    someone else updates, and so gets quietly ignored rather than enforced. A
+    study that declares live sources states instead which quantities are checked
+    and how far each may move.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    live_sources: list[LiveSource] = Field(min_length=1)
+    tolerances: list[ReproductionTolerance] = Field(min_length=1)
+
+    @model_validator(mode="after")
+    def quantities_are_distinct(self) -> "ReproductionContract":
+        seen = [t.quantity for t in self.tolerances]
+        duplicates = sorted({q for q in seen if seen.count(q) > 1})
+        if duplicates:
+            raise ValueError(f"duplicate reproduction tolerance for quantity: {duplicates}")
+        return self
+
+
 class StudyManifest(BaseModel):
     """The machine-checkable epistemic contract for one study."""
 
@@ -239,6 +309,7 @@ class StudyManifest(BaseModel):
     limitations: list[str] = Field(min_length=1)
     validation_design: ValidationDesign | None = None
     validation_result: ValidationResult | None = None
+    reproduction: ReproductionContract | None = None
 
     @model_validator(mode="after")
     def require_validation_design_after_reproducible(self) -> "StudyManifest":
@@ -302,6 +373,74 @@ class StudyManifest(BaseModel):
             )
         return self
 
+    @model_validator(mode="after")
+    def live_source_manifests_must_be_frozen(self) -> "StudyManifest":
+        """A declared retrieval manifest has to be pinned to be evidence.
+
+        Naming a path that is not in ``frozen_artifacts`` is what
+        ``transition-scoring`` effectively did: its provenance chain terminated
+        in ``/tmp/gsa_award_grain``, so the rebuild it later claimed could not
+        be classified.
+        """
+        contract = self.reproduction
+        if contract is None:
+            return self
+        frozen_paths = {artifact.path for artifact in self.frozen_artifacts}
+        for source in contract.live_sources:
+            if source.retrieval_manifest not in frozen_paths:
+                raise ValueError(
+                    f"live source {source.name!r} names retrieval_manifest "
+                    f"{source.retrieval_manifest!r}, which is not listed in frozen_artifacts"
+                )
+        return self
+
+    @model_validator(mode="after")
+    def tolerance_quantities_are_measurable(self) -> "StudyManifest":
+        """A tolerance must name a quantity some live source actually measures.
+
+        A band on a quantity nothing reports is unfalsifiable: no rebuild can
+        ever breach it, so it reads as a contract while constraining nothing.
+        The upstream measure of each live source is always admissible; any other
+        quantity has to be named in the study's own text so a reader can find
+        what it refers to.
+        """
+        contract = self.reproduction
+        if contract is None:
+            return self
+        upstream = {source.upstream_measure for source in contract.live_sources}
+        described = " ".join(self.permitted_claims + self.limitations + [self.estimand])
+        for tolerance in contract.tolerances:
+            if tolerance.quantity in upstream:
+                continue
+            if tolerance.quantity not in described:
+                raise ValueError(
+                    f"reproduction tolerance names quantity {tolerance.quantity!r}, which is "
+                    "neither an upstream_measure nor mentioned in the study's estimand, "
+                    "permitted_claims, or limitations; a band on an unreported quantity "
+                    "cannot be breached"
+                )
+        return self
+
+    @model_validator(mode="after")
+    def promoted_live_source_study_declares_reproduction(self) -> "StudyManifest":
+        """At ``reproducible`` and above, a declared live source needs a contract.
+
+        The schema cannot tell whether a study *has* an external input -- that
+        is an auditor judgement. It can require that a study which says it has
+        one also says what reproduction means for it.
+        """
+        if self.evidence_status is EvidenceStatus.EXPLORATORY:
+            return self
+        if self.evidence_status is EvidenceStatus.RETIRED:
+            return self
+        contract = self.reproduction
+        if contract is not None and not contract.tolerances:
+            raise ValueError(
+                f"evidence_status '{self.evidence_status.value}' with declared live sources "
+                "requires at least one reproduction tolerance"
+            )
+        return self
+
 
 def load_study_manifest(path: Path) -> StudyManifest:
     """Load and validate a study manifest from YAML."""
@@ -315,8 +454,11 @@ __all__ = [
     "FrozenArtifact",
     "IdentityPolicy",
     "ImplementationReference",
+    "LiveSource",
     "MaterializationGate",
     "StudyManifest",
+    "ReproductionContract",
+    "ReproductionTolerance",
     "ThresholdBasis",
     "ValidationDesign",
     "ValidationResult",
