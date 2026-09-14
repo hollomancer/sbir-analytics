@@ -6,6 +6,15 @@ note: >-
   Observable formal proposal complexity from current NIH page-limit tables and
   SBIR/STTR application-guide requirements. This is a proxy, not hours.
 
+#: Weights for the derived complexity score. They live here rather than in code
+#: because the study requires every derived number to trace to a source field or
+#: a named assumption, and a literal in the generator traces to neither. Page
+#: counts, registrations, and certifications enter at their face value; these two
+#: booleans need a weight to enter at all.
+score_weights:
+  research_institution_coordination: 2
+  commercialization_plan_required: 1
+
 mechanisms:
   nih_r01_equivalent:
     label: NIH R01-equivalent (parent R01)

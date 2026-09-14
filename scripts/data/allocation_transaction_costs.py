@@ -728,6 +728,19 @@ def ranking_flip_summary(sensitivity_rows: Sequence[Mapping[str, Any]]) -> list[
 def complexity_index(path: Path) -> list[dict[str, Any]]:
     raw = read_yaml_mapping(path, description="complexity rules")
     mechanisms = _require_mapping(raw, "mechanisms")
+    # Every term in the score has to trace to a source field or a named
+    # assumption. Page counts, registrations, and certifications enter at face
+    # value; the two booleans need a weight, and that weight is declared in the
+    # frozen rules rather than written as a literal here.
+    weights = _require_mapping(raw, "score_weights")
+    try:
+        coordination_weight = int(weights["research_institution_coordination"])
+        commercialization_weight = int(weights["commercialization_plan_required"])
+    except (KeyError, TypeError, ValueError) as exc:
+        raise ConfigurationError(
+            "complexity rules must declare integer score_weights for "
+            "research_institution_coordination and commercialization_plan_required"
+        ) from exc
     records = []
     for mechanism, spec in mechanisms.items():
         if not isinstance(spec, Mapping):
@@ -736,8 +749,8 @@ def complexity_index(path: Path) -> list[dict[str, Any]]:
             int(spec.get("research_strategy_pages", 0))
             + int(spec.get("specific_aims_pages", 0))
             + int(spec.get("commercialization_plan_pages", 0))
-            + (2 if spec.get("research_institution_coordination") else 0)
-            + (1 if spec.get("commercialization_plan_required") else 0)
+            + (coordination_weight if spec.get("research_institution_coordination") else 0)
+            + (commercialization_weight if spec.get("commercialization_plan_required") else 0)
             + len(spec.get("registrations", []))
             + len(spec.get("certifications", []))
         )

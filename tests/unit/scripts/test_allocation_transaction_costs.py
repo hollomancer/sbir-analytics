@@ -1,10 +1,12 @@
 from __future__ import annotations
 
 import ast
+import copy
 import hashlib
 from pathlib import Path
 
 import pytest
+import yaml
 
 from sbir_etl.exceptions import ConfigurationError
 from scripts.data.allocation_transaction_costs import (
@@ -16,6 +18,7 @@ from scripts.data.allocation_transaction_costs import (
     breakeven_sbir_hours,
     breakeven_sbir_hours_total,
     break_even_table,
+    complexity_index,
     load_all_duration_rows,
     load_assumptions,
     load_mechanism_years,
@@ -253,6 +256,7 @@ def test_core_functions_have_no_unexplained_numeric_literals() -> None:
         "award_dollars_per_application",
         "transaction_cost",
         "applicant_hours_from_source",
+        "complexity_index",
     }
     found: list[str] = []
     for node in tree.body:
@@ -495,3 +499,41 @@ def test_break_even_table_reports_both_thresholds_and_flags_infeasible() -> None
         assert row["no_feasible_hour_count"] == (row["h_treatment_breakeven_total"] < 0)
     assert any(row["no_feasible_hour_count"] for row in table)
     assert not all(row["no_feasible_hour_count"] for row in table)
+
+
+def test_complexity_score_weights_come_from_the_frozen_rules(tmp_path: Path) -> None:
+    """The score's two boolean weights must trace to the rules file, not to code.
+
+    Every derived number in this study has to trace to a source field or a named
+    assumption. Page counts, registrations, and certifications enter the score at
+    face value; the two booleans need a weight, and a literal in the generator
+    traces to neither.
+    """
+    rules = yaml.safe_load((STUDY / "complexity/nih_foa_rules.yaml").read_text())
+    assert rules["score_weights"] == {
+        "research_institution_coordination": 2,
+        "commercialization_plan_required": 1,
+    }
+
+    doubled = copy.deepcopy(rules)
+    doubled["score_weights"]["research_institution_coordination"] = 4
+    path = tmp_path / "rules.yaml"
+    path.write_text(yaml.safe_dump(doubled), encoding="utf-8")
+
+    baseline = {
+        r["mechanism"]: r["complexity_score"]
+        for r in complexity_index(STUDY / "complexity/nih_foa_rules.yaml")
+    }
+    changed = {r["mechanism"]: r["complexity_score"] for r in complexity_index(path)}
+
+    assert changed != baseline, "the generator ignored the declared weight"
+
+
+def test_missing_score_weights_is_refused(tmp_path: Path) -> None:
+    rules = yaml.safe_load((STUDY / "complexity/nih_foa_rules.yaml").read_text())
+    del rules["score_weights"]
+    path = tmp_path / "rules.yaml"
+    path.write_text(yaml.safe_dump(rules), encoding="utf-8")
+
+    with pytest.raises(ConfigurationError, match="score_weights"):
+        complexity_index(path)
