@@ -21,23 +21,51 @@ proposal. Once award size and success rate are in the formula, that
 missing hour count is what decides the ranking.
 
 For NIH SBIR Phase I versus R01-equivalent grants, if an R01 takes 160
-applicant hours, a Phase I proposal could consume only **45–69 hours**
-before cost per awarded dollar equals, when R01 size is treated as an
-**annual** average. If that same R01 is treated as a **four-year
-project**, the threshold falls to **11–17 hours**. No cell in the 20–200
-hour SBIR grid beats a 160-hour R01 under the four-year convention.
+applicant hours, a Phase I proposal could consume only **45–69
+applicant hours** before *applicant* cost per awarded dollar equals,
+when R01 size is treated as an **annual** average. If that same R01 is
+treated as a **four-year project**, the applicant-only threshold falls
+to **11–17 hours**. No cell in the 20–200 hour SBIR grid beats a
+160-hour R01 under the four-year convention.
+
+Those are applicant-only figures. Review cost is charged to both sides
+everywhere else in this note, and including it lowers every threshold,
+because the SBIR side carries the same review cost over a smaller
+award. Ranges across the 11 fiscal years, R01 at 160 hours:
+
+| Convention | Applicant-only | Total, rh=2 | Total, rh=4 | Total, rh=8 |
+|---|---|---|---|---|
+| Annual R01 size | 45.1–68.5 | 40.8–65.1 | 36.5–61.7 | 27.9–54.8 |
+| Four-year R01 | 11.3–17.1 | 5.7–11.8 | 0.1–6.4 | **−11.0 to −4.3** |
+
+**A negative threshold is not a small one.** Under the four-year
+convention at 8 reviewer hours, all 11 years have no feasible applicant
+-hour count at all: SBIR review cost alone, scaled by the success-rate
+and award-size ratio, already exceeds the R01 side before the firm
+writes a word. 60 of the 264 break-even rows are in that state, and
+`breakeven.csv` flags them with `no_feasible_hour_count` rather than
+clipping the value to zero.
 
 That is the competing hypothesis in numbers: smaller awards and lower
-success rates can offset a shorter proposal.
+success rates can offset a shorter proposal — and once review cost is
+counted, sometimes no proposal is short enough.
 
-Algebra, same wage, agency cost omitted:
+Algebra, same wage, agency cost omitted. Applicant-only:
 
 ```text
 h_sbir* = h_r01 × (s_sbir × D_sbir) / (s_r01 × D_r01)
 ```
 
+Total, adding the review term both sides carry:
+
+```text
+k        = (s_sbir × D_sbir) / (s_r01 × D_r01)
+h_sbir*  = [ (h_r01 × w + R_r01 × rh × rw) × k − R_sbir × rh × rw ] / w
+```
+
 `s` is awards / applications. `D` is mean award dollars under a named
-duration convention.
+duration convention. `R` is reviewers per application, `rh` reviewer
+hours per review, `w` and `rw` the applicant and reviewer wages.
 
 ## What public data can and cannot establish
 

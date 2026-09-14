@@ -102,6 +102,42 @@ def breakeven_sbir_hours(
     return h_control * (success_treatment * dollars_treatment) / (success_control * dollars_control)
 
 
+def breakeven_sbir_hours_total(
+    h_control: float,
+    success_treatment: float,
+    dollars_treatment: float,
+    success_control: float,
+    dollars_control: float,
+    *,
+    wage: float,
+    reviewers_treatment: float,
+    reviewers_control: float,
+    reviewer_hours: float,
+    reviewer_wage: float,
+) -> float:
+    """Applicant hours at which TOTAL cost per awarded dollar equals control.
+
+    Unlike :func:`breakeven_sbir_hours`, this carries the review term that
+    ``transaction_cost`` charges to both sides, so it is the threshold that
+    corresponds to the metrics and sensitivity tables.
+
+    The result may be negative. That is a finding, not an error: it means no
+    non-negative applicant-hour count makes the treatment cheaper per awarded
+    dollar, because treatment review cost alone already exceeds the control
+    side once the success-rate and award-size ratio is applied. Callers must
+    report a negative threshold rather than clipping it to zero.
+    """
+
+    if min(success_treatment, dollars_treatment, success_control, dollars_control) <= 0:
+        raise ConfigurationError("break-even requires positive success rates and award sizes")
+    if wage <= 0:
+        raise ConfigurationError("break-even requires a positive wage")
+    scale = (success_treatment * dollars_treatment) / (success_control * dollars_control)
+    control_side = h_control * wage + reviewers_control * reviewer_hours * reviewer_wage
+    treatment_review = reviewers_treatment * reviewer_hours * reviewer_wage
+    return (control_side * scale - treatment_review) / wage
+
+
 def breakeven_reviewer_hours(
     reviewer_hours_control: float,
     reviewers_treatment: float,
@@ -376,48 +412,78 @@ def break_even_table(
     rows: Sequence[MechanismYear],
     assumptions: Mapping[str, Any],
 ) -> list[dict[str, Any]]:
+    """Break-even applicant hours, applicant-only and total, per scenario.
+
+    Both thresholds are emitted because they answer different questions. The
+    applicant-only figure is the algebraic identity in the findings note; the
+    total figure is the one consistent with the cost the metrics and sensitivity
+    tables actually charge. A negative total threshold is reported as it stands
+    and flagged with ``no_feasible_hour_count``.
+    """
+
     comparison = _require_mapping(assumptions, "comparison")
     treatment = str(comparison["treatment_mechanism"])
     control = str(comparison["control_mechanism"])
     duration = _require_mapping(assumptions, "duration")
+    review = _require_mapping(assumptions, "review")
+    wage = _labor_rate(assumptions, str(assumptions["default_labor_rate_id"]))
+    reviewer_wage = _labor_rate(assumptions, str(review["reviewer_labor_rate_id"]))
+    reviewers_t = _reviewers_for(assumptions, treatment)[0]
+    reviewers_c = _reviewers_for(assumptions, control)[0]
     indexed = index_by_mechanism_year(rows)
     records: list[dict[str, Any]] = []
     for h_control in _hours_for(assumptions, control):
-        for year in comparison_years(rows, treatment, control):
-            for convention in duration["conventions"]:
-                treat = indexed[(treatment, year, str(convention))]
-                ctrl = indexed[(control, year, str(convention))]
-                if treat.success_rate is None or ctrl.success_rate is None:
-                    continue
-                if treat.mean_award_size is None or ctrl.mean_award_size is None:
-                    continue
-                threshold = breakeven_sbir_hours(
-                    h_control,
-                    treat.success_rate,
-                    treat.mean_award_size,
-                    ctrl.success_rate,
-                    ctrl.mean_award_size,
-                )
-                records.append(
-                    {
-                        "fiscal_year": year,
-                        "duration_convention": convention,
-                        "treatment_mechanism": treatment,
-                        "control_mechanism": control,
-                        "h_control": h_control,
-                        "h_treatment_breakeven": threshold,
-                        "treatment_success_rate": treat.success_rate,
-                        "control_success_rate": ctrl.success_rate,
-                        "treatment_mean_award_size": treat.mean_award_size,
-                        "control_mean_award_size": ctrl.mean_award_size,
-                        "treatment_award_dollars_per_application": award_dollars_per_application(
-                            treat.success_rate, treat.mean_award_size
-                        ),
-                        "control_award_dollars_per_application": award_dollars_per_application(
-                            ctrl.success_rate, ctrl.mean_award_size
-                        ),
-                    }
-                )
+        for reviewer_hours in review["reviewer_hours"]:
+            for year in comparison_years(rows, treatment, control):
+                for convention in duration["conventions"]:
+                    treat = indexed[(treatment, year, str(convention))]
+                    ctrl = indexed[(control, year, str(convention))]
+                    if treat.success_rate is None or ctrl.success_rate is None:
+                        continue
+                    if treat.mean_award_size is None or ctrl.mean_award_size is None:
+                        continue
+                    applicant_only = breakeven_sbir_hours(
+                        h_control,
+                        treat.success_rate,
+                        treat.mean_award_size,
+                        ctrl.success_rate,
+                        ctrl.mean_award_size,
+                    )
+                    total = breakeven_sbir_hours_total(
+                        h_control,
+                        treat.success_rate,
+                        treat.mean_award_size,
+                        ctrl.success_rate,
+                        ctrl.mean_award_size,
+                        wage=wage,
+                        reviewers_treatment=reviewers_t,
+                        reviewers_control=reviewers_c,
+                        reviewer_hours=float(reviewer_hours),
+                        reviewer_wage=reviewer_wage,
+                    )
+                    records.append(
+                        {
+                            "fiscal_year": year,
+                            "duration_convention": convention,
+                            "treatment_mechanism": treatment,
+                            "control_mechanism": control,
+                            "h_control": h_control,
+                            "reviewer_hours": float(reviewer_hours),
+                            "h_treatment_breakeven_applicant_only": applicant_only,
+                            "h_treatment_breakeven_total": total,
+                            "no_feasible_hour_count": total < 0,
+                            "treatment_success_rate": treat.success_rate,
+                            "control_success_rate": ctrl.success_rate,
+                            "treatment_mean_award_size": treat.mean_award_size,
+                            "control_mean_award_size": ctrl.mean_award_size,
+                            "treatment_award_dollars_per_application": award_dollars_per_application(
+                                treat.success_rate, treat.mean_award_size
+                            ),
+                            "control_award_dollars_per_application": award_dollars_per_application(
+                                ctrl.success_rate, ctrl.mean_award_size
+                            ),
+                        }
+                    )
     return records
 
 
@@ -758,6 +824,9 @@ def run(
     summary = {
         "mechanism_years": len(rows),
         "breakeven_rows": len(breakeven),
+        "breakeven_no_feasible_hour_count_rows": sum(
+            1 for row in breakeven if row["no_feasible_hour_count"]
+        ),
         "metrics_rows": len(metrics),
         "sensitivity_rows": len(sensitivity),
         "gc_mode": assumptions["agency_cost"]["mode"],

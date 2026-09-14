@@ -14,6 +14,8 @@ from scripts.data.allocation_transaction_costs import (
     applicant_hours_from_source,
     breakeven_reviewer_hours,
     breakeven_sbir_hours,
+    breakeven_sbir_hours_total,
+    break_even_table,
     load_all_duration_rows,
     load_assumptions,
     load_mechanism_years,
@@ -245,6 +247,7 @@ def test_core_functions_have_no_unexplained_numeric_literals() -> None:
     tree = ast.parse(CALCULATOR.read_text(encoding="utf-8"))
     watched = {
         "breakeven_sbir_hours",
+        "breakeven_sbir_hours_total",
         "breakeven_reviewer_hours",
         "success_rate",
         "award_dollars_per_application",
@@ -410,3 +413,85 @@ def test_ranking_flip_summary_separates_reviewer_hours_and_shock_target(
     assert summary
     assert {row["shock_target"] for row in summary} == set(SHOCK_TARGETS)
     assert len({row["reviewer_hours"] for row in summary}) > 1
+
+
+def test_total_breakeven_is_below_applicant_only_and_may_go_negative() -> None:
+    """The review term both sides carry lowers the threshold, sometimes past zero."""
+
+    common = dict(
+        success_treatment=0.0781,
+        dollars_treatment=352_780.0,
+        success_control=0.1302,
+        dollars_control=2_656_020.0,
+    )
+    applicant_only = breakeven_sbir_hours(160.0, **common)
+    total = breakeven_sbir_hours_total(
+        160.0,
+        **common,
+        wage=53.99,
+        reviewers_treatment=3,
+        reviewers_control=3,
+        reviewer_hours=8.0,
+        reviewer_wage=53.99,
+    )
+    assert total < applicant_only
+    assert total < 0, "this scenario has no feasible applicant-hour count"
+
+
+def test_total_breakeven_equals_applicant_only_without_review_cost() -> None:
+    """With no review hours the two thresholds must coincide."""
+
+    common = dict(
+        success_treatment=0.1,
+        dollars_treatment=300_000.0,
+        success_control=0.2,
+        dollars_control=600_000.0,
+    )
+    assert breakeven_sbir_hours_total(
+        160.0,
+        **common,
+        wage=50.0,
+        reviewers_treatment=3,
+        reviewers_control=3,
+        reviewer_hours=0.0,
+        reviewer_wage=50.0,
+    ) == pytest.approx(breakeven_sbir_hours(160.0, **common))
+
+
+def test_total_breakeven_rejects_a_non_positive_wage() -> None:
+    with pytest.raises(ConfigurationError):
+        breakeven_sbir_hours_total(
+            160.0,
+            success_treatment=0.1,
+            dollars_treatment=300_000.0,
+            success_control=0.2,
+            dollars_control=600_000.0,
+            wage=0.0,
+            reviewers_treatment=3,
+            reviewers_control=3,
+            reviewer_hours=4.0,
+            reviewer_wage=50.0,
+        )
+
+
+def test_break_even_table_reports_both_thresholds_and_flags_infeasible() -> None:
+    """Negative thresholds are reported, not clipped."""
+
+    assumptions = load_assumptions(STUDY / "assumptions.yaml")
+    sources = load_sources(STUDY / "sources.yaml")
+    rows = load_all_duration_rows(sources, assumptions, repository_root=REPO)
+    table = break_even_table(rows, assumptions)
+    assert table
+    required = {
+        "h_treatment_breakeven_applicant_only",
+        "h_treatment_breakeven_total",
+        "no_feasible_hour_count",
+        "reviewer_hours",
+    }
+    assert required <= set(table[0])
+    assert "h_treatment_breakeven" not in table[0]
+    for row in table:
+        assert row["h_treatment_breakeven_total"] <= row["h_treatment_breakeven_applicant_only"]
+        assert row["no_feasible_hour_count"] == (row["h_treatment_breakeven_total"] < 0)
+    assert any(row["no_feasible_hour_count"] for row in table)
+    assert not all(row["no_feasible_hour_count"] for row in table)
