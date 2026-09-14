@@ -19,21 +19,32 @@ Open questions, and the registry entry in `specs/status.md` says the same.
 scripts and pinned manifests." On 2026-09-13 the corpus was rebuilt from those
 committed scripts to test that claim:
 
-| Quantity | Frozen (2026-08-01) | Rebuild (2026-09-13) |
-|---|---:|---:|
-| corpus rows | 828 | 822 |
-| positives | 138 | 137 |
-| firms | 101 | 100 |
+| Quantity | Frozen (2026-08-01) | First rebuild | Second rebuild |
+|---|---:|---:|---:|
+| corpus rows | 828 | 822 | **828** |
+| positives | 138 | 137 | **138** |
+| firms | 101 | 100 | **101** |
 
-One positive short, and the six missing rows are that positive plus its
-negatives. By any ordinary reading this is a successful reproduction. The
-repository cannot say so, and that is the defect.
+The first rebuild came up one positive short and was reported, by hand, as
+probable upstream drift. **That diagnosis was wrong**, and the way it was wrong
+is the argument for this spec.
+
+The second rebuild reproduces the frozen corpus exactly. The difference between
+the two was never the archive: FY2022 scanned 242,161 rows on the first pull and
+351,131 on the second, so the first pull silently dropped about 109,000 rows and
+recovered one fewer award-grain notice as a result.
+
+A count-only comparison sees `138 -> 137`, finds it small, and calls it drift.
+That is exactly what a human did. The upstream measure is what distinguishes a
+world that moved from a retrieval that broke, and without it the plausible
+reading and the correct reading point in opposite directions.
 
 ## What is actually missing
 
 The upstream is the public `falextracts` GSA archive, which is updated
-continuously. Bit-exact reproduction against it is not achievable and never
-will be. That is not the problem.
+continuously, so a rebuild may legitimately differ. But as the second rebuild
+shows, it may also match exactly, and a difference is not self-evidently drift.
+Neither "expect exactness" nor "expect drift" is a usable rule.
 
 The problem is that the evidence needed to *classify* the difference was
 discarded. `recover_award_grain.py` writes a retrieval manifest that already
@@ -124,6 +135,12 @@ The binding rules are therefore narrower than the table alone suggests:
   check at the declared grain, not only counts.
 - Any cell in which the identity check disagrees while counts agree **fails**,
   and is the case the counts alone would have hidden.
+
+The observed case is the second row read in reverse: `rows_scanned` moved by
+108,970 while `rows_kept` moved by 1. A band wide enough to admit one lost
+notice is nowhere near wide enough to admit a hundred thousand lost source
+rows, so the upstream measure fails the comparison before the kept count is
+ever argued about.
 
 Design must fix the grain per source kind: a notice id for the GSA archive, an
 accession for EDGAR, an award key for USAspending. A count-only comparison is

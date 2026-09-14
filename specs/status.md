@@ -200,24 +200,19 @@ bypassing lifecycle review; the status and rationale still require human judgmen
   into weekly reporting modules. Remaining work is injection, coverage, and
   alias cleanup.
 
-<<<<<<< HEAD
-- **`upstream-drift-reproduction` — Active.** Proposed contract change so
-=======
-- **`upstream-drift-reproduction` — Active.** Contract change so
->>>>>>> origin/main
-  `reproducible` stays checkable when an input is a live public source. Motivated
-  by a real rebuild: `transition-scoring`'s fusion corpus regenerated to 822 rows
-  / 137 positives / 100 firms against a frozen 828 / 138 / 101, and the
-  difference is undiagnosable because the study pinned the string
-  `/tmp/gsa_award_grain` rather than the retrieval manifest that recorded
-  `rows_scanned` per fiscal year. No schema change is implemented yet; the open
-<<<<<<< HEAD
-  questions in the spec name where tolerance would live and when it is checked.
-=======
-  questions in the spec name where tolerance would live and when it is checked;
-  design must settle those two before implementation starts, and the spec's
-  "Done when" section states the checks that prove it complete.
->>>>>>> origin/main
+- **`upstream-drift-reproduction` — Maintenance.** Implemented. `StudyManifest`
+  carries a `reproduction` block declaring live sources with their pinned
+  retrieval manifests and per-quantity tolerances, and
+  `sbir_etl/quality/reproduction.py` classifies a rebuild into exact, upstream
+  drift, pipeline regression, identity divergence, or outside tolerance.
+  `transition-scoring` is the first consumer and promoted to `reproducible` on
+  it. The motivating case resolved the opposite way to the initial reading: its
+  corpus rebuild first came up one positive short and was reported as archive
+  drift, and a complete re-pull reproduced 828 rows / 138 positives / 101 firms
+  exactly — the first pull had silently dropped about 109,000 FY2022 source
+  rows. Remaining work is applying the contract to the other live-source studies
+  and deciding whether the comparison runs in CI or at audit time.
+
 ## Archive Candidates
 
 `ucc1-financing-analysis` was archived on 2026-08-07 under

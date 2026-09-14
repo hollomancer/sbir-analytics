@@ -134,18 +134,57 @@ def test_a_quantity_with_no_declared_tolerance_fails() -> None:
 
 
 def test_the_motivating_rebuild_is_now_determinate() -> None:
-    """Done-when item 5: the 2026-09-13 transition-scoring rebuild.
+    """Done-when item 5, and the case that proves the mechanism earns its keep.
 
-    Upstream totals were not retained for the 2026-08-01 baseline, which is the
-    whole defect this mechanism exists to prevent. With them retained, the same
-    numbers classify instead of sitting unanswerable.
+    transition-scoring's corpus was rebuilt twice. The first rebuild produced
+    822 rows / 137 positives / 100 firms against a frozen 828 / 138 / 101 and
+    was reported by hand as probable upstream drift. The second reproduced the
+    frozen corpus exactly.
+
+    The first pull was incomplete: FY2022 scanned 242,161 rows where the second
+    scanned 351,131, dropping about 109,000 source rows and one award-grain
+    notice with them. A count-only comparison sees 138 -> 137, finds it small,
+    and calls it drift -- which is precisely the wrong answer a human gave.
     """
     result = classify_rebuild(
-        upstream=RebuildObservation("rows_scanned", 3_369_754, 3_369_700),
+        upstream=RebuildObservation("rows_scanned", 3_897_224, 3_788_254),
         kept=RebuildObservation("positives", 138, 137),
         tolerances=_tolerances(rows_scanned=10_000, positives=2),
         identity_agrees=True,
     )
-    assert result.verdict is RebuildVerdict.UPSTREAM_DRIFT
+
+    assert result.verdict is RebuildVerdict.OUTSIDE_TOLERANCE
+    assert not result.passed
+    assert any("rows_scanned moved by 108970" in reason for reason in result.reasons)
+
+
+def test_the_complete_rebuild_is_exact() -> None:
+    """The second rebuild, against the retrieval manifest committed with it."""
+    result = classify_rebuild(
+        upstream=RebuildObservation("rows_scanned", 3_897_224, 3_897_224),
+        kept=RebuildObservation("positives", 138, 138),
+        tolerances=_tolerances(rows_scanned=10_000, positives=2),
+        identity_agrees=True,
+    )
+
+    assert result.verdict is RebuildVerdict.EXACT
     assert result.passed
-    assert result.reasons
+
+
+def test_a_small_kept_delta_does_not_excuse_a_large_upstream_delta() -> None:
+    """The failure mode the hand diagnosis fell into, stated as a test.
+
+    A kept count inside its band is not agreement when the upstream measure is
+    far outside its own. The retrieval is what broke, and the kept count only
+    looks reassuring because most of the dropped rows were never going to be
+    kept.
+    """
+    result = classify_rebuild(
+        upstream=RebuildObservation("rows_scanned", 3_897_224, 3_788_254),
+        kept=RebuildObservation("positives", 138, 138),
+        tolerances=_tolerances(rows_scanned=10_000, positives=2),
+        identity_agrees=True,
+    )
+
+    assert result.verdict is RebuildVerdict.OUTSIDE_TOLERANCE
+    assert not result.passed
