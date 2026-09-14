@@ -8,7 +8,9 @@ import pytest
 
 from sbir_etl.exceptions import ConfigurationError
 from scripts.data.allocation_transaction_costs import (
+    SHOCK_TARGETS,
     MechanismYear,
+    _shock_factors,
     applicant_hours_from_source,
     breakeven_reviewer_hours,
     breakeven_sbir_hours,
@@ -17,7 +19,9 @@ from scripts.data.allocation_transaction_costs import (
     load_mechanism_years,
     load_sources,
     metrics_table,
+    ranking_flip_summary,
     run,
+    sensitivity_grid,
     success_rate,
     transaction_cost,
 )
@@ -283,3 +287,126 @@ def test_reviewer_break_even_scales_with_reviewer_count() -> None:
     one = breakeven_reviewer_hours(4, 3, 3, 0.1, 300_000, 0.2, 600_000)
     two = breakeven_reviewer_hours(4, 6, 3, 0.1, 300_000, 0.2, 600_000)
     assert two == pytest.approx(one / 2)
+
+
+@pytest.fixture(scope="module")
+def committed_sensitivity() -> list[dict[str, object]]:
+    """The sensitivity grid over the committed tables, built once."""
+
+    assumptions = load_assumptions(STUDY / "assumptions.yaml")
+    sources = load_sources(STUDY / "sources.yaml")
+    rows = load_all_duration_rows(sources, assumptions, repository_root=REPO)
+    return sensitivity_grid(rows, assumptions)
+
+
+def _cells(grid, target):
+    """Group ratios by scenario cell, holding everything but the shock fixed."""
+
+    cells: dict[tuple[object, ...], list[float]] = {}
+    for row in grid:
+        if row["shock_target"] != target:
+            continue
+        key = (
+            row["fiscal_year"],
+            row["duration_convention"],
+            row["h_treatment"],
+            row["h_control"],
+            row["reviewer_hours"],
+        )
+        ratio = row["treatment_tc_per_dollar"] / row["control_tc_per_dollar"]
+        cells.setdefault(key, []).append(ratio)
+    return cells
+
+
+def test_shock_factors_apply_to_the_named_side_only() -> None:
+    assert _shock_factors("both", 0.25) == (1.25, 1.25)
+    assert _shock_factors("treatment", 0.25) == (1.25, 1.0)
+    assert _shock_factors("control", 0.25) == (1.0, 1.25)
+    with pytest.raises(ConfigurationError):
+        _shock_factors("applicant", 0.25)
+
+
+def test_common_shocks_cannot_change_the_ranking(committed_sensitivity) -> None:
+    """A shock applied to both sides divides out of cost per awarded dollar.
+
+    This is a property of the cost function, not a finding. `both` rows are kept
+    in the grid as this check; the one-sided targets are what test the relative
+    assumption.
+    """
+
+    cells = _cells(committed_sensitivity, "both")
+    assert cells
+    for key, ratios in cells.items():
+        spread = (max(ratios) - min(ratios)) / min(ratios)
+        assert spread < 1e-12, f"{key} ratio moved by {spread:.3e} under a common shock"
+
+    flags: dict[tuple[object, ...], set[bool]] = {}
+    for row in committed_sensitivity:
+        if row["shock_target"] != "both":
+            continue
+        key = (
+            row["fiscal_year"],
+            row["duration_convention"],
+            row["h_treatment"],
+            row["h_control"],
+            row["reviewer_hours"],
+        )
+        flags.setdefault(key, set()).add(bool(row["treatment_cheaper_per_dollar"]))
+    assert all(len(v) == 1 for v in flags.values())
+
+
+def test_one_sided_shocks_do_move_the_ranking_ratio(committed_sensitivity) -> None:
+    cells = _cells(committed_sensitivity, "treatment")
+    assert cells
+    moved = sum(1 for ratios in cells.values() if max(ratios) - min(ratios) > 0)
+    assert moved == len(cells)
+
+
+def test_sensitivity_grid_sweeps_the_declared_reviewer_hours(committed_sensitivity) -> None:
+    """Reviewer hours are a swept scenario, not a pinned constant."""
+
+    assumptions = load_assumptions(STUDY / "assumptions.yaml")
+    declared = {float(h) for h in assumptions["review"]["reviewer_hours"]}
+    assert {row["reviewer_hours"] for row in committed_sensitivity} == declared
+    assert {row["shock_target"] for row in committed_sensitivity} == set(SHOCK_TARGETS)
+
+
+def test_reviewer_hours_change_the_ranking_when_scale_differs() -> None:
+    """Equal reviewer counts do not make reviewer cost cancel.
+
+    Review cost enters cost per awarded dollar as R x rh x rw / (s x d). When the
+    two mechanisms differ in s x d, raising reviewer hours raises the smaller-scale
+    side faster, so the ranking flips on reviewer hours alone. Here both sides draw
+    10 applications per award at a $50 wage with 3 reviewers, the treatment award is
+    half the control award, and the treatment proposal is 33 hours against 80. The
+    algebraic crossover is at 3 x rh x 50 = $700 of review cost, so rh = 2 lands
+    below it and rh = 8 above.
+    """
+
+    def per_dollar(hours: float, mean_award_size: float, reviewer_hours: float) -> float:
+        return transaction_cost(
+            applications=1_000,
+            awards=100,
+            mean_award_size=mean_award_size,
+            hours_per_application=hours,
+            wage=50.0,
+            reviewers_per_application=3,
+            reviewer_hours=reviewer_hours,
+            reviewer_wage=50.0,
+            agency_cost=None,
+            per_million_dollars=1_000_000,
+        ).dollars_per_award_dollar
+
+    assert per_dollar(33.0, 300_000, 2.0) < per_dollar(80.0, 600_000, 2.0)
+    assert per_dollar(33.0, 300_000, 8.0) > per_dollar(80.0, 600_000, 8.0)
+
+
+def test_ranking_flip_summary_separates_reviewer_hours_and_shock_target(
+    committed_sensitivity,
+) -> None:
+    """Grouping must not average over the two dimensions that move the result."""
+
+    summary = ranking_flip_summary(committed_sensitivity)
+    assert summary
+    assert {row["shock_target"] for row in summary} == set(SHOCK_TARGETS)
+    assert len({row["reviewer_hours"] for row in summary}) > 1

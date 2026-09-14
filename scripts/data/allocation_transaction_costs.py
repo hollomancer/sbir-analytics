@@ -26,6 +26,13 @@ DEFAULT_COMPLEXITY = (
     REPOSITORY_ROOT / "studies/allocation-transaction-costs/complexity/nih_foa_rules.yaml"
 )
 FORBIDDEN_HOUR_SOURCES = frozenset({"pra_estimate", "fa_rate"})
+
+#: Which side of the comparison a sensitivity shock is applied to.
+#: A shock applied to ``both`` scales treatment and control by the same factor.
+#: Those factors cancel in cost per awarded dollar, so ``both`` rows cannot change
+#: the ranking by construction and are retained only as an invariance check; the
+#: one-sided targets are what test the relative assumption.
+SHOCK_TARGETS: tuple[str, ...] = ("both", "treatment", "control")
 ANNUAL_CONVENTION = "annual_award_size"
 PROJECT_CONVENTION = "project_total"
 
@@ -117,6 +124,22 @@ def breakeven_reviewer_hours(
         / (success_control * dollars_control)
         / reviewers_treatment
     )
+
+
+def _shock_factors(shock_target: str, relative_shock: float) -> tuple[float, float]:
+    """Return (treatment_factor, control_factor) for one shock target.
+
+    A ``both`` shock multiplies each side by the same factor. In cost per awarded
+    dollar that factor divides out of both numerator sides identically, so the
+    ranking is invariant; only a one-sided shock tests the relative assumption.
+    """
+
+    if shock_target not in SHOCK_TARGETS:
+        raise ConfigurationError(f"unknown shock target: {shock_target}")
+    factor = 1.0 + relative_shock
+    treatment = factor if shock_target in {"both", "treatment"} else 1.0
+    control = factor if shock_target in {"both", "control"} else 1.0
+    return treatment, control
 
 
 def refuse_forbidden_hour_source(evidence_class: str) -> None:
@@ -504,6 +527,17 @@ def sensitivity_grid(
     rows: Sequence[MechanismYear],
     assumptions: Mapping[str, Any],
 ) -> list[dict[str, Any]]:
+    """Cost per awarded dollar across hour, reviewer-hour, and shock scenarios.
+
+    Reviewer hours are swept over the declared grid rather than pinned: the
+    reviewer term enters cost per awarded dollar as ``R * rh * rw / (s * d)``,
+    and ``s * d`` differs between the mechanisms, so a single reviewer-hour
+    value can decide the sign of the comparison at the low end of the
+    applicant-hour grid.
+
+    Shocks are applied to one named side at a time. See :data:`SHOCK_TARGETS`.
+    """
+
     comparison = _require_mapping(assumptions, "comparison")
     treatment = str(comparison["treatment_mechanism"])
     control = str(comparison["control_mechanism"])
@@ -514,71 +548,80 @@ def sensitivity_grid(
     reviewer_wage = _labor_rate(assumptions, str(review["reviewer_labor_rate_id"]))
     per_million = float(assumptions["per_million_dollars"])
     indexed = index_by_mechanism_year(rows)
-    records: list[dict[str, Any]] = []
-    reviewer_hours_t = float(review["reviewer_hours"][len(review["reviewer_hours"]) // 2])
     reviewers_t = _reviewers_for(assumptions, treatment)[0]
     reviewers_c = _reviewers_for(assumptions, control)[0]
-    for h_t in _hours_for(assumptions, treatment):
-        for h_c in _hours_for(assumptions, control):
-            for year in comparison_years(rows, treatment, control):
-                for convention in duration["conventions"]:
-                    treat = indexed[(treatment, year, str(convention))]
-                    ctrl = indexed[(control, year, str(convention))]
-                    if treat.mean_award_size is None or ctrl.mean_award_size is None:
-                        continue
-                    if treat.success_rate is None or ctrl.success_rate is None:
-                        continue
-                    for s_shock in shocks["success_rate_relative_shocks"]:
-                        for d_shock in shocks["award_size_relative_shocks"]:
-                            s_t = treat.success_rate * (1.0 + float(s_shock))
-                            s_c = ctrl.success_rate * (1.0 + float(s_shock))
-                            d_t = treat.mean_award_size * (1.0 + float(d_shock))
-                            d_c = ctrl.mean_award_size * (1.0 + float(d_shock))
-                            if min(s_t, s_c, d_t, d_c) <= 0:
-                                continue
-                            apps_t = treat.awards / s_t
-                            apps_c = ctrl.awards / s_c
-                            cost_t = transaction_cost(
-                                applications=apps_t,
-                                awards=treat.awards,
-                                mean_award_size=d_t,
-                                hours_per_application=h_t,
-                                wage=wage,
-                                reviewers_per_application=reviewers_t,
-                                reviewer_hours=reviewer_hours_t,
-                                reviewer_wage=reviewer_wage,
-                                agency_cost=None,
-                                per_million_dollars=per_million,
-                            )
-                            cost_c = transaction_cost(
-                                applications=apps_c,
-                                awards=ctrl.awards,
-                                mean_award_size=d_c,
-                                hours_per_application=h_c,
-                                wage=wage,
-                                reviewers_per_application=reviewers_c,
-                                reviewer_hours=reviewer_hours_t,
-                                reviewer_wage=reviewer_wage,
-                                agency_cost=None,
-                                per_million_dollars=per_million,
-                            )
-                            t_per = cost_t.dollars_per_award_dollar
-                            c_per = cost_c.dollars_per_award_dollar
-                            if t_per is None or c_per is None:
-                                continue
-                            records.append(
-                                {
-                                    "fiscal_year": year,
-                                    "duration_convention": convention,
-                                    "h_treatment": h_t,
-                                    "h_control": h_c,
-                                    "success_rate_shock": float(s_shock),
-                                    "award_size_shock": float(d_shock),
-                                    "treatment_tc_per_dollar": t_per,
-                                    "control_tc_per_dollar": c_per,
-                                    "treatment_cheaper_per_dollar": t_per < c_per,
-                                }
-                            )
+
+    scenarios = [
+        (h_t, h_c, float(rh), target, float(s_shock), float(d_shock))
+        for h_t in _hours_for(assumptions, treatment)
+        for h_c in _hours_for(assumptions, control)
+        for rh in review["reviewer_hours"]
+        for target in SHOCK_TARGETS
+        for s_shock in shocks["success_rate_relative_shocks"]
+        for d_shock in shocks["award_size_relative_shocks"]
+    ]
+
+    records: list[dict[str, Any]] = []
+    for year in comparison_years(rows, treatment, control):
+        for convention in duration["conventions"]:
+            treat = indexed[(treatment, year, str(convention))]
+            ctrl = indexed[(control, year, str(convention))]
+            if treat.mean_award_size is None or ctrl.mean_award_size is None:
+                continue
+            if treat.success_rate is None or ctrl.success_rate is None:
+                continue
+            for h_t, h_c, reviewer_hours, target, s_shock, d_shock in scenarios:
+                s_factor_t, s_factor_c = _shock_factors(target, s_shock)
+                d_factor_t, d_factor_c = _shock_factors(target, d_shock)
+                s_t = treat.success_rate * s_factor_t
+                s_c = ctrl.success_rate * s_factor_c
+                d_t = treat.mean_award_size * d_factor_t
+                d_c = ctrl.mean_award_size * d_factor_c
+                if min(s_t, s_c, d_t, d_c) <= 0:
+                    continue
+                cost_t = transaction_cost(
+                    applications=treat.awards / s_t,
+                    awards=treat.awards,
+                    mean_award_size=d_t,
+                    hours_per_application=h_t,
+                    wage=wage,
+                    reviewers_per_application=reviewers_t,
+                    reviewer_hours=reviewer_hours,
+                    reviewer_wage=reviewer_wage,
+                    agency_cost=None,
+                    per_million_dollars=per_million,
+                )
+                cost_c = transaction_cost(
+                    applications=ctrl.awards / s_c,
+                    awards=ctrl.awards,
+                    mean_award_size=d_c,
+                    hours_per_application=h_c,
+                    wage=wage,
+                    reviewers_per_application=reviewers_c,
+                    reviewer_hours=reviewer_hours,
+                    reviewer_wage=reviewer_wage,
+                    agency_cost=None,
+                    per_million_dollars=per_million,
+                )
+                t_per = cost_t.dollars_per_award_dollar
+                c_per = cost_c.dollars_per_award_dollar
+                if t_per is None or c_per is None:
+                    continue
+                records.append(
+                    {
+                        "fiscal_year": year,
+                        "duration_convention": convention,
+                        "h_treatment": h_t,
+                        "h_control": h_c,
+                        "reviewer_hours": reviewer_hours,
+                        "shock_target": target,
+                        "success_rate_shock": s_shock,
+                        "award_size_shock": d_shock,
+                        "treatment_tc_per_dollar": t_per,
+                        "control_tc_per_dollar": c_per,
+                        "treatment_cheaper_per_dollar": t_per < c_per,
+                    }
+                )
     return records
 
 
@@ -589,6 +632,8 @@ def ranking_flip_summary(sensitivity_rows: Sequence[Mapping[str, Any]]) -> list[
             row["duration_convention"],
             row["h_treatment"],
             row["h_control"],
+            row["reviewer_hours"],
+            row["shock_target"],
             row["success_rate_shock"],
             row["award_size_shock"],
         )
@@ -601,8 +646,10 @@ def ranking_flip_summary(sensitivity_rows: Sequence[Mapping[str, Any]]) -> list[
                 "duration_convention": key[0],
                 "h_treatment": key[1],
                 "h_control": key[2],
-                "success_rate_shock": key[3],
-                "award_size_shock": key[4],
+                "reviewer_hours": key[3],
+                "shock_target": key[4],
+                "success_rate_shock": key[5],
+                "award_size_shock": key[6],
                 "years_treatment_cheaper": cheaper,
                 "years": len(flags),
                 "always_treatment_cheaper": cheaper == len(flags),

@@ -120,10 +120,38 @@ size shocks:
 | 60 | 1 / 11 | 0 / 11 |
 | 80 and above | 0 / 11 | 0 / 11 |
 
-Duration convention dominates. Award size is next. Success-rate shocks
-of ±25% move the annual-size threshold but do not rescue SBIR under the
-four-year convention inside this hour grid. Reviewer hours move both
-sides together when both use three reviewers.
+Duration convention dominates. Award size is next.
+
+Two earlier sentences here were wrong and are corrected. **Success-rate
+and award-size shocks applied to both mechanisms at once cannot move
+anything.** A common relative shock scales both sides of cost per
+awarded dollar by the same factor, which cancels: across all nine
+declared shock combinations the treatment/control cost ratio is
+constant to within 9e-16 (floating point), and the break-even threshold
+is unchanged for the same reason. The grid now carries a
+`shock_target` of `both`, `treatment`, or `control`; only the one-sided
+rows test the relative assumption. Shocking the SBIR success rate alone
+by ±25% moves the FY2025 annual-size cost ratio from 1.75 to 1.05 — real
+movement, but not enough to make Phase I cheaper at 60 hours against a
+160-hour R01.
+
+**Reviewer hours do not move both sides together, even at three
+reviewers each.** Review cost enters as `R × rh × rw / (s × D)`, and
+`s × D` differs between the mechanisms by a factor of 3.1 under annual
+size, so raising reviewer hours raises the SBIR side faster. At SBIR 20
+hours against an 80-hour R01, FY2025 annual size:
+
+| Reviewer hours | SBIR $/award-$ | R01 $/award-$ | SBIR cheaper |
+|---|---|---|---|
+| 2 | 0.050941 | 0.053709 | yes |
+| 4 | 0.062697 | 0.057457 | no |
+| 8 | 0.086209 | 0.064951 | no |
+
+Reviewer hours are therefore swept across the 2/4/8 grid rather than
+pinned. They alone flip the ranking in 27 of 616 year-convention-hour
+cells, all at the low end of the SBIR hour grid. The table above this
+paragraph holds reviewer hours at 4 and should be read as one scenario,
+not as the result.
 
 FDP 2018 university-PI time-use transfers to roughly 170 hours per
 proposal. That number is the wrong population for SBIR firms. If it is
