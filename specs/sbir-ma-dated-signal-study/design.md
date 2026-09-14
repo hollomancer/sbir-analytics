@@ -104,6 +104,13 @@ Dagster operations. It does not modify the historical M&A specifications.
 ## Verification
 
 This documentation slice is complete when the requirements, design, task list,
-study manifest, and cleared notebook agree on the cutoff, closed gate,
-exploratory tier, non-citability, conditional acquisition, and exclusions.
+study manifest, and notebook agree on the cutoff, closed gate, exploratory tier,
+non-citability, and exclusions.
+
+The notebook was updated and re-pinned on 2026-09-13 to describe the acquired
+state. It previously read "conditional acquisition" and "no analysis is
+authorized", which amendments 1, 3, and 5 through 8 had overtaken -- sources are
+acquired, the predicate is observed, and an identity review queue exists. What
+the notebook still records as blocked is what is still blocked: automated
+identity decisions, aggregation, numerical output, and April reproduction.
 `make docs-check` and `scripts/ci/validate_study_manifests.py` must pass.

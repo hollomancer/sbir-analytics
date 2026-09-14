@@ -15,9 +15,9 @@ estimand: >-
   reproduce the unrecoverable April 2026 result.
 frozen_artifacts:
   - path: specs/sbir-ma-dated-signal-study/design.md
-    sha256: e4e690a55eaa21847686ecf0fb709cc9e2e3db80e8ce3380222d8aadbb37cfe6
+    sha256: b37483d342d58d0fd3d01050320751ac5a5377441b5a9e7bc4f0dcd47ddf5319
   - path: notebooks/explorations/sbir_ma_dated_signal_study.ipynb
-    sha256: eb797c8f25644e2cd62864b4aa84f52f4e9967182337cca45c1a748b61ee51b1
+    sha256: 60bd563bff5b0883f418615f0f5111397a4f2f474f1d32ebf56e2958d4b9799f
 implementation:
   - path: scripts/data/sbir_ma_signal_counts_by_fy.py
     symbol: main

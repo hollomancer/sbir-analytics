@@ -8,8 +8,11 @@
 
 ## T0. Establish the new-study boundary
 
-- [x] Record the 2026-08-29 UTC planned as-of cutoff.
-  - Verify: requirements, design, notebook, and study manifest agree.
+- [x] Record the 2026-08-29 UTC inclusive selection cutoff.
+  - Verify: requirements, design, notebook, and study manifest agree. The
+    notebook was updated and re-pinned on 2026-09-13 to describe the acquired
+    state rather than the pre-acquisition plan, so this criterion is satisfiable
+    rather than contradicted by amendments 1, 3, and 5 through 8.
 - [x] Exclude the unrecoverable April 2026 analysis as an input, benchmark, or
   reproduction target.
   - Verify: no historical count or denominator appears as a planned input.
@@ -42,10 +45,22 @@
   - Verify: `freeze-packet.md` fixes the proposed observed-signal quantity,
     source slate, identity/audit policy, and the specific evidence needed for a
     later owner decision; it remains explicitly not frozen.
+> **One-off diagnostics, not reproducible figures.** The source-row and Form D
+> index counts recorded in the verify lines below were produced by separately
+> authorized private audits whose producers are deliberately not committed: the
+> inputs are private, uncommitted bytes, and no script in this repository emits
+> these numbers. They cannot be recomputed or falsified from a fresh checkout by
+> anyone, including the author. They are retained as a record of what the audit
+> observed at the time, and they must not be cited, carried into any manifest,
+> or treated as a reproducible quantity. Only the counts printed by committed
+> builders -- labelled verbatim in the candidate-ledger task below -- are
+> reproducible.
+
 - [x] Run the separately authorized private SBIR.gov cutoff/schema audit.
   - Verify: 112,951 parseable `Proposal Award Date` values span 1905-07-01 to
     2026-12-20; two fall after the 2026-08-29 cutoff, while the HTTP snapshot
     is dated 2026-08-01. The cutoff check fails; no firm frame is frozen.
+    One-off diagnostic: no committed producer emits these counts.
 - [x] Document the official source-handling constraints and prior-method reuse
   boundary.
   - Verify: `source-handling-review.md` limits reuse to candidate-signal
@@ -62,12 +77,14 @@
   - Verify: 112,949 rows have nonblank `Company` and a valid date on/before the
     cutoff; `UEI`, `Duns`, `Agency Tracking Number`, and `Contract` are present
     in 104,461, 109,199, 112,937, and 112,948 selected rows respectively. These
-    are source-row diagnostics, not firm or outcome counts.
+    are source-row diagnostics, not firm or outcome counts, and they are
+    one-off: no committed producer emits them.
 - [x] Acquire and pin the authorized private SEC Form D quarterly index source.
   - Verify: every 2009 Q1–2026 Q3 raw index file has private provenance and
     integrity metadata; 784,466 Form D/D-A entries span 2009-01-02 through
     2026-08-28, with none after the cutoff. No matching, XML retrieval,
-    predicate evaluation, or result is emitted.
+    predicate evaluation, or result is emitted. One-off diagnostic: no committed
+    producer emits this count.
 - [x] Build the private exact-key SBIR↔Form D candidate ledger and retrieve
   candidate XML under Amendment 6.
   - Verify: every ledger entry states its `FORM_D_JOIN_V1` exact-key rationale
