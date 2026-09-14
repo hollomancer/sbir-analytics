@@ -15,6 +15,8 @@ estimand: >-
 frozen_artifacts:
   - path: studies/allocation-transaction-costs/design.md
     sha256: 2a2b28054de33b8aa1f57916f6fb5997124b3788e592596f3346e6f085f07afd
+  - path: studies/allocation-transaction-costs/amendments.md
+    sha256: 1f2b8239e76ce11755cb35459c982a5f8acae7613f84afcb3aec75e193c6a097
 implementation:
   - path: scripts/data/allocation_transaction_costs.py
     symbol: main
@@ -53,11 +55,15 @@ limitations:
     Phase I awardees took 14% of Phase I awards. Marginal proposal hours for
     serial filers and first-time applicants are unlikely to share one
     distribution, so a single grid understates dispersion.
-  - Reviewer hours per application are now anchored by one published US survey
-    (AIBS, Gallo et al. 2019) rather than being wholly assumed, but that survey
-    measures panel review of NIH-style applications and reports pre-meeting
-    time separately from meeting and travel time. It does not measure
-    SBIR/STTR versus R01 reviewer hours.
+  - Reviewer hours remain assumed. Two published US surveys bracket the 2/4/8
+    grid without observing it. AIBS (Gallo et al. 2019) reports 4.5–5.0 hours
+    of pre-meeting time per assigned application for NIH-style panel review,
+    and NSF's 2021 Merit Review Survey reports a mean 7 hours per review across
+    NSF review methods, excluding panel travel and participation. Neither
+    measures SBIR/STTR versus R01 reviewer hours, neither is used in the
+    calculator, and neither may retune the grid. Both report time excluding
+    meeting and travel, so hours inclusive of those sit higher than the figures
+    cited.
   - Transaction cost per awarded dollar is mechanically dominated by the
     reciprocal of the success rate, so its ranking is driven as much by the
     success-rate denominator as by any hour assumption. Reviewers of the

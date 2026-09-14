@@ -56,12 +56,19 @@ applicant_hour_citations:
       One indirect market signal exists, and it is neither an observation nor
       citable: published 2026 list prices for outsourced SBIR proposal
       preparation cluster at $3,000–$17,000 for a full Phase I, with a single
-      fully published flat price of $5,995. Divided by published writer rates
-      of $50–180 per hour that implies roughly 33–120 outsourced hours for the
-      portion a firm buys, before any PI technical content, which cannot be
-      outsourced. Source is vendor marketing pages, list prices rather than
-      transaction prices, left-censored because most providers publish nothing.
-      It brackets inside the existing grid and must not be used to narrow it.
+      fully published flat price of $5,995. Two divisions by the published
+      writer rates of $50–180 per hour must not be conflated. The $5,995 point
+      price alone implies 33–120 outsourced hours ($5,995/$180 = 33.3,
+      $5,995/$50 = 119.9). The advertised cluster implies 17–340 hours
+      ($3,000/$180 = 16.7, $17,000/$50 = 340.0), which straddles this 20–200
+      grid at both ends. So the signal does not bracket inside the grid; it is
+      wider than the grid in both directions, and its narrowest reading rests
+      on a single vendor's point price. Source is vendor marketing pages, list
+      prices rather than transaction prices, left-censored because most
+      providers publish nothing, and covering only the fraction a firm chooses
+      to outsource, before any PI technical content. It must not be used to
+      narrow, widen, or retune the grid, and no hours figure derived from it
+      may be reported as an applicant-hour estimate.
 
 labor_rates:
   - id: bls_medical_scientist_mean_hourly
@@ -97,8 +104,10 @@ review:
   reviewer_hours: [2, 4, 8]
   reviewer_hours_note: >-
     NIH CSR typically assigns about three reviewers. The 2/4/8 grid is retained
-    as a scenario range; see reviewer_hour_citations for the published US
-    per-application measurement we located, which falls inside the grid.
+    as a scenario range; see reviewer_hour_citations for the two published US
+    per-application measurements we located — AIBS panel review of NIH-style
+    applications and NSF's 2021 Merit Review Survey across NSF review methods
+    — both of which fall inside the grid and neither of which retunes it.
   reviewer_hour_citations:
     aibs_gallo_2019:
       evidence_class: behavioral_survey
