@@ -109,11 +109,14 @@ exclude_dirs = ["tests"]
 #       parameterization (see specs/sql-identifier-hardening).
 # B110/B112: try-except-pass/continue. Narrowly used for optional-import
 #       fallbacks and best-effort cache cleanup.
-# B603/B404: subprocess usage (list-form, no shell=True).
+# B603/B404/B607: subprocess usage (list-form, no shell=True). B607 flags the
+#       partial executable path in ["git", ...]; resolving git to an absolute
+#       path is environment-specific and would not make the call safer, since
+#       the argument list is fixed and never interpolated.
 # B405/B314: xml.etree parsing. Inputs are external feeds (FPDS Atom, press
 #       wire); defusedxml migration tracked for future work.
 # Removed from skip list (now enforced): B105, B106 — hardcoded passwords.
-skips = ["B101", "B601", "B608", "B110", "B112", "B603", "B404", "B405", "B314"]
+skips = ["B101", "B601", "B608", "B110", "B112", "B603", "B404", "B607", "B405", "B314"]
 
 [tool.ruff]
 line-length = 100
