@@ -418,12 +418,12 @@ def test_ranking_flip_summary_separates_reviewer_hours_and_shock_target(
 def test_total_breakeven_is_below_applicant_only_and_may_go_negative() -> None:
     """The review term both sides carry lowers the threshold, sometimes past zero."""
 
-    common = dict(
-        success_treatment=0.0781,
-        dollars_treatment=352_780.0,
-        success_control=0.1302,
-        dollars_control=2_656_020.0,
-    )
+    common = {
+        "success_treatment": 0.0781,
+        "dollars_treatment": 352_780.0,
+        "success_control": 0.1302,
+        "dollars_control": 2_656_020.0,
+    }
     applicant_only = breakeven_sbir_hours(160.0, **common)
     total = breakeven_sbir_hours_total(
         160.0,
@@ -441,12 +441,12 @@ def test_total_breakeven_is_below_applicant_only_and_may_go_negative() -> None:
 def test_total_breakeven_equals_applicant_only_without_review_cost() -> None:
     """With no review hours the two thresholds must coincide."""
 
-    common = dict(
-        success_treatment=0.1,
-        dollars_treatment=300_000.0,
-        success_control=0.2,
-        dollars_control=600_000.0,
-    )
+    common = {
+        "success_treatment": 0.1,
+        "dollars_treatment": 300_000.0,
+        "success_control": 0.2,
+        "dollars_control": 600_000.0,
+    }
     assert breakeven_sbir_hours_total(
         160.0,
         **common,
