@@ -45,6 +45,29 @@ applicant_hour_citations:
       the grid without redefining it.
     url: https://thefdp.org/wp-content/uploads/FDP-FWS-2018-Primary-Report.pdf
     corroborating_url: https://nsf-gov-resources.nsf.gov/2023-10/2021-Merit-Review-Survey-Report-Final_508.pdf
+    fdp_time_decomposition:
+      basis: >-
+        Share of PI research time on federally funded projects, read from the
+        2018 FDP primary report, which prints the 2012 and 2018 waves side by
+        side. Percentages, not hours; recorded so pre-award and post-award
+        burden are not conflated.
+      proposal_preparation: {2012: 0.154, 2018: 0.160}
+      pre_award_administration: {2012: 0.057, 2018: 0.063}
+      post_award_administration: {2012: 0.136, 2018: 0.137}
+      report_preparation: {2012: 0.076, 2018: 0.083}
+      active_research: {2012: 0.577, 2018: 0.557}
+      scholarly_contribution_share_of_proposal_time: 0.387
+      scholarly_contribution_note: >-
+        PIs reported that as much as 38.7% of their proposal preparation time,
+        or 6.2% of their overall research time, contributed to their
+        scholarship. Proposal hours are therefore not wholly transaction cost,
+        and an hours-per-award figure computed from them is an upper bound on
+        the deadweight portion. The survey does not decompose the remaining
+        61.3%, and it does not establish the equivalent share for a firm
+        writing an SBIR proposal.
+      respondents:
+        2012: {n: 12816, response_rate: 0.24}
+        2018: {n: 11167, response_rate: 0.20, institutions: 111}
   nih_sbir_phase_i:
     evidence_class: assumption_grid
     population: unobserved_small_business

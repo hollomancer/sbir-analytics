@@ -75,7 +75,11 @@ limitations:
     (small firm versus university) from the award architecture, the award size,
     or the research type. It therefore does not identify a small-business
     transaction-cost effect, only a difference between two mechanisms as they
-    are currently designed. See amendments.md Revision 1 for designs that would
-    make the contrast more comparable; none of them identifies the performer
-    effect on its own.
+    are currently designed. See amendments.md Revision 1 for the designs that
+    would identify it.
+  - Applicant hours are treated as transaction cost in full, but the FDP survey
+    finds PIs attribute as much as 38.7% of proposal preparation time to their
+    own scholarship. Hours per award is therefore an upper bound on deadweight
+    effort, not a measure of it, and the survey does not establish the
+    equivalent share for a firm writing an SBIR proposal.
   - This study is reproducible, not validated or citable.
