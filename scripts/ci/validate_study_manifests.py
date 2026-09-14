@@ -3,6 +3,7 @@
 
 import ast
 import hashlib
+import json
 from pathlib import Path
 
 from pydantic import ValidationError
@@ -91,6 +92,58 @@ def validate_manifest_references(
         if reference.symbol not in symbols:
             errors.append(
                 f"implementation symbol {reference.symbol!r} is missing from {reference.path}"
+            )
+
+    errors.extend(
+        _evaluated_design_errors(manifest, repository_root=repository_root)
+    )
+    return errors
+
+
+def _evaluated_design_errors(
+    manifest: StudyManifest,
+    *,
+    repository_root: Path,
+) -> list[str]:
+    """The design a result names must be the design the run actually read.
+
+    The capture CLI verifies the protocol against HEAD and against
+    ``frozen_artifacts`` before it runs, and nothing stopped the protocol being
+    edited and re-pinned afterwards. That is how the held-out 1501-2500 design
+    came to be pinned about ten hours after the replay it was supposed to have
+    preregistered, with every run-time check passing.
+
+    A run manifest that records ``protocol_sha256`` closes it: the recorded
+    bytes are what the run read, so a later edit stops matching.
+    """
+    result = manifest.validation_result
+    if result is None:
+        return []
+
+    errors: list[str] = []
+    for artifact in manifest.frozen_artifacts:
+        if not artifact.path.endswith("run-manifest.json"):
+            continue
+        try:
+            path = _repository_path(artifact.path, repository_root)
+        except ValueError:
+            continue
+        if not path.is_file():
+            continue
+        try:
+            run = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            continue
+        if not isinstance(run, dict):
+            continue
+        recorded = run.get("protocol_sha256")
+        if not isinstance(recorded, str) or not recorded:
+            continue
+        if recorded != result.design_sha256:
+            errors.append(
+                f"validation_result.design_sha256 {result.design_sha256[:12]}... does not "
+                f"match protocol_sha256 {recorded[:12]}... recorded by {artifact.path}; "
+                "the evaluated design was changed after the run"
             )
     return errors
 
