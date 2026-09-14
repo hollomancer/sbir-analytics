@@ -133,14 +133,18 @@ point.
   and Treasury ROI ([D2](#d2-relational-tier-2)). Both are inventory
   targets with no study.
 - **SBIR program managers** — cross-agency CET portfolio
-  ([C1](#c1-descriptive-tier-1); gated spec, no study) and weekly snapshots
+  ([C1](#c1-descriptive-tier-1); gated spec, no study), allocation
+  transaction costs versus conventional grants
+  ([C4](#c4-allocation-costs-tier-3); NIH break-even only), and weekly
+  snapshots
   ([E6](#e6-continuous-monitoring--rolling-analytics-tier-4-capstone);
   operational obligation, not a research question).
 - **Investors** — Form D fundraising profile ([F1](#f1-form-d-profile);
   exploratory, no study), M&A exit rates and time-to-exit (dated notes, no
   study), and F2 cohort comparisons (no study).
 - **OSTP / congressional oversight** — A1 concentration (exploratory
-  research note) and the A-CP13 choke-point watchlist
+  research note), allocation transaction costs versus conventional grants
+  ([C4](#c4-allocation-costs-tier-3)), and the A-CP13 choke-point watchlist
   ([A4](#a4-risk-monitoring--prediction-tier-4)). A-CP13 is not scoped and
   is not an implementation item. Capability HHI in A1 does not authorize
   that vulnerability composite.
@@ -765,6 +769,27 @@ spending produce measurable new knowledge?*
   vintage?
   *Deps: ER, PATLINK, CET*
 
+### C4. Allocation costs (Tier 3)
+
+- <a id="c4-allocation-costs-tier-3"></a>**SBIR vs conventional-grant allocation costs**
+  Does SBIR/STTR allocate federal R&D funding with lower transaction hours
+  and dollars, per award and per awarded dollar, than conventional federal
+  research grants, after accounting for award size, success rate, proposal
+  burden, review burden, and agency administrative costs?
+  Hours per award, dollars per award, and cost per awarded dollar are kept
+  separate. The competing hypothesis is that smaller awards and lower
+  success rates can offset any reduction in hours per proposal.
+  **Status:** Partially computable for NIH SBIR Phase I versus R01-equivalent
+  grants under the `allocation-transaction-costs` study (`reproducible`, not
+  validated, not citable), as a break-even condition over declared hour and
+  duration assumptions. Directional ranking is underidentified. Other
+  agencies are inventory-only in this study.
+  *Deps: none (published mechanism-year tables) · Refs: [L3], [L6], [L18],
+  [L49], [L50], [L51], [L52] · Spec:
+  [../specs/allocation-transaction-costs/](../specs/allocation-transaction-costs/)
+  · Study:
+  [allocation-transaction-costs](../studies/allocation-transaction-costs/study.yaml)*
+
 ## D. Economic & fiscal impact
 
 *Audience: Treasury, OMB, JCT, state economic-development offices. What is the
@@ -1226,6 +1251,22 @@ M&A). Classified-work exposure remains a manual political-sensitivity vetting
 factor, not an automated pipeline screen — there is no vulnerability signal for
 it.
 
+### Allocation transaction costs (reproducible study, not citable)
+
+**Audience:** OSTP, agency R&D directors, SBIR program managers, GAO/OMB staff
+comparing SBIR to conventional research grants.
+
+**Format:**
+
+- `docs/research/allocation-transaction-costs.md` — findings record.
+- [`studies/allocation-transaction-costs/study.yaml`](../studies/allocation-transaction-costs/study.yaml)
+  — study contract (`reproducible`, not citable).
+- [`specs/allocation-transaction-costs/`](../specs/allocation-transaction-costs/)
+  — exploratory spec.
+
+**Pulls from:** C4 (allocation costs). Uses published NIH mechanism-year
+tables, not award-level identity resolution.
+
 ### Form D fundraising analysis (retired; no current result)
 
 **Audience:** F-area analysts, investor researchers, and policy staff studying
@@ -1345,6 +1386,10 @@ spot-checked against publisher records):
 - **[L46]** Link, A.N. & Swann, C.A. (2024). "SBIR mills and the U.S. Department of Defense." *The Journal of Technology Transfer* 49(6), 2306–2335. Characterizes "SBIR mill" firms in DoD SBIR — the academic treatment of the multiple-award-firm problem behind the §638(qq)(3) performance standards [L14]. <https://doi.org/10.1007/s10961-024-10144-z>
 - **[L47]** Rovito, S.M., Kamp, J., & Etemadi, A.H. (2025). "Exploring Department of the Navy SBIR Phase III awards and corresponding public sector commercialization success factors." *The Journal of Technology Transfer* 50(4), 1363–1395. Navy Phase III awards and the firm attributes predicting public-sector commercialization; finds Phase III receipt only weakly predictive of commercialization success. Relevant to the Section B transition questions and the [`phase3-transition-groundtruth`](../specs/phase3-transition-groundtruth/) spec. <https://doi.org/10.1007/s10961-024-10141-2>
 - **[L48]** NASEM (2026). *Review of the SBIR and STTR Programs at NASA.* National Academies Press. Fills the NASA gap in the [L1]–[L8] agency-review block, which otherwise covers DoD, NIH, NSF, and DOE. <https://doi.org/10.17226/29381>
+- **[L49]** NIH Office of Extramural Research. *NIH Data Book* reports 29 and 158 (R01-equivalent competing applications, awards, success rates, and average size) and RePORT Table #215 (SBIR/STTR competing applications, awards, success rates, and funding by phase). Administrative counts, not behavioral hours. <https://report.nih.gov/nihdatabook/report/29> <https://report.nih.gov/reportweb/web/displayreport?rId=584>
+- **[L50]** Schneider, S.L., et al. (2020). *2018 FDP Faculty Workload Survey: Report of Primary Findings.* Federal Demonstration Partnership. University PI time-use on federal projects; proposal preparation 16.0% of research time. Wrong applicant population for SBIR firms. <https://thefdp.org/wp-content/uploads/FDP-FWS-2018-Primary-Report.pdf>
+- **[L51]** 15 U.S.C. §638. SBIR/STTR statute, including the allowance to use not more than 3 percent of SBIR program funds for administration, outreach, reporting, and related activities. Incremental statutory ceiling, not total agency selection cost. <https://www.law.cornell.edu/uscode/text/15/638>
+- **[L52]** GAO-25-107942 (2025). *Small Business Research Programs: Clearer Guidance Could Improve Award Data to More Effectively Measure Outcomes.* FY2023 proposal counts and acceptance rates for open versus conventional topics. <https://www.gao.gov/products/gao-25-107942>
 
 ---
 

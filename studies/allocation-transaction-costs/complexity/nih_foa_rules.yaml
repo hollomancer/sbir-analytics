@@ -1,0 +1,84 @@
+schema_version: 1
+as_of: "2026-09"
+source_id: nih_page_limits
+url: https://grants.nih.gov/grants/how-to-apply-application-guide/format-and-write/page-limits.htm
+note: >-
+  Observable formal proposal complexity from current NIH page-limit tables and
+  SBIR/STTR application-guide requirements. This is a proxy, not hours.
+
+mechanisms:
+  nih_r01_equivalent:
+    label: NIH R01-equivalent (parent R01)
+    research_strategy_pages: 12
+    specific_aims_pages: 1
+    total_research_plan_pages: 13
+    commercialization_plan_required: false
+    commercialization_plan_pages: 0
+    budget_justification_required: true
+    letters_of_support_typical: true
+    human_subjects_if_applicable: true
+    registrations: [SAM.gov, eRA Commons, Grants.gov]
+    certifications: [PI assurance, institutional AOR]
+    research_institution_coordination: false
+    subaward_common: true
+    phase_specific: false
+  nih_sbir_phase_i:
+    label: NIH SBIR Phase I
+    research_strategy_pages: 6
+    specific_aims_pages: 1
+    total_research_plan_pages: 7
+    commercialization_plan_required: false
+    commercialization_plan_pages: 0
+    budget_justification_required: true
+    letters_of_support_typical: true
+    human_subjects_if_applicable: true
+    registrations: [SAM.gov, eRA Commons, Grants.gov, SBA Company Registry]
+    certifications: [SBC eligibility, PI primary-employment, institutional AOR]
+    research_institution_coordination: false
+    subaward_common: false
+    phase_specific: true
+  nih_sttr_phase_i:
+    label: NIH STTR Phase I
+    research_strategy_pages: 6
+    specific_aims_pages: 1
+    total_research_plan_pages: 7
+    commercialization_plan_required: false
+    commercialization_plan_pages: 0
+    budget_justification_required: true
+    letters_of_support_typical: true
+    human_subjects_if_applicable: true
+    registrations: [SAM.gov, eRA Commons, Grants.gov, SBA Company Registry]
+    certifications: [SBC eligibility, STTR allocation, institutional AOR]
+    research_institution_coordination: true
+    subaward_common: true
+    phase_specific: true
+  nih_sbir_phase_ii:
+    label: NIH SBIR Phase II
+    research_strategy_pages: 12
+    specific_aims_pages: 1
+    total_research_plan_pages: 13
+    commercialization_plan_required: true
+    commercialization_plan_pages: 12
+    budget_justification_required: true
+    letters_of_support_typical: true
+    human_subjects_if_applicable: true
+    registrations: [SAM.gov, eRA Commons, Grants.gov, SBA Company Registry]
+    certifications: [SBC eligibility, PI primary-employment, institutional AOR]
+    research_institution_coordination: false
+    subaward_common: false
+    phase_specific: true
+  nih_sttr_phase_ii:
+    label: NIH STTR Phase II
+    research_strategy_pages: 12
+    specific_aims_pages: 1
+    total_research_plan_pages: 13
+    commercialization_plan_required: true
+    commercialization_plan_pages: 12
+    budget_justification_required: true
+    letters_of_support_typical: true
+    human_subjects_if_applicable: true
+    registrations: [SAM.gov, eRA Commons, Grants.gov, SBA Company Registry]
+    certifications: [SBC eligibility, STTR allocation, institutional AOR]
+    research_institution_coordination: true
+    subaward_common: true
+    phase_specific: true
