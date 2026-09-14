@@ -43,9 +43,15 @@ class RebuildObservation:
 
 @dataclass(frozen=True)
 class RebuildComparison:
-    """The result of classifying one rebuild."""
+    """The result of classifying one rebuild.
+
+    ``identity_grain`` travels with the verdict because R3 requires the
+    comparison to state the grain each measure was taken at. A verdict that does
+    not say what "the same rows" meant cannot be audited.
+    """
 
     verdict: RebuildVerdict
+    identity_grain: str
     reasons: list[str] = field(default_factory=list)
 
     @property
@@ -60,13 +66,16 @@ def classify_rebuild(
     kept: RebuildObservation,
     tolerances: dict[str, ReproductionTolerance],
     identity_agrees: bool,
+    identity_grain: str,
 ) -> RebuildComparison:
     """Return the verdict for one rebuild of one live source.
 
-    ``identity_agrees`` reports whether the kept rows are the same rows at the
-    source's declared ``identity_grain``, not merely the same number of rows. It
-    is checked before the counts, because equal counts over different rows is
-    the case a count-only comparison silently passes.
+    ``identity_agrees`` reports whether the kept rows are the same rows at
+    ``identity_grain`` -- the source's declared grain, a notice id or an
+    accession or an award key -- not merely the same number of rows. It is
+    checked before the counts, because equal counts over different rows is the
+    case a count-only comparison silently passes. The grain is carried into the
+    verdict so a reader can see what was compared.
     """
 
     upstream_moved = upstream.delta != 0
@@ -75,6 +84,7 @@ def classify_rebuild(
     if not identity_agrees:
         return RebuildComparison(
             RebuildVerdict.IDENTITY_DIVERGENCE,
+            identity_grain,
             [
                 f"kept rows differ at the declared identity grain "
                 f"(counts {kept.baseline} -> {kept.rebuild}); equal counts over "
@@ -85,6 +95,7 @@ def classify_rebuild(
     if not upstream_moved and kept_moved:
         return RebuildComparison(
             RebuildVerdict.PIPELINE_REGRESSION,
+            identity_grain,
             [
                 f"{upstream.quantity} held at {upstream.baseline} while "
                 f"{kept.quantity} moved {kept.baseline} -> {kept.rebuild}; the "
@@ -93,7 +104,7 @@ def classify_rebuild(
         )
 
     if not upstream_moved and not kept_moved:
-        return RebuildComparison(RebuildVerdict.EXACT, [])
+        return RebuildComparison(RebuildVerdict.EXACT, identity_grain, [])
 
     breaches = []
     for observation in (upstream, kept):
@@ -111,10 +122,11 @@ def classify_rebuild(
             )
 
     if breaches:
-        return RebuildComparison(RebuildVerdict.OUTSIDE_TOLERANCE, breaches)
+        return RebuildComparison(RebuildVerdict.OUTSIDE_TOLERANCE, identity_grain, breaches)
 
     return RebuildComparison(
         RebuildVerdict.UPSTREAM_DRIFT,
+        identity_grain,
         [
             f"{upstream.quantity} moved {upstream.baseline} -> {upstream.rebuild} and "
             f"{kept.quantity} moved {kept.baseline} -> {kept.rebuild}, both within "

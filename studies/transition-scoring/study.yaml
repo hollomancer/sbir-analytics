@@ -96,11 +96,12 @@ limitations:
   - Exact-identifier vendor matching misses acquisitions, successors, and UEI
     changes; fuzzy fallback introduces unadjudicated match error.
   - >-
-    This study is exploratory; its scores and counts are non-citable, anything
-    that leaves the repository must emit `citable: false` metadata, and no
-    research question may be marked answerable on these numbers until the study
-    reaches validated status.
-
+    This study is reproducible, not validated or citable. Its scores and counts
+    remain non-citable, anything that leaves the repository must emit
+    `citable: false` metadata, and no research question may be marked answerable
+    on these numbers. Reproducible means the declared inputs and implementation
+    rerun to the recorded result; it does not mean the scoring has been
+    validated against ground truth, and no such validation exists.
 reproduction:
   live_sources:
     - name: GSA Contract Opportunities archived-notice extracts

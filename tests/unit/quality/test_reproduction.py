@@ -32,9 +32,11 @@ def test_unchanged_upstream_and_kept_is_exact() -> None:
         kept=RebuildObservation("rows_kept", 17, 17),
         tolerances=_tolerances(rows_scanned=100, rows_kept=1),
         identity_agrees=True,
+        identity_grain="notice_id",
     )
     assert result.verdict is RebuildVerdict.EXACT
     assert result.passed
+    assert result.identity_grain == "notice_id"
 
 
 def test_moved_upstream_and_moved_kept_in_band_is_drift() -> None:
@@ -44,6 +46,7 @@ def test_moved_upstream_and_moved_kept_in_band_is_drift() -> None:
         kept=RebuildObservation("rows_kept", 17, 16),
         tolerances=_tolerances(rows_scanned=100, rows_kept=1),
         identity_agrees=True,
+        identity_grain="notice_id",
     )
     assert result.verdict is RebuildVerdict.UPSTREAM_DRIFT
     assert result.passed
@@ -56,6 +59,7 @@ def test_unchanged_upstream_with_moved_kept_is_a_regression() -> None:
         kept=RebuildObservation("rows_kept", 17, 16),
         tolerances=_tolerances(rows_scanned=100, rows_kept=99),
         identity_agrees=True,
+        identity_grain="notice_id",
     )
     assert result.verdict is RebuildVerdict.PIPELINE_REGRESSION
     assert not result.passed
@@ -67,6 +71,7 @@ def test_moved_upstream_with_unchanged_kept_is_drift_that_missed_us() -> None:
         kept=RebuildObservation("rows_kept", 17, 17),
         tolerances=_tolerances(rows_scanned=100, rows_kept=1),
         identity_agrees=True,
+        identity_grain="notice_id",
     )
     assert result.verdict is RebuildVerdict.UPSTREAM_DRIFT
     assert result.passed
@@ -83,6 +88,7 @@ def test_equal_counts_over_different_rows_fails() -> None:
         kept=RebuildObservation("rows_kept", 17, 17),
         tolerances=_tolerances(rows_scanned=100, rows_kept=1),
         identity_agrees=False,
+        identity_grain="notice_id",
     )
     assert result.verdict is RebuildVerdict.IDENTITY_DIVERGENCE
     assert not result.passed
@@ -95,6 +101,7 @@ def test_identity_divergence_outranks_an_exact_count_match() -> None:
         kept=RebuildObservation("rows_kept", 1, 1),
         tolerances=_tolerances(rows_scanned=0, rows_kept=0),
         identity_agrees=False,
+        identity_grain="notice_id",
     )
     assert result.verdict is RebuildVerdict.IDENTITY_DIVERGENCE
 
@@ -117,6 +124,7 @@ def test_tolerance_boundary_is_inclusive(rebuild_kept: int, expected: RebuildVer
         kept=RebuildObservation("positives", 138, rebuild_kept),
         tolerances=_tolerances(rows_scanned=100, positives=2),
         identity_agrees=True,
+        identity_grain="notice_id",
     )
     assert result.verdict is expected
 
@@ -128,6 +136,7 @@ def test_a_quantity_with_no_declared_tolerance_fails() -> None:
         kept=RebuildObservation("positives", 138, 137),
         tolerances=_tolerances(rows_scanned=100),
         identity_agrees=True,
+        identity_grain="notice_id",
     )
     assert result.verdict is RebuildVerdict.OUTSIDE_TOLERANCE
     assert any("no declared tolerance" in reason for reason in result.reasons)
@@ -151,6 +160,7 @@ def test_the_motivating_rebuild_is_now_determinate() -> None:
         kept=RebuildObservation("positives", 138, 137),
         tolerances=_tolerances(rows_scanned=10_000, positives=2),
         identity_agrees=True,
+        identity_grain="notice_id",
     )
 
     assert result.verdict is RebuildVerdict.OUTSIDE_TOLERANCE
@@ -165,6 +175,7 @@ def test_the_complete_rebuild_is_exact() -> None:
         kept=RebuildObservation("positives", 138, 138),
         tolerances=_tolerances(rows_scanned=10_000, positives=2),
         identity_agrees=True,
+        identity_grain="notice_id",
     )
 
     assert result.verdict is RebuildVerdict.EXACT
@@ -184,6 +195,7 @@ def test_a_small_kept_delta_does_not_excuse_a_large_upstream_delta() -> None:
         kept=RebuildObservation("positives", 138, 138),
         tolerances=_tolerances(rows_scanned=10_000, positives=2),
         identity_agrees=True,
+        identity_grain="notice_id",
     )
 
     assert result.verdict is RebuildVerdict.OUTSIDE_TOLERANCE

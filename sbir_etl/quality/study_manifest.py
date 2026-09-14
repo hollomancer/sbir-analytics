@@ -395,6 +395,33 @@ class StudyManifest(BaseModel):
         return self
 
     @model_validator(mode="after")
+    def tolerance_quantities_are_measurable(self) -> "StudyManifest":
+        """A tolerance must name a quantity some live source actually measures.
+
+        A band on a quantity nothing reports is unfalsifiable: no rebuild can
+        ever breach it, so it reads as a contract while constraining nothing.
+        The upstream measure of each live source is always admissible; any other
+        quantity has to be named in the study's own text so a reader can find
+        what it refers to.
+        """
+        contract = self.reproduction
+        if contract is None:
+            return self
+        upstream = {source.upstream_measure for source in contract.live_sources}
+        described = " ".join(self.permitted_claims + self.limitations + [self.estimand])
+        for tolerance in contract.tolerances:
+            if tolerance.quantity in upstream:
+                continue
+            if tolerance.quantity not in described:
+                raise ValueError(
+                    f"reproduction tolerance names quantity {tolerance.quantity!r}, which is "
+                    "neither an upstream_measure nor mentioned in the study's estimand, "
+                    "permitted_claims, or limitations; a band on an unreported quantity "
+                    "cannot be breached"
+                )
+        return self
+
+    @model_validator(mode="after")
     def promoted_live_source_study_declares_reproduction(self) -> "StudyManifest":
         """At ``reproducible`` and above, a declared live source needs a contract.
 

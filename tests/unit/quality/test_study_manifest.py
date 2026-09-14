@@ -1,17 +1,16 @@
+import copy
 import hashlib
 from pathlib import Path
 
 import pytest
-import copy
-
 import yaml
 from pydantic import ValidationError
 
 from sbir_etl.quality.study_manifest import (
     EvidenceStatus,
-    ThresholdBasis,
     LiveSource,
     ReproductionTolerance,
+    ThresholdBasis,
     ValidationDesign,
     ValidationResult,
     load_study_manifest,
@@ -505,7 +504,7 @@ REPRODUCTION = {
     ],
     "tolerances": [
         {
-            "quantity": "positives",
+            "quantity": "rows_scanned",
             "absolute_band": 2,
             "derivation": "One revised notice per rebuild is expected; two is the observed ceiling.",
         }
@@ -576,3 +575,29 @@ def test_a_study_without_live_sources_is_unaffected(tmp_path: Path) -> None:
     path = _write(tmp_path, "example-study/study.yaml", yaml.safe_dump(raw))
 
     assert load_study_manifest(path).reproduction is None
+
+
+def test_tolerance_on_an_unreported_quantity_is_rejected(tmp_path: Path) -> None:
+    """A band nothing reports cannot be breached, so it constrains nothing."""
+    raw = _manifest("a" * 64)
+    raw["reproduction"] = copy.deepcopy(REPRODUCTION)
+    raw["reproduction"]["tolerances"].append(
+        {"quantity": "never_reported", "absolute_band": 1, "derivation": "d"}
+    )
+    path = _write(tmp_path, "example-study/study.yaml", yaml.safe_dump(raw))
+
+    with pytest.raises(ValidationError, match="cannot be breached"):
+        load_study_manifest(path)
+
+
+def test_a_quantity_named_in_the_estimand_is_accepted(tmp_path: Path) -> None:
+    """The study's own text is what makes a quantity findable to a reader."""
+    raw = _manifest("a" * 64)
+    raw["estimand"] = "Count observable examples, reported as surviving_pairs."
+    raw["reproduction"] = copy.deepcopy(REPRODUCTION)
+    raw["reproduction"]["tolerances"].append(
+        {"quantity": "surviving_pairs", "absolute_band": 1, "derivation": "d"}
+    )
+    path = _write(tmp_path, "example-study/study.yaml", yaml.safe_dump(raw))
+
+    assert load_study_manifest(path).reproduction is not None

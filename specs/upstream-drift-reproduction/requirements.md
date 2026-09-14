@@ -9,9 +9,11 @@ serving studies at `reproducible` and above.
 changes what a study must record so that `reproducible` remains a checkable
 claim when an input is a live source.
 
-**Status:** active. Requirements are settled; no schema change is implemented
-here. Design decisions that must be made before implementation are listed under
-Open questions, and the registry entry in `specs/status.md` says the same.
+**Status:** implemented. The requirements below were settled first and the
+schema, classifier, and first consumer landed afterwards; see the registry entry
+in `specs/status.md`. Open questions that remain open are marked as such in that
+section -- notably whether the rebuild comparison runs in CI or at audit time,
+which the implementation does not decide.
 
 ## The problem, from a real case
 
