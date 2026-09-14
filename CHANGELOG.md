@@ -10,6 +10,67 @@ version.
 
 ## [Unreleased]
 
+## [0.15.0] — 2026-09-14
+
+### Breaking
+
+- A promotion-intended discovery capture now fails closed instead of recording
+  that it should not have run. When a protocol declares `intended_rank` above
+  `exploratory`, `run_ma_discovery_sample.py` refuses to start from a checkout
+  with uncommitted changes, and refuses when git is unusable, because silence is
+  not evidence of cleanliness. `_code_version` had always computed the dirty
+  flag and nothing gated on it; that is how 948 of 1000 pairs in one held-out
+  cut were captured by code whose state is not recoverable from git. Exploratory
+  runs make no rank claim and are unaffected.
+- `validate_study_manifests.py` now fails when a frozen run manifest records a
+  `protocol_sha256` that disagrees with `validation_result.design_sha256`. The
+  protocol pin is checked before a run and nothing stopped it being edited and
+  re-pinned afterwards, which is how one design came to be pinned about ten
+  hours after the replay it was supposed to have preregistered with every
+  run-time check passing. Manifests predating the field are not flagged.
+- `StudyManifest` gains an optional `reproduction` block, and a study that
+  declares one must satisfy it: each `LiveSource` names a `retrieval_manifest`
+  that has to appear in `frozen_artifacts`, and each `ReproductionTolerance`
+  must name a quantity that is either a declared `upstream_measure` or
+  mentioned in the study's estimand, permitted claims, or limitations. A band on
+  a quantity nothing reports cannot be breached.
+- `classify_rebuild` requires an `identity_grain` argument and carries it into
+  the verdict, because a comparison that does not say what "the same rows" meant
+  cannot be audited.
+
+### Added
+
+- `sbir_etl/quality/reproduction.py` classifies a rebuild against a live
+  upstream into exact, upstream drift, pipeline regression, identity
+  divergence, or outside tolerance. Row identity is checked before counts: an
+  upstream can revise a record in place, so equal counts over different rows is
+  the case a count-only comparison silently passes.
+- `run_ma_discovery_sample.py` records `protocol_sha256` and
+  `protocol_yaml_sha256` in its run manifest, so the design a result names can
+  be compared mechanically against the design the run actually read.
+- `specs/upstream-drift-reproduction/` specifies how `reproducible` stays
+  checkable when an input is a live public source that its publisher updates.
+- `studies/sbir-ma-dated-signal-study/` adds a prospective F1 signal protocol at
+  `exploratory`, with sources acquired privately and uncommitted.
+
+### Changed
+
+- `transition-scoring` moves from `exploratory` to `reproducible`. Its fusion
+  corpus rebuilt from committed scripts to 828 rows, 138 positives, and 101
+  firms, matching the frozen figures, and the retrieval manifest for that pull
+  is committed and pinned. An earlier rebuild in the same session produced 822
+  and 137 and was read as archive drift; it was a truncated fetch, which is the
+  distinction the reproduction contract exists to make.
+- `ma-discovery-recall` stays `exploratory` and now records its held-out result
+  rather than leaving the outcome unstated: 4 strict medium/high pairs of 307
+  strict-eligible, Wilson 95% [0.0051, 0.0330], against a preregistered floor of
+  10, with `threshold_met` and `confirmatory` both false and five
+  `post_hoc_analyses` entries. An evidence audit established the pinned design
+  postdates the evaluated run, so the study cannot promote on this cut.
+- `docs/research-questions.md` and `studies/README.md` state that the inventory
+  rank `Validated` requires `validation_result.threshold_met: true`, since a
+  manifest at `validated` no longer implies the threshold was met.
+
 ## [0.14.0] — 2026-09-13
 
 ### Breaking
