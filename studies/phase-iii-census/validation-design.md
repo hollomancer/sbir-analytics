@@ -98,6 +98,19 @@ the run with no confirmatory draw taken, and the mismatch is itself recorded.
 - Entry point: `scripts/data/build_phase_iii_placebo_permutation.py::run`, gated on a separate
   repository-owner approval of the R16 run (`owner_approved=True` asserts it; it does not grant it).
 - Freeze verification precedes any input read; Phase 1 source provenance is verified as in R15.
+- The run also verifies **this document's own pinned digest** against `study.yaml` before any draw,
+  and records that digest in its manifest, so the bytes evaluated are identified by the run itself
+  and an edited protocol stops it.
+- The pair frame is validated with the same `validate_pair_frame` check `build_census_tables`
+  performs before counting. One validation covers every draw: it inspects key and identifier
+  columns only, and the placebo changes nothing but the completion date.
+- A run fingerprint over the freeze record, this design's digest, the input digests and row counts,
+  and the data cut is recorded with the precondition. Resuming against a different fingerprint is
+  refused, so draws taken under different inputs are never pooled into one result.
+- The draw store is reconciled on load to seeds that are complete in all three of its frames, so an
+  interruption between the per-frame writes costs the affected seeds a rerun rather than the run.
+  A store whose seeds fall outside the preregistered list, or that has no recorded precondition, is
+  refused.
 - The draw count is fixed at 500 by the design and the runner refuses any other value.
 - The run may be executed in resumable batches over the fixed seed list. A partial draw store is
   not a result: no exceedance table or manifest is written until every preregistered seed is

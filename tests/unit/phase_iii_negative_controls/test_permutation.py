@@ -224,3 +224,24 @@ def test_exceedance_table_marks_exactly_one_primary_row(pairs: pd.DataFrame) -> 
     assert table["threshold_met"].notna().sum() == 1
     assert table.loc[table["metric"].eq("total_obligated_dollars"), "descriptive_only"].all()
     assert len(table) == len(METRIC_COLUMNS) * (1 + 6)
+
+
+def test_run_validates_the_pair_frame_like_the_shared_builder(pairs: pd.DataFrame) -> None:
+    """A malformed frame must fail closed here exactly as build_census_tables does."""
+
+    malformed = pairs.copy()
+    malformed.loc[malformed.index[0], "target_transaction_id"] = None
+
+    with pytest.raises(CensusInputError):
+        build_census_tables(malformed, DATA_CUT)
+    with pytest.raises(CensusInputError):
+        perm.run_permutation_draws(malformed, DATA_CUT, [20260802])
+
+
+def test_permuted_frame_still_passes_pair_validation(pairs: pd.DataFrame) -> None:
+    """One validation covers every draw because the placebo touches no key column."""
+
+    from sbir_analytics.assets.phase_iii_census.criteria import validate_pair_frame
+
+    permuted = build_placebo_assignment(pairs, seed=20260802).permuted_pairs
+    validate_pair_frame(permuted)

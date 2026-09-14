@@ -29,6 +29,7 @@ import hashlib
 import json
 import os
 import tempfile
+from collections.abc import Sequence
 from pathlib import Path
 from typing import Any
 
@@ -52,6 +53,12 @@ from sbir_analytics.assets.phase_iii_census.criteria import (
 )
 from sbir_analytics.assets.phase_iii_negative_controls import permutation as perm
 from sbir_analytics.assets.phase_iii_negative_controls.placebo import PLACEBO_SEED
+from sbir_etl.quality.study_manifest import load_study_manifest
+
+#: The manifest is the single source of truth for the pinned design digest, so
+#: the run cannot drift from the bytes study.yaml claims were evaluated.
+STUDY_MANIFEST_PATH = Path("studies/phase-iii-census/study.yaml")
+VALIDATION_DESIGN_PATH = "studies/phase-iii-census/validation-design.md"
 
 #: Values recorded in studies/phase-iii-census/placebo-results-2026-08-03.md for
 #: the final cumulative clause. The R16 execution path must reproduce them from
@@ -88,6 +95,7 @@ STORE_NAMES = {
 }
 MANIFEST_NAME = "phase_iii_permutation_manifest.json"
 PRECONDITION_NAME = "phase_iii_permutation_precondition.json"
+BATCH_COUNTS = {"placebo_final": 1, "placebo_cells": 6, "mapping_digests": 1}
 
 
 def _file_sha256(path: Path) -> str:
@@ -118,6 +126,60 @@ def _write_json_atomic(payload: dict[str, Any], path: Path) -> None:
         output.write("\n")
         temporary = Path(output.name)
     os.replace(temporary, path)
+
+
+def verify_validation_design(repository_root: Path | None = None) -> dict[str, str]:
+    """Verify the pinned R16 design bytes and return the digest that was evaluated.
+
+    ``verify_frozen_spec`` covers design.md and amendments.md only. The protocol
+    this run executes lives in a third artifact, pinned in study.yaml; without
+    this check a run could proceed against an edited protocol and the emitted
+    manifest would not say which bytes it followed.
+    """
+
+    root = repository_root or Path.cwd()
+    manifest = load_study_manifest(root / STUDY_MANIFEST_PATH)
+    pinned = {artifact.path: artifact.sha256 for artifact in manifest.frozen_artifacts}
+    expected = pinned.get(VALIDATION_DESIGN_PATH)
+    if expected is None:
+        raise CensusInputError(
+            f"{VALIDATION_DESIGN_PATH} is not pinned in {STUDY_MANIFEST_PATH}; the R16 run "
+            "requires the evaluated design to be a frozen artifact"
+        )
+    design_path = root / VALIDATION_DESIGN_PATH
+    if not design_path.exists():
+        raise CensusInputError(f"pinned validation design is missing at {design_path}")
+    observed = _file_sha256(design_path)
+    if observed != expected:
+        raise CensusInputError(
+            f"validation design digest mismatch: {VALIDATION_DESIGN_PATH} hashes to {observed}, "
+            f"study.yaml pins {expected}. The protocol changed; a run under it would not be "
+            "confirmatory."
+        )
+    return {"path": VALIDATION_DESIGN_PATH, "sha256": observed}
+
+
+def run_fingerprint(
+    freeze: dict[str, Any],
+    design: dict[str, str],
+    inputs: dict[str, Any],
+    data_cut: Any,
+) -> str:
+    """Identity of everything a draw depends on, so batches cannot be mixed."""
+
+    payload = {
+        "freeze": freeze,
+        "validation_design": design,
+        "data_cut_date": str(data_cut),
+        "inputs": {
+            key: {k: v for k, v in value.items() if k in {"sha256", "rows"}}
+            for key, value in inputs.items()
+            if isinstance(value, dict)
+        },
+        "pair_rows": inputs.get("pair_rows"),
+    }
+    serialized = json.dumps(payload, sort_keys=True, separators=(",", ":")).encode()
+    return hashlib.sha256(serialized).hexdigest()
 
 
 def _metrics_match(observed: dict[str, object], recorded: dict[str, float]) -> list[str]:
@@ -162,14 +224,63 @@ def run_equivalence_precondition(pairs: pd.DataFrame, data_cut: Any) -> dict[str
     }
 
 
+def complete_seeds(frames: dict[str, pd.DataFrame]) -> set[int]:
+    """Seeds present with their full expected row count in every store frame."""
+
+    if not frames:
+        return set()
+    per_frame: list[set[int]] = []
+    for label, expected in BATCH_COUNTS.items():
+        counts = frames[label]["seed"].astype(int).value_counts()
+        per_frame.append({int(seed) for seed, n in counts.items() if int(n) == expected})
+    return set.intersection(*per_frame)
+
+
+def require_complete_store(frames: dict[str, pd.DataFrame], seeds: Sequence[int]) -> None:
+    """Every store frame must hold exactly its expected rows for exactly ``seeds``.
+
+    ``_load_store`` reconciles to complete seeds, so ``run`` should never reach a
+    partial store here. This is the invariant that makes that reasoning checkable
+    rather than assumed: summarising must never silently draw secondary intervals
+    from a different number of rows than the primary statistic used.
+    """
+
+    expected_seeds = {int(seed) for seed in seeds}
+    for label, per_seed in BATCH_COUNTS.items():
+        counts = frames[label]["seed"].astype(int).value_counts()
+        if set(counts.index) != expected_seeds or not (counts == per_seed).all():
+            raise CensusInputError(
+                f"draw store frame {label!r} does not hold exactly {per_seed} row(s) for each of "
+                f"the {len(expected_seeds)} preregistered seeds; refusing to summarise a "
+                "partial store"
+            )
+
+
 def _load_store(store_dir: Path) -> dict[str, pd.DataFrame]:
-    frames: dict[str, pd.DataFrame] = {}
-    for label, name in STORE_NAMES.items():
-        path = store_dir / name
-        if path.exists():
-            frames[label] = pd.read_parquet(path)
-    if frames and set(frames) != set(STORE_NAMES):
-        raise CensusInputError(f"draw store at {store_dir} is incomplete; remove it and rerun")
+    """Load the draw store, truncated to seeds that are complete in all three frames.
+
+    The three tables are written separately, so an interruption mid-batch can
+    leave a seed in one frame and not another. Truncating to the intersection
+    makes a torn batch recoverable — the affected seeds are simply rerun — where
+    refusing to load would strand a multi-hour run.
+    """
+
+    present = {label: store_dir / name for label, name in STORE_NAMES.items()}
+    existing = {label: path for label, path in present.items() if path.exists()}
+    if not existing:
+        return {}
+    if set(existing) != set(STORE_NAMES):
+        missing = sorted(set(STORE_NAMES) - set(existing))
+        raise CensusInputError(
+            f"draw store at {store_dir} is missing {missing}; remove the store and rerun"
+        )
+    frames = {label: pd.read_parquet(path) for label, path in present.items()}
+    keep = complete_seeds(frames)
+    for label, frame in list(frames.items()):
+        trimmed = frame.loc[frame["seed"].astype(int).isin(keep)].reset_index(drop=True)
+        if len(trimmed) != len(frame):
+            _write_parquet_atomic(trimmed, present[label])
+        frames[label] = trimmed
     return frames
 
 
@@ -251,7 +362,9 @@ def run(
         )
 
     freeze = verify_frozen_spec()
+    design = verify_validation_design()
     pairs, inputs, data_cut = _load_pairs()
+    fingerprint = run_fingerprint(freeze, design, inputs, data_cut)
     output_dir.mkdir(parents=True, exist_ok=True)
     store_dir = output_dir / "draw_store"
 
@@ -260,13 +373,29 @@ def run(
         precondition = json.loads(precondition_path.read_text(encoding="utf-8"))
         if not precondition.get("matched_recorded_r15"):
             raise CensusInputError("recorded precondition did not match R15; refusing to resume")
+        recorded = precondition.get("run_fingerprint")
+        if recorded != fingerprint:
+            raise CensusInputError(
+                "this run does not match the one the draw store was started under "
+                f"(recorded fingerprint {recorded}, current {fingerprint}). The frozen design, "
+                "the pinned validation design, the source inputs or the data cut changed; "
+                "combining draws across them would report one set of inputs for rows built "
+                "from another. Start a new output directory."
+            )
     else:
+        if store_dir.exists():
+            raise CensusInputError(
+                f"draw store exists at {store_dir} with no recorded precondition; refusing to "
+                "resume draws whose provenance cannot be established"
+            )
         precondition = run_equivalence_precondition(pairs, data_cut)
+        precondition["run_fingerprint"] = fingerprint
+        precondition["validation_design"] = design
         _write_json_atomic(precondition, precondition_path)
 
     seeds = perm.preregistered_seeds(draws)
     existing = _load_store(store_dir)
-    done = set(existing["placebo_final"]["seed"].astype(int)) if existing else set()
+    done = complete_seeds(existing)
     if not done <= set(seeds):
         raise CensusInputError("draw store contains seeds outside the preregistered list")
     remaining = [s for s in seeds if s not in done]
@@ -282,6 +411,8 @@ def run(
         "schema_version": "phase-iii-permutation-separation-v1",
         "design_revision": "phase-0-r16",
         "freeze": freeze,
+        "validation_design": design,
+        "run_fingerprint": fingerprint,
         "data_cut_date": data_cut.isoformat(),
         "inputs": inputs,
         "precondition": precondition,
@@ -300,6 +431,7 @@ def run(
         )
         return status
 
+    require_complete_store(existing, seeds)
     final = existing["placebo_final"].sort_values("seed", kind="stable").reset_index(drop=True)
     cells = (
         existing["placebo_cells"]

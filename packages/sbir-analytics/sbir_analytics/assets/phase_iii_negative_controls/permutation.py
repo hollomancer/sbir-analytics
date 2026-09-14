@@ -30,6 +30,7 @@ from ..phase_iii_census.criteria import (
     CensusInputError,
     build_sensitivity_grid_from_full,
     summarize_survivors,
+    validate_pair_frame,
 )
 from .placebo import PLACEBO_SEED, build_placebo_assignment
 
@@ -139,6 +140,12 @@ def run_permutation_draws(
 
     if len(set(seeds)) != len(seeds):
         raise CensusInputError("permutation seeds must be distinct")
+    # build_census_tables validates the pair frame before counting
+    # (criteria._iter_core_clause_survivors). The fast path must fail closed on
+    # the same malformed input rather than summarising it. One validation covers
+    # every draw: validate_pair_frame inspects only key and identifier columns,
+    # and the placebo changes nothing but prior_period_of_performance_end.
+    validate_pair_frame(pairs)
     fixed = date_independent_mask(pairs, data_cut_date)
 
     actual_summary, actual_cells = final_stage_and_cells(pairs, data_cut_date, fixed_mask=fixed)

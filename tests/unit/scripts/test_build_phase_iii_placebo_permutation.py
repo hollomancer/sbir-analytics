@@ -22,6 +22,12 @@ SPEC.loader.exec_module(MODULE)
 DATA_CUT = date(2026, 2, 6)
 
 
+def _refuse_draws(*_args: object, **_kwargs: object) -> None:
+    pytest.fail(
+        "a confirmatory draw was taken after a provenance guard should have stopped the run"
+    )
+
+
 def _pairs() -> pd.DataFrame:
     return pd.DataFrame(
         [
@@ -139,18 +145,143 @@ def test_resumed_run_completes_over_the_fixed_seed_list_and_writes_result(
     assert set(manifest["artifacts"]) == set(MODULE.OUTPUT_NAMES)
 
 
-def test_store_with_foreign_seed_is_refused(
+def test_store_with_a_complete_foreign_seed_is_refused(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A seed outside the preregistered list is a different design, not a resumable draw."""
+
+    pairs = _pairs()
+    _wire(monkeypatch, pairs, draws=2)
+    MODULE.run(tmp_path, owner_approved=True, draws=2, batch_size=1)
+    store = tmp_path / "draw_store"
+    for name in MODULE.STORE_NAMES.values():
+        path = store / name
+        frame = pd.read_parquet(path)
+        frame["seed"] = 1
+        frame.to_parquet(path, index=False)
+
+    with pytest.raises(CensusInputError, match="outside the preregistered list"):
+        MODULE.run(tmp_path, owner_approved=True, draws=2)
+
+
+def test_torn_batch_is_truncated_to_complete_seeds_and_rerun(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """An interruption between the three writes must be recoverable, not fatal."""
+
+    pairs = _pairs()
+    _wire(monkeypatch, pairs, draws=3)
+    MODULE.run(tmp_path, owner_approved=True, draws=3, batch_size=2)
+    store = tmp_path / "draw_store"
+    cells_path = store / MODULE.STORE_NAMES["placebo_cells"]
+    cells = pd.read_parquet(cells_path)
+    survivor, torn = sorted(set(cells["seed"].astype(int)))
+    kept = pd.concat(
+        [
+            cells.loc[cells["seed"].astype(int).eq(survivor)],
+            cells.loc[cells["seed"].astype(int).eq(torn)].iloc[:2],
+        ],
+        ignore_index=True,
+    )
+    kept.to_parquet(cells_path, index=False)
+
+    loaded = MODULE._load_store(store)
+    assert MODULE.complete_seeds(loaded) == {survivor}
+    assert set(pd.read_parquet(store / MODULE.STORE_NAMES["placebo_final"])["seed"]) == {survivor}
+
+    status = MODULE.run(tmp_path, owner_approved=True, draws=3)
+
+    assert status["complete"] is True
+    assert status["result"]["denominator"] == 3
+    final = pd.read_parquet(tmp_path / MODULE.OUTPUT_NAMES["placebo_final"])
+    assert final["seed"].tolist() == perm.preregistered_seeds(3)
+
+
+def test_require_complete_store_rejects_a_short_frame() -> None:
+    """Completion is checked across all three frames, not inferred from one."""
+
+    seeds = [20260802, 20260803]
+    frames = {
+        "placebo_final": pd.DataFrame({"seed": seeds}),
+        "placebo_cells": pd.DataFrame({"seed": [s for s in seeds for _ in range(6)]}),
+        "mapping_digests": pd.DataFrame({"seed": seeds}),
+    }
+    MODULE.require_complete_store(frames, seeds)
+
+    short = dict(frames)
+    short["placebo_cells"] = frames["placebo_cells"].iloc[:-1]
+    with pytest.raises(CensusInputError, match="preregistered seeds"):
+        MODULE.require_complete_store(short, seeds)
+
+    foreign = dict(frames)
+    foreign["mapping_digests"] = pd.DataFrame({"seed": [20260802, 99]})
+    with pytest.raises(CensusInputError, match="preregistered seeds"):
+        MODULE.require_complete_store(foreign, seeds)
+
+
+def test_run_is_bound_to_the_pinned_validation_design(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """An edited protocol stops the run; the evaluated digest reaches the manifest."""
+
+    pairs = _pairs()
+    _wire(monkeypatch, pairs, draws=2)
+    status = MODULE.run(tmp_path, owner_approved=True, draws=2)
+    assert status["validation_design"]["path"] == MODULE.VALIDATION_DESIGN_PATH
+    assert status["validation_design"]["sha256"] == MODULE.verify_validation_design()["sha256"]
+
+    monkeypatch.setattr(
+        MODULE,
+        "verify_validation_design",
+        lambda *_a, **_k: (_ for _ in ()).throw(
+            CensusInputError("validation design digest mismatch")
+        ),
+    )
+    with pytest.raises(CensusInputError, match="digest mismatch"):
+        MODULE.run(tmp_path / "other", owner_approved=True, draws=2)
+
+
+def test_verify_validation_design_detects_edited_bytes(tmp_path: Path) -> None:
+    root = tmp_path / "repo"
+    (root / "studies/phase-iii-census").mkdir(parents=True)
+    source = Path(MODULE.STUDY_MANIFEST_PATH)
+    (root / MODULE.STUDY_MANIFEST_PATH).write_text(
+        source.read_text(encoding="utf-8"), encoding="utf-8"
+    )
+    design = root / MODULE.VALIDATION_DESIGN_PATH
+    design.write_text("edited protocol\n", encoding="utf-8")
+
+    with pytest.raises(CensusInputError, match="digest mismatch"):
+        MODULE.verify_validation_design(root)
+
+
+def test_resume_under_changed_inputs_is_refused(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Draws taken under different inputs must not be pooled into one result."""
+
+    pairs = _pairs()
+    _wire(monkeypatch, pairs, draws=3)
+    MODULE.run(tmp_path, owner_approved=True, draws=3, batch_size=1)
+    monkeypatch.setattr(
+        MODULE, "_load_pairs", lambda: (pairs, {"pair_rows": len(pairs) + 1}, DATA_CUT)
+    )
+    monkeypatch.setattr(MODULE.perm, "run_permutation_draws", _refuse_draws)
+
+    with pytest.raises(CensusInputError, match="does not match the one the draw store"):
+        MODULE.run(tmp_path, owner_approved=True, draws=3)
+
+
+def test_store_without_a_precondition_record_is_refused(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     pairs = _pairs()
     _wire(monkeypatch, pairs, draws=2)
     MODULE.run(tmp_path, owner_approved=True, draws=2, batch_size=1)
-    store = tmp_path / "draw_store" / "draws_final.parquet"
-    frame = pd.read_parquet(store)
-    frame.loc[0, "seed"] = 1
-    frame.to_parquet(store, index=False)
+    (tmp_path / MODULE.PRECONDITION_NAME).unlink()
+    monkeypatch.setattr(MODULE.perm, "run_permutation_draws", _refuse_draws)
 
-    with pytest.raises(CensusInputError, match="outside the preregistered list"):
+    with pytest.raises(CensusInputError, match="no recorded precondition"):
         MODULE.run(tmp_path, owner_approved=True, draws=2)
 
 
