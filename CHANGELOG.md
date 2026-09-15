@@ -10,6 +10,87 @@ version.
 
 ## [Unreleased]
 
+## [0.16.0] — 2026-09-15
+
+### Breaking
+
+- `validated_phase_iii_contracts` now also emits task orders placed under an IDV
+  that explicitly declares SBIR/STTR Phase III, so `phase_iii_contracts.parquet`
+  gains rows and every rate derived from it moves. Inheritance is fail-closed:
+  the parent must resolve to one unambiguous IDV, and a general-purpose vehicle
+  that happens to carry a single Phase III order does not confer status on its
+  siblings. A PIID reused by different IDVs is omitted from the lookup rather
+  than guessed at.
+- `PhaseIIIContract` gains a required `phase_iii_evidence` field, alongside
+  optional `parent_contract_id` and `phase_iii_inherited`. Code that constructs
+  the model directly must now state how the row was identified — `direct_10q`,
+  `direct_sbir_phase`, `direct_research`, or `parent_declared`. A validator
+  rejects rows where `phase_iii_inherited` and `phase_iii_evidence` disagree, so
+  a consumer can filter on either one.
+
+### Added
+
+- The C4 allocation transaction-cost study
+  (`studies/allocation-transaction-costs/`,
+  `scripts/data/allocation_transaction_costs.py`,
+  `docs/research/allocation-transaction-costs.md`) compares NIH SBIR against an
+  R01-equivalent baseline. It reports the break-even reviewer-hour count as the
+  identified result and records the directional efficiency claim as
+  underidentified. Hours per award, dollars per award, and cost per awarded
+  dollar stay separate rather than collapsing into one efficiency score.
+  Reviewer hours are anchored in Gallo 2019 with the NSF 2021 Merit Review
+  Survey as a second anchor, the UK full-system estimate as an external
+  benchmark, and the FDP activity decomposition recorded from the primary
+  reports. The total-cost break-even is reported beside the applicant-only one,
+  and the sweep shocks one side at a time.
+- The R16 permutation-separation validation design for `phase-iii-census`:
+  `assets/phase_iii_negative_controls/permutation.py` and
+  `scripts/data/build_phase_iii_placebo_permutation.py` compare the actual frame
+  against 500 seeded placebo frames and report an exceedance share with a Wilson
+  95% interval for the primary statistic and each secondary cell. The design is
+  frozen in `studies/phase-iii-census/validation-design.md` under SHA pinning.
+  `build_placebo_assignment` and `permute_prior_end_dates_across_firms` take an
+  optional `seed`; `criteria.summarize_survivors` and
+  `criteria.build_sensitivity_grid_from_full` are public aliases for the frozen
+  per-stage summaries.
+- Two study-claim CI guards, run by `make lint-boundaries` and the CI quality
+  job. `check_study_artifact_roundtrip.py` requires a rendered deliverable to
+  reproduce from its committed sidecar, and every renderer to be registered or
+  waived with a reason. `check_deterministic_as_of.py` refuses a wall-clock
+  as-of default in the three places that fix a data cut, including the semantic
+  form — a `None` default that the body resolves with `as_of or clock()`, a
+  ternary, or an `if as_of is None:` branch. Neither guard accepts a blank
+  exemption reason: a waiver or allowlist entry with no reason is reported and
+  exempts nothing. Three pre-existing paths are recorded on the as-of burndown
+  allowlist, including `supply_chain/release_validation.py`, where release age
+  moved with the clock.
+- A `named-reader-reviewer` agent role that checks what a declared outside
+  reader would quote from a packet and whether that sentence is licensed. It
+  routes on packet type rather than header presence, so a packet missing its
+  reader header still reaches the check; inventory edits to
+  `docs/research-questions.md` are exempt from the header rule and resolve their
+  reader from the enclosing policy area.
+
+### Fixed
+
+- `validated_phase_iii_contracts` emitted `parent_contract_id` as `NaN` rather
+  than `None` on rows with no parent, because `DataFrame.apply` infers a string
+  dtype over mixed `str`/`None` and rewrites the missing entries. `NaN` is
+  truthy, so `if row["parent_contract_id"]:` was true for every parentless row.
+- The consultant-hours arithmetic in the allocation transaction-cost study was
+  corrected, and an assumption that had been presented as an anchor no longer
+  claims to be one.
+- Pinned study CSVs are stored with LF endings and pinned against normalisation
+  via `.gitattributes`, so a checkout on another platform does not change the
+  bytes a manifest records.
+
+### Changed
+
+- The SBIR-versus-R01 contrast is recorded as an allocation-mechanism
+  comparison, not a performer comparison.
+- Two C4 citations moved off reserved research-question slots, and the new
+  sources were added to the inventory.
+
 ## [0.15.0] — 2026-09-14
 
 ### Breaking
@@ -489,7 +570,12 @@ across the root project and the three packages under `packages/`.
 `vMAJOR.MINOR.PATCH` form it requires. Per that policy published tags are never
 moved or reused, so they remain as historical markers.
 
-[Unreleased]: https://github.com/hollomancer/sbir-analytics/compare/v0.11.0...HEAD
+[Unreleased]: https://github.com/hollomancer/sbir-analytics/compare/v0.16.0...HEAD
+[0.16.0]: https://github.com/hollomancer/sbir-analytics/compare/v0.15.0...v0.16.0
+[0.15.0]: https://github.com/hollomancer/sbir-analytics/compare/v0.14.0...v0.15.0
+[0.14.0]: https://github.com/hollomancer/sbir-analytics/compare/v0.13.0...v0.14.0
+[0.13.0]: https://github.com/hollomancer/sbir-analytics/compare/v0.12.0...v0.13.0
+[0.12.0]: https://github.com/hollomancer/sbir-analytics/compare/v0.11.0...v0.12.0
 [0.11.0]: https://github.com/hollomancer/sbir-analytics/compare/v0.10.0...v0.11.0
 [0.10.0]: https://github.com/hollomancer/sbir-analytics/compare/v0.9.0...v0.10.0
 [0.9.0]: https://github.com/hollomancer/sbir-analytics/compare/v0.8.0...v0.9.0
