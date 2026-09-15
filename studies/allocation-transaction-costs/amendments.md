@@ -30,7 +30,13 @@ findings that arrive after the freeze without altering the frozen bytes.
   between these two mechanisms". It does not answer "do small businesses transact federal
   R&D dollars more cheaply than universities". The second question requires holding the
   mechanism constant.
-- **Designs that would identify the performer effect,** in descending order of strength:
+- **Designs that would make the performer contrast more comparable,** in descending
+  order of strength. None of them identifies a causal performer effect on its own:
+  holding the opportunity and instrument fixed removes mechanism variation but leaves
+  topic, team, proposal quality, and award size differing, and selection into performer
+  type is not random. The frozen `design.md` (lines 21–22) states these quantities are
+  not causal, and that is unchanged here. Each design below would need its own stated
+  matching or assignment assumptions before any causal reading:
   1. Small businesses and universities competing inside the *same* funding opportunity under
      the *same* assistance instrument. DOE Office of Science financial assistance and some
      NIH research-grant opportunities admit both performer types; DARPA BAAs do too but
@@ -42,11 +48,17 @@ findings that arrive after the freeze without altering the frozen bytes.
      recipient and the research institution is normally subordinate.
   3. The present SBIR-versus-R01 contrast, which is weak for the performer question
      specifically, whatever its value for describing the mechanisms as they stand.
+
+  Read the list as a ranking of comparability, not of identification strength.
 - **Measurement rule carried forward:** Neither a university F&A rate nor a company indirect
   rate is a transaction-cost rate. University F&A contains buildings, utilities, libraries,
   IT, and depreciation; company indirect pools contain rent, payroll taxes, insurance, and
-  accounting. `forbidden_hour_sources` already refuses `fa_rate`; the company-indirect side
-  is the same error and is refused on the same grounds. Transaction cost means resources
+  accounting. `forbidden_hour_sources` refuses `fa_rate` and `pra_estimate`, and
+  `load_assumptions` rejects any other label, so the guard as implemented covers those two
+  only. A company-indirect rate is the same category error, but it is **not** currently
+  enforced: no such label exists to be refused, and a caller could pass one to
+  `applicant_hours_from_source`. Treat this as a rule for the next revision to implement
+  and test, not a property of the present code. Transaction cost means resources
   consumed *because* the money must be competed for, transferred, monitored, and documented,
   not resources required to perform the research.
 - **Not adopted:** no new mechanism, table, or assumption is introduced here. Acting on the
