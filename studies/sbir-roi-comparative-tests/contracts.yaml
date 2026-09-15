@@ -1,0 +1,194 @@
+schema_version: 1
+contract_id: sbir-roi-comparative-tests-v1
+
+comparators:
+  - comparator_id: doe-sbir-ranked-cutoff
+    comparability: mechanism_matched
+    funding_mechanism: Early-stage, non-dilutive firm research and development grant.
+    selection_rule: Ranked applications near a funding cutoff.
+    counterfactual: Just-unfunded applicants near the same cutoff.
+    primary_use: Identify the effect of a marginal SBIR award.
+    confounds:
+      - Results come from one agency and historical cohorts.
+      - Cutoff applicants can differ from the full award portfolio.
+  - comparator_id: air-force-open-topic
+    comparability: mechanism_matched
+    funding_mechanism: Firm research award with open-topic and conventional-topic variants.
+    selection_rule: Competitive selection under different solicitation designs.
+    counterfactual: Conventional-topic awards and eligible applicants under the study design.
+    primary_use: Test whether solicitation design changes commercial and mission outcomes.
+    confounds:
+      - Defense adoption differs from civilian commercialization.
+      - Topic choice can reflect applicant selection.
+  - comparator_id: eu-sme-instrument
+    comparability: mechanism_matched
+    funding_mechanism: Ranked, non-dilutive research and innovation grants for small firms.
+    selection_rule: Score ranking with program cutoffs.
+    counterfactual: Just-unfunded applicants near each cutoff.
+    primary_use: Test whether the grant mechanism travels across institutions.
+    confounds:
+      - European capital markets and firm definitions differ from United States conditions.
+      - Award size and program services differ from SBIR.
+  - comparator_id: eurostars
+    comparability: mechanism_matched
+    funding_mechanism: Multinational research grants for small and medium enterprises.
+    selection_rule: Ranked projects with national budget constraints.
+    counterfactual: Projects displaced by national allocation rules.
+    primary_use: Test allocation quality and project heterogeneity.
+    confounds:
+      - Consortium projects differ from single-firm SBIR awards.
+      - National cofunding creates implementation variation.
+  - comparator_id: nih-r01
+    comparability: mechanism_matched
+    funding_mechanism: Investigator-led extramural research grant.
+    selection_rule: Peer review and institute funding decisions.
+    counterfactual: Matched research portfolios, not firms.
+    primary_use: Test comparative federal research performance per lifecycle dollar.
+    confounds:
+      - Performer type, research stage, award size, and mission differ.
+      - This comparison cannot identify a small-business effect without stronger design.
+  - comparator_id: nasa-external-rd
+    comparability: mechanism_matched
+    funding_mechanism: External research and development awards for comparable mission topics.
+    selection_rule: Program-specific competitive or directed selection.
+    counterfactual: Matched non-SBIR external research projects.
+    primary_use: Test mission and commercial outcomes within one agency.
+    confounds:
+      - Procurement, grants, and cooperative agreements are not one mechanism.
+      - Technology readiness and performer type can remain unobserved.
+  - comparator_id: darpa-arpa-e
+    comparability: context_only
+    funding_mechanism: Program-manager-led, milestone-based high-risk research portfolio.
+    selection_rule: Active program management and mission fit.
+    counterfactual: No common award-level counterfactual with SBIR.
+    primary_use: Interpret portfolio design, not estimate relative return.
+    confounds:
+      - Program management, performer mix, scale, and mission differ materially.
+  - comparator_id: rd-tax-credit
+    comparability: context_only
+    funding_mechanism: Tax expenditure based on firm-reported qualifying research.
+    selection_rule: Entitlement rules rather than project selection.
+    counterfactual: Policy exposure or eligibility changes.
+    primary_use: Bound alternative innovation-policy costs, not rank award mechanisms.
+    confounds:
+      - No project selection, milestone, or mission requirement matches SBIR.
+
+outcomes:
+  - outcome_id: operating-status
+    category: operating_firm
+    grain: Firm-year.
+    measure: Active operations, survival, and verified closure dates.
+    taxpayer_treatment: validation_signal
+    standalone_success_measure: true
+  - outcome_id: follow-on-private-capital
+    category: private_capital
+    grain: Firm-event and firm-window.
+    measure: New equity or debt after the focal decision date.
+    taxpayer_treatment: validation_signal
+    standalone_success_measure: false
+  - outcome_id: licensing
+    category: licensing
+    grain: Agreement and product-family.
+    measure: Executed license, royalties, and verified licensee use.
+    taxpayer_treatment: requires_incremental_value_added
+    standalone_success_measure: true
+  - outcome_id: mergers-acquisitions-ipo
+    category: exit
+    grain: Firm-event.
+    measure: Acquisition, merger, or public listing with event date and role.
+    taxpayer_treatment: validation_signal
+    standalone_success_measure: false
+  - outcome_id: non-sbir-revenue
+    category: revenue
+    grain: Firm-year and product-year.
+    measure: Revenue excluding Phase I and Phase II obligations.
+    taxpayer_treatment: requires_incremental_value_added
+    standalone_success_measure: true
+  - outcome_id: productivity
+    category: productivity
+    grain: Firm-year or establishment-year.
+    measure: Value added, output per worker, or total factor productivity.
+    taxpayer_treatment: direct_benefit
+    standalone_success_measure: true
+  - outcome_id: mission-adoption
+    category: mission
+    grain: Product-use or procurement-event.
+    measure: Verified operational adoption, clinical use, or procurement.
+    taxpayer_treatment: direct_benefit
+    standalone_success_measure: true
+  - outcome_id: spillovers
+    category: spillover
+    grain: Technology-market, geography, or knowledge-flow event.
+    measure: Domestic startup entry, worker movement, standards, or cited technical use.
+    taxpayer_treatment: direct_benefit
+    standalone_success_measure: true
+  - outcome_id: patents
+    category: knowledge
+    grain: Patent-family.
+    measure: Linked patent families and downstream cited use.
+    taxpayer_treatment: intermediate_output
+    standalone_success_measure: false
+
+attribution:
+  - evidence_class: causal
+    allowed_weight_range: [0.0, 1.0]
+    minimum_design: Valid discontinuity, random assignment, or credible natural experiment.
+    prohibited_claim: Do not generalize beyond the design population without an explicit transport assumption.
+  - evidence_class: descriptive
+    allowed_weight_range: [0.0, 0.0]
+    minimum_design: Frozen cohort, complete denominator, dated outcome window, and documented coverage.
+    prohibited_claim: Do not describe award-linked outcomes as caused by SBIR.
+  - evidence_class: inference
+    allowed_weight_range: [0.0, 1.0]
+    minimum_design: Declared assumption with sensitivity analysis and a source for each input.
+    prohibited_claim: Do not present an assumed attribution weight as an estimated causal effect.
+
+ledger:
+  - item_id: federal-receipts
+    ledger: fiscal
+    side: benefit
+    measure: Incremental federal tax and fee receipts attributable to the program.
+    transfer_treatment: Count in fiscal net present value only.
+    overlap_group: taxes
+  - item_id: avoided-federal-costs
+    ledger: fiscal
+    side: benefit
+    measure: Federal mission costs avoided by attributable products or services.
+    transfer_treatment: Count only after subtracting implementation costs.
+  - item_id: awards-administration
+    ledger: fiscal
+    side: cost
+    measure: Awards, administration, review, and applicant burden paid from federal resources.
+    transfer_treatment: Count federal outlays and real administrative resources.
+  - item_id: domestic-consumer-surplus
+    ledger: domestic_social
+    side: benefit
+    measure: Incremental domestic consumer value above prices paid.
+    transfer_treatment: Exclude price transfers already counted as producer surplus.
+    overlap_group: product-value
+  - item_id: domestic-producer-surplus
+    ledger: domestic_social
+    side: benefit
+    measure: Incremental domestic producer surplus from attributable output.
+    transfer_treatment: Exclude licensing transfers within the domestic economy.
+    overlap_group: product-value
+  - item_id: productivity-and-mission
+    ledger: domestic_social
+    side: benefit
+    measure: Incremental productivity, health, environmental, security, and mission value.
+    transfer_treatment: Count real resource gains after adoption costs.
+  - item_id: domestic-spillovers
+    ledger: domestic_social
+    side: benefit
+    measure: Domestic knowledge, entry, workforce, standard, and supply-chain spillovers.
+    transfer_treatment: Count only effects not captured in product or producer surplus.
+  - item_id: real-resource-cost
+    ledger: domestic_social
+    side: cost
+    measure: Research inputs, applicant burden, administration, distortion, and displacement.
+    transfer_treatment: Exclude pure transfers and include the best alternative use of funds.
+  - item_id: opportunity-cost
+    ledger: domestic_social
+    side: cost
+    measure: Net benefit forgone under the strongest feasible alternative federal mechanism.
+    transfer_treatment: Report separately and include in the preferred social net present value.

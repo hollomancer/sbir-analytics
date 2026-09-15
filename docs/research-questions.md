@@ -753,6 +753,21 @@ spending produce measurable new knowledge?*
 
 ### C3. Inferential (Tier 3)
 
+- **Comparative federal research performance**
+  How does SBIR compare with mechanism-matched federal research programs on a
+  common outcome vector per lifecycle dollar?
+  The vector prioritizes operating firms, licensing, mission adoption, revenue,
+  productivity, private capital, and exits. Publications and patents remain
+  intermediate outputs. NIH SBIR versus R01 and NASA SBIR versus other external
+  research are the first planned studies. Performer type, research stage, award
+  architecture, and selection prevent a causal ranking without stronger design.
+  **Status:** Exploratory and non-citable. Four manifests and a shared contract
+  bundle define the work. No comparator cohort has been materialized.
+  *Deps: agency project data, ER, operating status, licensing, SEC EDGAR, M&A,
+  procurement, productivity · Spec: [../specs/sbir-roi-comparative-tests/](../specs/sbir-roi-comparative-tests/)
+  · Studies: [NIH](../studies/nih-sbir-vs-r01-outcomes/study.yaml),
+  [NASA](../studies/nasa-sbir-vs-external-rd/study.yaml)*
+
 - **Marginal cost per patent**
   What is the marginal cost per patent by agency (award dollars ÷ linked
   patents)?
@@ -841,6 +856,19 @@ dollar return on the SBIR program?*
   *Deps: fiscal model with state rates*
 
 ### D3. Uncertainty & reconciliation (Tier 3)
+
+- **Domestic social-return break-even**
+  What share of monetized awardee-linked benefits must SBIR cause for domestic
+  social benefits to equal taxpayer costs?
+  Calculate fiscal and domestic-social ledgers separately. Include opportunity
+  cost against the strongest feasible alternative federal mechanism. Treat
+  private capital and exits as validation signals. Convert revenue to
+  incremental value added or surplus before counting benefits.
+  **Status:** Exploratory and non-citable. The frozen design defines a break-even
+  threshold, not an estimated causal return. No benefit or cost cohort is materialized.
+  *Deps: B3, C3, F3, fiscal inputs, mission valuation, spillovers · Spec:
+  [../specs/sbir-roi-comparative-tests/](../specs/sbir-roi-comparative-tests/)
+  · Study: [sbir-social-return-break-even](../studies/sbir-social-return-break-even/study.yaml)*
 
 - **Sensitivity of fiscal estimates**
   How robust are fiscal return estimates to parameter uncertainty (sensitivity
