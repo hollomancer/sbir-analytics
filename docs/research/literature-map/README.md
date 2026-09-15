@@ -60,7 +60,8 @@ Grey-literature rows without an OpenAlex work id use a synthetic key in `openale
 same title or DOI is merged onto that row and the key is upgraded to `W…`. RSS feeds are
 recency windows, not a full corpus — historical GAO/CRS reports already in `[L#]` are not
 backfilled. CRS is read from the unofficial EveryCRSReport mirror. One failed feed does
-not abort the OpenAlex half of the run.
+not abort the OpenAlex half of the run. An unresolved OpenAlex anchor DOI skips only its
+forward-citation query and does not block the grey-literature feeds.
 
 `.github/workflows/literature-map.yml` runs the same command weekly (Monday 09:17 UTC) and
 opens `chore/literature-map-refresh` when those two files change. Optional secret:
