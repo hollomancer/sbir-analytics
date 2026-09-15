@@ -785,7 +785,7 @@ spending produce measurable new knowledge?*
   duration assumptions. Directional ranking is underidentified. Other
   agencies are inventory-only in this study.
   *Deps: none (published mechanism-year tables) · Refs: [L3], [L6], [L18],
-  [L49], [L50], [L51], [L52] · Spec:
+  [L51], [L52], [L53], [L54] · Spec:
   [../specs/allocation-transaction-costs/](../specs/allocation-transaction-costs/)
   · Study:
   [allocation-transaction-costs](../studies/allocation-transaction-costs/study.yaml)*
@@ -1386,10 +1386,14 @@ spot-checked against publisher records):
 - **[L46]** Link, A.N. & Swann, C.A. (2024). "SBIR mills and the U.S. Department of Defense." *The Journal of Technology Transfer* 49(6), 2306–2335. Characterizes "SBIR mill" firms in DoD SBIR — the academic treatment of the multiple-award-firm problem behind the §638(qq)(3) performance standards [L14]. <https://doi.org/10.1007/s10961-024-10144-z>
 - **[L47]** Rovito, S.M., Kamp, J., & Etemadi, A.H. (2025). "Exploring Department of the Navy SBIR Phase III awards and corresponding public sector commercialization success factors." *The Journal of Technology Transfer* 50(4), 1363–1395. Navy Phase III awards and the firm attributes predicting public-sector commercialization; finds Phase III receipt only weakly predictive of commercialization success. Relevant to the Section B transition questions and the [`phase3-transition-groundtruth`](../specs/phase3-transition-groundtruth/) spec. <https://doi.org/10.1007/s10961-024-10141-2>
 - **[L48]** NASEM (2026). *Review of the SBIR and STTR Programs at NASA.* National Academies Press. Fills the NASA gap in the [L1]–[L8] agency-review block, which otherwise covers DoD, NIH, NSF, and DOE. <https://doi.org/10.17226/29381>
-- **[L49]** NIH Office of Extramural Research. *NIH Data Book* reports 29 and 158 (R01-equivalent competing applications, awards, success rates, and average size) and RePORT Table #215 (SBIR/STTR competing applications, awards, success rates, and funding by phase). Administrative counts, not behavioral hours. <https://report.nih.gov/nihdatabook/report/29> <https://report.nih.gov/reportweb/web/displayreport?rId=584>
-- **[L50]** Schneider, S.L., et al. (2020). *2018 FDP Faculty Workload Survey: Report of Primary Findings.* Federal Demonstration Partnership. University PI time-use on federal projects; proposal preparation 16.0% of research time. Wrong applicant population for SBIR firms. <https://thefdp.org/wp-content/uploads/FDP-FWS-2018-Primary-Report.pdf>
-- **[L51]** 15 U.S.C. §638. SBIR/STTR statute, including the allowance to use not more than 3 percent of SBIR program funds for administration, outreach, reporting, and related activities. Incremental statutory ceiling, not total agency selection cost. <https://www.law.cornell.edu/uscode/text/15/638>
-- **[L52]** GAO-25-107942 (2025). *Small Business Research Programs: Clearer Guidance Could Improve Award Data to More Effectively Measure Outcomes.* FY2023 proposal counts and acceptance rates for open versus conventional topics. <https://www.gao.gov/products/gao-25-107942>
+- **[L51]** NIH Office of Extramural Research. *NIH Data Book* reports 29 and 158 (R01-equivalent competing applications, awards, success rates, and average size) and RePORT Table #215 (SBIR/STTR competing applications, awards, success rates, and funding by phase). Administrative counts, not behavioral hours. <https://report.nih.gov/nihdatabook/report/29> <https://report.nih.gov/reportweb/web/displayreport?rId=584>
+- **[L52]** Schneider, S.L., et al. (2020). *2018 FDP Faculty Workload Survey: Report of Primary Findings.* Federal Demonstration Partnership. University PI time-use on federal projects; proposal preparation 16.0% of research time. Wrong applicant population for SBIR firms. <https://thefdp.org/wp-content/uploads/FDP-FWS-2018-Primary-Report.pdf>
+- **[L53]** 15 U.S.C. §638. SBIR/STTR statute, including the allowance to use not more than 3 percent of SBIR program funds for administration, outreach, reporting, and related activities. Incremental statutory ceiling, not total agency selection cost. <https://www.law.cornell.edu/uscode/text/15/638>
+- **[L54]** GAO-25-107942 (2025). *Small Business Research Programs: Clearer Guidance Could Improve Award Data to More Effectively Measure Outcomes.* FY2023 proposal counts and acceptance rates for open versus conventional topics. <https://www.gao.gov/products/gao-25-107942>
+- **[L55]** Gallo, S.A., Sullivan, J.H., & Glisson, S.R. (2019). "The Participation and Motivations of Grant Peer Reviewers: A Comprehensive Survey." *Science and Engineering Ethics* 25, 1813–1838. AIBS survey of 874 reviewers; the only published US measurement of reviewer hours per grant application — 4.5 ± 0.08 h of pre-meeting time per assigned application for reviewers on fewer than seven panels, 5.0 ± 0.08 h for those on seven or more. Panel review of NIH-style applications; excludes meeting and travel time. <https://doi.org/10.1007/s11948-019-00123-1>
+- **[L56]** NSF (2023). *Assessment of Stakeholder Experiences With NSF's Merit Review Process: 2021 Merit Review Survey.* Applicants averaged 126 h preparing their most recent proposal (N = 13,731), with regression-adjusted directorate estimates of 78–104 h; reviewers averaged 7 h per review (N = 11,696), excluding panel travel and participation. A survey rather than a Paperwork Reduction Act estimate, so admissible as an hour citation. Secondary summaries circulating an "84.5 hours" figure do not match the report. <https://nsf-gov-resources.nsf.gov/2023-10/2021-Merit-Review-Survey-Report-Final_508.pdf>
+- **[L57]** Pollitt, A., Taylor, C., Sreenan, N., & Grant, J. (2026). "The costs and benefits of research grant funding peer review." *F1000Research* 15:534. 12,617 surveyed across four MRC and EPSRC schemes (11% response, 1,330 responses); transaction cost 13% of grant value, cost per application 3% of the amount requested, incidence 89% applicants / 7% reviewers / 4% panelists. Same cost function as the C4 study; excludes funder operational costs. UK, not US — an external benchmark, never an input. <https://doi.org/10.12688/f1000research.176989.1>
+- **[L58]** FDP (2013). *2012 Faculty Workload Survey: Executive Summary*, with the activity decomposition as printed for both waves in the 2018 primary report [L52]: proposal preparation 15.4%→16.0%, pre-award administration 5.7%→6.3%, post-award administration 13.6%→13.7%, report preparation 7.6%→8.3%, active research 57.7%→55.7%. PIs attribute as much as 38.7% of proposal preparation time to their own scholarship, so PI proposal hours are an upper bound on deadweight effort. <https://thefdp.org/wp-content/uploads/fws_2012_exec_summary.pdf>
 
 ---
 
@@ -1428,6 +1432,20 @@ Open source-verification items:
   from any indexer during the audit, and it is a non-peer-reviewed repository
   deposit. It studies the §638(qq)(3) regime directly, so it is worth re-checking
   at the next refresh; if confirmed it takes the next free slot, [L49].
+  **2026-09-13 recheck:** the deposit **is** confirmed. DOI `10.25740/xq826fj1447`
+  resolves to <https://purl.stanford.edu/xq826fj1447>, titled as proposed. The earlier
+  audit checked indexers rather than the repository itself, which is why it read as
+  unconfirmable. The attribution needs correcting, though: the record lists Jones,
+  Rachel Mackenzie as author and Fearon, James as **degree supervisor**, granting
+  institution Stanford University Public Policy Program, dated ca. May 2026. It is a
+  degree thesis, not a co-authored working paper, so whether it earns an `[L#]` slot at
+  all is a judgment call rather than a mechanical consequence of confirmation. `[L49]`
+  therefore remains reserved and unassigned pending that decision.
+- **`[L50]` is spoken for and still pending** — open question O-8 in
+  [`specs/sttr-spinout-linkage/open-questions.md`](../specs/sttr-spinout-linkage/open-questions.md)
+  was RESOLVED on 2026-08-14 to add `[L50]` for the statutory Bayh-Dole anchor
+  (35 U.S.C. §§ 200–212), but the entry was never written into this file. The slot is
+  held for that spec, not free.
 
 The next audit should verify:
 
