@@ -8,6 +8,7 @@ downstream analysis can qualify the observed coded-channel rate.
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 from typing import Any
 
@@ -32,9 +33,21 @@ from .utils import (
 
 DEFAULT_OUTPUT_PATH = "data/processed/phase_iii_contracts.parquet"
 
+_IDV_AWARD_TYPES = frozenset({"BPA", "BOA", "IDIQ"})
+_PHASE_III_PARENT_DESCRIPTION = re.compile(
+    r"(?:\b(?:SBIR|STTR)\b|\bSMALL BUSINESS (?:INNOVATION|TECHNOLOGY TRANSFER) RESEARCH\b)"
+    r".{0,120}\bPHASE[\s-]*(?:III|3)\b|"
+    r"\bPHASE[\s-]*(?:III|3)\b.{0,120}"
+    r"(?:\b(?:SBIR|STTR)\b|\bSMALL BUSINESS (?:INNOVATION|TECHNOLOGY TRANSFER) RESEARCH\b)",
+    re.IGNORECASE,
+)
+
 
 PHASE_III_COLUMNS: list[str] = [
     "contract_id",
+    "parent_contract_id",
+    "phase_iii_evidence",
+    "phase_iii_inherited",
     "recipient_uei",
     "recipient_duns",
     "recipient_name",
@@ -47,15 +60,115 @@ PHASE_III_COLUMNS: list[str] = [
 ]
 
 
+def _normalized_identifier(value: object) -> str | None:
+    if not isinstance(value, str):
+        return None
+    normalized = value.strip().upper()
+    return normalized or None
+
+
+def _row_value(row: pd.Series, *names: str) -> str | None:
+    for name in names:
+        value = row.get(name) if name in row else None
+        if isinstance(value, str) and value.strip():
+            return value
+    return None
+
+
+def _is_idv_row(row: pd.Series) -> bool:
+    award_type = _normalized_identifier(_row_value(row, "contract_award_type", "award_type"))
+    return bool(award_type and (award_type.startswith("IDV") or award_type in _IDV_AWARD_TYPES))
+
+
+def _parent_declares_phase_iii(row: pd.Series) -> bool:
+    if _classify_contract_phase(row) == "III":
+        return True
+    description = _row_value(row, "description", "transaction_description")
+    return bool(description and _PHASE_III_PARENT_DESCRIPTION.search(str(description)))
+
+
+def _direct_evidence(row: pd.Series) -> str:
+    research = _normalized_identifier(_row_value(row, "research"))
+    if research in {"SR3", "ST3"}:
+        return "direct_10q"
+    if _row_value(row, "sbir_phase") is not None:
+        return "direct_sbir_phase"
+    return "direct_research"
+
+
+def _phase_iii_parent_index(contracts: pd.DataFrame) -> tuple[dict[str, str], set[str]]:
+    """Resolve unambiguous IDV identifiers and explicitly declared Phase III parents.
+
+    Multiple transaction rows for one IDV share a canonical key. A PIID reused by
+    different IDVs is deliberately omitted from the lookup, so bare-PIID collisions
+    cannot cause Phase III inheritance.
+    """
+
+    identifiers_to_parents: dict[str, set[str]] = {}
+    declared_parents: set[str] = set()
+
+    for _, row in contracts.iterrows():
+        if not _is_idv_row(row):
+            continue
+
+        generated_id = _normalized_identifier(
+            _row_value(row, "generated_unique_award_id", "generated_internal_id")
+        )
+        piid = _normalized_identifier(_row_value(row, "piid", "contract_id"))
+        agency = _normalized_identifier(
+            _row_value(row, "awarding_agency_name", "agency", "awarding_agency")
+        )
+        canonical = generated_id or (f"{agency or 'UNKNOWN'}::{piid}" if piid else None)
+        if canonical is None:
+            continue
+
+        for identifier in {generated_id, piid}:
+            if identifier:
+                identifiers_to_parents.setdefault(identifier, set()).add(canonical)
+        if _parent_declares_phase_iii(row):
+            declared_parents.add(canonical)
+
+    unique_index = {
+        identifier: next(iter(parents))
+        for identifier, parents in identifiers_to_parents.items()
+        if len(parents) == 1
+    }
+    return unique_index, declared_parents
+
+
 def _prepare_phase_iii_rows(contracts: pd.DataFrame) -> pd.DataFrame:
-    """Extract Phase III *procurement* rows. Assistance rows are excluded."""
+    """Extract Phase III procurement rows, including declared-IDV descendants.
+
+    Parent inheritance is fail-closed: only a task order linked to an unambiguous
+    IDV that explicitly declares SBIR/STTR Phase III is included. General-purpose
+    vehicles with an isolated Phase III order do not confer status on siblings.
+    """
 
     if contracts.empty:
         return pd.DataFrame(columns=PHASE_III_COLUMNS)
 
     phase = contracts.apply(_classify_contract_phase, axis=1)  # type: ignore[call-overload]
     assistance = contracts.apply(_is_assistance_row, axis=1)  # type: ignore[call-overload]
-    mask = (phase == "III") & (~assistance)
+    parent_index, declared_parents = _phase_iii_parent_index(contracts)
+    parent_references = contracts.apply(
+        lambda row: _normalized_identifier(
+            _row_value(row, "parent_contract_id", "parent_award_id", "referenced_idv_piid")
+        ),
+        axis=1,
+    ).astype(object)  # type: ignore[call-overload]
+    # `apply` infers a string dtype and rewrites the missing values to NaN, which is
+    # truthy. Restore None so a row without a parent reads as absent, like the other
+    # optional string columns.
+    parent_references = parent_references.where(parent_references.notna(), None)
+    inherited = parent_references.map(
+        lambda identifier: bool(
+            identifier
+            and parent_index.get(identifier)
+            and parent_index[identifier] in declared_parents
+        )
+    )
+    direct = phase == "III"
+    mask = (direct | inherited) & (~assistance)
     df = contracts.loc[mask].copy()
     if df.empty:
         return pd.DataFrame(columns=PHASE_III_COLUMNS)
@@ -66,10 +179,19 @@ def _prepare_phase_iii_rows(contracts: pd.DataFrame) -> pd.DataFrame:
                 return df[n]
         return pd.Series([None] * len(df), index=df.index)
 
+    selected_direct = direct.loc[mask]
+    selected_inherited = inherited.loc[mask] & (~selected_direct)
+    selected_parent_references = parent_references.loc[mask]
     action_date = coerce_date_series(_pick("action_date", "award_date", "start_date"))
     out = pd.DataFrame(
         {
             "contract_id": _pick("contract_id", "piid", "generated_unique_award_id"),
+            "parent_contract_id": selected_parent_references,
+            "phase_iii_evidence": [
+                _direct_evidence(row) if is_direct else "parent_declared"
+                for (_, row), is_direct in zip(df.iterrows(), selected_direct, strict=True)
+            ],
+            "phase_iii_inherited": selected_inherited.astype(bool),
             "recipient_uei": _pick("vendor_uei", "recipient_uei", "uei").map(normalize_uei),
             "recipient_duns": _pick("vendor_duns", "recipient_duns", "duns").map(normalize_duns),
             "recipient_name": _pick("vendor_name", "recipient_name"),
@@ -131,7 +253,8 @@ def _agency_coverage_table(
     group_name="validation",
     compute_kind="pandas",
     description=(
-        "FPDS contracts flagged Phase III (SR3/ST3 or explicit sbir_phase). "
+        "FPDS contracts flagged Phase III (SR3/ST3 or explicit sbir_phase), plus task "
+        "orders under explicitly declared Phase III IDVs. "
         "The coding channel is incomplete — coverage by agency is emitted as checks. "
         "Row-level contract: `sbir_etl.models.phase_transition.PhaseIIIContract`."
     ),
@@ -164,6 +287,12 @@ def validated_phase_iii_contracts(context=None) -> Output[pd.DataFrame]:
     agency_coverage = _agency_coverage_table(contracts, phase_iii)
     # Summarize: what fraction of agencies show zero Phase III flags?
     zero_p3_agencies = [a for a, c in agency_coverage.items() if c["phase_iii_rows"] == 0]
+    evidence_counts = (
+        phase_iii["phase_iii_evidence"].value_counts().astype(int).to_dict()
+        if not phase_iii.empty
+        else {}
+    )
+    inherited_rows = int(phase_iii["phase_iii_inherited"].sum()) if not phase_iii.empty else 0
 
     coverage_dict: dict[str, float] = {
         "recipient_uei": round(uei_cov, 4),
@@ -184,6 +313,8 @@ def validated_phase_iii_contracts(context=None) -> Output[pd.DataFrame]:
         "ok": True,
         "generated_at": now_utc_iso(),
         "total_rows": int(len(phase_iii)),
+        "inherited_rows": inherited_rows,
+        "phase_iii_evidence": evidence_counts,
         "coverage": coverage_dict,
         "coding_coverage_warning": coding_coverage_warning,
         # Keep the alias key; do not restore the withdrawn one-sided-bias note.
@@ -208,9 +339,11 @@ def validated_phase_iii_contracts(context=None) -> Output[pd.DataFrame]:
 
     metadata: dict[str, Any] = {
         "rows": int(len(phase_iii)),
+        "inherited_rows": inherited_rows,
         "output_path": str(output_path),
         "checks_path": str(checks_path),
         "coverage": MetadataValue.json(coverage_dict),
+        "phase_iii_evidence": MetadataValue.json(evidence_counts),
         "agencies_with_zero_phase_iii": len(zero_p3_agencies),
     }
 
@@ -219,6 +352,7 @@ def validated_phase_iii_contracts(context=None) -> Output[pd.DataFrame]:
         "validated_phase_iii_contracts complete",
         extra={
             "rows": len(phase_iii),
+            "inherited_rows": inherited_rows,
             "zero_p3_agencies": len(zero_p3_agencies),
         },
     )

@@ -6,7 +6,13 @@ from unittest.mock import Mock
 import pandas as pd
 import pytest
 
-from sbir_etl.enrichers.press_wire import PressRelease
+from sbir_etl.enrichers.press_wire import (
+    PressRelease,
+    WatchlistCoverage,
+    WatchlistReviewItem,
+    WatchlistReviewReason,
+)
+from sbir_etl.identity import CompanyNameProfile
 from sbir_etl.reporting.weekly import enrichment
 
 
@@ -244,6 +250,11 @@ def test_poll_press_wire_groups_only_known_company_hits(monkeypatch):
 
         def set_watchlist(self, watchlist):
             type(self).watchlist = watchlist
+            return WatchlistCoverage(
+                profile=CompanyNameProfile.PRESS_WIRE_WATCHLIST_V1,
+                requested_count=len(watchlist),
+                automatic_match_count=len(watchlist),
+            )
 
         def poll(self):
             return hits
@@ -260,6 +271,50 @@ def test_poll_press_wire_groups_only_known_company_hits(monkeypatch):
 
     assert FakePressWireClient.watchlist == ["Acme Co"]
     assert result == {"acme": hits[:2]}
+
+
+def test_poll_press_wire_surfaces_names_requiring_human_review(monkeypatch, capsys):
+    class FakePressWireClient:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, _exc_type, _exc, _traceback):
+            return None
+
+        def set_watchlist(self, watchlist):
+            assert watchlist == ["Acme Defense", "BAL", "Connect"]
+            return WatchlistCoverage(
+                profile=CompanyNameProfile.PRESS_WIRE_WATCHLIST_V1,
+                requested_count=3,
+                automatic_match_count=1,
+                review_required=(
+                    WatchlistReviewItem("BAL", "bal", WatchlistReviewReason.SHORT_NAME),
+                    WatchlistReviewItem(
+                        "Connect",
+                        "connect",
+                        WatchlistReviewReason.CURATED_COMMON_NAME,
+                    ),
+                ),
+            )
+
+        def poll(self):
+            return []
+
+    monkeypatch.setattr(enrichment, "SyncPressWireClient", FakePressWireClient)
+
+    result = enrichment.poll_press_wire(
+        [
+            {"Company": "Acme Defense", "_normalized_company": "acme defense"},
+            {"Company": "BAL", "_normalized_company": "bal"},
+            {"Company": "Connect", "_normalized_company": "connect"},
+        ]
+    )
+
+    assert result == {}
+    assert (
+        "Press wire automatic watchlist coverage: 1/3; human review required for 2 identities: "
+        "'BAL' [short-name], 'Connect' [curated-common-name]" in capsys.readouterr().err
+    )
 
 
 def test_fetch_solicitation_topics_uses_batch_keyword_and_awards_fallback(monkeypatch):

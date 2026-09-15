@@ -30,15 +30,25 @@ bypassing lifecycle review; the status and rationale still require human judgmen
   blocking security scan are restored. The remaining decisions concern periodic
   scanning and whether the large pre-existing Markdown-formatting backlog is worth
   addressing; do not restore the old broad lint job by default.
+- **`allocation-transaction-costs` — Active.** Exploratory NIH SBIR Phase I
+  versus R01-equivalent transaction-cost study. Target tier is `exploratory`;
+  the study contract is `reproducible` and non-citable. NSF/DOE/NASA/DoD
+  series, Dagster, and evidence promotion are out of scope.
 - **`agency-private-capital-comparison` — Active.** The NSF Phase 1 real-data
   gate is materialized for review but remains non-citable and unsigned. Phase 2
-  stays gated on Phase 1 sign-off, a reproducible Form D control-universe
-  producer, and symmetric FPDS/PATLINK/M&A outcome inputs. Also owns Form D
-  input fidelity in its own `form_d_inputs.py` loader (tasks F.1-F.3, from
-  PR #691): the staging-input refusal shipped in v0.12.0, and exact
-  amendment-chain collapse is blocked on locating the SEC file number. Note that
-  v0.12.0 changed `total_form_d_raised` and `offering_count` after the Phase 1
-  artifacts were materialized.
+  now has a maintained, deterministic 2009Q1–2024Q4 SEC DERA Form D staging
+  producer, but task 2.2 remains open: exact-name SBIR exclusion has unknown
+  recall (`complete_sbir_exclusion=false`), DERA has no NAICS and the staging
+  covariates are not ready (`covariates_ready=false`), and the existing matched
+  asset refuses to consume it (see below). Phase 2 stays gated on Phase 1
+  sign-off, a higher-recall authoritative CIK/alias union, a validated
+  SIC-to-NAICS-2 strategy, and symmetric FPDS/patent/M&A outcome inputs. Also
+  owns Form D input fidelity in its own `form_d_inputs.py` loader (tasks
+  F.1-F.3, from PR #691): the staging-input refusal shipped in v0.12.0 and is
+  now reinforced by the staging producer's own refusal above; exact
+  amendment-chain collapse is blocked on locating the SEC file number. Note
+  that v0.12.0 changed `total_form_d_raised` and `offering_count` after the
+  Phase 1 artifacts were materialized.
 - **`bea-nipa-tax-rates` — Active.** The NIPA provider exists; the remaining
   work is the on-disk cache and removal of hardcoded effective-rate consumers.
 - **`company-categorization` — Maintenance.** About 80% complete. Evaluate the
@@ -90,10 +100,12 @@ bypassing lifecycle review; the status and rationale still require human judgmen
   as the reference adapter, and `usaspending_refresh_batch` on the job.
   Per-source adapters stay split (#443 NIH RePORTER, then SAM/PatentsView).
   Tasks 6.1–6.2 remain optional Phase 2 expansion.
-- **`ma-discovery-integration` — Deferred.** The #371 toolkit now lives at
-  `sbir_etl/enrichers/ma_discovery/` (issue #446, toolkit relocation). Search
-  backend, LLM extractor, and collision policy remain unbuilt. Revisit only
-  when M&A recall becomes a selected research priority.
+- **`ma-discovery-integration` — Active.** M&A recall is a selected F2/A4
+  implementation target. Fail-closed search, C3, pair-name guards, and the
+  `ma-discovery-recall` study (exploratory; materialization closed) are in
+  tree. The held-out confirmatory cut met strict recall (13>=10), FP 0/19,
+  and the cost cap. evidence_status stays exploratory pending
+  evidence-auditor. Candidate discovery stays non-citable.
 - **`modular-analysis-platform` — Maintenance.** Pipelines-tier contracts
   and registry so a new tech-census or transition-cohort profile is
   YAML-only (issue #441). HTTP is out of scope per ADR-004. Weekly awards
@@ -150,10 +162,25 @@ bypassing lifecycle review; the status and rationale still require human judgmen
   `pipelines` (2026-08-15). Award identity and path
   attribution landed. Cold-start bounds, source-normalization provenance, and
   ranking/auditability phases remain.
+- **`sbir-ma-dated-signal-study` — Active pre-run protocol.** A new,
+  explicitly exploratory and non-citable F1 study with a planned 2026-08-29 UTC
+  cutoff. It does not reproduce the unrecoverable April analysis. Sources are
+  acquired privately under operator authorization (amendments 1, 3, 5, 6); a
+  source-field predicate (amendment 7) and a filing-level identity review queue
+  (amendment 8) are the current private ceiling. Identity resolution,
+  aggregation, materialization, numerical analysis, and any public claim remain
+  blocked on separate human source/privacy/license approval, a frozen input and
+  estimand contract, and blinded validation.
 - **`sbir-ma-match-rate-by-fy` — Gated backlog.** Analysis-only F2 follow-up on
   completed M&A detection. Start only when FY match-rate reporting is requested.
 - **`state-local-tax-rates` — Maintenance.** Existing hardcoded 2024 provider
   works. Remaining work is data-file/provenance cleanup for fiscal v2.
+- **`supplier-share-census` — Active.** Exploratory, non-citable F2 census of
+  observed federal persistence versus observed venture signals. The frozen
+  sensitivity grid, deterministic producer, and post-result Revision 4 typed-noncoverage bounds
+  are authorized; point headlines remain suppressed on incomplete coverage, and citation remains
+  gated on complete Form D/EFTS search coverage, a stratified hand review,
+  face-validity anchors, and negative-control review.
 - **`sttr-spinout-linkage` — Active.** Phase 0 design frozen as Revision 1 (exploratory,
   non-citable); implementation (`tasks.md` Phase 1) is unblocked. Proposes a deterministic
   public-data classifier splitting each STTR SBC↔RI relationship into spinout vs.
@@ -185,6 +212,19 @@ bypassing lifecycle review; the status and rationale still require human judgmen
 - **`weekly-awards-report-refactor` — Maintenance.** Monolith is already split
   into weekly reporting modules. Remaining work is injection, coverage, and
   alias cleanup.
+
+- **`upstream-drift-reproduction` — Maintenance.** Implemented. `StudyManifest`
+  carries a `reproduction` block declaring live sources with their pinned
+  retrieval manifests and per-quantity tolerances, and
+  `sbir_etl/quality/reproduction.py` classifies a rebuild into exact, upstream
+  drift, pipeline regression, identity divergence, or outside tolerance.
+  `transition-scoring` is the first consumer and promoted to `reproducible` on
+  it. The motivating case resolved the opposite way to the initial reading: its
+  corpus rebuild first came up one positive short and was reported as archive
+  drift, and a complete re-pull reproduced 828 rows / 138 positives / 101 firms
+  exactly — the first pull had silently dropped about 109,000 FY2022 source
+  rows. Remaining work is applying the contract to the other live-source studies
+  and deciding whether the comparison runs in CI or at audit time.
 
 ## Archive Candidates
 

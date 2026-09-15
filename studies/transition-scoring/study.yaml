@@ -1,7 +1,7 @@
 schema_version: 1
 study_id: transition-scoring
 title: SBIR award-to-contract transition likelihood scoring
-evidence_status: exploratory
+evidence_status: reproducible
 research_questions:
   - B2
   - B3
@@ -15,6 +15,8 @@ estimand: >-
   pairs; it does not estimate a validated transition probability, prevalence, or
   count.
 frozen_artifacts:
+  - path: specs/phase3-notice-corpus-fusion/retrieval.2026-09-13.json
+    sha256: f3153b2bb642fc38ca49108317394914b2f98b0230f07eec04f370c20d526d33
   - path: packages/sbir-ml/sbir_ml/transition/detection/fusion_coefficients.json
     sha256: 8bf641ba8877a77192d935911f0eb8d61386580550bc5ad4770cc0c079d1bd7d
   - path: specs/phase3-notice-corpus-fusion/corpus.manifest.json
@@ -22,6 +24,8 @@ frozen_artifacts:
   - path: specs/phase3-notice-corpus-fusion/refit_ladder.json
     sha256: a525b4e7a8d662e85d0f27609ae2d8fe05d08c589e72beac58e8dcdb1bdde5c0
 implementation:
+  - path: packages/sbir-ml/sbir_ml/transition/__init__.py
+    symbol: scoring_config_digest
   - path: packages/sbir-ml/sbir_ml/transition/detection/scoring.py
     symbol: TransitionScorer
   - path: packages/sbir-ml/sbir_ml/transition/detection/detector.py
@@ -58,21 +62,69 @@ limitations:
     remains an open question in docs/steering/ml-methodology-review.md.
   - Recall is unknown; no estimate of missed transitions exists at any tier.
   - Composite scoring weights are hand-set expert judgment in
-    config/transition/detection.yaml, not learned or validated coefficients, and
-    that live configuration is deliberately tunable, so it is not pinned here.
+    config/transition/detection.yaml, not learned or validated coefficients. That
+    configuration stays tunable, so the values are identified by digest rather
+    than frozen. Config.scoring_digest hashes the to_detector_config surface, and
+    a result is only comparable to another result carrying the same digest.
+    The digest at the time of writing is
+    779cf5bc662997c83da3080b747372b9556821c0f23bd0d3362606c3fba15009, enforced by
+    tests/unit/transition/test_scoring_config_digest.py. A weight change moves
+    the digest and fails that test, which is the intended signal; it does not by
+    itself invalidate any recorded result, but a result measured under a
+    different digest is a different measurement.
   - The frozen fusion coefficients apply to notice-to-award ranking, a different
     subsystem from the composite TransitionScorer; the 0.674 held-out top-1 figure
     does not transfer to composite scores, and the fusion label set is small
     (138 award-grain positives across 101 firms).
-  - The fusion corpus parquet is local-only and gitignored; it is regenerable from
-    committed scripts and pinned manifests but its bytes are not SHA-enforced here.
+  - >-
+    The fusion corpus parquet is local-only and gitignored. Its bytes are not
+    SHA-enforced, and against a live archive they could not be: the GSA
+    extracts are updated by their publisher. What is enforced instead is the
+    reproduction contract below. The corpus was rebuilt from committed scripts
+    on 2026-09-13 and reproduced the frozen 828 rows, 138 positives, and 101
+    firms exactly, against the retrieval manifest pinned in frozen_artifacts.
+  - >-
+    The 2026-08-01 materialization has no retained retrieval manifest, so no
+    rebuild can be compared against that original pull. The first comparable
+    baseline is the 2026-09-13 retrieval. An earlier incomplete pull the same
+    day produced 822 rows and 137 positives and was initially read as archive
+    drift; it was a truncated fetch, and the rows_scanned measure is what
+    distinguishes the two.
   - phase3-match-benchmark results remain provisional portfolio-linkage evidence,
     with empirical reruns blocked on required inputs that are absent from this
     repository (specs/phase3-match-benchmark/provisional-results.json).
   - Exact-identifier vendor matching misses acquisitions, successors, and UEI
     changes; fuzzy fallback introduces unadjudicated match error.
   - >-
-    This study is exploratory; its scores and counts are non-citable, anything
-    that leaves the repository must emit `citable: false` metadata, and no
-    research question may be marked answerable on these numbers until the study
-    reaches validated status.
+    This study is reproducible, not validated or citable. Its scores and counts
+    remain non-citable, anything that leaves the repository must emit
+    `citable: false` metadata, and no research question may be marked answerable
+    on these numbers. Reproducible means the declared inputs and implementation
+    rerun to the recorded result; it does not mean the scoring has been
+    validated against ground truth, and no such validation exists.
+reproduction:
+  live_sources:
+    - name: GSA Contract Opportunities archived-notice extracts
+      retrieval_manifest: specs/phase3-notice-corpus-fusion/retrieval.2026-09-13.json
+      upstream_measure: rows_scanned
+      identity_grain: notice_id
+  tolerances:
+    - quantity: rows_scanned
+      absolute_band: 10000
+      derivation: >-
+        Ten fiscal-year extracts totalling 3,897,224 scanned rows. A band of
+        10,000 is about 0.26 percent of that total and roughly 2.5 percent of
+        the smallest single year, which admits ordinary archive revision while
+        refusing a truncated fetch. Derived from an observed failure rather than
+        chosen: an incomplete pull on 2026-09-13 scanned 242,161 FY2022 rows
+        where a complete one scanned 351,131, and a band of 10,000 rejects that
+        difference by an order of magnitude.
+    - quantity: positives
+      absolute_band: 2
+      derivation: >-
+        138 award-grain positives are recovered by citation extraction from
+        notice text. A revised or withdrawn notice removes at most one positive
+        each, and no more than two have ever been observed to move between
+        pulls. A band of 2 admits that and refuses the 18-versus-19 FY2022 swing
+        that accompanied the truncated fetch, which the rows_scanned band
+        catches first in any case.

@@ -1,13 +1,33 @@
 # Capital Events & UCC1 Pilot
 
-Assembles a per-firm "capital events" dataset — funding, M&A, patents, federal
+Assembles a per-firm "capital events" dataset — funding, M&A candidates, patents, federal
 contracts, and UCC liens — for the Form D high-confidence cohort. Code lives in
 `sbir_etl/capital_events/`; the UCC1 pilot that feeds it lives in `sbir_etl/ucc/`.
+
+> The historical cohort and its numerical pathway/UCC reports are retired.
+> Current builders reject unversioned Form D tiers and require
+> `corroborated-person-v2`; that rule-version check does not validate pooled
+> cross-filing or multi-CIK identity. Do not publish a replacement until the
+> `form-d-fundraising` study gate reopens.
 
 All paths below are under the data root, overridable with the `SBIR_DATA_DIR`
 environment variable. No API credentials are required for either subsystem.
 
 ## Build capital events
+
+To preserve source lineage where Form D and an M&A candidate may describe the same event, first
+build the optional cross-enrichment artifacts:
+
+```bash
+python scripts/data/build_form_d_ma_cross_enrichment.py
+```
+
+Pass its `enriched_ma_events.jsonl` output to `build_capital_events.py
+--ma-events`. The M&A-candidate metadata retains the cross-enrichment relationship
+ID, source classes, and whether evidence exists independently of Form D. These
+rows are unvalidated public-record candidates. They are not verified legal
+exits. Form D amount sold is exempt securities sold, not deal or enterprise
+value.
 
 ```bash
 python scripts/data/build_capital_events.py

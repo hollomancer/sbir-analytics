@@ -17,8 +17,17 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
+from sbir_etl.enrichers.sec_edgar.form_d_scoring import (  # noqa: E402
+    FORM_D_TIER_RULE_VERSION,
+    require_form_d_tier_rule,
+)
 
-def extract_form_d_signals(records: list[dict]) -> list[dict]:
+
+def extract_form_d_signals(
+    records: list[dict],
+    *,
+    expected_rule_version: str = FORM_D_TIER_RULE_VERSION,
+) -> list[dict]:
     """Extract M&A events from Form D business combination flags.
 
     For each company with at least one is_business_combination offering,
@@ -26,10 +35,12 @@ def extract_form_d_signals(records: list[dict]) -> list[dict]:
     """
     events = []
     for r in records:
-        combos = [
-            o for o in r.get("offerings", [])
-            if o.get("is_business_combination")
-        ]
+        confidence = require_form_d_tier_rule(
+            r.get("match_confidence"),
+            expected_rule_version=expected_rule_version,
+            context=f"Form D record {r.get('company_name') or '<unnamed>'!r}",
+        )
+        combos = [o for o in r.get("offerings", []) if o.get("is_business_combination")]
         if not combos:
             continue
 
@@ -42,17 +53,20 @@ def extract_form_d_signals(records: list[dict]) -> list[dict]:
         for o in combos:
             all_persons.extend(o.get("related_persons", []))
 
-        events.append({
-            "company_name": r["company_name"],
-            "event_date": str(earliest.get("filing_date", ""))[:10],
-            "source": "form_d",
-            "form_d_detail": {
-                "filing_date": str(earliest.get("filing_date", ""))[:10],
-                "total_amount_sold": total_sold if total_sold > 0 else None,
-                "combo_count": len(combos),
-                "related_persons": all_persons,
-            },
-        })
+        events.append(
+            {
+                "company_name": r["company_name"],
+                "event_date": str(earliest.get("filing_date", ""))[:10],
+                "source": "form_d",
+                "form_d_detail": {
+                    "tier_rule_version": confidence["rule_version"],
+                    "filing_date": str(earliest.get("filing_date", ""))[:10],
+                    "total_amount_sold": total_sold if total_sold > 0 else None,
+                    "combo_count": len(combos),
+                    "related_persons": all_persons,
+                },
+            }
+        )
 
     return events
 
@@ -81,17 +95,19 @@ def extract_efts_signals(records: list[dict]) -> list[dict]:
         tier_order = {"high": 0, "medium": 1, "low": 2}
         best_tier = min(ma_hits.values(), key=lambda t: tier_order[t])
 
-        events.append({
-            "company_name": r["company_name"],
-            "event_date": r.get("latest_mention_date", ""),
-            "source": "efts",
-            "efts_detail": {
-                "mention_filers": r.get("mention_filers", []),
-                "mention_types": sorted(ma_hits.keys()),
-                "latest_mention_date": r.get("latest_mention_date", ""),
-                "efts_tier": best_tier,
-            },
-        })
+        events.append(
+            {
+                "company_name": r["company_name"],
+                "event_date": r.get("latest_mention_date", ""),
+                "source": "efts",
+                "efts_detail": {
+                    "mention_filers": r.get("mention_filers", []),
+                    "mention_types": sorted(ma_hits.keys()),
+                    "latest_mention_date": r.get("latest_mention_date", ""),
+                    "efts_tier": best_tier,
+                },
+            }
+        )
 
     return events
 
@@ -148,12 +164,8 @@ def assign_confidence(event: dict) -> str:
     """Assign confidence tier based on which signals fired."""
     has_form_d = event.get("form_d_detail") is not None
     efts = event.get("efts_detail")
-    has_efts_high = (
-        efts is not None and "subsidiary" in efts.get("mention_types", [])
-    )
-    has_acq_text = efts is not None and (
-        "acquisition" in efts.get("mention_types", [])
-    )
+    has_efts_high = efts is not None and "subsidiary" in efts.get("mention_types", [])
+    has_acq_text = efts is not None and ("acquisition" in efts.get("mention_types", []))
 
     if has_form_d or has_efts_high:
         return "high"
@@ -292,9 +304,9 @@ def main():
             tiers[confidence] += 1
 
     total = sum(tiers.values())
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print(f"M&A EXIT DETECTION COMPLETE — {total:,} events")
-    print(f"{'='*60}")
+    print(f"{'=' * 60}")
     print(f"  High confidence:   {tiers['high']:,}")
     print(f"  Medium confidence: {tiers['medium']:,}")
     print(f"  Low confidence:    {tiers['low']:,}")

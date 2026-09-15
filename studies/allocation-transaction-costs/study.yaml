@@ -1,0 +1,85 @@
+schema_version: 1
+study_id: allocation-transaction-costs
+title: NIH SBIR/STTR versus R01-equivalent allocation transaction costs
+evidence_status: reproducible
+research_questions:
+  - C4
+estimand: >-
+  Among NIH competing applications in overlapping fiscal years, estimate
+  transaction hours per funded award, transaction dollars per funded award,
+  and transaction cost per dollar awarded for NIH SBIR/STTR phases versus
+  NIH R01-equivalent grants under declared duration conventions and hour
+  assumptions, plus the break-even SBIR applicant-hour threshold at which
+  cost per awarded dollar equals. Not a welfare estimate, not a quality
+  measure, and not a causal effect of offering SBIR instead of R01s.
+frozen_artifacts:
+  - path: studies/allocation-transaction-costs/design.md
+    sha256: 2a2b28054de33b8aa1f57916f6fb5997124b3788e592596f3346e6f085f07afd
+  - path: studies/allocation-transaction-costs/amendments.md
+    sha256: 1f2b8239e76ce11755cb35459c982a5f8acae7613f84afcb3aec75e193c6a097
+implementation:
+  - path: scripts/data/allocation_transaction_costs.py
+    symbol: main
+  - path: scripts/data/allocation_transaction_costs.py
+    symbol: breakeven_sbir_hours
+  - path: scripts/data/allocation_transaction_costs.py
+    symbol: run
+identity_policy:
+  strategy: >-
+    Grain is published mechanism-year statistics. No firm matching and no
+    award-level identity resolution.
+  version: mechanism-year-v1
+  negative_evidence_allowed: false
+materialization:
+  allowed: true
+  blockers: []
+permitted_claims:
+  - Given the frozen design, committed NIH tables, and assumptions YAML, the
+    mechanism-year metrics and break-even hours are deterministic.
+  - The NIH comparison is a break-even and sensitivity result over declared
+    hour and duration assumptions, not a directional efficiency ranking.
+  - Anything that leaves the repository must be labeled non-citable.
+limitations:
+  - Applicant and reviewer hours are assumed, not observed for SBIR firms.
+  - FDP Faculty Workload Survey hours describe university PIs, not small
+    businesses; transferring them is an assumption.
+  - Duration convention (annual R01 size versus multi-year project total)
+    moves the ranking.
+  - Agency selection cost is missing; the 3% SBIR administrative-funding
+    allowance is a statutory ceiling on extra admin, not total cost.
+  - Success-rate denominators follow NIH competing-application rules and are
+    not NSF funding rates.
+  - Applicant hours are modelled as one grid per mechanism, but the applicant
+    population is bimodal. SBA reports that 68 firms, 1.4% of companies winning
+    a Phase II in FY17–FY21, took 20% of Phase II awards, and that 2% of FY22
+    Phase I awardees took 14% of Phase I awards. Marginal proposal hours for
+    serial filers and first-time applicants are unlikely to share one
+    distribution, so a single grid understates dispersion.
+  - Reviewer hours remain assumed. Two published US surveys bracket the 2/4/8
+    grid without observing it. AIBS (Gallo et al. 2019) reports 4.5–5.0 hours
+    of pre-meeting time per assigned application for NIH-style panel review,
+    and NSF's 2021 Merit Review Survey reports a mean 7 hours per review across
+    NSF review methods, excluding panel travel and participation. Neither
+    measures SBIR/STTR versus R01 reviewer hours, neither is used in the
+    calculator, and neither may retune the grid. Both report time excluding
+    meeting and travel, so hours inclusive of those sit higher than the figures
+    cited.
+  - Transaction cost per awarded dollar is mechanically dominated by the
+    reciprocal of the success rate, so its ranking is driven as much by the
+    success-rate denominator as by any hour assumption. Reviewers of the
+    comparable UK estimate (Pollitt 2026) made this point about the headline
+    13% figure there, and it applies with equal force here. Hours per award,
+    dollars per award, and cost per awarded dollar are therefore reported
+    separately and must not be collapsed into one efficiency claim.
+  - The NIH SBIR-versus-R01-equivalent contrast cannot separate the performer
+    (small firm versus university) from the award architecture, the award size,
+    or the research type. It therefore does not identify a small-business
+    transaction-cost effect, only a difference between two mechanisms as they
+    are currently designed. See amendments.md Revision 1 for the designs that
+    would identify it.
+  - Applicant hours are treated as transaction cost in full, but the FDP survey
+    finds PIs attribute as much as 38.7% of proposal preparation time to their
+    own scholarship. Hours per award is therefore an upper bound on deadweight
+    effort, not a measure of it, and the survey does not establish the
+    equivalent share for a firm writing an SBIR proposal.
+  - This study is reproducible, not validated or citable.

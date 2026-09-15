@@ -1,61 +1,68 @@
 schema_version: 1
 study_id: form-d-fundraising
-title: SBIR federal spending vs Form D private capital, 2009–2024
-evidence_status: reproducible
+title: Retired SBIR spending vs Form D private-capital study
+evidence_status: retired
 research_questions:
   - F3
 estimand: >-
-  Among SBIR/STTR awardees in calendar years 2009–2024, estimate two
-  lower-bound private-to-SBIR leverage ratios from SEC Form D
-  totalAmountSold after year and excluded-industry-group filters: (1)
-  program-level, Form D dollars from matched firms divided by all SBIR.gov
-  award dollars in the window; (2) per-matched-firm, Form D dollars from
-  the subset of matched firms that have at least one in-window SBIR award,
-  divided by SBIR.gov dollars for that same subset. Report each ratio at
-  the high and high-plus-medium match-confidence filters, with a firm-level
-  percentile bootstrap (1,000 iterations, seed 42). Non-detection is not
-  proof of zero private capital. The ratios are not NASEM's DoD follow-on
-  federal-contract leverage.
+  No current estimate is authorized. A future successor would estimate program-level
+  and per-matched-firm ratios of disclosed Form D totalAmountSold to SBIR.gov award
+  dollars for 2009–2024 under a pinned, issuer-scoped corroborated-person-v2
+  materialization. The historical person-or-zip-v1 estimates are withdrawn.
 frozen_artifacts:
   - path: studies/form-d-fundraising/design.md
-    sha256: 5459e2eea7b689b8f5e5e4ea0803b991328e488c32703eb7a730409bc2e99f2b
+    sha256: fd15408ec51295b28ea314020ffeaccaa7c900e2e290bd874c8dbffe60079440
+  - path: studies/form-d-fundraising/amendments.md
+    sha256: efa0a440911eb5754c9e607f282f1468787090a0c645c37698cce7d5d9d53ddc
 implementation:
+  - path: scripts/data/rescore_form_d_details.py
+    symbol: rescore_jsonl
   - path: scripts/data/bootstrap_form_d_leverage_ci.py
     symbol: main
-  - path: scripts/data/bootstrap_form_d_leverage_ci.py
-    symbol: bootstrap_two_views
   - path: sbir_etl/enrichers/sec_edgar/form_d_scoring.py
     symbol: compute_form_d_confidence
+  - path: sbir_etl/enrichers/sec_edgar/form_d_scoring.py
+    symbol: assign_form_d_tier
 identity_policy:
   strategy: >-
-    Ratio join is uppercase stripped company name. Match-confidence tiers
-    come from compute_form_d_confidence (high = PI-to-executive name score
-    ≥ 0.7 or ZIP match; medium = state match or missing state evidence; a
-    state mismatch is low). The ratio script does not use
-    CompanyNameProfile.FORM_D_JOIN_V1.
-  version: two-signal tiering, methodology commit f65abb89
+    Current target behavior is corroborated-person-v2. Exact ZIP reaches high;
+    fuzzy person similarity reaches high only with ZIP or state overlap. Stored
+    scores remain company-aggregate and may span filings or CIKs, so satisfying
+    the Boolean rule is not identity validation.
+  version: corroborated-person-v2; historical person-or-zip-v1 retired
   negative_evidence_allowed: false
 materialization:
-  allowed: true
-  blockers: []
+  allowed: false
+  blockers:
+    - >-
+      The complete historical Form D and SBIR input bytes are local, gitignored,
+      absent from this checkout, and not pinned by SHA-256, size, and row count.
+    - >-
+      No complete corroborated-person-v2 rescore and dependent-output rebuild has
+      been recorded; unversioned or mixed-version inputs must fail closed.
+    - >-
+      Legacy company-level confidence can pool signals across filings and CIKs.
+      Same-filing or issuer-scoped scoring, or an explicit quarantine with counts,
+      is required before interpreting the high tier.
+    - >-
+      Offering/amendment chains and accessions need a declared aggregation and
+      conflict policy before capital totals can be restored.
+    - >-
+      Realistic person-collision review and the version-2 PIF/CIK cross-link review
+      queue have not been completed on a pinned successor materialization.
 permitted_claims:
-  - Given the frozen design and a 2009–2024 SBIR.gov plus Form D details
-    cut, the two leverage ratios and their seed-42 bootstrap intervals are
-    deterministic.
-  - Those ratios measure disclosed Regulation D capital, not follow-on
-    federal contracts, and are not a NASEM 4:1 reproduction.
+  - >-
+    The historical person-or-zip-v1 study is retired, its numerical results are
+    suppressed, and no corroborated-person-v2 fundraising estimate exists.
+  - >-
+    The offline rescorer deterministically applies a named tier rule to stored
+    signal values; it does not validate identity or same-filing corroboration.
 limitations:
-  - This study is reproducible, not validated or citable. Anything that
-    leaves the repository must be labeled non-citable, and no
-    research question may be marked validated or citable on these numbers.
-  - SEC Form D is a lower-bound proxy. Firms that raise privately without
-    a Form D, or whose name does not match, are invisible. A zero means
-    we found none, never there are none.
-  - Input bytes are local and gitignored. The dated headline numbers are
-    not SHA-enforced here; only the method note is.
-  - totalAmountSold is self-reported and not SEC-verified.
-  - The ratio join is an uppercase name match, not the versioned
-    form-d-join-v1 identity profile. Large issuers near the tier boundary
-    can move the headline.
-  - Bootstrap intervals capture firm-sampling uncertainty only, not
-    matching error or amount-reporting error.
+  - This retired manifest does not authorize a computable, validated, or citable claim.
+  - SEC Form D omits capital raised outside Regulation D and non-detection is not zero.
+  - totalAmountSold is self-reported and not verified by the SEC.
+  - >-
+    Company-name joins, cross-filing signal pooling, multi-CIK records, and amendment
+    aggregation can create both false positives and false negatives; no one-sided
+    lower-bound interpretation is supported.
+  - Bootstrap intervals would capture firm resampling only, not identity or reporting error.

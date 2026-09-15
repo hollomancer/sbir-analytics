@@ -1,5 +1,11 @@
 # Nanotechnology SBIR/STTR Phase II → Phase III Transition: Methodology Note
 
+> **Form D lifecycle note (2026-09-12):** Form D cohort counts and comparisons
+> in this historical methodology used the unversioned
+> `person-or-zip-v1` tier. They are withdrawn pending a pinned
+> `corroborated-person-v2` rebuild with filing/CIK and amendment-chain review;
+> they are not current validation statistics.
+
 **Status:** Provisional — all figures subject to revision
 **Audience:** S&T policy leaders, methodology review
 **Confidence tags:** [HIGH] reproducible from data; [MED] depends on third-party data; [LOW] approximate/estimated; [UNVERIFIED] requires manual check against source document

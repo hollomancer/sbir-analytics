@@ -19,7 +19,10 @@ from typing import Any
 
 import pandas as pd
 
-from sbir_etl.enrichers.sec_edgar.form_d_scoring import EXCLUDED_INDUSTRY_GROUPS
+from sbir_etl.enrichers.sec_edgar.form_d_scoring import (
+    EXCLUDED_INDUSTRY_GROUPS,
+    require_form_d_tier_rule,
+)
 from sbir_etl.identity import CompanyNameProfile, normalize_company_name
 
 
@@ -33,7 +36,12 @@ DEFAULT_FORM_D_CONTROL_UNIVERSE_PATH = Path("data/form_d_control_universe.jsonl"
 # keyed with ORGANIZATION_KEY_V1 rather than the FORM_D_JOIN_V1 used here, so a
 # join would silently produce zero matched pairs instead of an error.
 _STAGING_FILENAME_SUFFIXES = (".provisional.jsonl", ".identity-staging.jsonl")
+# Both keys together, not either alone: the producer always emits them as a
+# pair (build_form_d_control_universe.py:546-554, 689-691), but `schema_version`
+# on its own is a generic enough name that an unrelated future control-universe
+# format could legitimately add it without being a staging artifact.
 _STAGING_RECORD_KEYS = ("firm_key", "schema_version")
+_STAGING_RECORD_SAMPLE_SIZE = 10
 _STAGING_MANIFEST_GATES = (
     "ready_for_matching",
     "complete_sbir_exclusion",
@@ -74,9 +82,15 @@ def load_form_d_matches(
 ) -> pd.DataFrame:
     """Normalize SBIR-matched Form D records to one row per matched company."""
 
+    records = read_jsonl(path)
+    for record in records:
+        require_form_d_tier_rule(
+            record.get("match_confidence"),
+            context=f"Form D record {record.get('company_name') or '<unnamed>'!r}",
+        )
     rows = [
         row
-        for row in _iter_company_form_d_rows(read_jsonl(path), matched_to_sbir=True)
+        for row in _iter_company_form_d_rows(records, matched_to_sbir=True)
         if _keep_row(row, tier_filter=tier_filter, year_min=year_min, year_max=year_max)
     ]
     return _frame(rows)
@@ -93,6 +107,9 @@ def load_form_d_control_universe(
 
     The control universe is expected to be broader than SBIR matches. Any CIK
     already present in the SBIR matched set is removed before matching.
+
+    Staging and provisional identity artifacts are refused outright; see
+    ``_reject_staging_universe``.
     """
 
     records = read_jsonl(path)
@@ -129,14 +146,16 @@ def _reject_staging_universe(path: Path, records: list[dict[str, Any]]) -> None:
         if name.endswith(suffix):
             raise ValueError(
                 f"Refusing Form D control universe {path}: '{suffix}' marks a staging "
-                "product that is not ready for matching."
+                "product, keyed on ORGANIZATION_KEY_V1 rather than the FORM_D_JOIN_V1 "
+                "this loader joins on, and not ready for matching."
             )
 
-    if records and any(key in records[0] for key in _STAGING_RECORD_KEYS):
-        present = sorted(key for key in _STAGING_RECORD_KEYS if key in records[0])
+    sample = records[:_STAGING_RECORD_SAMPLE_SIZE]
+    if sample and all(all(key in rec for key in _STAGING_RECORD_KEYS) for rec in sample):
         raise ValueError(
-            f"Refusing Form D control universe {path}: records carry staging key(s) "
-            f"{present}, which the matching-ready universe does not use."
+            f"Refusing Form D control universe {path}: records carry staging keys "
+            f"{_STAGING_RECORD_KEYS}, which the matching-ready universe does not use. "
+            "A renamed staging file is still staging; this is the check that catches it."
         )
 
     manifest_path = path.with_name("form_d_control_universe.manifest.json")
@@ -188,7 +207,7 @@ def _iter_company_form_d_rows(
         # double-counts. Collapsing chains exactly needs the SEC file number, which
         # these records do not carry, so sum originals only and fall back to the
         # largest restatement when a chain reaches us as amendments alone. That is
-        # a documented lower bound, not an exact total.
+        # an interim heuristic, not an exact total or one-sided bound.
         originals = [o for o in kept_offerings if not o.get("is_amendment")]
         amendments = [o for o in kept_offerings if o.get("is_amendment")]
         counted = originals or amendments
@@ -224,6 +243,9 @@ def _iter_company_form_d_rows(
             "issuer_key": normalize_name(issuer_name),
             "form_d_cik": str(cik or first.get("cik") or "").lstrip("0"),
             "tier": tier,
+            "tier_rule_version": (
+                (rec.get("match_confidence") or {}).get("rule_version") if matched_to_sbir else None
+            ),
             "matched_to_sbir": matched_to_sbir,
             "state": _state_code(state),
             "industry_group": industry_group or "Unknown",
@@ -319,6 +341,7 @@ def _frame(rows: list[dict[str, Any]]) -> pd.DataFrame:
         "issuer_key",
         "form_d_cik",
         "tier",
+        "tier_rule_version",
         "matched_to_sbir",
         "state",
         "industry_group",

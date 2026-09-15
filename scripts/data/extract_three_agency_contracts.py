@@ -1,0 +1,216 @@
+#!/usr/bin/env python3
+"""Extract historical USAspending contracts for the three-agency Phase II cohort.
+
+Epistemic tier: exploratory. The command scans downloaded Contracts_Full ZIPs
+with the repository's bounded archive extractor and writes one filtered parquet
+per fiscal year. It never operates Dagster or the live deployment checkout.
+"""
+
+from __future__ import annotations
+
+import argparse
+import hashlib
+import importlib.util
+import json
+import re
+import sys
+from collections.abc import Callable
+from datetime import date
+from pathlib import Path
+from typing import Any
+
+import pyarrow.parquet as pq
+
+from sbir_etl.extractors.usaspending_award_archive import (
+    AWARD_ARCHIVE_PROVENANCE_VERSION,
+    AwardArchiveContractExtractor,
+)
+
+
+REPO_ROOT = Path(__file__).resolve().parents[2]
+ANALYSIS_SCRIPT = REPO_ROOT / "scripts/data/three_agency_commercialization_outcomes.py"
+ARCHIVE_PATTERN = re.compile(r"^FY(?P<year>\d{4})_All_Contracts_Full_\d{8}\.zip$")
+
+
+def load_analysis_module():
+    spec = importlib.util.spec_from_file_location(
+        "three_agency_commercialization_outcomes", ANALYSIS_SCRIPT
+    )
+    if spec is None or spec.loader is None:
+        raise RuntimeError(f"cannot import {ANALYSIS_SCRIPT}")
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+    return module
+
+
+def selected_archives(directory: Path, start_fy: int, end_fy: int) -> list[tuple[int, Path]]:
+    by_year: dict[int, list[Path]] = {}
+    for path in directory.glob("FY*_All_Contracts_Full_*.zip"):
+        match = ARCHIVE_PATTERN.fullmatch(path.name)
+        if not match:
+            continue
+        year = int(match["year"])
+        if start_fy <= year <= end_fy:
+            by_year.setdefault(year, []).append(path)
+    missing = [year for year in range(start_fy, end_fy + 1) if year not in by_year]
+    if missing:
+        raise FileNotFoundError("missing fiscal-year archives: " + ", ".join(map(str, missing)))
+    return [(year, sorted(by_year[year])[-1]) for year in range(start_fy, end_fy + 1)]
+
+
+def build_filter(cohort, output: Path) -> None:
+    """Write the archive prefilter.
+
+    Company-name linkage is exact raw-string equality on purpose.
+    ``AwardArchiveContractExtractor._match_mask`` uppercases and trims the
+    archive's ``recipient_name`` and tests membership, so a suffix-stripped
+    ``ORGANIZATION_KEY_V1`` alias would rarely match a raw archive name, and
+    where it did match it could attribute another firm's contracts to this
+    cohort. Raw names only. UEI and DUNS aliases are exact identifiers and are
+    passed through.
+    """
+    values: dict[str, object] = {"uei": [], "duns": []}
+    for alias in sorted(cohort.alias_to_firm):
+        basis, _, value = alias.partition(":")
+        if basis in values:
+            values[basis].append(value)
+    values["company_names"] = sorted(cohort.raw_company_names)
+    values["stats"] = {key: len(value) for key, value in values.items()}
+    output.write_text(json.dumps(values, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+
+
+def sha256_file(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as stream:
+        for chunk in iter(lambda: stream.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def provenance_sidecar_path(output: Path) -> Path:
+    return output.with_name(output.name + ".provenance.json")
+
+
+def extract_fingerprint(
+    *,
+    archive_name: str,
+    archive_sha256: str,
+    awards_sha256: str,
+    cutoff: str,
+    filter_sha256: str,
+) -> dict[str, Any]:
+    return {
+        "archive": archive_name,
+        "archive_sha256": archive_sha256,
+        "awards_sha256": awards_sha256,
+        "cutoff": cutoff,
+        "filter_sha256": filter_sha256,
+        "extractor_provenance_version": AWARD_ARCHIVE_PROVENANCE_VERSION,
+    }
+
+
+def sidecar_allows_reuse(
+    output: Path,
+    expected: dict[str, Any],
+    file_hash: Callable[[Path], str] = sha256_file,
+) -> bool:
+    sidecar_path = provenance_sidecar_path(output)
+    if not output.is_file() or not sidecar_path.is_file():
+        return False
+    try:
+        sidecar = json.loads(sidecar_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return False
+    if not isinstance(sidecar, dict):
+        return False
+    if sidecar.get("output_sha256") != file_hash(output):
+        return False
+    return all(sidecar.get(key) == value for key, value in expected.items())
+
+
+def write_provenance_sidecar(output: Path, payload: dict[str, Any]) -> None:
+    provenance_sidecar_path(output).write_text(
+        json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+    )
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--awards", type=Path, required=True)
+    parser.add_argument("--archive-dir", type=Path, required=True)
+    parser.add_argument("--output-dir", type=Path, required=True)
+    parser.add_argument("--start-fy", type=int, default=2009)
+    parser.add_argument("--end-fy", type=int, default=2025)
+    parser.add_argument("--cutoff", type=date.fromisoformat, default=date(2024, 12, 31))
+    parser.add_argument("--force", action="store_true")
+    args = parser.parse_args(argv)
+
+    module = load_analysis_module()
+    args.output_dir.mkdir(parents=True, exist_ok=True)
+    cohort = module.build_cohort(args.awards, args.cutoff)
+    filter_path = args.output_dir / "cohort_vendor_filters.json"
+    build_filter(cohort, filter_path)
+    awards_sha256 = sha256_file(args.awards)
+    filter_sha256 = sha256_file(filter_path)
+    cutoff = args.cutoff.isoformat()
+
+    manifest_rows = []
+    for fiscal_year, archive in selected_archives(args.archive_dir, args.start_fy, args.end_fy):
+        output = args.output_dir / f"contracts_fy{fiscal_year}.parquet"
+        fingerprint = extract_fingerprint(
+            archive_name=archive.name,
+            archive_sha256=sha256_file(archive),
+            awards_sha256=awards_sha256,
+            cutoff=cutoff,
+            filter_sha256=filter_sha256,
+        )
+        if not args.force and sidecar_allows_reuse(output, fingerprint):
+            sidecar = json.loads(provenance_sidecar_path(output).read_text(encoding="utf-8"))
+            sidecar_rows = sidecar.get("rows")
+            rows = (
+                int(sidecar_rows)
+                if sidecar_rows is not None
+                else pq.ParquetFile(output).metadata.num_rows
+            )
+            print(f"FY{fiscal_year}: reusing {output} ({rows:,} rows)")
+            manifest_rows.append(
+                {
+                    **sidecar,
+                    "fiscal_year": fiscal_year,
+                    "output": output.name,
+                    "rows": rows,
+                    "reused": True,
+                }
+            )
+            continue
+        print(f"FY{fiscal_year}: scanning {archive.name}")
+        extractor = AwardArchiveContractExtractor(filter_path)
+        rows = extractor.extract_from_archive(archive, output)
+        payload = {
+            **fingerprint,
+            "fiscal_year": fiscal_year,
+            "output": output.name,
+            "output_sha256": sha256_file(output),
+            "rows": rows,
+            "reused": False,
+            "source_provenance": extractor.source_provenance,
+        }
+        write_provenance_sidecar(output, payload)
+        manifest_rows.append(payload)
+    manifest = {
+        "epistemic_tier": "exploratory",
+        "citable": False,
+        "cutoff": args.cutoff.isoformat(),
+        "awards": str(args.awards.resolve()),
+        "awards_sha256": awards_sha256,
+        "archives": manifest_rows,
+    }
+    (args.output_dir / "extraction_manifest.json").write_text(
+        json.dumps(manifest, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+    )
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

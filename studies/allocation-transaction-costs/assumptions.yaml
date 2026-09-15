@@ -1,0 +1,238 @@
+schema_version: 1
+# Every number that is not a source field lives here. The calculator must not
+# invent additional numeric constants for the model.
+
+comparison:
+  treatment_mechanism: nih_sbir_phase_i
+  control_mechanism: nih_r01_equivalent
+  agency: NIH
+
+per_million_dollars: 1000000
+
+applicant_hour_scenarios:
+  nih_sbir_phase_i: [20, 40, 60, 80, 100, 150, 200]
+  nih_sttr_phase_i: [20, 40, 60, 80, 100, 150, 200]
+  nih_sbir_phase_ii: [40, 80, 120, 160, 200]
+  nih_sttr_phase_ii: [40, 80, 120, 160, 200]
+  nih_sbir_fast_track: [40, 80, 120, 160, 200]
+  nih_sttr_fast_track: [40, 80, 120, 160, 200]
+  nih_sbir_phase_ii_direct: [40, 80, 120, 160, 200]
+  nih_sbir_phase_iib: [40, 80, 120, 160, 200]
+  nih_sbir_crp: [20, 40, 80, 120]
+  nih_sttr_phase_iib: [40, 80, 120, 160, 200]
+  nih_r01_equivalent: [80, 120, 160, 200]
+
+applicant_hour_citations:
+  nih_r01_equivalent:
+    evidence_class: behavioral_survey
+    population: university_pi_transfer
+    note: >-
+      FDP 2018 Faculty Workload Survey (Schneider): proposal preparation was
+      16.0% of research time; PIs reported a mean 54.3-hour work week and about
+      27 hours reserved for research, with a median of 4 proposals in 3 years.
+      A back-of-envelope transfer is ~170 hours per proposal
+      (0.16 × 27 hours/week × 52 weeks × 3 years / 4 proposals). That is not
+      observed SBIR-firm time. The 80–200 hour grid brackets that transfer.
+      A second university-side anchor now exists and does not depend on that
+      transfer: NSF's 2021 Merit Review Survey reports applicants spending an
+      average of 126 hours preparing their most recent proposal, including
+      writing, formatting, and submitting (N = 13,731), with regression-adjusted
+      directorate estimates ranging from 78 hours (Mathematical and Physical
+      Sciences) to 104 hours (Biological Sciences). 126 hours sits inside the
+      80–200 grid. This is a survey measurement rather than a Paperwork
+      Reduction Act estimate, so it is admissible here; it is NSF rather than
+      NIH, and NSF applicants are not the R01 population, so it corroborates
+      the grid without redefining it.
+    url: https://thefdp.org/wp-content/uploads/FDP-FWS-2018-Primary-Report.pdf
+    corroborating_url: https://nsf-gov-resources.nsf.gov/2023-10/2021-Merit-Review-Survey-Report-Final_508.pdf
+    fdp_time_decomposition:
+      basis: >-
+        Share of PI research time on federally funded projects, read from the
+        2018 FDP primary report, which prints the 2012 and 2018 waves side by
+        side. Percentages, not hours; recorded so pre-award and post-award
+        burden are not conflated.
+      proposal_preparation: {2012: 0.154, 2018: 0.160}
+      pre_award_administration: {2012: 0.057, 2018: 0.063}
+      post_award_administration: {2012: 0.136, 2018: 0.137}
+      report_preparation: {2012: 0.076, 2018: 0.083}
+      active_research: {2012: 0.577, 2018: 0.557}
+      scholarly_contribution_share_of_proposal_time: 0.387
+      scholarly_contribution_note: >-
+        PIs reported that as much as 38.7% of their proposal preparation time,
+        or 6.2% of their overall research time, contributed to their
+        scholarship. Proposal hours are therefore not wholly transaction cost,
+        and an hours-per-award figure computed from them is an upper bound on
+        the deadweight portion. The survey does not decompose the remaining
+        61.3%, and it does not establish the equivalent share for a firm
+        writing an SBIR proposal.
+      respondents:
+        2012: {n: 12816, response_rate: 0.24}
+        2018: {n: 11167, response_rate: 0.20, institutions: 111}
+  nih_sbir_phase_i:
+    evidence_class: assumption_grid
+    population: unobserved_small_business
+    source_id: sbir_consultant_list_prices_2026
+    url: https://sbirgrantwriters.com/sbir-blog-grant-writing-services-compared-2026
+    note: >-
+      No public time-use survey of NIH SBIR applicants matches FDP quality.
+      The 20–200 hour grid is a sensitivity range, not a point estimate.
+      One indirect market signal exists, and it is neither an observation nor
+      citable: published 2026 list prices for outsourced SBIR proposal
+      preparation cluster at $3,000–$17,000 for a full Phase I, with a single
+      fully published flat price of $5,995. Two divisions by the published
+      writer rates of $50–180 per hour must not be conflated. The $5,995 point
+      price alone implies 33–120 outsourced hours ($5,995/$180 = 33.3,
+      $5,995/$50 = 119.9). The advertised cluster implies 17–340 hours
+      ($3,000/$180 = 16.7, $17,000/$50 = 340.0), which straddles this 20–200
+      grid at both ends. So the signal does not bracket inside the grid; it is
+      wider than the grid in both directions, and its narrowest reading rests
+      on a single vendor's point price. Source is vendor marketing pages, list
+      prices rather than transaction prices, left-censored because most
+      providers publish nothing, and covering only the fraction a firm chooses
+      to outsource, before any PI technical content. It must not be used to
+      narrow, widen, or retune the grid, and no hours figure derived from it
+      may be reported as an applicant-hour estimate.
+
+labor_rates:
+  - id: bls_medical_scientist_mean_hourly
+    usd_per_hour: 53.99
+    evidence_class: accounting
+    citation: >-
+      BLS Occupational Employment and Wage Statistics, May 2023, SOC 19-1042
+      Medical Scientists, Except Epidemiologists, mean hourly wage.
+    url: https://www.bls.gov/oes/2023/may/oes191042.htm
+  - id: nih_cap_hourly
+    usd_per_hour: 108.51
+    evidence_class: statutory_cap
+    citation: >-
+      NIH salary cap FY2025 Executive Level II $225,700 / 2080 hours
+      (NOT-OD-25-049). Fully loaded PI-equivalent ceiling, not a mean wage.
+    url: https://grants.nih.gov/grants/guide/notice-files/NOT-OD-25-049.html
+
+default_labor_rate_id: bls_medical_scientist_mean_hourly
+
+review:
+  reviewers_per_application:
+    nih_r01_equivalent: [3]
+    nih_sbir_phase_i: [3]
+    nih_sttr_phase_i: [3]
+    nih_sbir_phase_ii: [3]
+    nih_sttr_phase_ii: [3]
+    nih_sbir_fast_track: [3]
+    nih_sttr_fast_track: [3]
+    nih_sbir_phase_ii_direct: [3]
+    nih_sbir_phase_iib: [3]
+    nih_sbir_crp: [3]
+    nih_sttr_phase_iib: [3]
+  reviewer_hours: [2, 4, 8]
+  reviewer_hours_note: >-
+    NIH CSR typically assigns about three reviewers. The 2/4/8 grid is retained
+    as a scenario range; see reviewer_hour_citations for the two published US
+    per-application measurements we located — AIBS panel review of NIH-style
+    applications and NSF's 2021 Merit Review Survey across NSF review methods
+    — both of which fall inside the grid and neither of which retunes it.
+  reviewer_hour_citations:
+    aibs_gallo_2019:
+      evidence_class: behavioral_survey
+      population: us_grant_reviewers_panel_review
+      source_id: aibs_gallo_2019
+      observed_pre_meeting_hours_per_application:
+        fewer_than_seven_panels: 4.5
+        seven_or_more_panels: 5.0
+      note: >-
+        Gallo, Thompson, Schmaling and Glisson (2019), "The Participation and
+        Motivations of Grant Peer Reviewers: A Comprehensive Survey", Science
+        and Engineering Ethics, doi:10.1007/s11948-019-00123-1. AIBS survey,
+        874 respondents. Time spent per assignment reviewing each application
+        before the meeting was 4.5 +/- 0.08 hours for reviewers serving on
+        fewer than seven panels and 5.0 +/- 0.08 hours for those on seven or
+        more. Total annual grant-review time was 47 +/- 2 and 132 +/- 3 hours
+        respectively. These are pre-meeting hours only; the paper's annual
+        totals add meeting hours (panel days x 8) and 8 hours of travel for
+        face-to-face panels, so hours per review inclusive of meeting time sit
+        nearer the top of the 2/4/8 grid. Measured on panel review of
+        NIH-style applications, not on NSF ad hoc mail review. The survey does
+        not provide a mechanism-specific SBIR versus R01 estimate. The paper's
+        aggregate annual totals do not reconcile cleanly with its
+        per-application figures, so only the per-application measurement is
+        cited here.
+      url: https://doi.org/10.1007/s11948-019-00123-1
+    nsf_merit_review_survey_2021:
+      evidence_class: behavioral_survey
+      population: nsf_reviewers_all_methods
+      observed_hours_per_review: [7]
+      note: >-
+        NSF, "Assessment of Stakeholder Experiences With NSF's Merit Review
+        Process: 2021 Merit Review Survey" (published October 2023). Reviewers
+        reported reviewing an average of 10 proposals since 1 October 2018 and
+        spending an average of 7 hours reading, writing, and submitting their
+        most recent review (N = 11,696). The report states explicitly that
+        these hours do not include time traveling to or participating in a
+        panel discussion, so the scope matches the AIBS pre-meeting figure and
+        the two can be read side by side: 4.5-5.0 hours on NIH-style panel
+        review and 7 hours across NSF review methods. Both fall inside the
+        2/4/8 grid, which is why the grid is unchanged. Hours were log
+        transformed in the source, so reported figures are exponentiated
+        regression coefficients.
+      url: https://nsf-gov-resources.nsf.gov/2023-10/2021-Merit-Review-Survey-Report-Final_508.pdf
+  reviewer_labor_rate_id: bls_medical_scientist_mean_hourly
+
+agency_cost:
+  mode: missing
+  sbir_admin_allowance_ceiling: 0.03
+  sbir_admin_allowance_note: >-
+    15 U.S.C. §638 allows not more than 3 percent of SBIR program funds for
+    administration, outreach, reporting, and related activities. This is an
+    incremental statutory ceiling, not total NIH selection cost, and is not
+    comparable to the CSR budget. Default GC is missing. The ceiling may be
+    attached to the SBIR side only as a lower-bound sensitivity.
+
+duration:
+  conventions: [annual_award_size, project_total]
+  r01_project_years: 4
+  r01_project_years_sensitivity: [3, 5]
+  r01_project_years_note: >-
+    NIH Data Book average R01-equivalent size is an annual figure. SBIR Phase I
+    Total Funding / awards is a competing-year (approximately project) figure.
+    annual_award_size uses each series as published. project_total multiplies
+    the R01 annual average by r01_project_years and leaves SBIR Phase I unchanged.
+
+external_benchmarks:
+  policy: >-
+    External benchmarks are for orientation and plausibility only. They are not
+    inputs, are not interpolated, and do not license a citable US number.
+  entries:
+    - id: pollitt_2026_ukri
+      scope: >-
+        Four UK grant and fellowship schemes at the Medical Research Council and
+        the Engineering and Physical Sciences Research Council.
+      cost_per_application_as_share_of_requested: 0.03
+      cost_per_application_range: [0.02, 0.03]
+      transaction_cost_as_share_of_awarded: 0.13
+      transaction_cost_range_across_schemes: [0.07, 0.13]
+      cost_incidence:
+        applicants: 0.89
+        reviewers: 0.07
+        panelists: 0.04
+      mean_cost_per_grant_gbp: 24445
+      note: >-
+        Pollitt A, Taylor C, Sreenan N, Grant J (2026), "The costs and benefits
+        of research grant funding peer review", F1000Research 15:534,
+        doi:10.12688/f1000research.176989.1. 12,617 people surveyed April 2022
+        to June 2023, 11% response rate, 1,330 responses. Uses the same cost
+        function this study uses: cost per application divided by success rate.
+        Reported scheme success rates run 19% to 31%. The estimate excludes the
+        funder's own operational costs, which the authors note are around 3% of
+        UKRI's total budget, so it is comparable to this study's
+        agency_cost.mode of missing rather than to a total-system figure.
+        Version 1 on F1000Research carried one approval and one approval with
+        reservations at retrieval. UK research councils, not US federal funding:
+        this is a target to compare the computed ratio against, never an input.
+
+sensitivity:
+  success_rate_relative_shocks: [-0.25, 0.0, 0.25]
+  award_size_relative_shocks: [-0.25, 0.0, 0.25]
+
+forbidden_hour_sources:
+  - pra_estimate
+  - fa_rate

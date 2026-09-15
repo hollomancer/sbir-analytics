@@ -4,8 +4,10 @@ These contracts define the row-level shape of the four phase-transition assets:
 
 - ``PhaseIIAward``: unified Phase II population (contracts + grants, reconciled
   against SBIR.gov when federal-system phase coding is missing).
-- ``PhaseIIIContract``: FPDS Phase III-coded contract rows (the coding channel
-  is incomplete and inconsistent, especially outside of DoD).
+- ``PhaseIIIContract``: FPDS Phase III contract rows, either directly coded or
+  inherited from a declared Phase III parent IDV (the coding channel is
+  incomplete and inconsistent, especially outside of DoD).
+  ``phase_iii_evidence`` records which of the two produced the row.
 - ``PhaseTransitionPair``: one row per matched (Phase II, Phase III) pair.
   Multi-award firms emit all valid pairs; views for "earliest" and
   "any-within-5-years" are derived downstream.
@@ -19,10 +21,16 @@ from __future__ import annotations
 from datetime import date
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 PhaseIISource = Literal["fpds_contract", "usaspending_assistance", "sbir_gov"]
 IdentifierBasis = Literal["uei", "duns_crosswalk", "name_fallback"]
+PhaseIIIEvidence = Literal[
+    "direct_10q",
+    "direct_sbir_phase",
+    "direct_research",
+    "parent_declared",
+]
 
 
 class PhaseIIAward(BaseModel):
@@ -91,6 +99,30 @@ class PhaseIIIContract(BaseModel):
     """A single FPDS Phase III contract row."""
 
     contract_id: str = Field(..., description="PIID or generated_unique_award_id.")
+    parent_contract_id: str | None = Field(
+        None,
+        description=(
+            "Referenced IDV identifier for a task order, if the row declares one. "
+            "Present on direct and inherited rows alike; it records the vehicle, "
+            "not the reason the row is Phase III."
+        ),
+    )
+    phase_iii_evidence: PhaseIIIEvidence = Field(
+        ...,
+        description=(
+            "How this row was identified as Phase III. The `direct_*` values come "
+            "from the row's own coding; `parent_declared` means the row is a task "
+            "order under an unambiguous IDV that declares SBIR/STTR Phase III."
+        ),
+    )
+    phase_iii_inherited: bool = Field(
+        False,
+        description=(
+            "True when the row is Phase III only by parent inheritance. Equivalent "
+            "to `phase_iii_evidence == 'parent_declared'`; the two are validated to "
+            "agree so a consumer can filter on either."
+        ),
+    )
     recipient_uei: str | None = Field(None, description="12-char UEI, if known.")
     recipient_duns: str | None = Field(None, description="9-digit DUNS, if known.")
     recipient_name: str | None = Field(None, description="Vendor name at time of award.")
@@ -102,6 +134,18 @@ class PhaseIIIContract(BaseModel):
     period_of_performance_end: date | None = Field(None)
 
     model_config = ConfigDict(str_strip_whitespace=True)
+
+    @model_validator(mode="after")
+    def _inherited_matches_evidence(self) -> PhaseIIIContract:
+        """Reject rows where the inheritance flag and the evidence value disagree."""
+
+        inherited_by_evidence = self.phase_iii_evidence == "parent_declared"
+        if self.phase_iii_inherited != inherited_by_evidence:
+            raise ValueError(
+                f"phase_iii_inherited={self.phase_iii_inherited} contradicts "
+                f"phase_iii_evidence={self.phase_iii_evidence!r}"
+            )
+        return self
 
 
 class PhaseTransitionPair(BaseModel):
@@ -174,6 +218,7 @@ __all__ = [
     "PhaseIIAward",
     "PhaseIISource",
     "PhaseIIIContract",
+    "PhaseIIIEvidence",
     "PhaseTransitionPair",
     "PhaseTransitionSurvival",
 ]

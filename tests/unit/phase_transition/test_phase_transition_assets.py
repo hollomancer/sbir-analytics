@@ -194,6 +194,107 @@ def test_prepare_phase_iii_rows_excludes_assistance_and_other_phases():
     assert df["action_date"].notna().all()
 
 
+def test_prepare_phase_iii_rows_inherits_explicit_parent_declaration():
+    from sbir_analytics.assets.phase_transition.phase_iii import _prepare_phase_iii_rows
+
+    contracts = pd.DataFrame(
+        [
+            {
+                "contract_id": "PARENT-1",
+                "piid": "PARENT-1",
+                "generated_unique_award_id": "CONT_IDV_PARENT-1_9700",
+                "contract_award_type": "IDV-A",
+                "description": "SBIR Phase III indefinite-delivery contract",
+                "action_date": date(2020, 1, 1),
+            },
+            {
+                "contract_id": "ORDER-1",
+                "parent_contract_id": "CONT_IDV_PARENT-1_9700",
+                "contract_award_type": "A",
+                "research": None,
+                "action_date": date(2021, 1, 1),
+                "federal_action_obligation": 1_000_000,
+            },
+        ]
+    )
+
+    result = _prepare_phase_iii_rows(contracts)
+
+    assert list(result["contract_id"]) == ["ORDER-1"]
+    assert result.iloc[0]["parent_contract_id"] == "CONT_IDV_PARENT-1_9700"
+    assert result.iloc[0]["phase_iii_evidence"] == "parent_declared"
+    assert bool(result.iloc[0]["phase_iii_inherited"]) is True
+    assert result.iloc[0]["obligated_amount"] == 1_000_000
+
+
+def test_prepare_phase_iii_rows_does_not_inherit_from_general_purpose_parent():
+    from sbir_analytics.assets.phase_transition.phase_iii import _prepare_phase_iii_rows
+
+    contracts = pd.DataFrame(
+        [
+            {
+                "contract_id": "GENERAL-PARENT",
+                "piid": "GENERAL-PARENT",
+                "contract_award_type": "IDIQ",
+                "description": "General purpose technology services IDIQ",
+                "action_date": date(2020, 1, 1),
+            },
+            {
+                "contract_id": "DIRECT-PHASE-III",
+                "parent_contract_id": "GENERAL-PARENT",
+                "research": "SR3",
+                "action_date": date(2021, 1, 1),
+            },
+            {
+                "contract_id": "UNFLAGGED-SIBLING",
+                "parent_contract_id": "GENERAL-PARENT",
+                "research": None,
+                "action_date": date(2021, 2, 1),
+            },
+        ]
+    )
+
+    result = _prepare_phase_iii_rows(contracts)
+
+    assert list(result["contract_id"]) == ["DIRECT-PHASE-III"]
+    assert result.iloc[0]["phase_iii_evidence"] == "direct_10q"
+    assert bool(result.iloc[0]["phase_iii_inherited"]) is False
+
+
+def test_prepare_phase_iii_rows_fails_closed_on_ambiguous_parent_piid():
+    from sbir_analytics.assets.phase_transition.phase_iii import _prepare_phase_iii_rows
+
+    contracts = pd.DataFrame(
+        [
+            {
+                "contract_id": "SHARED-PIID",
+                "piid": "SHARED-PIID",
+                "generated_unique_award_id": "CONT_IDV_SHARED-PIID_9700",
+                "agency": "Agency One",
+                "contract_award_type": "IDV-A",
+                "description": "SBIR Phase III IDIQ",
+            },
+            {
+                "contract_id": "SHARED-PIID",
+                "piid": "SHARED-PIID",
+                "generated_unique_award_id": "CONT_IDV_SHARED-PIID_4700",
+                "agency": "Agency Two",
+                "contract_award_type": "IDV-A",
+                "description": "General purpose IDIQ",
+            },
+            {
+                "contract_id": "ORDER-WITH-AMBIGUOUS-PARENT",
+                "parent_contract_id": "SHARED-PIID",
+                "action_date": date(2021, 1, 1),
+            },
+        ]
+    )
+
+    result = _prepare_phase_iii_rows(contracts)
+
+    assert result.empty
+
+
 @pytest.mark.parametrize(
     ("research", "expected"),
     [
@@ -1211,8 +1312,11 @@ def test_pydantic_contracts_round_trip_valid_rows():
     )
     assert phase_ii.naics_code == "541715"
     assert phase_ii.psc_code == "AC12"
-    PhaseIIIContract(
+    phase_iii = PhaseIIIContract(
         contract_id="C_III",
+        parent_contract_id="IDV-1",
+        phase_iii_evidence="direct_10q",
+        phase_iii_inherited=False,
         recipient_uei="AAAAAAAAAAAA",
         recipient_duns="123456789",
         recipient_name="Firm",
@@ -1223,6 +1327,9 @@ def test_pydantic_contracts_round_trip_valid_rows():
         period_of_performance_start=date(2023, 1, 1),
         period_of_performance_end=date(2025, 1, 1),
     )
+    assert phase_iii.parent_contract_id == "IDV-1"
+    assert phase_iii.phase_iii_evidence == "direct_10q"
+    assert phase_iii.phase_iii_inherited is False
     PhaseTransitionPair(
         recipient_uei="AAAAAAAAAAAA",
         recipient_duns=None,
@@ -1247,6 +1354,106 @@ def test_pydantic_contracts_round_trip_valid_rows():
         event_date=date(2023, 1, 1),
         time_days=365,
     )
+
+
+def test_phase_iii_contract_accepts_every_emitted_asset_row():
+    """Each row the asset emits must validate against the declared row contract.
+
+    The provenance columns are only useful to a typed consumer if the contract
+    names them; a column added to the frame but not to the model is silently
+    dropped by Pydantic.
+    """
+
+    from sbir_analytics.assets.phase_transition.phase_iii import (
+        PHASE_III_COLUMNS,
+        _prepare_phase_iii_rows,
+    )
+    from sbir_etl.models.phase_transition import PhaseIIIContract
+
+    contracts = pd.DataFrame(
+        [
+            {
+                "contract_id": "PARENT-1",
+                "piid": "PARENT-1",
+                "generated_unique_award_id": "CONT_IDV_PARENT-1_9700",
+                "contract_award_type": "IDV-A",
+                "description": "SBIR Phase III indefinite-delivery contract",
+                "action_date": date(2020, 1, 1),
+            },
+            {
+                "contract_id": "ORDER-1",
+                "parent_contract_id": "CONT_IDV_PARENT-1_9700",
+                "contract_award_type": "A",
+                "research": None,
+                "action_date": date(2021, 1, 1),
+            },
+            {
+                "contract_id": "DIRECT-1",
+                "research": "SR3",
+                "action_date": date(2021, 6, 1),
+            },
+        ]
+    )
+
+    frame = _prepare_phase_iii_rows(contracts)
+    # The pre-existing date columns arrive as NaT; a parquet consumer has to map
+    # pandas missing values to None before validating. The provenance columns are
+    # asserted below without any such cleanup.
+    records = [
+        {key: (None if pd.isna(value) else value) for key, value in row.items()}
+        for row in frame.to_dict(orient="records")
+    ]
+    validated = [PhaseIIIContract(**row) for row in records]
+
+    assert [row["parent_contract_id"] for row in frame.to_dict(orient="records")] == [
+        "CONT_IDV_PARENT-1_9700",
+        None,
+    ]
+
+    assert {c.contract_id for c in validated} == {"ORDER-1", "DIRECT-1"}
+    by_id = {c.contract_id: c for c in validated}
+    assert by_id["ORDER-1"].phase_iii_evidence == "parent_declared"
+    assert by_id["ORDER-1"].phase_iii_inherited is True
+    assert by_id["ORDER-1"].parent_contract_id == "CONT_IDV_PARENT-1_9700"
+    assert by_id["DIRECT-1"].phase_iii_evidence == "direct_10q"
+    assert by_id["DIRECT-1"].phase_iii_inherited is False
+    # Every emitted column is declared on the contract, so none is silently dropped.
+    assert set(PHASE_III_COLUMNS) <= set(PhaseIIIContract.model_fields)
+
+
+def test_phase_iii_contract_rejects_inherited_flag_contradicting_evidence():
+    from pydantic import ValidationError
+
+    from sbir_etl.models.phase_transition import PhaseIIIContract
+
+    with pytest.raises(ValidationError, match="contradicts"):
+        PhaseIIIContract(
+            contract_id="C_III",
+            phase_iii_evidence="direct_10q",
+            phase_iii_inherited=True,
+            action_date=date(2023, 1, 1),
+        )
+
+    with pytest.raises(ValidationError, match="contradicts"):
+        PhaseIIIContract(
+            contract_id="C_III",
+            phase_iii_evidence="parent_declared",
+            phase_iii_inherited=False,
+            action_date=date(2023, 1, 1),
+        )
+
+
+def test_phase_iii_contract_rejects_unknown_evidence_value():
+    from pydantic import ValidationError
+
+    from sbir_etl.models.phase_transition import PhaseIIIContract
+
+    with pytest.raises(ValidationError):
+        PhaseIIIContract(
+            contract_id="C_III",
+            phase_iii_evidence="guessed",
+            action_date=date(2023, 1, 1),
+        )
 
 
 def test_pydantic_contracts_reject_invalid_source():

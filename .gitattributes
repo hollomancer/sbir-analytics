@@ -1,0 +1,4 @@
+# Pinned study inputs are hashed byte-for-byte in study.yaml and sources.yaml.
+# Line-ending normalisation would change those bytes and break the digest check,
+# so git must store and check them out verbatim.
+studies/**/data/*.csv -text

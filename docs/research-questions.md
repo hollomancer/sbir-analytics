@@ -43,7 +43,7 @@ matching `evidence_status` (or higher). CI enforces the pairing
 | Status rank | Required study `evidence_status` | Meaning |
 |---|---|---|
 | `Computable` (including `Partially computable`) | `reproducible`, `validated`, or `citable` | The repository can emit a bounded result from the named study. |
-| `Validated` | `validated` or `citable` | The study's stated validation design has passed. |
+| `Validated` | `validated` with `validation_result.threshold_met: true`, or `citable` | The study's stated validation design has passed. |
 | `Citable` | `citable` | Approved for the claims listed in that study's manifest. |
 
 `Computable` is not a finding. An exploratory study does not authorize it.
@@ -106,19 +106,20 @@ lists below may name only those ranks or an explicit refusal.
 - **Policymakers** — Congress, OMB, agency leadership, congressional defense
   committees. Unlabeled follow-on contracts
   ([B2](#b2-unlabeled-follow-on)) and unrecorded Phase III
-  ([B3](#b3-unrecorded-phase-iii)); private-to-SBIR Form D leverage
-  ([F3](#f3-form-d-leverage)). All three are `Computable` under a
-  `reproducible` study, not validated or citable.
+  ([B3](#b3-unrecorded-phase-iii)) are `Computable` under a `reproducible`
+  study, not validated or citable. Private-to-SBIR Form D leverage
+  ([F3](#f3-form-d-leverage)) is **Not computable** after retirement
+  of its stale identity-rule materialization.
 - **SBIR program managers** — NSF, NIH, DoD, DOE, SBA program offices. The
   same [B2](#b2-unlabeled-follow-on) and [B3](#b3-unrecorded-phase-iii)
   census proxies. STTR partner type ([B1](#b1-sttr-partner-types)) and
   spinout vs. subcontract ([B2](#b2-sttr-spinout)) are **Not computable**
   (Phase 0 design only).
 - **Investors** — VC, PE, angels, family offices, corporate VC.
-  Private-to-SBIR leverage ([F3](#f3-form-d-leverage)). Crowd-in vs.
-  crowd-out ([F3](#f3-crowd-in-vs-crowd-out)) and Lerner geography
-  ([F3](#f3-lerner-geography)) are **Not estimable** from the Form D
-  study design.
+  Private-to-SBIR leverage ([F3](#f3-form-d-leverage)) is **Not
+  computable**. Crowd-in vs. crowd-out ([F3](#f3-crowd-in-vs-crowd-out))
+  and Lerner geography ([F3](#f3-lerner-geography)) are **Not estimable**
+  from the Form D study design.
 - **OSTP / congressional oversight** — OSTP, armed-services, science, and
   small-business committees. No Section A question has a reserved Status
   or a study contract. There is no start-here item in A.
@@ -132,14 +133,18 @@ point.
   and Treasury ROI ([D2](#d2-relational-tier-2)). Both are inventory
   targets with no study.
 - **SBIR program managers** — cross-agency CET portfolio
-  ([C1](#c1-descriptive-tier-1); gated spec, no study) and weekly snapshots
+  ([C1](#c1-descriptive-tier-1); gated spec, no study), allocation
+  transaction costs versus conventional grants
+  ([C4](#c4-allocation-costs-tier-3); NIH break-even only), and weekly
+  snapshots
   ([E6](#e6-continuous-monitoring--rolling-analytics-tier-4-capstone);
   operational obligation, not a research question).
 - **Investors** — Form D fundraising profile ([F1](#f1-form-d-profile);
   exploratory, no study), M&A exit rates and time-to-exit (dated notes, no
   study), and F2 cohort comparisons (no study).
 - **OSTP / congressional oversight** — A1 concentration (exploratory
-  research note) and the A-CP13 choke-point watchlist
+  research note), allocation transaction costs versus conventional grants
+  ([C4](#c4-allocation-costs-tier-3)), and the A-CP13 choke-point watchlist
   ([A4](#a4-risk-monitoring--prediction-tier-4)). A-CP13 is not scoped and
   is not an implementation item. Capability HHI in A1 does not authorize
   that vulnerability composite.
@@ -388,7 +393,7 @@ NASEM calls this quantity the *leverage ratio*.
 - **Foreign-acquirer M&A detection**
   Did a defense-funded SBIR company undergo M&A activity, particularly involving
   a foreign acquirer?
-  *Deps: ER, M&A signals · Spec: [../specs/archive/completed-features/merger_acquisition_detection/](../specs/archive/completed-features/merger_acquisition_detection/)*
+  *Deps: ER, M&A signals · Spec: [../specs/archive/completed-features/merger_acquisition_detection/](../specs/archive/completed-features/merger_acquisition_detection/); recall expansion [../specs/ma-discovery-integration/](../specs/ma-discovery-integration/)*
 
 - **Inbound M&A via 8-K full-text search**
   For SBIR firms acquired by public companies, can inbound M&A be detected
@@ -399,7 +404,7 @@ NASEM calls this quantity the *leverage ratio*.
   Which defense primes concentrate SBIR-firm acquisitions (e.g. Titan, Teledyne,
   Ametek, Kratos), and are any of those acquirers themselves foreign-owned or
   under CFIUS review?
-  *Deps: ER, M&A signals*
+  *Deps: ER, M&A signals · Spec: [../specs/ma-discovery-integration/](../specs/ma-discovery-integration/)*
 
 - **M&A effect on transition pathways**
   How does M&A activity affect Phase III / federal-contract transition pathways?
@@ -457,7 +462,9 @@ NASEM calls this quantity the *leverage ratio*.
 >
 > The orchestrated graph has no continuous M&A-event materialization. Rerunning
 > the script is how the M&A signal feeding the vulnerability (A1/A3/A4) and
-> F-area questions gets refreshed. The former
+> F-area questions gets refreshed. Form-D-missing recall expansion is specified
+> in [`specs/ma-discovery-integration/`](../specs/ma-discovery-integration/)
+> (Active); it is not yet wired into that script. The former
 > `packages/sbir-analytics/sbir_analytics/assets/ma_detection.py` stub was a
 > placeholder, never wired into the M&A pipeline, and was removed in PR #317.
 
@@ -762,6 +769,27 @@ spending produce measurable new knowledge?*
   vintage?
   *Deps: ER, PATLINK, CET*
 
+### C4. Allocation costs (Tier 3)
+
+- <a id="c4-allocation-costs-tier-3"></a>**SBIR vs conventional-grant allocation costs**
+  Does SBIR/STTR allocate federal R&D funding with lower transaction hours
+  and dollars, per award and per awarded dollar, than conventional federal
+  research grants, after accounting for award size, success rate, proposal
+  burden, review burden, and agency administrative costs?
+  Hours per award, dollars per award, and cost per awarded dollar are kept
+  separate. The competing hypothesis is that smaller awards and lower
+  success rates can offset any reduction in hours per proposal.
+  **Status:** Partially computable for NIH SBIR Phase I versus R01-equivalent
+  grants under the `allocation-transaction-costs` study (`reproducible`, not
+  validated, not citable), as a break-even condition over declared hour and
+  duration assumptions. Directional ranking is underidentified. Other
+  agencies are inventory-only in this study.
+  *Deps: none (published mechanism-year tables) · Refs: [L3], [L6], [L18],
+  [L51], [L52], [L53], [L54] · Spec:
+  [../specs/allocation-transaction-costs/](../specs/allocation-transaction-costs/)
+  · Study:
+  [allocation-transaction-costs](../studies/allocation-transaction-costs/study.yaml)*
+
 ## D. Economic & fiscal impact
 
 *Audience: Treasury, OMB, JCT, state economic-development offices. What is the
@@ -1065,14 +1093,16 @@ The relevant literature is Lerner [L10], Howell [L11], and Kortum & Lerner
   What fraction of SBIR awardees show secured-debt activity (UCC-1 filings), and
   what mix of equipment finance, depository-bank lending, and venture debt do
   those filings represent, by lender?
-  UCC-1 complements Form D's equity view. The CA-only pilot found equipment and
-  community-bank patterns, and an absence of venture-debt lenders in the CA
-  channel.
+  **Status:** Not computable. The CA-only pilot used the retired v1
+  Form D cohort; its cohort-dependent lender mix and rates are suppressed.
+  Its state-portal access observations remain a source-method note.
   *Deps: ER, UCC-1 · Spec: [../specs/archive/completed-features/ucc1-financing-analysis/](../specs/archive/completed-features/ucc1-financing-analysis/) (PRs #303 / #305 merged)*
 
 - **Unified capital-event timeline**
   What does a single firm history look like when federal awards, private
   placements, M&A, and patent events are placed on one timeline?
+  **Status:** Implemented historically, but the Form D-selected cohort and its
+  pathway counts are retired pending the pinned v2 rebuild.
   *Deps: ER, SEC EDGAR, UCC-1, M&A signals · Spec: (PR #307 merged)*
 
 - **M&A exit rate by agency**
@@ -1090,12 +1120,24 @@ The relevant literature is Lerner [L10], Howell [L11], and Kortum & Lerner
 
 ### F2. Relational (Tier 2)
 
+- **Supplier-track share of the SBIR/STTR portfolio**
+  What share of cumulative SBIR/STTR dollars and firms is associated with
+  sustained federal performers: firms with observed long-tenure, repeat-award,
+  or post-Phase-II prime-contract activity and no observed Form D, M&A, or IPO
+  signal? Report the complete persistence x venture-signal matrix rather than a
+  binary supplier label, and expose the first-award-cohort censoring gradient.
+  **Status:** Exploratory and non-citable. Required Form D/EFTS coverage and
+  validation gates are not yet complete; missing signal inputs are
+  indeterminate, not negative evidence.
+  *Deps: ER, SEC EDGAR, M&A signals, Phase III/FPDS · Spec:
+  [../specs/supplier-share-census/](../specs/supplier-share-census/)*
+
 - **Acquirer-type concentration**
   Among acquirers of SBIR firms, what share are life-sciences consolidators
   (Bruker, Ligand, Thermo Fisher) versus defense primes versus financial
   sponsors? What fraction of acquirers are serial buyers with 3+ SBIR-firm
   targets?
-  *Deps: ER, M&A signals*
+  *Deps: ER, M&A signals · Spec: [../specs/ma-discovery-integration/](../specs/ma-discovery-integration/)*
 
 - **Filers vs. non-filers**
   Do Form D filers and non-filers differ on transition, patent, and exit
@@ -1110,13 +1152,17 @@ The relevant literature is Lerner [L10], Howell [L11], and Kortum & Lerner
 - **Capital structure vs. comparable startup cohort**
   How does SBIR-firm capital structure benchmark against a matched cohort of
   comparable-stage privately backed startups?
-  *Deps: ER, SEC EDGAR*
+  **Status:** Not computable as a firm-level matched cohort from current Form D
+  and M&A files. Public round-size and conversion figures are recorded as
+  cited comparators only; they are not live baselines.
+  *Deps: ER, SEC EDGAR · Report: [public private-capital baseline candidates](research/private-capital-published-baselines.md) · Spec: [../specs/agency-private-capital-comparison/](../specs/agency-private-capital-comparison/)*
 
 ### F3. Inferential (Tier 3)
 
-The Form D study answers a descriptive leverage ratio. It does not identify
-who would have raised capital in the absence of an SBIR award, so the
-Howell [L11] and Lerner [L10] questions are not estimable from that design.
+The retired Form D study defined a descriptive leverage ratio. It does not
+currently support a result, and it never identified who would have raised
+capital without an SBIR award. The Howell [L11] and Lerner [L10] questions
+remain outside that design.
 
 #### Disclosed Form D leverage
 
@@ -1125,11 +1171,13 @@ Howell [L11] and Lerner [L10] questions are not estimable from that design.
   funding) by agency, vintage, and firm size?
   Sometimes described as the private-side counterpart of NASEM's federal-contract
   leverage [L1]; it is not that quantity.
-  **Status:** Computable as a Form D lower bound under the
-  `form-d-fundraising` study (`reproducible`, not validated, not citable).
-  The 1.82×–2.37× program-level ratios measure disclosed Regulation D
-  capital, not NASEM's federal-contract leverage, and are not a 4:1
-  reproduction.
+  **Status:** Not computable. The `form-d-fundraising` study is
+  `retired`: its historical result used `person-or-zip-v1`, the complete input
+  is not pinned in the repository, and no issuer-scoped
+  `corroborated-person-v2` rebuild exists. Former numerical results are
+  suppressed. A future ratio would measure disclosed Regulation D capital,
+  not NASEM's federal-contract leverage, and would not be a one-sided lower
+  bound while identity and filing-aggregation error remain unresolved.
   *Deps: ER, ID, SEC EDGAR · Refs: [L1] · Spec: [../specs/archive/completed-features/form-d-pipeline/](../specs/archive/completed-features/form-d-pipeline/), [../specs/agency-private-capital-comparison/](../specs/agency-private-capital-comparison/) · Study: [form-d-fundraising](../studies/form-d-fundraising/study.yaml)*
 
 #### Causal questions this design cannot answer
@@ -1142,8 +1190,11 @@ Howell [L11] and Lerner [L10] questions are not estimable from that design.
   Phase I→II cohort component: 672 of 1,502 firms in the 2015–2019 vintage
   (44.7%, 95% Wilson interval 42.2%–47.3%). It does not yet answer this
   question because transition, survival, M&A, and patent channels were
-  unavailable in that run. It is not a crowd-in estimate.
-  *Deps: ER, SEC EDGAR · Refs: [L10], [L11], [L24] · Report: [NSF Phase I baseline review](research/agency-private-capital-phase1-nsf.md) · Spec: [../specs/agency-private-capital-comparison/](../specs/agency-private-capital-comparison/) (PR #321 merged, supersedes #311; agency-parameterized via the `agency_private_capital_baseline_comparison` asset in group `agency_private_capital`, with terminology changed from "VC" to "private capital")*
+  unavailable in that run. It is not a crowd-in estimate. A 2009Q1–2024Q4
+  Form D identity audit stages 311,809 issuer CIKs and 307,344 provisional
+  retained identities; exact-name SBIR exclusion has unknown recall, DERA has
+  no NAICS, and the controls are not match-ready.
+  *Deps: ER, SEC EDGAR · Refs: [L10], [L11], [L24] · Reports: [NSF Phase I baseline review](research/agency-private-capital-phase1-nsf.md), [Form D control-identity audit](research/agency-private-capital-form-d-control-universe.md) · Spec: [../specs/agency-private-capital-comparison/](../specs/agency-private-capital-comparison/) (PR #321 merged, supersedes #311; agency-parameterized via the `agency_private_capital_baseline_comparison` asset in group `agency_private_capital`, with terminology changed from "VC" to "private capital")*
 
 - <a id="f3-crowd-in-vs-crowd-out"></a>**Crowd-in vs. crowd-out**
   Does SBIR funding crowd in or crowd out subsequent private capital?
@@ -1200,21 +1251,35 @@ M&A). Classified-work exposure remains a manual political-sensitivity vetting
 factor, not an automated pipeline screen — there is no vulnerability signal for
 it.
 
-### Form D fundraising analysis (reproducible study, not citable)
+### Allocation transaction costs (reproducible study, not citable)
+
+**Audience:** OSTP, agency R&D directors, SBIR program managers, GAO/OMB staff
+comparing SBIR to conventional research grants.
+
+**Format:**
+
+- `docs/research/allocation-transaction-costs.md` — findings record.
+- [`studies/allocation-transaction-costs/study.yaml`](../studies/allocation-transaction-costs/study.yaml)
+  — study contract (`reproducible`, not citable).
+- [`specs/allocation-transaction-costs/`](../specs/allocation-transaction-costs/)
+  — exploratory spec.
+
+**Pulls from:** C4 (allocation costs). Uses published NIH mechanism-year
+tables, not award-level identity resolution.
+
+### Form D fundraising analysis (retired; no current result)
 
 **Audience:** F-area analysts, investor researchers, and policy staff studying
 program-wide private-capital leverage.
 
 **Format:**
 
-- `docs/research/sbir-form-d-fundraising-analysis.md` — findings record, on
-  `main`. Includes Appendix A (firm-level bootstrap CIs, PR #338) and Appendix B
-  (PIF cross-link integrity audit, PR #341).
+- `docs/research/sbir-form-d-fundraising-analysis.md` — retirement notice and
+  successor rebuild gates; former numerical tables are suppressed.
 - [`studies/form-d-fundraising/study.yaml`](../studies/form-d-fundraising/study.yaml)
-  — study contract (`reproducible`, not citable).
-- `docs/research/dod-form-d-leverage.md` — DoD Branch decomposition, per-firm and
-  time-series and acquirer-type follow-ups, and the Form D vs. FPDS substitution
-  test (PRs #342 / #343 / #350).
+  — retired study contract with a closed materialization gate.
+- `docs/research/dod-form-d-leverage.md` — retirement notice for the historical
+  DoD branch, per-firm, time-series, acquirer-type, and substitution outputs.
 - `docs/research/form-d-data-dictionary.md` — field reference.
 
 **Pulls from:** F1 (Form D profile), F3 (private-to-SBIR leverage), A1/A4
@@ -1321,6 +1386,14 @@ spot-checked against publisher records):
 - **[L46]** Link, A.N. & Swann, C.A. (2024). "SBIR mills and the U.S. Department of Defense." *The Journal of Technology Transfer* 49(6), 2306–2335. Characterizes "SBIR mill" firms in DoD SBIR — the academic treatment of the multiple-award-firm problem behind the §638(qq)(3) performance standards [L14]. <https://doi.org/10.1007/s10961-024-10144-z>
 - **[L47]** Rovito, S.M., Kamp, J., & Etemadi, A.H. (2025). "Exploring Department of the Navy SBIR Phase III awards and corresponding public sector commercialization success factors." *The Journal of Technology Transfer* 50(4), 1363–1395. Navy Phase III awards and the firm attributes predicting public-sector commercialization; finds Phase III receipt only weakly predictive of commercialization success. Relevant to the Section B transition questions and the [`phase3-transition-groundtruth`](../specs/phase3-transition-groundtruth/) spec. <https://doi.org/10.1007/s10961-024-10141-2>
 - **[L48]** NASEM (2026). *Review of the SBIR and STTR Programs at NASA.* National Academies Press. Fills the NASA gap in the [L1]–[L8] agency-review block, which otherwise covers DoD, NIH, NSF, and DOE. <https://doi.org/10.17226/29381>
+- **[L51]** NIH Office of Extramural Research. *NIH Data Book* reports 29 and 158 (R01-equivalent competing applications, awards, success rates, and average size) and RePORT Table #215 (SBIR/STTR competing applications, awards, success rates, and funding by phase). Administrative counts, not behavioral hours. <https://report.nih.gov/nihdatabook/report/29> <https://report.nih.gov/reportweb/web/displayreport?rId=584>
+- **[L52]** Schneider, S.L., et al. (2020). *2018 FDP Faculty Workload Survey: Report of Primary Findings.* Federal Demonstration Partnership. University PI time-use on federal projects; proposal preparation 16.0% of research time. Wrong applicant population for SBIR firms. <https://thefdp.org/wp-content/uploads/FDP-FWS-2018-Primary-Report.pdf>
+- **[L53]** 15 U.S.C. §638. SBIR/STTR statute, including the allowance to use not more than 3 percent of SBIR program funds for administration, outreach, reporting, and related activities. Incremental statutory ceiling, not total agency selection cost. <https://www.law.cornell.edu/uscode/text/15/638>
+- **[L54]** GAO-25-107942 (2025). *Small Business Research Programs: Clearer Guidance Could Improve Award Data to More Effectively Measure Outcomes.* FY2023 proposal counts and acceptance rates for open versus conventional topics. <https://www.gao.gov/products/gao-25-107942>
+- **[L55]** Gallo, S.A., Sullivan, J.H., & Glisson, S.R. (2019). "The Participation and Motivations of Grant Peer Reviewers: A Comprehensive Survey." *Science and Engineering Ethics* 25, 1813–1838. AIBS survey of 874 reviewers; the only published US measurement of reviewer hours per grant application — 4.5 ± 0.08 h of pre-meeting time per assigned application for reviewers on fewer than seven panels, 5.0 ± 0.08 h for those on seven or more. Panel review of NIH-style applications; excludes meeting and travel time. <https://doi.org/10.1007/s11948-019-00123-1>
+- **[L56]** NSF (2023). *Assessment of Stakeholder Experiences With NSF's Merit Review Process: 2021 Merit Review Survey.* Applicants averaged 126 h preparing their most recent proposal (N = 13,731), with regression-adjusted directorate estimates of 78–104 h; reviewers averaged 7 h per review (N = 11,696), excluding panel travel and participation. A survey rather than a Paperwork Reduction Act estimate, so admissible as an hour citation. Secondary summaries circulating an "84.5 hours" figure do not match the report. <https://nsf-gov-resources.nsf.gov/2023-10/2021-Merit-Review-Survey-Report-Final_508.pdf>
+- **[L57]** Pollitt, A., Taylor, C., Sreenan, N., & Grant, J. (2026). "The costs and benefits of research grant funding peer review." *F1000Research* 15:534. 12,617 surveyed across four MRC and EPSRC schemes (11% response, 1,330 responses); transaction cost 13% of grant value, cost per application 3% of the amount requested, incidence 89% applicants / 7% reviewers / 4% panelists. Same cost function as the C4 study; excludes funder operational costs. UK, not US — an external benchmark, never an input. <https://doi.org/10.12688/f1000research.176989.1>
+- **[L58]** FDP (2013). *2012 Faculty Workload Survey: Executive Summary*, with the activity decomposition as printed for both waves in the 2018 primary report [L52]: proposal preparation 15.4%→16.0%, pre-award administration 5.7%→6.3%, post-award administration 13.6%→13.7%, report preparation 7.6%→8.3%, active research 57.7%→55.7%. PIs attribute as much as 38.7% of proposal preparation time to their own scholarship, so PI proposal hours are an upper bound on deadweight effort. <https://thefdp.org/wp-content/uploads/fws_2012_exec_summary.pdf>
 
 ---
 
@@ -1331,8 +1404,9 @@ explicit refusals; other audience pointers moved to research targets. F3 is
 split into the Form D leverage estimand and causal questions that design
 cannot answer. E4–E6 are marked operational. F1 M&A point estimates were
 removed from the inventory. A-CP13 is not an implementation item.
-`form-d-fundraising` is the third study contract and the second at
-`reproducible` (on F3). The 2026-08-11 citation audit added [L34]–[L48] from
+`form-d-fundraising` was retired on 2026-09-12 after its person-match rule
+changed and its unpinned result could not be rebuilt; F3 is no longer marked
+computable. The 2026-08-11 citation audit added [L34]–[L48] from
 the 2019–2026 literature map and pinned [L1] to its published DOI. Git history
 preserves earlier editorial and section-consolidation notes.
 
@@ -1358,6 +1432,20 @@ Open source-verification items:
   from any indexer during the audit, and it is a non-peer-reviewed repository
   deposit. It studies the §638(qq)(3) regime directly, so it is worth re-checking
   at the next refresh; if confirmed it takes the next free slot, [L49].
+  **2026-09-13 recheck:** the deposit **is** confirmed. DOI `10.25740/xq826fj1447`
+  resolves to <https://purl.stanford.edu/xq826fj1447>, titled as proposed. The earlier
+  audit checked indexers rather than the repository itself, which is why it read as
+  unconfirmable. The attribution needs correcting, though: the record lists Jones,
+  Rachel Mackenzie as author and Fearon, James as **degree supervisor**, granting
+  institution Stanford University Public Policy Program, dated ca. May 2026. It is a
+  degree thesis, not a co-authored working paper, so whether it earns an `[L#]` slot at
+  all is a judgment call rather than a mechanical consequence of confirmation. `[L49]`
+  therefore remains reserved and unassigned pending that decision.
+- **`[L50]` is spoken for and still pending** — open question O-8 in
+  [`specs/sttr-spinout-linkage/open-questions.md`](../specs/sttr-spinout-linkage/open-questions.md)
+  was RESOLVED on 2026-08-14 to add `[L50]` for the statutory Bayh-Dole anchor
+  (35 U.S.C. §§ 200–212), but the entry was never written into this file. The slot is
+  held for that spec, not free.
 
 The next audit should verify:
 

@@ -2,18 +2,25 @@
 
 import json
 
+import pytest
 
 from sbir_etl.capital_events.sources.form_d import (
     build_form_d_events,
     classify_securities_types,
 )
+from sbir_etl.enrichers.sec_edgar.form_d_scoring import FORM_D_TIER_RULE_VERSION
 
 
 def _form_d(name, tier, offerings):
     return {
         "company_name": name,
         "form_d_cik": "0001234567",
-        "match_confidence": {"tier": tier, "person_score": 1.0, "address_score": 1},
+        "match_confidence": {
+            "rule_version": FORM_D_TIER_RULE_VERSION,
+            "tier": tier,
+            "person_score": 1.0,
+            "address_score": 1,
+        },
         "offering_count": len(offerings),
         "total_raised": sum(o.get("total_amount_sold") or 0 for o in offerings),
         "offerings": offerings,
@@ -162,3 +169,14 @@ def test_metadata_carries_offering_extras(cohort, tmp_path):
     assert meta["minimum_investment"] == 50000
     assert meta["num_investors"] == 8
     assert meta["business_combination"] is False
+    assert meta["tier_rule_version"] == FORM_D_TIER_RULE_VERSION
+
+
+def test_refuses_unversioned_details(cohort, tmp_path):
+    src = tmp_path / "form_d.jsonl"
+    record = _form_d("ACME INC", "high", [_offering("ACC-1", "2024-01-01", 1.0)])
+    del record["match_confidence"]["rule_version"]
+    src.write_text(json.dumps(record) + "\n")
+
+    with pytest.raises(ValueError, match="Rescore the complete input"):
+        list(build_form_d_events(cohort, src))

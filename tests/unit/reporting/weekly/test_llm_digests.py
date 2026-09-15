@@ -202,12 +202,17 @@ class TestAwardDigestCorporateRecord:
 class TestAwardDigestPressReleases:
     def test_press_releases_included_up_to_three(self):
         releases = [
-            PressRelease(title=f"Release {i}", link="https://x", source="PRNewswire")
+            PressRelease(
+                title=f"Release {i}",
+                link="https://x",
+                source="PRNewswire",
+                matched_in="summary",
+            )
             for i in range(5)
         ]
         digest = _award_digest(dict(BASE_AWARD), press_releases=releases)
         assert "Recent press releases:" in digest
-        assert "Release 0" in digest
+        assert "[PRNewswire; matched in summary] Release 0" in digest
         assert "Release 2" in digest
         assert "Release 3" not in digest
 

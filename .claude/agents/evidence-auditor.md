@@ -76,6 +76,26 @@ When invoked, review one of:
 - Exploratory outputs are labeled non-citable and are not silently promoted by
   documentation or downstream use.
 
+### Validation design and result
+
+- `validated` asserts that the preregistered design ran as written and its
+  `validation_result` is recorded with numerator, denominator, and interval.
+  It does not assert the threshold was met; `citable` does. Check the rank
+  claimed against `threshold_met`, and check that the result accompanies every
+  reported number rather than being summarized as "passed".
+- `validation_result.confirmatory` is true only if `design_sha256` matches a
+  `frozen_artifacts` entry whose hash was in git before the evaluated run.
+  Verify the ordering from history, not from the manifest's say-so.
+- A `decision_threshold` stated as a count is valid only with
+  `threshold_basis: count_on_frozen_population` and a pinned
+  `frozen_population_artifact`. A count floor over a population still being
+  enumerated is a design defect; report it as one rather than reporting the
+  method as having failed.
+- Post-hoc analyses listed under `post_hoc_analyses` and labelled as such
+  wherever they are reported are **not** a BLOCK finding. BLOCK when a post-hoc
+  analysis is presented as confirmatory, when it is undocumented, or when the
+  frozen design was altered in place rather than versioned.
+
 ### Provenance
 
 - Manifest paths and implementation entry points exist and resolve to the code
@@ -124,4 +144,6 @@ a live run.
 - A hash mismatch appears. Treat the recorded hash as authoritative until a
   human approves a new version.
 - The requested "fix" would weaken a gate, relax an estimand, conceal a failed
-  validation, or promote a study by editing status alone.
+  validation, or promote a study by editing status alone. Recording a failed
+  validation with its interval and `threshold_met: false` is not concealment;
+  it is the required form of the record.
