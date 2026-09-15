@@ -10,6 +10,16 @@ version.
 
 ## [Unreleased]
 
+### Added
+
+- Operator-only external analysis: freeze a study bundle, submit it to an
+  optional execution backend, and import the result as exploratory artifacts
+  under `studies/<id>/exploratory/external/<provider>/<run-id>/`. Edison
+  Analysis is the first provider, installed via the `edison` extra, not part of
+  the Dagster graph or normal CI. Upload is fail-closed without
+  `--allow-external-upload`. Provider output cannot mark itself validated or
+  citable.
+
 ## [0.16.0] — 2026-09-15
 
 ### Breaking
