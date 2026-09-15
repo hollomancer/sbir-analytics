@@ -23,6 +23,7 @@ from update_literature_map import (  # noqa: E402
     openalex_ids_for_refresh,
     parse_feed,
     parse_work,
+    refresh,
     resolve_doi_work_id,
     synthetic_id,
     write_map,
@@ -328,13 +329,69 @@ def test_resolve_doi_work_id_uses_doi_filter(monkeypatch) -> None:
     assert captured["params"] == {"filter": "doi:10.1257/aer.20150491", "per_page": 1}
 
 
-def test_resolve_doi_work_id_raises_when_missing(monkeypatch) -> None:
+def test_resolve_doi_work_id_returns_none_when_missing(monkeypatch) -> None:
     async def fake_search(self, params):  # noqa: ANN001
         return {"results": [], "meta": {}}
 
     monkeypatch.setattr(OpenAlexClient, "search_works", fake_search)
-    with pytest.raises(RuntimeError, match="no work id"):
-        asyncio.run(resolve_doi_work_id(OpenAlexClient(), "10.0/missing"))
+    assert asyncio.run(resolve_doi_work_id(OpenAlexClient(), "10.0/missing")) is None
+
+
+def test_refresh_keeps_rss_rows_when_anchor_doi_is_missing(monkeypatch, tmp_path, capsys) -> None:
+    class FakeClient:
+        def __init__(self, *, mailto=None):  # noqa: ANN001
+            pass
+
+        async def aclose(self) -> None:
+            pass
+
+    async def fake_works_pages(client, params, *, max_pages=4):  # noqa: ANN001
+        return []
+
+    async def fake_resolve(client, doi):  # noqa: ANN001
+        return None
+
+    async def fake_rss_rows():
+        row = {
+            "relevance": "core",
+            "area": "E",
+            "year": "2026",
+            "first_author": "GAO",
+            "n_authors": "1",
+            "title": "Small Business Research Programs: Award Data and Outcomes",
+            "venue": "U.S. Government Accountability Office",
+            "type": "report",
+            "citations": "",
+            "fwci": "",
+            "open_access": "True",
+            "doi": "",
+            "openalex_id": "gao:GAO-26-100000",
+        }
+        return [(GAO_SOURCE, [row])]
+
+    module = sys.modules[refresh.__module__]
+    monkeypatch.setattr(module, "OpenAlexClient", FakeClient)
+    monkeypatch.setattr(module, "_works_pages", fake_works_pages)
+    monkeypatch.setattr(module, "resolve_doi_work_id", fake_resolve)
+    monkeypatch.setattr(module, "fetch_rss_rows", fake_rss_rows)
+
+    map_path = tmp_path / "map.csv"
+    status_path = tmp_path / "status.md"
+    write_map(map_path, [])
+    status = asyncio.run(
+        refresh(
+            map_path=map_path,
+            status_path=status_path,
+            year_end=2026,
+            mailto=None,
+            dry_run=False,
+        )
+    )
+
+    assert status["new_works_classified"] == 1
+    assert load_map(map_path)[0]["openalex_id"] == "gao:GAO-26-100000"
+    assert "cites:unresolved-doi:10.1257/aer.20201851" in status["query_counts"]
+    assert "skipping forward citations" in capsys.readouterr().err
 
 
 def test_search_works_propagates_malformed_filter(monkeypatch) -> None:
