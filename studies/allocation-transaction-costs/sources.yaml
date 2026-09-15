@@ -170,3 +170,15 @@ inventory_only:
       structure as this study. Excludes funder operational costs. UK rather than
       US: recorded as an external benchmark under assumptions.external_benchmarks
       and not used in any computed series.
+
+  - source_id: fdp_fws_2012
+    url: https://thefdp.org/wp-content/uploads/fws_2012_exec_summary.pdf
+    publisher: Federal Demonstration Partnership
+    evidence_class: behavioral_survey
+    note: >-
+      2012 Faculty Workload Survey executive summary, 12,816 respondents at a
+      24% response rate. Held alongside the 2018 primary report, which prints
+      both waves and supplies the activity decomposition recorded under
+      applicant_hour_citations.nih_r01_equivalent.fdp_time_decomposition.
+      University PIs, not SBIR firms: cited for the decomposition and the
+      scholarly-contribution share, not used in any computed series.
