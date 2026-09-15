@@ -165,6 +165,38 @@ duration:
     annual_award_size uses each series as published. project_total multiplies
     the R01 annual average by r01_project_years and leaves SBIR Phase I unchanged.
 
+external_benchmarks:
+  policy: >-
+    External benchmarks are for orientation and plausibility only. They are not
+    inputs, are not interpolated, and do not license a citable US number.
+  entries:
+    - id: pollitt_2026_ukri
+      scope: >-
+        Four UK grant and fellowship schemes at the Medical Research Council and
+        the Engineering and Physical Sciences Research Council.
+      cost_per_application_as_share_of_requested: 0.03
+      cost_per_application_range: [0.02, 0.03]
+      transaction_cost_as_share_of_awarded: 0.13
+      transaction_cost_range_across_schemes: [0.07, 0.13]
+      cost_incidence:
+        applicants: 0.89
+        reviewers: 0.07
+        panelists: 0.04
+      mean_cost_per_grant_gbp: 24445
+      note: >-
+        Pollitt A, Taylor C, Sreenan N, Grant J (2026), "The costs and benefits
+        of research grant funding peer review", F1000Research 15:534,
+        doi:10.12688/f1000research.176989.1. 12,617 people surveyed April 2022
+        to June 2023, 11% response rate, 1,330 responses. Uses the same cost
+        function this study uses: cost per application divided by success rate.
+        Reported scheme success rates run 19% to 31%. The estimate excludes the
+        funder's own operational costs, which the authors note are around 3% of
+        UKRI's total budget, so it is comparable to this study's
+        agency_cost.mode of missing rather than to a total-system figure.
+        Version 1 on F1000Research carried one approval and one approval with
+        reservations at retrieval. UK research councils, not US federal funding:
+        this is a target to compare the computed ratio against, never an input.
+
 sensitivity:
   success_rate_relative_shocks: [-0.25, 0.0, 0.25]
   award_size_relative_shocks: [-0.25, 0.0, 0.25]

@@ -157,3 +157,16 @@ inventory_only:
       participation in panel discussion. A survey rather than a PRA estimate,
       so it is usable as an hour citation. NSF rather than NIH: cited as
       corroboration for the hour grids, not used in any computed series.
+
+  - source_id: pollitt_2026_ukri
+    url: https://doi.org/10.12688/f1000research.176989.1
+    publisher: F1000Research (Policy Institute, King's College London)
+    evidence_class: behavioral_survey
+    note: >-
+      Full-system transaction-cost estimate for four UK MRC and EPSRC schemes:
+      cost per application 3% of the amount requested, transaction cost 13% of
+      the value of the grant once success rates are applied, with 89% of cost
+      on applicants, 7% on reviewers, and 4% on panelists. Same cost-function
+      structure as this study. Excludes funder operational costs. UK rather than
+      US: recorded as an external benchmark under assumptions.external_benchmarks
+      and not used in any computed series.
