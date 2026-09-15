@@ -181,6 +181,12 @@ bypassing lifecycle review; the status and rationale still require human judgmen
   are authorized; point headlines remain suppressed on incomplete coverage, and citation remains
   gated on complete Form D/EFTS search coverage, a stratified hand review,
   face-validity anchors, and negative-control review.
+- **`sbir-roi-comparative-tests` — Active.** The exploratory contract scaffolding is
+  complete. Four closed study manifests cover marginal-award identification,
+  NIH and NASA mechanism comparisons, and social-return break-even analysis.
+  Empirical work remains gated on scored applications, pinned comparator
+  cohorts, audited outcomes, and complete welfare ledgers. No current manifest
+  authorizes a numerical or citable return claim.
 - **`sttr-spinout-linkage` — Active.** Phase 0 design frozen as Revision 1 (exploratory,
   non-citable); implementation (`tasks.md` Phase 1) is unblocked. Proposes a deterministic
   public-data classifier splitting each STTR SBC↔RI relationship into spinout vs.

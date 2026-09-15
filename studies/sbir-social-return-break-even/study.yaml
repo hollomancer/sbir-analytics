@@ -1,0 +1,43 @@
+schema_version: 1
+study_id: sbir-social-return-break-even
+title: SBIR domestic social-return break-even
+evidence_status: exploratory
+research_questions: [D3]
+estimand: >-
+  Estimate the minimum attributable share of monetized awardee-linked benefits
+  needed for present-value SBIR benefits to equal present-value taxpayer costs.
+  Report fiscal and domestic-social ledgers separately. The break-even share is
+  a threshold under declared assumptions. It is not an estimated causal return.
+frozen_artifacts:
+  - path: studies/sbir-social-return-break-even/design.md
+    sha256: 52975fb814017f5046c7379da0887f4d7212f46877c260bc5425c15bee1344e0
+  - path: studies/sbir-roi-comparative-tests/contracts.yaml
+    sha256: 1363161f482dc89abfc61eedb40f4a920e624a16f2818d287bed89f75d5e1c14
+implementation:
+  - path: scripts/research/sbir_roi_contracts.py
+    symbol: WELFARE_BREAK_EVEN_STUDY
+  - path: scripts/research/sbir_roi_contracts.py
+    symbol: validate_registry_bundle
+identity_policy:
+  strategy: >-
+    Keep award, firm, product, and spillover ledgers separate. Require a dated
+    source pointer and attribution class for each benefit. Do not infer absence
+    from missing private, licensing, operating, or adoption data.
+  version: planned-welfare-ledger-v1
+  negative_evidence_allowed: false
+materialization:
+  allowed: false
+  blockers:
+    - No frozen cost cohort or complete benefit ledger exists.
+    - Causal weights are not available for the full portfolio.
+    - Opportunity-cost and double-count audits are not complete.
+    - Discount, incidence, domestic-retention, and uncertainty inputs are not frozen.
+permitted_claims:
+  - This manifest defines Test Three and authorizes no program-wide return estimate.
+  - A future output may report break-even attribution thresholds under named assumptions.
+limitations:
+  - A break-even threshold does not estimate the attributable share.
+  - Nonmarket health, security, environmental, and knowledge benefits can resist monetization.
+  - Foreign incidence and domestic retention can materially change social value.
+  - Opportunity cost depends on a specified alternative program, not a zero-spending baseline.
+  - Exploratory status is non-citable.

@@ -1,0 +1,42 @@
+schema_version: 1
+study_id: sbir-marginal-award-identification
+title: Marginal SBIR award identification bridge
+evidence_status: exploratory
+research_questions: [B3, F3]
+estimand: >-
+  For scored applicants near an agency selection boundary, estimate the local
+  average effect of receiving an SBIR award on operating status, survival,
+  follow-on private capital, licensing, non-SBIR revenue, productivity,
+  procurement, mergers, acquisitions, and public exits. The estimand is local
+  to applicants whose funding changed at that boundary.
+frozen_artifacts:
+  - path: studies/sbir-marginal-award-identification/design.md
+    sha256: 29b76cf6347c021b844a0c0221e616fdb03b16be7eb20a16b0ecce8b918af4b3
+  - path: studies/sbir-roi-comparative-tests/contracts.yaml
+    sha256: 1363161f482dc89abfc61eedb40f4a920e624a16f2818d287bed89f75d5e1c14
+implementation:
+  - path: scripts/research/sbir_roi_contracts.py
+    symbol: IDENTIFICATION_BRIDGE_STUDY
+  - path: scripts/research/sbir_roi_contracts.py
+    symbol: validate_registry_bundle
+identity_policy:
+  strategy: >-
+    Preserve application identifiers and agency decision boundaries. Resolve
+    firms through a versioned policy before joining outcomes. Never use name
+    similarity alone to assign an application, award, financing, or exit.
+  version: planned-application-boundary-v1
+  negative_evidence_allowed: false
+materialization:
+  allowed: false
+  blockers:
+    - No agency has supplied pinned scores, ranks, cutoff rules, or exception records.
+    - Outcome-source coverage and firm identity validation are not frozen.
+    - No preregistered bandwidth, power analysis, or diagnostic result exists.
+permitted_claims:
+  - This manifest defines a planned identification bridge and authorizes no numerical result.
+  - A causal label requires a valid discontinuity, random assignment, or natural experiment.
+limitations:
+  - A cutoff effect is local and can differ from the average effect across all awards.
+  - Applicant scores can be manipulated or overridden.
+  - Private capital and exits are validation signals, not taxpayer benefits by themselves.
+  - Exploratory status is non-citable.
