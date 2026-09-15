@@ -155,7 +155,11 @@ def _prepare_phase_iii_rows(contracts: pd.DataFrame) -> pd.DataFrame:
             _row_value(row, "parent_contract_id", "parent_award_id", "referenced_idv_piid")
         ),
         axis=1,
-    )  # type: ignore[call-overload]
+    ).astype(object)  # type: ignore[call-overload]
+    # `apply` infers a string dtype and rewrites the missing values to NaN, which is
+    # truthy. Restore None so a row without a parent reads as absent, like the other
+    # optional string columns.
+    parent_references = parent_references.where(parent_references.notna(), None)
     inherited = parent_references.map(
         lambda identifier: bool(
             identifier
