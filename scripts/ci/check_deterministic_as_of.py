@@ -12,9 +12,15 @@ constant, and a function parameter named ``as_of``. Reading the clock for
 anything else is fine — stamping ``generated_at``, timing a run, naming a log
 file. Only the default that decides what data a run sees is refused.
 
+A parameter declared ``as_of: date | None = None`` and then resolved in the body
+with ``as_of or date.today()`` is the same wall-clock default written in two
+statements, so the guard refuses that form too. The syntactic default alone is
+not enough to tell whether a cut was declared.
+
 ``WALL_CLOCK_ALLOWLIST`` records the paths that predate this guard. It is a
 burndown list, not an exemption: an entry that no longer violates the rule is
-itself reported, so the list can only shrink.
+itself reported, so the list can only shrink. Every entry must carry a non-blank
+reason, so an exemption cannot be added without saying what it defers.
 
 This is admission control on how a cut is chosen. It does not check that a
 recorded cut is correct, and it does not look at data.
@@ -53,6 +59,18 @@ WALL_CLOCK_ALLOWLIST: dict[str, str] = {
     ),
     "scripts/data/download_sam_opportunities.py": (
         "predates this guard; not yet migrated to a declared cut"
+    ),
+    "sbir_etl/reporting/weekly/fetching.py": (
+        "predates this guard; fetch_weekly_awards resolves a None as_of with "
+        "datetime.now(UTC)"
+    ),
+    "sbir_etl/reporting/dod_supply_chain_baseline.py": (
+        "predates this guard; build_baseline resolves a None as_of with "
+        "datetime.now(UTC).date()"
+    ),
+    "sbir_etl/supply_chain/release_validation.py": (
+        "predates this guard; validate_nsf_defense_lineage_release resolves a None "
+        "as_of with datetime.now(UTC).date(), so release age moves with the clock"
     ),
 }
 
@@ -147,6 +165,36 @@ def _constant_violations(tree: ast.Module, path: str) -> Iterator[Violation]:
             )
 
 
+def _references(node: ast.AST, name: str) -> bool:
+    """Whether ``name`` is read anywhere inside ``node``."""
+    return any(
+        isinstance(child, ast.Name) and child.id == name for child in ast.walk(node)
+    )
+
+
+def _clock_fallback_line(
+    function: ast.FunctionDef | ast.AsyncFunctionDef, name: str
+) -> int | None:
+    """Line where ``name`` falls back to the clock, or ``None`` if it never does.
+
+    Covers the three ways a ``None`` default is resolved in the body:
+    ``name or clock()``, ``name if name else clock()``, and
+    ``if name is None: name = clock()``.
+    """
+    for node in ast.walk(function):
+        if isinstance(node, ast.BoolOp) and isinstance(node.op, ast.Or):
+            head, *rest = node.values
+            if _references(head, name) and any(_reads_wall_clock(value) for value in rest):
+                return node.lineno
+        elif isinstance(node, ast.IfExp) and _references(node.test, name):
+            if _reads_wall_clock(node.body) or _reads_wall_clock(node.orelse):
+                return node.lineno
+        elif isinstance(node, ast.If) and _references(node.test, name):
+            if any(_reads_wall_clock(statement) for statement in node.body):
+                return node.lineno
+    return None
+
+
 def _parameter_violations(tree: ast.AST, path: str) -> Iterator[Violation]:
     for node in ast.walk(tree):
         if not isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef):
@@ -162,14 +210,29 @@ def _parameter_violations(tree: ast.AST, path: str) -> Iterator[Violation]:
         for argument, default in pairs:
             if argument.arg not in AS_OF_PARAMETERS or default is None:
                 continue
-            if not _reads_wall_clock(default):
+            if _reads_wall_clock(default):
+                yield Violation(
+                    path=path,
+                    line_number=default.lineno,
+                    message=(
+                        f"{node.name}() defaults {argument.arg} to the wall clock; require "
+                        f"the caller to pass the cut it observed"
+                    ),
+                )
+                continue
+            # A `None` default is only a placeholder. If the body then reads the
+            # clock for this parameter, the cut is still clock-derived.
+            if not (isinstance(default, ast.Constant) and default.value is None):
+                continue
+            fallback = _clock_fallback_line(node, argument.arg)
+            if fallback is None:
                 continue
             yield Violation(
                 path=path,
-                line_number=default.lineno,
+                line_number=fallback,
                 message=(
-                    f"{node.name}() defaults {argument.arg} to the wall clock; require the "
-                    f"caller to pass the cut it observed"
+                    f"{node.name}() falls back to the wall clock when {argument.arg} is "
+                    f"None; require the caller to pass the cut it observed"
                 ),
             )
 
@@ -213,6 +276,16 @@ def validate_repository(
     allowlist = WALL_CLOCK_ALLOWLIST if allowlist is None else allowlist
     violations: list[Violation] = []
     still_violating: set[str] = set()
+    # An entry with no reason exempts a path while recording nothing to burn down.
+    violations.extend(
+        Violation(
+            path=relative,
+            line_number=1,
+            message="allowlist entry has no reason; state why the cut is not yet declared",
+        )
+        for relative, reason in sorted(allowlist.items())
+        if not reason.strip()
+    )
     for path in iter_python_files(root, scan_roots):
         relative = path.relative_to(root).as_posix()
         found = scan_source(path.read_text(encoding="utf-8"), relative)

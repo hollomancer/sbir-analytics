@@ -110,6 +110,25 @@ def test_waived_renderer_is_accepted_and_stale_waiver_is_reported(tmp_path: Path
     assert any("stale waiver" in violation.message for violation in violations)
 
 
+def test_blank_waiver_reason_waives_nothing(tmp_path: Path) -> None:
+    """A waiver with no reason is reported, and does not exempt the renderer."""
+    _build_study(tmp_path, "# Readout\n\nPairs: 500\n")
+
+    violations = guard.validate_coverage(
+        root=tmp_path,
+        pairs=(),
+        waived={"scripts/data/build_readout.py": "   "},
+        scan_roots=("scripts",),
+    )
+
+    messages = sorted(violation.message for violation in violations)
+    assert messages == [
+        "exposes render_markdown but is not in REGISTERED_PAIRS; register the "
+        "sidecar it renders from, or waive it with a reason",
+        "waiver has no reason; state why this renderer has no committed pair",
+    ]
+
+
 def test_repository_registry_is_consistent() -> None:
     violations = guard.validate_repository()
 

@@ -14,8 +14,9 @@ step earlier.
 
 Coverage is checked both ways, following the spec-registry pattern in
 ``specs/status.md``: a module that exposes a ``render_markdown`` entry point
-must appear in ``REGISTERED_PAIRS`` or in ``WAIVED_RENDERERS`` with a reason,
-so a new readout cannot ship unchecked. ``REGISTERED_PAIRS`` is empty until the
+must appear in ``REGISTERED_PAIRS`` or in ``WAIVED_RENDERERS`` with a non-blank
+reason, so a new readout cannot ship unchecked. A blank reason waives nothing:
+it is reported, and the renderer still counts as unregistered. ``REGISTERED_PAIRS`` is empty until the
 first readout with a pure renderer lands; the coverage half is what keeps it
 from staying empty by accident.
 
@@ -206,6 +207,11 @@ def discover_renderers(
     return found
 
 
+def _with_reasons(waived: dict[str, str]) -> set[str]:
+    """Waived paths that actually carry a reason; a blank one waives nothing."""
+    return {path for path, reason in waived.items() if reason.strip()}
+
+
 def validate_coverage(
     root: Path = REPOSITORY_ROOT,
     pairs: tuple[RoundTripPair, ...] = REGISTERED_PAIRS,
@@ -216,7 +222,17 @@ def validate_coverage(
     waived = WAIVED_RENDERERS if waived is None else waived
     registered = {pair.renderer_path for pair in pairs}
     discovered = set(discover_renderers(root, scan_roots))
+    # A waiver with no reason exempts a renderer while recording nothing, which
+    # satisfies the coverage subtraction below without saying what was deferred.
     violations = [
+        Violation(
+            path=path,
+            message="waiver has no reason; state why this renderer has no committed pair",
+        )
+        for path, reason in sorted(waived.items())
+        if not reason.strip()
+    ]
+    violations.extend(
         Violation(
             path=path,
             message=(
@@ -224,8 +240,8 @@ def validate_coverage(
                 "sidecar it renders from, or waive it with a reason"
             ),
         )
-        for path in sorted(discovered - registered - set(waived))
-    ]
+        for path in sorted(discovered - registered - _with_reasons(waived))
+    )
     violations.extend(
         Violation(path=path, message=f"stale waiver ({waived[path]}): no renderer found here")
         for path in sorted(set(waived) - discovered)

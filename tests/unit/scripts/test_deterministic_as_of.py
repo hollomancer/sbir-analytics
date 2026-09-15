@@ -140,3 +140,101 @@ def test_repository_has_no_unlisted_wall_clock_cuts() -> None:
     violations = guard.validate_repository()
 
     assert violations == [], "\n".join(violation.format() for violation in violations)
+
+
+def test_none_default_resolved_from_the_clock_is_refused(tmp_path: Path) -> None:
+    """`as_of: X | None = None` plus `as_of or clock()` is a wall-clock default."""
+    _write(
+        tmp_path,
+        "scripts/data/semantic.py",
+        "from datetime import UTC, datetime\n\n"
+        "def build(as_of: datetime | None = None):\n"
+        "    as_of = as_of or datetime.now(UTC)\n"
+        "    return as_of\n",
+    )
+
+    violations = guard.validate_repository(root=tmp_path, allowlist={}, scan_roots=("scripts",))
+
+    assert len(violations) == 1
+    assert "falls back to the wall clock when as_of is None" in violations[0].message
+
+
+def test_none_default_resolved_by_an_if_statement_is_refused(tmp_path: Path) -> None:
+    _write(
+        tmp_path,
+        "scripts/data/branch.py",
+        "from datetime import date\n\n"
+        "def build(as_of: date | None = None):\n"
+        "    if as_of is None:\n"
+        "        as_of = date.today()\n"
+        "    return as_of\n",
+    )
+
+    violations = guard.validate_repository(root=tmp_path, allowlist={}, scan_roots=("scripts",))
+
+    assert len(violations) == 1
+    assert "falls back to the wall clock when as_of is None" in violations[0].message
+
+
+def test_none_default_resolved_by_a_ternary_is_refused(tmp_path: Path) -> None:
+    _write(
+        tmp_path,
+        "scripts/data/ternary.py",
+        "from datetime import date\n\n"
+        "def build(as_of: date | None = None):\n"
+        "    return as_of if as_of is not None else date.today()\n",
+    )
+
+    violations = guard.validate_repository(root=tmp_path, allowlist={}, scan_roots=("scripts",))
+
+    assert len(violations) == 1
+    assert "falls back to the wall clock when as_of is None" in violations[0].message
+
+
+def test_none_default_with_a_declared_fallback_is_allowed(tmp_path: Path) -> None:
+    """Only a clock fallback is refused, not every None default."""
+    _write(
+        tmp_path,
+        "scripts/data/declared.py",
+        "from datetime import date\n\n"
+        "DECLARED_CUT = date(2026, 9, 10)\n\n"
+        "def build(as_of: date | None = None):\n"
+        "    as_of = as_of or DECLARED_CUT\n"
+        "    return as_of\n",
+    )
+
+    assert guard.validate_repository(root=tmp_path, allowlist={}, scan_roots=("scripts",)) == []
+
+
+def test_clock_read_unrelated_to_the_cut_is_allowed(tmp_path: Path) -> None:
+    """Stamping `generated_at` in a function that takes `as_of` is not a violation."""
+    _write(
+        tmp_path,
+        "scripts/data/stamped.py",
+        "from datetime import UTC, date, datetime\n\n"
+        "def build(as_of: date | None = None):\n"
+        "    generated_at = datetime.now(UTC).isoformat()\n"
+        "    return {'as_of': as_of, 'generated_at': generated_at}\n",
+    )
+
+    assert guard.validate_repository(root=tmp_path, allowlist={}, scan_roots=("scripts",)) == []
+
+
+def test_blank_allowlist_reason_is_refused(tmp_path: Path) -> None:
+    _write(
+        tmp_path,
+        "scripts/data/clocked.py",
+        "from datetime import date\n\n"
+        "def build(p):\n"
+        '    p.add_argument("--as-of", default=date.today())\n',
+    )
+
+    violations = guard.validate_repository(
+        root=tmp_path,
+        allowlist={"scripts/data/clocked.py": "   "},
+        scan_roots=("scripts",),
+    )
+
+    assert [violation.message for violation in violations] == [
+        "allowlist entry has no reason; state why the cut is not yet declared"
+    ]
