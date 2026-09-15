@@ -14,6 +14,8 @@ Submodules:
 from __future__ import annotations
 
 import dataclasses
+import hashlib
+import json
 from typing import Any
 
 from sbir_etl import __version__
@@ -148,6 +150,31 @@ class Config:
             },
         }
 
+    def scoring_digest(self) -> str:
+        """Return the digest of the score-determining surface of this config."""
+
+        return scoring_config_digest(self.to_detector_config())
+
+
+def scoring_config_digest(detector_config: dict[str, Any]) -> str:
+    """Hash the detector config that determines a score.
+
+    ``config/transition/detection.yaml`` is a live, editable file, so the same
+    code and the same inputs produce different scores after anyone edits it.
+    Hashing the dict the scorer actually reads makes that divergence detectable:
+    a study pins the digest it was measured under, and a rerun that used other
+    weights no longer matches.
+
+    The digest covers ``to_detector_config()`` output rather than the raw YAML,
+    so it tracks exactly the values that reach ``TransitionScorer`` and ignores
+    operational keys such as ``batch_size_contracts`` and ``metrics.emit_to``
+    that cannot move a score. Key order and insignificant whitespace do not
+    change the digest; any weight, threshold, or window change does.
+    """
+
+    canonical = json.dumps(detector_config, sort_keys=True, separators=(",", ":"))
+    return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+
 
 __all__ = [
     "Config",
@@ -155,4 +182,5 @@ __all__ = [
     "EvaluationResult",
     "TransitionEvaluator",
     "__version__",
+    "scoring_config_digest",
 ]

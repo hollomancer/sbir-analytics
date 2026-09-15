@@ -3378,7 +3378,7 @@ wheels = [
 
 [[package]]
 name = "sbir-analytics"
-version = "0.13.0"
+version = "0.16.0"
 source = { editable = "packages/sbir-analytics" }
 dependencies = [
     { name = "dagster" },
@@ -3408,7 +3408,7 @@ provides-extras = ["modernbert-local", "dev", "edison"]
 
 [[package]]
 name = "sbir-etl"
-version = "0.13.0"
+version = "0.16.0"
 source = { editable = "." }
 dependencies = [
     { name = "duckdb" },
@@ -3566,7 +3566,7 @@ notebooks = [
 
 [[package]]
 name = "sbir-graph"
-version = "0.13.0"
+version = "0.16.0"
 source = { editable = "packages/sbir-graph" }
 dependencies = [
     { name = "loguru" },
@@ -3585,7 +3585,7 @@ requires-dist = [
 
 [[package]]
 name = "sbir-ml"
-version = "0.13.0"
+version = "0.16.0"
 source = { editable = "packages/sbir-ml" }
 dependencies = [
     { name = "sbir-etl" },

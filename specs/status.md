@@ -30,6 +30,10 @@ bypassing lifecycle review; the status and rationale still require human judgmen
   blocking security scan are restored. The remaining decisions concern periodic
   scanning and whether the large pre-existing Markdown-formatting backlog is worth
   addressing; do not restore the old broad lint job by default.
+- **`allocation-transaction-costs` — Active.** Exploratory NIH SBIR Phase I
+  versus R01-equivalent transaction-cost study. Target tier is `exploratory`;
+  the study contract is `reproducible` and non-citable. NSF/DOE/NASA/DoD
+  series, Dagster, and evidence promotion are out of scope.
 - **`agency-private-capital-comparison` — Active.** The NSF Phase 1 real-data
   gate is materialized for review but remains non-citable and unsigned. Phase 2
   now has a maintained, deterministic 2009Q1–2024Q4 SEC DERA Form D staging
@@ -158,6 +162,15 @@ bypassing lifecycle review; the status and rationale still require human judgmen
   `pipelines` (2026-08-15). Award identity and path
   attribution landed. Cold-start bounds, source-normalization provenance, and
   ranking/auditability phases remain.
+- **`sbir-ma-dated-signal-study` — Active pre-run protocol.** A new,
+  explicitly exploratory and non-citable F1 study with a planned 2026-08-29 UTC
+  cutoff. It does not reproduce the unrecoverable April analysis. Sources are
+  acquired privately under operator authorization (amendments 1, 3, 5, 6); a
+  source-field predicate (amendment 7) and a filing-level identity review queue
+  (amendment 8) are the current private ceiling. Identity resolution,
+  aggregation, materialization, numerical analysis, and any public claim remain
+  blocked on separate human source/privacy/license approval, a frozen input and
+  estimand contract, and blinded validation.
 - **`sbir-ma-match-rate-by-fy` — Gated backlog.** Analysis-only F2 follow-up on
   completed M&A detection. Start only when FY match-rate reporting is requested.
 - **`state-local-tax-rates` — Maintenance.** Existing hardcoded 2024 provider
@@ -199,6 +212,19 @@ bypassing lifecycle review; the status and rationale still require human judgmen
 - **`weekly-awards-report-refactor` — Maintenance.** Monolith is already split
   into weekly reporting modules. Remaining work is injection, coverage, and
   alias cleanup.
+
+- **`upstream-drift-reproduction` — Maintenance.** Implemented. `StudyManifest`
+  carries a `reproduction` block declaring live sources with their pinned
+  retrieval manifests and per-quantity tolerances, and
+  `sbir_etl/quality/reproduction.py` classifies a rebuild into exact, upstream
+  drift, pipeline regression, identity divergence, or outside tolerance.
+  `transition-scoring` is the first consumer and promoted to `reproducible` on
+  it. The motivating case resolved the opposite way to the initial reading: its
+  corpus rebuild first came up one positive short and was reported as archive
+  drift, and a complete re-pull reproduced 828 rows / 138 positives / 101 firms
+  exactly — the first pull had silently dropped about 109,000 FY2022 source
+  rows. Remaining work is applying the contract to the other live-source studies
+  and deciding whether the comparison runs in CI or at audit time.
 
 ## Archive Candidates
 

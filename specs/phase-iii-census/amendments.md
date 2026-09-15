@@ -400,3 +400,41 @@ files before materialization.
   2 showed 176/712 SBIR firms and 121/1,029 controls clearing the full set, risk ratio
   2.102145, and overlap coefficient 0.852906. No placebo assignment, count, comparison
   table, or result had been computed or seen.
+
+## Revision 16 — Permutation separation over the frozen placebo family
+
+- **Approved:** pending repository-owner review. The merge of the pull request that first adds
+  this revision records approval; the merge date is the approval date.
+- **Git-history anchor:** The commit that first adds Revision 16 to this file is the
+  approval-record anchor; its identifier is intentionally not embedded in the content it
+  hashes.
+- **Reason:** R15 attached no inferential test to its single derangement, so the study can hold
+  `reproducible` but has no validation design and cannot reach `validated`. This revision
+  supplies one without new data, labels, or criteria: the same placebo family run over a
+  preregistered seed list, with the actual frame placed in the resulting empirical null.
+- **Design:** `studies/phase-iii-census/validation-design.md`, pinned by SHA-256 in
+  `study.yaml`. Confirmatory seeds `20260802`–`20261301` (N = 500), in order; the R15 seed is
+  excluded because its result was visible. Primary statistic: strict exceedance of the actual
+  frame over each placebo frame on `surviving_pairs` at the final cumulative clause. Wilson 95%
+  interval on the exceedance share. Threshold met if and only if the lower bound is at least
+  0.95. Firms, contracts, and the six cells are secondary and carry no threshold; dollars are
+  descriptive.
+- **Execution equivalence:** The per-draw path evaluates the three date-independent clauses
+  once and the two date-dependent clauses per draw, then applies the frozen final-stage summary
+  and six-cell builder. Fixture tests assert equality with `build_census_tables`. Before any
+  confirmatory draw, seed `20260801` must reproduce the recorded R15 final-clause values and
+  assignment digest exactly, or the run stops.
+- **Criteria and Phase 1–3 impact:** None. No census clause, clause order, predicate,
+  sensitivity cell, pair universe, source join, negative-control population, matching rule,
+  score, model, or numeric inclusion threshold changes. `build_placebo_assignment` gains a
+  `seed` parameter whose default is the R15 seed, so the recorded R15 assignment is unchanged.
+- **Execution gate:** Implementation and fixture testing are approved by the merge. Production
+  execution of the R16 run remains blocked until the repository owner separately approves it,
+  exactly as the R15 first run was.
+- **What a met threshold means:** Separation of the actual frame from the frozen placebo
+  family. It does not mean the proxy measures statutory Phase III; no labeled validation exists,
+  and the permitted claim written at promotion must state this in the manifest's own voice.
+- **Visibility at approval:** The complete R15 single-draw comparison was visible — every stage,
+  cell, and metric, including the three intermediate stages where the placebo carried more
+  distinct contracts than the actual frame. No R16 draw had been taken.
+

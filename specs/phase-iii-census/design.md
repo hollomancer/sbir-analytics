@@ -756,3 +756,34 @@ estimand, or output metric.
 After approval, any further criterion change requires a new spec revision and a new
 freeze before rerunning. An observed count, control overlap, balance statistic, or
 placebo result is never a justification for changing a clause.
+
+### Approved permutation-separation validation amendment
+
+Revision 16 adds a preregistered validation design to the study without changing any
+criterion, cell, or population. The R15 placebo family — the randomized cyclic group
+derangement of `prior_period_of_performance_end` across firms — is run over the seed list
+`20260802 + i`, `i = 0 … 499`, in that order. The R15 seed `20260801` is excluded from the
+confirmatory sample because its result was visible when the design was written; it runs first
+as an equivalence precondition that must reproduce the recorded R15 final-clause values and
+assignment digest exactly.
+
+The primary statistic is the share of draws in which the actual frame strictly exceeds the
+placebo frame on `surviving_pairs` at the final cumulative clause, with a Wilson 95% interval.
+The threshold is met if and only if the interval's lower bound is at least 0.95. Distinct firms,
+distinct contracts, and every metric in each of the six sensitivity cells are reported with their
+own exceedance shares and intervals but carry no threshold; signed-dollar totals remain
+descriptive. The statistic is defined at the final clause only because the R15 record shows the
+placebo frame carrying more distinct contracts at three intermediate stages; the estimand is the
+full-criteria census.
+
+The per-draw path evaluates the date-independent clauses once and the two date-dependent clauses
+per draw, then applies the frozen final-stage summary and six-cell builder; because every core
+clause is row-wise this is the same intersection `build_census_tables` computes, and fixture
+tests assert it. The runner refuses any draw count other than 500, may be resumed in batches over
+the fixed seed list, and writes no exceedance table or result until every seed is present.
+
+A met threshold authorizes a `validated` rank meaning separation from the frozen placebo family.
+It does not authorize any statement that the proxy identifies statutory Phase III awards. The
+full design is `studies/phase-iii-census/validation-design.md`, pinned in `study.yaml`.
+Production execution requires a separate repository-owner approval.
+

@@ -114,6 +114,52 @@ def _code_version() -> str:
     return f"{sha}{'-dirty' if dirty else ''}"
 
 
+PROMOTION_RANKS = frozenset({"reproducible", "validated", "citable"})
+
+
+def _working_tree_is_dirty() -> bool | None:
+    """True when the checkout has uncommitted changes. None when git is unusable."""
+    try:
+        return bool(
+            subprocess.run(
+                ["git", "status", "--porcelain"],
+                cwd=REPO_ROOT,
+                capture_output=True,
+                text=True,
+                check=True,
+            ).stdout.strip()
+        )
+    except (OSError, subprocess.SubprocessError):
+        return None
+
+
+def dirty_tree_errors(protocol: CutProtocol | None, *, dirty: bool | None) -> list[str]:
+    """Refuse a promotion-intended capture from an uncommitted checkout.
+
+    `_code_version` has always recorded a `-dirty` suffix, and nothing gated on
+    it. That is how 948 of the 1000 held-out 1501-2500 pairs were captured by
+    code whose state is not recoverable from git: the run proceeded and wrote
+    the flag into a field no check read. A run that intends to support a rank
+    above `exploratory` cannot be reconstructed later if its producer was not
+    committed, so it fails closed instead.
+    """
+    if protocol is None or protocol.intended_rank not in PROMOTION_RANKS:
+        return []
+    if dirty is None:
+        return [
+            "cannot determine whether the checkout is clean, and this protocol "
+            f"declares intended_rank {protocol.intended_rank!r}; commit the "
+            "producer and rerun where git is available"
+        ]
+    if dirty:
+        return [
+            "the checkout has uncommitted changes and this protocol declares "
+            f"intended_rank {protocol.intended_rank!r}; commit the producer "
+            "first so the run can be reconstructed from git"
+        ]
+    return []
+
+
 def _sha256(path: Path) -> str | None:
     if not path.is_file():
         return None
@@ -826,6 +872,9 @@ def main() -> int:
         )
         if pin_errors:
             raise SystemExit("protocol pin check failed:\n" + "\n".join(pin_errors))
+        tree_errors = dirty_tree_errors(protocol, dirty=_working_tree_is_dirty())
+        if tree_errors:
+            raise SystemExit("\n".join(tree_errors))
         print(
             f"Using protocol {protocol.protocol_id}: skip={protocol.skip_pairs} "
             f"max={protocol.max_candidates} stop={protocol.stop_when}"
@@ -1021,6 +1070,14 @@ def main() -> int:
         "scored_pair_n": scored_pair_n,
         "cut_pair_n": cut_pair_n,
         "code_version": _code_version(),
+        # The bytes this run actually read. The pin check verifies the protocol
+        # at run time, and nothing stopped it being edited and re-pinned
+        # afterwards -- which is how the held-out 1501-2500 design came to be
+        # pinned about ten hours after the replay it was supposed to have
+        # preregistered. Recording the hashes here makes that comparison
+        # mechanical instead of archaeological.
+        "protocol_sha256": _sha256(REPO_ROOT / protocol.protocol_md) if protocol else None,
+        "protocol_yaml_sha256": _sha256(args.protocol) if protocol else None,
         "kill_gate": {
             "fully_measured": fully_measured,
             "recall_floor_met": recall_met,

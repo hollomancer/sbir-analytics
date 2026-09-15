@@ -508,6 +508,18 @@ def _build_sensitivity_grid_from_full(full: pd.DataFrame) -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
+def summarize_survivors(survivors: pd.DataFrame) -> dict[str, object]:
+    """Public alias for the frozen per-stage metric summary."""
+
+    return _summarize(survivors)
+
+
+def build_sensitivity_grid_from_full(full: pd.DataFrame) -> pd.DataFrame:
+    """Public alias: the six frozen cells from rows that cleared every core clause."""
+
+    return _build_sensitivity_grid_from_full(full)
+
+
 def build_sensitivity_grid(pairs: pd.DataFrame, data_cut_date: date) -> pd.DataFrame:
     """Build all six frozen time-window × agency-continuity cells."""
 

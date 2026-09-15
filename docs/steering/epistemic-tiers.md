@@ -89,6 +89,32 @@ non-citable until complete audit tables and post-write checks have passed.
 Entering this tier is meant to be expensive and visibly so. The correct default
 answer to "should this be evidence-tier?" is no.
 
+#### Validation designs and results
+
+The four-item contract fixes the *method*. A study's `validation_design` fixes
+the *test*, and its `validation_result` records what the test found. Three
+rules keep the test fair to the method rather than to the accidents of capture;
+[`studies/README.md`](../../studies/README.md) gives the schema.
+
+1. **A threshold is a proportion of an eligible population, not a raw count,
+   unless that population was frozen with the design.** A count floor over a
+   population that is still being enumerated will fail as the eligible fraction
+   falls, whatever the method's quality. If a count is what the design needs,
+   the population it is counted over is itself a frozen artifact.
+2. **A result is a number with an interval, and it travels.** `validated` means
+   the preregistered test ran and its outcome — numerator, denominator,
+   interval, whether the threshold was met — is recorded and accompanies every
+   number the study emits. The rank does not mean the threshold was met.
+   `citable` additionally requires that it was. A fair test the method failed
+   is evidence about the method and is reportable as exactly that.
+3. **Confirmatory and post-hoc are distinguished, not forbidden.** The
+   confirmatory result comes from a design whose hash was in git before the
+   evaluated run. Anything decided after the data were seen — enlarging a cut,
+   restating a cap, changing an eligibility rule — is a post-hoc analysis: it
+   is listed as such, it may be reported wherever the study is, and it cannot
+   promote the study. A documented post-hoc analysis is not an audit failure;
+   an undocumented one, or one presented as confirmation, is.
+
 ### 4. `exploratory`
 
 Everything else.
@@ -195,7 +221,7 @@ tier labels:
 | research-questions.md says | Required `studies/*/study.yaml` |
 |---|---|
 | `Citable` | `evidence_status: citable` |
-| `Validated` | `validated` or `citable` |
+| `Validated` | `validated` with `validation_result.threshold_met: true`, or `citable` |
 | `Computable` / `Partially computable` | `reproducible` or higher |
 | Exploratory / partial / inventory target | none required |
 
