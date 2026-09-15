@@ -22,6 +22,10 @@ EXCLUDED_SCAN_FILES = {
     "scripts/ci/check_config_boundaries.py",
     "scripts/ci/check_identity_boundaries.py",
     "tests/unit/scripts/test_repository_hygiene.py",
+    # Asserts that the as-of guard skips archived and test paths, so it has to
+    # name a scripts/archive path as fixture data. Same reason as the hygiene
+    # test above: the file tests the pattern rather than depending on it.
+    "tests/unit/scripts/test_deterministic_as_of.py",
     # Generated pytest-split timing data, not automation source. It records one
     # line per test node, so it names archived test modules without depending on
     # them.
