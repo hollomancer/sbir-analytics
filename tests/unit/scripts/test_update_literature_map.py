@@ -390,8 +390,13 @@ def test_refresh_keeps_rss_rows_when_anchor_doi_is_missing(monkeypatch, tmp_path
 
     assert status["new_works_classified"] == 1
     assert load_map(map_path)[0]["openalex_id"] == "gao:GAO-26-100000"
-    assert "cites:unresolved-doi:10.1257/aer.20201851" in status["query_counts"]
+    assert status["query_counts"]["cites:unresolved-doi:10.1257/aer.20201851"] == 0
     assert "skipping forward citations" in capsys.readouterr().err
+    # The contract is the written status file, not just the returned dict: a
+    # regression in `_write_status` or its call site would pass the assertions above.
+    assert "| `cites:unresolved-doi:10.1257/aer.20201851` | 0 |" in status_path.read_text(
+        encoding="utf-8"
+    )
 
 
 def test_search_works_propagates_malformed_filter(monkeypatch) -> None:
