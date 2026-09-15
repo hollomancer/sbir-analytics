@@ -66,10 +66,16 @@ Run only read-only commands. Do not materialize, download, or edit files.
 
 ## Required Checks
 
-- **Declared reader.** A packet for an outside reader must open with
+- **Declared reader.** A document packet for an outside reader must open with
   `**Prepared for:**`, `**Audience:**`, or `**Answers for:**`. Missing header
   is `MISLABELED`. A maintainer header, or an explicit "not for an agency"
   line, is `NOT APPLICABLE`.
+- **Inventory edits are exempt from the header rule.**
+  `docs/research-questions.md` is one shared inventory, not a packet. An edit
+  to Start here or Research targets carries no per-edit header. Do not report
+  `MISLABELED` for the missing header. Take the reader from the policy-area
+  `Audience:` line that contains the edit, and from the packet the entry links
+  to. Then apply **Inventory slot**.
 - **Inventory slot.** Start here may name only reserved ranks or an explicit
   refusal. Research targets are not a briefing entry point. A packet whose
   questions sit nowhere for that reader is `MISLABELED`.
@@ -91,7 +97,7 @@ Run only read-only commands. Do not materialize, download, or edit files.
 ### Verdict: [BRIEF / INTERNAL ONLY / MISLABELED / OVERCLAIMS / NOT APPLICABLE / INSUFFICIENT INFORMATION]
 
 ### Declared Reader
-- Header:
+- Header: [the header line / "n/a — inventory edit" / missing]
 - Inventory slot: [Start here / Research target / nowhere / not an outside reader]
 - Question IDs:
 
@@ -127,7 +133,9 @@ packet.
 ## Stop Conditions
 
 - The packet has no identifiable reader header and is not claimed as
-  maintainer-facing — report `MISLABELED`, do not invent an audience.
+  maintainer-facing — report `MISLABELED`, do not invent an audience. This does
+  not apply to an inventory edit; resolve its reader as **Inventory edits are
+  exempt from the header rule** describes.
 - A required study file or inventory section is missing — report
   `INSUFFICIENT INFORMATION`.
 - The requested "fix" is a new research question, an extra agency series, a
