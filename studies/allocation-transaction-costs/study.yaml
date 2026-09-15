@@ -65,4 +65,10 @@ limitations:
     13% figure there, and it applies with equal force here. Hours per award,
     dollars per award, and cost per awarded dollar are therefore reported
     separately and must not be collapsed into one efficiency claim.
+  - The NIH SBIR-versus-R01-equivalent contrast cannot separate the performer
+    (small firm versus university) from the award architecture, the award size,
+    or the research type. It therefore does not identify a small-business
+    transaction-cost effect, only a difference between two mechanisms as they
+    are currently designed. See amendments.md Revision 1 for the designs that
+    would identify it.
   - This study is reproducible, not validated or citable.
