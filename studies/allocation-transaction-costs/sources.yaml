@@ -4,7 +4,7 @@ retrieved_on: "2026-09-12"
 tables:
   - source_id: nih_report_t215_2025
     path: studies/allocation-transaction-costs/data/nih_report_t215_sbir_sttr_by_phase.csv
-    sha256: 472b42ed09a9d29d871003342347feda5eee1db3480294dcbabbb1a2baed66be
+    sha256: ba78faae7d2abb7177ea58748439eb8e476c0bf97927ca5a45f9d81b3438be09
     publisher: NIH Office of Extramural Research, Division of Statistical Analysis and Reporting
     title: >-
       Table #215: NIH SBIR and STTR Grants — Competing Applications, Awards,
@@ -37,7 +37,7 @@ tables:
 
   - source_id: nih_databook_r01_equivalent
     path: studies/allocation-transaction-costs/data/nih_databook_r01_equivalent.csv
-    sha256: 897ddb6642bf0ebccd72a248e0dc4068cf6772610f9fb19fc92a8d49c54048ab
+    sha256: 8e933a2e64ddf6f92b2aeb179e134350415127bea253ef1b532a9ae8c1b10a94
     publisher: NIH Office of Extramural Research, Division of Statistical Analysis and Reporting
     title: >-
       NIH Data Book report 29 (R01-equivalent competing applications, awards,
