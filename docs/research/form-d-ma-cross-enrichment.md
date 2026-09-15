@@ -51,6 +51,20 @@ This distinction produces two measures:
 - **M&A candidate independent of Form D:** a signal supported by EFTS, press, or
   discovery evidence beyond the Form D filing.
 
+> **Pending decision (2026-09-13).** The detector now routes rows whose only
+> evidence is a Form D business-combination flag to
+> `data/sbir_ma_non_exit.jsonl` rather than to `data/sbir_ma_events.jsonl`,
+> because Item 10 is filed by the acquirer and several consumers treat presence
+> in the exit artifact as an exit without reading confidence. The refinement
+> chain that produces `enriched_sbir_ma_events.jsonl` reads only the exit file,
+> so those rows no longer reach this measure. Until someone decides whether
+> "M&A candidate observed" should include acquirer-side rows, this measure
+> undercounts relative to the sentence above. Resolving it means either feeding
+> the sibling file into the chain or narrowing this definition to target-side
+> evidence; the second is the more likely correct answer for an exit study, but
+> it is a contract change and is not made here.
+
+
 The first is a candidate-detection rate, not an exit rate. The second is used
 when counting independent observed pathways. Neither establishes a completed
 legal transaction.
