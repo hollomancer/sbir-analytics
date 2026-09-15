@@ -9,8 +9,7 @@ from scripts.ci import check_study_artifact_roundtrip as guard
 
 
 RENDERER = (
-    "def render_markdown(summary):\n"
-    '    return f"# Readout\\n\\nPairs: {summary[\'pairs\']}\\n"\n'
+    "def render_markdown(summary):\n    return f\"# Readout\\n\\nPairs: {summary['pairs']}\\n\"\n"
 )
 
 
@@ -49,7 +48,7 @@ def test_drifted_markdown_reports_the_difference(tmp_path: Path) -> None:
 def test_renderer_that_raises_on_its_own_sidecar_is_reported(tmp_path: Path) -> None:
     renderer = (
         "def render_markdown(summary):\n"
-        '    return f"# Readout\\n\\nPairs: {summary[\'post_cap_over_cap_n\']}\\n"\n'
+        "    return f\"# Readout\\n\\nPairs: {summary['post_cap_over_cap_n']}\\n\"\n"
     )
     pair = _build_study(tmp_path, "# Readout\n\nPairs: 500\n", renderer=renderer)
 
