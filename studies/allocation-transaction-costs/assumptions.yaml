@@ -33,7 +33,18 @@ applicant_hour_citations:
       A back-of-envelope transfer is ~170 hours per proposal
       (0.16 × 27 hours/week × 52 weeks × 3 years / 4 proposals). That is not
       observed SBIR-firm time. The 80–200 hour grid brackets that transfer.
+      A second university-side anchor now exists and does not depend on that
+      transfer: NSF's 2021 Merit Review Survey reports applicants spending an
+      average of 126 hours preparing their most recent proposal, including
+      writing, formatting, and submitting (N = 13,731), with regression-adjusted
+      directorate estimates ranging from 78 hours (Mathematical and Physical
+      Sciences) to 104 hours (Biological Sciences). 126 hours sits inside the
+      80–200 grid. This is a survey measurement rather than a Paperwork
+      Reduction Act estimate, so it is admissible here; it is NSF rather than
+      NIH, and NSF applicants are not the R01 population, so it corroborates
+      the grid without redefining it.
     url: https://thefdp.org/wp-content/uploads/FDP-FWS-2018-Primary-Report.pdf
+    corroborating_url: https://nsf-gov-resources.nsf.gov/2023-10/2021-Merit-Review-Survey-Report-Final_508.pdf
   nih_sbir_phase_i:
     evidence_class: assumption_grid
     population: unobserved_small_business
@@ -114,6 +125,24 @@ review:
         per-application figures, so only the per-application measurement is
         cited here.
       url: https://doi.org/10.1007/s11948-019-00123-1
+    nsf_merit_review_survey_2021:
+      evidence_class: behavioral_survey
+      population: nsf_reviewers_all_methods
+      observed_hours_per_review: [7]
+      note: >-
+        NSF, "Assessment of Stakeholder Experiences With NSF's Merit Review
+        Process: 2021 Merit Review Survey" (published October 2023). Reviewers
+        reported reviewing an average of 10 proposals since 1 October 2018 and
+        spending an average of 7 hours reading, writing, and submitting their
+        most recent review (N = 11,696). The report states explicitly that
+        these hours do not include time traveling to or participating in a
+        panel discussion, so the scope matches the AIBS pre-meeting figure and
+        the two can be read side by side: 4.5-5.0 hours on NIH-style panel
+        review and 7 hours across NSF review methods. Both fall inside the
+        2/4/8 grid, which is why the grid is unchanged. Hours were log
+        transformed in the source, so reported figures are exponentiated
+        regression coefficients.
+      url: https://nsf-gov-resources.nsf.gov/2023-10/2021-Merit-Review-Survey-Report-Final_508.pdf
   reviewer_labor_rate_id: bls_medical_scientist_mean_hourly
 
 agency_cost:
