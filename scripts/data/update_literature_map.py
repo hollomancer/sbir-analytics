@@ -474,7 +474,7 @@ def merge_rows(
     return list(by_id.values()), added
 
 
-async def resolve_doi_work_id(client: OpenAlexClient, doi: str) -> str:
+async def resolve_doi_work_id(client: OpenAlexClient, doi: str) -> str | None:
     """Resolve a DOI to an OpenAlex work id (``W…``).
 
     The ``cites`` filter only accepts work ids, not ``doi:`` values.
@@ -483,9 +483,7 @@ async def resolve_doi_work_id(client: OpenAlexClient, doi: str) -> str:
     results = data.get("results") or []
     first = results[0] if results and isinstance(results[0], dict) else None
     oid = _last_path_segment((first or {}).get("id")) or ""
-    if not is_openalex_work_id(oid):
-        raise RuntimeError(f"OpenAlex returned no work id for DOI {doi}")
-    return oid
+    return oid if is_openalex_work_id(oid) else None
 
 
 async def _works_pages(
@@ -575,6 +573,14 @@ async def refresh(
 
         for doi in ANCHOR_DOIS:
             work_id = await resolve_doi_work_id(client, doi)
+            if work_id is None:
+                print(
+                    f"warning: OpenAlex returned no work id for anchor DOI {doi}; "
+                    "skipping forward citations",
+                    file=sys.stderr,
+                )
+                query_counts[f"cites:unresolved-doi:{doi}"] = 0
+                continue
             cited = await _works_pages(
                 client,
                 {"filter": f"cites:{work_id},{year_filter}"},
