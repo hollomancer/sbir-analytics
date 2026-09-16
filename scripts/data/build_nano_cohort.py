@@ -32,16 +32,6 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
-from sbir_etl.utils.transition_signals import (
-    INSUFFICIENT_TIME_YEAR,
-    _safe_float,
-    _safe_int,
-    enrich_cohort_with_signals,
-    load_form_d_signals,
-    load_ma_signals,
-    load_phase3_digest,
-)
-
 REPO = Path(__file__).resolve().parents[2]
 DATA = REPO / "data"
 DOCS = REPO / "docs"
@@ -53,6 +43,15 @@ from sbir_etl.enrichers.sec_edgar.form_d_scoring import (  # noqa: E402
     FORM_D_TIER_RULE_VERSION,
 )
 from sbir_etl.utils.text_normalization import normalize_name  # noqa: E402
+from sbir_etl.utils.transition_signals import (  # noqa: E402
+    INSUFFICIENT_TIME_YEAR,
+    _safe_float,
+    _safe_int,
+    enrich_cohort_with_signals,
+    load_form_d_signals,
+    load_ma_signals,
+    load_phase3_digest,
+)
 
 # ---------------------------------------------------------------------------
 # Published external budget reference (a public federal budget supplement)
