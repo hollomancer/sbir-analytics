@@ -39,31 +39,12 @@ version.
   match. Digests of serialized structures (`_row_sha256`,
   `ordered_columns_sha256`, `_ordered_columns_sha256`) are a different concern
   and are left alone.
-- `scripts/data/build_nano_cohort.py` now imports the signal loaders, classifier
-  and enrichment step from `sbir_etl.utils.transition_signals` instead of
-  holding its own copies of them. The script had redefined seven of that
-  module's nine functions and never imported it, and four copies had drifted.
-  Most consequential: the script's `enrich_cohort_with_signals` set
-  `sig_ma_detected` from a bare name match, while the library also requires at
-  least one recorded signal.
-- The two `sig_ma_detected` definitions produce the same output on the current
-  data. Every one of the 4,303 firms in `enriched_sbir_ma_events.jsonl` has
-  `ma_signal_count >= 1`, so no row changes: a 4,803-row comparison (all
-  indexed firms plus 500 absent ones) shows no field moving, and
-  `sig_ma_detected` stays at 4,303 positives. The divergence was latent, not
-  realized, and unifying the definition is what keeps it that way.
-- **Numbers move.** `enrich_cohort_with_signals` keyed its lookup with
-  `.upper()` while `load_ma_signals` and `load_form_d_signals` keyed the index
-  with `.strip().upper()`. A cohort row whose company name carried leading or
-  trailing whitespace could never match, so firms with real signals scored
-  `sig_ma_detected = False`. All three sites now use one
-  `transition-signal-key-v1` profile. Measured on `award_data.csv` against
-  `enriched_sbir_ma_events.jsonl`: `sig_ma_detected` goes from 4,252 to 4,305
-  distinct company names (+53). The Form D side has the same asymmetry and the
-  same fix, but `load_form_d_signals` fails closed on the current
-  `form_d_high_conf_cohort.jsonl` for an unrelated reason (missing tier rule
-  version), so no Form D number moves until that file is rescored.
-
+- The Form D candidate ledger is unchanged by default. With
+  `--include-legal-form-variants` off the output is byte-identical to the
+  previous ledger, verified against the `2026-08-30` study index, and with it on
+  the exact rows are unchanged, so filtering to
+  `match_rationale == "exact_form_d_join_v1_name_key"` reproduces the frozen cut
+  exactly.
 
 ### Added
 
@@ -75,6 +56,18 @@ version.
   `sha256_bytes`. Source-provenance digests were written from scratch in 14
   library call sites under seven different names, with no shared helper to
   import.
+- `build_sbir_ma_form_d_candidates.py` gains `--include-legal-form-variants`,
+  which also emits candidates whose names meet only after legal designators are
+  stripped (`recipient-v1`). A legal-form difference is what defeats most
+  SBIR-to-EDGAR name matches: against the full Form D filer universe the widened
+  key raises the share of SBIR firms finding a filer from 5.46% to 12.28%
+  (2,349 more firms). On the `2026-08-30` study index it adds 6,356 candidate
+  rows to the 5,744 the exact key finds.
+- Widened Form D rows carry the fields needed to adjudicate them:
+  `name_key_ambiguous` and `form_d_cik_count` when one key reaches several CIKs
+  (136 of 6,356 rows), and `sbir_exact_key_count` / `sbir_exact_keys` when
+  several SBIR spellings collapse onto one widened key. A widened row is a
+  candidate, not a resolution.
 
 ## [0.16.0] — 2026-09-15
 
