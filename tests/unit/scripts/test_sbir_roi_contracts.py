@@ -26,7 +26,9 @@ def test_committed_sbir_roi_contract_bundle_is_valid() -> None:
 
 
 def test_patents_cannot_be_a_standalone_success_measure(tmp_path: Path) -> None:
-    source = Path(__file__).resolve().parents[3] / "studies/sbir-roi-comparative-tests/contracts.yaml"
+    source = (
+        Path(__file__).resolve().parents[3] / "studies/sbir-roi-comparative-tests/contracts.yaml"
+    )
     raw = yaml.safe_load(source.read_text(encoding="utf-8"))
     patent = next(item for item in raw["outcomes"] if item["outcome_id"] == "patents")
     patent["standalone_success_measure"] = True
@@ -38,7 +40,9 @@ def test_patents_cannot_be_a_standalone_success_measure(tmp_path: Path) -> None:
 
 
 def test_attribution_weights_must_be_bounded(tmp_path: Path) -> None:
-    source = Path(__file__).resolve().parents[3] / "studies/sbir-roi-comparative-tests/contracts.yaml"
+    source = (
+        Path(__file__).resolve().parents[3] / "studies/sbir-roi-comparative-tests/contracts.yaml"
+    )
     raw = yaml.safe_load(source.read_text(encoding="utf-8"))
     raw["attribution"][0]["allowed_weight_range"] = [-0.1, 1.1]
     path = tmp_path / "contracts.yaml"
