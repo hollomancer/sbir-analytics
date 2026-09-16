@@ -67,6 +67,31 @@ def _issuer_fields(xml_bytes: bytes) -> tuple[str | None, str | None]:
     return (name.strip() if name else None, cik.strip() if cik else None)
 
 
+# A candidate records the profile its name_key was built with. The queue has to
+# read it rather than assume the exact one: a widened candidate compared under
+# the exact profile would always disagree on the legal suffix, silently denying
+# it the alias-agreement prefill.
+_EVIDENCE_CODE_BY_PROFILE = {
+    CompanyNameProfile.FORM_D_JOIN_V1: "exact_key_candidate",
+    CompanyNameProfile.RECIPIENT_V1: "legal_form_variant_candidate",
+}
+
+
+def _candidate_profile(candidate: dict) -> CompanyNameProfile:
+    declared = candidate.get("name_key_profile")
+    if declared is None:
+        return CompanyNameProfile.FORM_D_JOIN_V1
+    try:
+        return CompanyNameProfile(declared)
+    except ValueError as error:
+        raise ValueError(f"Candidate declares an unknown name_key_profile: {declared!r}") from error
+
+
+def _candidate_evidence_code(profile: CompanyNameProfile) -> str:
+    """Name the key that produced the candidate, so a reviewer sees which it is."""
+    return _EVIDENCE_CODE_BY_PROFILE.get(profile, f"{profile.value}_candidate")
+
+
 def _verified_xml_bytes(xml_path: Path, expected_sha256: str | None) -> bytes | None:
     """Return XML bytes only when the on-disk SHA-256 matches the observation."""
     if not expected_sha256 or not xml_path.is_file():
@@ -102,11 +127,14 @@ def main() -> int:
                 args.xml_dir / f"{accession}.xml", observation.get("xml_sha256")
             )
             issuer_name, issuer_cik = _issuer_fields(xml_bytes) if xml_bytes else (None, None)
-            evidence_codes = ["exact_key_candidate"]
+            profile = _candidate_profile(candidate)
+            evidence_codes = [_candidate_evidence_code(profile)]
             if issuer_name:
-                issuer_key = normalize_company_name(
-                    issuer_name, profile=CompanyNameProfile.FORM_D_JOIN_V1
-                )
+                # The issuer name is normalized with the candidate's own
+                # profile. Comparing a widened candidate against an exact-key
+                # issuer name would disagree on the legal suffix alone, which
+                # is the difference the widened key exists to tolerate.
+                issuer_key = normalize_company_name(issuer_name, profile=profile)
                 if issuer_key == candidate["name_key"]:
                     evidence_codes.append("issuer_name_alias_agreement")
 

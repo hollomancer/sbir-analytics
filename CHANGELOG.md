@@ -63,7 +63,12 @@ version.
   same fix, but `load_form_d_signals` fails closed on the current
   `form_d_high_conf_cohort.jsonl` for an unrelated reason (missing tier rule
   version), so no Form D number moves until that file is rescored.
-
+- The Form D candidate ledger is unchanged by default. With
+  `--include-legal-form-variants` off the output is byte-identical to the
+  previous ledger, verified against the `2026-08-30` study index, and with it on
+  the exact rows are unchanged, so filtering to
+  `match_rationale == "exact_form_d_join_v1_name_key"` reproduces the frozen cut
+  exactly.
 
 ### Added
 
@@ -75,6 +80,31 @@ version.
   `sha256_bytes`. Source-provenance digests were written from scratch in 14
   library call sites under seven different names, with no shared helper to
   import.
+- `build_sbir_ma_form_d_candidates.py` gains `--include-legal-form-variants`,
+  which also emits candidates whose names meet only after legal designators are
+  stripped (`recipient-v1`). That profile is broader than its name suggests —
+  it is `matching-v1` with suffix removal, so it also maps punctuation to
+  spaces and folds accents, merging `"Beta-Tech"` with `"Beta Tech"` and
+  `"Zoë Analytics"` with `"Zoe Analytics"`. A legal-form difference is what
+  defeats most
+  SBIR-to-EDGAR name matches: against the full Form D filer universe the widened
+  key raises the share of SBIR firms finding a filer from 5.46% to 12.28%
+  (2,349 more firms). On the `2026-08-30` study index it adds 6,356 candidate
+  rows to the 5,744 the exact key finds.
+- `build_sbir_ma_form_d_identity_review_queue.py` now normalizes the Form D
+  issuer name with the candidate's own `name_key_profile` instead of always the
+  exact profile, and names the key that produced the candidate in
+  `prefilled_evidence_codes` (`exact_key_candidate` or
+  `legal_form_variant_candidate`). Comparing a widened candidate under the
+  exact profile disagreed on the legal suffix alone — the difference the
+  widened key exists to tolerate — silently denying it the alias-agreement
+  prefill.
+- Widened Form D rows carry the fields needed to adjudicate them:
+  `name_key_ambiguous` and `form_d_cik_count` when one key reaches several CIKs
+  (195 of 6,356 rows), `name_key_length` so short keys can be filtered, and
+  `sbir_exact_key_count` / `sbir_exact_keys` when
+  several SBIR spellings collapse onto one widened key. A widened row is a
+  candidate, not a resolution.
 
 ## [0.16.0] — 2026-09-15
 
