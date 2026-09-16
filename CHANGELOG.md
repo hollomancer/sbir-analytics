@@ -63,6 +63,14 @@ version.
   key raises the share of SBIR firms finding a filer from 5.46% to 12.28%
   (2,349 more firms). On the `2026-08-30` study index it adds 6,356 candidate
   rows to the 5,744 the exact key finds.
+- `build_sbir_ma_form_d_identity_review_queue.py` now normalizes the Form D
+  issuer name with the candidate's own `name_key_profile` instead of always the
+  exact profile, and names the key that produced the candidate in
+  `prefilled_evidence_codes` (`exact_key_candidate` or
+  `legal_form_variant_candidate`). Comparing a widened candidate under the
+  exact profile disagreed on the legal suffix alone — the difference the
+  widened key exists to tolerate — silently denying it the alias-agreement
+  prefill.
 - Widened Form D rows carry the fields needed to adjudicate them:
   `name_key_ambiguous` and `form_d_cik_count` when one key reaches several CIKs
   (136 of 6,356 rows), and `sbir_exact_key_count` / `sbir_exact_keys` when

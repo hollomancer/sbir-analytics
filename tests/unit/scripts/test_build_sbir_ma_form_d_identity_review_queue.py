@@ -55,12 +55,13 @@ def _run_queue(
     *,
     xml_bytes: bytes | None,
     observation: dict | None = None,
+    candidate: dict | None = None,
 ) -> dict:
     xml_dir = tmp_path / "xml"
     xml_dir.mkdir()
     if xml_bytes is not None:
         (xml_dir / f"{ACCESSION}.xml").write_bytes(xml_bytes)
-    candidates = _write_jsonl(tmp_path / "candidates.jsonl", [_candidate()])
+    candidates = _write_jsonl(tmp_path / "candidates.jsonl", [candidate or _candidate()])
     observations = _write_jsonl(
         tmp_path / "observations.jsonl",
         [observation or _observation()],
@@ -127,3 +128,23 @@ def test_mismatched_xml_hash_does_not_inherit_observation_sha_or_alias_agreement
     assert "issuer_name_alias_agreement" not in row["prefilled_evidence_codes"]
     assert row["evidence_codes"] == []
     assert row["source_reference_ids"] == []
+
+
+def test_widened_candidate_is_compared_under_its_own_profile(tmp_path: Path, monkeypatch) -> None:
+    # The issuer files as "Acme Corp, LLC" while the SBIR side is "Acme Corp".
+    # Under the exact profile those keys differ by the legal suffix, which is
+    # precisely the difference recipient-v1 exists to tolerate, so the alias
+    # agreement must still be prefilled.
+    candidate = _candidate()
+    candidate["name_key_profile"] = "recipient-v1"
+    candidate["name_key"] = "acme"
+    row = _run_queue(tmp_path, monkeypatch, xml_bytes=XML_BYTES, candidate=candidate)
+
+    assert "issuer_name_alias_agreement" in row["prefilled_evidence_codes"]
+    assert "legal_form_variant_candidate" in row["prefilled_evidence_codes"]
+
+
+def test_exact_candidate_keeps_its_evidence_code(tmp_path: Path, monkeypatch) -> None:
+    row = _run_queue(tmp_path, monkeypatch, xml_bytes=XML_BYTES)
+
+    assert "exact_key_candidate" in row["prefilled_evidence_codes"]

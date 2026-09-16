@@ -197,3 +197,59 @@ def test_two_sbir_spellings_collapsing_onto_one_key_are_recorded(
     # form-d-join-v1 keeps punctuation, so the exact keys still carry the comma.
     assert rows[0]["sbir_exact_keys"] == ["DATASHAPES, INC.", "DATASHAPES, LLC"]
     assert rows[0]["sbir_aliases"] == ["DATASHAPES, INC.", "DATASHAPES, LLC"]
+
+
+def test_a_multi_filer_submission_prefers_the_exact_candidate(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    # EDGAR writes one index line per filer, so one accession can arrive under
+    # two filer names: here one matches an SBIR firm exactly and the other only
+    # after legal designators are stripped. Exact precedence is a property of
+    # the submission, so the widened row must not also be emitted — otherwise a
+    # downstream collapse to one row per accession could pick the widened one.
+    rows = _run(
+        monkeypatch,
+        tmp_path,
+        ["ACME CORP", "Luna Innovations, LLC"],
+        [("ACME CORP", "111", "shared-1"), ("LUNA INNOVATIONS", "222", "shared-1")],
+        widen=True,
+    )
+
+    assert [r["match_rationale"] for r in rows] == ["exact_form_d_join_v1_name_key"]
+
+
+def test_exact_precedence_holds_when_the_exact_line_comes_last(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    # The widened line is seen first while streaming, so precedence cannot be
+    # decided line by line.
+    rows = _run(
+        monkeypatch,
+        tmp_path,
+        ["ACME CORP", "Luna Innovations, LLC"],
+        [("LUNA INNOVATIONS", "222", "shared-1"), ("ACME CORP", "111", "shared-1")],
+        widen=True,
+    )
+
+    assert [r["match_rationale"] for r in rows] == ["exact_form_d_join_v1_name_key"]
+
+
+def test_two_filers_in_one_accession_are_both_counted_as_ambiguity(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    # Both filer lines share an accession and a widened key, so they collapse
+    # to one output row — but they carry different CIKs, and that is exactly
+    # what makes the key unsafe to attribute. Counting after the dedupe would
+    # report the key as reaching a single CIK.
+    rows = _run(
+        monkeypatch,
+        tmp_path,
+        ["Beam Technologies, Inc."],
+        [("BEAM TECHNOLOGIES LLC", "111", "shared-1"), ("BEAM TECHNOLOGIES", "222", "shared-1")],
+        widen=True,
+    )
+
+    assert len(rows) == 1
+    assert rows[0]["name_key_ambiguous"] is True
+    assert rows[0]["form_d_cik_count"] == 2
+    assert rows[0]["form_d_filer_name_count"] == 2

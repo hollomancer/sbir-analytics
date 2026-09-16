@@ -17,8 +17,10 @@ Two name keys are available, and the second is opt-in:
 interior whitespace. A legal-form difference defeats it, so ``"Luna
 Innovations, LLC"`` and ``"LUNA INNOVATIONS"`` do not meet.
 
-``recipient-v1`` (``--include-legal-form-variants``) additionally strips legal
-designators, which is what most SBIR-to-EDGAR name differences are. Measured
+``recipient-v1`` (``--include-legal-form-variants``) drops legal designators,
+which is what most SBIR-to-EDGAR name differences are. It is not a pure
+legal-form strip: it also lower-cases, folds diacritics and removes punctuation,
+so it is a broader key than the exact one in more than one respect. Measured
 against the full EDGAR Form D filer universe it raises the share of SBIR firms
 finding a filer from 5.46% to 12.28% — 2,349 more firms — at the cost of 56
 keys that reach more than one CIK, versus 5 under the exact key.
@@ -128,7 +130,7 @@ def _load_sbir_aliases(path: Path) -> dict[str, dict[str, object]]:
     return candidates
 
 
-def _form_d_entries(index_dir: Path):
+def _form_d_entries(index_dir: Path, *, widen: bool = False):
     for path in sorted(index_dir.glob("*.idx")):
         with path.open(encoding="latin-1") as handle:
             for line in handle:
@@ -204,16 +206,20 @@ def main() -> int:
     widened_sbir = _widen_sbir_index(sbir) if args.include_legal_form_variants else {}
 
     exact_rows: list[dict[str, object]] = []
+    widened_lines: list[tuple[str, dict[str, object]]] = []
     widened_hits: list[tuple[str, dict[str, object]]] = []
     seen: set[tuple[str, str]] = set()
     matched_keys: set[str] = set()
     matched_accessions: set[str] = set()
+    exact_accessions: set[str] = set()
     # Ambiguity is scored over matched filings only: a key reaching several CIKs
     # is what makes attribution unsafe, and an unmatched key cannot mislead.
     ciks_by_widened_key: dict[str, set[str]] = {}
     filers_by_widened_key: dict[str, set[str]] = {}
 
-    for key, widened_key, filing in _form_d_entries(args.form_d_index_dir):
+    for key, widened_key, filing in _form_d_entries(
+        args.form_d_index_dir, widen=args.include_legal_form_variants
+    ):
         source = sbir.get(key)
         if source is not None:
             dedupe_key = (key, str(filing["accession_number"]))
@@ -223,20 +229,38 @@ def main() -> int:
             exact_rows.append(_record(EXACT_PROFILE, EXACT_RATIONALE, key, source, filing))
             matched_keys.add(key)
             matched_accessions.add(str(filing["accession_number"]))
+            exact_accessions.add(str(filing["accession_number"]))
             continue
-        # An exact match takes precedence, so a filing reaches the widened pass
-        # only when no SBIR firm matched it exactly.
         if not args.include_legal_form_variants:
             continue
-        widened_source = widened_sbir.get(widened_key)
-        if widened_source is None:
+        if widened_sbir.get(widened_key) is None:
             continue
+        widened_lines.append((widened_key, filing))
+
+    # Exact precedence is a property of the submission, not of one index line.
+    # EDGAR writes one line per filer, so a submission can match exactly on one
+    # filer name and only by legal form on another; the exact candidate wins for
+    # the whole accession. The exact line may arrive after the widened one, so
+    # this cannot be decided while streaming.
+    widened_lines = [
+        (widened_key, filing)
+        for widened_key, filing in widened_lines
+        if str(filing["accession_number"]) not in exact_accessions
+    ]
+
+    # Ambiguity is counted over every surviving line, before the output dedupe.
+    # Two filer lines in one accession can carry different CIKs under the same
+    # widened key; deduping first would drop the second CIK and report the key
+    # as unambiguous when it is not.
+    for widened_key, filing in widened_lines:
+        ciks_by_widened_key.setdefault(widened_key, set()).add(str(filing["cik"]))
+        filers_by_widened_key.setdefault(widened_key, set()).add(str(filing["filer_name"]))
+
+    for widened_key, filing in widened_lines:
         dedupe_key = (widened_key, str(filing["accession_number"]))
         if dedupe_key in seen:
             continue
         seen.add(dedupe_key)
-        ciks_by_widened_key.setdefault(widened_key, set()).add(str(filing["cik"]))
-        filers_by_widened_key.setdefault(widened_key, set()).add(str(filing["filer_name"]))
         widened_hits.append((widened_key, filing))
 
     args.output.parent.mkdir(parents=True, exist_ok=True)
