@@ -8,6 +8,7 @@ from sbir_etl.utils.transition_signals import (
     classify_deficiency,
     enrich_cohort_with_signals,
     load_form_d_signals,
+    load_ma_signals,
 )
 from sbir_etl.enrichers.sec_edgar.form_d_scoring import FORM_D_TIER_RULE_VERSION
 
@@ -91,3 +92,46 @@ def test_load_form_d_signals_refuses_unversioned_cohort(tmp_path):
 
     with pytest.raises(ValueError, match="Rescore the complete input"):
         load_form_d_signals(path)
+
+
+def test_untrimmed_cohort_name_still_finds_its_ma_signal(tmp_path):
+    """The index and the lookup must key names the same way.
+
+    The index stripped and the lookup did not, so a cohort row whose company
+    name carried trailing whitespace could never match — 53 firms with real
+    M&A signals scored ``sig_ma_detected = False`` on the award data.
+    """
+    path = tmp_path / "ma.jsonl"
+    path.write_text(
+        json.dumps({"company_name": "Cernostics  Inc", "signal_count": 2, "confidence": "high"})
+        + "\n"
+    )
+    signals = load_ma_signals(path)
+
+    enriched = enrich_cohort_with_signals(
+        [{"uei": "U1", "company": "Cernostics  Inc ", "award_year": 2015}], {}, signals, {}
+    )
+
+    assert enriched[0]["sig_ma_detected"] is True
+    assert enriched[0]["sig_ma_confidence"] == "high"
+
+
+def test_a_different_firm_still_does_not_match(tmp_path):
+    """Symmetry must not become a substring or prefix match."""
+    path = tmp_path / "ma.jsonl"
+    path.write_text(
+        json.dumps({"company_name": "Cernostics", "signal_count": 2, "confidence": "high"}) + "\n"
+    )
+    signals = load_ma_signals(path)
+
+    enriched = enrich_cohort_with_signals(
+        [
+            {"uei": "U1", "company": "Cernostics Diagnostics", "award_year": 2015},
+            {"uei": "U2", "company": "Cerno", "award_year": 2015},
+        ],
+        {},
+        signals,
+        {},
+    )
+
+    assert [row["sig_ma_detected"] for row in enriched] == [False, False]
