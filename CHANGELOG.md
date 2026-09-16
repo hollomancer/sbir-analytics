@@ -52,6 +52,18 @@ version.
   indexed firms plus 500 absent ones) shows no field moving, and
   `sig_ma_detected` stays at 4,303 positives. The divergence was latent, not
   realized, and unifying the definition is what keeps it that way.
+- **Numbers move.** `enrich_cohort_with_signals` keyed its lookup with
+  `.upper()` while `load_ma_signals` and `load_form_d_signals` keyed the index
+  with `.strip().upper()`. A cohort row whose company name carried leading or
+  trailing whitespace could never match, so firms with real signals scored
+  `sig_ma_detected = False`. All three sites now use one
+  `transition-signal-key-v1` profile. Measured on `award_data.csv` against
+  `enriched_sbir_ma_events.jsonl`: `sig_ma_detected` goes from 4,252 to 4,305
+  distinct company names (+53). The Form D side has the same asymmetry and the
+  same fix, but `load_form_d_signals` fails closed on the current
+  `form_d_high_conf_cohort.jsonl` for an unrelated reason (missing tier rule
+  version), so no Form D number moves until that file is rescored.
+
 
 ### Added
 

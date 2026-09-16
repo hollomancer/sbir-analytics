@@ -53,6 +53,7 @@ class CompanyNameProfile(StrEnum):
     BENCHMARK_FIRM_KEY_V1 = "benchmark-firm-key-v1"
     LOWER_JOIN_V1 = "lower-join-v1"
     PATENT_ASSIGNEE_V1 = "patent-assignee-v1"
+    TRANSITION_SIGNAL_KEY_V1 = "transition-signal-key-v1"
 
 
 class CompanyNameMetric(StrEnum):
@@ -353,7 +354,10 @@ def normalize_company_name(
             "llp": "llp",
         }
         return " ".join(aliases.get(token, token) for token in text.lower().split())
-    if profile is CompanyNameProfile.FORM_D_JOIN_V1:
+    if profile in {
+        CompanyNameProfile.FORM_D_JOIN_V1,
+        CompanyNameProfile.TRANSITION_SIGNAL_KEY_V1,
+    }:
         return " ".join(text.strip().upper().split())
     if profile is CompanyNameProfile.UCC_V1:
         text = re.sub(r"[^a-z0-9 ]+", " ", text.lower())

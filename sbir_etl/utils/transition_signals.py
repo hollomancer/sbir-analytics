@@ -20,6 +20,7 @@ from datetime import date
 from pathlib import Path
 
 from sbir_etl.enrichers.sec_edgar.form_d_scoring import require_form_d_rule_version
+from sbir_etl.identity import CompanyNameProfile, normalize_company_name
 
 
 EPISTEMIC_TIER = "exploratory"
@@ -41,6 +42,10 @@ NON_DOD_AGENCIES = frozenset(
 DEFAULT_DIGEST = Path("data/processed/sbir_phase3/fy25_phase3_prospect_digest.csv")
 DEFAULT_MA = Path("data/enriched_sbir_ma_events.jsonl")
 DEFAULT_FORM_D = Path("data/form_d_high_conf_cohort.jsonl")
+
+# One key rule for both sides of every signal join. The index and the lookup
+# must use the same profile or a firm silently loses its signals.
+_SIGNAL_KEY = CompanyNameProfile.TRANSITION_SIGNAL_KEY_V1
 
 
 def _safe_float(v: str) -> float:
@@ -90,7 +95,7 @@ def load_ma_signals(jsonl_path: Path) -> dict[str, dict]:
                 continue
             try:
                 rec = json.loads(line)
-                name = rec.get("company_name", "").strip().upper()
+                name = normalize_company_name(rec.get("company_name"), profile=_SIGNAL_KEY)
                 if not name:
                     continue
                 sc = rec.get("signal_count", 0)
@@ -129,7 +134,7 @@ def load_form_d_signals(jsonl_path: Path) -> dict[str, dict]:
                 continue
             try:
                 rec = json.loads(line)
-                name = rec.get("company_name", "").strip().upper()
+                name = normalize_company_name(rec.get("company_name"), profile=_SIGNAL_KEY)
                 if not name:
                     continue
                 rule_version = require_form_d_rule_version(
@@ -176,7 +181,10 @@ def enrich_cohort_with_signals(
     for row in cohort:
         r = dict(row)
         uei = r.get("uei", "")
-        company_upper = r.get("company", "").upper()
+        # Same profile as the index keys above. These previously disagreed:
+        # the index stripped and this did not, so a cohort row whose name
+        # carried trailing whitespace could never match.
+        company_upper = normalize_company_name(r.get("company"), profile=_SIGNAL_KEY)
 
         # Channel 1: FPDS-coded Phase III (known undercount — GAO-24-106398)
         dig = digest.get(uei, {})
