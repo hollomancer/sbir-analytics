@@ -32,6 +32,7 @@ from sbir_etl.supply_chain.defense_funding import (
     normalize_subaward_transactions,
 )
 from sbir_etl.supply_chain.subaward_network import build_subaward_facts
+from sbir_etl.utils.data.file_io import file_sha256
 
 DEFAULT_LINEAGE_DIR = Path("data/processed/nsf_sbir_defense_lineage")
 DEFAULT_PRIME_SNAPSHOT_ROOT = Path("data/raw/usaspending/nsf_awardee_prime")
@@ -81,11 +82,8 @@ _SUBAWARD_COLUMNS = {
 
 
 def _sha256(path: Path) -> str:
-    digest = hashlib.sha256()
-    with path.open("rb") as handle:
-        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
-            digest.update(chunk)
-    return digest.hexdigest()
+    """Return the SHA-256 hex digest of ``path``."""
+    return file_sha256(path)
 
 
 def _prime_snapshot_metadata(path: Path) -> dict[str, object]:

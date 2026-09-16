@@ -6,7 +6,6 @@ from this module.
 
 from __future__ import annotations
 
-import hashlib
 from collections.abc import Callable, Mapping
 from datetime import UTC, datetime
 from pathlib import Path
@@ -14,6 +13,7 @@ from typing import Any
 
 from sbir_etl.analysis.contracts import AnalysisRun, AnalysisSpec
 from sbir_etl.analysis.snapshots import compare_snapshots, load_snapshot, write_snapshot
+from sbir_etl.utils.data.file_io import file_sha256_or_none
 
 
 EPISTEMIC_TIER = "pipelines"
@@ -22,13 +22,8 @@ Strategy = Callable[[AnalysisSpec], Mapping[str, Any]]
 
 
 def _sha256_file(path: Path | None) -> str | None:
-    if path is None or not path.is_file():
-        return None
-    digest = hashlib.sha256()
-    with path.open("rb") as handle:
-        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
-            digest.update(chunk)
-    return digest.hexdigest()
+    """Return the SHA-256 hex digest of ``path``, or ``None`` when absent."""
+    return file_sha256_or_none(path)
 
 
 def materialize_analysis(

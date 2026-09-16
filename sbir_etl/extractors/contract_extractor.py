@@ -22,6 +22,7 @@ from pathlib import Path, PurePosixPath
 import pandas as pd
 from loguru import logger
 from sbir_etl.models.transition_models import CompetitionType, FederalContract
+from sbir_etl.utils.data.file_io import file_sha256
 
 
 CANONICAL_RELATION = "rpt.transaction_search"
@@ -281,13 +282,8 @@ def _unquote(value: str) -> str:
 
 
 def _file_sha256(path: Path) -> str:
-    """Hash an archive input without loading it into memory."""
-
-    digest = hashlib.sha256()
-    with path.open("rb") as file:
-        for chunk in iter(lambda: file.read(1024 * 1024), b""):
-            digest.update(chunk)
-    return digest.hexdigest()
+    """Return the SHA-256 hex digest of ``path``."""
+    return file_sha256(path)
 
 
 def _select_table_entry(toc_text: str, schema_sql: str) -> tuple[_TableEntry, bool]:

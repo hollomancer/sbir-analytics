@@ -13,7 +13,6 @@ non-citable.
 from __future__ import annotations
 
 import csv
-import hashlib
 import json
 import math
 import re
@@ -26,6 +25,7 @@ from typing import Any, TypedDict
 from sbir_etl.config.yaml_io import read_yaml_mapping
 from sbir_etl.extractors.sbir_public_awards import load_sbir_awards_csv
 from sbir_etl.identity.geography import normalize_us_jurisdiction
+from sbir_etl.utils.data.file_io import file_sha256
 
 
 EPISTEMIC_TIER = "exploratory"
@@ -644,11 +644,8 @@ CENSUS_AWARD_COLUMNS = [
 
 
 def _sha256(path: Path) -> str:
-    digest = hashlib.sha256()
-    with path.open("rb") as handle:
-        while chunk := handle.read(1024 * 1024):
-            digest.update(chunk)
-    return digest.hexdigest()
+    """Return the SHA-256 hex digest of ``path``."""
+    return file_sha256(path)
 
 
 def _source_timestamp(path: Path) -> str:

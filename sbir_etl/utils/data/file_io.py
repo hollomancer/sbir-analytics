@@ -5,10 +5,12 @@ This module provides:
 - Atomic JSON write operations
 - NDJSON writing utilities
 - Unified parquet/NDJSON reading
+- SHA-256 digests for source-provenance records
 """
 
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import tempfile
@@ -280,3 +282,51 @@ def read_parquet_or_ndjson(parquet_path: Path, json_path: Path | None = None) ->
     raise FileNotFoundError(
         f"Neither Parquet ({parquet_path}) nor NDJSON ({json_path}) file exists"
     )
+
+
+# Read size for streamed digests. Fixed at 1 MiB because the value is part of
+# no digest: SHA-256 of a file is the same whatever chunk size produced it.
+_DIGEST_CHUNK_BYTES = 1024 * 1024
+
+
+def file_sha256(path: Path | str) -> str:
+    """Return the SHA-256 hex digest of a file, read in chunks.
+
+    Use this for the source-provenance digests recorded by extractors,
+    releases and study manifests. The file is streamed, so an input larger
+    than memory is safe.
+
+    Raises:
+        FileNotFoundError: If ``path`` does not exist.
+
+    Example:
+        >>> from pathlib import Path
+        >>> _ = Path("example.txt").write_text("abc")
+        >>> file_sha256("example.txt")[:12]
+        'ba7816bf8f01'
+        >>> Path("example.txt").unlink()
+    """
+    digest = hashlib.sha256()
+    with Path(path).open("rb") as handle:
+        for chunk in iter(lambda: handle.read(_DIGEST_CHUNK_BYTES), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def file_sha256_or_none(path: Path | str | None) -> str | None:
+    """Return the SHA-256 hex digest of a file, or ``None`` when it is absent.
+
+    Callers that record an optional source use this so a missing input reads
+    as "no digest" rather than raising.
+    """
+    if path is None:
+        return None
+    resolved = Path(path)
+    if not resolved.is_file():
+        return None
+    return file_sha256(resolved)
+
+
+def sha256_bytes(data: bytes) -> str:
+    """Return the SHA-256 hex digest of an in-memory payload."""
+    return hashlib.sha256(data).hexdigest()

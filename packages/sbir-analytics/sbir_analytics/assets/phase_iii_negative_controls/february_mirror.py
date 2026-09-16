@@ -28,6 +28,7 @@ from .source_keys import (
     canonicalize_fain_or_uri,
     canonicalize_piid,
 )
+from sbir_etl.utils.data.file_io import file_sha256
 
 
 AWARD_SEARCH_RELATION = "rpt.award_search"
@@ -220,11 +221,8 @@ def _text(value: Any) -> str:
 
 
 def _file_sha256(path: Path) -> str:
-    digest = hashlib.sha256()
-    with path.open("rb") as source:
-        for chunk in iter(lambda: source.read(1024 * 1024), b""):
-            digest.update(chunk)
-    return digest.hexdigest()
+    """Return the SHA-256 hex digest of ``path``."""
+    return file_sha256(path)
 
 
 def _copy_value(value: str) -> str | None:
