@@ -135,3 +135,62 @@ def test_a_different_firm_still_does_not_match(tmp_path):
     )
 
     assert [row["sig_ma_detected"] for row in enriched] == [False, False]
+
+
+def test_untrimmed_cohort_name_still_finds_its_form_d_signal(tmp_path):
+    """The Form D join carries the same keying fix and must not regress alone.
+
+    `load_form_d_signals` and `enrich_cohort_with_signals` key names the same
+    way, so interior and trailing whitespace cannot hide a candidate.
+    """
+    path = tmp_path / "cohort.jsonl"
+    path.write_text(
+        json.dumps(
+            {
+                "company_name": "Cernostics  Inc",
+                "form_d_total_raised": 2_500_000,
+                "form_d_filing_count": 1,
+                "form_d_latest_date": "2021-04-01",
+                "form_d_tier_rule_version": FORM_D_TIER_RULE_VERSION,
+            }
+        )
+        + "\n"
+    )
+    signals = load_form_d_signals(path)
+
+    enriched = enrich_cohort_with_signals(
+        [{"uei": "U1", "company": "  Cernostics Inc ", "award_year": 2015}], {}, {}, signals
+    )
+
+    assert enriched[0]["sig_form_d_detected"] is True
+    assert enriched[0]["sig_form_d_total_raised"] == 2_500_000
+    assert enriched[0]["sig_form_d_tier_rule_version"] == FORM_D_TIER_RULE_VERSION
+
+
+def test_a_different_firm_still_does_not_match_form_d(tmp_path):
+    """Symmetry must not become a substring or prefix match on the Form D side."""
+    path = tmp_path / "cohort.jsonl"
+    path.write_text(
+        json.dumps(
+            {
+                "company_name": "Cernostics",
+                "form_d_total_raised": 1,
+                "form_d_filing_count": 1,
+                "form_d_tier_rule_version": FORM_D_TIER_RULE_VERSION,
+            }
+        )
+        + "\n"
+    )
+    signals = load_form_d_signals(path)
+
+    enriched = enrich_cohort_with_signals(
+        [
+            {"uei": "U1", "company": "Cernostics Diagnostics", "award_year": 2015},
+            {"uei": "U2", "company": "Cerno", "award_year": 2015},
+        ],
+        {},
+        {},
+        signals,
+    )
+
+    assert [row["sig_form_d_detected"] for row in enriched] == [False, False]
