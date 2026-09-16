@@ -15,6 +15,7 @@ import pandas as pd
 
 from sbir_etl.extractors.nsf_awards import normalize_nsf_award_id
 from sbir_etl.utils.text_normalization import normalize_name
+from sbir_etl.utils.data.file_io import file_sha256
 
 
 class NSFAwardPerformanceStatus(StrEnum):
@@ -88,11 +89,8 @@ def _analysis_timestamp(value: str | date | datetime | pd.Timestamp) -> pd.Times
 
 
 def _file_sha256(path: Path) -> str:
-    digest = hashlib.sha256()
-    with path.open("rb") as handle:
-        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
-            digest.update(chunk)
-    return digest.hexdigest()
+    """Return the SHA-256 hex digest of ``path``."""
+    return file_sha256(path)
 
 
 def _stable_record_ids(frame: pd.DataFrame) -> pd.Series:

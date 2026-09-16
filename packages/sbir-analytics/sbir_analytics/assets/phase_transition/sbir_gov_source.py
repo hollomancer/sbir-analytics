@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import Any
 
 import pandas as pd
+from sbir_etl.utils.data.file_io import file_sha256
 
 
 SBIR_GOV_SOURCE_COLUMNS: tuple[str, ...] = (
@@ -135,11 +136,8 @@ def _row_sha256(values: list[str | None]) -> str:
 
 
 def sha256_file(path: Path) -> str:
-    digest = hashlib.sha256()
-    with path.open("rb") as file:
-        for chunk in iter(lambda: file.read(1024 * 1024), b""):
-            digest.update(chunk)
-    return digest.hexdigest()
+    """Return the SHA-256 hex digest of ``path``."""
+    return file_sha256(path)
 
 
 def ordered_columns_sha256(columns: tuple[str, ...] | list[str]) -> str:

@@ -33,6 +33,12 @@ version.
   to `strasse gmbh` instead of `straße gmbh`. No company name in the current
   award data is affected: `.lower()` and `.casefold()` agree on all 34,459
   distinct values.
+- The 14 library digest functions now delegate to the shared SHA-256 helpers.
+  Digest values do not change: each migrated function was checked against
+  `hashlib.sha256` over a multi-chunk payload, so frozen manifest SHAs still
+  match. Digests of serialized structures (`_row_sha256`,
+  `ordered_columns_sha256`, `_ordered_columns_sha256`) are a different concern
+  and are left alone.
 
 ### Added
 
@@ -40,6 +46,10 @@ version.
   reach `sbir_etl.identity.company_names`. Person-name and state-name
   normalizers are listed as reviewed exceptions; `scripts/archive/` stays
   unscanned so published numbers keep the normalizer that produced them.
+- `sbir_etl.utils.data.file_io` gains `file_sha256`, `file_sha256_or_none` and
+  `sha256_bytes`. Source-provenance digests were written from scratch in 14
+  library call sites under seven different names, with no shared helper to
+  import.
 
 ## [0.16.0] — 2026-09-15
 

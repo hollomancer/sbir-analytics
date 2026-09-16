@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import hashlib
 import json
 import re
 import threading
@@ -20,6 +19,7 @@ from loguru import logger
 from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_exponential
 
 from sbir_etl.exceptions import APIError
+from sbir_etl.utils.data.file_io import sha256_bytes
 
 NSF_AWARDS_API_BASE = "https://api.nsf.gov/services/v1/awards"
 NSF_AWARDS_API_DOCUMENTATION = "https://resources.research.gov/common/webapi/awardapisearch-v1.htm"
@@ -48,7 +48,8 @@ def normalize_nsf_award_id(value: object) -> str | None:
 
 
 def _sha256(content: bytes) -> str:
-    return hashlib.sha256(content).hexdigest()
+    """Return the SHA-256 hex digest of ``content``."""
+    return sha256_bytes(content)
 
 
 def _clean_text(value: object) -> str | None:

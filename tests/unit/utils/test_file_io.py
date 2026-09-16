@@ -1,5 +1,6 @@
 """Unit tests for file I/O utilities."""
 
+import hashlib
 import json
 import tempfile
 from pathlib import Path
@@ -11,8 +12,11 @@ import pytest
 pytestmark = pytest.mark.fast
 
 from sbir_etl.utils.data.file_io import (
+    file_sha256,
+    file_sha256_or_none,
     read_parquet_or_ndjson,
     save_dataframe_parquet,
+    sha256_bytes,
     write_json,
     write_json_atomic,
     write_ndjson,
@@ -168,3 +172,54 @@ def test_read_parquet_or_ndjson_not_found(temp_dir):
 
     with pytest.raises(FileNotFoundError):
         read_parquet_or_ndjson(parquet_path)
+
+
+class TestSha256Digests:
+    """SHA-256 helpers shared by extractors, releases and study manifests."""
+
+    def test_file_digest_matches_hashlib(self, tmp_path: Path) -> None:
+        payload = b"provenance"
+        target = tmp_path / "source.csv"
+        target.write_bytes(payload)
+
+        assert file_sha256(target) == hashlib.sha256(payload).hexdigest()
+
+    def test_file_digest_is_chunk_size_independent(self, tmp_path: Path) -> None:
+        # The digest of a file larger than one read chunk must equal the digest
+        # of the whole payload, otherwise recorded provenance would change.
+        payload = bytes(range(256)) * 12_000  # ~3 MB, several 1 MiB chunks
+        target = tmp_path / "large.bin"
+        target.write_bytes(payload)
+
+        assert file_sha256(target) == hashlib.sha256(payload).hexdigest()
+
+    def test_file_digest_accepts_a_string_path(self, tmp_path: Path) -> None:
+        target = tmp_path / "source.csv"
+        target.write_bytes(b"abc")
+
+        assert file_sha256(str(target)) == file_sha256(target)
+
+    def test_missing_file_raises(self, tmp_path: Path) -> None:
+        with pytest.raises(FileNotFoundError):
+            file_sha256(tmp_path / "absent.csv")
+
+    def test_optional_digest_returns_none_for_absent_source(self, tmp_path: Path) -> None:
+        assert file_sha256_or_none(None) is None
+        assert file_sha256_or_none(tmp_path / "absent.csv") is None
+        assert file_sha256_or_none(tmp_path) is None  # a directory is not a source file
+
+    def test_optional_digest_matches_file_digest_when_present(self, tmp_path: Path) -> None:
+        target = tmp_path / "source.csv"
+        target.write_bytes(b"abc")
+
+        assert file_sha256_or_none(target) == file_sha256(target)
+
+    def test_bytes_digest_matches_hashlib(self) -> None:
+        assert sha256_bytes(b"abc") == hashlib.sha256(b"abc").hexdigest()
+
+    def test_bytes_and_file_digests_agree_on_the_same_payload(self, tmp_path: Path) -> None:
+        payload = b"the same bytes"
+        target = tmp_path / "source.bin"
+        target.write_bytes(payload)
+
+        assert sha256_bytes(payload) == file_sha256(target)
