@@ -20,6 +20,7 @@ from loguru import logger
 # Configuration and extractor imports (re-exported for use by other transition modules)
 from sbir_etl.config.loader import get_config  # noqa: F401
 from sbir_etl.extractors.contract_extractor import ContractExtractor  # noqa: F401
+from sbir_etl.identity import CompanyNameProfile, normalize_company_name
 from sbir_ml.transition.features.vendor_resolver import VendorRecord, VendorResolver  # noqa: F401
 
 
@@ -136,7 +137,8 @@ def now_utc_iso() -> str:
 
 
 def _norm_name(s: str | None) -> str:
-    return (s or "").strip().lower()
+    """Build the company join key via the ``lower-join-v1`` identity profile."""
+    return normalize_company_name(s, profile=CompanyNameProfile.LOWER_JOIN_V1)
 
 
 def _env_float(key: str, default: float) -> float:

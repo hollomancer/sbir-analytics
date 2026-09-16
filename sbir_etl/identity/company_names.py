@@ -48,6 +48,11 @@ class CompanyNameProfile(StrEnum):
     SEC_EDGAR_TRAILING_V1 = "sec-edgar-trailing-v1"
     NOTICE_KEY_V1 = "notice-key-v1"
     PHASE3_RANKING_V1 = "phase3-ranking-v1"
+    CMF_V1 = "cmf-v1"
+    USPTO_ASSIGNEE_V1 = "uspto-assignee-v1"
+    BENCHMARK_FIRM_KEY_V1 = "benchmark-firm-key-v1"
+    LOWER_JOIN_V1 = "lower-join-v1"
+    PATENT_ASSIGNEE_V1 = "patent-assignee-v1"
 
 
 class CompanyNameMetric(StrEnum):
@@ -184,6 +189,38 @@ _TRAILING_DESIGNATORS = frozenset(
         "pllc",
     }
 )
+
+# Consortium (CMF) registry vocabulary. Narrower than SUFFIX_TOKENS: it keeps
+# "the", "limited", "lp", "llp" and "partnership" as name tokens, so
+# "Wilson Eagle LP" and "Wilson Eagle" do not collapse to one facility.
+_CMF_SUFFIX_TOKENS_V1: frozenset[str] = frozenset(
+    {"inc", "incorporated", "llc", "corp", "corporation", "co", "company", "ltd"}
+)
+
+# USPTO assignee policy drops "&" instead of expanding it to " AND ",
+# so it cannot share vendor-crosswalk-v1.
+_USPTO_ASSIGNEE_PUNCTUATION_V1 = re.compile(r"[,/&\.]+")
+
+# Phase III benchmark firm keys: these comparisons treat generic technology
+# words as noise, so the profile strips them alongside legal designators.
+_BENCHMARK_FIRM_SUFFIX_TOKENS_V1 = (
+    "INC",
+    "LLC",
+    "CORP",
+    "CORPORATION",
+    "CO",
+    "COMPANY",
+    "LTD",
+    "LP",
+    "LLP",
+    "THE",
+    "INCORPORATED",
+    "TECHNOLOGIES",
+    "TECHNOLOGY",
+    "TECH",
+    "SYSTEMS",
+)
+_BENCHMARK_FIRM_SUFFIX_V1 = re.compile(r"\b(" + "|".join(_BENCHMARK_FIRM_SUFFIX_TOKENS_V1) + r")\b")
 
 _PRESS_WIRE_TRAILING_DESIGNATOR_V1 = re.compile(
     r"(?:,\s*|\s+)(?:incorporated|incorporation|inc|corp|corporation|llc|llp|lp|ltd|limited"
@@ -341,6 +378,23 @@ def normalize_company_name(
     if profile is CompanyNameProfile.PHASE3_RANKING_V1:
         text = _PHASE3_RANKING_SUFFIX.sub(" ", text.upper())
         return " ".join(re.sub(r"[^A-Z0-9 ]", " ", text).split())
+    if profile is CompanyNameProfile.CMF_V1:
+        text = re.sub(r"[^a-z0-9 ]+", " ", text.lower())
+        return " ".join(
+            token for token in text.split() if token and token not in _CMF_SUFFIX_TOKENS_V1
+        )
+    if profile is CompanyNameProfile.USPTO_ASSIGNEE_V1:
+        text = " ".join(text.strip().split())
+        return _USPTO_ASSIGNEE_PUNCTUATION_V1.sub(" ", text).strip()
+    if profile is CompanyNameProfile.BENCHMARK_FIRM_KEY_V1:
+        text = re.sub(r"[^A-Z0-9 ]", " ", text.upper())
+        return " ".join(_BENCHMARK_FIRM_SUFFIX_V1.sub(" ", text).split())
+    if profile is CompanyNameProfile.LOWER_JOIN_V1:
+        return " ".join(text.strip().casefold().split())
+    if profile is CompanyNameProfile.PATENT_ASSIGNEE_V1:
+        text = " ".join(text.strip().split())
+        text = text.replace(",", " ").replace(".", " ").replace("/", " ").replace("&", " AND ")
+        return " ".join(text.split())
     raise ValueError(f"unsupported company-name profile: {profile}")
 
 

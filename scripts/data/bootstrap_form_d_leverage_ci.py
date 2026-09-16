@@ -60,6 +60,7 @@ from typing import Any
 
 import numpy as np
 
+from sbir_etl.identity import CompanyNameProfile, normalize_company_name
 from sbir_etl.enrichers.sec_edgar.form_d_scoring import (
     FORM_D_TIER_RULE_VERSION,
     require_form_d_tier_rule,
@@ -87,7 +88,8 @@ EXCLUDED_INDUSTRY_GROUPS = frozenset(
 
 
 def _norm_name(s: str | None) -> str:
-    return (s or "").strip().upper()
+    """Build the Form D join key via the ``form-d-join-v1`` identity profile."""
+    return normalize_company_name(s, profile=CompanyNameProfile.FORM_D_JOIN_V1)
 
 
 def _parse_amount(s: str | None) -> float | None:

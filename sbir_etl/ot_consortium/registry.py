@@ -12,7 +12,6 @@ config fallback → ``pd.read_csv`` → graceful degradation to an empty registr
 
 from __future__ import annotations
 
-import re
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -20,11 +19,9 @@ from typing import Any
 import pandas as pd
 from loguru import logger
 
-DEFAULT_REGISTRY_PATH = "data/reference/cmf_registry.csv"
+from sbir_etl.identity import CompanyNameProfile, normalize_company_name
 
-# Business-suffix noise stripped before comparing names. Kept deliberately small;
-# the registry match is a coarse rollup-vendor screen, not entity resolution.
-_SUFFIX_TOKENS = {"inc", "incorporated", "llc", "corp", "corporation", "co", "company", "ltd"}
+DEFAULT_REGISTRY_PATH = "data/reference/cmf_registry.csv"
 
 
 def normalize_cmf_name(name: str | None) -> str:
@@ -32,12 +29,10 @@ def normalize_cmf_name(name: str | None) -> str:
 
     Uppercase-insensitive, punctuation stripped, whitespace collapsed, and common
     business suffixes dropped so "SOSSEC, Inc." and "SOSSEC Inc" compare equal.
+    Behavior lives in the ``cmf-v1`` identity profile; this wrapper keeps the
+    call sites in this module unchanged.
     """
-    if not name:
-        return ""
-    n = re.sub(r"[^a-z0-9 ]+", " ", str(name).lower())
-    tokens = [t for t in n.split() if t and t not in _SUFFIX_TOKENS]
-    return " ".join(tokens)
+    return normalize_company_name(name, profile=CompanyNameProfile.CMF_V1)
 
 
 def _split_list(value: Any) -> list[str]:

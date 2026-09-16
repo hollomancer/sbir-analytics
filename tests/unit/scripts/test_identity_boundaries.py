@@ -107,3 +107,65 @@ def test_duplicate_exact_award_resolver_is_rejected(tmp_path: Path) -> None:
 
 def test_current_repository_obeys_identity_boundaries() -> None:
     assert boundaries.scan_repository() == []
+
+
+def test_local_company_name_normalizer_is_rejected(tmp_path: Path) -> None:
+    path = _write(
+        tmp_path,
+        "scripts/data/example.py",
+        "def normalize_company_name(value):\n    return value.strip().lower()\n",
+    )
+
+    violations = boundaries.scan_file(path, repository_root=tmp_path)
+
+    assert len(violations) == 1
+    assert "normalize_company_name" in violations[0].message
+
+
+def test_normalizer_that_delegates_to_a_named_profile_is_allowed(tmp_path: Path) -> None:
+    path = _write(
+        tmp_path,
+        "scripts/data/example.py",
+        "from sbir_etl.identity import CompanyNameProfile, normalize_company_name\n"
+        "def _norm_name(value):\n"
+        "    return normalize_company_name(value, profile=CompanyNameProfile.LOWER_JOIN_V1)\n",
+    )
+
+    assert boundaries.scan_file(path, repository_root=tmp_path) == []
+
+
+def test_normalizer_that_delegates_to_a_sibling_wrapper_is_allowed(tmp_path: Path) -> None:
+    # ``uspto_models`` and ``text_normalization`` route through a module-level
+    # wrapper; the wrapper itself is what must reach the primitive.
+    path = _write(
+        tmp_path,
+        "sbir_etl/example.py",
+        "def normalize_recipient_name(value):\n    return normalize_name(value)\n",
+    )
+
+    assert boundaries.scan_file(path, repository_root=tmp_path) == []
+
+
+def test_reviewed_non_company_normalizer_is_allowed(tmp_path: Path) -> None:
+    path = _write(
+        tmp_path,
+        "sbir_etl/transformers/fiscal/refresh_state_rates.py",
+        "def _normalize_state_name(raw):\n    return raw.strip().upper()\n",
+    )
+
+    assert boundaries.scan_file(path, repository_root=tmp_path) == []
+
+
+def test_archived_normalizer_is_not_scanned(tmp_path: Path) -> None:
+    # Archived scripts are frozen provenance for published numbers, so they
+    # keep the normalizer their results were produced with. The path is built
+    # from parts so this file holds no literal reference to the archive
+    # directory, which check_removed_src_references.py forbids.
+    relative = str(Path("scripts") / "archive" / "data" / "example.py")
+    path = _write(
+        tmp_path,
+        relative,
+        "def _norm_name(value):\n    return value.strip().upper()\n",
+    )
+
+    assert boundaries.scan_file(path, repository_root=tmp_path) == []

@@ -23,6 +23,9 @@ from pathlib import Path
 from stat import S_IMODE
 from typing import Any
 
+from sbir_etl.identity import CompanyNameProfile
+from sbir_etl.identity import normalize_company_name as _normalize_company_name
+
 
 DEFAULT_INPUT = Path("data/sbir_ma_events.jsonl")
 DEFAULT_CSV_OUTPUT = Path("reports/sbir_ma_signal_counts_by_fy.csv")
@@ -90,9 +93,9 @@ def fiscal_year(value: date) -> int:
 
 
 def normalize_company_name(value: str) -> str:
-    """Normalize only leading/trailing whitespace and letter case."""
+    """Build the company join key via the ``lower-join-v1`` identity profile."""
 
-    return value.strip().casefold()
+    return _normalize_company_name(value, profile=CompanyNameProfile.LOWER_JOIN_V1)
 
 
 def _reject_duplicate_keys(pairs: list[tuple[str, Any]]) -> dict[str, Any]:

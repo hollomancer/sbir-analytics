@@ -10,6 +10,37 @@ version.
 
 ## [Unreleased]
 
+### Changed
+
+- Company-name normalization now has one implementation. Eight functions that
+  carried their own rule (`ot_consortium.registry.normalize_cmf_name`,
+  `models.uspto_models._normalize_name`,
+  `transformers.patent_transformer._normalize_name`, and the normalizers in
+  `pull_techport_nasa`, `text_richness_2x2`, `sbir_ma_signal_counts_by_fy`,
+  `bootstrap_form_d_leverage_ci` and `assets/transition/utils`) now call
+  `sbir_etl.identity.normalize_company_name` with a named profile. Five new
+  profiles record the behavior that no existing profile covered: `cmf-v1`,
+  `uspto-assignee-v1`, `benchmark-firm-key-v1`, `lower-join-v1` and
+  `patent-assignee-v1`.
+- Three join keys now collapse interior whitespace runs, which changes 31 of
+  34,459 distinct award company names (0.090%): `bootstrap_form_d_leverage_ci`,
+  `sbir_ma_signal_counts_by_fy` and `assets/transition/utils`. Names such as
+  `"aPeak  Inc."` and `"aPeak Inc."` become one key instead of two. Blank and
+  `None` names now key to `""` rather than `"NONE"` in the TechPort puller.
+- `assets/transition/utils._norm_name` now case-folds rather than lower-cases,
+  because it shares `lower-join-v1` with `sbir_ma_signal_counts_by_fy`, which
+  already case-folded. The two differ only outside ASCII — `"Straße GmbH"` keys
+  to `strasse gmbh` instead of `straße gmbh`. No company name in the current
+  award data is affected: `.lower()` and `.casefold()` agree on all 34,459
+  distinct values.
+
+### Added
+
+- `check_identity_boundaries.py` rejects a company-name normalizer that does not
+  reach `sbir_etl.identity.company_names`. Person-name and state-name
+  normalizers are listed as reviewed exceptions; `scripts/archive/` stays
+  unscanned so published numbers keep the normalizer that produced them.
+
 ## [0.16.0] — 2026-09-15
 
 ### Breaking
