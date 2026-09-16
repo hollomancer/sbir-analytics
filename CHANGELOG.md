@@ -39,6 +39,19 @@ version.
   match. Digests of serialized structures (`_row_sha256`,
   `ordered_columns_sha256`, `_ordered_columns_sha256`) are a different concern
   and are left alone.
+- `scripts/data/build_nano_cohort.py` now imports the signal loaders, classifier
+  and enrichment step from `sbir_etl.utils.transition_signals` instead of
+  holding its own copies of them. The script had redefined seven of that
+  module's nine functions and never imported it, and four copies had drifted.
+  Most consequential: the script's `enrich_cohort_with_signals` set
+  `sig_ma_detected` from a bare name match, while the library also requires at
+  least one recorded signal.
+- The two `sig_ma_detected` definitions produce the same output on the current
+  data. Every one of the 4,303 firms in `enriched_sbir_ma_events.jsonl` has
+  `ma_signal_count >= 1`, so no row changes: a 4,803-row comparison (all
+  indexed firms plus 500 absent ones) shows no field moving, and
+  `sig_ma_detected` stays at 4,303 positives. The divergence was latent, not
+  realized, and unifying the definition is what keeps it that way.
 
 ### Added
 

@@ -21,7 +21,6 @@ Usage:
 
 import argparse
 import csv
-import json
 import re
 import sys
 from collections import Counter, defaultdict
@@ -33,6 +32,16 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
+from sbir_etl.utils.transition_signals import (
+    INSUFFICIENT_TIME_YEAR,
+    _safe_float,
+    _safe_int,
+    enrich_cohort_with_signals,
+    load_form_d_signals,
+    load_ma_signals,
+    load_phase3_digest,
+)
+
 REPO = Path(__file__).resolve().parents[2]
 DATA = REPO / "data"
 DOCS = REPO / "docs"
@@ -42,7 +51,6 @@ ANALYSIS_DIR.mkdir(parents=True, exist_ok=True)
 sys.path.insert(0, str(REPO))
 from sbir_etl.enrichers.sec_edgar.form_d_scoring import (  # noqa: E402
     FORM_D_TIER_RULE_VERSION,
-    require_form_d_rule_version,
 )
 from sbir_etl.utils.text_normalization import normalize_name  # noqa: E402
 
@@ -223,20 +231,6 @@ CPC_COHORT_ABSENT_REASON = (
 )
 
 
-def _safe_float(v: str) -> float:
-    try:
-        return float(v.replace("$", "").replace(",", "")) if v else 0.0
-    except ValueError:
-        return 0.0
-
-
-def _safe_int(v: str) -> int:
-    try:
-        return int(float(v.replace("$", "").replace(",", ""))) if v else 0
-    except ValueError:
-        return 0
-
-
 def load_phase2_awards(awards_csv: Path) -> list[dict]:
     """Load Phase II SBIR/STTR awards from award_data.csv."""
     rows = []
@@ -358,194 +352,6 @@ def build_cpc_cohort(awards: list[dict]) -> list[dict]:
         r["cpc_subclasses"] = "|".join(sorted(rec["subclasses"]))
         cohort.append(r)
     return cohort
-
-
-def load_phase3_digest(digest_csv: Path) -> dict[str, dict]:
-    """Load fy25_phase3_prospect_digest.csv keyed by UEI."""
-    by_uei: dict[str, dict] = {}
-    if not digest_csv.exists():
-        return by_uei
-    with open(digest_csv, newline="", encoding="utf-8-sig") as f:
-        for row in csv.DictReader(f):
-            uei = row.get("uei", "").strip()
-            if uei:
-                by_uei[uei] = {
-                    "firm_name": row.get("firm_name", ""),
-                    "phase3_awards_n": _safe_int(row.get("phase3_awards_n", "")),
-                    "phase3_total_usd": _safe_float(row.get("phase3_total_usd", "")),
-                    "has_fy_phase3": row.get("has_fy_phase3", "").strip().lower()
-                    in ("true", "1", "yes"),
-                    "fy_contracts_in_fpds": _safe_int(row.get("fy_contracts_in_fpds", "")),
-                    "fy_grants_in_fabs": _safe_int(row.get("fy_grants_in_fabs", "")),
-                }
-    return by_uei
-
-
-def load_ma_signals(jsonl_path: Path) -> dict[str, dict]:
-    """Load M&A signals from enriched_sbir_ma_events.jsonl keyed by company name."""
-    by_name: dict[str, dict] = {}
-    if not jsonl_path.exists():
-        return by_name
-    with open(jsonl_path) as f:
-        for line in f:
-            line = line.strip()
-            if not line:
-                continue
-            try:
-                rec = json.loads(line)
-                name = rec.get("company_name", "").strip().upper()
-                if name:
-                    # Keep highest-signal record per company
-                    existing = by_name.get(name)
-                    sc = rec.get("signal_count", 0)
-                    if existing is None or sc > existing.get("signal_count", 0):
-                        by_name[name] = {
-                            "ma_signal_count": sc,
-                            "ma_confidence": rec.get("confidence", ""),
-                            "ma_event_date": rec.get("event_date", ""),
-                            "ma_acquirer": rec.get("acquirer", ""),
-                        }
-            except json.JSONDecodeError:
-                pass
-    return by_name
-
-
-def load_form_d_signals(jsonl_path: Path) -> dict[str, dict]:
-    """Load versioned Form D record-high matches keyed by company name.
-
-    form_d_high_conf_cohort.jsonl is a pre-filtered file where all records are
-    already high-confidence; fields are denormalized (no match_confidence nesting).
-    """
-    by_name: dict[str, dict] = {}
-    if not jsonl_path.exists():
-        return by_name
-    with open(jsonl_path) as f:
-        for line in f:
-            line = line.strip()
-            if not line:
-                continue
-            try:
-                rec = json.loads(line)
-                name = rec.get("company_name", "").strip().upper()
-                if not name:
-                    continue
-                rule_version = require_form_d_rule_version(
-                    rec.get("form_d_tier_rule_version"),
-                    context=f"Form D cohort record {name!r}",
-                )
-                total_raised = _safe_float(str(rec.get("form_d_total_raised", "") or ""))
-                filing_count = _safe_int(str(rec.get("form_d_filing_count", "") or ""))
-                by_name[name] = {
-                    "form_d_total_raised": total_raised,
-                    "form_d_filing_count": filing_count,
-                    "form_d_latest_date": "",
-                    "form_d_confidence": "high",  # record-level tier, not validation
-                    "form_d_tier_rule_version": rule_version,
-                }
-            except json.JSONDecodeError:
-                pass
-    return by_name
-
-
-# Awards younger than this are censored observations, not transition failures.
-# Dynamic so annual re-observation (dark-majority spec WS4) advances the window.
-INSUFFICIENT_TIME_YEAR = date.today().year - 3
-
-
-def classify_deficiency(row: dict) -> str:
-    """
-    Classify why Phase III transition status is indeterminate.
-
-    Returns one of:
-      NO_FPDS_CODING              firm in USAspending, no Phase III coded contract
-      DATA_GAP_FPDS_NONDOD        non-DoD agency where FPDS P3 coding is sparse (GAO-24-106398)
-      ENTITY_RESOLUTION_FAILURE   UEI absent from SBIR.gov record; cannot link to federal systems
-      FIRM_ACTIVITY_ABSENT        firm not found in prospect digest; no recent federal activity
-      INSUFFICIENT_TIME           award year within the last 3 years (< maturation window)
-      INDETERMINATE               none of the above; cause not derivable from available data
-    """
-    if not row.get("uei"):
-        return "ENTITY_RESOLUTION_FAILURE"
-    if row.get("award_year", 0) >= INSUFFICIENT_TIME_YEAR:
-        return "INSUFFICIENT_TIME"
-    if not row.get("digest_found"):
-        return "FIRM_ACTIVITY_ABSENT"
-    if not row.get("sig_fpds_phase3_coded"):
-        agency = row.get("agency", "")
-        non_dod_agencies = {
-            "National Science Foundation",
-            "Department of Energy",
-            "Department of Agriculture",
-            "Environmental Protection Agency",
-            "Department of Transportation",
-            "National Aeronautics and Space Administration",
-        }
-        if agency in non_dod_agencies:
-            return "DATA_GAP_FPDS_NONDOD"
-        return "NO_FPDS_CODING"
-    return "INDETERMINATE"
-
-
-def enrich_cohort_with_signals(
-    cohort: list[dict],
-    digest: dict[str, dict],
-    ma_signals: dict[str, dict],
-    form_d_signals: dict[str, dict],
-) -> list[dict]:
-    """Attach all transition signal channels and deficiency classification to cohort rows."""
-    enriched = []
-    for row in cohort:
-        r = dict(row)
-        uei = r.get("uei", "")
-        company_upper = r.get("company", "").upper()
-
-        # Channel 1: FPDS-coded Phase III (known undercount — GAO-24-106398)
-        dig = digest.get(uei, {})
-        r["digest_found"] = bool(dig)
-        r["sig_fpds_phase3_coded"] = dig.get("has_fy_phase3", False)
-        r["sig_fpds_phase3_awards_n"] = dig.get("phase3_awards_n", 0)
-        r["sig_fpds_phase3_usd"] = dig.get("phase3_total_usd", 0.0)
-
-        # Channel 2: Any subsequent federal obligation (broader — includes uncoded P3)
-        r["sig_any_federal_obligation"] = (
-            dig.get("fy_contracts_in_fpds", 0) > 0 or dig.get("fy_grants_in_fabs", 0) > 0
-        )
-
-        # Channel 3: M&A signal (8-K Items 1.01/2.01 via SEC EDGAR)
-        # Note: includes low/medium/high confidence; split into tiers for reporting
-        ma = ma_signals.get(company_upper, {})
-        r["sig_ma_detected"] = bool(ma)
-        r["sig_ma_confidence"] = ma.get("ma_confidence", "")
-        r["sig_ma_high_conf"] = ma.get("ma_confidence", "") == "high"
-        r["sig_ma_medium_high"] = ma.get("ma_confidence", "") in ("medium", "high")
-        r["sig_ma_event_date"] = ma.get("ma_event_date", "")
-        r["sig_ma_acquirer"] = ma.get("ma_acquirer", "")
-
-        # Channel 4: Form D candidate-offering signal, not validated identity or P3 evidence.
-        fd = form_d_signals.get(company_upper, {})
-        r["sig_form_d_detected"] = bool(fd)
-        r["sig_form_d_total_raised"] = fd.get("form_d_total_raised", 0.0)
-        r["sig_form_d_latest_date"] = fd.get("form_d_latest_date", "")
-        r["sig_form_d_tier_rule_version"] = fd.get("form_d_tier_rule_version", "")
-
-        # Union signal (DO NOT report as "transition rate" — see methodology doc)
-        r["sig_any_positive"] = any(
-            [
-                r["sig_fpds_phase3_coded"],
-                r["sig_any_federal_obligation"],
-                r["sig_ma_detected"],
-                r["sig_form_d_detected"],
-            ]
-        )
-
-        # Deficiency classification (only for rows with no clear positive signal)
-        if not r["sig_fpds_phase3_coded"]:
-            r["deficiency_class"] = classify_deficiency(r)
-        else:
-            r["deficiency_class"] = ""
-
-        enriched.append(r)
-    return enriched
 
 
 def external_reference_reconciliation(cohort: list[dict], ext_ref_agencies: set[str]) -> dict:
@@ -1221,7 +1027,7 @@ Each channel has different coverage gaps and none is authoritative.
 |---|---|---|---|
 | FPDS-coded Phase III contract | {kw_sigs["sig_fpds_phase3_coded"]} | {100 * kw_sigs["sig_fpds_phase3_coded"] / max(1, len(kw_enriched)):.1f}% | Known undercount; DoD ~67% of coded P3 in this cohort (GAO-24-106398) |
 | Any subsequent federal obligation | {kw_sigs["sig_any_federal_obligation"]} | {100 * kw_sigs["sig_any_federal_obligation"] / max(1, len(kw_enriched)):.1f}% | Broad; includes non-P3 task orders; per-firm not per-award |
-| M&A signal — all tiers | {kw_sigs["sig_ma_detected"]} | {100 * kw_sigs["sig_ma_detected"] / max(1, len(kw_enriched)):.1f}% | Exact name match; inflated by low-conf matches (~49% of total) |
+| M&A signal — all tiers | {kw_sigs["sig_ma_detected"]} | {100 * kw_sigs["sig_ma_detected"] / max(1, len(kw_enriched)):.1f}% | Requires at least one recorded signal; still includes low-conf matches (~49% of total) |
 | M&A signal — medium+high only | {kw_sigs["sig_ma_medium_high"]} | {100 * kw_sigs["sig_ma_medium_high"] / max(1, len(kw_enriched)):.1f}% | More reliable; may still reflect prior EDGAR scan errors |
 | M&A signal — high conf only | {kw_sigs["sig_ma_high_conf"]} | {100 * kw_sigs["sig_ma_high_conf"] / max(1, len(kw_enriched)):.1f}% | Narrowest; recommend using this tier for any cited figure |
 | Form D (v2 record-high) | {kw_sigs["sig_form_d_detected"]} | {100 * kw_sigs["sig_form_d_detected"] / max(1, len(kw_enriched)):.1f}% | Candidate offering signal; identity and aggregation unvalidated |
