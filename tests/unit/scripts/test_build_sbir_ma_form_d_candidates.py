@@ -253,3 +253,80 @@ def test_two_filers_in_one_accession_are_both_counted_as_ambiguity(
     assert rows[0]["name_key_ambiguous"] is True
     assert rows[0]["form_d_cik_count"] == 2
     assert rows[0]["form_d_filer_name_count"] == 2
+
+
+def test_a_cik_claimed_by_the_exact_pass_still_counts_as_ambiguity(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    # The SBIR firm matches CIK 111 exactly and CIK 222 only after legal-form
+    # stripping. The widened key therefore reaches two registrants, and the
+    # widened row must say so — counting only within the widened pass would
+    # miss the CIK the exact pass claimed and report a clean 1:1 candidate.
+    rows = _run(
+        monkeypatch,
+        tmp_path,
+        ["Beam Technologies, Inc."],
+        [("BEAM TECHNOLOGIES, INC.", "111", "a-1"), ("BEAM TECHNOLOGIES LLC", "222", "a-2")],
+        widen=True,
+    )
+
+    widened = [
+        r for r in rows if r["match_rationale"] == "legal_form_stripped_recipient_v1_name_key"
+    ]
+    assert len(widened) == 1
+    assert widened[0]["form_d_cik_count"] == 2
+    assert widened[0]["name_key_ambiguous"] is True
+
+
+def test_distinct_firms_do_not_meet_under_the_widened_key(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    # A widening rule that can produce a match must have inputs where it must
+    # not. These two share a first token and a legal form, and are different
+    # firms; nothing may be emitted for either.
+    rows = _run(
+        monkeypatch,
+        tmp_path,
+        ["Acme Robotics, Inc."],
+        [("ACME DIAGNOSTICS LLC", "111", "a-1"), ("ACME HOLDINGS", "222", "a-2")],
+        widen=True,
+    )
+
+    assert rows == []
+
+
+def test_punctuation_and_accent_differences_are_not_kept_apart(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    # recipient-v1 is broader than a legal-form strip: it also maps punctuation
+    # to spaces and folds accents. That is a real relaxation, so it is pinned
+    # here rather than left implicit in the profile choice.
+    rows = _run(
+        monkeypatch,
+        tmp_path,
+        ["Beta-Tech Systems", "Zoë Analytics"],
+        [("BETA TECH SYSTEMS", "111", "a-1"), ("ZOE ANALYTICS", "222", "a-2")],
+        widen=True,
+    )
+
+    assert len(rows) == 2
+    assert {r["match_rationale"] for r in rows} == {"legal_form_stripped_recipient_v1_name_key"}
+
+
+def test_a_short_key_reaching_two_registrants_is_flagged(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    # Short keys are where a spurious 1:1 match is most likely and least
+    # visible, so the length is recorded and the cardinality must be right.
+    rows = _run(
+        monkeypatch,
+        tmp_path,
+        ["LF, INC."],
+        [("LF LLC", "111", "a-1"), ("LF CORP", "222", "a-2")],
+        widen=True,
+    )
+
+    assert {r["name_key"] for r in rows} == {"lf"}
+    assert all(r["name_key_length"] == 2 for r in rows)
+    assert all(r["name_key_ambiguous"] is True for r in rows)
+    assert all(r["form_d_cik_count"] == 2 for r in rows)

@@ -19,8 +19,17 @@ Innovations, LLC"`` and ``"LUNA INNOVATIONS"`` do not meet.
 
 ``recipient-v1`` (``--include-legal-form-variants``) drops legal designators,
 which is what most SBIR-to-EDGAR name differences are. It is not a pure
-legal-form strip: it also lower-cases, folds diacritics and removes punctuation,
-so it is a broader key than the exact one in more than one respect. Measured
+legal-form strip. It is ``matching-v1`` with suffix removal rather than suffix
+normalization, and both map every punctuation mark to a space and fold accents
+through NFKD. So the widened pass also merges ``"Beta-Tech"`` with ``"Beta
+Tech"``, ``"Smith & Wesson Labs"`` with ``"Smith Wesson Labs"`` and ``"Zoë
+Analytics"`` with ``"Zoe Analytics"``.
+
+The ampersand cases deserve their own mention, because some of them merge on a
+name that looks truncated at the source rather than on any legal-form
+equivalence: ``"MATERIALS & TECHNOLOGIES CORP"`` meets ``"Materials
+Technologies Corporation"``. That is a judgment call, and it is being made
+here, not deferred. Measured
 against the full EDGAR Form D filer universe it raises the share of SBIR firms
 finding a filer from 5.46% to 12.28% — 2,349 more firms — at the cost of 56
 keys that reach more than one CIK, versus 5 under the exact key.
@@ -220,6 +229,16 @@ def main() -> int:
     for key, widened_key, filing in _form_d_entries(
         args.form_d_index_dir, widen=args.include_legal_form_variants
     ):
+        # How many registrants a widened key reaches is a property of the key
+        # over the whole index, not of whichever pass claims a given filing. A
+        # CIK taken by the exact pass still means the key reaches two
+        # registrants, so the census runs before the exact-match `continue` and
+        # before the output dedupe. Filings whose widened key matches no SBIR
+        # firm are excluded: that key is never emitted, so it cannot mislead.
+        if args.include_legal_form_variants and widened_key in widened_sbir:
+            ciks_by_widened_key.setdefault(widened_key, set()).add(str(filing["cik"]))
+            filers_by_widened_key.setdefault(widened_key, set()).add(str(filing["filer_name"]))
+
         source = sbir.get(key)
         if source is not None:
             dedupe_key = (key, str(filing["accession_number"]))
@@ -241,20 +260,13 @@ def main() -> int:
     # EDGAR writes one line per filer, so a submission can match exactly on one
     # filer name and only by legal form on another; the exact candidate wins for
     # the whole accession. The exact line may arrive after the widened one, so
-    # this cannot be decided while streaming.
+    # this cannot be decided while streaming. The census above is deliberately
+    # not recomputed from what survives here.
     widened_lines = [
         (widened_key, filing)
         for widened_key, filing in widened_lines
         if str(filing["accession_number"]) not in exact_accessions
     ]
-
-    # Ambiguity is counted over every surviving line, before the output dedupe.
-    # Two filer lines in one accession can carry different CIKs under the same
-    # widened key; deduping first would drop the second CIK and report the key
-    # as unambiguous when it is not.
-    for widened_key, filing in widened_lines:
-        ciks_by_widened_key.setdefault(widened_key, set()).add(str(filing["cik"]))
-        filers_by_widened_key.setdefault(widened_key, set()).add(str(filing["filer_name"]))
 
     for widened_key, filing in widened_lines:
         dedupe_key = (widened_key, str(filing["accession_number"]))
@@ -278,6 +290,7 @@ def main() -> int:
             record["name_key_ambiguous"] = len(ciks) > 1
             record["form_d_cik_count"] = len(ciks)
             record["form_d_filer_name_count"] = len(filers)
+            record["name_key_length"] = len(widened_key)
             record["sbir_exact_key_count"] = len(widened_source["exact_keys"])  # type: ignore[arg-type]
             record["sbir_exact_keys"] = sorted(widened_source["exact_keys"])  # type: ignore[arg-type]
             if len(ciks) > 1 or len(widened_source["exact_keys"]) > 1:  # type: ignore[arg-type]
