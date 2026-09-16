@@ -141,7 +141,12 @@ def validate_registry_bundle(path: Path = CONTRACT_PATH) -> int:
     """Validate the contract bundle and return the number of registered items."""
 
     bundle = load_contract_bundle(path)
-    return len(bundle.comparators) + len(bundle.outcomes) + len(bundle.attribution) + len(bundle.ledger)
+    return (
+        len(bundle.comparators)
+        + len(bundle.outcomes)
+        + len(bundle.attribution)
+        + len(bundle.ledger)
+    )
 
 
 def main() -> int:
