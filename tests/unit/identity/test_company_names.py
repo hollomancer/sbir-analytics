@@ -49,6 +49,16 @@ from sbir_etl.identity import (
         (CompanyNameProfile.SEC_EDGAR_TRAILING_V1, "QUALCOMM INC/DE", "QUALCOMM INC"),
         (CompanyNameProfile.NOTICE_KEY_V1, "Acme Photonics, Inc.", "ACMEPHOTONICS"),
         (CompanyNameProfile.PHASE3_RANKING_V1, "Acme CorpTech LLC", "ACME"),
+        (CompanyNameProfile.CMF_V1, "SOSSEC, Inc.", "sossec"),
+        (CompanyNameProfile.CMF_V1, "Wilson Eagle LP", "wilson eagle lp"),
+        (CompanyNameProfile.USPTO_ASSIGNEE_V1, "BUSEK CO., INC.", "BUSEK CO  INC"),
+        (CompanyNameProfile.USPTO_ASSIGNEE_V1, "Karagozian & Case", "Karagozian   Case"),
+        (CompanyNameProfile.BENCHMARK_FIRM_KEY_V1, "Acme Technologies, Inc.", "ACME"),
+        (CompanyNameProfile.BENCHMARK_FIRM_KEY_V1, "Toyon Research Corp", "TOYON RESEARCH"),
+        (CompanyNameProfile.LOWER_JOIN_V1, "  Acme   Corp ", "acme corp"),
+        (CompanyNameProfile.LOWER_JOIN_V1, "APEAK  Inc.", "apeak inc."),
+        (CompanyNameProfile.PATENT_ASSIGNEE_V1, "BUSEK CO., INC.", "BUSEK CO INC"),
+        (CompanyNameProfile.PATENT_ASSIGNEE_V1, "Karagozian & Case", "Karagozian AND Case"),
     ],
 )
 def test_versioned_profiles_preserve_declared_outputs(
@@ -384,3 +394,65 @@ def test_a_must_not_match_pair_outscores_a_must_match_pair() -> None:
         f"expected the interleaving to still hold: false positive {false_positive} "
         f"should be >= true positive {true_positive}"
     )
+
+
+def test_cmf_profile_keeps_partnership_tokens_that_distinguish_facilities() -> None:
+    # cmf-v1 deliberately keeps "lp", "limited" and "partnership" so two
+    # distinct consortium facilities do not collapse onto one registry key.
+    assert normalize_company_name(
+        "Wilson Eagle LP", profile=CompanyNameProfile.CMF_V1
+    ) != normalize_company_name("Wilson Eagle", profile=CompanyNameProfile.CMF_V1)
+
+
+def test_uspto_assignee_profile_drops_ampersand_rather_than_expanding_it() -> None:
+    # The distinction from patent-assignee-v1 and vendor-crosswalk-v1 is the
+    # ampersand policy, so pin both sides of it.
+    assert normalize_company_name(
+        "A & B", profile=CompanyNameProfile.USPTO_ASSIGNEE_V1
+    ).split() == ["A", "B"]
+    assert normalize_company_name(
+        "A & B", profile=CompanyNameProfile.PATENT_ASSIGNEE_V1
+    ).split() == ["A", "AND", "B"]
+
+
+@pytest.mark.parametrize(
+    "profile",
+    [
+        CompanyNameProfile.CMF_V1,
+        CompanyNameProfile.USPTO_ASSIGNEE_V1,
+        CompanyNameProfile.BENCHMARK_FIRM_KEY_V1,
+        CompanyNameProfile.LOWER_JOIN_V1,
+        CompanyNameProfile.PATENT_ASSIGNEE_V1,
+    ],
+)
+def test_new_profiles_return_empty_string_for_blank_input(profile: CompanyNameProfile) -> None:
+    # A blank name must not become a join key such as "NONE" that can match
+    # another blank record.
+    for blank in (None, "", "   ", float("nan")):
+        assert normalize_company_name(blank, profile=profile) == ""
+
+
+@pytest.mark.parametrize(
+    "profile",
+    [
+        CompanyNameProfile.BENCHMARK_FIRM_KEY_V1,
+        CompanyNameProfile.LOWER_JOIN_V1,
+        CompanyNameProfile.PATENT_ASSIGNEE_V1,
+        CompanyNameProfile.FORM_D_JOIN_V1,
+    ],
+)
+def test_join_key_profiles_collapse_internal_whitespace_runs(
+    profile: CompanyNameProfile,
+) -> None:
+    # Award data contains names with doubled interior spaces; a join key must
+    # not treat "aPeak  Inc." and "aPeak Inc." as two firms.
+    assert normalize_company_name("aPeak  Inc.", profile=profile) == normalize_company_name(
+        "aPeak Inc.", profile=profile
+    )
+
+
+def test_every_profile_is_dispatched() -> None:
+    # normalize_company_name raises for an unhandled profile; this keeps a new
+    # enum member from silently shipping without an implementation.
+    for profile in CompanyNameProfile:
+        normalize_company_name("Acme Inc", profile=profile)

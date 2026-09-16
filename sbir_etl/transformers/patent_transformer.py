@@ -32,6 +32,7 @@ from typing import Any
 
 from loguru import logger
 
+from sbir_etl.identity import CompanyNameProfile, normalize_company_name
 from sbir_etl.identity.geography import USJurisdictionProfile, normalize_us_jurisdiction
 from sbir_etl.utils.identifiers import normalize_uspto_identifier
 
@@ -114,13 +115,13 @@ class PatentAssignmentTransformer:
 
     @staticmethod
     def _normalize_name(name: Any | None) -> str | None:
+        """Normalize an assignee or assignor name, preserving ``None``.
+
+        Behavior lives in the ``patent-assignee-v1`` identity profile.
+        """
         if name is None:
             return None
-        s = " ".join(str(name).strip().split())
-        s = s.replace(",", " ").replace(".", " ").replace("/", " ").replace("&", " AND ")
-        # Collapse multiple spaces to single space
-        s = " ".join(s.split())
-        return s.strip()
+        return normalize_company_name(name, profile=CompanyNameProfile.PATENT_ASSIGNEE_V1)
 
     @staticmethod
     def _parse_address(

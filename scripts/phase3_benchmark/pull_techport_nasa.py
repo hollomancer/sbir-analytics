@@ -21,7 +21,6 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
-import re
 import time
 import urllib.parse
 import urllib.request
@@ -29,32 +28,21 @@ from collections.abc import Callable
 from datetime import UTC, datetime
 from pathlib import Path
 
+from sbir_etl.identity import CompanyNameProfile, normalize_company_name
+
 API = "https://techport.nasa.gov/api"
 Fetch = Callable[[str], bytes | None]
-_SUFFIXES = (
-    "INC",
-    "LLC",
-    "CORP",
-    "CORPORATION",
-    "CO",
-    "COMPANY",
-    "LTD",
-    "LP",
-    "LLP",
-    "THE",
-    "INCORPORATED",
-    "TECHNOLOGIES",
-    "TECHNOLOGY",
-    "TECH",
-    "SYSTEMS",
-)
 _NON_FIRM = ("CENTER", "UNIVERS", "INSTITUTE", "LABORATORY", "NASA")
 
 
 def normalize_name(value: object) -> str:
-    text = re.sub(r"[^A-Z0-9 ]", " ", str(value).upper())
-    text = re.sub(r"\b(" + "|".join(_SUFFIXES) + r")\b", " ", text)
-    return re.sub(r"\s+", " ", text).strip()
+    """Normalize a TechPort organization name to a comparison key.
+
+    Behavior lives in the ``benchmark-firm-key-v1`` identity profile, which
+    also strips generic technology tokens ("TECHNOLOGIES", "SYSTEMS") in
+    addition to legal designators.
+    """
+    return normalize_company_name(value, profile=CompanyNameProfile.BENCHMARK_FIRM_KEY_V1)
 
 
 def _organization(org: object, role: str) -> dict[str, object] | None:
