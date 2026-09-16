@@ -27,6 +27,12 @@ version.
   `sbir_ma_signal_counts_by_fy` and `assets/transition/utils`. Names such as
   `"aPeak  Inc."` and `"aPeak Inc."` become one key instead of two. Blank and
   `None` names now key to `""` rather than `"NONE"` in the TechPort puller.
+- `assets/transition/utils._norm_name` now case-folds rather than lower-cases,
+  because it shares `lower-join-v1` with `sbir_ma_signal_counts_by_fy`, which
+  already case-folded. The two differ only outside ASCII — `"Straße GmbH"` keys
+  to `strasse gmbh` instead of `straße gmbh`. No company name in the current
+  award data is affected: `.lower()` and `.casefold()` agree on all 34,459
+  distinct values.
 
 ### Added
 
