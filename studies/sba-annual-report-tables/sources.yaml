@@ -437,6 +437,52 @@ definition_decisions:
     evidence: 0 of 20836 FY20-FY22 export rows have award amount <= 0 or missing
     revisit_if: panel extends beyond FY2020-FY2022
 
+  published_count_basis:
+    status: recorded_2026_09_17
+    discovered_by: extending the structural check to earlier report-years
+    record: studies/sba-annual-report-tables/extension-to-eight-years.md
+    finding: >-
+      The reports state the basis of their award-count columns only from FY2016 onward.
+      FY2016 through FY2022 each carry the sentence "The number of awards are only for
+      new awards during FYxx. The dollars obligated includes funding for both new and
+      prior year awards." FY2013, FY2014 and FY2015 carry no such statement; their state
+      tables are introduced only as showing "the total dollar amount and number of SBIR
+      and STTR Phase I and Phase II awards", while their narratives say "new". The count
+      basis of the pre-FY2016 tables is therefore unstated, not merely undocumented by
+      this study.
+    evidence: >-
+      In FY2014 the state table exceeds the report's own narrative count by 2.47%, and the
+      divergence is confined to a single cell - SBIR Phase II at +7.60% against +0.38% for
+      SBIR Phase I, -0.20% for STTR Phase I and +3.29% for STTR Phase II. Three of four
+      cells agree to better than 0.4%, which rules out a whole-table offset or a
+      transcription fault. Phase II is where a new-versus-continuing distinction would
+      show, since the same report names 41.2 million dollars of prior-year Phase I
+      obligations against 596.7 million for prior-year Phase II, 14.5 times as much.
+      FY2013 diverges the other way, its table sitting 1.22% below its narrative, which is
+      what an unsettled rather than systematic basis looks like.
+    eliminated: >-
+      A localised database gap (no agency shows an anomalous FY2014 dip); second or
+      sequential Phase II awards (only 15 FY2014 SBIR Phase II awards carry a tracking
+      number that already held a Phase II, against 23 in FY2015 and 22 in FY2016); a
+      total-obligations basis for the whole table (the table's dollars match neither the
+      narrative's new-award nor its total figure); and a restatement in a later volume
+      (FY2015 through FY2017 contain none).
+    epistemic_status: >-
+      Best-supported explanation, not established. What is established is the confinement
+      to SBIR Phase II and the absence of a basis statement before FY2016. Settling the
+      cause would need SBA's table-construction methodology for those years, which the
+      supplied corpus does not contain.
+    consequence: >-
+      Report-years before FY2016 must not enter a tolerance envelope for award counts. A
+      comparison target whose counting basis is unstated cannot size a band, and for FY2014
+      the one divergent cell is consistent with a basis the later reports explicitly
+      exclude. The usable panel is FY2016 onward.
+    panel_effect: >-
+      Six report-years are usable on a stated basis and extractable now - FY2016, FY2017,
+      FY2018, FY2020, FY2021, FY2022 - doubling the three currently in the study. FY2019
+      states the basis but prints its table as an image, so OCR would make seven. FY2013
+      and FY2014 are extractable but excluded on basis grounds; FY2015 is excluded on both
+      basis and extraction grounds.
   state_attribution:
     status: closed
     decision: tolerance_not_rule           # award-time address is unrecoverable from this export

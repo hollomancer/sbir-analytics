@@ -297,3 +297,61 @@ sharper: its state table's count basis is unstated and its one divergent cell is
 basis the later reports explicitly rule out. A comparison target on a different basis cannot size a
 band. This applies to FY2013 equally - both years predate the convention - so the envelope should
 rest on FY2016 onward, where the basis is stated.
+
+## Does it make sense to extend? Yes — to six years, not eight
+
+The reach question and the basis question give different answers, and the basis question governs.
+
+**Eight report-years are extractable. Six are usable.** FY2013, FY2014 and FY2015 predate the
+count-basis statement, so they cannot enter a tolerance envelope regardless of how cleanly they
+parse. The usable panel is the contiguous run that states its basis:
+
+| Report year | Basis stated | Table extractable | In the panel |
+| --- | :---: | :---: | :---: |
+| FY2013, FY2014 | no | yes | **no** — basis grounds |
+| FY2015 | no | no (image) | **no** — both grounds |
+| FY2016, FY2017, FY2018 | yes | yes | **yes, newly** |
+| FY2019 | yes | no (image) | only with OCR |
+| FY2020, FY2021, FY2022 | yes | yes | yes, already |
+
+So extending **doubles** the panel from three report-years to six, spanning report ages 3 to 9, all
+on one stated basis. OCRing FY2019 would make seven and close the only gap in the run. Extending to
+eight would mean pooling observations on an unstated basis, which is the error this study has
+avoided elsewhere.
+
+### What the six-year panel does to the bands
+
+| Quantity | Committed | On the six-year stated-basis panel |
+| --- | --- | --- |
+| Total count | +3%, one-sided | **holds** on all six: +0.85% to +2.92%, all positive - but 0.08pp headroom at FY2016 |
+| Cell count | max(6 rows, 20%) | covers 99.82% of 1,112 non-zero cells; **2 breach**; tightest 100% cover is max(9 rows, 15%) |
+| Dollars | none | none - the basis statement itself says dollars include prior-year funding |
+
+### This withdraws Finding 1
+
+Finding 1 above reported that the one-sided count band is refuted, on the strength of FY2014
+recomputing 4.53% below its published table. **FY2014 is the only observation below zero, and it is
+now excluded on basis grounds, so that refutation falls with it.** On the six-year stated-basis
+panel every observation is positive and the one-sided band holds. Finding 1 is withdrawn as a
+refutation and stands only as a caution: the FY2014 database count is also 2.17% below that report's
+narrative, and FY2013's is 0.99% below its own, so the database *can* hold fewer awards for a year
+than the publisher counted. That is a reason not to treat one-sidedness as structurally guaranteed;
+it is not evidence that the band fails on the years the band covers.
+
+**Finding 2 survives unchanged.** Across the six stated-basis years the deviations run +2.92%,
++1.24%, +1.32%, +2.51%, +1.44%, +0.85% at report ages 9, 8, 7, 5, 4, 3 - the largest at the oldest
+and the smallest at the youngest, but not monotone in between. There is no time signature to
+extrapolate from, so the band remains an empirical envelope rather than a modelled one.
+
+**Finding 3 survives unchanged**, and is now reinforced: the very sentence that establishes the
+count basis also states that the dollar column includes prior-year funding, which is why the dollar
+comparison is definitionally mismatched.
+
+### The case for doing it
+
+Two of the three findings in this record only became visible by extending past three years, and one
+of them - the count-basis change at FY2016 - bears on whether the existing three-year result means
+what it says. The headroom at FY2016 is 0.08pp, so a seventh year could breach the committed band;
+that is worth knowing before the band is relied on. Against that, the extension is bounded work:
+the parser already handles all five new years, the layout is uniform, and every new year satisfies
+its count identities exactly.
