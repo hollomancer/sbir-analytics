@@ -28,8 +28,9 @@ ten if their tables are OCRed. FY2012 can contribute only a state-level total.
 All five newly parsed years satisfy every count identity exactly (SBIR total = Phase I + Phase II,
 likewise STTR, and combined = SBIR + STTR, on every row). Dollar residuals are at most $1 except
 FY2013, where one row misses by $10 - that is the publisher's arithmetic, verified against the
-source line, not a parse error. All 53 jurisdiction codes across these years are covered by
-`us-jurisdiction-strict-v1`, including AS, so no row is dropped.
+source line, not a parse error. All 53 jurisdiction codes printed across these years are covered
+by `us-jurisdiction-strict-v1`, including AS, so no published-table row is dropped. On the export
+side there is exactly one out-of-grid exclusion per affected year; see the note under Finding 1.
 
 ### One layout for every year, and a correction
 
@@ -51,6 +52,14 @@ its neighbours (5,103 for 2013 and 5,170 for 2015), so no records are missing fr
 published FY2014 table counts roughly 250 awards that the current database no longer holds *under
 that award year*. Records can therefore leave a year bucket - by deletion or by having their award
 year revised - and accretion is not the only process acting.
+
+**One export row is excluded from the recomputation, explicitly.** The pinned export carries
+exactly one award-year-2014 row whose `State` is Marshall Islands (verified by scanning the full
+export: two MH rows in total, award-years 2014 and 2019, the same firm).
+`us-jurisdiction-strict-v1` maps Marshall Islands to no code — a deliberate profile decision —
+and the published FY2014 table prints no MH row, so the row is recorded here as an out-of-grid
+exclusion rather than silently dropped: 5,263 of the 5,264 export rows enter the comparison.
+Admitting MH would be a versioned profile change, not an implementation choice.
 
 The deficit is broad rather than local: SBIR Phase II -9.40%, SBIR Phase I -2.77%, spread across
 every large state (CA -59, VA -32, MA -25, TX -24, MD -22). It is not one jurisdiction and not one
@@ -100,9 +109,14 @@ Recorded as derivations, not adopted.
 | Cell count | max(6 rows, 20%) | **max(8 rows, 20%)** | max(8 rows, 20%) |
 | Dollars | none | none, and now for a documented reason | none |
 
-The committed cell band covers 99.80% of the 1470 non-zero cells across eight years;
-3 cells breach it. The largest single deviation is FY2014 CA SBIR Phase II, 351 published
-against 310 recomputed.
+The committed cell band covers 99.80% of the 1470 non-zero cells across eight years; 3 non-zero
+cells breach it (FY2014 KY SBIR Phase I +8 on 15 published; FY2017 AZ STTR Phase I +7 on 11;
+FY2017 RI SBIR Phase I +8 on 5). Two maxima must not be conflated. The largest **negative**
+deviation is FY2014 CA SBIR Phase II, 351 published against 310 recomputed (-41). The largest
+**absolute** deviation is FY2018 AZ SBIR Phase I, **0 published against 44 recomputed (+44)** —
+a zero-published cell outside the 1470, faithfully captured (the report prints 0 and the row's
+SBIR total identity holds), and one that breaches even the widened floor, since
+max(8 rows, 20%) of zero published is 8.
 
 **FY2014 should not be pooled until it is understood.** Its published table may rest on a different
 year basis, in which case it belongs outside the envelope rather than inside a widened one. Widening
@@ -115,7 +129,10 @@ justification.
 
 Recomputation uses the pinned 2026-09-17 export
 (`studies/sba-annual-report-tables/award-export-2026-09-17.meta.json` records the retrieval).
-Newly captured tables and the year and cell comparisons accompany this record. The comparison is
+The newly captured tables live under `data/`; the extension comparisons live under `extension/`,
+a separate directory from the study's `results/` deliverables because design.md requires a
+current-data extension to be reported separately with separate claims — a generic consumer of
+`results/` must never pick these up as study output. The comparison is
 year-total and cell-level counts only; it does not run the committed implementation's difference
 classification, so it is an extension measurement rather than a validated study result and is not
 citable.
@@ -410,6 +427,9 @@ silently corrected. Dollar residuals are at most $2 on six rows, the familiar ro
 For the 27 jurisdictions it does print, the export holds **4,263 awards against 4,250 published,
 +0.31%** - the smallest deviation of any year measured, and inside the committed band. It cannot
 contribute a year total, so the FY2016-FY2022 run still has a gap at FY2019 for total-count purposes.
+One wrinkle FY2019 shares with FY2014: the export's second and last Marshall Islands row carries
+award-year 2019, and FY2019's table *does* print an MH row — so a future FY2019 cell comparison
+must handle that row explicitly instead of letting `us-jurisdiction-strict-v1` drop it silently.
 
 ## The mechanism behind the drift is the snapshot date, not the report age
 
@@ -457,6 +477,8 @@ those volumes state snapshot dates, they are out-of-sample tests of a specific d
 prediction, not merely two more observations.
 
 ## FY2019 at cell level
+
+Outputs land in `extension/` alongside the other extension comparisons, not in `results/`.
 
 The 27 jurisdictions FY2019 prints give **108 cells**, of which **98 are usable** - the ten STTR
 phase cells on the five misaligned rows are excluded rather than corrected.
