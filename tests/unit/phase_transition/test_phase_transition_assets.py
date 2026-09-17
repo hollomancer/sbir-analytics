@@ -1185,15 +1185,19 @@ def test_five_year_rate_excludes_pre_completion_transitions_from_numerator_only(
 ):
     """A Phase III action dated before its Phase II award completes has
     negative ``time_days``. It must not count as a within-5-year transition,
-    but the Phase II award itself must stay in the denominator: it is still
-    part of the cohort, it just does not have a qualifying post-completion
-    transition within the window.
+    but a mature Phase II award with one stays in the denominator: it is
+    still part of the cohort, it just does not have a qualifying
+    post-completion transition within the window.
+
+    The cut is chosen so every fixture award is mature for the five-year
+    horizon (latest end 2024-01-01 + 5y <= 2029-06-30), so maturity does not
+    confound the numerator-exclusion assertion.
     """
 
     import json
 
     monkeypatch.chdir(tmp_path)
-    monkeypatch.setenv("SBIR_ETL__PHASE_TRANSITION__DATA_CUT_DATE", "2026-04-17")
+    monkeypatch.setenv("SBIR_ETL__PHASE_TRANSITION__DATA_CUT_DATE", "2029-06-30")
     from dagster import build_asset_context
 
     from sbir_analytics.assets.phase_transition.pairs import (
@@ -1222,11 +1226,102 @@ def test_five_year_rate_excludes_pre_completion_transitions_from_numerator_only(
     checks_path = tmp_path / "data/processed/phase_transition_survival.checks.json"
     checks = json.loads(checks_path.read_text())
 
-    # 4 Phase II awards total (denominator). Only C_II_1 and C_II_4 have a
-    # nonnegative, within-horizon observed transition (numerator = 2).
-    # C_II_3 is excluded from the numerator, not from the denominator.
+    # All 4 awards are mature, so the denominator is 4. Only C_II_1 and
+    # C_II_4 have a nonnegative, within-horizon observed transition
+    # (numerator = 2). C_II_3 is excluded from the numerator, not from the
+    # denominator.
     assert checks["total_phase_ii"] == 4
+    assert checks["five_year_denominator"] == 4
+    assert checks["phase_ii_immature_for_horizon_n"] == 0
     assert checks["within_5_year_rate"] == 0.5
+
+
+def test_five_year_rate_excludes_immature_awards_from_denominator(tmp_path, monkeypatch):
+    """An award whose end date is within five years of the cut has not had
+    five years of follow-up. Counting it as a non-transition would deflate
+    the rate, so it must leave the denominator entirely. At the 2026-04-17
+    cut only C_II_4 (end 2020-06-30) is mature, and it transitioned within
+    the horizon — so the rate is 1/1, not the deflated 2/4 the old
+    all-awards denominator produced.
+    """
+
+    import json
+
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("SBIR_ETL__PHASE_TRANSITION__DATA_CUT_DATE", "2026-04-17")
+    from dagster import build_asset_context
+
+    from sbir_analytics.assets.phase_transition.pairs import (
+        _build_pairs,
+        transformed_phase_transition_survival,
+    )
+    from sbir_analytics.assets.phase_transition.phase_ii import _prepare_contract_rows
+    from sbir_analytics.assets.phase_transition.phase_iii import _prepare_phase_iii_rows
+
+    contracts = _contracts_fixture()
+    phase_ii = _prepare_contract_rows(contracts)
+    phase_iii = _prepare_phase_iii_rows(contracts)
+    pairs = _build_pairs(phase_ii, phase_iii)
+
+    transformed_phase_transition_survival(
+        context=build_asset_context(),
+        validated_phase_ii_awards=phase_ii,
+        transformed_phase_ii_iii_pairs=pairs,
+    )
+
+    checks_path = tmp_path / "data/processed/phase_transition_survival.checks.json"
+    checks = json.loads(checks_path.read_text())
+
+    assert checks["total_phase_ii"] == 4
+    assert checks["five_year_denominator"] == 1
+    assert checks["phase_ii_immature_for_horizon_n"] == 3
+    assert checks["within_5_year_rate"] == 1.0
+
+
+def test_survival_drops_awards_ending_after_the_cut(tmp_path, monkeypatch):
+    """An award still in performance at the cut has no post-completion
+    follow-up to observe. Keeping it would censor it at a negative time —
+    counted as a failure before it entered observation — and one such row
+    would flip ``nonnegative_time_origin`` for an artifactual reason. It
+    must leave the frame and be counted in ``phase_ii_end_after_cut_n``.
+    """
+
+    import json
+
+    monkeypatch.chdir(tmp_path)
+    # C_II_2 (end 2023-06-30) and C_II_3 (end 2024-01-01) end after this cut.
+    monkeypatch.setenv("SBIR_ETL__PHASE_TRANSITION__DATA_CUT_DATE", "2023-01-01")
+    from dagster import build_asset_context
+
+    from sbir_analytics.assets.phase_transition.pairs import (
+        _build_pairs,
+        transformed_phase_transition_survival,
+    )
+    from sbir_analytics.assets.phase_transition.phase_ii import _prepare_contract_rows
+    from sbir_analytics.assets.phase_transition.phase_iii import _prepare_phase_iii_rows
+
+    contracts = _contracts_fixture()
+    phase_ii = _prepare_contract_rows(contracts)
+    phase_iii = _prepare_phase_iii_rows(contracts)
+    pairs = _build_pairs(phase_ii, phase_iii)
+
+    out = transformed_phase_transition_survival(
+        context=build_asset_context(),
+        validated_phase_ii_awards=phase_ii,
+        transformed_phase_ii_iii_pairs=pairs,
+    )
+
+    survival = out.value
+    assert set(survival["phase_ii_award_id"]) == {"C_II_1", "C_II_4"}
+
+    checks_path = tmp_path / "data/processed/phase_transition_survival.checks.json"
+    checks = json.loads(checks_path.read_text())
+    assert checks["total_phase_ii"] == 2
+    assert checks["phase_ii_end_after_cut_n"] == 2
+    # The dropped rows must not masquerade as prevalent (pre-completion)
+    # events in the origin diagnostics.
+    assert checks["negative_time_rows"] == 0
+    assert checks["nonnegative_time_origin"] is True
 
 
 def test_build_pairs_no_double_counting_on_duns_when_uei_already_matched():

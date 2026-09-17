@@ -19,7 +19,7 @@ Both assets depend on the upstream ``validated_phase_ii_awards`` and
 
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, timedelta
 from pathlib import Path
 
 import pandas as pd
@@ -236,6 +236,11 @@ def _build_survival(
         }
     )
     base = base.loc[base["phase_ii_end_date"].notna()].copy()
+    # An award still in performance at the cut has no post-completion follow-up
+    # to observe; keeping it would censor it at a negative time and count it as
+    # a failure, and one such row flips nonnegative_time_origin for a reason
+    # that is an artifact, not a prevalent event. The asset reports the count.
+    base = base.loc[pd.to_datetime(base["phase_ii_end_date"]).dt.date <= data_cut].copy()
 
     merged = base.merge(earliest, on="phase_ii_award_id", how="left")
     merged["event_observed"] = merged["phase_iii_action_date"].notna()
@@ -378,21 +383,39 @@ def transformed_phase_transition_survival(
     negative_time_rows = int(survival["time_days"].lt(0).sum()) if total else 0
     nonnegative_time_origin = negative_time_rows == 0
 
-    # 5-year transition view: fraction of the Phase II cohort (denominator
-    # unchanged) with an observed transition in [0, 5*365] completion-relative
-    # days. Rows with time_days < 0 are pre-completion transitions -- they
-    # stay in the denominator (the Phase II award is still part of the
-    # cohort) but are excluded from the numerator because they do not
+    # Input accounting for rows the survival frame cannot carry: awards with no
+    # end date can never enter the frame, and awards whose end date falls after
+    # the cut are not yet under post-completion observation.
+    if len(phase_ii) and "period_of_performance_end" in phase_ii.columns:
+        raw_end = pd.to_datetime(phase_ii["period_of_performance_end"], errors="coerce")
+        phase_ii_missing_end_date_n = int(raw_end.isna().sum())
+        phase_ii_end_after_cut_n = int((raw_end.dt.date > data_cut).sum())
+    else:
+        phase_ii_missing_end_date_n = int(len(phase_ii))
+        phase_ii_end_after_cut_n = 0
+
+    # 5-year transition view. The denominator is only awards mature for the
+    # horizon (end_date + 5y <= data_cut): an award with months of follow-up
+    # must not be counted as a non-transition in a five-year rate. Rows with
+    # time_days < 0 are pre-completion transitions -- a mature award with one
+    # stays in the denominator but out of the numerator, because it does not
     # satisfy "within 5 years of completion".
     horizon_days = 5 * 365
     five_year_rate: float | None = None
+    mature_total = 0
     if total:
-        within = survival.loc[
-            survival["event_observed"]
-            & (survival["time_days"] >= 0)
-            & (survival["time_days"] <= horizon_days)
-        ]
-        five_year_rate = float(len(within) / total)
+        mature = pd.to_datetime(survival["phase_ii_end_date"]).dt.date <= data_cut - timedelta(
+            days=horizon_days
+        )
+        mature_total = int(mature.sum())
+        if mature_total:
+            within = survival.loc[
+                mature
+                & survival["event_observed"]
+                & (survival["time_days"] >= 0)
+                & (survival["time_days"] <= horizon_days)
+            ]
+            five_year_rate = float(len(within) / mature_total)
 
     checks = {
         "ok": True,
@@ -415,6 +438,10 @@ def transformed_phase_transition_survival(
             "assumptions are untested"
         ),
         "within_5_year_rate": round(five_year_rate, 4) if five_year_rate is not None else None,
+        "five_year_denominator": mature_total,
+        "phase_ii_immature_for_horizon_n": total - mature_total,
+        "phase_ii_missing_end_date_n": phase_ii_missing_end_date_n,
+        "phase_ii_end_after_cut_n": phase_ii_end_after_cut_n,
         "inputs": {
             "phase_ii_rows": int(len(phase_ii)),
             "pair_rows": int(len(pairs)),
