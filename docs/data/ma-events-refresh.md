@@ -116,11 +116,28 @@ directions. It raises rather than guessing when:
 | `context_classification_complete` is absent or not a bool | `refinement for '...' lacks typed context completeness` |
 | completeness and `direction` disagree | `... has inconsistent direction and context completeness` |
 
-`--refinements` takes **one** path. The stored refinements are split across
-`data/sbir_ma_medium_refined.jsonl` and `data/sbir_ma_low_refined.jsonl` (no
-company overlap), so they must be concatenated before this step. Nothing in the
-argument surface indicates this, and passing only the medium file fails with a
-`missing_count` in the thousands.
+`--refinements` takes **one** path.
+
+A fresh step 3 writes a single file, so nothing extra is needed — pass the file
+step 3 produced. As of 2026-09-17 that is
+`data/sbir_ma_direction_refined.jsonl` (2,697 records), which is what the
+command above uses.
+
+Only the **legacy** corpus needs assembling. It predates the consolidated file
+and is split across `data/sbir_ma_medium_refined.jsonl` and
+`data/sbir_ma_low_refined.jsonl` (no company overlap), which are retained as
+the prior vintage:
+
+```bash
+cat data/sbir_ma_medium_refined.jsonl data/sbir_ma_low_refined.jsonl \
+  > data/sbir_ma_direction_refined_legacy.jsonl
+```
+
+Nothing in the argument surface indicates the split, and passing only the medium
+file fails with a `missing_count` in the thousands. Note that concatenating the
+legacy files is necessary but not sufficient: 2,656 of those records lack the
+`context_classification_complete` field the bridge requires, so the legacy
+corpus fails this step even when assembled — see the input findings below.
 
 ### Interaction worth knowing
 
@@ -133,7 +150,17 @@ would restore the inflation #735 removed, through this line.
 
 ## Known state of the stored inputs
 
-Recorded 2026-09-17, before any regeneration. All four predate #735.
+These four findings describe the **legacy** corpus, as it stood on 2026-09-17
+before the chain was re-run. All predate #735. They are recorded because they
+explain why that corpus cannot be fed to step 4, and because anyone reaching
+for `sbir_ma_medium_refined.jsonl` or `sbir_ma_low_refined.jsonl` will hit
+them.
+
+All four are remediated in the current
+`data/sbir_ma_direction_refined.jsonl`: the corpus was re-refined in full, the
+40 missing events were fetched, the 4 orphaned records dropped, and the
+malformed one replaced. The legacy files are retained unchanged as the prior
+vintage.
 
 | Finding | Count |
 | --- | --- |
