@@ -516,12 +516,23 @@ next_actions:
   # directions: at national level, where relocation cancels, three program-phase groups
   # ADD awards while LOSING dollars, and FY2021 SBIR Phase II gains 23 awards while
   # losing $106.2M. Adding records cannot reduce dollars.
+  # SUPERSEDED IN PART 2026-09-17 by extension-to-eight-years.md, Finding 3: the
+  # reports' own table footnote says the published dollar column includes funding of
+  # prior-year awards while counts are new awards only, so the dollar deltas measure a
+  # definitional basis mismatch, not amount revision alone. The recommendation below
+  # not to band dollars stands, for that stronger reason.
   - >-
     Decide whether to band dollars at all, and on which quantity. Recommendation is to
     NOT band the net. A two-sided net band of +/-2% would cover the three observed years,
     but the net passes by cancellation, so a year in which every cell was badly wrong
     would satisfy it whenever the errors offset. That is the two-superimposed-effects
-    error the count limitation already warns about, one level up. Counts are extrapolable
+    error the count limitation already warns about, one level up. (The count
+    time-signature justification below is superseded: extension-to-eight-years.md
+    Finding 2 shows no report-age relationship over eight years — FY2013 +0.24% at age
+    12 against FY2016 +2.92% at age 9 — and its snapshot-lag section names the actual
+    covariate. The +3% band survives only as an empirical envelope over FY2016-FY2022,
+    and FY2014 breaches it in the other direction.) The original derivation read:
+    counts are extrapolable
     because they carry a time signature (+2.51%, +1.44%, +0.85% for report ages 5, 4 and
     3, monotone); dollars order with neither report age nor DoD submission lateness, so
     the mechanism is named but its magnitude is unmodelled. If a dollar band is wanted
