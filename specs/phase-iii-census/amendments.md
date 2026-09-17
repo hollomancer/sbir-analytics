@@ -438,3 +438,36 @@ files before materialization.
   cell, and metric, including the three intermediate stages where the placebo carried more
   distinct contracts than the actual frame. No R16 draw had been taken.
 
+## Revision 17 — Bind an R16 run to its execution code and its exact inputs
+
+- **Approved:** pending repository-owner review. The merge of the pull request that first adds
+  this revision records approval; the merge date is the approval date.
+- **Git-history anchor:** The commit that first adds Revision 17 to this file is the
+  approval-record anchor; its identifier is intentionally not embedded in the content it
+  hashes.
+- **Reason:** R16 is frozen and approved to run, and the run is resumable across invocations by
+  design. The run fingerprint covered the frozen design, the pinned validation design, the input
+  digests and the data cut, but not the code that computes a draw — so editing the per-draw path
+  between batches would have pooled draws from two implementations into one result with nothing
+  to detect it. Separately, the three Phase 1 inputs were not on the machine when the run was
+  approved, and nothing in the runner told an operator when a recovered or re-materialised input
+  was the right one.
+- **Change:** The fingerprint additionally carries the SHA-256 of
+  `packages/sbir-analytics/sbir_analytics/assets/phase_iii_negative_controls/permutation.py` and
+  of `scripts/data/build_phase_iii_placebo_permutation.py`. A read-only `--check-inputs`
+  preflight reports each Phase 1 input against the digest recorded in
+  `materialization-2026-02-06.md`, takes no draw, and does not assert owner approval. The
+  manifest's `design_revision` is read from `FROZEN_SPEC_REVISION` rather than written as a
+  literal.
+- **Criteria and Phase 1–3 impact:** None. No census clause, clause order, predicate, sensitivity
+  cell, pair universe, source join, negative-control population, matching rule, score, model, or
+  numeric inclusion threshold changes. The R16 seed list, primary statistic, stage, exceedance
+  definition, interval method and threshold are untouched, and no draw has been taken.
+- **What this does not do:** It does not relax the equivalence precondition. An input that
+  resembles the R15 source but does not match its digest still fails, because the recorded R15
+  values are a function of those bytes. Recovering the inputs is a precondition of the run, not a
+  matter this revision settles.
+- **Execution gate:** Unchanged. The repository owner has approved the R16 production run; this
+  revision does not alter that approval, and the runner still refuses without
+  `owner_approved=True`.
+
