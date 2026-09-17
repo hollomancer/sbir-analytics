@@ -85,11 +85,29 @@ Under these decisions the recomputed FY22 rate is **38.65%** on 2,559 distinct f
 (3,888 Phase I rows; the report states 3,859 awards selected, a +29 row difference that is
 itself subject to decision 1).
 
-**Residual choice, requires sign-off.** Whether "prior" means any prior SBIR/STTR award (38.65%) or
-a prior Phase I specifically (39.39%). Both round to 39% and the evidence cannot separate them.
-**Recorded decision: any prior SBIR/STTR award**, on the reading that "first-time winner" refers to
-the programme rather than to a phase. Reversing it changes the recomputed rate by 0.74pp and
-nothing else.
+**Residual choice — signed off by the maintainer, 2026-09-17: any prior SBIR/STTR award.**
+Whether "prior" means any prior SBIR/STTR award (38.65%) or a prior Phase I specifically (39.39%).
+The choice moves the recomputed rate by 0.74pp — about **19 of the 2,559 distinct firms**, those
+whose only prior award was a Phase II — and nothing else.
+
+**The published figure cannot decide it, and closeness to 39% is not evidence.** A published 39%
+implies a true value in [38.5%, 39.5%), and both candidates fall inside: 38.65% is 0.35pp from 39,
+39.39% is 0.39pp. That 0.04pp gap is well below what the rounding can resolve, so any argument
+from proximity to the published figure is invalid.
+
+**Decided on the report's own internal evidence instead.** The report scopes explicitly when it
+means to: the Multiple Award Winner chart reads ">15 Phase IIs FY17–FY21", both phase-specific and
+window-specific. The first-time-winner sentence specifies neither. And that chart's five-year
+convention is already known not to carry over to this statistic, since a five-year window yields
+40.2%–43.2% rather than 39% (see the window decision above). A phrase left unscoped in a document
+that scopes deliberately elsewhere reads as program-wide.
+
+The contrary reading — that "first-time" elides "first-time Phase I" because the subject is
+"Phase I award winners" — is reasonable, and is recorded here rather than dismissed. It is not
+supported by anything in the document.
+
+**Sign-off does not upgrade the evidence.** The rule remains inferred, not recovered; see the
+epistemic status below. What closed is the open decision, not the epistemic gap.
 
 **Epistemic status.** This rule was **inferred by reproducing the published statistic**, not read
 from the source. It is weaker evidence than a verbatim definition and must not be described as one.

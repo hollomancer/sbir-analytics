@@ -409,7 +409,23 @@ definition_decisions:
     window: all_program_history            # 5-year window yields 40.2%-43.2%
     identity_key: uei_with_normalized_name_fallback
     name_profile: ENTITY_RESOLUTION_V1     # sbir_etl.identity.company_names, imported not reimplemented
-    prior_means: any_prior_sbir_or_sttr_award   # requires sign-off; prior-Phase-I-only yields 39.39%
+    prior_means: any_prior_sbir_or_sttr_award
+    prior_means_status: signed_off_by_maintainer_2026_09_17
+    prior_means_alternative_rejected: prior_phase_i_only   # 39.39% vs 38.65%; ~19 of 2,559 firms
+    prior_means_basis: >-
+      Decided on the report's own internal evidence, not on proximity to the published
+      figure. A published 39% implies a true value in [38.5%, 39.5%) and BOTH candidates
+      fall inside it (38.65% is 0.35pp from 39, 39.39% is 0.39pp), so the published
+      statistic cannot discriminate and an argument from closeness to 39% is invalid.
+      The report scopes explicitly when it means to, since the Multiple Award Winner
+      chart reads ">15 Phase IIs FY17-FY21", both phase-specific and window-specific,
+      while the first-time-winner sentence specifies neither. That chart's five-year
+      convention is also already known not to carry over here, because a five-year
+      window yields 40.2%-43.2% rather than 39%. The unscoped phrase therefore reads as
+      program-wide. The contrary reading, that first-time elides first-time Phase I
+      because the subject is Phase I winners, is reasonable but unsupported by the
+      document. Signing this off does NOT make the rule recovered; epistemic_status is
+      unchanged and cross_validation remains impossible.
     recomputed_fy22_rate: 0.3865
     published_fy22_rate: 0.39
     distinct_firms: 2559
@@ -432,15 +448,46 @@ definition_decisions:
 next_actions:
   # DONE 2026-09-17: scripts/data/sba_annual_report_tables.py, results/ committed.
   # Structural check passes in all three years; published-sample outcome stays blocked.
-  - Sign off on first_time_winner_lookback.prior_means (any prior award vs prior
-    Phase I only). Both reproduce the published 39%; the choice moves the recomputed
-    rate by 0.74pp and nothing else.
-  - Resolve the Phase IIB / sequential Phase II rollup into the published Phase II
-    column, and the DoD component-to-department aggregation.
-  - Quantify the dollar mechanism. The published-versus-recomputed dollar delta
-    reverses sign across report-years (+1.875%, -1.314%, +1.322%), which accretion
-    cannot explain, so no dollar band is committed and the materialization gate is
-    closed on it. Decide whether it is a few large revisions or broad drift.
+  # DONE 2026-09-17: prior_means signed off by the maintainer as any prior SBIR/STTR
+  # award. See definition_decisions.first_time_winner_lookback.prior_means_basis.
+  # CLOSED 2026-09-17 as not applicable in scope: the Phase IIB / sequential Phase II
+  # rollup has no degrees of freedom. The export carries exactly two Phase values across
+  # all 219,590 rows and all award years, "Phase I" and "Phase II", with zero nulls, so
+  # there is no Phase IIB or sequential-Phase-II label to roll up.
+  # CLOSED 2026-09-17 as already correct: DoD component-to-department aggregation needs
+  # no work. Agency in the export is department-level and Branch carries the component
+  # (100% populated, 15 distinct for DoD). Grouping by Agency reproduces the FY22
+  # published agency chart, SBIR $4,115,812,862 against a stated $4,115,812,863, a -$1
+  # rounding difference, and STTR exact.
+  # MEASURED 2026-09-17. "A few large revisions or broad drift" is answered: broad
+  # drift. Gross absolute movement is $349M / $448M / $336M against a net of only
+  # +$72.8M / -$51.1M / +$58.5M, so the net is a residual of movement 4.8x to 8.8x
+  # larger. 173-181 of ~210 cells move each year and the largest single cell is only
+  # 6-11% of gross. The mechanism is amount revision on existing records, in both
+  # directions: at national level, where relocation cancels, three program-phase groups
+  # ADD awards while LOSING dollars, and FY2021 SBIR Phase II gains 23 awards while
+  # losing $106.2M. Adding records cannot reduce dollars.
+  - >-
+    Decide whether to band dollars at all, and on which quantity. Recommendation is to
+    NOT band the net. A two-sided net band of +/-2% would cover the three observed years,
+    but the net passes by cancellation, so a year in which every cell was badly wrong
+    would satisfy it whenever the errors offset. That is the two-superimposed-effects
+    error the count limitation already warns about, one level up. Counts are extrapolable
+    because they carry a time signature (+2.51%, +1.44%, +0.85% for report ages 5, 4 and
+    3, monotone); dollars order with neither report age nor DoD submission lateness, so
+    the mechanism is named but its magnitude is unmodelled. If a dollar band is wanted
+    later, band the GROSS (observed 7.58%-11.52% of published dollars, so at most 15%
+    one-sided), which cannot pass by cancellation, but n=3 with no time signature does
+    not support extrapolating even that.
+  - >-
+    Decide whether the materialization blockers are correctly scoped. Neither current
+    blocker names a quantity this study claims. The estimand measures award COUNTS and
+    does not mention dollars, and blocker 2 states in its own words that the
+    first-time-winner rule "is not implemented here". The constraint that does limit
+    these outputs, namely that published_sample_outcome is blocked because no report-era
+    vintage exists, is absent from the list. Deliberately not actioned: whether replacing
+    the two with that one reads as tightening the gate, by closing on the permanent
+    constraint, or loosening it, by dropping two blockers.
 
 # ---------------------------------------------------------------------------
 # SUPERSEDED 2026-09-17, retained as the derivation record. study.yaml now carries
