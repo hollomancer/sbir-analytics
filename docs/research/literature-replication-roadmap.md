@@ -239,7 +239,9 @@ Start with the shared registry and the minimum retrieval-manifest work needed by
 build a general research framework beyond those three studies.
 
 1. Add replication registry entries and frozen method notes for [L18], [L32], and [L1].
-2. Stage and verify the historical source cuts for their published periods.
+2. Verify the [L18] report-year files already captured and inventoried in the
+   [corpus triage](literature-corpus-triage.md) against their recorded SHA-256 values. [L32] and
+   [L1] are not in that corpus and still need staging for their published periods.
 3. Reproduce the SBA tables and CSIS series.
 4. Retier the multiplier validation spec before implementing or running its design.
 5. Create one study manifest per replication at `exploratory`. Promote it to `reproducible` when

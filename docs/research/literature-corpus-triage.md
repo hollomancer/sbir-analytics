@@ -98,14 +98,16 @@ None of those are in the corpus, and none are obtainable by supplying more SBA d
 
 ## Recommended sequencing
 
-1. **Extend Order 1 across the 27 OCR-free report-years.** The FY22 capture established the
-   extraction and validation pattern; the FY2009–FY2022 volumes are structurally similar and should
-   follow directly. This is the highest-value next step and needs no new capability.
-2. **Decide the four undetermined FY22 definitions before extending.** State attribution, the
+1. **Decide the four undetermined FY22 definitions first.** State attribution, the
    first-time-winner lookback, amendment handling, and zero-dollar records are absent from the FY22
    source. Extending the panel before settling them multiplies the same ambiguity across
    27 years instead of resolving it once. Whether the older reports state what FY22 omits
    is itself worth checking — the earlier volumes are often more explicit about methodology.
+   The Order 1 start gate requires these decisions, not only captured PDFs.
+2. **Then extend Order 1 across the 27 OCR-free report-years.** The FY22 capture established the
+   extraction and validation pattern; the FY2009–FY2022 volumes are structurally similar and should
+   follow directly. Once the definitions are frozen, this is the highest-value extension and needs
+   no new extraction capability.
 3. **Treat the 19 image-only documents as a separate capability**, not a continuation. They
    would extend the panel to 1990 and complete the pre-2009 SBIR series, but the
    extraction cannot be validated the same way.
