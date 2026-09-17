@@ -60,7 +60,9 @@ with hashes but not extracted.
 - Table 20, awards by U.S. state and territory — 52 rows, Phase I and Phase II only
 - Charts 1 and 2, obligations by participating agency — 16 rows, all obligation categories
 
-Both validated. Five of six within-row identities in Table 20 hold exactly for all 52 rows; the
+Transcription checks held for both. `validated` is reserved in `studies/README.md` for a
+confirmatory `validation_result` and is not claimed here. Five of six within-row identities in
+Table 20 hold exactly for all 52 rows; the
 sixth is off by exactly +/-$1 on 14 rows, consistent with sub-dollar amounts presented as whole
 dollars. The agency table reconciles to the report's narrative totals (SBIR -$1, STTR exact, both
 DoD+HHS concentration figures exact).
@@ -234,3 +236,37 @@ cleanly separable.
 **Still unresolvable:** the publication-era figure. SBIR.gov serves only the current snapshot, so no
 report-era export survives; any replication compares a corrected database against an uncorrected
 published table and the tolerance must absorb that rather than pretend it away.
+
+## 2026-09-17 (later) — review deviations recorded, and a table-number correction
+
+**Denominator integrity admits a $1 residual.** `design.md` makes denominator integrity a blocking
+check: every published total must equal the sum of its published parts. The captured tables fail it
+on total-dollar columns, so an implementer running the frozen check literally would have failed the
+study before any comparison. Deviation recorded: a residual of at most **$1** is classified
+`rounding` under `design.md`'s own difference classes and does not fail the study; anything larger
+raises as a capture defect. Now implemented as `verify_published_identities()` and banded in
+`published_table_tolerances`. Measured: **38** row-identity residuals across the three years —
+`all_tot=sbir+sttr` on 22 rows, `sbir_tot=p1+p2` on 15, `sttr_tot=p1+p2` on 1 — with all three
+award-count identities exact in all three years.
+
+**The captured state-table filenames misstated their source for two of three years.** Checking each
+report's own caption before adding a table-number prefix to `source_table` showed the table is
+**Table 20 in FY22 but Table 18 in FY20 and FY21**. The files were named `table20_fy20_...` and
+`table20_fy21_...`. Renamed to `awards_by_state_fy20.csv`, `awards_by_state_fy21.csv` and
+`awards_by_state_fy22.csv`, with the per-year numbering recorded in
+`source_tables_to_extract`. A replication must not key on a fixed table number. Content and
+SHA-256 of the three files are unchanged; only the names are.
+
+**`published_sample_verdict` is `blocked`, and that is the frozen answer rather than a new
+decision.** An earlier revision set it to `vintage_tolerant_reproduction`, which was never one of
+the three values `design.md` freezes. `design.md` had already decided this case: with no report-era
+vintage the published-sample outcome is `blocked`, and comparison against the current snapshot is
+admissible only when labelled a structural check. `published_sample_method` now carries the method
+and the verdict stays `blocked`. Passing the declared bands does not promote it.
+
+**The May 2026 export's endpoint is inferred, not recorded.** The URL was not captured at retrieval,
+so the hash and date do not prove which endpoint produced it. It carries 42 columns including UEI,
+matching `mod_awarddatapublic`, whereas the legacy `awarddatapublic` path on the same host serves 41
+without UEI. Recorded as `source_url_evidence: inferred_from_schema`. The 2026-08-30 vintage cited
+by the drift evidence is now pinned with path, hash, size and parsed record count; it is the vintage
+that shows drift is episodic (+2 records in 3.6 months, then +87 in 18 days).

@@ -9,6 +9,12 @@ internal-identity checks. Roadmap Order 1.
 | FY2021 | 51–54 | 53 | $3,365,675,990 | $523,097,227 | 6,783 |
 | FY2022 | 53–54 | 52 | $3,814,888,304 | $614,232,137 | 6,583 |
 
+> **Status pointer.** The four definitions this note records as undetermined were subsequently
+> closed — three as documented project decisions in `definition-decisions.md`, and amendment
+> handling from SBA's own methodology statement in `assembly-methodology.md`. The extraction
+> finding below stands: FY2020 and FY2021 do not state the rules. Do not quote "four undetermined
+> definitions" as the current contract.
+
 ## 1. The ±$1 residual is systematic, not an FY22 artefact
 
 Within-row identity failures are confined to the **total-dollar** columns and never exceed **$1**.
@@ -73,7 +79,8 @@ programs aimed at "first-time SBIR/STTR grant applicants" (FY20 p71, FY21 p66), 
 modifications" to training (FY20 p66), and DOT "contract modifications for no-cost-extensions"
 (FY21 p89). None defines how the published tables count anything.
 
-These four therefore need documented project decisions, and adding report-years does not help.
+These four therefore needed documented project decisions, since closed (see the status pointer at
+the top of this note), and adding report-years does not help.
 
 ## 5. The first-time-winner statistic exists only in FY22
 
@@ -102,5 +109,5 @@ three years against a 7.8% fall in award count. Reported as the published tables
 
 | File | sha256 |
 | --- | --- |
-| `data/table20_fy20_awards_by_state.csv` | `0c8465c210f122a75b42b5afef147f688e73cec6a82a230f0d33f377def3403c` |
-| `data/table20_fy21_awards_by_state.csv` | `cb43a8ec5de2b70a97f240f329a3a19a749b0f85910b5229593a5267dc1c1cde` |
+| `data/awards_by_state_fy20.csv` | `0c8465c210f122a75b42b5afef147f688e73cec6a82a230f0d33f377def3403c` |
+| `data/awards_by_state_fy21.csv` | `cb43a8ec5de2b70a97f240f329a3a19a749b0f85910b5229593a5267dc1c1cde` |
