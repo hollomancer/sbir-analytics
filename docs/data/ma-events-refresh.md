@@ -116,58 +116,66 @@ directions. It raises rather than guessing when:
 | `context_classification_complete` is absent or not a bool | `refinement for '...' lacks typed context completeness` |
 | completeness and `direction` disagree | `... has inconsistent direction and context completeness` |
 
-`--refinements` takes **one** path.
-
-A fresh step 3 writes a single file, so nothing extra is needed — pass the file
-step 3 produced. As of 2026-09-17 that is
+`--refinements` takes **one** path: the file step 3 produced. A rebuild
+involves no concatenation. As of 2026-09-17 that file is
 `data/sbir_ma_direction_refined.jsonl` (2,697 records), which is what the
 command above uses.
 
-Only the **legacy** corpus needs assembling. It predates the consolidated file
-and is split across `data/sbir_ma_medium_refined.jsonl` and
-`data/sbir_ma_low_refined.jsonl` (no company overlap), which are retained as
-the prior vintage:
+The **legacy** corpus predates the consolidated file and is split across
+`data/sbir_ma_medium_refined.jsonl` and `data/sbir_ma_low_refined.jsonl`
+(2,661 records combined, no company overlap), retained as the prior vintage.
+Nothing in the argument surface indicates the split, and passing only the
+medium file fails with a `missing_count` in the thousands. Assembling the pair
+does not help:
 
 ```bash
+# Legacy vintage only — the result still fails the bridge (see below).
 cat data/sbir_ma_medium_refined.jsonl data/sbir_ma_low_refined.jsonl \
   > data/sbir_ma_direction_refined_legacy.jsonl
 ```
 
-Nothing in the argument surface indicates the split, and passing only the medium
-file fails with a `missing_count` in the thousands. Note that concatenating the
-legacy files is necessary but not sufficient: 2,656 of those records lack the
-`context_classification_complete` field the bridge requires, so the legacy
-corpus fails this step even when assembled — see the input findings below.
+The concatenated file fails step 4 on three grounds: all 2,661 records lack
+the `context_classification_complete` field the bridge requires, 40 required
+companies are absent, and 4 supplied companies are not direction-sensitive —
+see the input findings below. The way out of the legacy state is re-running
+step 3, not concatenation.
 
 ### Interaction worth knowing
 
 `confidence_after_directional_refinement` returns `high` for any row carrying
-`form_d_business_combination`, whatever the refined direction. That is only
-sound because step 2 routes acquirer-side-only rows to the sibling artifact
-before the bridge sees them. Rows that reach the bridge with a Form D
-combination also carry target-side EFTS evidence. Relaxing the sibling routing
-would restore the inflation #735 removed, through this line.
+`form_d_business_combination`, whatever the refined direction. The bridge
+never exercises that branch today: `needs_directional_refinement` is
+independently False when `form_d_business_combination` is set, so no
+refinement is expected for such rows — supplying one fails the coverage check
+as `unexpected_count`, and without one the row passes through unchanged.
+Relaxing only the sibling routing in step 2 would therefore put acquirer-side
+rows in the exit file at post-#735 `assign_confidence` = `low`, not at `high`
+through this line. Restoring the HIGH inflation #735 removed requires taking
+both guards off: the sibling routing **and** the strong-signal short-circuit
+in `needs_directional_refinement`.
 
 ## Known state of the stored inputs
 
-These four findings describe the **legacy** corpus, as it stood on 2026-09-17
+These findings describe the **legacy** corpus, as it stood on 2026-09-17
 before the chain was re-run. All predate #735. They are recorded because they
 explain why that corpus cannot be fed to step 4, and because anyone reaching
 for `sbir_ma_medium_refined.jsonl` or `sbir_ma_low_refined.jsonl` will hit
 them.
 
-All four are remediated in the current
+All are remediated in the current
 `data/sbir_ma_direction_refined.jsonl`: the corpus was re-refined in full, the
-40 missing events were fetched, the 4 orphaned records dropped, and the
-malformed one replaced. The legacy files are retained unchanged as the prior
-vintage.
+40 missing events were fetched, and the 4 orphaned records dropped. The legacy
+files are retained unchanged as the prior vintage.
 
 | Finding | Count |
 | --- | --- |
-| refinement records lacking `context_classification_complete` | 2,656 of 2,697 in play |
+| stored refinement records lacking `context_classification_complete` | 2,661 of 2,661 |
 | direction-sensitive events with no refinement record at all | 40 |
 | refinements naming events that are not direction-sensitive | 4 |
-| refinement records whose `direction` is malformed | 1 (`Physical Optics Corporation`) |
+| refinement records whose `direction` is malformed | 0 |
+
+Every stored `direction` value is in `_REFINEMENT_DIRECTIONS`; an earlier
+draft counted one record as malformed, but its `target` value is valid.
 
 Consequence: the shipped `enriched_sbir_ma_events.jsonl` cannot have been
 produced by step 4 from these inputs, because step 4 would have rejected them.
@@ -180,11 +188,13 @@ gap in the stored corpus rather than a property of the events.
 
 The shipped artifact carried 4,306 companies against the events file's 4,004,
 plus a `press_wire_signals` field. That field's producer was deleted in #709:
-it polled live RSS, so its output was a function of wall-clock time rather than
-a declared cut, and its precision was 0/18 because company matching used an
-unanchored substring test. Of the 4,306 rows, 18 carried any press-wire
-evidence; the 302 companies absent from the events file were all Form-D-only
-rows graded `high`, 301 of them with an empty `press_wire_signals` list.
+it polled live RSS, so its output was a function of wall-clock time rather
+than a declared cut, and its matches were judged unusable — the finding is
+recorded in the 2026-09-12 amendment in
+[`specs/ma-discovery-integration/design.md`](../../specs/ma-discovery-integration/design.md),
+not here. Of the 4,306 rows, 18 carried any press-wire evidence; the 302
+companies absent from the events file were all Form-D-only rows graded
+`high`, 301 of them with an empty `press_wire_signals` list.
 
 A rebuild therefore drops those 302 rows and that field by design. Consumers to
 re-run afterwards: `scripts/data/build_capital_events.py`,
