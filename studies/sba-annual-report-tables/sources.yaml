@@ -510,6 +510,8 @@ next_actions:
 proposed_reproduction_contract:
   live_sources:
     - name: SBIR.gov award export (mod_awarddatapublic)
+      # Gitignored original, kept here as the derivation record. The live contract
+      # in study.yaml pins the tracked copy: award-export-2026-09-17.meta.json.
       retrieval_manifest: data/raw/sbir/history/2026-09-17/award_data.meta.json
       upstream_measure: total record count in the export
       identity_grain: one row per award action as published by SBIR.gov
