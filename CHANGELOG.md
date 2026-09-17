@@ -10,6 +10,26 @@ version.
 
 ## [Unreleased]
 
+## [0.17.0] — 2026-09-17
+
+### Breaking
+
+- `detect_sbir_ma_events.py` no longer writes acquirer-side Form D rows to the
+  exit artifact. Form D Item 10 marks a Rule 145 deemed offer and sale by the
+  issuer — the filer is the acquirer — so a row whose only transaction evidence
+  is that flag is written to `--non-exit-output` (`data/sbir_ma_non_exit.jsonl`)
+  with `non_exit_reason='acquirer_side'` instead of to the exit file. Demoting
+  the row was not enough because several consumers treat row presence as an
+  exit. Only target-side EFTS evidence keeps such a row: `efts_subsidiary`,
+  `efts_ma_definitive`, or `efts_acquisition_text`. The low-graded
+  `efts_ma_proxy` and `efts_ownership_active` mentions do not rescue one.
+- The same script now drops Form D records whose identity match did not reach
+  `KEEP_MATCH_TIER` (`high`) before event detection and prints the count it
+  removes, and `assign_confidence` no longer grants `high` on a Form D
+  business-combination flag alone. The two output paths must differ; equal
+  resolved paths exit before either file opens. Tests pin the routing and the
+  bridge-grading guards so neither can be relaxed silently.
+
 ### Changed
 
 - The cross-enrichment test that asserted raw press hits are not independent
@@ -77,8 +97,26 @@ version.
   `match_rationale == "exact_form_d_join_v1_name_key"` reproduces the frozen cut
   exactly.
 
+- The R16 run fingerprint for `phase-iii-census` now also carries the SHA-256
+  of `permutation.py` and of the runner script, so a resumed batch must agree
+  with the batch that opened the store on the execution code as well as on the
+  data. `design_revision` in the run manifest is read from
+  `FROZEN_SPEC_REVISION` rather than written as a literal. Revision 17: no
+  criterion, cell, population, seed, statistic, interval or threshold changes,
+  and no draw is taken.
+
 ### Added
 
+- `docs/data/ma-events-refresh.md`, an operator guide for the four-script chain
+  that produces the M&A exit artifacts. It records the required order, the
+  exact error each fail-closed guard raises, measured step-3 throughput
+  (16 events/minute sustained at concurrency 2 — a short sample overstates it),
+  the known defects of the legacy refinement corpus, and the consumers to
+  re-run after a rebuild.
+- `build_phase_iii_placebo_permutation.py --check-inputs` reports each Phase 1
+  input against the digest recorded in `materialization-2026-02-06.md` without
+  taking a draw, so a recovered or re-materialised file can be verified before
+  a multi-hour R16 run rather than after its first draw.
 - `check_identity_boundaries.py` rejects a company-name normalizer that does not
   reach `sbir_etl.identity.company_names`. Person-name and state-name
   normalizers are listed as reviewed exceptions; `scripts/archive/` stays
@@ -112,6 +150,12 @@ version.
   `sbir_exact_key_count` / `sbir_exact_keys` when
   several SBIR spellings collapse onto one widened key. A widened row is a
   candidate, not a resolution.
+
+### Fixed
+
+- The literature-map refresh no longer aborts when an anchor DOI does not
+  resolve in OpenAlex. The unresolved DOI is recorded with zero hits in
+  `refresh_status.md` and the run continues with the remaining anchors.
 
 ## [0.16.0] — 2026-09-15
 
@@ -673,7 +717,8 @@ across the root project and the three packages under `packages/`.
 `vMAJOR.MINOR.PATCH` form it requires. Per that policy published tags are never
 moved or reused, so they remain as historical markers.
 
-[Unreleased]: https://github.com/hollomancer/sbir-analytics/compare/v0.16.0...HEAD
+[Unreleased]: https://github.com/hollomancer/sbir-analytics/compare/v0.17.0...HEAD
+[0.17.0]: https://github.com/hollomancer/sbir-analytics/compare/v0.16.0...v0.17.0
 [0.16.0]: https://github.com/hollomancer/sbir-analytics/compare/v0.15.0...v0.16.0
 [0.15.0]: https://github.com/hollomancer/sbir-analytics/compare/v0.14.0...v0.15.0
 [0.14.0]: https://github.com/hollomancer/sbir-analytics/compare/v0.13.0...v0.14.0
