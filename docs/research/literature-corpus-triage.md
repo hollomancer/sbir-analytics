@@ -7,16 +7,18 @@ inventory with page counts, text-quality scores, and SHA-256 hashes:
 
 ## Headline
 
-The corpus is **deep on Order 1 and thin everywhere else**. It turns the SBA annual-report
-replication from a three-report-year study into a **31-report-year panel spanning
-1990–2022**. It contributes benchmark sources to Orders 3 and 5, and
+The corpus is **deep on Order 1 and thin everywhere else**. It could support extending the SBA
+annual-report replication from three report-years to a **1990–2022 panel, after OCR and after the
+absent table definitions are settled**. That extension is not a finished product: 19 of the 51
+documents have no text layer, and the published-sample replication of [L18] (three report-years)
+stays separate from any historical extension. It contributes benchmark sources to Orders 3 and 5, and
 **nothing at all** to Orders 2, 4, 6, 7, and 8.
 
 | Order | Study | Docs | Pages | Extractable now |
 | ---: | --- | ---: | ---: | ---: |
 | 1 | SBA annual-report tables [L18] | 46 | 1,983 | 27 |
-| 3 | NASEM DoD follow-on multiplier [L1], [L2] | 3 | 109 | 3 |
-| 5 | Agency transition and commercialization [L1-L4, L6, L12, L47] | 2 | 20 | 2 |
+| 3 | DoD economic-impact studies [L19] — benchmark context only | 3 | 109 | 3 |
+| 5 | Agency economic-impact context — NASA (2017), NCI [L20] | 2 | 20 | 2 |
 | 2, 4, 6, 7, 8 | — | 0 | 0 | 0 |
 
 ## The binding constraint is OCR, not availability
@@ -57,9 +59,17 @@ Three documents, all with text layers, all agency-run economic impact studies:
 | USAF SBIR/STTR Economic Impact Study | FY2015 | 36 |
 | Navy SBIR/STTR National Economic Impacts | 2000–2013 | 23 |
 
-The DoD volume is the closest published analogue to the NASEM follow-on multiplier the roadmap
-names, and it covers 24 award-years. The Navy and USAF studies are component-level benchmarks
-underneath it — useful for checking whether a department-level multiplier decomposes consistently.
+**These are [L19]-family studies, and they do not measure the quantity Order 3 replicates.** The
+DoD volume is [L19] itself — TechLink / Montana State, *National Economic Impacts from the DOD
+SBIR/STTR Programs, 1995–2018* — reporting 22:1 total-output ROI and 8.4:1 sales ROI. Order 3
+replicates the NASEM ratio of non-SBIR DoD obligations to SBIR/STTR obligations, >4:1 for 2012–2020
+([L1], with [L2] as the earlier baseline). Output ROI and an obligations ratio are different
+estimands with different denominators, and neither is a decomposition of the other.
+
+**Order 3 therefore has no corpus document.** [L1] and [L2] are not in this corpus and must still be
+recovered. The Navy (2000–2013) and USAF (FY2015) volumes are the same TechLink family at component
+level, so they are internally comparable to the DoD volume but equally not NASEM inputs. Treat all
+three as [L19] economic-impact benchmarks.
 Note that the roadmap flags Order 3's validation spec as still `exploratory` in the registry, so
 these are benchmark inputs, not a licence to promote the multiplier's evidence status.
 

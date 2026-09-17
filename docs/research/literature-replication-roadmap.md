@@ -60,8 +60,8 @@ a named spec is active, gated, or limited to a lower tier.
 
 | Order | Study or benchmark | Questions | Why it is in this position | Start gate |
 | ---: | --- | --- | --- | --- |
-| 1 | SBA annual-report tables [L18] | A1, D1 | Direct grouping of public award records | Exact table definitions and report-year source files captured |
-| 2 | CSIS entrant and graduation analysis [L32], with GAO concentration benchmarks [L14] | A1 | Current code already computes HHI, top shares, geography, and entrants | Published cohort and classification rules recovered |
+| 1 | SBA annual-report tables [L18] | A1, D1 | Direct grouping of public award records | Report-year source files captured **and** all nine required table definitions accounted for — including the four absent from every report year, which need documented project decisions, not assumptions in the implementation |
+| 2 | CSIS entrant and graduation analysis [L32], with GAO concentration benchmarks [L14] | A1 ([L14] concentration), A2 ([L32] entrants and graduation) | Current code already computes HHI, top shares, geography, and entrants | Published cohort and classification rules recovered |
 | 3 | NASEM DoD follow-on multiplier [L1], with [L2] as the earlier benchmark | A3, D3 | The core multiplier asset already exists | Recover the NASEM rules. The validation spec remains active at `exploratory`; check the [registry](../../specs/status.md). |
 | 4 | NASEM agency patent-cost tables [L3-L6] | C2, C3 | Award-patent linkage exists; no citation network is required | Published patent and award denominator definitions recovered |
 | 5 | Agency transition and commercialization tables [L1-L4, L6, L12, L47] | A2, B2, B3 | Transition and Phase III census machinery exists, but label validity is unresolved | Recover the outcome data. Hand-label validation remains gated; check the [registry](../../specs/status.md). |
@@ -228,7 +228,9 @@ and live-upstream reproduction checks. The remaining gaps are:
    outcomes.
 8. **Independent labels.** Entity lineage and Phase III validation remain too limited for citable
    transition claims.
-9. **Question-to-literature links.** Most additions in [L34-L48] remain only in the bibliography.
+9. **Question-to-literature links.** Many additions in [L34-L48] remain only in the bibliography.
+   Not all: [L7], [L36] and [L38] are already attached to the STTR spinout-linkage question, and
+   [L34] is cited in Order 8 above. Narrow any gap claim to the still-unlinked entries.
    [L36] and [L38] are already linked to the STTR spinout question.
 
 ## First implementation tranche
