@@ -7,8 +7,8 @@ schema_version: 1
 # must be captured, what is already pinned, and what is blocked. No definition is
 # paraphrased here: `definition_verbatim` stays null until the report text is in hand.
 
-capture_status: pending
-gate_satisfied: false
+capture_status: partial
+gate_satisfied: false  # 4 of 9 required definitions are not stated in the source
 
 # Maintainer decision 2026-09-17: the exact-vintage constraint is relaxed for bulk
 # upstream sources such as SBIR.gov, which publish only a current snapshot. Exact
@@ -34,16 +34,23 @@ targets:
     title: SBIR/STTR Annual Report, FY22
     url: https://www.sbir.gov/sites/default/files/SBA_FY22_SBIR_STTR_Annual_Report.pdf
     cited_as: L18
-    capture_status: not_retrieved
-    retrieval_blocker: >-
-      sbir.gov returned HTTP 403 to a non-browser client from the analysis
-      environment on 2026-09-17 (plain nginx 403; no proxy/policy marker, so the
-      request reached the host and was refused). Capture requires an interactive
-      browser session or another route. The user agent was not altered to evade
-      the refusal.
-    path: null
-    sha256: null
-    definition_verbatim: null
+    capture_status: retrieved
+    retrieval_note: >-
+      sbir.gov returned HTTP 403 to non-browser clients from the analysis
+      environment (plain nginx 403 on www.sbir.gov and on the /impact/ path of
+      data.www.sbir.gov, which serves award_data.csv normally; the request
+      reached the host and was refused). The user agent was not altered to evade
+      the refusal. The maintainer supplied the file directly on 2026-09-17.
+    path: data/raw/sba_annual_reports/FY22/SBA_FY22_SBIR_STTR_Annual_Report.pdf
+    committed: false
+    gitignore_rule: "/data/*"
+    sha256: 5ba60852f1cc44b23afdbf810ecf0cff77d714d10ffc786a9b73416d7c000fd1
+    pages: 94
+    text_layer: true
+    definition_verbatim: studies/sba-annual-report-tables/definitions-fy22.md
+    definitions_recovered: 3      # fiscal-year rule, dollar basis, STTR treatment
+    definitions_partial: 2        # phase labels, agency attribution
+    definitions_absent: 4         # state attribution, first-time window, amendments, zero-dollar
     tables_needed:
       - award dollars and counts by agency
       - award dollars and counts by state
@@ -55,21 +62,25 @@ targets:
     publisher: U.S. Small Business Administration
     title: SBIR/STTR Annual Report, FY21
     cited_as: L18
-    capture_status: not_retrieved
-    retrieval_blocker: Same as FY22; direct file URL not yet confirmed.
-    path: null
-    sha256: null
-    definition_verbatim: null
+    capture_status: retrieved_not_extracted
+    retrieval_note: Supplied by the maintainer on 2026-09-17, same route as FY22.
+    path: data/raw/sba_annual_reports/FY21/SBA_SBIR_STTR_FY21_Annual_Report.pdf
+    committed: false
+    gitignore_rule: "/data/*"
+    sha256: 30b4dfa9b4c2c2220fc15938d5bd1a44bee92d5aa746b8756dc7d66217c6df55
+    definition_verbatim: null  # not extracted; FY22 is the selected report-year
 
   - source_id: sba_annual_report_fy20
     publisher: U.S. Small Business Administration
     title: SBIR/STTR Annual Report, FY20
     cited_as: L18
-    capture_status: not_retrieved
-    retrieval_blocker: Same as FY22; direct file URL not yet confirmed.
-    path: null
-    sha256: null
-    definition_verbatim: null
+    capture_status: retrieved_not_extracted
+    retrieval_note: Supplied by the maintainer on 2026-09-17, same route as FY22.
+    path: data/raw/sba_annual_reports/FY20/SBA_SBIR_STTR_FY20_Annual_Report.pdf
+    committed: false
+    gitignore_rule: "/data/*"
+    sha256: f1f51abb29c71d631451868f31babf2f6f1fe3845df91e534052f1d40dece3d3
+    definition_verbatim: null  # not extracted; FY22 is the selected report-year
 
 # ---------------------------------------------------------------------------
 # Inputs: the award records the tables are recomputed from.
@@ -140,14 +151,51 @@ inputs:
 # ---------------------------------------------------------------------------
 # What unblocks this study.
 # ---------------------------------------------------------------------------
+# ---------------------------------------------------------------------------
+# Target tables captured from the FY22 report. Extraction and validation are
+# described in definitions-fy22.md.
+# ---------------------------------------------------------------------------
+captured_tables:
+  - table_id: fy22_awards_by_state
+    source_table: "Table 20: SBIR/STTR Awards by U.S. State and Territory"
+    source_pages: [53, 54]
+    path: studies/sba-annual-report-tables/data/table20_fy22_awards_by_state.csv
+    sha256: 64533444bb4b6aa5468c35d5649bc0256d412592f7a46893549b951c61d07649
+    rows: 52
+    grain: one row per U.S. state, DC, or territory
+    scope: Phase I and Phase II awards only (see definitions-fy22.md, quote 3)
+    internal_checks: >-
+      Five of six within-row identities hold exactly for all 52 rows. The sixth
+      (combined dollars = SBIR + STTR) is off by exactly +/-$1 on 14 rows,
+      consistent with sub-dollar amounts presented as whole dollars.
+    totals: {sbir_usd: 3814888304, sttr_usd: 614232137, awards: 6583}
+  - table_id: fy22_obligations_by_agency
+    source_table: "Chart 1 and Chart 2: Distribution of Total SBIR/STTR Dollars Obligated"
+    source_pages: [10]
+    path: studies/sba-annual-report-tables/data/chart1_2_fy22_obligations_by_agency.csv
+    sha256: 4ce99c86318eccb9d78db902cc68fa3478eba8dff509a63a61ee209a7a1ce8d5
+    rows: 16
+    grain: one row per participating agency per program
+    scope: all program obligations (NOT restricted to Phase I and Phase II)
+    internal_checks: >-
+      Reconciles to the report narrative: SBIR sums to $4,115,812,862 against a
+      stated $4,115,812,863 (-$1); STTR sums exactly; both DoD+HHS concentration
+      figures match to the dollar.
+
+# Table 20 does not sum to the program totals, by design rather than by error:
+# it covers Phase I and Phase II awards while the program totals cover all
+# obligations. Shortfall -300,924,559 SBIR (-7.31%) and
+# -4,040,026 STTR (-0.65%). Do not reconcile the two.
+
 next_actions:
-  - Obtain the selected annual report PDF. sbir.gov refuses non-browser clients
-    (HTTP 403 on both www.sbir.gov and the /impact/ path of the data host), so this
-    needs a browser download. Without it there are no published cells to compare and
-    no definitions to quote.
-  - Quote each definition listed in design.md verbatim into the matching
-    `definition_verbatim` field above, then commit the extracted target tables with
-    SHA-256 hashes under studies/sba-annual-report-tables/data/.
+  - Decide the four undetermined definitions (state attribution, first-time-winner
+    lookback, amendment handling, zero-dollar records). They are not in the source,
+    so each needs a documented decision recorded in amendments.md before comparison,
+    not an assumption made inside the implementation.
+  - Resolve the Phase IIB / sequential Phase II rollup into the published Phase II
+    column, and the DoD component-to-department aggregation.
+  - Write the recomputation against the pinned 2026-09-17 vintage and compare under
+    proposed_reproduction_contract; classify every difference.
   - Lift proposed_reproduction_contract into study.yaml when the implementation lands.
 
 # ---------------------------------------------------------------------------

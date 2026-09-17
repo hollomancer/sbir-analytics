@@ -45,3 +45,45 @@ the exact URL, and the drift report records the caution. Compare only like endpo
 still be classified rather than absorbed, and definitions must still be recovered verbatim from
 the report before any comparison. A band is not a licence to tune toward the published number.
 Every run must pin the vintage it read.
+
+## 2026-09-17 (later) — source captured; gate partially satisfied
+
+**Capture.** The maintainer supplied the FY20, FY21 and FY22 SBA SBIR/STTR Annual Reports
+directly, which resolves the retrieval blocker recorded above. sbir.gov continues to refuse
+non-browser clients (HTTP 403 on www.sbir.gov and on the /impact/ path of data.www.sbir.gov,
+which serves award_data.csv normally); the user agent was not altered to evade that refusal.
+FY22 is the selected report-year under the protocol's selection rule; FY20 and FY21 are recorded
+with hashes but not extracted.
+
+**Extracted from FY22** (`sha256=5ba60852f1cc44b2...`, 94 pages, text layer):
+
+- Table 20, awards by U.S. state and territory — 52 rows, Phase I and Phase II only
+- Charts 1 and 2, obligations by participating agency — 16 rows, all obligation categories
+
+Both validated. Five of six within-row identities in Table 20 hold exactly for all 52 rows; the
+sixth is off by exactly +/-$1 on 14 rows, consistent with sub-dollar amounts presented as whole
+dollars. The agency table reconciles to the report's narrative totals (SBIR -$1, STTR exact, both
+DoD+HHS concentration figures exact).
+
+**Table 20 does not sum to the program totals** — -300,924,559 SBIR (-7.31%)
+and -4,040,026 STTR (-0.65%). This is definitional: Table 20 covers Phase I
+and Phase II awards while the program totals cover all obligations. Recorded so no future run
+treats it as a reconciliation failure.
+
+**The gate stays unsatisfied, deliberately.** Of the nine definitions the frozen protocol requires
+verbatim, three are recovered (fiscal-year rule, dollar basis, STTR treatment), two are partial
+(phase-label rollup, agency attribution), and **four are not stated in the report at all**: state
+attribution, the first-time-winner lookback window, amendment and modification handling, and
+zero-dollar records. Notably the report publishes the first-time-winner statistic ("39% of all
+Phase I award winners were first-time winners") without its window, while a neighbouring measure
+on the previous page does state one (">15 Phase IIs FY17-FY21") — so the omission is conspicuous
+rather than implied.
+
+Those four cannot be recovered from this source. Under the protocol they become documented
+decisions recorded here before comparison, not assumptions buried in the implementation. They are
+listed in `sources.yaml:next_actions` and remain open.
+
+**Newly recovered, and relevant to the tolerance contract.** The report states of its own data
+that it "remains current to include subsequent funding of ongoing projects" (p52) — the publisher
+confirming the live database is not a frozen copy of the published table. This is independent
+support for the vintage-tolerant reproduction adopted in the amendment above.
