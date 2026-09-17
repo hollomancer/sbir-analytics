@@ -119,3 +119,70 @@ Newly captured tables and the year and cell comparisons accompany this record. T
 year-total and cell-level counts only; it does not run the committed implementation's difference
 classification, so it is an extension measurement rather than a validated study result and is not
 citable.
+
+## Addendum: what the FY2014 anomaly actually is
+
+Finding 1 above reported FY2014 recomputing 4.53% below its published state table and left the
+cause open. It is now resolved, and the resolution changes how the observation should be used.
+
+### The report has two different award counts, and they straddle the database
+
+Each annual report states an award count in its narrative as well as in the state table. For
+FY2014 the narrative (p20, corroborated at p24) gives a complete, internally consistent
+breakdown - 3,162 SBIR Phase I plus 1,513 SBIR Phase II equals the stated 4,675 SBIR total, and
+492 STTR Phase I plus 213 STTR Phase II equals the stated 705 - for **5,380 new awards**. The
+state table on p25-26 totals **5,513**. The database holds **5,263**.
+
+| Report year | Narrative | State table | Database | Table vs narrative | Database vs narrative |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| FY2013 | 5,154 | 5,091 | 5,103 | -1.22% | -0.99% |
+| FY2014 | 5,380 | 5,513 | 5,263 | **+2.47%** | **-2.17%** |
+
+**The 4.53% gap is not one large effect.** It is the publisher's own state table sitting 2.47%
+above the report's narrative count and the database sitting 2.17% below it - two errors of about
+the same size in opposite directions, which compound. Neither alone is remarkable against the
+2.92% already observed in FY2016. FY2013 shows both numbers on the same side of its narrative and
+within 1.25%, so the straddling is specific to FY2014.
+
+By program, SBIR drives it: narrative 4,675, table 4,802, database 4,561. STTR is close on all
+three (705 / 711 / 702). Within SBIR the table's excess over its narrative is concentrated in
+Phase II, +115 of +133.
+
+### This is not recent churn
+
+The award-year counts for 2012 through 2018 are **identical across all three export vintages**
+(2026-05-11, 2026-08-30, 2026-09-17) - zero change in any year. The FY2014 shortfall is a stable
+structural difference, not a deletion in progress, and these older report-years are no longer
+accreting at all. That further undercuts the report-age story in Finding 2: the years that should
+show the most accumulated drift are the ones that have stopped moving.
+
+### Consequence for the band
+
+**FY2014 should be excluded from the envelope, and now for a defensible reason rather than a
+suspicion.** Its state table is inconsistent with its own report by +2.47%, so for that year the
+table is not a sound comparison target. Excluding it, the one-sided +3% total-count band holds
+across the remaining seven years (+0.24% to +2.92%), though Finding 2's point stands: it holds as
+an empirical envelope, not because of the time signature the derivation claims.
+
+The database is nonetheless below the narrative in both FY2013 and FY2014, by 0.99% and 2.17%. So
+the direction of Finding 1 survives - the database can hold fewer awards for a year than the
+publisher counted - even though the FY2014 magnitude was inflated by a publisher-side error. A
+one-sided band remains unsafe in principle; it is the -4.53% figure that should not be used to
+size it.
+
+### A separate finding: the award-year field is the wrong basis
+
+Testing what basis reproduces the published counts best, across the six years where
+`Proposal Award Date` coverage exceeds 90%:
+
+| Basis | Mean absolute error vs published |
+| --- | ---: |
+| Federal fiscal year on the award date (Oct-Sep) | **0.88%** |
+| `Award Year` field (what the implementation uses) | 1.71% |
+| Calendar year on the award date | 4.22% |
+
+A federal-fiscal-year basis on `Proposal Award Date` fits about twice as well as the `Award Year`
+field the implementation currently uses. This is not actionable for the full panel yet - date
+coverage is 98% or better from award-year 2015 onward but only 76% to 81% for 2011 to 2014, so the
+basis cannot even be evaluated for FY2013 or FY2014, let alone adopted for them. Recorded as a
+candidate improvement to the recomputation for FY2015 onward, not adopted.
