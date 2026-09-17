@@ -138,9 +138,10 @@ state table on p25-26 totals **5,513**. The database holds **5,263**.
 | FY2013 | 5,154 | 5,091 | 5,103 | -1.22% | -0.99% |
 | FY2014 | 5,380 | 5,513 | 5,263 | **+2.47%** | **-2.17%** |
 
-**The 4.53% gap is not one large effect.** It is the publisher's own state table sitting 2.47%
-above the report's narrative count and the database sitting 2.17% below it - two errors of about
-the same size in opposite directions, which compound. Neither alone is remarkable against the
+**The 4.53% gap is not one large effect.** It is the published state table sitting 2.47% above the
+report's narrative count and the database sitting 2.17% below it - two discrepancies of about the
+same size in opposite directions, which compound. Whether either is an *error* is not established;
+see the basis question below. Neither alone is remarkable against the
 2.92% already observed in FY2016. FY2013 shows both numbers on the same side of its narrative and
 within 1.25%, so the straddling is specific to FY2014.
 
@@ -158,15 +159,17 @@ show the most accumulated drift are the ones that have stopped moving.
 
 ### Consequence for the band
 
-**FY2014 should be excluded from the envelope, and now for a defensible reason rather than a
-suspicion.** Its state table is inconsistent with its own report by +2.47%, so for that year the
-table is not a sound comparison target. Excluding it, the one-sided +3% total-count band holds
+**FY2014 should be excluded from the envelope, for a reason that is now specific rather than a
+suspicion: the basis of its state table is undetermined.** The report gives two different award
+counts and does not say what its state table counts, so for that year the table is not a sound
+comparison target. Excluding it, the one-sided +3% total-count band holds
 across the remaining seven years (+0.24% to +2.92%), though Finding 2's point stands: it holds as
 an empirical envelope, not because of the time signature the derivation claims.
 
 The database is nonetheless below the narrative in both FY2013 and FY2014, by 0.99% and 2.17%. So
 the direction of Finding 1 survives - the database can hold fewer awards for a year than the
-publisher counted - even though the FY2014 magnitude was inflated by a publisher-side error. A
+publisher counted - even though the FY2014 magnitude is inflated by a discrepancy inside the report whose cause is
+undetermined. A
 one-sided band remains unsafe in principle; it is the -4.53% figure that should not be used to
 size it.
 
@@ -186,3 +189,35 @@ field the implementation currently uses. This is not actionable for the full pan
 coverage is 98% or better from award-year 2015 onward but only 76% to 81% for 2011 to 2014, so the
 basis cannot even be evaluated for FY2013 or FY2014, let alone adopted for them. Recorded as a
 candidate improvement to the recomputation for FY2015 onward, not adopted.
+
+### Is the FY2014 report in error? Not established - and the obvious explanation fails
+
+An earlier draft of this record called the table-versus-narrative gap an error in the report. That
+was not established and the claim is withdrawn. Two candidate explanations were tested and neither
+holds.
+
+**Candidate 1: the state table counts prior-year awards while the narrative counts only new ones.**
+This is the natural reading, because from FY2016 the reports state exactly that split for dollars -
+counts are new awards only, dollars include prior-year funding - and because FY2014's narrative
+does separate the two, naming $41.2M of SBIR obligations against prior-year Phase I awards and
+$596.7M against prior-year Phase II. **The arithmetic refutes it.** The table's excess over the
+narrative in SBIR Phase II is 115 awards. Spreading $596.7M across 115 awards implies $5.19M each,
+about 35 times the $150K median FY2014 award in the export; at that median the same sum would cover
+roughly 3,978 awards, not 115. The excess is far too small to be the prior-year population and the
+dollars are far too large to be those 115 awards.
+
+**Candidate 2: the table is on the total-obligations basis throughout.** Also unsupported. The
+table's SBIR dollars total $2.046B, which sits 11.1% below the narrative's stated ~$2.3B of total
+SBIR obligations and 27.9% above its ~$1.6B of new-award obligations - neither basis. STTR is worse
+in the other direction: the table's $284M exceeds even the narrative's stated $231M total by 23.1%.
+The narrative's dollar figures are rounded to one or two significant figures, so this test is weak
+in any case; it simply fails to support either basis rather than ruling one out.
+
+**What is established.** The FY2014 report contains two award counts that differ by 2.47% - an
+exact narrative breakdown that sums correctly to 5,380 new awards, and a state table totalling
+5,513 - and it does not state what its state table counts. Later reports do state it. The cause of
+the difference is undetermined on the available evidence, and calling it an error attributes a
+defect to the publisher that this analysis cannot demonstrate.
+
+That is enough to exclude FY2014 from a tolerance envelope, because a comparison target of unknown
+basis cannot size a band. It is not enough to say the report is wrong.
