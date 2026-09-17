@@ -29,7 +29,7 @@ jurisdiction sets.
 | FY2022 | 6,639 | 6,607 | 32 | 6,583 | +24 (+0.36%) |
 
 Award key = agency tracking number + contract + upper-cased company + award year. De-duplicating on
-it removes 38–44 rows a year; a residual of +24 to +142 remains. This rule therefore moves
+it removes 32–44 rows a year; a residual of +24 to +142 remains. This rule therefore moves
 **0.36%–1.99% of every published count**, and it touches every cell of every year — counts and
 dollars, all 52–53 jurisdictions. It is the one blocker that cannot be worked around.
 

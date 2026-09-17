@@ -164,7 +164,7 @@ from this source, because relocations are mostly within-state and zip therefore 
 **Amendment handling — open, and now the single gate blocker.** The export carries more award rows
 than the published tables count every year, and it is not a jurisdiction effect (1 of 20,836 rows
 falls outside the published jurisdiction sets). De-duplicating on the award key removes
-38–44 rows a year and leaves a residual of +24 to +142, so the rule moves
+32–44 rows a year and leaves a residual of +24 to +142, so the rule moves
 **0.36%–1.99% of every published count** and touches every cell of every year. No
 recommendation is recorded: the evidence is consistent with more than one counting rule. As a lead
 only, 34 FY20–22 records changed award amount in place between the May and September vintages while
