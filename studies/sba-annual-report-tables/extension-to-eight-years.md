@@ -355,3 +355,103 @@ what it says. The headroom at FY2016 is 0.08pp, so a seventh year could breach t
 that is worth knowing before the band is relied on. Against that, the extension is bounded work:
 the parser already handles all five new years, the layout is uniform, and every new year satisfies
 its count identities exactly.
+
+## FY2019: recovered, partial, and defective in a second way
+
+Extracted by rasterising the embedded table image with `pypdfium2` and reading it with a vision
+model, then validating against the table's own three identities - the same check every text-layer
+year passes. No OCR engine was needed or installed.
+
+### The table is partial, confirmed four ways
+
+The maintainer asked whether "partial" was safe to assert. It is:
+
+1. **The image is not cropped.** Its native raster is 874 x 608 px and its placement on the page is
+   604.4 x 420.5 pt - aspect 1.438 against 1.437. A clipped image would be far taller natively than
+   its placement allows.
+2. **No other large image in the document is a state table.** Every image over 400 x 250 pt across
+   all 103 pages was measured; only this one has the wide landscape table shape, the rest being
+   charts at roughly 468 x 250 or 648 x 360 pt.
+3. **No page is missing.** Printed page numbers run 50, 51, 52, 53 continuously, and the table of
+   contents lists Table 19 as a single entry immediately followed by Table 20, which appears on the
+   next printed page.
+4. **The report discusses states it does not print.** Its own narrative names California,
+   Massachusetts, Virginia, Maryland, Colorado, Ohio, Pennsylvania, New York and Texas as the
+   concentration of FY19 dollars. **Five of those nine - VA, OH, PA, NY, TX - have no row in the
+   table**, all of them alphabetically after MS.
+
+The table covers AK through MS: 27 jurisdictions against the 53 its neighbours print.
+
+### A second defect: the STTR phase columns are misaligned by one row
+
+Rows AK through ME - 22 of them - satisfy every identity exactly. From MH onward the STTR phase
+columns are displaced one row upward, so each row's printed STTR Total equals the *previous* row's
+printed phase sum:
+
+| Row | STTR P1 + P2 as printed | STTR Total as printed | Previous row's P1 + P2 |
+| --- | ---: | ---: | ---: |
+| MH | 23 / $13,824,406 | 0 / $0 | 1 / $249,250 |
+| MI | 10 / $8,094,339 | 23 / $13,824,406 | **23 / $13,824,406** |
+| MN | 17 / $6,838,206 | 10 / $8,094,339 | **10 / $8,094,339** |
+| MO | 2 / $332,356 | 17 / $6,838,206 | **17 / $6,838,206** |
+| MS | 2 / $994,290 | 2 / $332,356 | **2 / $332,356** |
+
+Four consecutive exact matches in **both** counts and dollars - eight independent numbers - which a
+transcription error cannot produce. The totals columns are internally consistent throughout and the
+SBIR phase columns satisfy their identity on all 27 rows, so the displacement is confined to the two
+STTR phase columns. MH printing zero STTR is also the correct value: Marshall Islands rows are all
+zeros in FY2020 and FY2021.
+
+Recorded as printed, with the five affected rows flagged in `sttr_phase_misaligned` rather than
+silently corrected. Dollar residuals are at most $2 on six rows, the familiar rounding.
+
+### What it contributes
+
+For the 27 jurisdictions it does print, the export holds **4,263 awards against 4,250 published,
++0.31%** - the smallest deviation of any year measured, and inside the committed band. It cannot
+contribute a year total, so the FY2016-FY2022 run still has a gap at FY2019 for total-count purposes.
+
+## The mechanism behind the drift is the snapshot date, not the report age
+
+FY2019's table note states something no earlier year's does: the data "reflects a snapshot in time
+and was retrieved on August 13, 2021". Searching every report for such a statement found four:
+
+| Report year | Snapshot date | Years after FY close | Deviation, same 27 jurisdictions |
+| --- | --- | ---: | ---: |
+| FY2019 | 2021-08-13 | 1.87 | +0.31% |
+| FY2020 | 2021-09-30 | 1.00 | +2.47% |
+| FY2021 | 2023-02-09 | 1.36 | +1.06% |
+| FY2022 | 2023-09-13 | 0.95 | +1.28% |
+| FY2016, FY2017, FY2018 | none stated | unknown | +2.94%, +1.47%, +1.89% |
+
+All seven restricted to the same 27 jurisdictions, so jurisdiction mix is controlled.
+
+Correlations against the deviation:
+
+| Candidate | r |
+| --- | ---: |
+| Years between FY close and the snapshot | **-0.810** |
+| Years between the snapshot and the 2026 export | +0.058 |
+| Report age, all seven years | +0.453 |
+
+**The signature is on the snapshot lag, and it runs opposite to the report-age intuition.** The
+longer SBA waited after the fiscal year closed before taking its snapshot, the *less* the database
+has since diverged from the published table - which is mechanically what should happen, because a
+later snapshot already contains more of the post-close corrections. Elapsed time from snapshot to
+export carries essentially no signal, which is the direct refutation of an accumulation story: what
+matters is how much correction the published table already absorbed, not how long the database has
+had to move since.
+
+FY2019 and FY2020 make the point on their own. Their snapshots are seven weeks apart (August and
+September 2021), so both tables were built from nearly the same database state - yet FY2019's was
+taken 1.87 years after its fiscal year closed and FY2020's only 1.00 year after, and their
+deviations are +0.31% against +2.47%.
+
+**Status: four observations, correlation only.** No model was fitted and no band is proposed on this
+basis - four points cannot support either. It is recorded because it names a measurable covariate
+where Finding 2 could only report the absence of one, and because it sharpens Finding 2 rather than
+replacing it: there is still no usable *report-age* signature, which is what Finding 2 claimed.
+
+**It also makes the FY2023 and FY2024 reports more valuable than the corpus assessment argued.** If
+those volumes state snapshot dates, they are out-of-sample tests of a specific directional
+prediction, not merely two more observations.
