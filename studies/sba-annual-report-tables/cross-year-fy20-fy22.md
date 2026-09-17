@@ -44,7 +44,8 @@ each report rather than assumed.
 
 ## 3. The Phase I+II shortfall against program totals varies sharply
 
-Table 20 covers Phase I and Phase II awards; the narrative program totals cover all obligations.
+The state awards table (Table 18 in FY20/FY21, Table 20 in FY22) covers Phase I and Phase II
+awards; the narrative program totals cover all obligations.
 The FY22 capture recorded this as definitional. Across years the magnitude is far from stable:
 
 | Year | SBIR shortfall | STTR shortfall |
@@ -57,9 +58,9 @@ FY22's SBIR shortfall is roughly **2.5x** the FY20 and FY21 shares. The FY20 rep
 obligation categories that sit outside Phase I and Phase II — Phase III, Technical and Business
 Assistance (TABA), the Commercialization Readiness Pilot Program (CRPP), and the Administrative
 Funding Pilot (AFPP) — in a per-agency table on p12. **Whether the FY22 widening is growth in those
-categories or a change in Table 20's scope is not established here**, and it should be resolved
-before any cross-year total is published: a panel built on Table 20 is not a panel of program
-obligations, and the wedge between them moves.
+categories or a change in the state table's scope is not established here**, and it should be
+resolved before any cross-year total is published: a panel built on the state awards table
+(Table 18/20) is not a panel of program obligations, and the wedge between them moves.
 
 ## 4. The four undetermined FY22 definitions are not resolved by the earlier years
 

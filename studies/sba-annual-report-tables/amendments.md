@@ -249,6 +249,17 @@ raises as a capture defect. Now implemented as `verify_published_identities()` a
 `all_tot=sbir+sttr` on 22 rows, `sbir_tot=p1+p2` on 15, `sttr_tot=p1+p2` on 1 — with all three
 award-count identities exact in all three years.
 
+**Zero-award cells with positive dollars are printed that way, and the replication must not
+"fix" them.** Six captured cells carry a zero count against non-zero dollars, and each was
+verified against its source PDF page: FY2020 AR STTR Phase II 0 / $585,965, MN STTR Phase II
+0 / $4,954,458, OR STTR Phase II 0 / $327,912; FY2021 ME STTR Phase I 0 / $40,000, PR SBIR
+Phase II 0 / $783,762, WY SBIR Phase II 0 / $873,129. The reports explain the mechanism in
+the table's own footnote: "The number of awards are only for new awards during [the FY]. The
+dollars obligated includes funding for both new and prior year awards." A count cell is
+new-award count; a dollar cell includes subsequent funding of prior-year projects, so a state
+with no new awards in a category can still show obligations. Within-row identities hold on
+all six rows. Like the $1 residual, this is a published-table property, not a capture defect.
+
 **The captured state-table filenames misstated their source for two of three years.** Checking each
 report's own caption before adding a table-number prefix to `source_table` showed the table is
 **Table 20 in FY22 but Table 18 in FY20 and FY21**. The files were named `table20_fy20_...` and

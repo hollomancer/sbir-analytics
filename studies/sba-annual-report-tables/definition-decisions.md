@@ -147,7 +147,10 @@ exist in the window. **Revisit if the panel extends to other report-years** — 
 identifies 27 OCR-free years, and this measurement does not generalise to them.
 
 Note the zero cells in the published state table (`ND` STTR Phase II, `0 $0`) are zero *counts*, not
-zero-dollar awards, and do not bear on this.
+zero-dollar awards, and do not bear on this. A separate published quirk — six cells with a zero
+count against positive dollars, verified against the PDFs — is recorded in `amendments.md`: the
+count column is new awards only while the dollar column includes subsequent funding of prior-year
+projects, per the table's own footnote.
 
 ---
 
