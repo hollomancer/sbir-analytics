@@ -10,6 +10,16 @@ schema_version: 1
 capture_status: pending
 gate_satisfied: false
 
+# Maintainer decision 2026-09-17: the exact-vintage constraint is relaxed for bulk
+# upstream sources such as SBIR.gov, which publish only a current snapshot. Exact
+# published-sample reproduction is impossible (no report-era vintage survives), and
+# is replaced by a vintage-tolerant reproduction with declared bands via the
+# StudyManifest.reproduction contract. Bands derived in vintage-drift-2026-09-17.md
+# from measured drift of +0.047% over 4.2 months.
+published_sample_verdict: vintage_tolerant_reproduction
+exact_vintage_reproduction: impossible_no_surviving_vintage
+published_sample_verdict_evidence: studies/sba-annual-report-tables/vintage-drift-2026-09-17.md
+
 selection_rule: >-
   Select the most recent annual report whose underlying source export can be
   recovered. Recoverability governs, not recency. Record the chosen report and the
@@ -103,14 +113,73 @@ inputs:
         UEI coverage is incomplete for older awards (DUNS-era records), which
         bears directly on the first-time-winner history window.
 
+
+  - source_id: sbir_gov_award_export_2026_09_17
+    publisher: SBIR.gov (SBA)
+    title: SBIR/STTR award data export
+    path: data/raw/sbir/history/2026-09-17/award_data.csv
+    committed: false
+    gitignore_rule: "/data/*"
+    sha256: aed146eab56f370c9f3fe7f562475e3eedfc61cca2eba112c830fac6f73bf38a
+    size_bytes: 394636989
+    source_url: https://data.www.sbir.gov/mod_awarddatapublic/award_data.csv
+    retrieved_on: "2026-09-17"
+    evidence_class: administrative_record
+    identity_grain: one row per award action as published by SBIR.gov
+    columns: 42
+    schema_matches_2026_05_11: true
+    role: pinned_comparison_vintage
+    endpoint_caution: >-
+      Pin this exact URL. The same host also serves
+      data.www.sbir.gov/awarddatapublic/award_data.csv (no mod_ prefix), a legacy
+      41-column product without UEI, with 'Women Owned' instead of 'Woman Owned'
+      and USPS state abbreviations. It appears in
+      docs/archive/deployment/actions-migration-plan.md. Comparing the two
+      endpoints produces large spurious differences; see the drift report.
+
 # ---------------------------------------------------------------------------
 # What unblocks this study.
 # ---------------------------------------------------------------------------
 next_actions:
-  - Retrieve the selected annual report and commit the extracted target tables
-    with SHA-256 hashes under studies/sba-annual-report-tables/data/.
+  - Obtain the selected annual report PDF. sbir.gov refuses non-browser clients
+    (HTTP 403 on both www.sbir.gov and the /impact/ path of the data host), so this
+    needs a browser download. Without it there are no published cells to compare and
+    no definitions to quote.
   - Quote each definition listed in design.md verbatim into the matching
-    `definition_verbatim` field above.
-  - Determine whether any report-era award vintage is recoverable. If none is,
-    record the published-sample replication as `blocked` and proceed only with the
-    separately-labelled current-data extension.
+    `definition_verbatim` field above, then commit the extracted target tables with
+    SHA-256 hashes under studies/sba-annual-report-tables/data/.
+  - Lift proposed_reproduction_contract into study.yaml when the implementation lands.
+
+# ---------------------------------------------------------------------------
+# Proposed StudyManifest.reproduction contract, to be lifted into study.yaml when
+# the implementation lands. Bands derive from drift measured over a single
+# 4.2-month window (vintage-drift-2026-09-17.md). Extrapolating them across the
+# multi-year gap to the [L18] reports is an assumption, not a measurement.
+# ---------------------------------------------------------------------------
+proposed_reproduction_contract:
+  live_sources:
+    - name: SBIR.gov award export (mod_awarddatapublic)
+      retrieval_manifest: data/raw/sbir/history/2026-09-17/award_data.meta.json
+      upstream_measure: total record count in the export
+      identity_grain: one row per award action as published by SBIR.gov
+  tolerances:
+    - quantity: FY2020-FY2022 total award dollars (USD)
+      absolute_band: 30000000
+      derivation: >-
+        Measured movement over 4.2 months was +$5,669,026 (+0.0465%) on a
+        $12.2040B base, and the largest single award-amount correction observed was
+        $1,928,322. The band is $30M, about 0.25% of the total and roughly five
+        times the observed four-month move, leaving room for accumulation across a
+        multi-year gap and several large corrections. It is deliberately not
+        time-scaled from a single observation window.
+    - quantity: FY2020-FY2022 unique award count
+      absolute_band: 200
+      derivation: >-
+        Over 4.2 months, 135 window records were removed and 136 added, for a net
+        change of +1 unique award. The band covers observed churn with headroom.
+    - quantity: FY2020-FY2022 records whose state attribution differs from the pinned vintage
+      absolute_band: 150
+      derivation: >-
+        32 state re-attributions were measured over 4.2 months (0.16% of matched
+        records). Compare like endpoints only: the legacy feed reports states as
+        USPS abbreviations, which makes an unnormalised comparison report 100%.
