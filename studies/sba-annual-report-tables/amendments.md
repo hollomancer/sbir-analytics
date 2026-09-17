@@ -178,3 +178,55 @@ this corpus it costs nothing (0 of 17,171 UEIs split), but it would split identi
 source that punctuates differently — which is what the Phase III census joins across. Raised
 because it surfaced while validating the first-time-winner decision; it belongs to the
 identity-resolution work.
+
+## 2026-09-17 (later) — assembly methodology recovered from source; capture gate satisfied
+
+**The amendment blocker dissolved rather than being decided.** Searching the supplied corpus for
+methodology language found SBA's own statement of how the tables are built (FY2016 p39):
+
+> "SBA requires the data in this report to be a summation of the individual awards uploaded to SBA.
+> This ensures the report data matches that available through the SBIR.gov site."
+
+The tables are the sum of individual uploaded award records, intended to equal SBIR.gov at
+publication. There is no separate amendment-counting rule to recover. The same page documents why
+they now differ: DoD's FY2016 submission was 177 days late and incomplete, SBA "received many
+additional uploads" for over a year afterwards, and "if SBA identifies substantial corrections to
+the data in this report, SBA intends to update the data through SBIR.gov" — corrections go to the
+database, not to the published report. SBA assessed that year's corrected DoD data as "over 95%
+accurate", which brackets the surplus measured here. The FY2012 scorecard shows the same pattern:
+DoD original 04/24/2013, resubmission 04/23/2014, against a 03/15/2013 deadline.
+
+Each report prints an agency submission table. For the study years DoD was 150 days late (FY2020),
+149 days late (FY2021) and on time (FY2022), while every other agency submitted within days of
+deadline — consistent with the surplus being almost entirely SBIR, where DoD is the largest agency,
+and with STTR reconciling to 0.00–2.00%. **Extraction caution recorded:** the FY20/FY21 tables print
+"1501" and "1491" in the days column; those are 150 and 149 with a footnote marker flattened into
+the digits, verified against the stated 03/15 deadlines.
+
+Three observations cannot separate DoD lateness from elapsed time since publication — they order
+identically. Both mechanisms are now documented rather than hypothesised.
+
+**Consequence:** the surplus is a vintage phenomenon, not a definitional one, and it moves under the
+reproduction contract rather than needing a counting rule. Two derived tolerances were added as
+`published_table_tolerances`, kept separate from the existing vintage bands because they govern a
+different comparison (export against published table, not export against export): a one-sided +3%
+band on total count, and max(6 rows, 20%) per cell — the tightest band on the tested grid covering
+100% of 569 cells. The per-cell band is wide because it absorbs two superimposed effects and must
+not be read as a count tolerance alone; at least 83–97 rows a year sit in the wrong cell through
+firm relocation.
+
+**Gate satisfied.** All nine required definitions are now accounted for, at four distinct evidence
+levels recorded in `definition_decisions.evidence_ladder`: three recovered verbatim, one recovered
+from source methodology, two partial with documented limits, one inferred by reproducing a published
+figure, one closed as not applicable, one closed as a tolerance. **These are not equivalent and the
+distinction must be preserved** — in particular the first-time-winner rule is inferred, not
+recovered, and the implementation must carry the tolerances rather than assume exact reproduction.
+
+**Secondary caveat recorded against a definition previously marked recovered.** FY2016 p39 states
+SBA cannot distinguish obligation year from appropriation year for DoD and would like to report
+both. The fiscal-year rule recovered from FY22 stands, but for the largest agency that basis is not
+cleanly separable.
+
+**Still unresolvable:** the publication-era figure. SBIR.gov serves only the current snapshot, so no
+report-era export survives; any replication compares a corrected database against an uncorrected
+published table and the tolerance must absorb that rather than pretend it away.

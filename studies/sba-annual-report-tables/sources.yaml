@@ -8,7 +8,7 @@ schema_version: 1
 # paraphrased here: `definition_verbatim` stays null until the report text is in hand.
 
 capture_status: partial  # FY20/FY21/FY22 state tables captured
-gate_satisfied: false  # blocking on ONE item: amendment/modification handling
+gate_satisfied: true   # all nine definitions accounted for; see definition_decisions.evidence_ladder
 
 # Maintainer decision 2026-09-17: the exact-vintage constraint is relaxed for bulk
 # upstream sources such as SBIR.gov, which publish only a current snapshot. Exact
@@ -227,19 +227,57 @@ definition_decisions:
   measured_against: data/raw/sbir/history/2026-09-17/award_data.csv   # mod_awarddatapublic endpoint
   window: FY2020-FY2022
   rows_measured: 20836
-  closed: 3
-  open: 1
+  closed: 4
+  open: 0
+  # How each of the nine required definitions is satisfied, and at what evidence
+  # level. These are NOT equivalent; do not describe an inferred rule as recovered.
+  evidence_ladder:
+    recovered_verbatim: [fiscal_year_rule, dollar_basis, sttr_treatment]
+    recovered_from_source_methodology: [amendment_handling]
+    partial_with_documented_limits: [phase_label_rollup, agency_attribution]
+    inferred_by_reproducing_published_figure: [first_time_winner_lookback]
+    closed_as_not_applicable: [zero_dollar_records]
+    closed_as_tolerance: [state_attribution]
+  caveats:
+    fiscal_year_rule: >-
+      FY2016 p39 records that SBA cannot distinguish obligation year from
+      appropriation year for DoD and would like to report both. The recovered rule
+      stands, but for the largest agency the obligation-year basis is not cleanly
+      separable.
 
   amendments_modifications:
-    status: open
-    blocking: true
+    status: closed
+    closed_how: recovered_from_source      # SBA's own methodology statement, FY2016 p39
+    record: studies/sba-annual-report-tables/assembly-methodology.md
+    finding: >-
+      There is no amendment-counting rule to recover. SBA states the report tables
+      are "a summation of the individual awards uploaded to SBA", explicitly so the
+      report matches SBIR.gov. Post-publication corrections are pushed to the
+      database and the published report is not revised (FY2016 p39), so the surplus
+      is a vintage phenomenon rather than a definitional one.
+    blocking: false
     decides_share_of_published_counts: "0.36%-1.99%"
     evidence:
       export_rows_exceed_published: {fy2020: 180, fy2021: 98, fy2022: 56}
       duplicate_award_keys: {fy2020: 38, fy2021: 44, fy2022: 32}
       residual_after_dedup: {fy2020: 142, fy2021: 54, fy2022: 24}
       rows_outside_published_jurisdictions: 1
-    recommendation: none   # evidence is consistent with more than one counting rule
+    reframed_as: vintage_tolerance          # see published_table_tolerances below
+    supporting_measurements:
+      distinct_contract_phase_exceeds_published: {fy2020: 144, fy2021: 81, fy2022: 45}
+      tracking_number_dedup_undershoots: {fy2020: -42, fy2021: -105, fy2022: -123}
+      contract_is_project_not_award: >-
+        421 duplicate-contract groups: 89.5% differ in amount, 19.5% stay within one
+        phase, 67.5% span >1 award year; DOE is 703 of 853 rows (82%).
+      dod_submission_days_late: {fy2020: 150, fy2021: 149, fy2022: 0}
+      extraction_caution: >-
+        The FY20/FY21 submission tables print 1501 and 1491 in the days column.
+        Those are 150 and 149 with a footnote marker flattened into the digits by
+        text extraction; verified against the stated 03/15 deadlines. Do not read
+        those cells literally.
+    unresolvable: >-
+      The publication-era figure cannot be reconstructed. SBIR.gov serves only the
+      current snapshot, so no report-era export survives to compare against.
 
   first_time_winner_lookback:
     status: closed
@@ -270,9 +308,9 @@ definition_decisions:
     do_not_go_finer_than_state: true       # zip drifts 11x as often as state over the same interval
 
 next_actions:
-  - Decide amendment/modification handling. This is the single remaining gate
-    blocker; see definition_decisions.amendments_modifications. It moves every cell
-    of every year and no comparison should run before it is settled.
+  - Write the recomputation and compare under published_table_tolerances. Validate
+    totals against the count band and cells against the combined band; never
+    attribute cell displacement to counting.
   - Sign off on first_time_winner_lookback.prior_means (any prior award vs prior
     Phase I only). Both reproduce the published 39%; the choice moves the recomputed
     rate by 0.74pp and nothing else.
@@ -315,3 +353,33 @@ proposed_reproduction_contract:
         32 state re-attributions were measured over 4.2 months (0.16% of matched
         records). Compare like endpoints only: the legacy feed reports states as
         USPS abbreviations, which makes an unnormalised comparison report 100%.
+
+# Tolerances for reproducing the PUBLISHED tables from the export. Distinct from
+# `tolerances` above, which covers vintage drift between two exports. Basis:
+# 569 published cells (state x program x phase) across FY2020-FY2022, compared
+# against the pinned 2026-09-17 export. Full derivation in assembly-methodology.md.
+published_table_tolerances:
+  - quantity: total award count, per report-year
+    band: "+3% one-sided"
+    derivation: >-
+      Observed export surplus over published: +0.85% (FY2022), +1.44% (FY2021),
+      +2.51% (FY2020). One-sided because post-publication correction only adds
+      records; the export should never fall below the published count. The band
+      covers the observed maximum with headroom and is not time-scaled from three
+      observations.
+  - quantity: per-cell award count (state x program x phase)
+    band: "max(6 rows, 20%)"
+    derivation: >-
+      Tightest band on the tested grid covering 100% of 569 cells;
+      max(4 rows, 20%) covers 99.82%. A hybrid is required because small cells move
+      little in absolute terms but up to 100% relatively, while large cells move up
+      to 6 rows but only 6% relatively. Largest single deviation: FY2020 CA SBIR
+      Phase II, 466 published against 489 in the export (+23, +4.9%).
+    warning: >-
+      This band absorbs TWO superimposed effects and must not be read as a count
+      tolerance alone. Only 41.5-46.6% of cells match exactly and cells run under as
+      often as over (FY2022: 62 over, 49 under, net +56). The under-cells are firm
+      relocation, i.e. the state-attribution tolerance: FL +16, CO +15, NC +12,
+      TX +8 gaining against PA -7, DE -7, VA -6, WA -5 losing. At least 83-97 rows
+      per year sit in the wrong cell. Validate totals against the count band and
+      cells against the combined band; never attribute cell displacement to counting.
