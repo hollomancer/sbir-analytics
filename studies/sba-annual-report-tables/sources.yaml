@@ -7,7 +7,7 @@ schema_version: 1
 # must be captured, what is already pinned, and what is blocked. No definition is
 # paraphrased here: `definition_verbatim` stays null until the report text is in hand.
 
-capture_status: partial
+capture_status: partial  # FY20/FY21/FY22 state tables captured
 gate_satisfied: false  # 4 of 9 required definitions are not stated in the source
 
 # Maintainer decision 2026-09-17: the exact-vintage constraint is relaxed for bulk
@@ -62,25 +62,29 @@ targets:
     publisher: U.S. Small Business Administration
     title: SBIR/STTR Annual Report, FY21
     cited_as: L18
-    capture_status: retrieved_not_extracted
+    capture_status: retrieved_and_extracted
     retrieval_note: Supplied by the maintainer on 2026-09-17, same route as FY22.
     path: data/raw/sba_annual_reports/FY21/SBA_SBIR_STTR_FY21_Annual_Report.pdf
     committed: false
     gitignore_rule: "/data/*"
     sha256: 30b4dfa9b4c2c2220fc15938d5bd1a44bee92d5aa746b8756dc7d66217c6df55
-    definition_verbatim: null  # not extracted; FY22 is the selected report-year
+    definition_verbatim: studies/sba-annual-report-tables/cross-year-fy20-fy22.md
+    definitions_absent: 4  # same four as FY22; the earlier years do not state them either
+    first_time_winner_statistic_published: false  # FY22 only
 
   - source_id: sba_annual_report_fy20
     publisher: U.S. Small Business Administration
     title: SBIR/STTR Annual Report, FY20
     cited_as: L18
-    capture_status: retrieved_not_extracted
+    capture_status: retrieved_and_extracted
     retrieval_note: Supplied by the maintainer on 2026-09-17, same route as FY22.
     path: data/raw/sba_annual_reports/FY20/SBA_SBIR_STTR_FY20_Annual_Report.pdf
     committed: false
     gitignore_rule: "/data/*"
     sha256: f1f51abb29c71d631451868f31babf2f6f1fe3845df91e534052f1d40dece3d3
-    definition_verbatim: null  # not extracted; FY22 is the selected report-year
+    definition_verbatim: studies/sba-annual-report-tables/cross-year-fy20-fy22.md
+    definitions_absent: 4  # same four as FY22; the earlier years do not state them either
+    first_time_winner_statistic_published: false  # FY22 only
 
 # ---------------------------------------------------------------------------
 # Inputs: the award records the tables are recomputed from.
@@ -181,6 +185,33 @@ captured_tables:
       Reconciles to the report narrative: SBIR sums to $4,115,812,862 against a
       stated $4,115,812,863 (-$1); STTR sums exactly; both DoD+HHS concentration
       figures match to the dollar.
+
+  - table_id: fy20_awards_by_state
+    source_table: "SBIR/STTR Awards by U.S. State and Territory"
+    source_pages: [53, 54, 55, 56]
+    path: studies/sba-annual-report-tables/data/table20_fy20_awards_by_state.csv
+    sha256: 0c8465c210f122a75b42b5afef147f688e73cec6a82a230f0d33f377def3403c
+    rows: 53
+    jurisdictions_extra_vs_fy22: [MH]
+    scope: Phase I and Phase II awards only
+    totals: {sbir_usd: 3429157542, sttr_usd: 454766126, awards: 7136}
+  - table_id: fy21_awards_by_state
+    source_table: "SBIR/STTR Awards by U.S. State and Territory"
+    source_pages: [51, 52, 53, 54]
+    path: studies/sba-annual-report-tables/data/table20_fy21_awards_by_state.csv
+    sha256: cb43a8ec5de2b70a97f240f329a3a19a749b0f85910b5229593a5267dc1c1cde
+    rows: 53
+    jurisdictions_extra_vs_fy22: [MH]
+    scope: Phase I and Phase II awards only
+    totals: {sbir_usd: 3365675990, sttr_usd: 523097227, awards: 6783}
+
+# Cross-year findings in cross-year-fy20-fy22.md. Three notes bear on the contract:
+#  - the +/-$1 total-column residual recurs in all three years, so it is a per-cell
+#    allowance the contract should carry separately from the vintage bands;
+#  - the jurisdiction set is not constant (53 rows in FY20/FY21, 52 in FY22: MH);
+#  - the Phase I+II shortfall against program totals moves a lot by year
+#    (-2.95%, -2.67%, -7.31% on SBIR), so a Table 20 panel is not
+#    a program-obligations panel and the wedge between them must not be ignored.
 
 # Table 20 does not sum to the program totals, by design rather than by error:
 # it covers Phase I and Phase II awards while the program totals cover all

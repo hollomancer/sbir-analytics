@@ -87,3 +87,40 @@ listed in `sources.yaml:next_actions` and remain open.
 that it "remains current to include subsequent funding of ongoing projects" (p52) — the publisher
 confirming the live database is not a frozen copy of the published table. This is independent
 support for the vintage-tolerant reproduction adopted in the amendment above.
+
+## 2026-09-17 (later) — Order 1 extended to FY2020 and FY2021
+
+**Scope.** The FY22 extraction path applied unchanged to the other two report-years [L18] cites.
+State tables captured and validated for all three; findings in `cross-year-fy20-fy22.md`.
+
+**Three findings change how the comparison must be written.**
+
+1. **The ±$1 total-column residual recurs in every year** (4 rows in FY20,
+   4 in FY21, 14 in FY22, never exceeding $1). Three independent years
+   support the FY22 inference of sub-dollar amounts printed as whole dollars. This is a per-cell
+   allowance and belongs in the contract separately from the vintage bands, which cover upstream
+   movement rather than publication rounding.
+2. **The jurisdiction set is not constant.** FY20 and FY21 carry 53 rows, FY22 carries 52; the
+   difference is `MH` (Marshall Islands). The jurisdiction list must be read per report, not fixed.
+3. **The Phase I+II shortfall against program totals moves sharply** — -2.95% in FY20,
+   -2.67% in FY21, -7.31% in FY22 on SBIR. The FY20 report names the categories
+   outside Phase I/II (Phase III, TABA, CRPP, AFPP) in a per-agency table on p12. Whether FY22's
+   widening is growth in those categories or a scope change in Table 20 is **not established**, and
+   it must be resolved before publishing any cross-year total.
+
+**The four undetermined definitions remain undetermined.** The corpus triage speculated the older
+volumes might state what FY22 omits. They do not: state attribution, first-time-winner lookback,
+amendment handling, and zero-dollar records are absent from FY2020 and FY2021 as well. Keyword
+matches were incidental prose — outreach programmes for "first-time SBIR/STTR grant applicants",
+DOE training "modifications", DOT "no-cost-extensions" — not counting rules. Adding report-years
+does not resolve them; project decisions are required.
+
+**Scope reduction for Order 1.** The roadmap names "first-time-winner counts and shares" as a
+target. FY22 publishes it; FY2020 and FY2021 publish no such statistic. That target is a
+single-year comparison in this window, not a panel.
+
+**Not captured.** No FY20/FY21 agency-level table. Those charts do not parse reliably from the text
+layer (labels wrap two agencies per line; neighbouring tables pollute the capture — one attempt
+reconciled $701,449 short, a second at twice the true total). Rather than commit an unvalidated
+table, the limitation is recorded: the per-agency obligation table on p12 of each report is the
+better target and needs column-aligned parsing.
