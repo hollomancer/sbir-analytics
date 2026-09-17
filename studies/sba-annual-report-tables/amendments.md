@@ -21,12 +21,27 @@ such as SBIR.gov, which publish only a current snapshot.
 Exact published-sample reproduction remains impossible, for a reason unrelated to drift: no
 report-era vintage survives anywhere. `docs/data/awards-refresh.md` records that SBIR.gov
 serves only the current snapshot, and the oldest vintage available here (2026-05-11)
-post-dates all three reports in [L18]. In its place the study performs a **vintage-tolerant
-reproduction** — published cells compared against a *pinned* vintage under declared bands,
-with an in-band difference recorded as agreement rather than `pipeline_defect`. This uses
-`StudyManifest.reproduction`, whose docstring notes that bit-exact reproducibility is
-unachievable against a source someone else updates. The proposed contract is in
-`sources.yaml:proposed_reproduction_contract`.
+post-dates all three reports in [L18]. The exact-vintage published-sample outcome is
+therefore **`blocked`**, exactly as the frozen protocol's source-vintage section states.
+
+What proceeds is the **labelled structural check** that same section permits: recompute the
+table structure and definitions against a *pinned* later vintage and report it as a
+structural check, keeping the `blocked` verdict on the published-sample cells. Two contracts
+divide the work and must not be conflated:
+
+- **Input drift between pinned vintages** is classified by `StudyManifest.reproduction` via
+  `sbir_etl.quality.reproduction.classify_rebuild`, under the declared bands. That contract
+  compares a pinned retrieval of the live export with a later retrieval of the same export.
+  It never grades a published cell against a recomputed one.
+- **Cell differences** are classified one at a time under the frozen protocol's four classes.
+  A band is never a reason to record a cell as agreeing: `revised_upstream` must be
+  demonstrated from the specific award records that moved between pinned vintages, or the
+  difference stays `pipeline_defect` territory. The FY2020–FY2022 aggregate bands ($30M on
+  ~$12.2B; 200 unique awards) would otherwise absorb differences larger than many Table 20
+  rows and larger than the documented $4,040,026 Table 20 vs program-total STTR gap.
+
+The proposed contract is in `sources.yaml:proposed_reproduction_contract`, with its scope
+stated in the same terms.
 
 Measured drift supports narrow bands: over 4.2 months the FY20–22 total moved +$5.67M
 (+0.0465%), 34 matched records (0.17%) changed amount, 32 (0.16%) changed state, and the
@@ -60,10 +75,12 @@ with hashes but not extracted.
 - Table 20, awards by U.S. state and territory — 52 rows, Phase I and Phase II only
 - Charts 1 and 2, obligations by participating agency — 16 rows, all obligation categories
 
-Both validated. Five of six within-row identities in Table 20 hold exactly for all 52 rows; the
-sixth is off by exactly +/-$1 on 14 rows, consistent with sub-dollar amounts presented as whole
-dollars. The agency table reconciles to the report's narrative totals (SBIR -$1, STTR exact, both
-DoD+HHS concentration figures exact).
+The transcription checks held on both. Five of six within-row identities in Table 20 hold
+exactly for all 52 rows; the sixth is off by exactly +/-$1 on 14 rows, consistent with
+sub-dollar amounts presented as whole dollars. The agency table reconciles to the report's
+narrative totals (SBIR -$1, STTR exact, both DoD+HHS concentration figures exact). These are
+internal arithmetic checks on the captured CSVs, not a `validation_result` in the
+`studies/README.md` sense; the study rank is unchanged.
 
 **Table 20 does not sum to the program totals** — -300,924,559 SBIR (-7.31%)
 and -4,040,026 STTR (-0.65%). This is definitional: Table 20 covers Phase I
@@ -86,4 +103,14 @@ listed in `sources.yaml:next_actions` and remain open.
 **Newly recovered, and relevant to the tolerance contract.** The report states of its own data
 that it "remains current to include subsequent funding of ongoing projects" (p52) — the publisher
 confirming the live database is not a frozen copy of the published table. This is independent
-support for the vintage-tolerant reproduction adopted in the amendment above.
+support for the vintage-tolerant structural check adopted in the amendment above.
+
+## 2026-09-17 (later) — denominator-integrity check admits the published ±$1 identity
+
+The frozen blocking check requires every total to equal the sum of its published parts.
+The published Table 20 itself fails that literally: combined dollars (SBIR + STTR) are off
+by exactly ±$1 on 14 of 52 rows, which `definitions-fy22.md` records as whole-dollar
+presentation of sub-dollar amounts. **Deviation:** denominator integrity admits the
+published ±$1 combined-dollar identity on Table 20, classified as `rounding`, and does not
+fail the study. Any discrepancy other than exactly ±$1 on that identity, or any discrepancy
+on the other five within-row identities, still fails the check.

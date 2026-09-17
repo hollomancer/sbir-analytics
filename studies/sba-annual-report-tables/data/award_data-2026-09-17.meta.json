@@ -1,0 +1,8 @@
+{
+  "source_url": "https://data.www.sbir.gov/mod_awarddatapublic/award_data.csv",
+  "sha256": "aed146eab56f370c9f3fe7f562475e3eedfc61cca2eba112c830fac6f73bf38a",
+  "downloaded_at": "2026-09-17T01:32:00Z",
+  "size": 394636989,
+  "columns": 42,
+  "note": "Retrieved for Study 1 (sba-annual-report-tables). Schema matches the 2026-05-11 canonical export (42 columns, UEI present). An earlier file placed here was mistakenly fetched from the legacy data.www.sbir.gov/awarddatapublic/ endpoint (no mod_ prefix), which serves a different 41-column product without UEI; it has been overwritten with this correct-endpoint download."
+}

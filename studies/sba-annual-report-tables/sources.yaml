@@ -2,31 +2,43 @@ schema_version: 1
 
 # Capture manifest for Study 1 (SBA SBIR/STTR annual-report tables, [L18]).
 #
-# STATUS: the roadmap's start gate for this study — "exact table definitions and
-# report-year source files captured" — is NOT yet satisfied. This file records what
-# must be captured, what is already pinned, and what is blocked. No definition is
-# paraphrased here: `definition_verbatim` stays null until the report text is in hand.
+# STATUS: report-year source files are captured (FY20-FY22, hashes below) and the
+# FY22 definitions are extracted to definitions-fy22.md. The roadmap's start gate
+# is still NOT satisfied: four of the nine required definitions are not stated in
+# the source and need documented decisions in amendments.md before comparison.
 
 capture_status: partial
 gate_satisfied: false  # 4 of 9 required definitions are not stated in the source
 
 # Maintainer decision 2026-09-17: the exact-vintage constraint is relaxed for bulk
-# upstream sources such as SBIR.gov, which publish only a current snapshot. Exact
-# published-sample reproduction is impossible (no report-era vintage survives), and
-# is replaced by a vintage-tolerant reproduction with declared bands via the
-# StudyManifest.reproduction contract. Bands derived in vintage-drift-2026-09-17.md
-# from measured drift of +0.047% over 4.2 months.
-published_sample_verdict: vintage_tolerant_reproduction
+# upstream sources such as SBIR.gov, which publish only a current snapshot. No
+# report-era vintage survives, so the exact-vintage published-sample outcome is
+# `blocked` (design.md, source-vintage risk). What proceeds instead is the labelled
+# structural check design.md permits: recompute against a *pinned* later vintage
+# under the StudyManifest.reproduction drift contract. The method field below names
+# that choice; the verdict field carries the design.md outcome vocabulary only.
+published_sample_method: vintage_tolerant_structural_check
+published_sample_verdict: blocked  # no report-era vintage survives; not a run result
 exact_vintage_reproduction: impossible_no_surviving_vintage
-published_sample_verdict_evidence: studies/sba-annual-report-tables/vintage-drift-2026-09-17.md
+published_sample_method_evidence: studies/sba-annual-report-tables/vintage-drift-2026-09-17.md
 
 selection_rule: >-
   Select the most recent annual report whose underlying source export can be
   recovered. Recoverability governs, not recency. Record the chosen report and the
   reason here once capture succeeds.
 
+# The published table set to reproduce. It applies to whichever report-year the
+# selection rule chooses, so it lives here rather than on any single target.
+tables_needed:
+  - award dollars and counts by agency
+  - award dollars and counts by state
+  - award dollars and counts by phase
+  - award dollars and counts by fiscal year
+  - first-time-winner counts and shares
+
 # ---------------------------------------------------------------------------
-# Targets: the published tables to be reproduced. Not yet retrieved.
+# Targets: the published tables to be reproduced. FY22 is retrieved and
+# extracted; FY21 and FY20 are retrieved with hashes but not extracted.
 # ---------------------------------------------------------------------------
 targets:
   - source_id: sba_annual_report_fy22
@@ -48,15 +60,18 @@ targets:
     pages: 94
     text_layer: true
     definition_verbatim: studies/sba-annual-report-tables/definitions-fy22.md
-    definitions_recovered: 3      # fiscal-year rule, dollar basis, STTR treatment
-    definitions_partial: 2        # phase labels, agency attribution
-    definitions_absent: 4         # state attribution, first-time window, amendments, zero-dollar
-    tables_needed:
-      - award dollars and counts by agency
-      - award dollars and counts by state
-      - award dollars and counts by phase
-      - award dollars and counts by fiscal year
-      - first-time-winner counts and shares
+    # One entry per definition the frozen protocol requires, keyed to the nine
+    # numbered items in definitions-fy22.md, so capture completeness is checkable.
+    definitions:
+      fiscal_year_rule: recovered        # 1 — obligation within the reporting cycle
+      dollar_basis: recovered            # 2 — obligations, not outlays
+      sttr_treatment: recovered          # 3 — disaggregated and combined columns
+      phase_labels: partial              # 4 — Phase IIB rollup unstated
+      agency_attribution: partial        # 5 — participating-agency level only
+      state_attribution: absent          # 6
+      first_time_winner_window: absent   # 7
+      amendment_handling: absent         # 8
+      zero_dollar_records: absent        # 9
 
   - source_id: sba_annual_report_fy21
     publisher: U.S. Small Business Administration
@@ -94,6 +109,13 @@ inputs:
     gitignore_rule: "/data/*"
     sha256: 7511930b16dfa5c3aeff57bc4349c44b0d0efa04862433b7310401d3a4198c6c
     size_bytes: 394410138
+    source_url: https://data.www.sbir.gov/mod_awarddatapublic/award_data.csv
+    source_url_note: >-
+      URL recorded 2026-09-17 from the retrieval path in
+      sbir_etl/extractors/source_downloads/sbir.py, which this vintage was
+      downloaded with; no contemporaneous retrieval manifest was written in May.
+      The schema (42 columns, UEI present, 'Woman Owned') matches the canonical
+      mod_awarddatapublic product and not the legacy awarddatapublic one.
     retrieved_on: "2026-05-11"
     data_last_updated: null
     evidence_class: administrative_record
@@ -113,8 +135,9 @@ inputs:
     field_hazards:
       fiscal_year: >-
         Two candidate fields exist (Award Year, Proposal Award Date) and they need
-        not agree. The report's own fiscal-year rule decides which is correct;
-        until it is recovered, neither may be assumed.
+        not agree. The report's rule is recovered (definitions-fy22.md, quote 1:
+        obligation within the reporting cycle), but which export field encodes the
+        obligation cycle is a mapping decision the implementation must document.
       state: >-
         State is the firm's address of record in this snapshot, which SBIR.gov
         refreshes in place. It may reflect the firm's present address rather than
@@ -194,8 +217,9 @@ next_actions:
     not an assumption made inside the implementation.
   - Resolve the Phase IIB / sequential Phase II rollup into the published Phase II
     column, and the DoD component-to-department aggregation.
-  - Write the recomputation against the pinned 2026-09-17 vintage and compare under
-    proposed_reproduction_contract; classify every difference.
+  - Write the recomputation against the pinned 2026-09-17 vintage. Classify every
+    cell difference under design.md's four classes; use
+    proposed_reproduction_contract only for input drift between pinned vintages.
   - Lift proposed_reproduction_contract into study.yaml when the implementation lands.
 
 # ---------------------------------------------------------------------------
@@ -203,14 +227,38 @@ next_actions:
 # the implementation lands. Bands derive from drift measured over a single
 # 4.2-month window (vintage-drift-2026-09-17.md). Extrapolating them across the
 # multi-year gap to the [L18] reports is an assumption, not a measurement.
+#
+# Scope: this contract classifies drift of the INPUT between pinned vintages via
+# sbir_etl.quality.reproduction.classify_rebuild. It never grades agreement
+# between a recomputed cell and a published cell. Cell differences are classified
+# one at a time under design.md's four classes, and `revised_upstream` requires
+# record-level evidence (the underlying award rows differ between pinned
+# vintages), not residence inside any band here.
 # ---------------------------------------------------------------------------
 proposed_reproduction_contract:
   live_sources:
     - name: SBIR.gov award export (mod_awarddatapublic)
-      retrieval_manifest: data/raw/sbir/history/2026-09-17/award_data.meta.json
+      # Tracked copy; the download itself stays gitignored under /data/*. When
+      # lifted into study.yaml, list this tracked file in frozen_artifacts.
+      retrieval_manifest: studies/sba-annual-report-tables/data/award_data-2026-09-17.meta.json
+      retrieval_manifest_untracked_original: data/raw/sbir/history/2026-09-17/award_data.meta.json
       upstream_measure: total record count in the export
-      identity_grain: one row per award action as published by SBIR.gov
+      # Identity is declared at the matched-award key the drift measurement used
+      # (agency tracking number, contract, company, award year), not at the raw
+      # export row: rows churn in place (135 removed / 136 added over 4.2
+      # months), so per-row identity would return IDENTITY_DIVERGENCE on every
+      # rebuild and the contract would never reach its bands.
+      identity_grain: >-
+        unique award keyed by agency tracking number, contract, company, and
+        award year, within FY2020-FY2022
   tolerances:
+    - quantity: total record count in the export
+      absolute_band: 500
+      derivation: >-
+        The upstream_measure needs its own band or classify_rebuild returns
+        OUTSIDE_TOLERANCE ("no declared tolerance") whenever the export grows.
+        Observed accretion was +89 records over 4.2 months; 500 covers a year of
+        ordinary accretion at that rate with headroom.
     - quantity: FY2020-FY2022 total award dollars (USD)
       absolute_band: 30000000
       derivation: >-
@@ -224,10 +272,16 @@ proposed_reproduction_contract:
       absolute_band: 200
       derivation: >-
         Over 4.2 months, 135 window records were removed and 136 added, for a net
-        change of +1 unique award. The band covers observed churn with headroom.
+        change of +1 unique award at the declared identity grain. The band covers
+        observed churn with headroom.
     - quantity: FY2020-FY2022 records whose state attribution differs from the pinned vintage
       absolute_band: 150
       derivation: >-
         32 state re-attributions were measured over 4.2 months (0.16% of matched
         records). Compare like endpoints only: the legacy feed reports states as
         USPS abbreviations, which makes an unnormalised comparison report 100%.
+  # The estimand's cell grid (agency x state x phase x fiscal-year x
+  # first-time-winner) is deliberately not banded. A cell-level difference is
+  # never absorbed by a tolerance: it is classified under design.md
+  # (rounding / revised_upstream / definition_mismatch / pipeline_defect),
+  # with revised_upstream demonstrated from the specific records that moved.
