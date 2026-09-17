@@ -5,7 +5,11 @@ comparison. Three were recovered and two are partial (`definitions-fy22.md`); **
 from FY2020, FY2021 and FY2022 alike** (`cross-year-fy20-fy22.md`). Absent definitions become
 documented project decisions recorded here, never assumptions inside the implementation.
 
-**Status: 3 of 4 closed, 1 open.** The gate stays unsatisfied on amendment handling.
+**Status: 4 of 4 closed.** Amendment handling was closed from SBA's own methodology statement
+rather than by a project decision; see `assembly-methodology.md`. The capture gate is satisfied,
+but the four are closed at different evidence levels, recorded in `sources.yaml`
+`definition_decisions.evidence_ladder`. Those levels are not equivalent: the first-time-winner
+rule is inferred by reproducing a published figure, not recovered from the source.
 
 Every figure below is measured against the pinned 2026-09-17 award export
 (`data/raw/sbir/history/2026-09-17/award_data.csv`, canonical
@@ -13,7 +17,7 @@ Every figure below is measured against the pinned 2026-09-17 award export
 
 ---
 
-## 1. Amendment and modification handling — **OPEN, blocking**
+## 1. Amendment and modification handling — **CLOSED from source methodology**
 
 **Undetermined.** When an award is later modified — funds added, an option exercised, a no-cost
 extension granted — does the published table show a second row, an increased row, or nothing?
@@ -40,8 +44,14 @@ rather than appended as a new one — which would make the export closer to one 
 one row per action, and would mean the residual above needs a different explanation. **Not
 established**; recorded as a lead, not a finding.
 
-**Decision required before comparison.** No recommendation is offered here: the evidence is
-consistent with more than one counting rule and the choice materially changes every cell.
+**Closed 2026-09-17, and not by choosing a counting rule.** SBA states the published tables are
+"a summation of the individual awards uploaded to SBA", so there is no amendment-counting rule to
+recover; post-publication corrections are pushed to SBIR.gov while the report is not revised
+(FY2016 annual report, p39). The surplus is a vintage phenomenon, carried as the count tolerances
+in `sources.yaml` `published_table_tolerances`. Full evidence in `assembly-methodology.md`.
+
+The text above is preserved as the state of knowledge before that statement was found; it is not
+the current contract.
 
 ---
 

@@ -63,7 +63,7 @@ Each report prints an agency submission table (FY20 p9–10, FY21 p9–10, FY22 
 
 | Report | DoD submitted | Deadline | Days late | Row surplus vs export |
 | --- | --- | --- | ---: | ---: |
-| FY2020 | 2021-08-12 | 2021-03-15 | 150 | +180 (+2.52%) |
+| FY2020 | 2021-08-12 | 2021-03-15 | 150 | +180 (+2.52%)¹ |
 | FY2021 | 2022-08-11 | 2022-03-15 | 149 | +98 (+1.44%) |
 | FY2022 | 2023-03-15 | 2023-03-15 | **0** | +56 (+0.85%) |
 
@@ -78,6 +78,11 @@ against the stated 03/15 deadlines: 2021-03-15 to 2021-08-12 is exactly 150 days
 
 Three observations cannot separate "DoD submitted late" from "more elapsed time since publication" —
 they order identically here. Both mechanisms are now documented rather than hypothesised.
+
+¹ The FY2020 window holds 7,316 export rows, of which one carries a blank jurisdiction and
+cannot be placed in any published cell. Counting all 7,316 gives +180 (+2.52%); the implementation
+compares the 7,315 placeable rows and reports +179 (+2.51%). Both figures appear in this study and
+differ by exactly that row.
 
 ## What this resolves
 
@@ -111,8 +116,10 @@ absorb that difference rather than pretend it away.
 
 ## Derived count tolerances
 
-Basis: 569 published cells (state x program x phase) across FY2020–FY2022, compared against the
-pinned export.
+Basis: **632** published cells (state x program x phase) across FY2020–FY2022, compared against
+the pinned export. Of those, **569 carry a non-zero published count**; the remaining 63 are
+printed as zero and reach at most 2 awards in the export, inside the six-row floor. Both bands
+below were verified to cover 100% of the full 632 and of the 569 non-zero subset.
 
 | Tolerance | Band | Basis |
 | --- | --- | --- |
@@ -124,12 +131,17 @@ little in absolute terms but enormously in relative terms; large cells the rever
 
 | Published cell size | Cells | Match exactly | Max abs deviation | Max relative |
 | --- | ---: | ---: | ---: | ---: |
-| 1–5 | 59 | 64% | 2 rows | 100% |
-| 6–20 | 66 | 45% | 4 rows | 33% |
-| 21–100 | 52 | 27% | 8 rows | 18% |
-| 101+ | 17 | 6% | 6 rows | 6% |
+| 1–5 | 171 | 66% | 4 rows | 200% |
+| 6–20 | 194 | 40% | 4 rows | 50% |
+| 21–100 | 156 | 17% | 13 rows | 29% |
+| 101+ | 48 | 4% | 23 rows | 13% |
 
-Largest single deviation: FY2020 CA SBIR Phase II, published 466 against 489 in the export (+23,
+Cells sum to the 569 non-zero cells. **Match exactly** here is count-only agreement, which is why
+it differs from the stricter `exact` class in `results/comparison_cells.csv`, where a cell must
+also agree on dollars.
+
+The 101+ row is what the largest single deviation belongs to. Largest single deviation: FY2020 CA
+SBIR Phase II, published 466 against 489 in the export (+23,
 +4.9%).
 
 **The per-cell band is wide because it absorbs two superimposed effects**, and a replication must

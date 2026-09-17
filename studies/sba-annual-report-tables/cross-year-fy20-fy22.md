@@ -11,7 +11,9 @@ internal-identity checks. Roadmap Order 1.
 
 ## 1. The ±$1 residual is systematic, not an FY22 artefact
 
-Every year fails exactly one class of within-row identity, always by at most **$1**:
+Within-row identity failures are confined to the **total-dollar** columns and never exceed **$1**.
+Award-count identities hold exactly in all three years. The number of failing classes differs by
+year — two in FY2020, three in FY2021, one in FY2022 — so this is not a single-class artefact:
 
 | Year | Rows failing `sbir_tot=p1+p2` | `sttr_tot=p1+p2` | `all_tot=sbir+sttr` | Max abs residual |
 | --- | ---: | ---: | ---: | ---: |
@@ -19,7 +21,7 @@ Every year fails exactly one class of within-row identity, always by at most **$
 | FY2021 | 9 | 1 | 4 | $1 |
 | FY2022 | 0 | 0 | 14 | $1 |
 
-Three independent report-years all showing sub-dollar disagreement in the total columns supports the
+Three independent report-years all showing sub-dollar disagreement in the total columns support the
 FY22 inference: the published tables sum amounts carrying cents and print whole dollars. A
 replication should therefore treat a $1-per-row discrepancy as agreement, not as a defect. This
 belongs in the tolerance contract as a per-cell allowance distinct from the vintage bands, which
@@ -91,9 +93,10 @@ extraction target, but it needs column-aligned parsing that this round did not a
 
 ## Substantive pattern
 
-Award counts fall while dollars rise: 7,136 awards / $3.00B in FY20,
-6,783 / $3.00B in FY21, 6,583 / $4.00B in FY22 — fewer, larger
-awards across the three years. Reported as the published tables show it; no causal reading is offered.
+Award counts fall while dollars rise: 7,136 awards / $3.88B in FY2020, 6,783 / $3.89B in FY2021,
+6,583 / $4.43B in FY2022 (Phase I+II, SBIR+STTR combined, from the header table above). Dollars
+are flat from FY2020 to FY2021 (+0.1%) and rise 13.9% into FY2022, for a 14.0% rise across the
+three years against a 7.8% fall in award count. Reported as the published tables show it; no causal reading is offered.
 
 ## Files
 

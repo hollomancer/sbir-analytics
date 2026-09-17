@@ -95,8 +95,12 @@ State tables captured and validated for all three; findings in `cross-year-fy20-
 
 **Three findings change how the comparison must be written.**
 
-1. **The ±$1 total-column residual recurs in every year** (4 rows in FY20,
-   4 in FY21, 14 in FY22, never exceeding $1). Three independent years
+1. **The ±$1 total-column residual recurs in every year.** The implementation's
+   denominator-integrity check counts **38 row-identity residuals** across the three years,
+   every one at most $1: `all_tot=sbir+sttr` on 22 rows (4 FY20, 4 FY21, 14 FY22),
+   `sbir_tot=p1+p2` on 15 (6 FY20, 9 FY21) and `sttr_tot=p1+p2` on 1 (FY21). An earlier version
+   of this entry reported only the 22 `all_tot` rows as "the" residual, understating it by 16.
+   Award-count identities hold exactly in all three years. Three independent years
    support the FY22 inference of sub-dollar amounts printed as whole dollars. This is a per-cell
    allowance and belongs in the contract separately from the vintage bands, which cover upstream
    movement rather than publication rounding.
