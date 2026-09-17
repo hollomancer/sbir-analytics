@@ -33,7 +33,7 @@ import pandas as pd
 from sbir_etl.exceptions import ValidationError
 from sbir_etl.identity.geography import USJurisdictionProfile, normalize_us_jurisdiction
 
-EPISTEMIC_TIER = "studies"
+EPISTEMIC_TIER = "exploratory"
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
 STUDY_ROOT = REPOSITORY_ROOT / "studies/sba-annual-report-tables"
