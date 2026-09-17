@@ -8,7 +8,7 @@ schema_version: 1
 # paraphrased here: `definition_verbatim` stays null until the report text is in hand.
 
 capture_status: partial  # FY20/FY21/FY22 state tables captured
-gate_satisfied: false  # 4 of 9 required definitions are not stated in the source
+gate_satisfied: false  # blocking on ONE item: amendment/modification handling
 
 # Maintainer decision 2026-09-17: the exact-vintage constraint is relaxed for bulk
 # upstream sources such as SBIR.gov, which publish only a current snapshot. Exact
@@ -218,11 +218,64 @@ captured_tables:
 # obligations. Shortfall -300,924,559 SBIR (-7.31%) and
 # -4,040,026 STTR (-0.65%). Do not reconcile the two.
 
+# ---------------------------------------------------------------------------
+# Decisions for the four definitions absent from every source year.
+# Full basis and measurements: studies/sba-annual-report-tables/definition-decisions.md
+# ---------------------------------------------------------------------------
+definition_decisions:
+  record: studies/sba-annual-report-tables/definition-decisions.md
+  measured_against: data/raw/sbir/history/2026-09-17/award_data.csv   # mod_awarddatapublic endpoint
+  window: FY2020-FY2022
+  rows_measured: 20836
+  closed: 3
+  open: 1
+
+  amendments_modifications:
+    status: open
+    blocking: true
+    decides_share_of_published_counts: "0.36%-1.99%"
+    evidence:
+      export_rows_exceed_published: {fy2020: 180, fy2021: 98, fy2022: 56}
+      duplicate_award_keys: {fy2020: 38, fy2021: 44, fy2022: 32}
+      residual_after_dedup: {fy2020: 142, fy2021: 54, fy2022: 24}
+      rows_outside_published_jurisdictions: 1
+    recommendation: none   # evidence is consistent with more than one counting rule
+
+  first_time_winner_lookback:
+    status: closed
+    closed_how: empirical_recovery   # inferred by reproducing the published statistic, NOT read from source
+    epistemic_status: weaker than a verbatim definition; do not describe as recovered from the source
+    basis: distinct_awardee_firms          # awards basis yields 28.2%; published figure is 39%
+    window: all_program_history            # 5-year window yields 40.2%-43.2%
+    identity_key: uei_with_normalized_name_fallback
+    name_profile: ENTITY_RESOLUTION_V1     # sbir_etl.identity.company_names, imported not reimplemented
+    prior_means: any_prior_sbir_or_sttr_award   # requires sign-off; prior-Phase-I-only yields 39.39%
+    recomputed_fy22_rate: 0.3865
+    published_fy22_rate: 0.39
+    distinct_firms: 2559
+    cross_validation: impossible           # FY2020 and FY2021 publish no comparable statistic
+
+  zero_dollar_records:
+    status: closed
+    decision: not_applicable_in_scope
+    evidence: 0 of 20836 FY20-FY22 export rows have award amount <= 0 or missing
+    revisit_if: panel extends beyond FY2020-FY2022
+
+  state_attribution:
+    status: closed
+    decision: tolerance_not_rule           # award-time address is unrecoverable from this export
+    use: export current State value, mapped from full name to USPS code
+    four_month_drift: {state: 0.00155, city: 0.01200, zip: 0.01637, address1: 0.02230}
+    drift_is_a_floor: true                 # FY22 published 2023; band must reflect elapsed time
+    do_not_go_finer_than_state: true       # zip drifts 11x as often as state over the same interval
+
 next_actions:
-  - Decide the four undetermined definitions (state attribution, first-time-winner
-    lookback, amendment handling, zero-dollar records). They are not in the source,
-    so each needs a documented decision recorded in amendments.md before comparison,
-    not an assumption made inside the implementation.
+  - Decide amendment/modification handling. This is the single remaining gate
+    blocker; see definition_decisions.amendments_modifications. It moves every cell
+    of every year and no comparison should run before it is settled.
+  - Sign off on first_time_winner_lookback.prior_means (any prior award vs prior
+    Phase I only). Both reproduce the published 39%; the choice moves the recomputed
+    rate by 0.74pp and nothing else.
   - Resolve the Phase IIB / sequential Phase II rollup into the published Phase II
     column, and the DoD component-to-department aggregation.
   - Write the recomputation against the pinned 2026-09-17 vintage and compare under

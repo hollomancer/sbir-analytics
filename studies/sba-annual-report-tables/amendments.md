@@ -124,3 +124,57 @@ layer (labels wrap two agencies per line; neighbouring tables pollute the captur
 reconciled $701,449 short, a second at twice the true total). Rather than commit an unvalidated
 table, the limitation is recorded: the per-agency obligation table on p12 of each report is the
 better target and needs column-aligned parsing.
+
+## 2026-09-17 (later) — three of four absent definitions closed; one blocker remains
+
+Decisions and their measured basis are in `definition-decisions.md`. Measured against the pinned
+2026-09-17 export from the canonical `mod_awarddatapublic` endpoint, FY2020–FY2022, 20,836 rows.
+
+**First-time-winner lookback — closed by empirical recovery, not by reading the source.** Rather
+than assume a rule, every combination of identity key, lookback window and counting basis was
+computed for FY22 Phase I awards and compared against the published 39%. Two of three open choices
+resolve decisively: the basis is **distinct awardee firms** (an awards basis yields 28.2%, so SBA
+would have printed "28%"), and the window is **all programme history** (a five-year window yields
+40.2%–43.2%). Notably the Multiple Award Winner chart's explicit five-year convention does not
+carry over. Identity uses UEI with a normalized-name fallback via
+`normalize_company_name(..., profile=ENTITY_RESOLUTION_V1)` — the repository's own profile,
+imported rather than reimplemented — because UEI back-fill is uneven (34.7% of 1983–99 awards
+rising to 100% of 2022–26), so a UEI-only history under-detects pre-2010 prior awards. The
+recomputed FY22 rate is **38.65%** on 2,559 distinct firms.
+
+This rule was **inferred by reproducing a published number**, which is weaker evidence than a
+verbatim definition and is recorded as such. It cannot be cross-validated: FY2020 and FY2021
+publish no comparable statistic. One residual choice needs maintainer sign-off — whether "prior"
+means any prior SBIR/STTR award (38.65%) or a prior Phase I specifically (39.39%). Both round to
+39%; the recorded decision is any prior award, on the reading that "first-time winner" refers to the
+programme rather than to a phase.
+
+**Zero-dollar records — closed as not applicable.** Of 20,836 FY20–22 export rows, **zero** have an
+award amount at or below zero, or missing. No rule is required in this window. Flagged to revisit if
+the panel extends to other report-years, since the measurement does not generalise.
+
+**State attribution — closed as a tolerance rather than a rule.** The export carries a single
+current address block with no award-time history, so the published cell assignment cannot be
+reconstructed; the decision is to use the current value and carry the misassignment in the
+tolerance. Four-month drift on 20,586 matched records: state 0.155%, city 1.200%, zip 1.637%,
+address 2.230%. Two consequences are recorded: the state figure is a **floor**, not the expected
+error against a table published in 2023; and **no geography finer than state** should be attempted
+from this source, because relocations are mostly within-state and zip therefore drifts 11x as often.
+
+**Amendment handling — open, and now the single gate blocker.** The export carries more award rows
+than the published tables count every year, and it is not a jurisdiction effect (1 of 20,836 rows
+falls outside the published jurisdiction sets). De-duplicating on the award key removes
+38–44 rows a year and leaves a residual of +24 to +142, so the rule moves
+**0.36%–1.99% of every published count** and touches every cell of every year. No
+recommendation is recorded: the evidence is consistent with more than one counting rule. As a lead
+only, 34 FY20–22 records changed award amount in place between the May and September vintages while
+row counts barely moved, which would suggest the export holds one row per award rather than one per
+action — not established.
+
+**Incidental, outside this study.** `normalize_company_name` under `ENTITY_RESOLUTION_V1` is
+order-sensitive: suffix stripping precedes punctuation removal, so a trailing `INC.` never matches
+the ` INC` suffix and `"Acme Robotics, Inc."` and `"ACME ROBOTICS INC"` produce different keys. On
+this corpus it costs nothing (0 of 17,171 UEIs split), but it would split identities against any
+source that punctuates differently — which is what the Phase III census joins across. Raised
+because it surfaced while validating the first-time-winner decision; it belongs to the
+identity-resolution work.
