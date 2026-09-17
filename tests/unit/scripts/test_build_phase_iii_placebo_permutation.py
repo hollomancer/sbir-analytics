@@ -1,5 +1,6 @@
 """Focused tests for the R16 permutation-separation runner."""
 
+import hashlib
 import importlib.util
 import json
 from datetime import date
@@ -8,6 +9,7 @@ from pathlib import Path
 import pandas as pd
 import pytest
 
+from sbir_analytics.assets.phase_iii_census.assets import FROZEN_SPEC_REVISION
 from sbir_analytics.assets.phase_iii_census.criteria import CensusInputError
 from sbir_analytics.assets.phase_iii_negative_controls import permutation as perm
 from sbir_analytics.assets.phase_iii_negative_controls.placebo import PLACEBO_SEED
@@ -20,6 +22,10 @@ MODULE = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(MODULE)
 
 DATA_CUT = date(2026, 2, 6)
+
+
+def _digest(path: Path) -> str:
+    return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
 def _refuse_draws(*_args: object, **_kwargs: object) -> None:
@@ -44,7 +50,7 @@ def _pairs() -> pd.DataFrame:
 def _wire(monkeypatch: pytest.MonkeyPatch, pairs: pd.DataFrame, *, draws: int) -> None:
     """Bypass real inputs and the R15 recorded values; shrink the design to ``draws``."""
 
-    monkeypatch.setattr(MODULE, "verify_frozen_spec", lambda: {"revision": "phase-0-r16"})
+    monkeypatch.setattr(MODULE, "verify_frozen_spec", lambda: {"revision": FROZEN_SPEC_REVISION})
     monkeypatch.setattr(MODULE, "_load_pairs", lambda: (pairs, {"pair_rows": len(pairs)}, DATA_CUT))
     monkeypatch.setattr(MODULE.perm, "R16_DRAWS", draws)
     seen = perm.run_permutation_draws(pairs, DATA_CUT, [PLACEBO_SEED])
@@ -141,7 +147,7 @@ def test_resumed_run_completes_over_the_fixed_seed_list_and_writes_result(
     assert final["seed"].tolist() == perm.preregistered_seeds(4)
     assert PLACEBO_SEED not in set(final["seed"])
     manifest = json.loads((tmp_path / MODULE.MANIFEST_NAME).read_text())
-    assert manifest["design_revision"] == "phase-0-r16"
+    assert manifest["design_revision"] == FROZEN_SPEC_REVISION
     assert set(manifest["artifacts"]) == set(MODULE.OUTPUT_NAMES)
 
 
@@ -322,3 +328,114 @@ def test_store_with_collapsed_assignment_identity_is_refused(
 
     with pytest.raises(CensusInputError, match="same assignment"):
         MODULE.run(tmp_path, owner_approved=True, draws=2)
+
+
+def test_check_inputs_reports_each_phase_one_source_without_taking_a_draw(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The acceptance test for recovering the inputs: ready only on an exact match."""
+
+    root = tmp_path / "repo"
+    (root / "data").mkdir(parents=True)
+    good = root / "data/good.parquet"
+    good.write_bytes(b"exact recovered bytes")
+    bad = root / "data/bad.parquet"
+    bad.write_bytes(b"a later snapshot")
+    monkeypatch.setattr(
+        MODULE,
+        "R15_RECORDED_INPUTS",
+        {
+            "data/good.parquet": {
+                "rows": 1,
+                "bytes": len(b"exact recovered bytes"),
+                "sha256": hashlib.sha256(b"exact recovered bytes").hexdigest(),
+            },
+            "data/bad.parquet": {"rows": 1, "bytes": 99, "sha256": "0" * 64},
+            "data/absent.parquet": {"rows": 1, "bytes": 1, "sha256": "1" * 64},
+        },
+    )
+
+    report = MODULE.check_inputs(root)
+
+    assert report["ready"] is False
+    assert report["inputs"]["data/good.parquet"]["state"] == "match"
+    assert report["inputs"]["data/bad.parquet"]["state"] == "digest_mismatch"
+    assert report["inputs"]["data/absent.parquet"]["state"] == "missing"
+
+    monkeypatch.setattr(
+        MODULE,
+        "R15_RECORDED_INPUTS",
+        {
+            "data/good.parquet": {
+                "rows": 1,
+                "bytes": good.stat().st_size,
+                "sha256": _digest(good),
+            },
+            "data/bad.parquet": {"rows": 1, "bytes": bad.stat().st_size, "sha256": _digest(bad)},
+        },
+    )
+    assert MODULE.check_inputs(root)["ready"] is True
+
+
+def test_recorded_input_digests_are_the_published_materialization_values() -> None:
+    """Guard the transcription of materialization-2026-02-06.md."""
+
+    recorded = MODULE.R15_RECORDED_INPUTS
+    contracts = recorded["data/transition/contracts_ingestion.parquet"]
+    assert contracts["rows"] == 1_879_459
+    assert contracts["bytes"] == 416_094_799
+    assert contracts["sha256"] == (
+        "c1518188ef674f3b301ef61be19f6db796a9389e4d03f1196280080f71803a98"
+    )
+    assert recorded["data/processed/phase_ii_awards.parquet"]["rows"] == 95_313
+    assert recorded["data/processed/phase_iii_census_sbir_awards.parquet"]["rows"] == 219_500
+
+
+def test_execution_code_digests_cover_the_per_draw_path() -> None:
+    digests = MODULE.execution_code_digests()
+    assert set(digests) == {"permutation_module", "runner_script"}
+    assert digests["runner_script"] == _digest(
+        MODULE.SCRIPT if hasattr(MODULE, "SCRIPT") else SCRIPT
+    )
+    assert digests["permutation_module"] == _digest(Path(perm.__file__))
+
+
+def test_fingerprint_changes_when_the_execution_code_changes() -> None:
+    """Revision 17: the code is part of what a resumed batch must agree on."""
+
+    common = ({"revision": "x"}, {"path": "p", "sha256": "s"}, {"pair_rows": 3}, DATA_CUT)
+    first = MODULE.run_fingerprint(*common, {"permutation_module": "a", "runner_script": "b"})
+    edited = MODULE.run_fingerprint(*common, {"permutation_module": "a", "runner_script": "c"})
+    assert first != edited
+    assert (
+        MODULE.run_fingerprint(*common, {"permutation_module": "a", "runner_script": "b"}) == first
+    )
+
+
+def test_resume_after_editing_the_per_draw_path_is_refused(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    pairs = _pairs()
+    _wire(monkeypatch, pairs, draws=3)
+    MODULE.run(tmp_path, owner_approved=True, draws=3, batch_size=1)
+    monkeypatch.setattr(
+        MODULE,
+        "execution_code_digests",
+        lambda: {"permutation_module": "edited", "runner_script": "edited"},
+    )
+    monkeypatch.setattr(MODULE.perm, "run_permutation_draws", _refuse_draws)
+
+    with pytest.raises(CensusInputError, match="execution code"):
+        MODULE.run(tmp_path, owner_approved=True, draws=3)
+
+
+def test_manifest_reports_the_frozen_revision_rather_than_a_literal(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A hardcoded revision string drifts silently at the next amendment."""
+
+    pairs = _pairs()
+    _wire(monkeypatch, pairs, draws=2)
+    status = MODULE.run(tmp_path, owner_approved=True, draws=2)
+    assert status["design_revision"] == FROZEN_SPEC_REVISION
+    assert set(status["execution_code"]) == {"permutation_module", "runner_script"}

@@ -26,6 +26,7 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import inspect
 import json
 import os
 import tempfile
@@ -38,6 +39,7 @@ import pandas as pd
 from sbir_analytics.assets.phase_iii_candidates.pairing import build_uei_pairs
 from sbir_analytics.assets.phase_iii_census.assets import (
     CENSUS_CONTRACT_COLUMNS,
+    FROZEN_SPEC_REVISION,
     CENSUS_PAIR_COLUMNS,
     PHASE_II_AWARDS_PATH,
     PHASE_II_OUTPUT_ENV,
@@ -59,6 +61,31 @@ from sbir_etl.quality.study_manifest import load_study_manifest
 #: the run cannot drift from the bytes study.yaml claims were evaluated.
 STUDY_MANIFEST_PATH = Path("studies/phase-iii-census/study.yaml")
 VALIDATION_DESIGN_PATH = "studies/phase-iii-census/validation-design.md"
+
+#: Phase 1 source artifacts as recorded in
+#: studies/phase-iii-census/materialization-2026-02-06.md. The R16 equivalence
+#: precondition compares against R15 values that are a function of these exact
+#: bytes, so an input that merely resembles them cannot satisfy it: a contracts
+#: parquet rebuilt from a later snapshot yields a different pair frame, different
+#: final-clause metrics, and a failed precondition. check_inputs() reports the
+#: state of these files without taking a draw or requiring owner approval.
+R15_RECORDED_INPUTS: dict[str, dict[str, Any]] = {
+    "data/transition/contracts_ingestion.parquet": {
+        "rows": 1_879_459,
+        "bytes": 416_094_799,
+        "sha256": "c1518188ef674f3b301ef61be19f6db796a9389e4d03f1196280080f71803a98",
+    },
+    "data/processed/phase_iii_census_sbir_awards.parquet": {
+        "rows": 219_500,
+        "bytes": 207_826_925,
+        "sha256": "b46c552f26a9de9ff70bb63f08880a38d9e4d4413c33d23c3e539f4316e1421f",
+    },
+    "data/processed/phase_ii_awards.parquet": {
+        "rows": 95_313,
+        "bytes": 7_793_225,
+        "sha256": "4ebace02624b0c3591b01dd8ea1bbe1d9cd2a3828c648c5c7831776810f58b4a",
+    },
+}
 
 #: Values recorded in studies/phase-iii-census/placebo-results-2026-08-03.md for
 #: the final cumulative clause. The R16 execution path must reproduce them from
@@ -159,17 +186,63 @@ def verify_validation_design(repository_root: Path | None = None) -> dict[str, s
     return {"path": VALIDATION_DESIGN_PATH, "sha256": observed}
 
 
+def execution_code_digests() -> dict[str, str]:
+    """Digests of the two files that decide what a draw computes.
+
+    The design, the inputs and the data cut were already fingerprinted; the code
+    was not. Because the run is resumable across invocations by design, editing
+    the per-draw path between batches would pool draws from two implementations
+    into one result with nothing to detect it (Revision 17).
+    """
+
+    module_path = Path(inspect.getfile(perm)).resolve()
+    return {
+        "permutation_module": _file_sha256(module_path),
+        "runner_script": _file_sha256(Path(__file__).resolve()),
+    }
+
+
+def check_inputs(repository_root: Path | None = None) -> dict[str, Any]:
+    """Report each Phase 1 input against its recorded bytes. Takes no draw.
+
+    This is the acceptance test for recovering or re-materialising the inputs:
+    ``ready`` is true only when every file is present and matches the digest the
+    R15 materialization record names.
+    """
+
+    root = repository_root or Path.cwd()
+    findings: dict[str, Any] = {}
+    for relative, expected in R15_RECORDED_INPUTS.items():
+        path = root / relative
+        if not path.exists():
+            findings[relative] = {"state": "missing", "expected": expected}
+            continue
+        observed = _file_sha256(path)
+        size = path.stat().st_size
+        findings[relative] = {
+            "state": "match" if observed == expected["sha256"] else "digest_mismatch",
+            "expected": expected,
+            "observed": {"sha256": observed, "bytes": size},
+        }
+    return {
+        "ready": all(entry["state"] == "match" for entry in findings.values()),
+        "inputs": findings,
+    }
+
+
 def run_fingerprint(
     freeze: dict[str, Any],
     design: dict[str, str],
     inputs: dict[str, Any],
     data_cut: Any,
+    code: dict[str, str] | None = None,
 ) -> str:
     """Identity of everything a draw depends on, so batches cannot be mixed."""
 
     payload = {
         "freeze": freeze,
         "validation_design": design,
+        "execution_code": code if code is not None else execution_code_digests(),
         "data_cut_date": str(data_cut),
         "inputs": {
             key: {k: v for k, v in value.items() if k in {"sha256", "rows"}}
@@ -363,8 +436,9 @@ def run(
 
     freeze = verify_frozen_spec()
     design = verify_validation_design()
+    code = execution_code_digests()
     pairs, inputs, data_cut = _load_pairs()
-    fingerprint = run_fingerprint(freeze, design, inputs, data_cut)
+    fingerprint = run_fingerprint(freeze, design, inputs, data_cut, code)
     output_dir.mkdir(parents=True, exist_ok=True)
     store_dir = output_dir / "draw_store"
 
@@ -378,7 +452,8 @@ def run(
             raise CensusInputError(
                 "this run does not match the one the draw store was started under "
                 f"(recorded fingerprint {recorded}, current {fingerprint}). The frozen design, "
-                "the pinned validation design, the source inputs or the data cut changed; "
+                "the pinned validation design, the execution code, the source inputs or the "
+                "data cut changed; "
                 "combining draws across them would report one set of inputs for rows built "
                 "from another. Start a new output directory."
             )
@@ -391,6 +466,7 @@ def run(
         precondition = run_equivalence_precondition(pairs, data_cut)
         precondition["run_fingerprint"] = fingerprint
         precondition["validation_design"] = design
+        precondition["execution_code"] = code
         _write_json_atomic(precondition, precondition_path)
 
     seeds = perm.preregistered_seeds(draws)
@@ -409,9 +485,10 @@ def run(
 
     status: dict[str, Any] = {
         "schema_version": "phase-iii-permutation-separation-v1",
-        "design_revision": "phase-0-r16",
+        "design_revision": FROZEN_SPEC_REVISION,
         "freeze": freeze,
         "validation_design": design,
+        "execution_code": code,
         "run_fingerprint": fingerprint,
         "data_cut_date": data_cut.isoformat(),
         "inputs": inputs,
@@ -498,12 +575,20 @@ def main() -> None:
         help="Assert that the repository owner separately approved the R16 production run.",
     )
     parser.add_argument(
+        "--check-inputs",
+        action="store_true",
+        help="Report Phase 1 inputs against their recorded digests and exit. Takes no draw.",
+    )
+    parser.add_argument(
         "--batch-size",
         type=int,
         default=None,
         help="Run at most this many remaining seeds now; the draw store resumes on the next call.",
     )
     args = parser.parse_args()
+    if args.check_inputs:
+        print(json.dumps(check_inputs(), indent=2, sort_keys=True, default=str))
+        return
     print(
         json.dumps(
             run(args.output_dir, owner_approved=args.owner_approved, batch_size=args.batch_size),

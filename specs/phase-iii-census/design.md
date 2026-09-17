@@ -787,3 +787,26 @@ It does not authorize any statement that the proxy identifies statutory Phase II
 full design is `studies/phase-iii-census/validation-design.md`, pinned in `study.yaml`.
 Production execution requires a separate repository-owner approval.
 
+### Approved execution-binding amendment
+
+Revision 17 binds an R16 run to the code that takes its draws and to the exact Phase 1 inputs the
+R15 materialization record names. It changes no criterion, cell, population, seed, statistic,
+interval, or threshold, and takes no draw.
+
+The run fingerprint recorded with the equivalence precondition previously covered the freeze
+record, the pinned validation design, the input digests and row counts, and the data cut. Because
+the run is resumable across invocations by design, that left one way to pool incomparable draws
+into a single result: editing the per-draw path between batches. The fingerprint now also carries
+the SHA-256 of the permutation module and of the runner script, so a resumed batch must agree with
+the batch that started the store on the code as well as on the data.
+
+The same amendment records the Phase 1 inputs by digest and adds a read-only `--check-inputs`
+preflight that reports each input against its recorded value without taking a draw or asserting
+owner approval. This is a restatement of what the precondition already required rather than a new
+constraint: the recorded R15 final-clause values are a function of those exact bytes, so an input
+rebuilt from a later snapshot produces a different pair frame and a failed precondition. The
+preflight makes that testable before a multi-hour run rather than after its first draw.
+
+The manifest's `design_revision` is now read from the frozen-spec constant rather than written as
+a literal, so it cannot disagree with the revision the run verified.
+

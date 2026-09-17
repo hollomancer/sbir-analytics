@@ -104,9 +104,16 @@ the run with no confirmatory draw taken, and the mismatch is itself recorded.
 - The pair frame is validated with the same `validate_pair_frame` check `build_census_tables`
   performs before counting. One validation covers every draw: it inspects key and identifier
   columns only, and the placebo changes nothing but the completion date.
-- A run fingerprint over the freeze record, this design's digest, the input digests and row counts,
-  and the data cut is recorded with the precondition. Resuming against a different fingerprint is
-  refused, so draws taken under different inputs are never pooled into one result.
+- A run fingerprint over the freeze record, this design's digest, the digests of the two files that
+  implement the per-draw path, the input digests and row counts, and the data cut is recorded with
+  the precondition. Resuming against a different fingerprint is refused, so draws taken under
+  different inputs — or under an edited execution path — are never pooled into one result
+  (Revision 17).
+- The three Phase 1 inputs are the exact artifacts the R15 materialization record names, by
+  SHA-256. This is a consequence of the precondition rather than an extra rule: the recorded R15
+  values are a function of those bytes, so a source rebuilt from a later snapshot yields a
+  different pair frame and fails the precondition. `--check-inputs` reports each input against its
+  recorded digest without taking a draw or asserting owner approval (Revision 17).
 - The draw store is reconciled on load to seeds that are complete in all three of its frames, so an
   interruption between the per-frame writes costs the affected seeds a rerun rather than the run.
   A store whose seeds fall outside the preregistered list, or that has no recorded precondition, is
