@@ -68,7 +68,9 @@ estimands with different denominators, and neither is a decomposition of the oth
 
 **Order 3 therefore has no corpus document.** [L1] and [L2] are not in this corpus and must still be
 recovered. Their DOIs, the retrieval routes already exhausted, and the remaining acquisition route are
-recorded in [source-acquisition-orders-3-5.md](source-acquisition-orders-3-5.md). The Navy (2000–2013) and USAF (FY2015) volumes are the same TechLink family at component
+recorded in [source-acquisition-orders-3-5.md](source-acquisition-orders-3-5.md). A standing
+assessment of what the corpus still needs, ranked by what each acquisition unlocks, is in
+[corpus-gap-assessment.md](corpus-gap-assessment.md). The Navy (2000–2013) and USAF (FY2015) volumes are the same TechLink family at component
 level, so they are internally comparable to the DoD volume but equally not NASEM inputs. Treat all
 three as [L19] economic-impact benchmarks.
 Note that the roadmap flags Order 3's validation spec as still `exploratory` in the registry, so
