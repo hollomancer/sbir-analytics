@@ -145,3 +145,47 @@ def test_atomic_writer_emits_deterministic_json(tmp_path) -> None:
 
     assert json.loads(output.read_text()) == {"a": 1, "b": 2}
     assert output.read_text() == '{"a":1,"b":2}\n'
+
+
+def test_acquirer_side_rows_are_kept_away_from_the_bridge_grading() -> None:
+    """The bridge grades a Form D combination `high` for every direction.
+
+    ``confidence_after_directional_refinement`` returns ``high`` whenever
+    ``form_d_business_combination`` is set, whatever direction the refinement
+    found — including ``not_target``. That is only sound because an
+    acquirer-side-only row never reaches the bridge, and two independent
+    upstream guards keep it away: the detector routes it to the non-exit
+    sibling, and it is not direction-sensitive, so no refinement is written for
+    it and the coverage check would reject one.
+
+    This pins the dependency. If either guard is relaxed, the inflation #735
+    removed returns through the grading line rather than through the detector,
+    which is the harder place to notice it.
+    """
+    from scripts.archive.data.detect_sbir_ma_events import is_acquirer_side_only
+    from scripts.archive.data.refine_ma_medium_tier import (
+        confidence_after_directional_refinement,
+        needs_directional_refinement,
+    )
+
+    acquirer_side = {"signals": {"form_d_business_combination": True}}
+
+    # Guard one: the detector routes it out of the exit artifact.
+    assert is_acquirer_side_only(acquirer_side["signals"]) is True
+    # Guard two: it is not direction-sensitive, so no refinement is written.
+    assert needs_directional_refinement(acquirer_side) is False
+
+    # The behavior both guards exist to keep unreachable: every direction,
+    # including an explicit not_target, would still grade high.
+    for direction in ("target", "not_target", "comparator", "ambiguous"):
+        assert (
+            confidence_after_directional_refinement(
+                acquirer_side, direction=direction, context_complete=True
+            )
+            == "high"
+        )
+
+    # A row carrying target-side EFTS evidence is what legitimately reaches the
+    # bridge, and it is not acquirer-side-only.
+    with_target_side = {"signals": {"form_d_business_combination": True, "efts_subsidiary": True}}
+    assert is_acquirer_side_only(with_target_side["signals"]) is False
