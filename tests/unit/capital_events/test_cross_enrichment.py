@@ -156,20 +156,45 @@ def test_discovery_confirmed_signal_is_independent_evidence():
 
 
 def test_raw_press_hits_are_not_independent_corroboration():
+    # `_has_confirmed_press` counts press evidence only when it is a confirmed
+    # scalar, so a raw hit list must not promote a Form-D-only row. The shape
+    # tested here is `press_evidence`, the key the predicate actually reads.
+    # This previously used `press_wire_signals`, which #709 removed along with
+    # its producer; nothing reads that key, so the assertion held for any
+    # unrecognized key and the list-versus-scalar guard went uncovered.
     form_d_plus_hits = {
         "signals": {"form_d_business_combination": True},
         "form_d_detail": {"filing_date": "2020-01-01"},
-        "press_wire_signals": [
+        "press_evidence": [
             {"title": "Unrelated hit", "link": "https://example.com", "source": "PRNewswire"}
         ],
     }
     assert evidence_sources(form_d_plus_hits) == ["form_d"]
     assert is_independent_of_form_d(form_d_plus_hits) is False
-    hits_only = {"press_wire_signals": form_d_plus_hits["press_wire_signals"]}
+    hits_only = {"press_evidence": form_d_plus_hits["press_evidence"]}
     assert evidence_sources(hits_only) == []
     assert is_independent_of_form_d(hits_only) is False
     extract_token = {"source": "form_d", "evidence": "business combination offering"}
     assert evidence_sources(extract_token) == []
+
+
+def test_confirmed_press_evidence_is_independent_of_form_d():
+    # The other side of the same guard: a confirmed scalar, or the
+    # `press_confirmed` signal, does corroborate a Form D row.
+    scalar = {
+        "signals": {"form_d_business_combination": True},
+        "form_d_detail": {"filing_date": "2020-01-01"},
+        "press_evidence": "Reuters: Buyer Inc completed its acquisition of Gamma Co",
+    }
+    assert evidence_sources(scalar) == ["form_d", "press"]
+    assert is_independent_of_form_d(scalar) is True
+
+    signalled = {
+        "signals": {"form_d_business_combination": True, "press_confirmed": True},
+        "form_d_detail": {"filing_date": "2020-01-01"},
+    }
+    assert evidence_sources(signalled) == ["form_d", "press"]
+    assert is_independent_of_form_d(signalled) is True
 
 
 def test_unlinked_form_d_combination_is_preserved_for_review():

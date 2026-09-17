@@ -12,6 +12,13 @@ version.
 
 ### Changed
 
+- The cross-enrichment test that asserted raw press hits are not independent
+  corroboration now uses `press_evidence`, the key `_has_confirmed_press`
+  actually reads, instead of `press_wire_signals`, which #709 removed along
+  with its producer. Nothing reads the removed key, so the assertion held for
+  any unrecognized key while the list-versus-scalar guard went uncovered.
+  Neutering that guard now fails the test. A companion case pins the other
+  side: a confirmed scalar, or the `press_confirmed` signal, does corroborate.
 - Company-name normalization now has one implementation. Eight functions that
   carried their own rule (`ot_consortium.registry.normalize_cmf_name`,
   `models.uspto_models._normalize_name`,
