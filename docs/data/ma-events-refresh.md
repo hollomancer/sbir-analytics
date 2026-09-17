@@ -1,0 +1,212 @@
+---
+Type: Operator Guide
+Maintainer: Conrad Hollomon
+Last-Reviewed: 2026-09-17
+Status: active
+---
+
+# M&A Events Refresh
+
+The M&A exit artifacts are produced by four CLI scripts run in order, not by a
+Dagster asset. Each step fails closed on an input the previous step did not
+prepare, so running them out of order produces an error rather than a wrong
+number — but the order itself is not discoverable from any single script.
+
+This runbook records the sequence, what each guard rejects, and the state the
+stored inputs are actually in.
+
+## Sequence
+
+| Step | Script | Writes |
+| --- | --- | --- |
+| 1 | `scripts/data/rescore_form_d_details.py` | `data/form_d_details.jsonl` (in place, atomic) |
+| 2 | `scripts/archive/data/detect_sbir_ma_events.py` | `data/sbir_ma_events.jsonl`, `data/sbir_ma_non_exit.jsonl` |
+| 3 | `scripts/archive/data/refine_ma_medium_tier.py` | a directional-refinement JSONL |
+| 4 | `scripts/archive/data/apply_ma_direction_refinement.py` | `data/enriched_sbir_ma_events.jsonl` |
+
+Steps 1, 2 and 4 are offline and deterministic. Step 3 queries SEC EDGAR
+full-text search and fetches filing documents, so it is the only step whose
+runtime depends on the network and the only one that is not reproducible from a
+declared cut alone.
+
+## Step 1 — rescore Form D tiers
+
+```bash
+python scripts/data/rescore_form_d_details.py --input data/form_d_details.jsonl
+```
+
+Reads only signal values already present in the file and performs no network
+requests. Output is deterministic and published with an atomic same-directory
+replace.
+
+**Why it is not optional.** Step 2 calls `require_form_d_tier_rule`, which
+rejects any record whose `rule_version` is not the current
+`corroborated-person-v2`:
+
+```
+FormDTierRuleError: Form D record '...' uses Form D tier rule None;
+expected 'corroborated-person-v2'.
+```
+
+As of 2026-09-17 all 10,405 stored records were unversioned, so this step was
+required before the chain would run at all. Migrating them moved 193 records
+from `high` to `medium` (3,640 → 3,447 high; `low` unchanged at 5,645).
+
+## Step 2 — detect events
+
+```bash
+python scripts/archive/data/detect_sbir_ma_events.py \
+  --form-d data/form_d_details.jsonl \
+  --efts data/sec_edgar_scan.jsonl \
+  --awards data/raw/sbir/award_data.csv \
+  --output data/sbir_ma_events.jsonl \
+  --non-exit-output data/sbir_ma_non_exit.jsonl
+```
+
+`--awards` defaults to a `/tmp` path and must be pointed at the canonical
+awards CSV. The two output paths must differ; equal resolved paths are rejected
+before either handle opens, because both are buffered and would truncate each
+other.
+
+Two population gates run here, both introduced in #735:
+
+- Records whose identity match did not reach `KEEP_MATCH_TIER` (`high`) are
+  dropped, and the drop count prints.
+- Rows whose only transaction evidence is Form D Item 10 are written to
+  `--non-exit-output` with `non_exit_reason='acquirer_side'` rather than to the
+  exit artifact. Item 10 marks a Rule 145 deemed offer and sale *by the
+  issuer*, so the filer is the acquirer and the flag points away from an exit.
+
+## Step 3 — refine directions
+
+```bash
+python scripts/archive/data/refine_ma_medium_tier.py \
+  --input data/sbir_ma_events.jsonl \
+  --output data/sbir_ma_direction_refined.jsonl \
+  --resume --concurrency 2
+```
+
+Only events for which `needs_directional_refinement` is true require a record.
+`--resume` skips companies already present in the output, so an interrupted run
+costs only wall time. `--contact-email` defaults to the maintainer address
+committed in the script.
+
+**Throughput.** Measured 2026-09-17: 16 events/minute sustained at the default
+concurrency of 2, so a full corpus of ~2,650 events takes roughly 2.5–3 hours.
+A short sample overstates the rate — a 25-event sample projected 42/minute
+because those events needed fewer document fetches than the corpus average.
+Size the run from the sustained figure, not a sample.
+
+## Step 4 — apply directional refinements
+
+```bash
+python scripts/archive/data/apply_ma_direction_refinement.py \
+  --events data/sbir_ma_events.jsonl \
+  --refinements data/sbir_ma_direction_refined.jsonl \
+  --output data/enriched_sbir_ma_events.jsonl
+```
+
+This is the deterministic bridge, and its contract is strict in both
+directions. It raises rather than guessing when:
+
+| Condition | Error |
+| --- | --- |
+| a direction-sensitive event has no refinement | `refinement coverage mismatch: missing_count=...` |
+| a refinement names an event that is not direction-sensitive | `refinement coverage mismatch: unexpected_count=...` |
+| `context_classification_complete` is absent or not a bool | `refinement for '...' lacks typed context completeness` |
+| completeness and `direction` disagree | `... has inconsistent direction and context completeness` |
+
+`--refinements` takes **one** path: the file step 3 produced. A rebuild
+involves no concatenation. As of 2026-09-17 that file is
+`data/sbir_ma_direction_refined.jsonl` (2,697 records), which is what the
+command above uses.
+
+The **legacy** corpus predates the consolidated file and is split across
+`data/sbir_ma_medium_refined.jsonl` and `data/sbir_ma_low_refined.jsonl`
+(2,661 records combined, no company overlap), retained as the prior vintage.
+Nothing in the argument surface indicates the split, and passing only the
+medium file fails with a `missing_count` in the thousands. Assembling the pair
+does not help:
+
+```bash
+# Legacy vintage only — the result still fails the bridge (see below).
+cat data/sbir_ma_medium_refined.jsonl data/sbir_ma_low_refined.jsonl \
+  > data/sbir_ma_direction_refined_legacy.jsonl
+```
+
+The concatenated file fails step 4 on three grounds: all 2,661 records lack
+the `context_classification_complete` field the bridge requires, 40 required
+companies are absent, and 4 supplied companies are not direction-sensitive —
+see the input findings below. The way out of the legacy state is re-running
+step 3, not concatenation.
+
+### Interaction worth knowing
+
+`confidence_after_directional_refinement` returns `high` for any row carrying
+`form_d_business_combination`, whatever the refined direction. The bridge
+never exercises that branch today: `needs_directional_refinement` is
+independently False when `form_d_business_combination` is set, so no
+refinement is expected for such rows — supplying one fails the coverage check
+as `unexpected_count`, and without one the row passes through unchanged.
+Relaxing only the sibling routing in step 2 would therefore put acquirer-side
+rows in the exit file at post-#735 `assign_confidence` = `low`, not at `high`
+through this line. Restoring the HIGH inflation #735 removed requires taking
+both guards off: the sibling routing **and** the strong-signal short-circuit
+in `needs_directional_refinement`.
+
+## Known state of the stored inputs
+
+These findings describe the **legacy** corpus, as it stood on 2026-09-17
+before the chain was re-run. All predate #735. They are recorded because they
+explain why that corpus cannot be fed to step 4, and because anyone reaching
+for `sbir_ma_medium_refined.jsonl` or `sbir_ma_low_refined.jsonl` will hit
+them.
+
+All are remediated in the current
+`data/sbir_ma_direction_refined.jsonl`: the corpus was re-refined in full, the
+40 missing events were fetched, and the 4 orphaned records dropped. The legacy
+files are retained unchanged as the prior vintage.
+
+| Finding | Count |
+| --- | --- |
+| stored refinement records lacking `context_classification_complete` | 2,661 of 2,661 |
+| direction-sensitive events with no refinement record at all | 40 |
+| refinements naming events that are not direction-sensitive | 4 |
+| refinement records whose `direction` is malformed | 0 |
+
+Every stored `direction` value is in `_REFINEMENT_DIRECTIONS`; an earlier
+draft counted one record as malformed, but its `target` value is valid.
+
+Consequence: the shipped `enriched_sbir_ma_events.jsonl` cannot have been
+produced by step 4 from these inputs, because step 4 would have rejected them.
+The 40 missing events were already direction-sensitive and low-confidence
+before #735, so the gap is not a side effect of the tier gate. Re-running step
+3 for an affected company produces a complete record, so the gap is a coverage
+gap in the stored corpus rather than a property of the events.
+
+## What is not reproducible
+
+The shipped artifact carried 4,306 companies against the events file's 4,004,
+plus a `press_wire_signals` field. That field's producer was deleted in #709:
+it polled live RSS, so its output was a function of wall-clock time rather
+than a declared cut, and its matches were judged unusable — the finding is
+recorded in the 2026-09-12 amendment in
+[`specs/ma-discovery-integration/design.md`](../../specs/ma-discovery-integration/design.md),
+not here. Of the 4,306 rows, 18 carried any press-wire evidence; the 302
+companies absent from the events file were all Form-D-only rows graded
+`high`, 301 of them with an empty `press_wire_signals` list.
+
+A rebuild therefore drops those 302 rows and that field by design. Consumers to
+re-run afterwards: `scripts/data/build_capital_events.py`,
+`scripts/data/build_supplier_share_census.py`,
+`scripts/data/build_form_d_ma_cross_enrichment.py`, and anything reading
+`sbir_etl/utils/transition_signals.py` (`sig_ma_detected` is computed from the
+enriched artifact).
+
+## Related documentation
+
+- [Data Sources Overview](README.md)
+- [Capital events](capital-events.md)
+- [Form D data dictionary](../research/form-d-data-dictionary.md)
+- [Form D and M&A cross-enrichment](../research/form-d-ma-cross-enrichment.md)
+- [Research questions — M&A detection is script-driven](../research-questions.md)
