@@ -221,3 +221,79 @@ defect to the publisher that this analysis cannot demonstrate.
 
 That is enough to exclude FY2014 from a tolerance envelope, because a comparison target of unknown
 basis cannot size a band. It is not enough to say the report is wrong.
+
+### Why FY2014 differs: it predates the counting convention later reports state explicitly
+
+The previous section established that FY2014's table-versus-narrative gap is real and withdrew the
+claim that it is an error. Localising it identifies the cause, and also shows that one step in that
+withdrawal was itself wrong.
+
+**The gap is confined to a single cell.**
+
+| FY2014 cell | Narrative | State table | Database |
+| --- | ---: | ---: | ---: |
+| SBIR Phase I | 3,162 | 3,174 (**+0.38%**) | 3,086 (-2.40%) |
+| SBIR Phase II | 1,513 | 1,628 (**+7.60%**) | 1,475 (-2.51%) |
+| STTR Phase I | 492 | 491 (**-0.20%**) | 493 (+0.20%) |
+| STTR Phase II | 213 | 220 (**+3.29%**) | 209 (-1.88%) |
+
+Three of the four cells agree with the narrative to better than 0.4%. Only **SBIR Phase II**
+diverges, by 7.60%. So this is not a whole-table offset and not a transcription problem - a parse
+fault would not spare three columns and hit one. Separately, the database is **uniformly 1.9% to
+2.5% below the narrative in every cell**, which is a single consistent shortfall unrelated to the
+table question.
+
+**The basis statement is absent before FY2016 and present from FY2016.**
+
+| Report year | "The number of awards are only for new awards during FYxx" |
+| --- | --- |
+| FY2013, FY2014 | **absent** |
+| FY2016, FY2017, FY2018, FY2020, FY2021, FY2022 | present |
+
+The FY2013 and FY2014 tables are introduced only as showing "the total dollar amount and number of
+SBIR and STTR Phase I and Phase II awards", with no restriction to new awards, while their
+narratives say "new". From FY2016 SBA added the sentence that fixes the count basis explicitly.
+**FY2014 differs because it belongs to the era before that convention was stated.**
+
+That also predicts where the divergence should land. The FY2014 report names $41.2M of SBIR
+obligations against prior-year Phase I awards and **$596.7M against prior-year Phase II** - 14.5
+times as much. If an unstated basis admits continuing awards, Phase II is overwhelmingly where it
+would show, and Phase II is exactly the cell that diverges. FY2013 fits the same picture from the
+other side: its table sits 1.22% *below* its narrative, which is what an unsettled rather than a
+systematic basis looks like.
+
+**Correcting the previous section.** That section refuted the continuing-award reading by dividing
+the $596.7M of prior-year Phase II obligations across the 115-award excess to get $5.19M per award.
+**That arithmetic was invalid**: the $596.7M spans every prior-year Phase II award receiving FY2014
+money, a much larger population than the 115 rows by which the table exceeds the narrative. The two
+figures describe different sets and cannot be divided into one another. The refutation is withdrawn;
+the continuing-award reading is not excluded and is now the best-supported explanation.
+
+**What was tested and does not explain it.**
+
+- *A localised database gap.* No agency shows an anomalous FY2014 dip. Against the mean of FY2013
+  and FY2015, DoD is -34.5 awards, HHS +161.5, NASA +65.0, NSF -48.5 - ordinary variation. The
+  database's FY2014 is normal.
+- *Second or sequential Phase II awards.* Only **15** FY2014 SBIR Phase II awards carry a tracking
+  number that already held a Phase II, against 23 in FY2015 and 22 in FY2016. Far short of 115, and
+  not distinctive to FY2014. (An earlier version of this test counted 494 by matching any prior
+  tracking number, which is wrong: a Phase II shares its number with its own Phase I, so that
+  counts normal progressions.)
+- *A total-obligations basis for the whole table.* The table's SBIR dollars of $2.046B sit 11.1%
+  below the narrative's stated total and 27.9% above its new-award figure; STTR exceeds even the
+  stated total by 23.1%. The narrative dollars are rounded to one or two significant figures, so
+  this test is weak either way, but it does not support a whole-table basis switch - consistent
+  with the divergence being confined to one cell rather than applying throughout.
+- *A restatement in a later report.* FY2015, FY2016 and FY2017 contain no restatement of FY2014
+  award counts, so no later volume adjudicates it.
+
+**Status.** Best-supported explanation, not established. What is established is that the divergence
+is confined to SBIR Phase II, that FY2013 and FY2014 state no count basis while FY2016 onward do,
+and that continuing-award funding in FY2014 is concentrated in Phase II by 14.5 to 1. Settling it
+would need SBA's FY2014 table-construction methodology, which the corpus does not contain.
+
+**Consequence, unchanged.** FY2014 stays out of the tolerance envelope, and the reason is now
+sharper: its state table's count basis is unstated and its one divergent cell is consistent with a
+basis the later reports explicitly rule out. A comparison target on a different basis cannot size a
+band. This applies to FY2013 equally - both years predate the convention - so the envelope should
+rest on FY2016 onward, where the basis is stated.
