@@ -14,7 +14,7 @@ frozen_artifacts:
   - path: studies/nasa-sbir-vs-external-rd/design.md
     sha256: 3aebaa7a9b7585bd0a2d68bb4e9e9eb4669b6e43e512c989985deecd62b00328
   - path: studies/sbir-roi-comparative-tests/contracts.yaml
-    sha256: 1363161f482dc89abfc61eedb40f4a920e624a16f2818d287bed89f75d5e1c14
+    sha256: cc735889e7f54fbd0e7a45a2687672923926dd3714aa064ed7e13d26e26a8341
 implementation:
   - path: scripts/research/sbir_roi_contracts.py
     symbol: NASA_COMPARATOR_STUDY

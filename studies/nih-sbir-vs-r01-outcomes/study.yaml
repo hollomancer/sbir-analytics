@@ -14,7 +14,7 @@ frozen_artifacts:
   - path: studies/nih-sbir-vs-r01-outcomes/design.md
     sha256: 2a97db53c1c5f8ea26c545c584171094467eed184ea16dff9dbf3cdac3ffce45
   - path: studies/sbir-roi-comparative-tests/contracts.yaml
-    sha256: 1363161f482dc89abfc61eedb40f4a920e624a16f2818d287bed89f75d5e1c14
+    sha256: cc735889e7f54fbd0e7a45a2687672923926dd3714aa064ed7e13d26e26a8341
 implementation:
   - path: scripts/research/sbir_roi_contracts.py
     symbol: NIH_COMPARATOR_STUDY

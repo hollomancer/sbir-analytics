@@ -47,15 +47,24 @@ comparators:
     confounds:
       - Performer type, research stage, award size, and mission differ.
       - This comparison cannot identify a small-business effect without stronger design.
-  - comparator_id: nasa-external-rd
+  - comparator_id: nasa-external-rd-procurement
     comparability: mechanism_matched
-    funding_mechanism: External research and development awards for comparable mission topics.
-    selection_rule: Program-specific competitive or directed selection.
-    counterfactual: Matched non-SBIR external research projects.
-    primary_use: Test mission and commercial outcomes within one agency.
+    funding_mechanism: External research and development bought under contract for comparable mission topics.
+    selection_rule: Competitive or directed source selection under the procurement rules.
+    counterfactual: Matched non-SBIR external research contracts.
+    primary_use: Test mission and commercial outcomes within one agency against a like instrument.
     confounds:
-      - Procurement, grants, and cooperative agreements are not one mechanism.
       - Technology readiness and performer type can remain unobserved.
+      - Directed selections are not competed and are not interchangeable with competed ones.
+  - comparator_id: nasa-external-rd-assistance
+    comparability: context_only
+    funding_mechanism: External research funded by grant or cooperative agreement.
+    selection_rule: Merit review under the assistance rules, with agency involvement in the cooperative case.
+    counterfactual: None that holds the instrument fixed.
+    primary_use: Describe the surrounding external research portfolio.
+    confounds:
+      - Assistance is not procurement, so this cannot carry a mechanism-matched comparison.
+      - Grants and cooperative agreements differ from each other in agency involvement.
   - comparator_id: darpa-arpa-e
     comparability: context_only
     funding_mechanism: Program-manager-led, milestone-based high-risk research portfolio.

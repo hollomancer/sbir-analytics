@@ -626,6 +626,31 @@ statutory goal is Phase III commercialization.*
 
 ### B3. Inferential (Tier 3)
 
+- **Agency-internal mission adoption contrast**
+  Within one agency, do SBIR awards reach mission adoption and follow-on
+  procurement at a different rate than comparable external research bought
+  under the same instrument?
+  Compare SBIR contracts against NASA external research procurement only.
+  Grants and cooperative agreements are a different instrument and cannot carry
+  this contrast.
+  **Status:** Exploratory and non-citable. No comparator cohort is materialized.
+  *Deps: agency project data, ER, ID, procurement · Spec:
+  [../specs/sbir-roi-comparative-tests/](../specs/sbir-roi-comparative-tests/)
+  · Study: [nasa-sbir-vs-external-rd](../studies/nasa-sbir-vs-external-rd/study.yaml)*
+
+- **Marginal award effect at the selection boundary**
+  For scored applicants near an agency selection boundary, what is the local
+  effect of receiving an SBIR award on operating status, survival, licensing,
+  non-SBIR revenue, productivity, and procurement?
+  The estimand is local to applicants whose funding changed at that boundary and
+  can differ from the average effect across all awards.
+  **Status:** Exploratory and non-citable. The manifest authorizes no numerical
+  result. No agency has supplied pinned scores, ranks, or cutoff rules, so the
+  required population does not exist yet.
+  *Deps: agency application scores and cutoffs, ER, ID, operating status,
+  licensing, procurement · Spec: [../specs/sbir-roi-comparative-tests/](../specs/sbir-roi-comparative-tests/)
+  · Study: [sbir-marginal-award-identification](../studies/sbir-marginal-award-identification/study.yaml)*
+
 - **Phase II → III latency**
   What is the elapsed time between Phase II completion and the first Phase III
   contract?
@@ -868,7 +893,10 @@ dollar return on the SBIR program?*
   threshold, not an estimated causal return. No benefit or cost cohort is materialized.
   *Deps: B3, C3, F3, fiscal inputs, mission valuation, spillovers · Spec:
   [../specs/sbir-roi-comparative-tests/](../specs/sbir-roi-comparative-tests/)
-  · Study: [sbir-social-return-break-even](../studies/sbir-social-return-break-even/study.yaml)*
+  · Studies: [sbir-social-return-break-even](../studies/sbir-social-return-break-even/study.yaml),
+  [NIH](../studies/nih-sbir-vs-r01-outcomes/study.yaml),
+  [NASA](../studies/nasa-sbir-vs-external-rd/study.yaml)
+  — the two comparator studies supply the benefit vector this threshold divides.*
 
 - **Sensitivity of fiscal estimates**
   How robust are fiscal return estimates to parameter uncertainty (sensitivity
@@ -1191,6 +1219,20 @@ The retired Form D study defined a descriptive leverage ratio. It does not
 currently support a result, and it never identified who would have raised
 capital without an SBIR award. The Howell [L11] and Lerner [L10] questions
 remain outside that design.
+
+#### Marginal-award capital effect
+
+- **Capital raised because of the award**
+  For applicants near a selection boundary, how much follow-on private capital
+  is raised because of the award rather than alongside it?
+  This is the identification the retired leverage ratio never had: a ratio
+  describes disclosed capital, while a boundary comparison can attribute it.
+  **Status:** Exploratory and non-citable. Blocked on the same missing agency
+  scores and cutoff rules as the B3 entry. Private capital is a validation
+  signal, not a taxpayer benefit by itself.
+  *Deps: agency application scores and cutoffs, SEC EDGAR, ER, ID · Refs: [L10], [L11]
+  · Spec: [../specs/sbir-roi-comparative-tests/](../specs/sbir-roi-comparative-tests/)
+  · Study: [sbir-marginal-award-identification](../studies/sbir-marginal-award-identification/study.yaml)*
 
 #### Disclosed Form D leverage
 

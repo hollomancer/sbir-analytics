@@ -12,7 +12,7 @@ frozen_artifacts:
   - path: studies/sbir-social-return-break-even/design.md
     sha256: 52975fb814017f5046c7379da0887f4d7212f46877c260bc5425c15bee1344e0
   - path: studies/sbir-roi-comparative-tests/contracts.yaml
-    sha256: 1363161f482dc89abfc61eedb40f4a920e624a16f2818d287bed89f75d5e1c14
+    sha256: cc735889e7f54fbd0e7a45a2687672923926dd3714aa064ed7e13d26e26a8341
 implementation:
   - path: scripts/research/sbir_roi_contracts.py
     symbol: WELFARE_BREAK_EVEN_STUDY

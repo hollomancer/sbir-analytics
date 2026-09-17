@@ -13,7 +13,7 @@ frozen_artifacts:
   - path: studies/sbir-marginal-award-identification/design.md
     sha256: 29b76cf6347c021b844a0c0221e616fdb03b16be7eb20a16b0ecce8b918af4b3
   - path: studies/sbir-roi-comparative-tests/contracts.yaml
-    sha256: 1363161f482dc89abfc61eedb40f4a920e624a16f2818d287bed89f75d5e1c14
+    sha256: cc735889e7f54fbd0e7a45a2687672923926dd3714aa064ed7e13d26e26a8341
 implementation:
   - path: scripts/research/sbir_roi_contracts.py
     symbol: IDENTIFICATION_BRIDGE_STUDY
