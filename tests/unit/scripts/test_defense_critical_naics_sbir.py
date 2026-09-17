@@ -647,3 +647,113 @@ def test_identity_annotations_do_not_merge_successor_uei_dollars_into_exact_head
     assert summary["gross_positive_target_obligations"] == 1_000.0
     assert candidates.loc[UEI_A, "review_state"] == "reviewed_supported"
     assert candidates.loc[UEI_A, "attribution_treatment"] == "temporal_split_required"
+
+
+# -- SAM Public V2 strict-width / NUL-repair parser ---------------------------
+#
+# This path determines every SAM target and 8(a) count, so positional drift
+# and parser regressions must fail loudly before they change reported counts.
+
+_SAM_BOF = "BOF PUBLIC V2 20260907 20260907 {rows:07d} 0000001"
+
+
+def _sam_row(
+    uei: str,
+    *,
+    status: str = "A",
+    name: str = "Test Firm",
+    primary: str = "334511",
+    codes: str = "",
+    certs: str = "",
+    freetext: str = "plain text",
+) -> list[str]:
+    fields = [""] * 142
+    fields[0] = uei
+    fields[5] = status
+    fields[11] = name
+    fields[20] = freetext
+    fields[32] = primary
+    fields[34] = codes
+    fields[117] = certs
+    fields[141] = "!end"
+    return fields
+
+
+def _write_sam_zip(tmp_path: Path, rows: list[list[str]], declared: int | None = None) -> Path:
+    import zipfile
+
+    declared_rows = len(rows) if declared is None else declared
+    lines = [_SAM_BOF.format(rows=declared_rows)]
+    lines.extend("|".join(fields) for fields in rows)
+    lines.append(f"EOF PUBLIC V2 20260907 20260907 {declared_rows:07d} 0000001")
+    path = tmp_path / "sam_public_v2.zip"
+    with zipfile.ZipFile(path, "w") as archive:
+        archive.writestr("SAM_PUBLIC_UTF-8.dat", "\n".join(lines) + "\n")
+    return path
+
+
+def test_sam_parser_repairs_quoted_pipes_and_counts_at_the_pinned_width(tmp_path: Path) -> None:
+    """A quoted free-text pipe makes the raw row wider than 142 under
+    QUOTE_NONE; the NUL repair must bring it back to the pinned width, and
+    the audit must record exactly one repaired row. Target, non-target,
+    expired, and non-SBIR rows must land in the right counters.
+    """
+
+    rows = [
+        # Active SBIR firm in a target code, 8(a) history with a future exit
+        # date (current), and a NUL-quoted literal pipe in free text.
+        _sam_row(
+            UEI_A,
+            certs="A6~A620270101",
+            freetext="\x00Sales | Engineering\x00",
+        ),
+        # Expired SBIR firm in a target code: any-status but not active.
+        _sam_row(UEI_B, status="E", primary="336414"),
+        # Active SBIR firm with no target code: matched, no evidence record.
+        _sam_row("YZABCDEFGHIJ", primary="541715"),
+        # Non-SBIR UEI in a target code: skipped entirely.
+        _sam_row("AAAABBBBCCCC", primary="332992"),
+    ]
+    path = _write_sam_zip(tmp_path, rows)
+
+    result = mod.load_sam_target_evidence(path, {UEI_A, UEI_B, "YZABCDEFGHIJ"})
+
+    audit = result.audit
+    assert audit["declared_rows"] == audit["observed_rows"] == 4
+    assert audit["nul_quoted_pipe_rows_repaired"] == 1
+    # The quoted row shows up over-width raw (143 fields) and repaired to 142.
+    assert audit["raw_pipe_field_counts"]["143"] == 1
+    assert audit["repaired_field_counts"]["142"] == 4
+    assert audit["exact_uei_sbir_firms_in_sam"] == 3
+    assert audit["exact_uei_sbir_firms_in_active_sam"] == 2
+    assert audit["target_sbir_firms_any_status"] == 2
+    assert audit["target_sbir_firms_active"] == 1
+    assert audit["target_sbir_firms_active_with_8a_history_indicator"] == 1
+    assert audit["target_sbir_firms_active_with_current_8a_indicator"] == 1
+
+    evidence = result.evidence.set_index("firm_uei")
+    assert set(evidence.index) == {UEI_A, UEI_B}
+    assert bool(evidence.loc[UEI_A, "sam_8a_history_indicator"]) is True
+    assert evidence.loc[UEI_A, "sam_8a_exit_dates"] == "20270101"
+
+
+def test_sam_parser_raises_on_positional_drift(tmp_path: Path) -> None:
+    """A row that is one field short must raise, not shift every later
+    column silently. Same for a row whose end marker moved."""
+
+    short = _sam_row(UEI_A)[:-1]
+    path = _write_sam_zip(tmp_path, [short])
+    with pytest.raises(ValueError, match="expected 142"):
+        mod.load_sam_target_evidence(path, {UEI_A})
+
+    unmarked = _sam_row(UEI_A)
+    unmarked[141] = "not-the-marker"
+    path = _write_sam_zip(tmp_path, [unmarked])
+    with pytest.raises(ValueError, match="end marker"):
+        mod.load_sam_target_evidence(path, {UEI_A})
+
+
+def test_sam_parser_raises_on_declared_row_count_mismatch(tmp_path: Path) -> None:
+    path = _write_sam_zip(tmp_path, [_sam_row(UEI_A)], declared=2)
+    with pytest.raises(ValueError, match="row count mismatch"):
+        mod.load_sam_target_evidence(path, {UEI_A})
