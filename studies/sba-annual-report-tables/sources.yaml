@@ -99,8 +99,28 @@ targets:
 
 # ---------------------------------------------------------------------------
 # Inputs: the award records the tables are recomputed from.
+# All three vintages cited by vintage-drift-2026-09-17.md are pinned here.
 # ---------------------------------------------------------------------------
 inputs:
+  - source_id: sbir_gov_award_export_2026_08
+    publisher: SBIR.gov (SBA)
+    title: SBIR/STTR award data export
+    path: data/studies/sbir_ma_dated_signal_study/2026-08-30/award_data.csv
+    committed: false
+    gitignore_rule: "/data/*"
+    sha256: efdf7ca5a398703002ebb33345275b0f68e50af3c5db361d48a2456266a23628
+    size_bytes: 394398849
+    parsed_records: 219503
+    retrieved_on: "2026-08-30"
+    source_url: https://data.www.sbir.gov/mod_awarddatapublic/award_data.csv
+    source_url_evidence: inferred_from_schema  # 42 columns including UEI
+    evidence_class: administrative_record
+    identity_grain: one row per award action as published by SBIR.gov
+    role: >-
+      Intermediate vintage. It is what shows the drift is episodic rather than
+      gradual: +2 records over the 3.6 months to 2026-08-30, then +87 in the
+      following 18 days.
+
   - source_id: sbir_gov_award_export_2026_05
     publisher: SBIR.gov (SBA)
     title: SBIR/STTR award data export
@@ -110,12 +130,14 @@ inputs:
     sha256: 7511930b16dfa5c3aeff57bc4349c44b0d0efa04862433b7310401d3a4198c6c
     size_bytes: 394410138
     source_url: https://data.www.sbir.gov/mod_awarddatapublic/award_data.csv
-    source_url_note: >-
-      URL recorded 2026-09-17 from the retrieval path in
-      sbir_etl/extractors/source_downloads/sbir.py, which this vintage was
-      downloaded with; no contemporaneous retrieval manifest was written in May.
-      The schema (42 columns, UEI present, 'Woman Owned') matches the canonical
-      mod_awarddatapublic product and not the legacy awarddatapublic one.
+    source_url_evidence: inferred_from_schema
+    source_url_caveat: >-
+      The URL was not recorded at retrieval, so the hash and date do not by
+      themselves prove which endpoint produced this file. It is inferred: this
+      export carries 42 columns including UEI, matching the mod_awarddatapublic
+      product, whereas the legacy data.www.sbir.gov/awarddatapublic/ endpoint on
+      the same host serves 41 columns without UEI. Treat as inference, not
+      recorded provenance.
     retrieved_on: "2026-05-11"
     data_last_updated: null
     evidence_class: administrative_record
