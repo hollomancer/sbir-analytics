@@ -64,24 +64,24 @@ materialization:
   allowed: false
   blockers:
     - >-
-      No published-dollar tolerance is committed. The export-versus-published dollar
-      delta reverses sign across report-years (+1.875% FY2020, -1.314% FY2021, +1.322%
-      FY2022), which post-publication accretion cannot explain because adding records
-      can only add dollars. Award amounts are therefore revised in both directions after
-      publication, by an unquantified mechanism. The dollar columns in
-      results/comparison_cells.csv carry no verdict and must not be quoted as a
-      reproduction.
-    - >-
-      The first-time-winner rule recorded in definition-decisions.md was inferred by
-      reproducing the published 39% figure, not recovered from the source. It is not
-      implemented here, and any claim resting on it would not be a reproduction of a
-      documented definition. The one open sub-choice was signed off by the maintainer on
-      2026-09-17 as any prior SBIR/STTR award, decided on the report's internal scoping
-      evidence rather than on proximity to the published figure, which cannot
-      discriminate because both candidates fall inside the rounding interval of a
-      published 39%. That closed the decision, not the epistemic gap: the rule is still
-      inferred, cross-validation is still impossible because FY2020 and FY2021 publish
-      no comparable statistic, and this blocker therefore stands.
+      No copy of the SBIR.gov award database as it stood when these reports were
+      published still exists, so every comparison here runs a corrected database
+      against an uncorrected published table. design.md fixes the published-sample
+      outcome at `blocked` for exactly this case and admits the comparison only as a
+      labelled structural check. These outputs must therefore not be materialised as a
+      reproduction of the published tables. This blocker can never be lifted: SBIR.gov
+      serves only the current snapshot, and SBA states it pushes corrections to the
+      database while the published report is not revised (FY2016 report, p39).
+      Superseded blockers, recorded so the change is not read as a relaxation. Two
+      earlier blockers were replaced by the one above on 2026-09-17 because neither
+      named a quantity this study claims. (1) The absent published-dollar tolerance:
+      dollars are not in the estimand, which measures award counts, and the dollar
+      columns still carry no verdict - see the dollar limitation below. (2) The inferred
+      first-time-winner rule: that rule is not implemented here, as the earlier blocker
+      itself stated, and its open sub-choice was signed off on 2026-09-17; it remains
+      inferred rather than recovered and is recorded as a limitation. Replacing them
+      tightens rather than relaxes the gate, because the reason now given is permanent
+      whereas both superseded reasons were in principle resolvable.
 permitted_claims:
   - >-
     This run is a structural check in the sense design.md defines: table structure and
@@ -180,6 +180,18 @@ limitations:
     This study is reproducible in the sense studies/README.md defines, that specified
     inputs and implementation can be rerun. It is not validated or citable, and
     reproducible is not a statement about the published-sample outcome.
+  - >-
+    The first-time-winner rule recorded in definition-decisions.md was inferred by
+    reproducing the published 39% figure, not recovered from the source, and it is not
+    implemented in this study. Its one open sub-choice was signed off on 2026-09-17 as
+    any prior SBIR/STTR award, decided on the report's internal scoping evidence rather
+    than on proximity to the published figure, which cannot discriminate because both
+    candidates fall inside the rounding interval of a published 39%. That closed the
+    decision, not the epistemic gap. Cross-validation is impossible because FY2020 and
+    FY2021 publish no comparable statistic, so the rule stays inferred permanently. Any
+    claim resting on it would not be a reproduction of a documented definition. This
+    caveat previously sat in materialization.blockers and was moved here, not dropped,
+    when the blockers were re-scoped.
 reproduction:
   live_sources:
     - name: SBIR.gov award export (mod_awarddatapublic)
