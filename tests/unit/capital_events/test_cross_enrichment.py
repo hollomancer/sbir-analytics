@@ -156,12 +156,7 @@ def test_discovery_confirmed_signal_is_independent_evidence():
 
 
 def test_raw_press_hits_are_not_independent_corroboration():
-    # `_has_confirmed_press` counts press evidence only when it is a confirmed
-    # scalar, so a raw hit list must not promote a Form-D-only row. The shape
-    # tested here is `press_evidence`, the key the predicate actually reads.
-    # This previously used `press_wire_signals`, which #709 removed along with
-    # its producer; nothing reads that key, so the assertion held for any
-    # unrecognized key and the list-versus-scalar guard went uncovered.
+    # A raw hit list on `press_evidence` must not count as confirmed press.
     form_d_plus_hits = {
         "signals": {"form_d_business_combination": True},
         "form_d_detail": {"filing_date": "2020-01-01"},
@@ -179,8 +174,6 @@ def test_raw_press_hits_are_not_independent_corroboration():
 
 
 def test_confirmed_press_evidence_is_independent_of_form_d():
-    # The other side of the same guard: a confirmed scalar, or the
-    # `press_confirmed` signal, does corroborate a Form D row.
     scalar = {
         "signals": {"form_d_business_combination": True},
         "form_d_detail": {"filing_date": "2020-01-01"},
