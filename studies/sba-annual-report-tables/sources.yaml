@@ -1,0 +1,116 @@
+schema_version: 1
+
+# Capture manifest for Study 1 (SBA SBIR/STTR annual-report tables, [L18]).
+#
+# STATUS: the roadmap's start gate for this study — "exact table definitions and
+# report-year source files captured" — is NOT yet satisfied. This file records what
+# must be captured, what is already pinned, and what is blocked. No definition is
+# paraphrased here: `definition_verbatim` stays null until the report text is in hand.
+
+capture_status: pending
+gate_satisfied: false
+
+selection_rule: >-
+  Select the most recent annual report whose underlying source export can be
+  recovered. Recoverability governs, not recency. Record the chosen report and the
+  reason here once capture succeeds.
+
+# ---------------------------------------------------------------------------
+# Targets: the published tables to be reproduced. Not yet retrieved.
+# ---------------------------------------------------------------------------
+targets:
+  - source_id: sba_annual_report_fy22
+    publisher: U.S. Small Business Administration
+    title: SBIR/STTR Annual Report, FY22
+    url: https://www.sbir.gov/sites/default/files/SBA_FY22_SBIR_STTR_Annual_Report.pdf
+    cited_as: L18
+    capture_status: not_retrieved
+    retrieval_blocker: >-
+      sbir.gov returned HTTP 403 to a non-browser client from the analysis
+      environment on 2026-09-17 (plain nginx 403; no proxy/policy marker, so the
+      request reached the host and was refused). Capture requires an interactive
+      browser session or another route. The user agent was not altered to evade
+      the refusal.
+    path: null
+    sha256: null
+    definition_verbatim: null
+    tables_needed:
+      - award dollars and counts by agency
+      - award dollars and counts by state
+      - award dollars and counts by phase
+      - award dollars and counts by fiscal year
+      - first-time-winner counts and shares
+
+  - source_id: sba_annual_report_fy21
+    publisher: U.S. Small Business Administration
+    title: SBIR/STTR Annual Report, FY21
+    cited_as: L18
+    capture_status: not_retrieved
+    retrieval_blocker: Same as FY22; direct file URL not yet confirmed.
+    path: null
+    sha256: null
+    definition_verbatim: null
+
+  - source_id: sba_annual_report_fy20
+    publisher: U.S. Small Business Administration
+    title: SBIR/STTR Annual Report, FY20
+    cited_as: L18
+    capture_status: not_retrieved
+    retrieval_blocker: Same as FY22; direct file URL not yet confirmed.
+    path: null
+    sha256: null
+    definition_verbatim: null
+
+# ---------------------------------------------------------------------------
+# Inputs: the award records the tables are recomputed from.
+# ---------------------------------------------------------------------------
+inputs:
+  - source_id: sbir_gov_award_export_2026_05
+    publisher: SBIR.gov (SBA)
+    title: SBIR/STTR award data export
+    path: data/raw/sbir/award_data.csv
+    committed: false
+    gitignore_rule: "/data/*"
+    sha256: 7511930b16dfa5c3aeff57bc4349c44b0d0efa04862433b7310401d3a4198c6c
+    size_bytes: 394410138
+    retrieved_on: "2026-05-11"
+    data_last_updated: null
+    evidence_class: administrative_record
+    identity_grain: one row per award action as published by SBIR.gov
+    vintage_warning: >-
+      This export post-dates every report named in [L18]. It is NOT the
+      report-era vintage and must not be substituted for one in a
+      published-sample replication. See the source-vintage risk section of
+      design.md.
+    fields_available_for_the_target_grain:
+      agency: Agency (with Branch for component roll-up)
+      state: State (firm address of record)
+      phase: Phase
+      program: Program (SBIR vs STTR)
+      fiscal_year_candidates: ["Award Year", "Proposal Award Date"]
+      firm_identity: ["UEI", "Duns", "Company"]
+    field_hazards:
+      fiscal_year: >-
+        Two candidate fields exist (Award Year, Proposal Award Date) and they need
+        not agree. The report's own fiscal-year rule decides which is correct;
+        until it is recovered, neither may be assumed.
+      state: >-
+        State is the firm's address of record in this snapshot, which SBIR.gov
+        refreshes in place. It may reflect the firm's present address rather than
+        its address at award time, which would shift state-level cells in a way
+        that is not a pipeline defect.
+      firm_identity: >-
+        UEI coverage is incomplete for older awards (DUNS-era records), which
+        bears directly on the first-time-winner history window.
+
+# ---------------------------------------------------------------------------
+# What unblocks this study.
+# ---------------------------------------------------------------------------
+next_actions:
+  - Retrieve the selected annual report and commit the extracted target tables
+    with SHA-256 hashes under studies/sba-annual-report-tables/data/.
+  - Quote each definition listed in design.md verbatim into the matching
+    `definition_verbatim` field above.
+  - Determine whether any report-era award vintage is recoverable. If none is,
+    record the published-sample replication as `blocked` and proceed only with the
+    separately-labelled current-data extension.
