@@ -309,7 +309,7 @@ captured_tables:
       figures match to the dollar.
 
   - table_id: fy20_awards_by_state
-    source_table: "Table 18: SBIR/STTR Awards by U.S. State and Territory"  # FY21 numbers it 18, not 20
+    source_table: "Table 18: SBIR/STTR Awards by U.S. State and Territory"  # FY20 numbers it 18, not 20
     source_pages: [53, 54, 55, 56]
     path: studies/sba-annual-report-tables/data/awards_by_state_fy20.csv
     sha256: 0c8465c210f122a75b42b5afef147f688e73cec6a82a230f0d33f377def3403c
@@ -318,7 +318,7 @@ captured_tables:
     scope: Phase I and Phase II awards only
     totals: {sbir_usd: 3429157542, sttr_usd: 454766126, awards: 7136}
   - table_id: fy21_awards_by_state
-    source_table: "Table 18: SBIR/STTR Awards by U.S. State and Territory"  # FY20 numbers it 18, not 20
+    source_table: "Table 18: SBIR/STTR Awards by U.S. State and Territory"  # FY21 numbers it 18, not 20
     source_pages: [51, 52, 53, 54]
     path: studies/sba-annual-report-tables/data/awards_by_state_fy21.csv
     sha256: cb43a8ec5de2b70a97f240f329a3a19a749b0f85910b5229593a5267dc1c1cde
@@ -446,8 +446,9 @@ definition_decisions:
     do_not_go_finer_than_state: true       # zip drifts 11x as often as state over the same interval
 
 next_actions:
-  # DONE 2026-09-17: scripts/data/sba_annual_report_tables.py, results/ committed.
-  # Structural check passes in all three years; published-sample outcome stays blocked.
+  # IMPLEMENTED IN THE FOLLOW-UP (#767): scripts/data/sba_annual_report_tables.py and
+  # results/ land there, not on this branch. On that branch the structural check passes
+  # in all three years; the published-sample outcome stays blocked either way.
   # DONE 2026-09-17: prior_means signed off by the maintainer as any prior SBIR/STTR
   # award. See definition_decisions.first_time_winner_lookback.prior_means_basis.
   # CLOSED 2026-09-17 as not applicable in scope: the Phase IIB / sequential Phase II
@@ -459,7 +460,9 @@ next_actions:
   # (100% populated, 15 distinct for DoD). Grouping by Agency reproduces the FY22
   # published agency chart, SBIR $4,115,812,862 against a stated $4,115,812,863, a -$1
   # rounding difference, and STTR exact.
-  # MEASURED 2026-09-17. "A few large revisions or broad drift" is answered: broad
+  # MEASURED 2026-09-17 on the follow-up branch (#767), where the run artifacts that
+  # support these figures live; they are not checkable from this change alone.
+  # "A few large revisions or broad drift" is answered: broad
   # drift. Gross absolute movement is $349M / $448M / $336M against a net of only
   # +$72.8M / -$51.1M / +$58.5M, so the net is a residual of movement 4.8x to 8.8x
   # larger. 173-181 of ~210 cells move each year and the largest single cell is only
@@ -490,7 +493,8 @@ next_actions:
     constraint, or loosening it, by dropping two blockers.
 
 # ---------------------------------------------------------------------------
-# SUPERSEDED 2026-09-17, retained as the derivation record. study.yaml now carries
+# SUPERSEDED 2026-09-17, retained as the derivation record. study.yaml (which lands
+# with the implementation in #767, not on this branch) carries
 # the live StudyManifest.reproduction contract, and it is deliberately narrower than
 # this block: StudyManifest.reproduction and classify_rebuild compare a pinned
 # retrieval against a later fetch of the SAME live source, so only a quantity named
@@ -560,10 +564,12 @@ published_table_tolerances:
     band: "max(6 rows, 20%)"
     derivation: >-
       Tightest band on the tested grid covering 100% of 569 cells;
-      max(4 rows, 20%) covers 99.82%. A hybrid is required because small cells move
-      little in absolute terms but up to 100% relatively, while large cells move up
-      to 6 rows but only 6% relatively. Largest single deviation: FY2020 CA SBIR
-      Phase II, 466 published against 489 in the export (+23, +4.9%).
+      max(4 rows, 20%) covers 99.82%. A hybrid is required because the two failure
+      modes sit at opposite ends of the size distribution (three-year bins in
+      assembly-methodology.md): 1-5-count cells move at most 4 rows but up to 200%
+      relatively, while 101+ cells move up to 23 rows but at most 13% relatively.
+      Largest single deviation: FY2020 CA SBIR Phase II, 466 published against 489
+      in the export (+23, +4.9%) — a 101+ cell the 20% arm covers.
     warning: >-
       This band absorbs TWO superimposed effects and must not be read as a count
       tolerance alone. Only 41.5-46.6% of cells match exactly and cells run under as
