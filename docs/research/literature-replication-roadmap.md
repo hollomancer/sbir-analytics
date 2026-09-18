@@ -228,10 +228,12 @@ and live-upstream reproduction checks. The remaining gaps are:
    outcomes.
 8. **Independent labels.** Entity lineage and Phase III validation remain too limited for citable
    transition claims.
-9. **Question-to-literature links.** Many additions in [L34-L48] remain only in the bibliography.
-   Not all: [L7], [L36] and [L38] are already attached to the STTR spinout-linkage question, and
-   [L34] is cited in Order 8 above. Narrow any gap claim to the still-unlinked entries.
-   [L36] and [L38] are already linked to the STTR spinout question.
+9. **Question-to-literature links.** Eleven of the fifteen additions in [L34-L48] are only in the
+   bibliography: [L35], [L37], [L39], [L40], [L41], [L42], [L43], [L44], [L45], [L46], [L47].
+   The other four are attached to a question already: [L34] in Order 8 above, and [L36], [L38]
+   and [L48] on the STTR spinout-linkage question in `research-questions.md`. Measured against
+   the current `research-questions.md` body text, bibliography entries excluded.
+
 
 ## First implementation tranche
 

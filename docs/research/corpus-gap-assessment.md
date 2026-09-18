@@ -26,10 +26,10 @@ total only, FY2013-FY2022 print the full jurisdiction-by-program-by-phase grid.
 The corpus stops at FY2022. The pinned export already holds **6,325 awards for award-year 2023 and
 6,412 for 2024**, so the data side is ready and only the published tables are missing. Both years
 would fall inside the stated-basis era, taking the usable panel from six report-years to **eight**,
-and they sit at report ages 2 and 3 - the youngest end, where post-publication drift should be
-smallest and where the committed one-sided +3% band has the most headroom. The band's tightest
-observation is FY2016 at +2.92%, so the informative test is whether young years stay near the
-bottom of the band as FY2022 (+0.85%) does.
+and they sit at report ages 2 and 3 - the youngest end. Whether young report-years sit lower in
+whatever band the Order 1 study commits is exactly what these two would test out of sample; if they
+also state a snapshot date, they test the snapshot-lag reading as well. The figures that make this
+interesting are on the Order 1 stack and are exploratory there, so they are not repeated here.
 
 **Access:** sbir.gov returns HTTP 403 to non-browser clients, so this needs a browser download, the
 same route by which the FY2020-FY2022 volumes arrived. Nothing else in this list has a better
@@ -42,8 +42,11 @@ easyocr), and package metadata for them is not reachable from this environment. 
 the work: `pypdfium2` and PIL are present and rasterise these pages cleanly, and the extracted rows
 can be checked against the tables' own internal identities - SBIR total equals Phase I plus Phase
 II, likewise STTR, and combined equals SBIR plus STTR - which is the same validation every
-text-layer year already passes. An extraction that satisfies all three identities on every row is
-trustworthy without a second opinion.
+text-layer year already passes. Passing all three identities on every row rules out most
+transcription faults but not all: a swap of two state labels that preserves each row's sums, or a
+compensating digit error inside one row, passes every identity. Passing is therefore necessary for
+use, not sufficient - which is what the triage means by "every figure needs independent
+verification". Verification against the source line, not a second model pass, is the check.
 
 - **FY2019** states the count basis, so it belongs in the panel. Its table is an embedded image on
   one page and renders legibly. **It covers only AK through MS - 27 jurisdictions of the 53 the
@@ -65,18 +68,22 @@ sources: SBA's agency data-call instructions for those years, or a methodology a
 
 ### 4. The sbir.gov impact reports
 
-Listed at sbir.gov/impact/impact-reports and confirmed unreachable: `data.www.sbir.gov`, the host
-that serves the award export with a clean 200, returns 403 on the `/impact/` path. That is
-sbir.gov's own content policy, not a sandbox restriction, so no network grant changes it. These bear
-on the commercialization questions rather than on this study, and need a browser download.
+Listed at sbir.gov/impact/impact-reports, which returns 403 to non-browser clients (sbir.gov's own
+policy, not a sandbox restriction). **Not a new file set.** The page lists the five agency
+economic-impact PDFs already in the 51-document inventory (DoD 1995-2018, Navy 2000-2013, USAF
+FY2015, NASA 2017, NCI 2018) and a National Academies link that is gap 5. Nothing remains to fetch
+here; kept as a record that the page was checked.
 
 ### 5. Four closed-access works
 
 Needed for roadmap orders 3 and 5, with no open-access copy in Unpaywall, Semantic Scholar, PMC or
-CrossRef, and no `best_oa_pdf_url` in OpenAlex. Identifiers verified: NASEM 2026
-`10.17226/29329`, NRC 2014 `10.17226/18821`, Rovito `10.1007/s10961-024-10141-2`, and Research
-Policy 54(9) 2025 `10.1016/j.respol.2025.105302`. The two National Academies volumes offer free PDFs
-from nap.edu behind a sign-in. Recorded in `source-acquisition-orders-3-5.md`.
+CrossRef, and no `best_oa_pdf_url` in OpenAlex. Identifiers verified: [L1] NASEM 2026
+`10.17226/29329`, [L2] NRC 2014 `10.17226/18821`, [L47] Rovito `10.1007/s10961-024-10141-2`. The two
+National Academies volumes offer free PDFs from nap.edu behind a sign-in.
+
+Not yet assigned to an order: Research Policy 54(9) 2025 `10.1016/j.respol.2025.105302`, an
+incidental find with unresolved authors and an unverified OA flag, not an [L#] entry. Filed the same
+way in `source-acquisition-orders-3-5.md`.
 
 ### 6. The 1990-2008 SBIR volumes, with a cheap test first
 

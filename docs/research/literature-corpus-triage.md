@@ -113,4 +113,7 @@ None of those are in the corpus, and none are obtainable by supplying more SBA d
 3. **Treat the 19 image-only documents as a separate capability**, not a continuation. They
    would extend the panel to 1990 and complete the pre-2009 SBIR series, but the
    extraction cannot be validated the same way.
-4. **Read Order 3's DoD volume for its multiplier definition** before building anything against it.
+4. **Read [L1] and [L2] for the NASEM obligations-ratio definition** before building anything
+   against Order 3. The DoD TechLink volume in the corpus is an [L19]-family ROI study; its 22:1
+   output ratio is not the quantity Order 3 replicates, and reading it for that definition would
+   repeat the mapping error corrected above.
