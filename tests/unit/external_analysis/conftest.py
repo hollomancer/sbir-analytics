@@ -8,7 +8,7 @@ from types import SimpleNamespace
 import pytest
 import yaml
 
-from sbir_etl.quality.study_manifest import sha256_file
+from sbir_etl.utils.data.file_io import file_sha256 as sha256_file
 
 
 def write_study(root: Path, study_id: str = "example-study") -> Path:

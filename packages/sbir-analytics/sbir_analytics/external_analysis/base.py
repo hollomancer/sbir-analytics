@@ -5,8 +5,9 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Protocol
+from uuid import uuid4
 
-from sbir_etl.quality.study_manifest import sha256_file
+from sbir_etl.utils.data.file_io import file_sha256
 
 from .bundle import freeze_study_bundle, study_manifest_path
 from .edison import DEFAULT_MAX_STEPS, EdisonProvider
@@ -119,7 +120,10 @@ def run_external_analysis(
         raise MissingInputError(f"unknown study {study_id!r}")
 
     prompt_path = resolve_prompt_path(repository_root, study_id, prompt)
-    run_id = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
+    # Second-resolution timestamps collide when two invocations for the same
+    # study and provider land in one second, and colliding staging paths can
+    # overwrite each other's bundle before the provider returns a job ID.
+    run_id = f"{datetime.now(UTC).strftime('%Y%m%dT%H%M%SZ')}-{uuid4().hex[:8]}"
     provider_name = provider if isinstance(provider, str) else provider.name
     destination = output_dir or default_output_dir(
         repository_root,
@@ -142,7 +146,7 @@ def run_external_analysis(
     if prompt_path is not None and (bundle.directory / "prompt.md").is_file():
         (destination / "prompt.md").write_bytes((bundle.directory / "prompt.md").read_bytes())
 
-    manifest_sha = sha256_file(bundle.manifest_path)
+    manifest_sha = file_sha256(bundle.manifest_path)
     if bundle_only:
         run = ExternalAnalysisRun(
             provider=provider_name,

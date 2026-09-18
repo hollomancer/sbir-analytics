@@ -2,13 +2,14 @@
 """Validate versioned study contracts and their repository references."""
 
 import ast
+import hashlib
 import json
 from pathlib import Path
 
 from pydantic import ValidationError
 
 from sbir_etl.exceptions import ConfigurationError
-from sbir_etl.quality.study_manifest import StudyManifest, load_study_manifest, sha256_file
+from sbir_etl.quality.study_manifest import StudyManifest, load_study_manifest
 
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
@@ -67,7 +68,7 @@ def validate_manifest_references(
         if not path.is_file():
             errors.append(f"frozen artifact does not exist: {artifact.path}")
             continue
-        actual = sha256_file(path)
+        actual = hashlib.sha256(path.read_bytes()).hexdigest()
         if actual != artifact.sha256:
             errors.append(
                 f"frozen artifact hash mismatch for {artifact.path}: "

@@ -5,9 +5,10 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from sbir_etl.quality.study_manifest import sha256_file
+from sbir_etl.utils.data.file_io import file_sha256
 
 from .models import ExternalAnalysisRun, PromotionAttemptError, ProviderArtifact
+from .safety import assert_safe_path_component
 
 
 EPISTEMIC_TIER = "exploratory"
@@ -22,6 +23,12 @@ def default_output_dir(
     provider: str,
     run_id: str,
 ) -> Path:
+    # run_id can come back from the provider (a trajectory ID), so every
+    # component is validated before it touches a path: a value carrying a
+    # separator or dot segment could move artifacts outside studies/.
+    assert_safe_path_component(study_id, label="study_id")
+    assert_safe_path_component(provider, label="provider")
+    assert_safe_path_component(run_id, label="run_id")
     return repository_root / "studies" / study_id / "exploratory" / "external" / provider / run_id
 
 
@@ -87,6 +94,6 @@ def mark_incomplete(output_dir: Path, reason: str) -> Path:
 def copy_bundle_manifest(bundle_manifest: Path, output_dir: Path) -> Path:
     destination = output_dir / "input_manifest.json"
     destination.write_bytes(bundle_manifest.read_bytes())
-    if sha256_file(destination) != sha256_file(bundle_manifest):
+    if file_sha256(destination) != file_sha256(bundle_manifest):
         raise PromotionAttemptError("input_manifest.json hash diverged while copying")
     return destination

@@ -8,7 +8,8 @@ import subprocess
 from datetime import UTC, datetime
 from pathlib import Path
 
-from sbir_etl.quality.study_manifest import StudyManifest, load_study_manifest, sha256_file
+from sbir_etl.quality.study_manifest import StudyManifest, load_study_manifest
+from sbir_etl.utils.data.file_io import file_sha256
 
 from .constraints import DEFAULT_CONSTRAINTS
 from .models import (
@@ -20,7 +21,7 @@ from .models import (
     StudyBundle,
     StudyBundleManifest,
 )
-from .safety import assert_safe_source_path
+from .safety import assert_safe_path_component, assert_safe_source_path
 
 
 EPISTEMIC_TIER = "exploratory"
@@ -44,6 +45,10 @@ def current_git_commit(repository_root: Path) -> str:
 
 
 def study_manifest_path(repository_root: Path, study_id: str) -> Path:
+    # study_id reaches this path and the default output path; a separator or
+    # dot segment in it could read a YAML outside studies/ or write outside
+    # the promised study tree.
+    assert_safe_path_component(study_id, label="study_id")
     return repository_root / "studies" / study_id / "study.yaml"
 
 
@@ -64,8 +69,8 @@ def _repo_relative(path: Path, repository_root: Path) -> str:
 def _copy_file(source: Path, destination: Path) -> tuple[str, int]:
     destination.parent.mkdir(parents=True, exist_ok=True)
     shutil.copy2(source, destination)
-    digest = sha256_file(destination)
-    source_digest = sha256_file(source)
+    digest = file_sha256(destination)
+    source_digest = file_sha256(source)
     if digest != source_digest:
         raise HashMismatchError(
             f"copied {source} to {destination} but hashes diverged: {source_digest} vs {digest}"
@@ -80,7 +85,7 @@ def _verify_frozen_artifact(
     study: StudyManifest,
 ) -> None:
     relative = _repo_relative(source, repository_root)
-    actual = sha256_file(source)
+    actual = file_sha256(source)
     for artifact in study.frozen_artifacts:
         if artifact.path == relative and artifact.sha256 != actual:
             raise HashMismatchError(
@@ -92,7 +97,7 @@ def _verify_frozen_artifact(
 def _write_text(path: Path, content: str) -> tuple[str, int]:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(content, encoding="utf-8")
-    return sha256_file(path), path.stat().st_size
+    return file_sha256(path), path.stat().st_size
 
 
 def _research_question_markdown(study: StudyManifest) -> str:

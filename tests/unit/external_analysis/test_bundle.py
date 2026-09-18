@@ -8,7 +8,7 @@ import pytest
 
 from sbir_analytics.external_analysis.bundle import freeze_study_bundle
 from sbir_analytics.external_analysis.models import HashMismatchError, MissingInputError
-from sbir_etl.quality.study_manifest import sha256_file
+from sbir_etl.utils.data.file_io import file_sha256 as sha256_file
 
 
 def test_bundle_hashes_are_deterministic(repo: Path) -> None:
