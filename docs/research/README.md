@@ -105,6 +105,15 @@ explain how firms were selected and what the results cannot show.
 
 ## Research planning and communication
 
+- [Literature replication roadmap](literature-replication-roadmap.md) — exact published-sample
+  replications followed by separately reported current-data extensions, ordered from public-data
+  descriptive studies through restricted-data causal studies. Several orders route into specs that
+  are gated or de-tiered in the [status registry](../../specs/status.md); check it before starting.
+- [Literature corpus triage](literature-corpus-triage.md) and
+  [inventory CSV](literature-corpus-inventory.csv) — the 51 report PDFs supplied 2026-09-17,
+  mapped to roadmap orders with per-document text-layer quality and SHA-256. The corpus is deep on
+  Order 1 and contributes benchmark context only to Orders 3 and 5. Read this before staging any
+  historical source cuts: the files are already inventoried.
 - [Literature map and citation audit](literature-map/README.md) — research published
   from 2019–2026 and missing coverage across question areas A–F. The CSV is
   refreshed weekly from OpenAlex (`make literature-map`); authored memos are not.
