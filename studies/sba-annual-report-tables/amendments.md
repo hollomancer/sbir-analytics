@@ -21,12 +21,16 @@ such as SBIR.gov, which publish only a current snapshot.
 Exact published-sample reproduction remains impossible, for a reason unrelated to drift: no
 report-era vintage survives anywhere. `docs/data/awards-refresh.md` records that SBIR.gov
 serves only the current snapshot, and the oldest vintage available here (2026-05-11)
-post-dates all three reports in [L18]. In its place the study performs a **vintage-tolerant
-reproduction** — published cells compared against a *pinned* vintage under declared bands,
-with an in-band difference recorded as agreement rather than `pipeline_defect`. This uses
-`StudyManifest.reproduction`, whose docstring notes that bit-exact reproducibility is
-unachievable against a source someone else updates. The proposed contract is in
-`sources.yaml:proposed_reproduction_contract`.
+post-dates all three reports in [L18]. In its place the study performs a **labelled structural
+check** against a *pinned* current vintage under declared bands, and the published-sample verdict
+stays `blocked`, as `design.md` requires when no report-era vintage exists. A difference inside a
+band is recorded as an in-band *observation*; it is never a reason to record a cell as reproduced,
+and a band is not licence to treat an in-band miss as agreement. `StudyManifest.reproduction` is
+**not** the contract for this comparison - it governs a rebuild of the pinned export against a
+later fetch of the same live source (`classify_rebuild`). The published-cell bands live in
+`sources.yaml:published_table_tolerances`. An earlier version of this paragraph called the
+comparison a "vintage-tolerant reproduction" with in-band differences "recorded as agreement";
+that was the proxy substitution `design.md` forbids and is withdrawn.
 
 Measured drift supports narrow bands: over 4.2 months the FY20–22 total moved +$5.67M
 (+0.0465%), 34 matched records (0.17%) changed amount, 32 (0.16%) changed state, and the
