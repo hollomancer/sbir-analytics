@@ -492,78 +492,30 @@ definition_decisions:
     do_not_go_finer_than_state: true       # zip drifts 11x as often as state over the same interval
 
 next_actions:
-  # IMPLEMENTED IN THE FOLLOW-UP (#767): scripts/data/sba_annual_report_tables.py and
-  # results/ land there, not on this branch. On that branch the structural check passes
-  # in all three years; the published-sample outcome stays blocked either way.
-  # DONE 2026-09-17: prior_means signed off by the maintainer as any prior SBIR/STTR
-  # award. See definition_decisions.first_time_winner_lookback.prior_means_basis.
-  # CLOSED 2026-09-17 as not applicable in scope: the Phase IIB / sequential Phase II
-  # rollup has no degrees of freedom. The export carries exactly two Phase values across
-  # all 219,590 rows and all award years, "Phase I" and "Phase II", with zero nulls, so
-  # there is no Phase IIB or sequential-Phase-II label to roll up.
-  # CLOSED 2026-09-17 as already correct: DoD component-to-department aggregation needs
-  # no work. Agency in the export is department-level and Branch carries the component
-  # (100% populated, 15 distinct for DoD). Grouping by Agency reproduces the FY22
-  # published agency chart, SBIR $4,115,812,862 against a stated $4,115,812,863, a -$1
-  # rounding difference, and STTR exact.
-  # MEASURED 2026-09-17 on the follow-up branch (#767), where the run artifacts that
-  # support these figures live; they are not checkable from this change alone.
-  # "A few large revisions or broad drift" is answered: broad
-  # drift. Gross absolute movement is $349M / $448M / $336M against a net of only
-  # +$72.8M / -$51.1M / +$58.5M, so the net is a residual of movement 4.8x to 8.8x
-  # larger. 173-181 of ~210 cells move each year and the largest single cell is only
-  # 6-11% of gross. The mechanism is amount revision on existing records, in both
-  # directions: at national level, where relocation cancels, three program-phase groups
-  # ADD awards while LOSING dollars, and FY2021 SBIR Phase II gains 23 awards while
-  # losing $106.2M. Adding records cannot reduce dollars.
-  # SUPERSEDED IN PART 2026-09-17 by extension-to-eight-years.md, Finding 3: the
-  # reports' own table footnote says the published dollar column includes funding of
-  # prior-year awards while counts are new awards only, so the dollar deltas measure a
-  # definitional basis mismatch, not amount revision alone. The recommendation below
-  # not to band dollars stands, for that stronger reason.
+  # CLOSED 2026-09-17. Both prior actions are answered; what replaces them is a
+  # band revision implied by the eight-year extension, which is a maintainer call.
   - >-
-    Decide whether to band dollars at all, and on which quantity. Recommendation is to
-    NOT band the net. A two-sided net band of +/-2% would cover the three observed years,
-    but the net passes by cancellation, so a year in which every cell was badly wrong
-    would satisfy it whenever the errors offset. That is the two-superimposed-effects
-    error the count limitation already warns about, one level up. (The count
-    time-signature justification below is superseded: extension-to-eight-years.md
-    Finding 2 shows no report-age relationship over eight years — FY2013 +0.24% at age
-    12 against FY2016 +2.92% at age 9 — and its snapshot-lag section names the actual
-    covariate. The +3% band survives only as an empirical envelope over FY2016-FY2022,
-    and FY2014 breaches it in the other direction.) The original derivation read:
-    counts are extrapolable
-    because they carry a time signature (+2.51%, +1.44%, +0.85% for report ages 5, 4 and
-    3, monotone); dollars order with neither report age nor DoD submission lateness, so
-    the mechanism is named but its magnitude is unmodelled. If a dollar band is wanted
-    later, band the GROSS (observed 7.58%-11.52% of published dollars, so at most 15%
-    one-sided), which cannot pass by cancellation, but n=3 with no time signature does
-    not support extrapolating even that.
+    Dollar banding is resolved and the answer is do not band. The reason is now
+    definitional rather than unquantified. The reports state that award counts cover
+    new awards only while obligated dollars include prior-year funding, so the export
+    and the published dollar column are not measuring the same quantity. The obvious
+    reconciliation, export new-award dollars plus stated prior-year obligations
+    against the published column, is not testable on this panel: FY2016, FY2017,
+    FY2019, FY2021 and FY2022 disclose no prior-year total, FY2018 mentions it only
+    qualitatively and FY2020 gives a single agency-level figure. Only FY2013 and
+    FY2014 publish the split, and both are excluded on count-basis grounds. The
+    dollar columns therefore carry no verdict and cannot acquire one from this corpus.
   - >-
-    Decide whether the materialization blockers are correctly scoped. Neither current
-    blocker names a quantity this study claims. The estimand measures award COUNTS and
-    does not mention dollars, and blocker 2 states in its own words that the
-    first-time-winner rule "is not implemented here". The constraint that does limit
-    these outputs, namely that published_sample_outcome is blocked because no report-era
-    vintage exists, is absent from the list. Deliberately not actioned: whether replacing
-    the two with that one reads as tightening the gate, by closing on the permanent
-    constraint, or loosening it, by dropping two blockers.
-
-# ---------------------------------------------------------------------------
-# SUPERSEDED 2026-09-17, retained as the derivation record. study.yaml (which lands
-# with the implementation in #767, not on this branch) carries
-# the live StudyManifest.reproduction contract, and it is deliberately narrower than
-# this block: StudyManifest.reproduction and classify_rebuild compare a pinned
-# retrieval against a later fetch of the SAME live source, so only a quantity named
-# as upstream_measure belongs there. The published-cell bands live in
-# published_table_tolerances below and are governed by design.md's four difference
-# classes, not by this contract. Note also that at the declared identity grain the
-# export does not preserve rows across vintages (135 out, 136 in over 4.2 months),
-# so a rebuild returns identity_divergence before any band here is read.
-# Bands below derive from a single 4.2-month window (vintage-drift-2026-09-17.md);
-# extrapolating them across the multi-year gap to the [L18] reports is an
-# assumption, not a measurement.
-# ---------------------------------------------------------------------------
+    Materialization blocker scoping is resolved. The two mis-scoped blockers were
+    replaced with the one permanent constraint, that no report-era copy of the
+    database survives. The gate remains closed and cannot be opened by further work.
+  - >-
+    OPEN, maintainer decision. The eight-year extension implies two band revisions
+    that are deliberately not applied here. The per-cell band of max(6 rows, 20%) is
+    breached by 3 of 1470 non-zero cells once FY2013-FY2018 are included, and the
+    tightest covering band on the tested grid is max(8 rows, 20%). The one-sided
+    total-count band survives on the six stated-basis years with 0.08pp headroom at
+    FY2016. See extension-to-eight-years.md; study.yaml is unchanged.
 proposed_reproduction_contract:
   live_sources:
     - name: SBIR.gov award export (mod_awarddatapublic)

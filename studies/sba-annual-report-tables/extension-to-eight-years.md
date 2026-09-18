@@ -546,3 +546,51 @@ descriptive work - roughly two vision calls per volume, and the validation is se
 the two identities - but they cannot extend the replication panel. They are SBIR-only, on an
 unstated count basis, with a different jurisdiction convention and dollars in different units. Their
 value is a thirty-year state-level series, not a tolerance band.
+
+## Two avenues closed by measurement, recorded so they are not retried
+
+Both looked open at the end of the extension work and both are now shut. Neither is
+acquisition-bound; they are shut by what the corpus contains.
+
+### The dollar reconciliation is not testable on this panel
+
+Finding 3 established that award counts cover new awards only while obligated dollars include
+prior-year funding, which suggests an identity worth testing: export new-award dollars plus the
+reports' stated prior-year obligations should reconcile to the published dollar column, and a
+successful reconciliation would let the dollar columns carry a verdict.
+
+**The stated-basis years do not publish the prior-year component.** Searching every report for a
+prior-year obligation figure: FY2016, FY2017, FY2019, FY2021 and FY2022 disclose none; FY2018
+mentions prior-year funding only qualitatively; FY2020 gives a single agency-level figure
+($18,106,912 "across new and prior year awards"). Only FY2014 publishes the split - $41.2M against
+prior-year Phase I and $596.7M against prior-year Phase II - and FY2013 similarly, and **both are
+excluded on count-basis grounds.** So the one identity that could close the dollar gate can only be
+computed for the two years that must not enter the panel.
+
+The dollar columns carry no verdict, and that is now a measured limit rather than an untried idea.
+
+### PDF metadata cannot extend the snapshot-lag observation beyond four years
+
+The snapshot-lag correlation rests on the four report-years that state a retrieval date. FY2016,
+FY2017 and FY2018 state none, so the obvious move is to read a date from the PDF's own metadata.
+**It does not work, and the failure is diagnosable rather than merely noisy.**
+
+| Report year | PDF CreationDate | Lag implied | Stated snapshot | Stated lag |
+| --- | --- | ---: | --- | ---: |
+| FY2016 | 2019-04-02 | 2.50 | none | - |
+| FY2017 | 2019-09-23 | 1.98 | none | - |
+| FY2018 | 2021-02-25 | 2.41 | none | - |
+| FY2019 | 2021-10-18 | 2.05 | 2021-08-13 | 1.87 |
+| FY2020 | **2024-06-26** | 3.74 | 2021-09-30 | **1.00** |
+| FY2021 | **2024-06-26** | 2.74 | 2023-02-09 | 1.36 |
+| FY2022 | 2025-01-14 | 2.29 | 2023-09-13 | 0.95 |
+
+FY2020 and FY2021 carry the **same** creation timestamp, years after either was published, so these
+files were regenerated in bulk long after the fact. Where both figures exist the implied and stated
+lags diverge by up to 2.7 years, and the two correlate with the deviation in opposite directions:
++0.517 on the creation lag across seven years against **-0.809** on the stated lag across four. The
+metadata dates the file, not the data snapshot, and using it would have manufactured a contradiction
+out of a measurement artefact.
+
+The snapshot-lag observation therefore stays at four points. Only a report-year that states its own
+snapshot date can extend it, which makes the FY2023 and FY2024 volumes the only route.
