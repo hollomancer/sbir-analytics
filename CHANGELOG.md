@@ -158,65 +158,13 @@ version.
   `refresh_status.md` and the run continues with the remaining anchors.
 
 ## [0.16.0] — 2026-09-15
-
-### Breaking
-
-- `validated_phase_iii_contracts` now also emits task orders placed under an IDV
-  that explicitly declares SBIR/STTR Phase III, so `phase_iii_contracts.parquet`
-  gains rows and every rate derived from it moves. Inheritance is fail-closed:
-  the parent must resolve to one unambiguous IDV, and a general-purpose vehicle
-  that happens to carry a single Phase III order does not confer status on its
-  siblings. A PIID reused by different IDVs is omitted from the lookup rather
-  than guessed at.
-- `PhaseIIIContract` gains a required `phase_iii_evidence` field, alongside
-  optional `parent_contract_id` and `phase_iii_inherited`. Code that constructs
-  the model directly must now state how the row was identified — `direct_10q`,
-  `direct_sbir_phase`, `direct_research`, or `parent_declared`. A validator
-  rejects rows where `phase_iii_inherited` and `phase_iii_evidence` disagree, so
-  a consumer can filter on either one.
-
-### Added
-
-- The C4 allocation transaction-cost study
-  (`studies/allocation-transaction-costs/`,
-  `scripts/data/allocation_transaction_costs.py`,
-  `docs/research/allocation-transaction-costs.md`) compares NIH SBIR against an
-  R01-equivalent baseline. It reports the break-even reviewer-hour count as the
-  identified result and records the directional efficiency claim as
-  underidentified. Hours per award, dollars per award, and cost per awarded
-  dollar stay separate rather than collapsing into one efficiency score.
-  Reviewer hours are anchored in Gallo 2019 with the NSF 2021 Merit Review
-  Survey as a second anchor, the UK full-system estimate as an external
-  benchmark, and the FDP activity decomposition recorded from the primary
-  reports. The total-cost break-even is reported beside the applicant-only one,
-  and the sweep shocks one side at a time.
-- The R16 permutation-separation validation design for `phase-iii-census`:
-  `assets/phase_iii_negative_controls/permutation.py` and
-  `scripts/data/build_phase_iii_placebo_permutation.py` compare the actual frame
-  against 500 seeded placebo frames and report an exceedance share with a Wilson
-  95% interval for the primary statistic and each secondary cell. The design is
-  frozen in `studies/phase-iii-census/validation-design.md` under SHA pinning.
-  `build_placebo_assignment` and `permute_prior_end_dates_across_firms` take an
-  optional `seed`; `criteria.summarize_survivors` and
-  `criteria.build_sensitivity_grid_from_full` are public aliases for the frozen
-  per-stage summaries.
-- Two study-claim CI guards, run by `make lint-boundaries` and the CI quality
-  job. `check_study_artifact_roundtrip.py` requires a rendered deliverable to
-  reproduce from its committed sidecar, and every renderer to be registered or
-  waived with a reason. `check_deterministic_as_of.py` refuses a wall-clock
-  as-of default in the three places that fix a data cut, including the semantic
-  form — a `None` default that the body resolves with `as_of or clock()`, a
-  ternary, or an `if as_of is None:` branch. Neither guard accepts a blank
-  exemption reason: a waiver or allowlist entry with no reason is reported and
-  exempts nothing. Three pre-existing paths are recorded on the as-of burndown
-  allowlist, including `supply_chain/release_validation.py`, where release age
-  moved with the clock.
-- A `named-reader-reviewer` agent role that checks what a declared outside
-  reader would quote from a packet and whether that sentence is licensed. It
-  routes on packet type rather than header presence, so a packet missing its
-  reader header still reaches the check; inventory edits to
-  `docs/research-questions.md` are exempt from the header rule and resolve their
-  reader from the enclosing policy area.
+- Operator-only external analysis: freeze a study bundle, submit it to an
+  optional execution backend, and import the result as exploratory artifacts
+  under `studies/<id>/exploratory/external/<provider>/<run-id>/`. Edison
+  Analysis is the first provider, installed via the `edison` extra, not part of
+  the Dagster graph or normal CI. Upload is fail-closed without
+  `--allow-external-upload`. Provider output cannot mark itself validated or
+  citable.
 
 ### Fixed
 
@@ -230,102 +178,6 @@ version.
 - Pinned study CSVs are stored with LF endings and pinned against normalisation
   via `.gitattributes`, so a checkout on another platform does not change the
   bytes a manifest records.
-
-### Changed
-
-- The SBIR-versus-R01 contrast is recorded as an allocation-mechanism
-  comparison, not a performer comparison.
-- Two C4 citations moved off reserved research-question slots, and the new
-  sources were added to the inventory.
-
-## [0.15.0] — 2026-09-14
-
-### Breaking
-
-- A promotion-intended discovery capture now fails closed instead of recording
-  that it should not have run. When a protocol declares `intended_rank` above
-  `exploratory`, `run_ma_discovery_sample.py` refuses to start from a checkout
-  with uncommitted changes, and refuses when git is unusable, because silence is
-  not evidence of cleanliness. `_code_version` had always computed the dirty
-  flag and nothing gated on it; that is how 948 of 1000 pairs in one held-out
-  cut were captured by code whose state is not recoverable from git. Exploratory
-  runs make no rank claim and are unaffected.
-- `validate_study_manifests.py` now fails when a frozen run manifest records a
-  `protocol_sha256` that disagrees with `validation_result.design_sha256`. The
-  protocol pin is checked before a run and nothing stopped it being edited and
-  re-pinned afterwards, which is how one design came to be pinned about ten
-  hours after the replay it was supposed to have preregistered with every
-  run-time check passing. Manifests predating the field are not flagged.
-- `StudyManifest` gains an optional `reproduction` block, and a study that
-  declares one must satisfy it: each `LiveSource` names a `retrieval_manifest`
-  that has to appear in `frozen_artifacts`, and each `ReproductionTolerance`
-  must name a quantity that is either a declared `upstream_measure` or
-  mentioned in the study's estimand, permitted claims, or limitations. A band on
-  a quantity nothing reports cannot be breached.
-- `classify_rebuild` requires an `identity_grain` argument and carries it into
-  the verdict, because a comparison that does not say what "the same rows" meant
-  cannot be audited.
-
-### Added
-
-- `sbir_etl/quality/reproduction.py` classifies a rebuild against a live
-  upstream into exact, upstream drift, pipeline regression, identity
-  divergence, or outside tolerance. Row identity is checked before counts: an
-  upstream can revise a record in place, so equal counts over different rows is
-  the case a count-only comparison silently passes.
-- `run_ma_discovery_sample.py` records `protocol_sha256` and
-  `protocol_yaml_sha256` in its run manifest, so the design a result names can
-  be compared mechanically against the design the run actually read.
-- `specs/upstream-drift-reproduction/` specifies how `reproducible` stays
-  checkable when an input is a live public source that its publisher updates.
-- `studies/sbir-ma-dated-signal-study/` adds a prospective F1 signal protocol at
-  `exploratory`, with sources acquired privately and uncommitted.
-
-### Changed
-
-- `transition-scoring` moves from `exploratory` to `reproducible`. Its fusion
-  corpus rebuilt from committed scripts to 828 rows, 138 positives, and 101
-  firms, matching the frozen figures, and the retrieval manifest for that pull
-  is committed and pinned. An earlier rebuild in the same session produced 822
-  and 137 and was read as archive drift; it was a truncated fetch, which is the
-  distinction the reproduction contract exists to make.
-- `ma-discovery-recall` stays `exploratory` and now records its held-out result
-  rather than leaving the outcome unstated: 4 strict medium/high pairs of 307
-  strict-eligible, Wilson 95% [0.0051, 0.0330], against a preregistered floor of
-  10, with `threshold_met` and `confirmatory` both false and five
-  `post_hoc_analyses` entries. An evidence audit established the pinned design
-  postdates the evaluated run, so the study cannot promote on this cut.
-- `docs/research-questions.md` and `studies/README.md` state that the inventory
-  rank `Validated` requires `validation_result.threshold_met: true`, since a
-  manifest at `validated` no longer implies the threshold was met.
-
-## [0.14.0] — 2026-09-13
-
-### Breaking
-
-- `validated` now means the preregistered validation design was run as written
-  and its result is recorded with uncertainty; it no longer implies the
-  threshold was met. `citable` additionally requires `threshold_met: true`.
-  `StudyManifest` gains a `validation_result` block (numerator, denominator,
-  interval, method, `threshold_met`, `confirmatory`, `post_hoc_analyses`),
-  required at `validated` and above. Its `design_path` and `design_sha256` must
-  match one `frozen_artifacts` entry exactly, so a result cannot cite the hash of
-  some other pinned file as its design, and its `confirmatory` flag must be true
-  to promote. `confirmatory` asserts the design was frozen before the run; the
-  schema does not verify that ordering and the auditor checks it against git.
-  `ValidationDesign` gains `threshold_basis` and `threshold_value` (both
-  required at `validated` and above) and `frozen_population_artifact`
-  (required for count thresholds and checked against `frozen_artifacts`).
-  `decision_threshold` stays prose, so `threshold_value` restates the same
-  threshold as a number the basis is checked against: a count floor can no
-  longer be filed under `threshold_basis: proportion`. The inventory guard
-  now demotes a `validated` manifest whose `threshold_met` is false to
-  `computable`, so a recorded miss cannot surface as a `Validated` answer in
-  `docs/research-questions.md`. Existing manifests below `validated`
-  load unchanged. Documented post-hoc analyses are reportable and are no
-  longer an audit BLOCK by themselves; presenting one as confirmatory still is.
-  (`studies/README.md`, `docs/steering/epistemic-tiers.md`,
-  `.claude/agents/evidence-auditor.md`.)
 
 ## [0.13.0] — 2026-09-12
 

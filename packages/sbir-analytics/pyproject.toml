@@ -20,6 +20,11 @@ dependencies = [
 [project.optional-dependencies]
 modernbert-local = ["sbir-ml[modernbert-local]"]
 dev = ["sbir-etl[dev]"]
+# Operator-only Edison Analysis backend. Not imported by Dagster definitions
+# and not part of stack-dev or the server extra.
+edison = [
+    "edison-client>=0.16,<0.17",
+]
 
 [tool.dagster]
 python_module = "sbir_analytics.definitions"
