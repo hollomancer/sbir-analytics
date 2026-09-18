@@ -57,7 +57,7 @@ PHASES: tuple[str, ...] = ("Phase I", "Phase II")
 #: Structural-check bands from studies/sba-annual-report-tables/sources.yaml
 #: (``published_table_tolerances``). One-sided on the total because
 #: post-publication correction only adds records; hybrid on cells because small
-#: cells move little absolutely but up to 100% relatively, and large cells the
+#: cells move little absolutely but up to 200% relatively, and large cells the
 #: reverse. Derived over all 632 published cells across FY2020-FY2022, of which
 #: 569 have a non-zero published count.
 TOTAL_COUNT_BAND_FRACTION = 0.03
@@ -335,7 +335,7 @@ def cell_tolerance(published_count: int) -> int:
 
     ``max(CELL_FLOOR_ROWS, CELL_RELATIVE_FRACTION x published)``. The hybrid is
     required because the two failure modes invert with cell size; the band was
-    derived as the tightest on a tested grid covering all 569 published cells
+    derived as the tightest on a tested grid covering all 632 published cells
     across FY2020-FY2022.
     """
     return max(CELL_FLOOR_ROWS, int(round(published_count * CELL_RELATIVE_FRACTION)))

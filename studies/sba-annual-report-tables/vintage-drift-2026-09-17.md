@@ -48,11 +48,14 @@ report-era vintage survives. `docs/data/awards-refresh.md` records that SBIR.gov
 current snapshot, so a past vintage exists nowhere else once upstream overwrites it. The oldest
 vintage available here is 2026-05-11, which post-dates all three reports in [L18].
 
-What the measurements above support is a **vintage-tolerant reproduction** with narrow bands: the
-published cells are compared against a pinned vintage, and a difference inside the band is recorded
-as agreement rather than as `pipeline_defect`. At 0.047% observed movement over four months, the
-bands can be tight. `StudyManifest.reproduction` is the contract for this; its docstring notes that
-bit-exact reproducibility "is unachievable against a source someone else updates".
+What the measurements above support is a **labelled structural check**, not a reproduction. With no
+report-era vintage, `design.md` fixes the published-sample verdict at `blocked`; a comparison against
+the current snapshot is admissible only if it is labelled a structural check, and an in-band
+difference is an *observation recorded as in-band*, never a cell recorded as agreeing.
+`StudyManifest.reproduction` is **not** the contract for that comparison: it governs a rebuild of the
+pinned export against a later fetch of the same live source, which is what `classify_rebuild`
+compares. The published-cell bands live in `sources.yaml` under `published_table_tolerances`, and the
+frozen four-way difference classes in `design.md` apply to them.
 
 The derived bands are in `sources.yaml` under `proposed_reproduction_contract`. They rest on a
 **single four-month observation window**, and extrapolating them across the multi-year gap to the

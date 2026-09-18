@@ -452,10 +452,10 @@ definition_decisions:
       this study.
     evidence: >-
       In FY2014 the state table exceeds the report's own narrative count by 2.47%, and the
-      divergence is confined to a single cell - SBIR Phase II at +7.60% against +0.38% for
-      SBIR Phase I, -0.20% for STTR Phase I and +3.29% for STTR Phase II. Three of four
-      cells agree to better than 0.4%, which rules out a whole-table offset or a
-      transcription fault. Phase II is where a new-versus-continuing distinction would
+      divergence is phase-aligned rather than confined to one cell. Both Phase I cells agree
+      with the narrative to within 0.4% (SBIR +0.38%, STTR -0.20%) and both Phase II cells
+      run high (SBIR +7.60%, STTR +3.29%). That alignment with the phase split, rather than
+      a single stray cell, is what rules out a whole-table offset or a transcription fault. Phase II is where a new-versus-continuing distinction would
       show, since the same report names 41.2 million dollars of prior-year Phase I
       obligations against 596.7 million for prior-year Phase II, 14.5 times as much.
       FY2013 diverges the other way, its table sitting 1.22% below its narrative, which is

@@ -245,7 +245,7 @@ The previous section established that FY2014's table-versus-narrative gap is rea
 claim that it is an error. Localising it identifies the cause, and also shows that one step in that
 withdrawal was itself wrong.
 
-**The gap is confined to a single cell.**
+**The gap is phase-aligned.**
 
 | FY2014 cell | Narrative | State table | Database |
 | --- | ---: | ---: | ---: |
@@ -254,11 +254,16 @@ withdrawal was itself wrong.
 | STTR Phase I | 492 | 491 (**-0.20%**) | 493 (+0.20%) |
 | STTR Phase II | 213 | 220 (**+3.29%**) | 209 (-1.88%) |
 
-Three of the four cells agree with the narrative to better than 0.4%. Only **SBIR Phase II**
-diverges, by 7.60%. So this is not a whole-table offset and not a transcription problem - a parse
-fault would not spare three columns and hit one. Separately, the database is **uniformly 1.9% to
-2.5% below the narrative in every cell**, which is a single consistent shortfall unrelated to the
-table question.
+**Both Phase I cells agree with the narrative to within 0.4%** (+0.38% and -0.20%) and **both
+Phase II cells run high** (+7.60% and +3.29%). So this is not a whole-table offset and not a
+transcription problem - a parse fault would not align with the phase split. The database column is
+*not* uniformly below: it spans -2.51% to +0.20%, with STTR Phase I the one cell slightly above.
+
+An earlier draft of this section said the divergence was confined to SBIR Phase II and that three of
+four cells agreed to better than 0.4%. Both statements were contradicted by the table directly above
+them and are withdrawn. The corrected reading is the stronger one: the divergence is not one stray
+cell but a **phase-aligned pattern present in both programs**, which is what the next subsection
+predicts.
 
 **The basis statement is absent before FY2016 and present from FY2016.**
 
@@ -427,9 +432,19 @@ silently corrected. Dollar residuals are at most $2 on six rows, the familiar ro
 For the 27 jurisdictions it does print, the export holds **4,263 awards against 4,250 published,
 +0.31%** - the smallest deviation of any year measured, and inside the committed band. It cannot
 contribute a year total, so the FY2016-FY2022 run still has a gap at FY2019 for total-count purposes.
-One wrinkle FY2019 shares with FY2014: the export's second and last Marshall Islands row carries
-award-year 2019, and FY2019's table *does* print an MH row — so a future FY2019 cell comparison
-must handle that row explicitly instead of letting `us-jurisdiction-strict-v1` drop it silently.
+**One export row is excluded from the FY2019 comparison, explicitly.** Unlike FY2014, FY2019's
+table *does* print an MH row, and the export's second and last Marshall Islands record carries
+award-year 2019 - the same firm, SBIR Phase II, Department of Agriculture. Since
+`us-jurisdiction-strict-v1` maps Marshall Islands to no code, that record cannot reach the cell, so
+the published 1 would compare against a forced 0. **That -1 is a profile artifact, not a database
+difference**: the export row is SBIR Phase II, exactly the cell the table prints, so the true
+comparison is 1 against 1. The cell is therefore recorded as an out-of-grid exclusion rather than
+counted as a delta, and 4,262 of the 4,263 export rows for these 27 jurisdictions enter the
+comparison. Admitting MH would be a versioned profile change, not an implementation choice.
+
+An earlier version of this record described this as something a *future* comparison would need to
+handle, while the committed comparison had already scored the cell as a -1. That was wrong in both
+directions and is corrected here and in `extension/extension_fy2019_cells.csv`.
 
 ## The mechanism behind the drift is the snapshot date, not the report age
 
@@ -480,15 +495,16 @@ prediction, not merely two more observations.
 
 Outputs land in `extension/` alongside the other extension comparisons, not in `results/`.
 
-The 27 jurisdictions FY2019 prints give **108 cells**, of which **98 are usable** - the ten STTR
-phase cells on the five misaligned rows are excluded rather than corrected.
+The 27 jurisdictions FY2019 prints give **108 cells**, of which **97 are usable**. Eleven are
+excluded and each carries its reason in `exclusion_reason`: the ten STTR phase cells on the five
+misaligned rows, and one out-of-grid jurisdiction cell described below.
 
 | Measure | Value |
 | --- | ---: |
-| Cells exact | 40 of 98 (40.8%) |
-| Within the committed max(6 rows, 20%) | **98 of 98** |
+| Cells exact | 40 of 97 (41.2%) |
+| Within the committed max(6 rows, 20%) | **97 of 97** |
 | Cells outside the band | **0** |
-| Displacement floor | 74 rows |
+| Displacement floor | 73 rows |
 | Largest deviation | CA SBIR Phase I, 849 published against 834 recomputed |
 
 Consistent with every other year: fewer than half the cells match exactly, nothing breaches the

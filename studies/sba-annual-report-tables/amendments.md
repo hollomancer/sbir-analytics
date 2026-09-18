@@ -78,7 +78,7 @@ verbatim, three are recovered (fiscal-year rule, dollar basis, STTR treatment), 
 attribution, the first-time-winner lookback window, amendment and modification handling, and
 zero-dollar records. Notably the report publishes the first-time-winner statistic ("39% of all
 Phase I award winners were first-time winners") without its window, while a neighbouring measure
-on the previous page does state one (">15 Phase IIs FY17-FY21") — so the omission is conspicuous
+three pages later does state one (">15 Phase IIs FY17-FY21", p51 against p48) — so the omission is conspicuous
 rather than implied.
 
 Those four cannot be recovered from this source. Under the protocol they become documented
@@ -88,12 +88,16 @@ listed in `sources.yaml:next_actions` and remain open.
 **Newly recovered, and relevant to the tolerance contract.** The report states of its own data
 that it "remains current to include subsequent funding of ongoing projects" (p52) — the publisher
 confirming the live database is not a frozen copy of the published table. This is independent
-support for the vintage-tolerant reproduction adopted in the amendment above.
+support for treating the current snapshot as a vintage-tolerant *structural check*, as adopted in
+the amendment above. It is not support for calling the comparison a reproduction: with no report-era
+vintage the published-sample verdict stays `blocked`.
 
 ## 2026-09-17 (later) — Order 1 extended to FY2020 and FY2021
 
 **Scope.** The FY22 extraction path applied unchanged to the other two report-years [L18] cites.
-State tables captured and validated for all three; findings in `cross-year-fy20-fy22.md`.
+State tables captured for all three and checked against their own internal identities; findings in
+`cross-year-fy20-fy22.md`. Not "validated" in the sense `studies/README.md` reserves for a
+confirmatory `validation_result`, which is not claimed here.
 
 **Three findings change how the comparison must be written.**
 

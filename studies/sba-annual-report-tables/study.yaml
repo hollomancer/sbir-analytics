@@ -22,7 +22,7 @@ frozen_artifacts:
   - path: studies/sba-annual-report-tables/design.md
     sha256: c4e99ae9f0243e5b61a17678f6fb5cf45fc82afc230381f8c5fdec5a24c13efe
   - path: studies/sba-annual-report-tables/amendments.md
-    sha256: 13006b41a59d7d00aa00a29039300fc8e079ebd385b665eafab667dc215e7280
+    sha256: 6801a2e97ec2565a45bbd36ecdbb7a59b79e036a3152492850e627832ca9b5a2
   - path: studies/sba-annual-report-tables/definitions-fy22.md
     sha256: 883b87b7f839bff4ea734716e6545ccca748a538fb4ed153e8f3de033e7acecb
   - path: studies/sba-annual-report-tables/definition-decisions.md
