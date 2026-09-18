@@ -157,7 +157,10 @@ ledger:
     ledger: fiscal
     side: benefit
     measure: Incremental federal tax and fee receipts attributable to the program.
-    transfer_treatment: Count in fiscal net present value only.
+    transfer_treatment: >-
+      Benefit in the fiscal ledger. Enters the social ledger as a domestic
+      transfer valued at zero. The excess burden of raising the funds is a
+      separate real social cost (excess-burden), not part of this item.
     overlap_group: taxes
   - item_id: avoided-federal-costs
     ledger: fiscal
@@ -168,7 +171,10 @@ ledger:
     ledger: fiscal
     side: cost
     measure: Awards, administration, review, and applicant burden paid from federal resources.
-    transfer_treatment: Count federal outlays and real administrative resources.
+    transfer_treatment: >-
+      Count federal outlays in the fiscal ledger only. The real administrative,
+      review, and applicant resources those outlays purchase are social costs
+      carried by real-resource-cost, not by this line.
   - item_id: domestic-consumer-surplus
     ledger: domestic_social
     side: benefit
@@ -195,9 +201,23 @@ ledger:
     ledger: domestic_social
     side: cost
     measure: Research inputs, applicant burden, administration, distortion, and displacement.
-    transfer_treatment: Exclude pure transfers and include the best alternative use of funds.
-  - item_id: opportunity-cost
+    transfer_treatment: >-
+      Exclude pure transfers. Value resources at their next-best use; that
+      valuation is this item's opportunity cost and is not repeated elsewhere.
+  - item_id: excess-burden
     ledger: domestic_social
     side: cost
-    measure: Net benefit forgone under the strongest feasible alternative federal mechanism.
-    transfer_treatment: Report separately and include in the preferred social net present value.
+    measure: Excess burden (deadweight loss) of raising the federal funds the program spends.
+    transfer_treatment: >-
+      Real social cost of taxation with no fiscal counterpart. Not a transfer
+      and not netted against federal-receipts.
+  - item_id: alternative-mechanism-comparison
+    ledger: domestic_social
+    side: cost
+    additive: false
+    measure: Net benefit under the strongest feasible alternative federal mechanism.
+    transfer_treatment: >-
+      A comparison scenario, not a ledger line. Report beside the social net
+      present value; never subtract from the SBIR ledger. Subtracting it would
+      relabel a difference between two programs as SBIR's own net present
+      value.

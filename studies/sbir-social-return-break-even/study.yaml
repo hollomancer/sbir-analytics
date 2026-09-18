@@ -10,9 +10,9 @@ estimand: >-
   a threshold under declared assumptions. It is not an estimated causal return.
 frozen_artifacts:
   - path: studies/sbir-social-return-break-even/design.md
-    sha256: 52975fb814017f5046c7379da0887f4d7212f46877c260bc5425c15bee1344e0
+    sha256: f6375b81992ca0ab52887628e67f80b3380211265c8220ff76e627dec2add7e0
   - path: studies/sbir-roi-comparative-tests/contracts.yaml
-    sha256: cc735889e7f54fbd0e7a45a2687672923926dd3714aa064ed7e13d26e26a8341
+    sha256: e880d2149b1f314585da32ccd6f0890f8c820504c05d04b3bc1ed5f8d97f006b
 implementation:
   - path: scripts/research/sbir_roi_contracts.py
     symbol: WELFARE_BREAK_EVEN_STUDY

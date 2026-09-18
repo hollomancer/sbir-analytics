@@ -96,6 +96,10 @@ class LedgerItem(BaseModel):
     item_id: str = Field(pattern=r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
     ledger: Literal["fiscal", "domestic_social"]
     side: Literal["benefit", "cost"]
+    #: A non-additive item is a reported scenario, never a summand. A ledger
+    #: calculator must draw its terms from ``additive_ledger_items`` so a
+    #: comparison line cannot be subtracted into a net present value.
+    additive: bool = True
     measure: str = Field(min_length=1)
     transfer_treatment: str = Field(min_length=1)
     overlap_group: str | None = None
@@ -128,6 +132,25 @@ class RoiContractBundle(BaseModel):
         if sorted(classes) != ["causal", "descriptive", "inference"]:
             raise ValueError("attribution must define causal, descriptive, and inference once")
         return self
+
+    def additive_ledger_items(self) -> list[LedgerItem]:
+        """Return the only ledger items a net-present-value sum may include."""
+
+        return [item for item in self.ledger if item.additive]
+
+    def assert_summable(self, item_ids: list[str]) -> None:
+        """Refuse a sum that includes a non-additive (scenario) item."""
+
+        by_id = {item.item_id: item for item in self.ledger}
+        unknown = sorted(set(item_ids) - set(by_id))
+        if unknown:
+            raise ValueError(f"unknown ledger items: {unknown}")
+        non_additive = sorted(item_id for item_id in item_ids if not by_id[item_id].additive)
+        if non_additive:
+            raise ValueError(
+                f"non-additive ledger items cannot enter a sum: {non_additive}; "
+                "report them beside the net present value instead"
+            )
 
 
 def load_contract_bundle(path: Path = CONTRACT_PATH) -> RoiContractBundle:
