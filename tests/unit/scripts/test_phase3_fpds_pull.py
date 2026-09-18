@@ -1,9 +1,11 @@
 """Tests for the research-only FPDS Element 10Q puller."""
 
 import json
+import urllib.parse
 from pathlib import Path
 
 from scripts.phase3_benchmark.pull_fpds_10q import (
+    build_parser,
     build_query_url,
     parse_feed,
     pull_research_code,
@@ -26,12 +28,16 @@ def _live_shaped_page(
         '<?xml version="1.0" encoding="UTF-8"?>'
         '<feed xmlns="http://www.w3.org/2005/Atom" xmlns:fpds="https://www.fpds.gov/FPDS">'
         + "".join(links)
-        + "<entry><content><fpds:award>"
+        + "<entry><modified>2024-04-16T12:00:00Z</modified><content><fpds:award>"
         f"<fpds:PIID>{piid}</fpds:PIID>"
+        "<fpds:modNumber>A00001</fpds:modNumber>"
+        "<fpds:transactionNumber>1</fpds:transactionNumber>"
         "<fpds:UEI>UEI000000001</fpds:UEI>"
         "<fpds:descriptionOfContractRequirement>Phase III production</fpds:descriptionOfContractRequirement>"
         "<fpds:signedDate>2024-04-15</fpds:signedDate>"
         "<fpds:agencyID>2100</fpds:agencyID>"
+        '<fpds:fundingRequestingAgencyID name="DEPT OF THE NAVY">1700'
+        "</fpds:fundingRequestingAgencyID>"
         "<fpds:referencedIDVID><fpds:agencyID>1700</fpds:agencyID>"
         "<fpds:PIID>PARENT-1</fpds:PIID></fpds:referencedIDVID>"
         "</fpds:award></content></entry></feed>"
@@ -42,11 +48,66 @@ def test_parse_feed_extracts_nested_parent_idv_without_replacing_order_piid():
     frame, total = parse_feed(FIXTURE.read_bytes(), "sr3")
 
     assert total == 1
+    assert frame.iloc[0]["modified"] == "2024-04-16T12:00:00Z"
     assert frame.iloc[0]["PIID"] == "0001"
+    assert frame.iloc[0]["modNumber"] == "A00001"
+    assert frame.iloc[0]["transactionNumber"] == "1"
     assert frame.iloc[0]["referenced_idv_piid"] == "N00019-20-D-0001"
     assert frame.iloc[0]["referenced_idv_agency_id"] == "1700"
     assert frame.iloc[0]["agencyID"] == "2100"
     assert frame.iloc[0]["agencyID_name"] == "Department of Defense"
+    assert frame.iloc[0]["fundingRequestingAgencyID"] == "1700"
+
+
+def test_parse_feed_extracts_transaction_revision_and_funding_agency_fields():
+    frame, _total = parse_feed(_live_shaped_page("0001"), "sr3")
+
+    row = frame.iloc[0]
+    assert row["modified"] == "2024-04-16T12:00:00Z"
+    assert row["modNumber"] == "A00001"
+    assert row["transactionNumber"] == "1"
+    assert row["fundingRequestingAgencyID"] == "1700"
+    assert row["fundingRequestingAgencyID_name"] == "DEPT OF THE NAVY"
+
+
+def test_build_query_url_encodes_additional_exact_terms():
+    terms = (
+        "SIGNED_DATE:[2020/01/01,2024/12/31]",
+        'CONTRACT_TYPE:"AWARD"',
+        'CONTRACTING_AGENCY_ID:"1700"',
+        'FUNDING_AGENCY_ID:"1700"',
+    )
+
+    url = build_query_url("sr3", 20, terms)
+    parameters = urllib.parse.parse_qs(urllib.parse.urlsplit(url).query)
+
+    assert parameters["q"] == ["RESEARCH:SR3 " + " ".join(terms)]
+    assert parameters["start"] == ["20"]
+    assert "CONTRACT_TYPE%3A%22AWARD%22" in url
+    assert "SIGNED_DATE%3A%5B2020%2F01%2F01%2C2024%2F12%2F31%5D" in url
+
+
+def test_parser_accepts_repeated_query_terms(tmp_path):
+    args = build_parser().parse_args(
+        [
+            "sr3",
+            "--pages",
+            "1",
+            "--output",
+            str(tmp_path / "records.parquet"),
+            "--manifest",
+            str(tmp_path / "manifest.json"),
+            "--query-term",
+            "SIGNED_DATE:[2020/01/01,2024/12/31]",
+            "--query-term",
+            'CONTRACT_TYPE:"AWARD"',
+        ]
+    )
+
+    assert args.query_term == [
+        "SIGNED_DATE:[2020/01/01,2024/12/31]",
+        'CONTRACT_TYPE:"AWARD"',
+    ]
 
 
 def test_pull_records_manifest_and_writes_outputs(tmp_path):
@@ -72,9 +133,14 @@ def test_pull_records_manifest_and_writes_outputs(tmp_path):
     assert requested == [build_query_url("SR3", 0)]
     assert output.exists()
     assert saved["query"] == "RESEARCH:SR3"
+    assert saved["parameters"] == {"pages_requested": 3, "research_code": "SR3"}
     assert saved["row_count"] == 1
     assert saved["retrieval_complete"] is True
     assert saved["field_completeness"]["referenced_idv_piid"] == 1.0
+    assert saved["field_completeness"]["modified"] == 1.0
+    assert saved["field_completeness"]["modNumber"] == 1.0
+    assert saved["field_completeness"]["transactionNumber"] == 1.0
+    assert saved["field_completeness"]["fundingRequestingAgencyID"] == 1.0
     assert len(saved["raw_pages_sha256"]) == 64
 
 
@@ -161,3 +227,43 @@ def test_cache_is_query_safe_and_retains_original_capture_time(tmp_path):
     assert cached["retrieved_at"] == "2026-07-16T00:00:00+00:00"
     assert cached["run_at"] == "2026-07-18T00:00:00+00:00"
     assert cached["page_provenance"][0]["cache_hit"] is True
+
+
+def test_pull_with_query_terms_follows_next_links_and_records_manifest():
+    terms = (
+        "SIGNED_DATE:[2020/01/01,2024/12/31]",
+        'CONTRACT_TYPE:"AWARD"',
+        'FUNDING_AGENCY_ID:"1700"',
+    )
+    first_url = build_query_url("SR3", 0, terms)
+    second_url = build_query_url("SR3", 10, terms)
+    payloads = {
+        first_url: _live_shaped_page("0001", next_url=second_url, last_url=second_url),
+        second_url: _live_shaped_page("0002", last_url=second_url),
+    }
+    requested: list[str] = []
+
+    def fetcher(url: str) -> bytes:
+        requested.append(url)
+        return payloads[url]
+
+    frame, manifest = pull_research_code(
+        "sr3",
+        pages=3,
+        query_terms=terms,
+        fetcher=fetcher,
+        retrieved_at="2026-07-16T00:00:00+00:00",
+    )
+
+    ordered_urls = [first_url, second_url]
+    assert requested == ordered_urls
+    assert frame["PIID"].tolist() == ["0001", "0002"]
+    assert [page["url"] for page in manifest["page_provenance"]] == ordered_urls
+    assert manifest["retrieval_complete"] is True
+    assert manifest["termination_reason"] == "feed_exhausted"
+    assert manifest["query"] == "RESEARCH:SR3 " + " ".join(terms)
+    assert manifest["parameters"] == {
+        "research_code": "SR3",
+        "pages_requested": 3,
+        "query_terms": list(terms),
+    }
