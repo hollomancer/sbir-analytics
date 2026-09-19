@@ -24,6 +24,10 @@
 
 ## Stage 1 — Offline evaluation
 
+- [x] 1.0 Add strict labels, predictions, metrics, and synthetic contract fixtures.
+  - Verify: the fixture report covers every declared metric and marks itself non-citable.
+  - Requirements: 6.1–6.5.
+
 - [ ] 1.1 Record approved TypeSafe API, retention, and disclosure terms.
   - Verify: design amendment names the reviewed documents and remaining restrictions.
   - Requirements: 5.1, 5.2.
@@ -43,11 +47,15 @@
   - Verify: mocked timeout, authentication, schema-error, and rate-limit tests pass.
   - Requirements: 2.1–2.4, 5.1, 5.2.
 
-- [ ] 2.2 Add structured failure artifacts for selected unit-test shards.
+- [x] 2.2 Add structured failure artifacts for selected unit-test shards.
   - Verify: successful and failed synthetic workflow runs upload bounded artifacts.
   - Requirements: 1.1–1.5.
 
-- [ ] 2.3 Add a non-blocking, internal-PR-only shadow job.
+- [x] 2.3a Add a non-blocking, internal-PR-only mock contract job.
+  - Verify: the job uses no secret, has read-only permissions, and uploads fake outputs.
+  - Requirements: 3.4, 5.3, 5.4, 6.4, 6.5.
+
+- [ ] 2.3b Replace the fake transport with a live shadow job after tasks 1.1–1.3 and 2.1 pass.
   - Verify: forks and security failures make no Jev call; Jev failure leaves CI unchanged.
   - Requirements: 3.4, 5.3, 5.4.
 

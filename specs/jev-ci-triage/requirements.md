@@ -13,10 +13,10 @@ continuous-integration checks without changing their result.
 
 ## Done when
 
-> A pipeline engineer can run a hermetic test that converts a synthetic failed
-> check into a bounded, redacted input envelope, obtains a typed decision from a
-> fake Jev transport, applies deterministic policy, and renders a stable summary.
-> No network call or GitHub workflow behavior changes in Stage 0.
+> A pipeline engineer can collect structured JUnit artifacts, convert them into
+> bounded redacted envelopes, exercise the complete CI path with a fake Jev
+> transport, and score saved predictions with the offline evaluator. The path is
+> internal-pull-request-only and non-blocking. It makes no network call to Jev.
 
 ---
 
@@ -58,6 +58,8 @@ external service.
 4. IF the JUnit document is malformed, THEN THE pilot SHALL fail before any
    transport call.
 5. THE failure envelope SHALL reject undeclared fields.
+6. THE failure envelope SHALL enforce per-item string limits when constructed directly.
+7. IF JUnit contains a DTD or entity declaration, THEN parsing SHALL stop before expansion.
 
 ### Requirement 2 — Typed decisions
 
@@ -69,7 +71,7 @@ that CI code does not parse generated prose.
 1. THE pilot SHALL type failure class, owner area, and supporting probabilities.
 2. THE pilot SHALL reject probabilities outside the inclusive range zero to one.
 3. THE pilot SHALL include an `UNKNOWN` failure class and a `GENERAL` owner area.
-4. Stage 0 SHALL use a fake transport and SHALL make no network request.
+4. The no-key contract SHALL use a fake transport and SHALL make no network request.
 
 ### Requirement 3 — Deterministic action policy
 
@@ -110,12 +112,28 @@ before use, so that an experimental diagnostic cannot weaken CI or disclose data
 4. A future shadow job SHALL exclude secret-scan output.
 5. Automated retries SHALL require a separate approved task after a held-out evaluation.
 
+### Requirement 6 — Offline evaluation
+
+**User story:** As a pipeline engineer, I want the evaluation machinery ready
+before credentials arrive, so that the first real Jev results face a frozen test.
+
+#### Acceptance Criteria
+
+1. THE evaluator SHALL join predictions to labels by a stable case ID.
+2. THE evaluator SHALL report missing and unexpected predictions.
+3. THE evaluator SHALL report failure-class accuracy, owner-routing accuracy,
+   retry precision, unsafe retries, availability, latency, sanitizer acceptance,
+   and confidence calibration.
+4. Synthetic fixture reports SHALL declare `citable: false` and
+   `synthetic_fixture: true`.
+5. Synthetic fixture metrics SHALL NOT be represented as Jev performance.
+
 ---
 
 ## Out of scope
 
 - Live Jev API calls or credentials in Stage 0.
-- GitHub Actions workflow changes in Stage 0.
+- A live Jev job or repository credential.
 - Pull-request comments, labels, approvals, or merge control.
 - Test suppression or removal of deterministic path filters.
 - Security-finding classification.

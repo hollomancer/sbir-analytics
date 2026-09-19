@@ -22,7 +22,7 @@ def select_action(
 ) -> PolicyOutcome:
     """Select one bounded action without changing the CI check conclusion."""
 
-    if envelope.attempt_number > policy.maximum_attempt_number:
+    if envelope.attempt_number > 1:
         return PolicyOutcome(
             action=RecommendedAction.HUMAN_TRIAGE,
             reason=PolicyReason.ATTEMPT_LIMIT_REACHED,

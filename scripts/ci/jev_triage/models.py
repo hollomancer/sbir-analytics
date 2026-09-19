@@ -1,11 +1,20 @@
 """Typed contracts for the exploratory Jev CI triage pilot."""
 
 from enum import StrEnum
+from typing import Annotated
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, StringConstraints, field_validator
+
+from .redaction import redact_text
 
 
 EPISTEMIC_TIER = "exploratory"
+
+CheckNameText = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=120)]
+TestIdText = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=240)]
+ShortText = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=120)]
+DiagnosticText = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=800)]
+RunnerText = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=40)]
 
 
 class CommandFamily(StrEnum):
@@ -64,15 +73,37 @@ class FailureEnvelope(BaseModel):
 
     model_config = ConfigDict(extra="forbid", frozen=True)
 
-    check_name: str = Field(min_length=1, max_length=120)
+    check_name: CheckNameText
     command_family: CommandFamily
     exit_code: int
-    failed_test_ids: list[str] = Field(default_factory=list, max_length=20)
-    exception_types: list[str] = Field(default_factory=list, max_length=20)
-    diagnostic_excerpts: list[str] = Field(default_factory=list, max_length=20)
-    changed_path_groups: list[str] = Field(default_factory=list, max_length=20)
-    runner_os: str = Field(min_length=1, max_length=40)
+    failed_test_ids: list[TestIdText] = Field(default_factory=list, max_length=20)
+    exception_types: list[ShortText] = Field(default_factory=list, max_length=20)
+    diagnostic_excerpts: list[DiagnosticText] = Field(default_factory=list, max_length=20)
+    changed_path_groups: list[ShortText] = Field(default_factory=list, max_length=20)
+    runner_os: RunnerText
     attempt_number: int = Field(ge=1, le=10)
+
+    @field_validator("check_name", "runner_os", mode="before")
+    @classmethod
+    def redact_scalar_text(cls, value: object) -> object:
+        """Redact direct construction as well as sanitizer-produced input."""
+
+        return redact_text(value) if isinstance(value, str) else value
+
+    @field_validator(
+        "failed_test_ids",
+        "exception_types",
+        "diagnostic_excerpts",
+        "changed_path_groups",
+        mode="before",
+    )
+    @classmethod
+    def redact_list_text(cls, value: object) -> object:
+        """Redact every string item before per-item constraints run."""
+
+        if not isinstance(value, (list, tuple)):
+            return value
+        return [redact_text(item) if isinstance(item, str) else item for item in value]
 
 
 class JevTriageDecision(BaseModel):
@@ -97,7 +128,6 @@ class RetryPolicy(BaseModel):
 
     known_flake_threshold: float = Field(default=0.95, ge=0.0, le=1.0)
     retry_success_threshold: float = Field(default=0.90, ge=0.0, le=1.0)
-    maximum_attempt_number: int = Field(default=1, ge=1, le=10)
 
 
 class PolicyOutcome(BaseModel):
