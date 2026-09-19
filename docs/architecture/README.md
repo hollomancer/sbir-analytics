@@ -16,5 +16,5 @@ Forward-looking designs, not descriptions of what exists today.
 
 | Plan | Status |
 |---|---|
-| [Neo4j epistemic assertions](neo4j-epistemic-assertions-plan.md) | Proposed; see ADR-005 |
+| [Neo4j epistemic assertions](neo4j-epistemic-assertions-plan.md) | Accepted 2026-09-19; see [ADR-005](../decisions/ADR-005-transition-candidates-as-assertions.md). Implementation not started. |
 | [Dagster reorganization](dagster-reorganization-plan.md) | Proposed |
