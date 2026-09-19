@@ -54,6 +54,7 @@ class EnforcementDecision(BaseModel):
     observed_status: ReadinessStatus
     expected_first_blocker: BlockerCode | None
     observed_first_blocker: BlockerCode | None
+    inputs_pinned: bool
     matches: bool
 
 
@@ -68,6 +69,7 @@ class EnforcementViolation(BaseModel):
         "unknown_policy_case",
         "status_mismatch",
         "first_blocker_mismatch",
+        "frozen_input_invalid",
         "configuration_error",
     ]
     case_id: str | None = None
@@ -110,8 +112,7 @@ def evaluate_annual_report_policy(
             EnforcementViolation(
                 code="ruleset_mismatch",
                 message=(
-                    f"Policy expects {policy.ruleset_version}; active ruleset is "
-                    f"{RULESET_VERSION}."
+                    f"Policy expects {policy.ruleset_version}; active ruleset is {RULESET_VERSION}."
                 ),
             )
         )
@@ -140,10 +141,12 @@ def evaluate_annual_report_policy(
     decisions: list[EnforcementDecision] = []
     for case_id in sorted(available_ids & policy_ids):
         expected = policy_by_id[case_id]
-        result = assess_readiness(build_annual_report_preflight(repository_root, case_id))
+        preflight = build_annual_report_preflight(repository_root, case_id)
+        result = assess_readiness(preflight)
         observed_blocker = result.first_blocker.code if result.first_blocker else None
         status_matches = result.status is expected.expected_status
         blocker_matches = observed_blocker is expected.expected_first_blocker
+        inputs_pinned = preflight.facts.inputs_pinned
         decisions.append(
             EnforcementDecision(
                 case_id=case_id,
@@ -151,9 +154,18 @@ def evaluate_annual_report_policy(
                 observed_status=result.status,
                 expected_first_blocker=expected.expected_first_blocker,
                 observed_first_blocker=observed_blocker,
-                matches=status_matches and blocker_matches,
+                inputs_pinned=inputs_pinned,
+                matches=status_matches and blocker_matches and inputs_pinned,
             )
         )
+        if not inputs_pinned:
+            violations.append(
+                EnforcementViolation(
+                    code="frozen_input_invalid",
+                    case_id=case_id,
+                    message="One or more required frozen artifacts are missing or fail hash validation.",
+                )
+            )
         if not status_matches:
             violations.append(
                 EnforcementViolation(

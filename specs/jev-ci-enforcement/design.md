@@ -42,10 +42,14 @@ The job covers:
 
 - `studies/sba-annual-report-tables/**`
 - `scripts/jev_preflight/**`
+- `scripts/data/sba_annual_report_tables.py`
+- `scripts/ci/validate_study_manifests.py`
+- `sbir_etl/config/yaml_io.py`
+- `sbir_etl/quality/study_manifest.py`
 - `specs/jev-preflight/**`
 - `specs/jev-ci-enforcement/**`
 - the focused preflight and enforcement tests
-- the CI workflow and dependency metadata
+- the Make target, CI workflow, and dependency metadata
 
 ## Failure behavior
 

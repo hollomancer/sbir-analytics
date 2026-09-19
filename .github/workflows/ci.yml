@@ -159,7 +159,9 @@ jobs:
           python-version: ${{ env.PYTHON_VERSION }}
           install-dev-deps: "true"
 
-      # Unit tests only, minus the slow marker. No Neo4j, no services.
+      # Unit tests only, minus slow and path-scoped preflight enforcement.
+      # The dedicated preflight job runs that marker when relevant paths change.
+      # No Neo4j, no services.
       #
       # Split by recorded duration rather than by test-ID hash. pytest-shard
       # balanced counts, which left one shard reliably drawing the slow tests —
@@ -174,7 +176,7 @@ jobs:
       - name: Run unit tests
         run: |
           uv run pytest tests/unit/ \
-            -m "not slow" \
+            -m "not slow and not jev_preflight" \
             --splits 4 --group ${{ matrix.shard }} \
             --splitting-algorithm least_duration \
             --durations-path tests/.test_durations
@@ -364,11 +366,16 @@ jobs:
             jev_preflight:
               - 'studies/sba-annual-report-tables/**'
               - 'scripts/jev_preflight/**'
+              - 'scripts/data/sba_annual_report_tables.py'
+              - 'scripts/ci/validate_study_manifests.py'
+              - 'sbir_etl/config/yaml_io.py'
+              - 'sbir_etl/quality/study_manifest.py'
               - 'specs/jev-preflight/**'
               - 'specs/jev-ci-enforcement/**'
               - 'tests/unit/scripts/test_jev_preflight.py'
               - 'tests/unit/scripts/test_jev_ci_enforcement.py'
               - '.github/workflows/ci.yml'
+              - 'Makefile'
               - 'pyproject.toml'
               - 'uv.lock'
 

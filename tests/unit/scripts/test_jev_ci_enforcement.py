@@ -8,6 +8,7 @@ import pytest
 from pydantic import ValidationError
 
 from scripts.jev_preflight.cli import run_ci_annual_report
+from scripts.jev_preflight import enforce
 from scripts.jev_preflight.enforce import (
     EnforcementClaim,
     EnforcementPolicy,
@@ -19,6 +20,7 @@ from scripts.jev_preflight.models import BlockerCode, ReadinessStatus
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[3]
 POLICY_PATH = REPOSITORY_ROOT / "specs" / "jev-ci-enforcement" / "policy.yaml"
+pytestmark = pytest.mark.jev_preflight
 
 
 def _policy() -> EnforcementPolicy:
@@ -83,6 +85,30 @@ def test_status_and_blocker_drift_both_fail() -> None:
     assert report.decisions[1].matches is False
 
 
+def test_invalid_frozen_inputs_fail_even_when_first_blocker_is_unchanged(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    original_builder = enforce.build_annual_report_preflight
+
+    def build_with_invalid_input(repository_root: Path, case_id: str):
+        preflight = original_builder(repository_root, case_id)
+        return preflight.model_copy(
+            update={"facts": preflight.facts.model_copy(update={"inputs_pinned": False})}
+        )
+
+    monkeypatch.setattr(enforce, "build_annual_report_preflight", build_with_invalid_input)
+
+    report = evaluate_annual_report_policy(REPOSITORY_ROOT, _policy())
+
+    assert report.passed is False
+    assert [violation.code for violation in report.violations].count("frozen_input_invalid") == 2
+    reproduction = report.decisions[0]
+    assert reproduction.observed_status is ReadinessStatus.NARROW
+    assert reproduction.observed_first_blocker is BlockerCode.SOURCE_OUTCOME_IMPOSSIBLE
+    assert all(decision.matches is False for decision in report.decisions)
+    assert all(decision.inputs_pinned is False for decision in report.decisions)
+
+
 def test_policy_requires_complete_and_exact_claim_coverage() -> None:
     policy = _policy()
     unknown = EnforcementClaim(
@@ -111,7 +137,10 @@ def test_cli_writes_stable_report_and_returns_success(tmp_path: Path) -> None:
     assert first.read_bytes() == second.read_bytes()
 
 
-def test_cli_writes_failure_report_for_invalid_policy(tmp_path: Path) -> None:
+def test_cli_writes_failure_report_for_invalid_policy(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
     invalid_policy = tmp_path / "invalid.yaml"
     invalid_policy.write_text("schema_version: 1\nunknown: true\n", encoding="utf-8")
     output = tmp_path / "report.json"
@@ -128,6 +157,7 @@ def test_cli_writes_failure_report_for_invalid_policy(tmp_path: Path) -> None:
     assert exit_code == 1
     assert report["passed"] is False
     assert report["violations"][0]["code"] == "configuration_error"
+    assert "ValidationError" in capsys.readouterr().err
 
 
 def test_ci_workflow_has_no_live_jev_credentials_or_request() -> None:
@@ -151,11 +181,16 @@ def test_ci_workflow_scopes_the_gate_to_declared_paths() -> None:
     expected_paths = {
         "studies/sba-annual-report-tables/**",
         "scripts/jev_preflight/**",
+        "scripts/data/sba_annual_report_tables.py",
+        "scripts/ci/validate_study_manifests.py",
+        "sbir_etl/config/yaml_io.py",
+        "sbir_etl/quality/study_manifest.py",
         "specs/jev-preflight/**",
         "specs/jev-ci-enforcement/**",
         "tests/unit/scripts/test_jev_preflight.py",
         "tests/unit/scripts/test_jev_ci_enforcement.py",
         ".github/workflows/ci.yml",
+        "Makefile",
         "pyproject.toml",
         "uv.lock",
     }
