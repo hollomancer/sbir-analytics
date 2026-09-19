@@ -1,10 +1,10 @@
 """Build a bounded failure envelope from structured CI output."""
 
-import re
 import xml.etree.ElementTree as ET
 from collections.abc import Iterable
 
 from .models import CommandFamily, FailureEnvelope
+from .redaction import redact_text
 
 
 EPISTEMIC_TIER = "exploratory"
@@ -14,27 +14,6 @@ _MAX_JUNIT_BYTES = 2_000_000
 _MAX_ID_LENGTH = 240
 _MAX_EXCERPT_LENGTH = 800
 _MAX_EXCERPT_LINES = 8
-_REDACTED = "[REDACTED]"
-
-_AUTHORIZATION = re.compile(
-    r"(?i)(\bauthorization\s*:\s*(?:bearer\s+)?)([^\s,;]+)"
-)
-_CREDENTIAL_ASSIGNMENT = re.compile(
-    r"(?i)(\b(?:password|passwd|api[_-]?key|token|secret)\s*[:=]\s*)([^\s,;]+)"
-)
-_CREDENTIAL_URL = re.compile(r"(?i)\b(https?://)[^/\s:@]+:[^/\s@]+@")
-_TOKEN_PREFIX = re.compile(
-    r"\b(?:gh[pousr]_[A-Za-z0-9_]{12,}|github_pat_[A-Za-z0-9_]{12,}|sk-[A-Za-z0-9_-]{12,})\b"
-)
-
-
-def redact_text(value: str) -> str:
-    """Redact common credential forms from one diagnostic string."""
-
-    text = _AUTHORIZATION.sub(rf"\1{_REDACTED}", value)
-    text = _CREDENTIAL_ASSIGNMENT.sub(rf"\1{_REDACTED}", text)
-    text = _CREDENTIAL_URL.sub(rf"\1{_REDACTED}@", text)
-    return _TOKEN_PREFIX.sub(_REDACTED, text)
 
 
 def _bounded_text(value: object, *, limit: int) -> str:
@@ -67,6 +46,7 @@ def failure_envelope_from_junit(
     junit_xml: str,
     *,
     check_name: str,
+    command_family: CommandFamily,
     exit_code: int,
     changed_path_groups: Iterable[str] = (),
     runner_os: str,
@@ -76,6 +56,9 @@ def failure_envelope_from_junit(
 
     if len(junit_xml.encode("utf-8")) > _MAX_JUNIT_BYTES:
         raise ValueError("JUnit XML exceeds the 2000000-byte input limit")
+    upper_xml = junit_xml.upper()
+    if "<!DOCTYPE" in upper_xml or "<!ENTITY" in upper_xml:
+        raise ValueError("JUnit XML must not contain DTD or entity declarations")
     try:
         root = ET.fromstring(junit_xml)
     except ET.ParseError as exc:
@@ -102,7 +85,7 @@ def failure_envelope_from_junit(
 
     return FailureEnvelope(
         check_name=_bounded_text(check_name, limit=120),
-        command_family=CommandFamily.PYTEST,
+        command_family=command_family,
         exit_code=exit_code,
         failed_test_ids=_bounded_unique(failed_test_ids, limit=_MAX_ID_LENGTH),
         exception_types=_bounded_unique(exception_types, limit=120),

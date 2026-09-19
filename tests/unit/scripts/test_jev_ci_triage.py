@@ -6,6 +6,7 @@ from pydantic import ValidationError
 from scripts.ci.jev_triage.classify import classify_failure
 from scripts.ci.jev_triage.client import FakeJevTriageClient
 from scripts.ci.jev_triage.models import (
+    CommandFamily,
     FailureClass,
     FailureEnvelope,
     JevTriageDecision,
@@ -58,6 +59,7 @@ def test_junit_envelope_redacts_credentials_and_keeps_only_failed_cases() -> Non
   <testcase classname="tests.unit.test_api" name="test_failure">
     <failure type="ConnectionError">Authorization: Bearer ghp_abcdefghijklmnop
 password=hunter2
+token="first second third"
 https://alice:secret@example.test/path
 request failed with sk-abcdefghijklmnop</failure>
   </testcase>
@@ -67,6 +69,7 @@ request failed with sk-abcdefghijklmnop</failure>
     envelope = failure_envelope_from_junit(
         junit,
         check_name="Fast Tests (2/4)",
+        command_family=CommandFamily.PYTEST,
         exit_code=1,
         changed_path_groups=["sbir_etl/identity", "tests/unit/identity"],
         runner_os="ubuntu-latest",
@@ -77,10 +80,11 @@ request failed with sk-abcdefghijklmnop</failure>
     assert envelope.changed_path_groups == ["sbir_etl/identity", "tests/unit/identity"]
     excerpt = envelope.diagnostic_excerpts[0]
     assert "hunter2" not in excerpt
+    assert "first second third" not in excerpt
     assert "ghp_abcdefghijklmnop" not in excerpt
     assert "alice:secret" not in excerpt
     assert "sk-abcdefghijklmnop" not in excerpt
-    assert excerpt.count("[REDACTED]") == 4
+    assert excerpt.count("[REDACTED]") == 5
 
 
 def test_junit_envelope_truncates_lists_deterministically() -> None:
@@ -94,12 +98,14 @@ def test_junit_envelope_truncates_lists_deterministically() -> None:
     first = failure_envelope_from_junit(
         junit,
         check_name="Fast Tests",
+        command_family=CommandFamily.PYTEST,
         exit_code=1,
         runner_os="ubuntu-latest",
     )
     second = failure_envelope_from_junit(
         junit,
         check_name="Fast Tests",
+        command_family=CommandFamily.PYTEST,
         exit_code=1,
         runner_os="ubuntu-latest",
     )
@@ -115,6 +121,7 @@ def test_junit_envelope_rejects_malformed_xml() -> None:
         failure_envelope_from_junit(
             "<testsuite>",
             check_name="Fast Tests",
+            command_family=CommandFamily.PYTEST,
             exit_code=1,
             runner_os="ubuntu-latest",
         )
@@ -127,9 +134,42 @@ def test_junit_envelope_rejects_oversized_input() -> None:
         failure_envelope_from_junit(
             oversized,
             check_name="Fast Tests",
+            command_family=CommandFamily.PYTEST,
             exit_code=1,
             runner_os="ubuntu-latest",
         )
+
+
+def test_junit_envelope_rejects_dtd_and_entity_declarations() -> None:
+    junit = """\
+<!DOCTYPE testsuite [
+  <!ENTITY repeated "aaaaaaaaaa">
+]>
+<testsuite><testcase name="case"><failure>&repeated;</failure></testcase></testsuite>
+"""
+
+    with pytest.raises(ValueError, match="must not contain DTD or entity declarations"):
+        failure_envelope_from_junit(
+            junit,
+            check_name="Fast Tests",
+            command_family=CommandFamily.PYTEST,
+            exit_code=1,
+            runner_os="ubuntu-latest",
+        )
+
+
+def test_junit_envelope_preserves_declared_command_family() -> None:
+    junit = '<testsuite><testcase name="case"><failure>failure</failure></testcase></testsuite>'
+
+    envelope = failure_envelope_from_junit(
+        junit,
+        check_name="Static analysis",
+        command_family=CommandFamily.REPOSITORY_GUARD,
+        exit_code=1,
+        runner_os="ubuntu-latest",
+    )
+
+    assert envelope.command_family is CommandFamily.REPOSITORY_GUARD
 
 
 def test_contracts_reject_extra_fields_and_invalid_probabilities() -> None:
@@ -139,6 +179,24 @@ def test_contracts_reject_extra_fields_and_invalid_probabilities() -> None:
     with pytest.raises(ValidationError, match="less_than_equal"):
         JevTriageDecision.model_validate(
             {**_decision().model_dump(), "retry_success_probability": 1.1}
+        )
+
+
+def test_direct_envelope_construction_redacts_and_bounds_each_string() -> None:
+    envelope = FailureEnvelope(
+        **{
+            **_envelope().model_dump(),
+            "diagnostic_excerpts": ['password="first second"'],
+        }
+    )
+    assert envelope.diagnostic_excerpts == ["password=[REDACTED]"]
+
+    with pytest.raises(ValidationError, match="string_too_long"):
+        FailureEnvelope(
+            **{
+                **_envelope().model_dump(),
+                "diagnostic_excerpts": ["x" * 801],
+            }
         )
 
 
