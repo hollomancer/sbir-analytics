@@ -14,6 +14,6 @@
   - Verify: actionlint, repository guards, and workflow path tests pass.
   - Requirements: 3.1–3.3, 4.5.
 
-- [ ] 0.4 Verify the stacked pull request.
+- [x] 0.4 Verify the stacked pull request.
   - Verify: focused tests, `make lint`, `make lint-boundaries`, and hosted checks pass.
   - Requirements: all.
