@@ -33,7 +33,7 @@ from sbir_etl.assertions.enums import (
 from sbir_etl.assertions.identifiers import (
     CLAIM_FAMILY,
     LEGACY_NAMESPACE,
-    USAID_NAMESPACE,
+    USASPENDING_NAMESPACE,
     assertion_id,
     assertion_revision_id,
 )
@@ -151,10 +151,10 @@ class AssertionRecord(BaseModel):
             raise ValueError(
                 f"claim_family must be {CLAIM_FAMILY!r} in V1, got {self.claim_family!r}"
             )
-        if not self.contract_key.startswith((USAID_NAMESPACE, LEGACY_NAMESPACE)):
+        if not self.contract_key.startswith((USASPENDING_NAMESPACE, LEGACY_NAMESPACE)):
             raise ValueError(f"contract_key must be namespaced; got {self.contract_key!r}")
         expected_namespace = (
-            USAID_NAMESPACE
+            USASPENDING_NAMESPACE
             if self.contract_key_method is ContractKeyMethod.GENERATED_UNIQUE_AWARD_ID
             else LEGACY_NAMESPACE
         )

@@ -32,7 +32,7 @@ __all__ = [
     "AssertionIdentityError",
     "CLAIM_FAMILY",
     "LEGACY_NAMESPACE",
-    "USAID_NAMESPACE",
+    "USASPENDING_NAMESPACE",
     "assertion_id",
     "assertion_revision_id",
     "canonical_payload_digest",
@@ -41,7 +41,7 @@ __all__ = [
 
 CLAIM_FAMILY: Final = "phase_ii_source_row__federal_prime_contract_award"
 
-USAID_NAMESPACE: Final = "USAID:"
+USASPENDING_NAMESPACE: Final = "USASPENDING:"
 LEGACY_NAMESPACE: Final = "LEGACY:"
 
 _LEGACY_COMPONENT_ORDER: Final = ("awarding_agency_code", "parent_award_id", "piid")
@@ -85,7 +85,7 @@ def resolve_contract_key(
         generated = ""
 
     if generated:
-        return f"{USAID_NAMESPACE}{generated}", ContractKeyMethod.GENERATED_UNIQUE_AWARD_ID
+        return f"{USASPENDING_NAMESPACE}{generated}", ContractKeyMethod.GENERATED_UNIQUE_AWARD_ID
 
     components: dict[str, str] = {}
     missing: list[str] = []
@@ -136,9 +136,9 @@ def assertion_id(*, source_row_key: object, contract_key: str) -> str:
     """
     normalized_source = _normalize(source_row_key, field="source_row_key")
     normalized_contract = _normalize(contract_key, field="contract_key")
-    if not normalized_contract.startswith((USAID_NAMESPACE, LEGACY_NAMESPACE)):
+    if not normalized_contract.startswith((USASPENDING_NAMESPACE, LEGACY_NAMESPACE)):
         raise AssertionIdentityError(
-            f"contract_key must be namespaced with {USAID_NAMESPACE!r} or "
+            f"contract_key must be namespaced with {USASPENDING_NAMESPACE!r} or "
             f"{LEGACY_NAMESPACE!r}; got {contract_key!r}"
         )
     return _digest(

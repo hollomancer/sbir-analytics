@@ -23,7 +23,7 @@ from sbir_etl.assertions.enums import (
 from sbir_etl.assertions.identifiers import (
     CLAIM_FAMILY,
     LEGACY_NAMESPACE,
-    USAID_NAMESPACE,
+    USASPENDING_NAMESPACE,
     AssertionIdentityError,
     assertion_id,
     assertion_revision_id,
@@ -53,7 +53,7 @@ from sbir_etl.assertions.validation import (
 __all__ = [
     "CLAIM_FAMILY",
     "LEGACY_NAMESPACE",
-    "USAID_NAMESPACE",
+    "USASPENDING_NAMESPACE",
     "ActionReference",
     "ActionRole",
     "AssertionIdentityError",

@@ -99,7 +99,7 @@ class SignalAbsentReason(StrEnum):
 class ContractKeyMethod(StrEnum):
     """How a federal prime contract award key was resolved.
 
-    ``GENERATED_UNIQUE_AWARD_ID`` is canonical and produces a ``USAID:`` key.
+    ``GENERATED_UNIQUE_AWARD_ID`` is canonical and produces a ``USASPENDING:`` key.
     ``LEGACY_COMPOSITE`` produces a namespaced, method-tagged ``LEGACY:`` key
     and is permitted only when the generated key is genuinely unavailable.
     Bare PIID is never a method; it is a validation failure (ADR-005 §2).

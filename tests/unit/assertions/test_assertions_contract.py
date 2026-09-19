@@ -166,7 +166,7 @@ class TestTypedAbsence:
 class TestContractKeyResolution:
     def test_generated_key_is_canonical(self):
         key, method = resolve_contract_key(generated_unique_award_id="cont_awd_1234_9700_abc_9700")
-        assert key == "USAID:CONT_AWD_1234_9700_ABC_9700"
+        assert key == "USASPENDING:CONT_AWD_1234_9700_ABC_9700"
         assert method is ContractKeyMethod.GENERATED_UNIQUE_AWARD_ID
 
     def test_generated_key_preferred_over_legacy_components(self):
@@ -176,7 +176,7 @@ class TestContractKeyResolution:
             parent_award_id="IDV1",
             piid="P1",
         )
-        assert key.startswith("USAID:")
+        assert key.startswith("USASPENDING:")
         assert method is ContractKeyMethod.GENERATED_UNIQUE_AWARD_ID
 
     def test_legacy_composite_is_namespaced_and_method_tagged(self):
@@ -331,6 +331,32 @@ class TestSnapshots:
         write_snapshot(records, **kwargs)
         with pytest.raises(SnapshotExistsError, match="immutable"):
             write_snapshot(records, **kwargs)
+
+    def test_observed_cut_is_required(self, tmp_path):
+        """ADR-005 §8: the cut is an input, never read from the clock here."""
+        inputs = (
+            InputReference(name="phase_ii_source", path="data/ph2.parquet", sha256="a" * 64, n=1),
+        )
+        with pytest.raises(TypeError, match="as_of_utc"):
+            write_snapshot(
+                [make_record()],
+                root=tmp_path,
+                rule_versions={"identity_cascade": "v2"},
+                inputs=inputs,
+            )
+
+    def test_observed_cut_must_be_timezone_aware(self, tmp_path):
+        inputs = (
+            InputReference(name="phase_ii_source", path="data/ph2.parquet", sha256="a" * 64, n=1),
+        )
+        with pytest.raises(AssertionValidationError, match="timezone-aware"):
+            write_snapshot(
+                [make_record()],
+                root=tmp_path,
+                rule_versions={"identity_cascade": "v2"},
+                inputs=inputs,
+                as_of_utc=datetime(2026, 9, 19, 12, 0),
+            )
 
     def test_same_records_yield_same_snapshot_id(self, tmp_path):
         inputs = (

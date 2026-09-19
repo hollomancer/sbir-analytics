@@ -10,7 +10,7 @@ from __future__ import annotations
 import hashlib
 import json
 from collections.abc import Sequence
-from datetime import UTC, datetime
+from datetime import datetime
 from pathlib import Path
 
 import pandas as pd
@@ -122,9 +122,20 @@ def write_snapshot(
     root: Path,
     rule_versions: dict[str, str],
     inputs: Sequence[InputReference],
-    as_of_utc: datetime | None = None,
+    as_of_utc: datetime,
 ) -> tuple[Path, AssertionSnapshotManifest]:
-    """Write one immutable snapshot and its manifest; return both."""
+    """Write one immutable snapshot and its manifest; return both.
+
+    ``as_of_utc`` is required and is never defaulted from the wall clock
+    (ADR-005 §8). It is the cut the producer observed, so only the producer
+    knows it; a clock read here would stamp a cut nobody observed onto the
+    record of truth. ``as_of_utc`` must be timezone-aware.
+    """
+    if as_of_utc.tzinfo is None:
+        raise AssertionValidationError(
+            "as_of_utc must be timezone-aware so the observed cut is unambiguous; "
+            f"got a naive datetime ({as_of_utc!r})"
+        )
     for record in records:
         validate_v1_semantics(record)
     validate_snapshot_cardinality(records)
@@ -145,7 +156,7 @@ def write_snapshot(
 
     manifest = AssertionSnapshotManifest(
         snapshot_id=snapshot_id,
-        as_of_utc=as_of_utc or datetime.now(UTC),
+        as_of_utc=as_of_utc,
         rule_versions=dict(rule_versions),
         inputs=tuple(inputs),
         outputs=(
