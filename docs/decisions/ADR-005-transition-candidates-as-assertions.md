@@ -57,11 +57,15 @@ authoritative; Neo4j is a disposable read projection.
 1. **Decision boundary.** One candidate award-contract assertion family. Not a general
    assertion platform, review system, or study rewrite.
 2. **Contract identity.** `generated_unique_award_id` is the canonical federal
-   prime-contract award key, namespaced `USAID:`. The agency/parent-IDV/PIID composite is a
+   prime-contract award key, namespaced `USASPENDING:`. The agency/parent-IDV/PIID composite is a
    typed, namespaced `LEGACY:` fallback used only when the generated key is genuinely
    unavailable. Bare PIID is forbidden. Unresolved identity blocks publication.
    `LEGACY:` keys are method-tagged, their use is counted, and they are never silently
-   coalesced with `USAID:` keys.
+   coalesced with `USASPENDING:` keys. The prefix names the source system, USAspending.
+   The earlier plan text used `USAID:`, which collides with the U.S. Agency for
+   International Development, an SBIR/STTR participating agency. Because the namespaced
+   key is an input to `assertion_id`, the prefix is fixed here before the first snapshot
+   exists. `USAID:` must never appear as a contract-key namespace.
 3. **Shared boundary.** Assertions and the Phase III census reuse one UEI-only pair
    builder, one contract-key resolver, and one action identity, then apply independent
    downstream gates.
@@ -79,7 +83,10 @@ authoritative; Neo4j is a disposable read projection.
    a bounded, finite score; zero is a measured no-signal, not an absence. Missing or null
    data never stands in for a status.
 8. **Durable authority.** A content-addressed Parquet snapshot with a manifest is the
-   record of truth. Studies read Parquet, never mutable graph state.
+   record of truth. Studies read Parquet, never mutable graph state. The manifest records
+   the as-of data cut the producer observed. That cut is a required input, never defaulted
+   from the wall clock, because a run-time timestamp makes a snapshot non-reproducible and
+   defeats content addressing.
 9. **Candidate-only semantics for V1.** `claim_status = CANDIDATE`,
    `support_class = C`, `permitted_use = INVESTIGATIVE_ONLY`. The schema may reserve
    `ACCEPTED`/`REJECTED`, other support classes, and broader permitted uses; no V1

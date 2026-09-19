@@ -90,7 +90,7 @@ for an unverified Jones & Fearon deposit); the next unreserved slot is `[L50]`.
 
 Each dimension is scored **independently** and carries a typed per-dimension status. The status
 enum mirrors the graph-governance `DimensionStatus`
-([ADR-005](../../docs/architecture/neo4j-epistemic-assertions-plan.md)):
+([ADR-005](../../docs/decisions/ADR-005-transition-candidates-as-assertions.md)):
 `MEASURED` (bounded finite score; zero is a measured no-signal), `NOT_MEASURABLE`,
 `NOT_APPLICABLE`, `NOT_EVALUATED`, `EVALUATION_FAILED`. A `NOT_MEASURABLE` status carries a
 `signal_absent_reason` code (proposed `StrEnum`, modeled on `sbir_etl.identity.RecoveryStatus`;
@@ -197,7 +197,7 @@ result — presence or a clean zero — is reportable once gates pass.
 ## Graph governance
 
 All linkage and partner-type outputs are emitted **only** as `CANDIDATE` assertions per
-[ADR-005](../../docs/architecture/neo4j-epistemic-assertions-plan.md): `claim_status = CANDIDATE`,
+[ADR-005](../../docs/decisions/ADR-005-transition-candidates-as-assertions.md): `claim_status = CANDIDATE`,
 `support_class = C`, `permitted_use = INVESTIGATIVE_ONLY`. Each per-dimension score carries a
 `DimensionStatus`. **Parquet is authoritative**; Neo4j is a disposable investigative projection.
 **No new causal edge type** is introduced — the relationship label is a property of a candidate
