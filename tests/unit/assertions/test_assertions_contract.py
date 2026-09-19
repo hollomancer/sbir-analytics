@@ -278,12 +278,100 @@ class TestV1Semantics:
         assert counts == {"generated_unique_award_id": 1, "legacy_composite": 1}
 
 
-class TestSnapshots:
+def make_inputs(sha: str = "a" * 64, *, n: int = 1, name: str = "phase_ii_source"):
+    return (InputReference(name=name, path="data/ph2.parquet", sha256=sha, n=n),)
+
+
+RULES = {"identity_cascade": "corroborated-person-v2"}
+
+
+class TestSnapshotIdentity:
+    """ADR-005 §8: identity covers revisions, input digests, and rule versions."""
+
     def test_snapshot_id_is_order_independent(self):
         first = make_record()
         second = make_record(source_row_key="SBIR-PH2-0002")
-        assert snapshot_id_for([first, second]) == snapshot_id_for([second, first])
+        common = {"inputs": make_inputs(), "rule_versions": RULES}
+        assert snapshot_id_for([first, second], **common) == snapshot_id_for(
+            [second, first], **common
+        )
 
+    def test_snapshot_id_is_independent_of_input_order(self):
+        records = [make_record()]
+        one = InputReference(name="a", path="data/a.parquet", sha256="a" * 64, n=1)
+        two = InputReference(name="b", path="data/b.parquet", sha256="b" * 64, n=2)
+        assert snapshot_id_for(records, inputs=(one, two), rule_versions=RULES) == snapshot_id_for(
+            records, inputs=(two, one), rule_versions=RULES
+        )
+
+    def test_identical_records_from_a_different_vintage_get_a_different_id(self):
+        """The collision this clause exists to prevent.
+
+        A later vintage that adds only rows this claim family ignores yields an
+        identical record set. Under a revisions-only id the two runs collided on
+        one snapshot, the second was refused as a duplicate, and no study could
+        pin the second vintage.
+        """
+        records = [make_record()]
+        first = snapshot_id_for(records, inputs=make_inputs("a" * 64, n=1), rule_versions=RULES)
+        second = snapshot_id_for(records, inputs=make_inputs("b" * 64, n=1), rule_versions=RULES)
+        assert first != second
+
+    def test_a_row_count_change_alone_gets_a_different_id(self):
+        records = [make_record()]
+        first = snapshot_id_for(records, inputs=make_inputs(n=1), rule_versions=RULES)
+        second = snapshot_id_for(records, inputs=make_inputs(n=2), rule_versions=RULES)
+        assert first != second
+
+    def test_a_rule_version_change_gets_a_different_id(self):
+        records = [make_record()]
+        first = snapshot_id_for(records, inputs=make_inputs(), rule_versions=RULES)
+        second = snapshot_id_for(
+            records, inputs=make_inputs(), rule_versions={"identity_cascade": "v3"}
+        )
+        assert first != second
+
+    def test_input_path_does_not_affect_identity(self):
+        """A path records where bytes were read, not which bytes they were."""
+        records = [make_record()]
+        here = (InputReference(name="src", path="data/ph2.parquet", sha256="a" * 64, n=1),)
+        there = (InputReference(name="src", path="/mnt/scratch/ph2.parquet", sha256="a" * 64, n=1),)
+        assert snapshot_id_for(records, inputs=here, rule_versions=RULES) == snapshot_id_for(
+            records, inputs=there, rule_versions=RULES
+        )
+
+    def test_as_of_utc_does_not_affect_identity(self, tmp_path):
+        """A rerun of byte-identical pinned inputs must not fork identity."""
+        records = [make_record()]
+        _, first = write_snapshot(
+            records,
+            root=tmp_path / "monday",
+            rule_versions=RULES,
+            inputs=make_inputs(),
+            as_of_utc=datetime(2026, 9, 14, 12, 0, tzinfo=UTC),
+        )
+        _, second = write_snapshot(
+            records,
+            root=tmp_path / "friday",
+            rule_versions=RULES,
+            inputs=make_inputs(),
+            as_of_utc=datetime(2026, 9, 19, 12, 0, tzinfo=UTC),
+        )
+        assert first.snapshot_id == second.snapshot_id
+        assert first.as_of_utc != second.as_of_utc
+
+    def test_two_vintages_can_both_be_written_under_one_root(self, tmp_path):
+        """End to end: the second vintage is publishable, not refused."""
+        records = [make_record()]
+        common = {"root": tmp_path, "rule_versions": RULES, "as_of_utc": CREATED_AT}
+        first_dir, first = write_snapshot(records, inputs=make_inputs("a" * 64), **common)
+        second_dir, second = write_snapshot(records, inputs=make_inputs("b" * 64), **common)
+        assert first.snapshot_id != second.snapshot_id
+        assert first_dir != second_dir
+        assert first_dir.exists() and second_dir.exists()
+
+
+class TestSnapshots:
     def test_write_then_read_round_trips(self, tmp_path):
         records = [make_record(), make_record(source_row_key="SBIR-PH2-0002")]
         inputs = (

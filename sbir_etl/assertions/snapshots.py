@@ -46,14 +46,50 @@ class SnapshotExistsError(FileExistsError):
     """Raised when a snapshot directory already exists; snapshots are immutable."""
 
 
-def snapshot_id_for(records: Sequence[AssertionRecord]) -> str:
-    """Derive the snapshot identity from its member revisions.
+def snapshot_id_for(
+    records: Sequence[AssertionRecord],
+    *,
+    inputs: Sequence[InputReference],
+    rule_versions: dict[str, str],
+) -> str:
+    """Derive the snapshot identity from what produced it, not when.
 
-    Order-independent: the same set of revisions always yields the same
-    snapshot id, so a producer reordering rows does not fork identity.
+    Identity covers three things: the set of member revisions, the content
+    digests of the pinned inputs, and the rule versions. A run is the same run
+    only when all three match.
+
+    Rationale (ADR-005 §8, clarified 2026-09-19). Revisions alone are not
+    enough. Two runs over *different source vintages* can yield an identical
+    record set -- a vintage that adds only rows this claim family ignores is the
+    ordinary case -- and under a revisions-only id they collide on one snapshot
+    id, so the second run is refused as a duplicate and a study cannot pin the
+    second vintage at all. Input digests separate vintages, because the vintage
+    is exactly what the digests differ on.
+
+    ``as_of_utc`` is deliberately *excluded*. It is a recorded property of the
+    run, not a discriminator: a timestamp in the id would fork identity on
+    every rerun of byte-identical pinned inputs, which defeats the idempotence
+    that makes a rerun verifiable. Vintage is a property of the inputs and only
+    the inputs, so the digests are the honest discriminator and the clock is
+    not.
+
+    Order-independent in both dimensions: reordering rows or reordering the
+    input list does not fork identity. ``InputReference.path`` is excluded
+    because a path records where bytes were read on one machine, not which
+    bytes they were; ``name``, ``sha256`` and ``n`` carry that.
     """
     return canonical_payload_digest(
-        {"revisions": sorted(record.assertion_revision_id for record in records)}
+        {
+            "revisions": sorted(record.assertion_revision_id for record in records),
+            "inputs": sorted(
+                [
+                    {"name": reference.name, "sha256": reference.sha256, "n": reference.n}
+                    for reference in inputs
+                ],
+                key=lambda entry: (str(entry["name"]), str(entry["sha256"])),
+            ),
+            "rule_versions": dict(sorted(rule_versions.items())),
+        }
     )
 
 
@@ -140,13 +176,15 @@ def write_snapshot(
         validate_v1_semantics(record)
     validate_snapshot_cardinality(records)
 
-    snapshot_id = snapshot_id_for(records)
+    snapshot_id = snapshot_id_for(records, inputs=inputs, rule_versions=rule_versions)
     directory = Path(root) / snapshot_id
     if directory.exists():
         raise SnapshotExistsError(
             f"snapshot {snapshot_id} already exists at {directory}; snapshots are "
             "immutable, so publish a new snapshot instead of overwriting one a "
-            "study may have pinned"
+            "study may have pinned. An identical id means identical revisions, "
+            "input digests, and rule versions, so this run reproduced an "
+            "existing snapshot rather than producing a new one"
         )
     directory.mkdir(parents=True)
 
