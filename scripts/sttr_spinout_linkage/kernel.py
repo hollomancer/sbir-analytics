@@ -44,6 +44,8 @@ from collections.abc import Iterable
 from dataclasses import dataclass
 from enum import StrEnum
 
+from sbir_etl.assertions.enums import DimensionStatus as _AssertionDimensionStatus
+
 from sbir_etl.identity import (
     SUFFIX_TOKENS,
     CompanyNameMetric,
@@ -310,20 +312,12 @@ def identity_similarity(left: ResolvedIdentity | None, right: ResolvedIdentity |
 # ---------------------------------------------------------------------------
 
 
-class DimensionStatus(StrEnum):
-    """Per-dimension epistemic state, mirroring ADR-005's `DimensionStatus`.
-
-    `MEASURED` requires a bounded, finite score -- zero is a measured
-    no-signal, not an absence. Every other status means the dimension was
-    not, or could not be, measured. Missing or null data never stands in for
-    one of these states (`design.md`, "Evidence dimensions").
-    """
-
-    MEASURED = "measured"
-    NOT_MEASURABLE = "not_measurable"
-    NOT_APPLICABLE = "not_applicable"
-    NOT_EVALUATED = "not_evaluated"
-    EVALUATION_FAILED = "evaluation_failed"
+# Per-dimension epistemic state. Re-exported from the ADR-005 contract rather
+# than redefined here: `sbir_etl.assertions.enums` is the single definition.
+# `MEASURED` requires a bounded, finite score -- zero is a measured no-signal,
+# not an absence. Missing or null data never stands in for one of these states
+# (`design.md`, "Evidence dimensions").
+DimensionStatus = _AssertionDimensionStatus
 
 
 class SignalAbsentReason(StrEnum):
