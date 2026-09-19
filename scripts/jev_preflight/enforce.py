@@ -3,8 +3,9 @@
 from pathlib import Path
 from typing import Literal
 
-import yaml
 from pydantic import BaseModel, ConfigDict, Field, model_validator
+
+from sbir_etl.config.yaml_io import read_yaml_mapping
 
 from .annual_report import build_annual_report_preflight, load_annual_report_claims
 from .engine import assess_readiness
@@ -93,7 +94,7 @@ class EnforcementReport(BaseModel):
 def load_enforcement_policy(path: Path) -> EnforcementPolicy:
     """Load and strictly validate one enforcement policy."""
 
-    raw = yaml.safe_load(path.read_text(encoding="utf-8"))
+    raw = read_yaml_mapping(path, description="Jev CI enforcement policy")
     return EnforcementPolicy.model_validate(raw)
 
 
