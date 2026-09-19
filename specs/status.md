@@ -100,6 +100,13 @@ bypassing lifecycle review; the status and rationale still require human judgmen
   as the reference adapter, and `usaspending_refresh_batch` on the job.
   Per-source adapters stay split (#443 NIH RePORTER, then SAM/PatentsView).
   Tasks 6.1–6.2 remain optional Phase 2 expansion.
+- **`jev-ci-triage` — Active.** Exploratory, non-blocking CI failure-triage
+  pilot. Stage 0 may implement typed contracts, sanitization, deterministic
+  policy and rendering, a fake transport, and hermetic tests. Live Jev calls
+  remain gated on API documentation, data-retention review, disclosure terms,
+  credentials, and an approved shadow-evaluation protocol. Jev output must not
+  change check conclusions, skip tests, suppress security findings, or control
+  merges.
 - **`ma-discovery-integration` — Active.** M&A recall is a selected F2/A4
   implementation target. Fail-closed search, C3, pair-name guards, and the
   `ma-discovery-recall` study (exploratory; materialization closed) are in
