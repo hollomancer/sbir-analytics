@@ -319,6 +319,7 @@ jobs:
     outputs:
       docker: ${{ steps.filter.outputs.docker }}
       integration: ${{ steps.filter.outputs.integration }}
+      jev_preflight: ${{ steps.filter.outputs.jev_preflight }}
       setup: ${{ steps.filter.outputs.setup }}
     steps:
       - uses: actions/checkout@v7
@@ -358,6 +359,47 @@ jobs:
               - 'scripts/setup_dev.sh'
               - 'uv.lock'
               - 'pyproject.toml'
+            # This job enforces only the named annual-report application. A
+            # study without an adapter and reviewed policy remains out of scope.
+            jev_preflight:
+              - 'studies/sba-annual-report-tables/**'
+              - 'scripts/jev_preflight/**'
+              - 'specs/jev-preflight/**'
+              - 'specs/jev-ci-enforcement/**'
+              - 'tests/unit/scripts/test_jev_preflight.py'
+              - 'tests/unit/scripts/test_jev_ci_enforcement.py'
+              - '.github/workflows/ci.yml'
+              - 'pyproject.toml'
+              - 'uv.lock'
+
+  jev-preflight:
+    name: Deterministic Study Preflight
+    needs: [detect-changes]
+    if: |
+      github.event_name == 'pull_request' &&
+      needs.detect-changes.outputs.jev_preflight == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Setup Python and UV
+        uses: ./.github/actions/setup-python-uv
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          install-dev-deps: "true"
+
+      - name: Enforce deterministic study-readiness policy
+        run: make check-jev-preflight
+
+      - name: Upload deterministic preflight report
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: jev-preflight-report
+          path: reports/ci/jev-preflight.json
+          if-no-files-found: error
+          retention-days: 14
 
   docker:
     name: Docker Build and Smoke Test

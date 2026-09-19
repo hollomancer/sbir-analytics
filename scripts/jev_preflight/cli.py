@@ -5,6 +5,11 @@ from pathlib import Path
 
 from .annual_report import build_annual_report_preflight, load_annual_report_claims
 from .engine import assess_readiness
+from .enforce import (
+    configuration_error_report,
+    evaluate_annual_report_policy,
+    load_enforcement_policy,
+)
 from .evaluate import (
     evaluate_matrix,
     evaluate_shadow_matrix,
@@ -20,6 +25,7 @@ from .render import render_result
 EPISTEMIC_TIER = "exploratory"
 REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_MATRIX = REPOSITORY_ROOT / "tests" / "fixtures" / "jev_preflight" / "readiness-matrix.jsonl"
+DEFAULT_CI_POLICY = REPOSITORY_ROOT / "specs" / "jev-ci-enforcement" / "policy.yaml"
 
 
 def _write_result(output: Path, content: str) -> None:
@@ -84,7 +90,18 @@ def run_evaluate_shadow(args: argparse.Namespace) -> int:
         or report.status_disagreement_case_ids
         or report.first_blocker_disagreement_case_ids
     ) else 1
-    return 0
+
+
+def run_ci_annual_report(args: argparse.Namespace) -> int:
+    """Enforce the reviewed annual-report decisions without a model call."""
+
+    try:
+        policy = load_enforcement_policy(args.policy)
+        report = evaluate_annual_report_policy(args.repository_root, policy)
+    except Exception as error:  # The CI boundary must write a report before failing closed.
+        report = configuration_error_report(error)
+    _write_result(args.output, report.model_dump_json(indent=2) + "\n")
+    return 0 if report.passed else 1
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -126,6 +143,15 @@ def build_parser() -> argparse.ArgumentParser:
     evaluate_shadow.add_argument("--predictions", type=Path, required=True)
     evaluate_shadow.add_argument("--output", type=Path, required=True)
     evaluate_shadow.set_defaults(handler=run_evaluate_shadow)
+
+    ci_annual = subparsers.add_parser(
+        "ci-annual-report",
+        help="Enforce reviewed deterministic annual-report decisions",
+    )
+    ci_annual.add_argument("--repository-root", type=Path, default=REPOSITORY_ROOT)
+    ci_annual.add_argument("--policy", type=Path, default=DEFAULT_CI_POLICY)
+    ci_annual.add_argument("--output", type=Path, required=True)
+    ci_annual.set_defaults(handler=run_ci_annual_report)
     return parser
 
 

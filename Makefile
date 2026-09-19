@@ -254,6 +254,11 @@ lint-boundaries: ## Architecture, epistemic-tier, identity, config, hygiene, and
 	$(call run,uv run python scripts/ci/check_deterministic_as_of.py)
 	$(call run,uv run python scripts/ci/check_identity_boundaries.py)
 
+.PHONY: check-jev-preflight
+check-jev-preflight: ## Enforce configured deterministic study-readiness decisions
+	@$(call info,Checking deterministic study preflight policy)
+	$(call run,uv run python -m scripts.jev_preflight.cli ci-annual-report --output reports/ci/jev-preflight.json)
+
 .PHONY: docs-check
 # Thin alias for the hygiene script only. Full boundary coverage lives in
 # `make lint-boundaries` (which also runs this script). Prefer lint-boundaries
@@ -699,6 +704,7 @@ ci-local: ## Reproduce pull-request CI locally (not the post-merge full suite)
 	@$(call info,Running pull-request CI checks locally)
 	@$(MAKE) lint
 	@$(MAKE) lint-boundaries
+	@$(MAKE) check-jev-preflight
 	@$(call info,Validating Dagster definitions)
 	@uv run python -c "from dagster import Definitions; from sbir_analytics.definitions import defs; Definitions.validate_loadable(defs)"
 	@$(call info,Validating compose files)
