@@ -1,0 +1,37 @@
+schema_version: 1
+claims:
+  - case_id: annual-report-published-reproduction
+    claim: >-
+      The current SBIR.gov award export reproduces the FY2020-FY2022 published
+      state tables as they stood at publication.
+    population: Published FY2020-FY2022 SBA SBIR/STTR state-table cells.
+    denominator: All published jurisdiction x program x phase cells in scope.
+    measurement: Agreement between recomputed and publication-era award counts.
+    horizon: FY2020-FY2022 report years.
+    decision_use: Public reproduction claim.
+    target_evidence_status: citable
+    required_source_outcome: published_sample_reproduction
+    inputs_must_be_pinned: true
+    definitions_must_be_complete: true
+    validation_required: false
+    narrower_claim: >-
+      This run is a structural check in the sense design.md defines: table
+      structure and definitions recomputed against the current snapshot, with
+      the published-sample outcome left at blocked. It is not a published-sample
+      reproduction and must not be quoted as one.
+
+  - case_id: annual-report-structural-check
+    claim: >-
+      The pinned current SBIR.gov export can rerun the declared FY2020-FY2022
+      structural check against the captured published tables.
+    population: Published FY2020-FY2022 SBA SBIR/STTR state-table cells.
+    denominator: All 632 published jurisdiction x program x phase cells in scope.
+    measurement: Frozen difference classes under the declared total and cell bands.
+    horizon: FY2020-FY2022 report years using the pinned 2026-09-17 export.
+    decision_use: Internal reproducibility and structural diagnostics; non-citable.
+    target_evidence_status: reproducible
+    required_source_outcome: current_snapshot_structural_check
+    inputs_must_be_pinned: true
+    definitions_must_be_complete: true
+    validation_required: false
+    narrower_claim: null
