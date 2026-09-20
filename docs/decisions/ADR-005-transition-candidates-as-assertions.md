@@ -84,9 +84,21 @@ authoritative; Neo4j is a disposable read projection.
    data never stands in for a status.
 8. **Durable authority.** A content-addressed Parquet snapshot with a manifest is the
    record of truth. Studies read Parquet, never mutable graph state. The manifest records
-   the as-of data cut the producer observed. That cut is a required input, never defaulted
-   from the wall clock, because a run-time timestamp makes a snapshot non-reproducible and
-   defeats content addressing.
+   the as-of data cut the producer observed. That cut is a required input and is never
+   defaulted from the wall clock: only the producer knows which cut it observed, so a clock
+   read at write time stamps a cut nobody observed onto the record of truth.
+
+   *Clarified 2026-09-19, before PR 1 merged.* Snapshot identity covers the member
+   revision set, the content digests of the pinned inputs, and the rule versions. It does
+   **not** cover the as-of cut. Revisions alone are insufficient: two runs over different
+   source vintages can produce an identical record set, so a revisions-only identity
+   collides and the second vintage cannot be published or pinned at all. The input digests
+   are what vintages actually differ on, so they are the discriminator. The cut is excluded
+   because a timestamp in the identity would fork it on every rerun of byte-identical
+   inputs, which destroys the idempotence that makes a rerun verifiable. An earlier draft
+   of this clause said a wall-clock default "defeats content addressing"; that was wrong on
+   the mechanism — the identity never included the cut. The defect was a manifest asserting
+   an unobserved cut, and a vintage that could not be distinguished.
 9. **Candidate-only semantics for V1.** `claim_status = CANDIDATE`,
    `support_class = C`, `permitted_use = INVESTIGATIVE_ONLY`. The schema may reserve
    `ACCEPTED`/`REJECTED`, other support classes, and broader permitted uses; no V1
