@@ -3,7 +3,6 @@ study_id: sba-annual-report-tables
 title: SBA SBIR/STTR annual-report state tables, FY2020-FY2022
 evidence_status: reproducible
 research_questions:
-  - A1
   - D1
 estimand: >-
   For report-years FY2020-FY2022, recompute the published "SBIR/STTR Awards by
