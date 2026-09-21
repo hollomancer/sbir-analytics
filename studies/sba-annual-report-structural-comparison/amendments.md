@@ -101,3 +101,20 @@ Every public rendering must state these adjacent non-claims:
 Do not change the design, population, source identities, producer, sidecar,
 environment lock, packet, claim, or non-claims during the evaluated run. A
 change invalidates the run and requires a new approved freeze.
+
+### Run 1 invalidated before evaluation
+
+The coordinator stopped Run 1 at `2026-09-21T22:27:42Z`. No validation-values
+file existed. No first submission was sealed. The extractor attested that no
+prohibited material was seen.
+
+The coordinator found that the release still declared version `0.17.0`. The
+new public evidence capability requires the minor release `0.18.0`. Updating
+the synchronized package versions changes `uv.lock`, so it invalidates the
+Revision 1 environment freeze even though the dependency set and production
+sidecar do not change.
+
+The abort attestation is preserved at
+`validation/run-1-abort-attestation.json`. Its SHA-256 is
+`40f21ec26368db1382fa77e88ca3b6151bad1e7697688c2c656c5f5828c85b0f`.
+This invalid run has no validation score and cannot support promotion.

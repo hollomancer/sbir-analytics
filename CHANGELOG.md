@@ -10,6 +10,32 @@ version.
 
 ## [Unreleased]
 
+## [0.18.0] — 2026-09-21
+
+### Added
+
+- Added a source-faithful, 42-column SBIR.gov award-export reader with explicit
+  export-row and award-year profiles. The reader verifies the exact source and
+  its metadata sidecar before parsing.
+- Added a separate SBA annual-report structural-comparison study. Its evidence
+  producer emits only the 632 declared FY2020-FY2022 count cells, classifies
+  unequal values as unresolved, and blocks on changed sources, rules, keys,
+  arithmetic, validation values, or rendered output.
+- Added durable, exact-byte acquisition for the September 17, 2026 SBIR.gov
+  export and the three official SBA annual reports.
+
+### Changed
+
+- New SBIR.gov captures use dated vintage directories. The historical SBA
+  study now refuses an unpinned export or a missing metadata sidecar.
+- The exploratory literature-map refresh is manual-only. It no longer runs on
+  a weekly schedule.
+
+### Removed
+
+- Removed five archived operator scripts that had no live consumers and were
+  superseded by maintained jobs or assets.
+
 ## [0.17.0] — 2026-09-17
 
 ### Breaking
