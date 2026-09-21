@@ -839,9 +839,13 @@ dollar return on the SBIR program?*
 
 - **Award totals**
   What are award totals by state, agency, and phase?
-  *Deps: none · Refs: [L18] · Study: [sba-annual-report-tables](../studies/sba-annual-report-tables/study.yaml)
-  (structural check of the published state tables, FY2020-FY2022; recoverability
-  within a declared band, not a restatement of the published counts)*
+  **Status:** A reproducible, non-citable historical study records the first
+  structural check. A separate current-vintage comparison has frozen all 632
+  count cells and a prospective fidelity design. Its independent validation is
+  pending. Neither study reproduces the unavailable publication-era export.
+  *Deps: none · Refs: [L18] · Studies:
+  [historical work](../studies/sba-annual-report-tables/study.yaml),
+  [prospective structural comparison](../studies/sba-annual-report-structural-comparison/study.yaml)*
 
 - **NAICS coverage and fallback usage**
   What is NAICS-sector coverage across awards, and how often is the fallback

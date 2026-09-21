@@ -1,0 +1,90 @@
+schema_version: 1
+study_id: sba-annual-report-structural-comparison
+title: SBA Annual-Report Award-Count Structural Comparison
+evidence_status: reproducible
+research_questions:
+  - D1
+estimand: >-
+  For all 632 award-count cells printed in FY2020 Table 18, FY2021 Table 18,
+  and FY2022 Table 20, the signed and absolute differences between the printed
+  counts and counts computed from the exact September 17, 2026 SBIR.gov export
+  under EXPORT_ROW_V1, AWARD_YEAR_FIELD_V1, and the frozen jurisdiction rules.
+frozen_artifacts:
+  - path: studies/sba-annual-report-structural-comparison/source-manifest.json
+    sha256: be8adfce554b2811cb612428bebab314f061b2a808b9cc957ad0311797388db3
+  - path: studies/sba-annual-report-structural-comparison/validation-design-v1.md
+    sha256: 02e0fadd1f623096d20105fb4af47bba0b9c1c98d0c9ca10123da40907ec2da2
+  - path: studies/sba-annual-report-structural-comparison/validation-population-v1.csv
+    sha256: 48dfdf1ea70e9a74378c21a3a661795540ebd6450c77365ebdad76c6569b68c1
+  - path: studies/sba-annual-report-tables/award-export-2026-09-17.meta.json
+    sha256: 54776d98b8eb8f831a5e550b63440b30a90e573fa614944fbe628f135e550e23
+  - path: studies/sba-annual-report-tables/data/awards_by_state_fy20.csv
+    sha256: 0c8465c210f122a75b42b5afef147f688e73cec6a82a230f0d33f377def3403c
+  - path: studies/sba-annual-report-tables/data/awards_by_state_fy21.csv
+    sha256: cb43a8ec5de2b70a97f240f329a3a19a749b0f85910b5229593a5267dc1c1cde
+  - path: studies/sba-annual-report-tables/data/awards_by_state_fy22.csv
+    sha256: 64533444bb4b6aa5468c35d5649bc0256d412592f7a46893549b951c61d07649
+  - path: data/raw/sbir/award-export/2026-09-17/award_data.csv
+    sha256: aed146eab56f370c9f3fe7f562475e3eedfc61cca2eba112c830fac6f73bf38a
+    external_source: true
+  - path: data/raw/sba_annual_reports/FY20/SBA_SBIR_STTR_FY20_Annual_Report.pdf
+    sha256: f1f51abb29c71d631451868f31babf2f6f1fe3845df91e534052f1d40dece3d3
+    external_source: true
+  - path: data/raw/sba_annual_reports/FY21/SBA_SBIR_STTR_FY21_Annual_Report.pdf
+    sha256: 30b4dfa9b4c2c2220fc15938d5bd1a44bee92d5aa746b8756dc7d66217c6df55
+    external_source: true
+  - path: data/raw/sba_annual_reports/FY22/SBA_FY22_SBIR_STTR_Annual_Report.pdf
+    sha256: 5ba60852f1cc44b23afdbf810ecf0cff77d714d10ffc786a9b73416d7c000fd1
+    external_source: true
+  - path: packages/sbir-analytics/sbir_analytics/assets/sba_annual_report_structural_comparison/producer.py
+    sha256: dff20751bec1424419ad8ed2406e082f8a6fca3eac8850c5d388e756ac24b56c
+  - path: scripts/data/acquire_sba_structural_sources.py
+    sha256: 66aef6ebf3d2b936c09c0cc4c0343fbb27880ccb7fa07486fbf86848e2e8831d
+  - path: scripts/data/run_sba_structural_comparison.py
+    sha256: a8d2aa68e40e5748c241795599bf7c432abb013cfe7c26a020c5fbc29c6be538
+  - path: uv.lock
+    sha256: 25a5a34ae5a3ee427d8a59c729065037a91c37797329e03dc9c7c76164a4b0b8
+implementation:
+  - path: packages/sbir-analytics/sbir_analytics/assets/sba_annual_report_structural_comparison/producer.py
+    symbol: produce_count_sidecar
+  - path: scripts/data/acquire_sba_structural_sources.py
+    symbol: acquire_sources
+  - path: scripts/data/run_sba_structural_comparison.py
+    symbol: main
+identity_policy:
+  strategy: >-
+    Match report year, two-letter jurisdiction, program, and phase exactly after
+    applying the frozen full-name jurisdiction mapping.
+  version: export-row-award-year-v1
+  negative_evidence_allowed: false
+materialization:
+  allowed: false
+  blockers:
+    - >-
+      The first sealed independent 1,264-value extraction has not been compared
+      with the frozen production sidecar.
+permitted_claims:
+  - >-
+    This reproducible, non-citable study is designed to report a current-vintage
+    structural comparison of 632 published and export-derived award-count cells.
+limitations:
+  - The study does not reproduce the unavailable publication-era SBIR.gov export.
+  - The study does not certify SBIR.gov or the SBA annual reports as complete or correct.
+  - The study does not compare or validate award-dollar totals.
+  - The study does not measure commercialization, program effects, or economic return.
+  - The study does not validate M&A, private-capital, or other repository outputs.
+validation_design:
+  addressable_population: >-
+    All 1,264 count operands underlying the 632 printed and export-derived cells
+    in FY2020 Table 18, FY2021 Table 18, and FY2022 Table 20.
+  expected_yield: >-
+    1,264 independently extracted values if all source pages and export rows are readable.
+  decision_threshold: >-
+    The first sealed independent extraction must equal every one of the 1,264
+    frozen production values.
+  threshold_derivation: >-
+    This is a complete deterministic reconciliation. One changed operand changes
+    a released comparison cell and therefore fails the fidelity claim.
+  threshold_basis: count_on_frozen_population
+  threshold_value: 1264
+  frozen_population_artifact: studies/sba-annual-report-structural-comparison/validation-population-v1.csv
