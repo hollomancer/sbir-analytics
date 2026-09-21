@@ -160,3 +160,23 @@ sidecar with SHA-256
 The Revision 1 permitted claim and adjacent non-claims remain unchanged. The
 new extractor receives only Packet v2. Any further frozen-artifact change
 invalidates this run.
+
+### Run 2 aborted at the PDF parsing gate
+
+Run 2 used Packet v2 from `2026-09-21T22:37:50Z` through
+`2026-09-21T22:37:55Z`. All packet, source, durable-URI, page-count, export
+schema, and population preflight checks passed. The independent implementation
+then classified an unlabeled numeric line on PDF page 53 as a possible table
+row and aborted because it was not a mapped jurisdiction.
+
+No validation-values file was written. The run has no score. The extractor
+attested that it saw no prohibited material. The sealed implementation,
+requirements, mapping, and abort attestation are preserved under
+`validation/run-2/`.
+
+This failure exposes a parsing ambiguity, not a count disagreement. A new run
+must use a new extractor. It must distinguish mapped jurisdiction rows from
+other numeric lines using the PDF's own table structure. It must still abort on
+an unreadable or unmapped printed jurisdiction row, and it must still prove the
+53, 53, and 52 row counts independently. No threshold, source, production
+value, or completeness rule changes.

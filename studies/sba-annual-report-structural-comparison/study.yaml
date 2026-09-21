@@ -52,6 +52,14 @@ frozen_artifacts:
     sha256: 40f21ec26368db1382fa77e88ca3b6151bad1e7697688c2c656c5f5828c85b0f
   - path: studies/sba-annual-report-structural-comparison/validation/blind-packet-manifest-v2.json
     sha256: fe77b3de60ae983624be3428d769b0fb3702b3989c5aeedd4af5f8980e6c2c8f
+  - path: studies/sba-annual-report-structural-comparison/validation/run-2/attestation.json
+    sha256: 6a08b1c625df5ee0a0309eea8fc897266584e20b7ea1f2526c39db769da52a2f
+  - path: studies/sba-annual-report-structural-comparison/validation/run-2/extractor.py.txt
+    sha256: 48560827f2204cc29cb7eb55855b7096d1ab1ad22eca396b80532366eeb88837
+  - path: studies/sba-annual-report-structural-comparison/validation/run-2/jurisdiction-mapping.json
+    sha256: fd09990902369d81cdd5619b636b833a1f61e90370929106b9ebd0a12046aaae
+  - path: studies/sba-annual-report-structural-comparison/validation/run-2/requirements.txt
+    sha256: 9953f725dc5908a1266a6e19f1add757d2432e773f261672ce64684cee7165a7
 implementation:
   - path: packages/sbir-analytics/sbir_analytics/assets/sba_annual_report_structural_comparison/producer.py
     symbol: produce_count_sidecar
