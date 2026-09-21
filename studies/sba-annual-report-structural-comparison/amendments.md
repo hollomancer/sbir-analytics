@@ -305,3 +305,48 @@ preserved at `validation/run-4-abort-attestation.json`. Its SHA-256 is
 
 This is a packet-construction failure. It does not change the design,
 population, source bytes, production values, threshold, claim, or non-claims.
+
+## Revision 5 — 2026-09-21 — source identity correction and re-freeze
+
+**Status:** Approved for a new first valid sealed independent extraction.
+
+Revision 5 restores the omitted `f` in the declared FY2022 PDF digest. The
+coordinator parsed Packet v5 and verified all seven declared files before this
+freeze. Every declared digest has 64 lowercase hexadecimal characters. The
+four source identities also match the authoritative source manifest.
+
+The source bytes, design, population, environment, production producer,
+production sidecar, threshold, claim, and non-claims do not change.
+
+- Approver: Conrad Hollomon, repository owner, through the instruction to
+  execute this bounded release plan.
+- Approval time: `2026-09-21T22:55:30Z`.
+- Git anchor: `91f208481c0328c3d80171956579dfe8200c6ffb`.
+- Coordinator: `/root (Codex primary agent)`.
+- Independent extractor: `/root/sba_blind_extractor_5`.
+- Design SHA-256:
+  `7373d7e189bf8dce3ec4611064f698571053b3fb397e213e1bf8873424839fa3`.
+- Population SHA-256:
+  `48dfdf1ea70e9a74378c21a3a661795540ebd6450c77365ebdad76c6569b68c1`.
+- Source manifest SHA-256:
+  `be8adfce554b2811cb612428bebab314f061b2a808b9cc957ad0311797388db3`.
+- Production implementation SHA-256:
+  `dff20751bec1424419ad8ed2406e082f8a6fca3eac8850c5d388e756ac24b56c`.
+- Production sidecar SHA-256:
+  `e86ab66905f65adaa7fdb721ced6bcbc7b3991a288ba37156f1efe9b4bed7381`.
+- Environment lock SHA-256:
+  `b9f214496158828da145a19db9c7d5cb4fc52765eeacb9a394312a2b6cf34893`.
+- Reproduction command SHA-256:
+  `a8d2aa68e40e5748c241795599bf7c432abb013cfe7c26a020c5fbc29c6be538`.
+- Blind packet manifest SHA-256:
+  `51033aca620e71f71fc18d6ae398d27fe238fbf7c7d6cda4e748ba7db3299314`.
+- Superseded Packet v4 SHA-256:
+  `7ed7733028bd0a56a76ca966d25f65a2b3954324a7a193de4e61b72155aef76d`.
+- Prior results visible at approval: the Revision 0 list above. Runs 1 and 2
+  had no score. Run 3 matched 1,264/1,264 but is non-confirmatory because its
+  packet manifest was malformed. Run 4 stopped before extraction and has no
+  score.
+
+The Revision 1 permitted claim and adjacent non-claims remain unchanged. The
+new extractor receives only Packet v5. Any further frozen-artifact change
+invalidates this run.
