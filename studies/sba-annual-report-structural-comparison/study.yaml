@@ -60,6 +60,8 @@ frozen_artifacts:
     sha256: fd09990902369d81cdd5619b636b833a1f61e90370929106b9ebd0a12046aaae
   - path: studies/sba-annual-report-structural-comparison/validation/run-2/requirements.txt
     sha256: 9953f725dc5908a1266a6e19f1add757d2432e773f261672ce64684cee7165a7
+  - path: studies/sba-annual-report-structural-comparison/validation/blind-packet-manifest-v3.json
+    sha256: 79eaa57a4834b5056c1e4ddd5522dbdb2ee26bc57fcef1a5944dd5ae37511e67
 implementation:
   - path: packages/sbir-analytics/sbir_analytics/assets/sba_annual_report_structural_comparison/producer.py
     symbol: produce_count_sidecar
