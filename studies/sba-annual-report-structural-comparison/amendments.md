@@ -290,3 +290,18 @@ production sidecar, threshold, claim, and non-claims do not change.
 The Revision 1 permitted claim and adjacent non-claims remain unchanged. The
 new extractor receives only Packet v4. Any further frozen-artifact change
 invalidates this run.
+
+### Run 4 aborted at the source-identity gate
+
+Run 4 stopped before the extractor read the design or source content. Packet
+v4 was valid JSON, but its declared FY2022 PDF digest contained 63 characters.
+It omitted one `f` from the 64-character source-manifest digest. Six of seven
+declared file identities passed before this check failed.
+
+No extraction started. No submission was created. The run has no score. The
+extractor attested that it saw no prohibited material. The abort attestation is
+preserved at `validation/run-4-abort-attestation.json`. Its SHA-256 is
+`8c140d798d8fc666ba02563734163d48774534bf1a78b829374028982eab29c6`.
+
+This is a packet-construction failure. It does not change the design,
+population, source bytes, production values, threshold, claim, or non-claims.
