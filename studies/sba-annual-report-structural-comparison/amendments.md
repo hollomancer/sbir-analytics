@@ -118,3 +118,45 @@ The abort attestation is preserved at
 `validation/run-1-abort-attestation.json`. Its SHA-256 is
 `40f21ec26368db1382fa77e88ca3b6151bad1e7697688c2c656c5f5828c85b0f`.
 This invalid run has no validation score and cannot support promotion.
+
+## Revision 2 — 2026-09-21 — release-version correction and re-freeze
+
+**Status:** Approved for a new first sealed independent extraction.
+
+Revision 2 changes only the synchronized release version from `0.17.0` to
+`0.18.0` and the resulting `uv.lock` bytes. The dependency set, design,
+population, source identities, producer, production sidecar, claim, and
+non-claims do not change. A clean regeneration produced the same 632-cell
+sidecar with SHA-256
+`e86ab66905f65adaa7fdb721ced6bcbc7b3991a288ba37156f1efe9b4bed7381`.
+
+- Approver: Conrad Hollomon, repository owner, through the instruction to
+  execute this bounded release plan.
+- Approval time: `2026-09-21T22:28:59Z`.
+- Git anchor: `7f712c011499fc444f9f8529143c6734ad5b9c58`.
+- Coordinator: `/root (Codex primary agent)`.
+- Independent extractor: `/root/sba_blind_extractor_2`.
+- Design SHA-256:
+  `02e0fadd1f623096d20105fb4af47bba0b9c1c98d0c9ca10123da40907ec2da2`.
+- Population SHA-256:
+  `48dfdf1ea70e9a74378c21a3a661795540ebd6450c77365ebdad76c6569b68c1`.
+- Source manifest SHA-256:
+  `be8adfce554b2811cb612428bebab314f061b2a808b9cc957ad0311797388db3`.
+- Production implementation SHA-256:
+  `dff20751bec1424419ad8ed2406e082f8a6fca3eac8850c5d388e756ac24b56c`.
+- Production sidecar SHA-256:
+  `e86ab66905f65adaa7fdb721ced6bcbc7b3991a288ba37156f1efe9b4bed7381`.
+- Environment lock SHA-256:
+  `b9f214496158828da145a19db9c7d5cb4fc52765eeacb9a394312a2b6cf34893`.
+- Reproduction command SHA-256:
+  `a8d2aa68e40e5748c241795599bf7c432abb013cfe7c26a020c5fbc29c6be538`.
+- Blind packet manifest SHA-256:
+  `fe77b3de60ae983624be3428d769b0fb3702b3989c5aeedd4af5f8980e6c2c8f`.
+- Superseded packet manifest SHA-256:
+  `68911d57fcb308794813d4ce1b10811ee333661ba799191f3a76068acf5b88e8`.
+- Prior results visible at approval: the Revision 0 list above. Run 1 had no
+  submission and no validation score.
+
+The Revision 1 permitted claim and adjacent non-claims remain unchanged. The
+new extractor receives only Packet v2. Any further frozen-artifact change
+invalidates this run.

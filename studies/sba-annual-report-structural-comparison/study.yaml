@@ -50,6 +50,8 @@ frozen_artifacts:
     sha256: 68911d57fcb308794813d4ce1b10811ee333661ba799191f3a76068acf5b88e8
   - path: studies/sba-annual-report-structural-comparison/validation/run-1-abort-attestation.json
     sha256: 40f21ec26368db1382fa77e88ca3b6151bad1e7697688c2c656c5f5828c85b0f
+  - path: studies/sba-annual-report-structural-comparison/validation/blind-packet-manifest-v2.json
+    sha256: fe77b3de60ae983624be3428d769b0fb3702b3989c5aeedd4af5f8980e6c2c8f
 implementation:
   - path: packages/sbir-analytics/sbir_analytics/assets/sba_annual_report_structural_comparison/producer.py
     symbol: produce_count_sidecar
