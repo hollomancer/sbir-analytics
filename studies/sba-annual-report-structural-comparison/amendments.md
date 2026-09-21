@@ -350,3 +350,44 @@ production sidecar, threshold, claim, and non-claims do not change.
 The Revision 1 permitted claim and adjacent non-claims remain unchanged. The
 new extractor receives only Packet v5. Any further frozen-artifact change
 invalidates this run.
+
+## Revision 6 — 2026-09-21 — confirmatory result and validated promotion
+
+**Status:** Authorized for `validated` only. Citation remains prohibited.
+
+Packet v5 and all evaluated artifacts were frozen at commit `c4874c00` before
+Run 5 started. The first complete extraction ran from `2026-09-21T23:01:28Z`
+through `2026-09-21T23:01:38Z`. The sealed result artifacts first appear at
+commit `56acfb0f` after coordinator reconciliation.
+
+The extractor submitted 1,264 unique observed operands and no missing
+operands. Coordinator reconciliation found 1,264 exact agreements out of
+1,264. The complete-population point interval is `[1.0, 1.0]`. The interval
+method is `exact complete-population point interval; no sampling`. The frozen
+threshold was met.
+
+Before the first complete extraction, the independent implementation located a
+table title in both the table of contents and the printed table. It stopped
+before a submission file, diagnostic file, extracted value, or diagnostic
+count existed. The extractor then required the full count-column header with
+the title. That correction implemented the frozen title-plus-count-column-
+geometry rule. It did not change the design. The corrected implementation was
+sealed before unblinding, and its first complete submission was not repaired or
+rerun.
+
+Runs 1, 2, and 4 produced no validation score. Run 3 matched 1,264 of 1,264
+operands but remains nonconfirmatory because its packet manifest was not valid
+JSON. None of those runs supports promotion.
+
+The post-result evidence audit verified the freeze chronology, all sealed
+component hashes, source identities, independent extraction, and claim
+boundary. It authorized `evidence_status: validated` with
+`threshold_met: true`. It did not authorize `citable`, materialization, merge,
+publication, or release. The audit record is
+`reviews/post-result-evidence-audit.md`.
+
+The validated result supports source-capture and transformation fidelity only.
+It does not establish agreement between the two upstream sources. The 632-cell
+sidecar contains 276 exact comparisons and 356 unresolved differences. The
+Revision 1 permitted claim and all adjacent non-claims remain in force, with
+the added shared-mode-rule-error limitation.

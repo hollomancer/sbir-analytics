@@ -181,12 +181,13 @@ bypassing lifecycle review; the status and rationale still require human judgmen
   estimand contract, and blinded validation.
 - **`sbir-ma-match-rate-by-fy` — Gated backlog.** Analysis-only F2 follow-up on
   completed M&A detection. Start only when FY match-rate reporting is requested.
-- **`sba-annual-report-citable-release` — Gated backlog.** Evidence design for
-  a bounded FY2020-FY2022 structural comparison of SBA annual-report counts
-  against the pinned 2026-09-17 SBIR.gov export. Implementation and promotion
-  remain gated on durable access to the exact export bytes, a prospectively
-  frozen validation design, evidence audit, and reconciliation of the current
-  closed materialization gate. Existing post-hoc bands cannot promote it.
+- **`sba-annual-report-citable-release` — Active release work.** The bounded
+  FY2020-FY2022 structural comparison is `validated`, not citable. Durable
+  source retrieval and the prospectively frozen full-population fidelity test
+  passed at 1,264/1,264 operands. Publication remains gated on the generated
+  renderer and sidecar, mutation checks, named-reader review, product-scoped
+  materialization gate, immutable release packet, and owner approval. Existing
+  post-hoc bands do not support the claim.
 - **`state-local-tax-rates` — Maintenance.** Existing hardcoded 2024 provider
   works. Remaining work is data-file/provenance cleanup for fiscal v2.
 - **`supplier-share-census` — Active.** Exploratory, non-citable F2 census of

@@ -1,7 +1,7 @@
 # SBA Annual-Report Structural Comparison Release — Requirements
 
-> **Lifecycle status:** Gated backlog
-> **Spec-file progress:** Design only; implementation not authorized
+> **Lifecycle status:** Active release work
+> **Spec-file progress:** Validated result recorded; citable release gates open
 > Anchors inventory question **D1** in
 > [docs/research-questions.md](../../docs/research-questions.md#d1-descriptive-tier-1).
 
@@ -24,15 +24,17 @@ one released descriptive comparison. The reader can retrieve the exact input,
 verify its identity, reproduce every count, inspect every mismatch, and state
 the non-claims without private context.
 
-This definition of done does not authorize implementation while the gates below
-remain closed.
+The validated comparison exists. This definition of done still controls the
+citable release.
 
 ## Background
 
-The existing study is reproducible and non-citable. It is a current-vintage
-structural check, not a reproduction of the historical SBA input. Its comparison
-bands were derived after observing the same 632 cells, so they cannot validate
-or promote the study.
+The study is validated and non-citable. It is a current-vintage structural
+comparison, not a reproduction of the historical SBA input. Its prospective
+full-population fidelity validation matched 1,264 of 1,264 operands with an
+exact point interval of `[1.0, 1.0]`. The earlier comparison bands were derived
+after observing the same 632 cells, so they do not validate or promote the
+study.
 
 ## Publication gates
 
@@ -125,11 +127,12 @@ when its evidence changes, so that hidden drift cannot preserve the same claim.
 
 ## Dependencies
 
-- `award-export-semantics` — ACTIVE
-- `award-export-source-pipeline` — ACTIVE
-- Durable access to all four exact source files — IN PROGRESS
-- Approved prospective validation design — BLOCKED
-- Evidence-auditor approval — BLOCKED
+- `award-export-semantics` — MAINTENANCE
+- `award-export-source-pipeline` — MAINTENANCE
+- Durable access to all four exact source files — COMPLETE
+- Approved prospective validation design and result — COMPLETE
+- Pre-run and post-result evidence-auditor review — COMPLETE
+- Public renderer and named-reader review — IN PROGRESS
 
 ## Out of scope
 

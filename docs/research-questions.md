@@ -840,9 +840,12 @@ dollar return on the SBIR program?*
 - **Award totals**
   What are award totals by state, agency, and phase?
   **Status:** A reproducible, non-citable historical study records the first
-  structural check. A separate current-vintage comparison has frozen all 632
-  count cells and a prospective fidelity design. Its independent validation is
-  pending. Neither study reproduces the unavailable publication-era export.
+  structural check. A separate current-vintage comparison is Validated, not
+  citable. Its independent full-population extraction reproduced 1,264 of
+  1,264 operands with an exact complete-population point interval of
+  `[1.0, 1.0]`; this validates capture and transformation fidelity, not
+  agreement between sources. Neither study reproduces the unavailable
+  publication-era export.
   *Deps: none · Refs: [L18] · Studies:
   [historical work](../studies/sba-annual-report-tables/study.yaml),
   [prospective structural comparison](../studies/sba-annual-report-structural-comparison/study.yaml)*
