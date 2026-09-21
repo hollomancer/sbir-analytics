@@ -62,6 +62,22 @@ frozen_artifacts:
     sha256: 9953f725dc5908a1266a6e19f1add757d2432e773f261672ce64684cee7165a7
   - path: studies/sba-annual-report-structural-comparison/validation/blind-packet-manifest-v3.json
     sha256: 79eaa57a4834b5056c1e4ddd5522dbdb2ee26bc57fcef1a5944dd5ae37511e67
+  - path: studies/sba-annual-report-structural-comparison/validation/run-3/attestation.json
+    sha256: 52a666fc9c04c0c69d3bb3ab0eff47dcdb4d496704be056e4318abb8e4c959bd
+  - path: studies/sba-annual-report-structural-comparison/validation/run-3/blind_extract.py.txt
+    sha256: 6b9fdb4c42b471118ababf98060b2080a679850bc913d50b16427c2ee8c0aafd
+  - path: studies/sba-annual-report-structural-comparison/validation/run-3/dump_pdf_chars.m.txt
+    sha256: 6975d0e39190d1ab0b2b18d60eca60c96d85fb404208e28b1cc9c2c81650f8a6
+  - path: studies/sba-annual-report-structural-comparison/validation/run-3/dump_pdf_lines.m.txt
+    sha256: 87cc0b6e42aa80999cc36377d6cbd5052b152d3714725b2010561b1a5c071f6c
+  - path: studies/sba-annual-report-structural-comparison/validation/run-3/extract_pdf_text.m.txt
+    sha256: b28a944d2076a9b7e4ea6586f6bed49a4be9ffbcf467a1222bb170c1d10228f1
+  - path: studies/sba-annual-report-structural-comparison/validation/run-3/jurisdiction-mapping.json
+    sha256: 6a8f1eda25bc4136edb89fda962a1c7338a909117593475f0a67468a4acf2a88
+  - path: studies/sba-annual-report-structural-comparison/validation/run-3/validation-values.csv
+    sha256: 3f2d9aee873a2c828194cce562b944c617794983fc96d89deea6c2cfd006ef18
+  - path: studies/sba-annual-report-structural-comparison/validation/run-3/reconciliation.json
+    sha256: 6691140c8e037c7cdf6afe0e9a6f9c558b297cd591e71474eea9bcb1877788f8
 implementation:
   - path: packages/sbir-analytics/sbir_analytics/assets/sba_annual_report_structural_comparison/producer.py
     symbol: produce_count_sidecar

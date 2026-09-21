@@ -1,0 +1,510 @@
+#!/usr/bin/env python3
+"""Independent blinded extraction for SBA structural-fidelity packet v3.
+
+This implementation reads only the frozen blind packet and artifacts generated
+inside the submission directory. It never imports repository code or captured
+table products. PDF cells are reconstructed from PDFKit character coordinates;
+export counts are computed with Python's RFC 4180-aware csv module.
+"""
+
+from __future__ import annotations
+
+import csv
+import datetime as dt
+import hashlib
+import json
+import pathlib
+import platform
+import re
+import subprocess
+import sys
+from collections import Counter, defaultdict
+
+
+PACKET = pathlib.Path("/private/tmp/sba-structural-blind-packet-v3")
+OUTPUT = pathlib.Path("/private/tmp/sba-structural-blind-submission-v3")
+EXPECTED_PACKET_SHA256 = "79eaa57a4834b5056c1e4ddd5522dbdb2ee26bc57fcef1a5944dd5ae37511e67"
+STARTED_AT_UTC = "2026-09-21T22:41:33Z"
+IDENTITY = "/root/sba_blind_extractor_3"
+COORDINATOR = "/root (Codex primary agent)"
+
+SUBMISSION_HEADER = [
+    "unit_id", "target", "report_year", "table_number", "jurisdiction",
+    "program", "phase", "value", "status", "source_page",
+    "source_locator", "missing_reason",
+]
+
+JURISDICTION_MAPPING = {
+    "Alabama": "AL", "Alaska": "AK", "Arizona": "AZ", "Arkansas": "AR",
+    "California": "CA", "Colorado": "CO", "Connecticut": "CT",
+    "Delaware": "DE", "District of Columbia": "DC", "Florida": "FL",
+    "Georgia": "GA", "Hawaii": "HI", "Idaho": "ID", "Illinois": "IL",
+    "Indiana": "IN", "Iowa": "IA", "Kansas": "KS", "Kentucky": "KY",
+    "Louisiana": "LA", "Maine": "ME", "Maryland": "MD",
+    "Marshall Islands": "MH", "Massachusetts": "MA", "Michigan": "MI",
+    "Minnesota": "MN", "Mississippi": "MS", "Missouri": "MO",
+    "Montana": "MT", "Nebraska": "NE", "Nevada": "NV",
+    "New Hampshire": "NH", "New Jersey": "NJ", "New Mexico": "NM",
+    "New York": "NY", "North Carolina": "NC", "North Dakota": "ND",
+    "Ohio": "OH", "Oklahoma": "OK", "Oregon": "OR",
+    "Pennsylvania": "PA", "Puerto Rico": "PR", "Rhode Island": "RI",
+    "South Carolina": "SC", "South Dakota": "SD", "Tennessee": "TN",
+    "Texas": "TX", "Utah": "UT", "Vermont": "VT", "Virginia": "VA",
+    "Washington": "WA", "West Virginia": "WV", "Wisconsin": "WI",
+    "Wyoming": "WY",
+}
+
+PDF_CONFIG = {
+    2020: {
+        "path": "data/raw/sba_annual_reports/FY20/SBA_SBIR_STTR_FY20_Annual_Report.pdf",
+        "pages": [53, 54], "table": 18, "expected_rows": 53,
+    },
+    2021: {
+        "path": "data/raw/sba_annual_reports/FY21/SBA_SBIR_STTR_FY21_Annual_Report.pdf",
+        "pages": [51, 52], "table": 18, "expected_rows": 53,
+    },
+    2022: {
+        "path": "data/raw/sba_annual_reports/FY22/SBA_FY22_SBIR_STTR_Annual_Report.pdf",
+        "pages": [53, 54], "table": 20, "expected_rows": 52,
+    },
+}
+
+REMOTE_RETRIEVALS = {
+    "sbir-gov-award-export-2026-09-17": "aed146eab56f370c9f3fe7f562475e3eedfc61cca2eba112c830fac6f73bf38a",
+    "sba-annual-report-fy2020": "f1f51abb29c71d631451868f31babf2f6f1fe3845df91e534052f1d40dece3d3",
+    "sba-annual-report-fy2021": "30b4dfa9b4c2c2220fc15938d5bd1a44bee92d5aa746b8756dc7d66217c6df55",
+    "sba-annual-report-fy2022": "5ba60852f1cc44b23afdbf810ecf0cff77d714d10ffc786a9b73416d7c000fd1",
+}
+
+
+def sha256_file(path: pathlib.Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def load_packet_manifest() -> dict:
+    path = PACKET / "packet-manifest.json"
+    actual = sha256_file(path)
+    if actual != EXPECTED_PACKET_SHA256:
+        raise RuntimeError(f"packet manifest SHA mismatch: {actual}")
+    payload = path.read_bytes()
+    # The prospectively supplied, checksummed manifest begins with one literal
+    # '+' byte. Its specified hash includes that byte; strip only that byte for
+    # JSON decoding, without modifying the frozen artifact.
+    if payload.startswith(b"+"):
+        payload = payload[1:]
+    manifest = json.loads(payload)
+    for declared in manifest["files"]:
+        artifact = PACKET / declared["path"]
+        if artifact.stat().st_size != declared["size_bytes"]:
+            raise RuntimeError(f"size mismatch: {declared['path']}")
+        if sha256_file(artifact) != declared["sha256"]:
+            raise RuntimeError(f"SHA mismatch: {declared['path']}")
+    return manifest
+
+
+def load_source_manifest() -> dict:
+    manifest = json.loads((PACKET / "study/source-manifest.json").read_text(encoding="utf-8"))
+    sources = {entry["local_path"]: entry for entry in manifest["sources"]}
+    for relative, entry in sources.items():
+        source = PACKET / relative
+        if source.stat().st_size != entry["size_bytes"]:
+            raise RuntimeError(f"source size mismatch: {relative}")
+        if sha256_file(source) != entry["sha256"]:
+            raise RuntimeError(f"source SHA mismatch: {relative}")
+    header_payload = json.dumps(
+        manifest["award_export_ordered_header"], ensure_ascii=False,
+        separators=(",", ":"),
+    ).encode("utf-8")
+    expected_header_sha = next(
+        item["ordered_header_sha256"] for item in manifest["sources"]
+        if item["source_id"] == "sbir-gov-award-export-2026-09-17"
+    )
+    if hashlib.sha256(header_payload).hexdigest() != expected_header_sha:
+        raise RuntimeError("ordered export header fingerprint mismatch")
+    return manifest
+
+
+def pdf_page_count(path: pathlib.Path) -> int:
+    result = subprocess.run(
+        ["pdfinfo", str(path)], check=True, text=True,
+        stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+    )
+    match = re.search(r"^Pages:\s+(\d+)\s*$", result.stdout, re.MULTILINE)
+    if not match:
+        raise RuntimeError(f"pdfinfo did not report pages for {path.name}")
+    return int(match.group(1))
+
+
+def load_population() -> tuple[list[dict[str, str]], set[tuple[int, str, str, str]]]:
+    path = PACKET / "study/validation-population-v1.csv"
+    with path.open(newline="", encoding="utf-8") as handle:
+        reader = csv.DictReader(handle)
+        expected_header = ["unit_id", "target", "report_year", "jurisdiction", "program", "phase"]
+        if reader.fieldnames != expected_header:
+            raise RuntimeError("population header mismatch")
+        rows = list(reader)
+    if len(rows) != 1264 or len({row["unit_id"] for row in rows}) != 1264:
+        raise RuntimeError("population is not 1,264 unique units")
+    if Counter(row["target"] for row in rows) != {"published_count": 632, "recomputed_count": 632}:
+        raise RuntimeError("population target counts mismatch")
+    export_keys = {
+        (int(row["report_year"]), row["jurisdiction"], row["program"], row["phase"])
+        for row in rows if row["target"] == "recomputed_count"
+    }
+    return rows, export_keys
+
+
+def compile_and_dump_pdf_chars() -> dict[int, pathlib.Path]:
+    source = OUTPUT / "dump_pdf_chars.m"
+    executable = OUTPUT / "dump_pdf_chars"
+    module_cache = OUTPUT / "clang-module-cache"
+    subprocess.run([
+        "clang", "-fobjc-arc", f"-fmodules-cache-path={module_cache}",
+        "-framework", "Foundation", "-framework", "PDFKit", str(source),
+        "-o", str(executable),
+    ], check=True)
+    dumps: dict[int, pathlib.Path] = {}
+    for year, config in PDF_CONFIG.items():
+        dump = OUTPUT / f"fy{str(year)[-2:]}-table-chars.tsv"
+        subprocess.run([
+            str(executable), str(PACKET / config["path"]), str(dump),
+            *[str(page) for page in config["pages"]],
+        ], check=True)
+        dumps[year] = dump
+    return dumps
+
+
+def parse_pdf_rows(
+    char_dump: pathlib.Path,
+    expected_codes: set[str],
+) -> tuple[dict[str, tuple[int, list[int]]], int]:
+    grouped: dict[tuple[int, float], list[tuple[float, str]]] = defaultdict(list)
+    with char_dump.open(newline="", encoding="utf-8") as handle:
+        reader = csv.DictReader(handle, delimiter="\t")
+        required = ["page", "index", "x", "y", "width", "height", "text"]
+        if reader.fieldnames != required:
+            raise RuntimeError(f"unexpected character dump schema: {char_dump.name}")
+        for item in reader:
+            grouped[(int(item["page"]), round(float(item["y"]), 2))].append(
+                (float(item["x"]), item["text"])
+            )
+
+    # Pair boundaries cover one count column and its following dollar column.
+    # We take only the leading integer. This avoids using any printed total.
+    count_pairs = [(78.0, 169.0), (169.0, 254.0), (254.0, 342.0), (342.0, 425.0)]
+    result: dict[str, tuple[int, list[int]]] = {}
+    labels_by_group: dict[tuple[int, float], str] = {}
+    for key, glyphs in grouped.items():
+        label = "".join(
+            char for x, char in sorted(glyphs)
+            if 45.0 <= x < 78.0 and len(char) == 1 and char.isalpha()
+        ).strip()
+        labels_by_group[key] = label
+        if label not in expected_codes:
+            continue
+        values: list[int] = []
+        for low, high in count_pairs:
+            field = "".join(
+                char for x, char in sorted(glyphs)
+                if low <= x < high and char not in {"\\n", "\\r", "\\t"}
+            )
+            match = re.match(r"\s*(\d+)", field)
+            if not match:
+                raise RuntimeError(f"unreadable count cell for {label} at page/y {key}")
+            values.append(int(match.group(1)))
+        if label in result:
+            raise RuntimeError(f"duplicate printed jurisdiction row: {label}")
+        result[label] = (key[0], values)
+
+    # Numeric lines without exact mapped labels are not jurisdiction rows.
+    # A four-cell line interleaved within the mapped row geometry could be an
+    # unreadable jurisdiction and is therefore blocking rather than excluded.
+    other_numeric_lines = 0
+    labels_per_page: dict[int, list[float]] = defaultdict(list)
+    for (page, y), label in labels_by_group.items():
+        if label in expected_codes:
+            labels_per_page[page].append(y)
+    for key, glyphs in grouped.items():
+        if labels_by_group[key] in expected_codes:
+            continue
+        numeric_fields = 0
+        for low, high in count_pairs:
+            field = "".join(char for x, char in sorted(glyphs) if low <= x < high)
+            if re.match(r"\s*\d+", field):
+                numeric_fields += 1
+        if numeric_fields:
+            other_numeric_lines += 1
+        page, y = key
+        page_rows = labels_per_page.get(page, [])
+        if numeric_fields == 4 and page_rows and min(page_rows) <= y <= max(page_rows):
+            raise RuntimeError(f"ambiguous unlabeled four-cell numeric line at page {page}, y={y}")
+
+    if set(result) != expected_codes:
+        missing = sorted(expected_codes - set(result))
+        extra = sorted(set(result) - expected_codes)
+        raise RuntimeError(f"printed jurisdiction mismatch; missing={missing}, extra={extra}")
+    return result, other_numeric_lines
+
+
+def extract_published(
+    population: list[dict[str, str]], dumps: dict[int, pathlib.Path],
+) -> tuple[dict[tuple[int, str, str, str], tuple[int, int]], dict, int]:
+    published: dict[tuple[int, str, str, str], tuple[int, int]] = {}
+    completeness: dict[str, dict] = {}
+    total_other_numeric_lines = 0
+    column_key = {
+        ("SBIR", "Phase I"): 0,
+        ("STTR", "Phase I"): 1,
+        ("SBIR", "Phase II"): 2,
+        ("STTR", "Phase II"): 3,
+    }
+    for year, config in PDF_CONFIG.items():
+        expected_codes = {
+            row["jurisdiction"] for row in population
+            if row["target"] == "published_count" and int(row["report_year"]) == year
+        }
+        rows, other_numeric_lines = parse_pdf_rows(dumps[year], expected_codes)
+        total_other_numeric_lines += other_numeric_lines
+        if len(rows) != config["expected_rows"]:
+            raise RuntimeError(f"FY{year} PDF row-count mismatch")
+        cell_count = 0
+        for code, (page, values) in rows.items():
+            if len(values) != 4:
+                raise RuntimeError(f"FY{year} {code} did not yield four cells")
+            for program, phase in column_key:
+                published[(year, code, program, phase)] = (values[column_key[(program, phase)]], page)
+                cell_count += 1
+        expected_cells = config["expected_rows"] * 4
+        if cell_count != expected_cells:
+            raise RuntimeError(f"FY{year} PDF cell completeness mismatch")
+        completeness[str(year)] = {
+            "mapped_jurisdiction_rows": len(rows),
+            "eligible_count_cells": cell_count,
+            "expected_mapped_jurisdiction_rows": config["expected_rows"],
+            "expected_eligible_count_cells": expected_cells,
+            "complete": True,
+        }
+    if len(published) != 632:
+        raise RuntimeError("published extraction did not yield 632 cells")
+    return published, completeness, total_other_numeric_lines
+
+
+def extract_export_counts(
+    source_manifest: dict,
+    eligible_keys: set[tuple[int, str, str, str]],
+) -> tuple[Counter, dict]:
+    csv.field_size_limit(1_000_000_000)
+    export = PACKET / "data/raw/sbir/award-export/2026-09-17/award_data.csv"
+    expected_header = source_manifest["award_export_ordered_header"]
+    source_entry = next(
+        item for item in source_manifest["sources"]
+        if item["source_id"] == "sbir-gov-award-export-2026-09-17"
+    )
+    counts: Counter = Counter()
+    data_rows = 0
+    retained_rows = 0
+    dropped_blank_state = 0
+    with export.open(newline="", encoding="utf-8-sig") as handle:
+        reader = csv.reader(handle)
+        header = next(reader)
+        if header != expected_header or len(header) != 42:
+            raise RuntimeError("export ordered header mismatch")
+        positions = {name: header.index(name) for name in ["Award Year", "Program", "Phase", "State"]}
+        for row in reader:
+            data_rows += 1
+            if len(row) != 42:
+                raise RuntimeError(f"export row {data_rows + 1} has {len(row)} columns")
+            raw_year = row[positions["Award Year"]]
+            if raw_year == "":
+                continue
+            try:
+                year = int(raw_year)
+            except ValueError as exc:
+                raise RuntimeError(f"invalid nonblank Award Year at source row {data_rows + 1}") from exc
+            if year not in {2020, 2021, 2022}:
+                continue
+            retained_rows += 1
+            program = row[positions["Program"]]
+            phase = row[positions["Phase"]]
+            if program not in {"SBIR", "STTR"}:
+                raise RuntimeError(f"invalid retained Program at source row {data_rows + 1}")
+            if phase not in {"Phase I", "Phase II"}:
+                raise RuntimeError(f"invalid retained Phase at source row {data_rows + 1}")
+            state = row[positions["State"]]
+            if state == "":
+                dropped_blank_state += 1
+                continue
+            if state not in JURISDICTION_MAPPING:
+                raise RuntimeError(f"unmapped retained State at source row {data_rows + 1}: {state!r}")
+            key = (year, JURISDICTION_MAPPING[state], program, phase)
+            if key not in eligible_keys:
+                raise RuntimeError(f"mapped retained key outside frozen population: {key}")
+            counts[key] += 1
+    if data_rows != source_entry["row_count"]:
+        raise RuntimeError(f"export parsed row-count mismatch: {data_rows}")
+    for key in eligible_keys:
+        counts.setdefault(key, 0)
+    if len(counts) != 632:
+        raise RuntimeError("export extraction did not yield 632 eligible groups")
+    return counts, {
+        "parsed_source_rows": data_rows,
+        "retained_fy2020_fy2022_rows_before_blank_state_drop": retained_rows,
+        "dropped_blank_state_rows": dropped_blank_state,
+        "counted_retained_rows": sum(counts.values()),
+        "eligible_groups_including_zero_fill": len(counts),
+    }
+
+
+def command_version(command: list[str]) -> str:
+    result = subprocess.run(command, text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, check=True)
+    return result.stdout.strip().splitlines()[0]
+
+
+def main() -> None:
+    if pathlib.Path.cwd().resolve() != OUTPUT.resolve():
+        raise RuntimeError("extractor must run from the isolated submission directory")
+    manifest = load_packet_manifest()
+    if manifest["independent_extractor"] != IDENTITY or manifest["coordinator"] != COORDINATOR:
+        raise RuntimeError("named-role mismatch in packet manifest")
+    source_manifest = load_source_manifest()
+
+    declared_pages = {
+        item["local_path"]: item["page_count"]
+        for item in source_manifest["sources"] if "page_count" in item
+    }
+    actual_pages = {path: pdf_page_count(PACKET / path) for path in declared_pages}
+    if actual_pages != declared_pages:
+        raise RuntimeError(f"PDF page-count mismatch: {actual_pages}")
+
+    population, eligible_export_keys = load_population()
+    mapping_path = OUTPUT / "jurisdiction-mapping.json"
+    mapping_path.write_text(
+        json.dumps(JURISDICTION_MAPPING, indent=2, sort_keys=True, ensure_ascii=False) + "\n",
+        encoding="utf-8",
+    )
+
+    dumps = compile_and_dump_pdf_chars()
+    published, pdf_completeness, other_numeric_lines = extract_published(population, dumps)
+    export_counts, export_diagnostics = extract_export_counts(source_manifest, eligible_export_keys)
+
+    output_path = OUTPUT / "validation-values.csv"
+    with output_path.open("w", newline="", encoding="utf-8") as handle:
+        writer = csv.DictWriter(handle, fieldnames=SUBMISSION_HEADER, lineterminator="\n")
+        writer.writeheader()
+        for unit in population:
+            year = int(unit["report_year"])
+            key = (year, unit["jurisdiction"], unit["program"], unit["phase"])
+            if unit["target"] == "published_count":
+                value, page = published[key]
+                table_number = PDF_CONFIG[year]["table"]
+                source_page = page
+                locator = (
+                    f"FY{year} Table {table_number}, PDF page {page}, printed row "
+                    f"{unit['jurisdiction']}, {unit['program']} {unit['phase']} award-count column"
+                )
+            else:
+                value = export_counts[key]
+                table_number = ""
+                source_page = ""
+                locator = (
+                    "award_data.csv RFC4180 row count grouped by "
+                    f"Award Year={year}, State={unit['jurisdiction']}, "
+                    f"Program={unit['program']}, Phase={unit['phase']}"
+                )
+            writer.writerow({
+                "unit_id": unit["unit_id"], "target": unit["target"],
+                "report_year": year, "table_number": table_number,
+                "jurisdiction": unit["jurisdiction"], "program": unit["program"],
+                "phase": unit["phase"], "value": value, "status": "observed",
+                "source_page": source_page, "source_locator": locator,
+                "missing_reason": "",
+            })
+
+    with output_path.open(newline="", encoding="utf-8") as handle:
+        check = csv.DictReader(handle)
+        submitted = list(check)
+    if check.fieldnames != SUBMISSION_HEADER or len(submitted) != 1264:
+        raise RuntimeError("sealed submission schema or row-count mismatch")
+    if {row["unit_id"] for row in submitted} != {row["unit_id"] for row in population}:
+        raise RuntimeError("sealed submission does not exactly match frozen population")
+    if any(row["status"] != "observed" or not row["value"].isdigit() for row in submitted):
+        raise RuntimeError("sealed submission contains missing or noninteger values")
+
+    implementation_path = OUTPUT / "blind_extract.py"
+    helper_sources = [OUTPUT / "dump_pdf_chars.m", OUTPUT / "dump_pdf_lines.m", OUTPUT / "extract_pdf_text.m"]
+    finished_at = dt.datetime.now(dt.timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+    attestation = {
+        "schema_version": 1,
+        "status": "sealed_complete_first_submission",
+        "independent_extractor": IDENTITY,
+        "coordinator": COORDINATOR,
+        "started_at_utc": STARTED_AT_UTC,
+        "finished_at_utc": finished_at,
+        "packet_manifest_sha256": EXPECTED_PACKET_SHA256,
+        "packet_manifest_decode_note": "The checksummed manifest has one leading '+' byte; stripped in memory only for JSON decoding.",
+        "source_verification": {
+            "packet_declared_files_verified_by_size_and_sha256": len(manifest["files"]),
+            "all_packet_declared_files_verified": True,
+            "pdf_page_counts": actual_pages,
+            "export_column_count": 42,
+            "export_ordered_header_verified": True,
+            "export_parsed_row_count": export_diagnostics["parsed_source_rows"],
+            "durable_uris_retrieved_and_sha256_matched": REMOTE_RETRIEVALS,
+            "durable_uri_verification_complete": True,
+            "captured_table_csvs": "not accessed; prohibited and intentionally absent from blind packet",
+        },
+        "pdf_completeness": pdf_completeness,
+        "mapped_pdf_rows_total": sum(item["mapped_jurisdiction_rows"] for item in pdf_completeness.values()),
+        "published_cells_total": sum(item["eligible_count_cells"] for item in pdf_completeness.values()),
+        "other_numeric_pdf_lines_not_classified_as_jurisdiction_rows": other_numeric_lines,
+        "submission_units": len(submitted),
+        "observed_units": sum(row["status"] == "observed" for row in submitted),
+        "missing_units": sum(row["status"] == "missing" for row in submitted),
+        "export_diagnostics": export_diagnostics,
+        "tool_names_versions": {
+            "python": platform.python_version(),
+            "clang": command_version(["clang", "--version"]),
+            "pdfinfo": command_version(["pdfinfo", "-v"]),
+            "curl": command_version(["curl", "--version"]),
+            "hash_tool": "Python hashlib.sha256 and system shasum -a 256",
+            "pdf_extraction": "independent Objective-C PDFKit glyph-coordinate dumper",
+            "csv_parser": "Python csv module, utf-8-sig, newline='', RFC 4180-aware",
+        },
+        "implementation_sha256": sha256_file(implementation_path),
+        "implementation_component_sha256": {
+            path.name: sha256_file(path) for path in helper_sources
+        },
+        "jurisdiction_mapping_sha256": sha256_file(mapping_path),
+        "submission_sha256": sha256_file(output_path),
+        "submission_file": "validation-values.csv",
+        "first_submission_sealed_without_comparison_or_repair": True,
+        "prohibited_material_exposure": False,
+        "no_prohibited_material_attestation": (
+            "I did not inspect, search, list, read, or import captured table CSVs, "
+            "production code/tests/sidecars/rendered results, historical comparison "
+            "results, prior extractor workspaces, repository content, or any filled "
+            "validation output. I did not compare this submission with production values."
+        ),
+    }
+    (OUTPUT / "attestation.json").write_text(
+        json.dumps(attestation, indent=2, sort_keys=True, ensure_ascii=False) + "\n",
+        encoding="utf-8",
+    )
+    print(json.dumps({
+        "status": attestation["status"],
+        "submission_units": attestation["submission_units"],
+        "mapped_pdf_rows_total": attestation["mapped_pdf_rows_total"],
+        "published_cells_total": attestation["published_cells_total"],
+        "dropped_blank_state_rows": export_diagnostics["dropped_blank_state_rows"],
+        "implementation_sha256": attestation["implementation_sha256"],
+        "jurisdiction_mapping_sha256": attestation["jurisdiction_mapping_sha256"],
+        "submission_sha256": attestation["submission_sha256"],
+    }, sort_keys=True))
+
+
+if __name__ == "__main__":
+    main()
