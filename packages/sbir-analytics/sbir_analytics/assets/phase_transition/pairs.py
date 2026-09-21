@@ -7,9 +7,11 @@
     which identifier resolved the join). Negative latencies are preserved.
 
 ``transformed_phase_transition_survival``
-    One row per Phase II award with an event indicator and time-to-event-or-
-    censor at the configured data-cut date. For observed events we use the
-    earliest Phase III action_date per Phase II.
+    One row per Phase II award with an event indicator and signed
+    completion-relative event-or-cutoff time. For observed events we use the
+    earliest Phase III action_date per Phase II. Negative event times make the
+    raw frame unsuitable for a conventional Kaplan-Meier estimator without a
+    separate pre-completion stratum or a different nonnegative time origin.
 
 Both assets depend on the upstream ``validated_phase_ii_awards`` and
 ``validated_phase_iii_contracts`` frames (passed through as Dagster inputs).
@@ -17,7 +19,7 @@ Both assets depend on the upstream ``validated_phase_ii_awards`` and
 
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, timedelta
 from pathlib import Path
 
 import pandas as pd
@@ -196,12 +198,13 @@ def _build_survival(
     pairs: pd.DataFrame,
     data_cut: date,
 ) -> pd.DataFrame:
-    """Build the KM-ready survival frame.
+    """Build the signed completion-relative follow-up frame.
 
     - Observed events: earliest Phase III action_date per Phase II award.
     - Censored rows: event_date = data_cut, event_observed=False.
     - ``time_days`` can be negative for observed events where Phase III
-      precedes Phase II end.
+      precedes Phase II end. Such rows are descriptive prevalent events, not
+      conventional nonnegative survival times.
     """
 
     if phase_ii.empty:
@@ -233,6 +236,11 @@ def _build_survival(
         }
     )
     base = base.loc[base["phase_ii_end_date"].notna()].copy()
+    # An award still in performance at the cut has no post-completion follow-up
+    # to observe; keeping it would censor it at a negative time and count it as
+    # a failure, and one such row flips nonnegative_time_origin for a reason
+    # that is an artifact, not a prevalent event. The asset reports the count.
+    base = base.loc[pd.to_datetime(base["phase_ii_end_date"]).dt.date <= data_cut].copy()
 
     merged = base.merge(earliest, on="phase_ii_award_id", how="left")
     merged["event_observed"] = merged["phase_iii_action_date"].notna()
@@ -333,9 +341,10 @@ def transformed_phase_ii_iii_pairs(
     group_name="transformation",
     compute_kind="pandas",
     description=(
-        "Per-Phase-II time-to-event frame: event_observed + time_days "
+        "Per-Phase-II signed completion-relative follow-up frame: event_observed + time_days "
         "(days from phase_ii_end_date to earliest phase_iii_action_date, or to "
-        "the data-cut date when censored). Suitable for Kaplan-Meier. "
+        "the data-cut date when unmatched). Negative events require a separate "
+        "pre-completion stratum or a new origin before Kaplan-Meier. "
         "Row-level contract: `sbir_etl.models.phase_transition.PhaseTransitionSurvival`."
     ),
 )
@@ -368,13 +377,45 @@ def transformed_phase_transition_survival(
     observed = int(survival["event_observed"].sum()) if total else 0
     censored = total - observed
     match_rate = (observed / total) if total else 0.0
+    negative_event_times = (
+        int((survival["event_observed"] & survival["time_days"].lt(0)).sum()) if total else 0
+    )
+    negative_time_rows = int(survival["time_days"].lt(0).sum()) if total else 0
+    nonnegative_time_origin = negative_time_rows == 0
 
-    # 5-year transition view: fraction of observed events where time_days <= 5*365.
+    # Input accounting for rows the survival frame cannot carry: awards with no
+    # end date can never enter the frame, and awards whose end date falls after
+    # the cut are not yet under post-completion observation.
+    if len(phase_ii) and "period_of_performance_end" in phase_ii.columns:
+        raw_end = pd.to_datetime(phase_ii["period_of_performance_end"], errors="coerce")
+        phase_ii_missing_end_date_n = int(raw_end.isna().sum())
+        phase_ii_end_after_cut_n = int((raw_end.dt.date > data_cut).sum())
+    else:
+        phase_ii_missing_end_date_n = int(len(phase_ii))
+        phase_ii_end_after_cut_n = 0
+
+    # 5-year transition view. The denominator is only awards mature for the
+    # horizon (end_date + 5y <= data_cut): an award with months of follow-up
+    # must not be counted as a non-transition in a five-year rate. Rows with
+    # time_days < 0 are pre-completion transitions -- a mature award with one
+    # stays in the denominator but out of the numerator, because it does not
+    # satisfy "within 5 years of completion".
     horizon_days = 5 * 365
     five_year_rate: float | None = None
+    mature_total = 0
     if total:
-        within = survival.loc[survival["event_observed"] & (survival["time_days"] <= horizon_days)]
-        five_year_rate = float(len(within) / total)
+        mature = pd.to_datetime(survival["phase_ii_end_date"]).dt.date <= data_cut - timedelta(
+            days=horizon_days
+        )
+        mature_total = int(mature.sum())
+        if mature_total:
+            within = survival.loc[
+                mature
+                & survival["event_observed"]
+                & (survival["time_days"] >= 0)
+                & (survival["time_days"] <= horizon_days)
+            ]
+            five_year_rate = float(len(within) / mature_total)
 
     checks = {
         "ok": True,
@@ -384,7 +425,23 @@ def transformed_phase_transition_survival(
         "observed_events": observed,
         "censored": censored,
         "match_rate": round(match_rate, 4),
+        "time_origin": "phase_ii_period_of_performance_end",
+        "negative_event_times": negative_event_times,
+        "negative_time_rows": negative_time_rows,
+        "nonnegative_time_origin": nonnegative_time_origin,
+        "km_ready": False,
+        "estimator_warning": (
+            "negative completion-relative rows require stratification or a nonnegative origin; "
+            "independent censoring is also untested"
+            if not nonnegative_time_origin
+            else "the time frame is nonnegative, but independent censoring and other estimator "
+            "assumptions are untested"
+        ),
         "within_5_year_rate": round(five_year_rate, 4) if five_year_rate is not None else None,
+        "five_year_denominator": mature_total,
+        "phase_ii_immature_for_horizon_n": total - mature_total,
+        "phase_ii_missing_end_date_n": phase_ii_missing_end_date_n,
+        "phase_ii_end_after_cut_n": phase_ii_end_after_cut_n,
         "inputs": {
             "phase_ii_rows": int(len(phase_ii)),
             "pair_rows": int(len(pairs)),
@@ -399,6 +456,10 @@ def transformed_phase_transition_survival(
         "checks_path": str(checks_path),
         "match_rate": round(match_rate, 4),
         "data_cut_date": data_cut.isoformat(),
+        "negative_event_times": negative_event_times,
+        "negative_time_rows": negative_time_rows,
+        "nonnegative_time_origin": nonnegative_time_origin,
+        "km_ready": False,
         "within_5_year_rate": round(five_year_rate, 4) if five_year_rate is not None else "n/a",
     }
 

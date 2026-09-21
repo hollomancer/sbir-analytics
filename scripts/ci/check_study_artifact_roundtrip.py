@@ -16,9 +16,8 @@ Coverage is checked both ways, following the spec-registry pattern in
 ``specs/status.md``: a module that exposes a ``render_markdown`` entry point
 must appear in ``REGISTERED_PAIRS`` or in ``WAIVED_RENDERERS`` with a non-blank
 reason, so a new readout cannot ship unchecked. A blank reason waives nothing:
-it is reported, and the renderer still counts as unregistered. ``REGISTERED_PAIRS`` is empty until the
-first readout with a pure renderer lands; the coverage half is what keeps it
-from staying empty by accident.
+it is reported, and the renderer still counts as unregistered. The coverage half is what keeps ``REGISTERED_PAIRS`` from
+staying empty by accident.
 
 This proves a deliverable matches the artifact it was rendered from. It does not
 prove the artifact's numbers are right, and it does not read private inputs.
@@ -62,7 +61,13 @@ class RoundTripPair:
 
 
 # Registered pairs. Add an entry with the readout that introduces the renderer.
-REGISTERED_PAIRS: tuple[RoundTripPair, ...] = ()
+REGISTERED_PAIRS: tuple[RoundTripPair, ...] = (
+    RoundTripPair(
+        markdown="docs/readouts/navy-transition-v1.md",
+        sidecar="docs/readouts/navy-transition-v1.summary.json",
+        renderer="scripts/data/build_navy_transition_readout.py:render_markdown",
+    ),
+)
 
 # Renderers deliberately outside the round trip, with the reason they are exempt.
 # The round trip needs a *committed* pair: an artifact in the tree to render from and a
