@@ -13,7 +13,7 @@ frozen_artifacts:
   - path: studies/sba-annual-report-structural-comparison/source-manifest.json
     sha256: be8adfce554b2811cb612428bebab314f061b2a808b9cc957ad0311797388db3
   - path: studies/sba-annual-report-structural-comparison/validation-design-v1.md
-    sha256: 02e0fadd1f623096d20105fb4af47bba0b9c1c98d0c9ca10123da40907ec2da2
+    sha256: 7373d7e189bf8dce3ec4611064f698571053b3fb397e213e1bf8873424839fa3
   - path: studies/sba-annual-report-structural-comparison/validation-population-v1.csv
     sha256: 48dfdf1ea70e9a74378c21a3a661795540ebd6450c77365ebdad76c6569b68c1
   - path: studies/sba-annual-report-tables/award-export-2026-09-17.meta.json

@@ -152,6 +152,14 @@ Use the printed jurisdiction row. Use the printed program and phase column.
 Extract award counts only. Do not extract dollar values. Preserve printed zero.
 Do not infer a count from a row total.
 
+Identify a jurisdiction row from its printed label and the table's count-column
+geometry. A numeric line with no mapped jurisdiction label is not by itself a
+jurisdiction row. It can be a continuation, header, footer, or total. Exclude
+such a line only after the PDF structure shows that it is outside the printed
+jurisdiction rows. Abort if the line could be an unreadable jurisdiction row.
+Do not classify every line with the table's numeric-column count as a
+jurisdiction row.
+
 Independently verify table completeness before submission:
 
 - FY2020 has 53 printed jurisdiction rows;
