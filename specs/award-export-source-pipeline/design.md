@@ -6,6 +6,10 @@ The Phase II path owns an exact CSV reader and then constructs canonical award
 identities. The SBA study uses Pandas directly and counts source rows. A broad
 loader collapses source editions for other uses. These are different contracts.
 
+The dated consumer inventory is in [consumer-inventory.md](consumer-inventory.md).
+It is the boundary for this migration. Only the Phase II parser owner and the
+SBA study change here.
+
 ## Proposed flow
 
 ```text

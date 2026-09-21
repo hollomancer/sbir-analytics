@@ -34,11 +34,11 @@ bypassing lifecycle review; the status and rationale still require human judgmen
   versus R01-equivalent transaction-cost study. Target tier is `exploratory`;
   the study contract is `reproducible` and non-citable. NSF/DOE/NASA/DoD
   series, Dagster, and evidence promotion are out of scope.
-- **`award-export-semantics` — Active.** Primitives contract for the one
+- **`award-export-semantics` — Maintenance.** Primitives contract for the one
   source-faithful SBIR.gov export-row grain, the one award-year profile needed
   by the SBA annual-report study, and pinned source metadata. It does not move
   data, define award identity, or authorize a public claim.
-- **`award-export-source-pipeline` — Active.** Pipelines contract for the exact
+- **`award-export-source-pipeline` — Maintenance.** Pipelines contract for the exact
   42-column SBIR.gov raw reader, pin-before-use verification, new-capture
   vintage layout, and migration of the SBA annual-report study only. Existing
   storage moves and other reader migrations require separate review.

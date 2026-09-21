@@ -2,9 +2,10 @@
 
 ## Gate phase
 
-- [ ] 1. Provide durable acquisition for the exact pinned export bytes.
-  - Verify: a clean environment retrieves 394,636,989 bytes and verifies the
-    frozen SHA-256 before use.
+- [ ] 1. Provide durable acquisition for all exact source bytes.
+  - Verify: a clean environment retrieves the 394,636,989-byte export and all
+    three report PDFs, then verifies every frozen SHA-256 and byte count before
+    use.
   - Requirements: publication gate 1, 4.2
 
 - [ ] 2. Select, approve, and freeze the prospective fidelity design.

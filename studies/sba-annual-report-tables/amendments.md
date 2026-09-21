@@ -289,3 +289,21 @@ matching `mod_awarddatapublic`, whereas the legacy `awarddatapublic` path on the
 without UEI. Recorded as `source_url_evidence: inferred_from_schema`. The 2026-08-30 vintage cited
 by the drift evidence is now pinned with path, hash, size and parsed record count; it is the vintage
 that shows drift is episodic (+2 records in 3.6 months, then +87 in 18 days).
+
+## 2026-09-21 — source identity made executable; analytical values unchanged
+
+The September 17 source sidecar now records the parsed row count, ordered-schema fingerprint,
+upstream object timestamp and version, retrieval context, operator role, and access note required by
+the shared source contract. The original retrieval tool and version were not recorded, so the
+sidecar says `not-recorded-legacy-capture`; it does not invent them. A fresh retrieval on September
+21 returned the same 394,636,989 bytes and SHA-256
+`aed146eab56f370c9f3fe7f562475e3eedfc61cca2eba112c830fac6f73bf38a`. The response identified S3
+object version `Jm_ZxEbD5MStDhkSNjahwgKY8QAYoJlm`, which is now part of the source URL.
+
+The study now refuses a missing or mismatched sidecar, byte count, SHA-256, parsed row count, column
+count, or ordered-schema fingerprint before selecting study rows. It declares
+`export-row-v1` and `award-year-field-v1`; the raw reader still performs no deduplication or
+jurisdiction policy. The committed analytical cell CSV is byte-identical to the pre-migration
+output. The result manifest changes only to add the declared profiles and complete, portable source
+provenance. This amendment does not validate the post-hoc comparison bands, change the blocked
+published-sample outcome, or authorize a citable claim.

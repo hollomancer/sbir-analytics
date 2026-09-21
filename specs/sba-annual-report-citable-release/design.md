@@ -67,6 +67,11 @@ round-trip, mutation, audit, and reader-review checks
 The renderer reads only generated results and frozen explanatory text. It does
 not recalculate data or contain hand-entered findings.
 
+The source acquisition record covers the 2026-09-17 export and the FY2020,
+FY2021, and FY2022 report PDFs. A release asset or upstream object version is
+acceptable only when a clean replay verifies its frozen SHA-256 and byte count.
+An ordinary mutable URL is not sufficient.
+
 ## Gate reconciliation
 
 The current study correctly blocks a published-sample reproduction claim. A

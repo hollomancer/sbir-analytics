@@ -1,10 +1,9 @@
-"""Unit tests for local-first SBIR awards download.
+"""Unit tests for local-first, pinned SBIR award-export capture."""
 
-Covers the vintage/history layout and sha256 change detection that replace the
-S3 dated-key scheme. Network access is always mocked.
-"""
-
+import csv
+import io
 import json
+from datetime import UTC, datetime
 from pathlib import Path
 from unittest.mock import patch
 
@@ -12,13 +11,35 @@ import pytest
 
 from sbir_etl.extractors.source_downloads.sbir import (
     CSV_NAME,
+    LEGACY_VINTAGE_DIR,
     META_NAME,
+    VINTAGE_DIR,
     download_sbir_awards,
     find_latest_vintage,
 )
+from sbir_etl.extractors.sbir_award_export import SBIR_GOV_SOURCE_COLUMNS
 
-CSV_A = b"award_id,company\n1,Acme\n"
-CSV_B = b"award_id,company\n1,Acme\n2,Globex\n"
+
+def _csv_bytes(companies: list[str]) -> bytes:
+    output = io.StringIO(newline="")
+    writer = csv.writer(output)
+    writer.writerow(SBIR_GOV_SOURCE_COLUMNS)
+    for index, company in enumerate(companies, start=1):
+        values = dict.fromkeys(SBIR_GOV_SOURCE_COLUMNS, "")
+        values.update(
+            {
+                "Company": company,
+                "Agency Tracking Number": f"TRACK-{index}",
+                "Award Year": "2026",
+                "Award Amount": "1",
+            }
+        )
+        writer.writerow([values[column] for column in SBIR_GOV_SOURCE_COLUMNS])
+    return output.getvalue().encode("utf-8")
+
+
+CSV_A = _csv_bytes(["Acme"])
+CSV_B = _csv_bytes(["Acme", "Globex"])
 
 
 @pytest.fixture
@@ -32,7 +53,7 @@ def _set(fake_fetch, payload: bytes) -> str:
     import hashlib
 
     digest = hashlib.sha256(payload).hexdigest()
-    fake_fetch.return_value = (payload, digest)
+    fake_fetch.return_value = (payload, digest, {})
     return digest
 
 
@@ -50,7 +71,7 @@ class TestFirstDownload:
 
         vintage_csv = Path(result["vintage"]) / CSV_NAME
         assert vintage_csv.read_bytes() == CSV_A
-        assert vintage_csv.parent.parent == tmp_path / "history"
+        assert vintage_csv.parent.parent == tmp_path / VINTAGE_DIR
 
     def test_writes_metadata_sidecar(self, tmp_path, fake_fetch):
         digest = _set(fake_fetch, CSV_A)
@@ -59,9 +80,13 @@ class TestFirstDownload:
 
         meta = json.loads((Path(result["vintage"]) / META_NAME).read_text())
         assert meta["sha256"] == digest
-        assert meta["size"] == len(CSV_A)
+        assert meta["size_bytes"] == len(CSV_A)
+        assert meta["row_count"] == 1
+        assert meta["column_count"] == 42
+        assert len(meta["ordered_schema_sha256"]) == 64
         assert meta["source_url"].startswith("http")
-        assert meta["downloaded_at"]
+        assert meta["retrieved_at"]
+        assert meta["operator_identity"] == "automation:sbir-awards-download"
 
     def test_creates_missing_destination(self, tmp_path, fake_fetch):
         _set(fake_fetch, CSV_A)
@@ -81,7 +106,7 @@ class TestChangeDetection:
 
         assert second["changed"] is False
         # No second vintage directory was created.
-        assert [d.name for d in (tmp_path / "history").iterdir()] == [Path(first["vintage"]).name]
+        assert [d.name for d in (tmp_path / VINTAGE_DIR).iterdir()] == [Path(first["vintage"]).name]
 
     def test_changed_payload_creates_new_vintage(self, tmp_path, fake_fetch):
         _set(fake_fetch, CSV_A)
@@ -89,51 +114,65 @@ class TestChangeDetection:
 
         _set(fake_fetch, CSV_B)
         # Force a distinct vintage date so the two do not collide.
-        with patch("sbir_etl.extractors.source_downloads.sbir.datetime") as dt:
-            dt.now.return_value.strftime.return_value = "2026-01-02"
-            dt.now.return_value.isoformat.return_value = "2026-01-02T00:00:00+00:00"
+        with patch(
+            "sbir_etl.extractors.source_downloads.sbir._utc_now",
+            return_value=datetime(2026, 9, 22, tzinfo=UTC),
+        ):
             result = download_sbir_awards(tmp_path)
 
         assert result["changed"] is True
         assert (tmp_path / CSV_NAME).read_bytes() == CSV_B
-        assert len(list((tmp_path / "history").iterdir())) == 2
+        assert len(list((tmp_path / VINTAGE_DIR).iterdir())) == 2
 
-    def test_missing_sidecar_forces_redownload(self, tmp_path, fake_fetch):
+    def test_missing_sidecar_refuses_same_day_overwrite(self, tmp_path, fake_fetch):
         _set(fake_fetch, CSV_A)
         first = download_sbir_awards(tmp_path)
         (Path(first["vintage"]) / META_NAME).unlink()
 
-        result = download_sbir_awards(tmp_path)
+        with pytest.raises(FileExistsError, match="refusing to overwrite"):
+            download_sbir_awards(tmp_path)
 
-        assert result["changed"] is True
-
-    def test_corrupt_sidecar_forces_redownload(self, tmp_path, fake_fetch):
+    def test_corrupt_sidecar_refuses_same_day_overwrite(self, tmp_path, fake_fetch):
         _set(fake_fetch, CSV_A)
         first = download_sbir_awards(tmp_path)
         (Path(first["vintage"]) / META_NAME).write_text("{not json")
 
-        result = download_sbir_awards(tmp_path)
+        with pytest.raises(FileExistsError, match="refusing to overwrite"):
+            download_sbir_awards(tmp_path)
 
-        assert result["changed"] is True
+    def test_changed_payload_refuses_same_day_overwrite(self, tmp_path, fake_fetch):
+        _set(fake_fetch, CSV_A)
+        download_sbir_awards(tmp_path)
+        _set(fake_fetch, CSV_B)
+
+        with pytest.raises(FileExistsError, match="refusing to overwrite"):
+            download_sbir_awards(tmp_path)
 
 
 class TestFindLatestVintage:
     def test_returns_none_when_absent(self, tmp_path):
-        assert find_latest_vintage(tmp_path / "history") is None
+        assert find_latest_vintage(tmp_path / VINTAGE_DIR) is None
 
     def test_ignores_vintage_without_csv(self, tmp_path):
-        history = tmp_path / "history"
+        history = tmp_path / VINTAGE_DIR
         (history / "2026-01-01").mkdir(parents=True)
         assert find_latest_vintage(history) is None
 
     def test_picks_newest_by_date_name(self, tmp_path):
-        history = tmp_path / "history"
+        history = tmp_path / VINTAGE_DIR
         for date in ("2026-01-01", "2026-03-05", "2026-02-09"):
             d = history / date
             d.mkdir(parents=True)
             (d / CSV_NAME).write_bytes(CSV_A)
 
         assert find_latest_vintage(history).name == "2026-03-05"
+
+    def test_legacy_history_remains_undisturbed(self, tmp_path):
+        legacy = tmp_path / LEGACY_VINTAGE_DIR / "2026-01-01"
+        legacy.mkdir(parents=True)
+        (legacy / CSV_NAME).write_bytes(CSV_A)
+
+        assert find_latest_vintage(tmp_path / LEGACY_VINTAGE_DIR) == legacy
 
 
 class TestCanonicalRepair:

@@ -1,7 +1,7 @@
 # Award Export Semantics — Requirements
 
-> **Lifecycle status:** Active
-> **Spec-file progress:** Ready for implementation
+> **Lifecycle status:** Maintenance
+> **Spec-file progress:** Complete
 > Anchors inventory question **D1** in
 > [docs/research-questions.md](../../docs/research-questions.md#d1-descriptive-tier-1).
 

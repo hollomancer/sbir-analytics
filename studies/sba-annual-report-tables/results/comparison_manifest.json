@@ -1,17 +1,24 @@
 {
   "decisions": {
+    "award_grain": "export-row-v1",
     "deduplication": "none",
     "dropped_blank_jurisdiction": 1,
+    "fiscal_year_basis": "award-year-field-v1",
     "jurisdiction_profile": "us-jurisdiction-strict-v1",
     "window": "Award Year field"
   },
   "dollar_band_status": "No published-dollar tolerance is committed. Dollar deltas are reported as measured and carry no verdict. The whole-dollar allowance is used only to classify a cell whose counts agree as `rounding`.",
   "inputs": {
     "award_export": {
-      "path": "data/raw/sbir/history/2026-09-17/award_data.csv",
+      "bytes": 394636989,
+      "ordered_schema_sha256": "9f4ddf95992ccfb3a641d0f98bcf3ed591b9f3d5972cfd186d3d91708cc65127",
+      "path": "data/raw/sbir/award-export/2026-09-17/award_data.csv",
       "pinned": true,
-      "retrieval_manifest": "/private/tmp/s1repo/studies/sba-annual-report-tables/award-export-2026-09-17.meta.json",
-      "sha256": "aed146eab56f370c9f3fe7f562475e3eedfc61cca2eba112c830fac6f73bf38a"
+      "retrieval_manifest": "studies/sba-annual-report-tables/award-export-2026-09-17.meta.json",
+      "retrieved_at": "2026-09-17T01:32:00+00:00",
+      "rows": 219590,
+      "sha256": "aed146eab56f370c9f3fe7f562475e3eedfc61cca2eba112c830fac6f73bf38a",
+      "source_url": "https://data.www.sbir.gov/mod_awarddatapublic/award_data.csv?versionId=Jm_ZxEbD5MStDhkSNjahwgKY8QAYoJlm"
     },
     "published_tables": {
       "awards_by_state_fy20.csv": "0c8465c210f122a75b42b5afef147f688e73cec6a82a230f0d33f377def3403c",

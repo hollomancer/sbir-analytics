@@ -38,8 +38,9 @@ or promote the study.
 
 All gates must close before the study becomes citable:
 
-1. The exact 394,636,989-byte export is durably retrievable and verifies as
-   SHA-256 `aed146eab56f370c9f3fe7f562475e3eedfc61cca2eba112c830fac6f73bf38a`.
+1. The exact 394,636,989-byte export and the three exact SBA report PDFs are
+   durably retrievable. Each source verifies against its frozen SHA-256 and byte
+   count before use.
 2. A validation design is approved and frozen before its evaluated run.
 3. The validation tests source capture and transformation fidelity on an
    independent extraction or untouched eligible population. It does not test
@@ -126,7 +127,7 @@ when its evidence changes, so that hidden drift cannot preserve the same claim.
 
 - `award-export-semantics` — ACTIVE
 - `award-export-source-pipeline` — ACTIVE
-- Durable access to the exact pinned export — BLOCKED
+- Durable access to all four exact source files — IN PROGRESS
 - Approved prospective validation design — BLOCKED
 - Evidence-auditor approval — BLOCKED
 

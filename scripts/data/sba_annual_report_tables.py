@@ -22,7 +22,6 @@ jurisdiction). Cell displacement must never be attributed to counting.
 from __future__ import annotations
 
 import argparse
-import hashlib
 import json
 from dataclasses import asdict, dataclass
 from pathlib import Path
@@ -31,13 +30,16 @@ from typing import Any
 import pandas as pd
 
 from sbir_etl.exceptions import ValidationError
+from sbir_etl.extractors.sbir_award_export import load_verified_award_export
 from sbir_etl.identity.geography import USJurisdictionProfile, normalize_us_jurisdiction
+from sbir_etl.models.award_export import AwardExportSourceMetadata, AwardGrain, FiscalYearBasis
+from sbir_etl.utils.data.file_io import file_sha256
 
 EPISTEMIC_TIER = "exploratory"
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
 STUDY_ROOT = REPOSITORY_ROOT / "studies/sba-annual-report-tables"
-DEFAULT_EXPORT = REPOSITORY_ROOT / "data/raw/sbir/history/2026-09-17/award_data.csv"
+DEFAULT_EXPORT = REPOSITORY_ROOT / "data/raw/sbir/award-export/2026-09-17/award_data.csv"
 DEFAULT_PUBLISHED_DIR = STUDY_ROOT / "data"
 DEFAULT_OUTPUT_DIR = STUDY_ROOT / "results"
 
@@ -132,26 +134,20 @@ class YearComparison:
     classification_counts: dict[str, int]
 
 
-def sha256_file(path: Path) -> str:
-    """Return the SHA-256 of ``path``, for pinning inputs in the run manifest."""
-    digest = hashlib.sha256()
-    with path.open("rb") as handle:
-        for chunk in iter(lambda: handle.read(1 << 20), b""):
-            digest.update(chunk)
-    return digest.hexdigest()
+def _integer(value: Any) -> int:
+    """Convert a Pandas scalar after the owning column has been integer-cast."""
+
+    return int(value)
 
 
 def _repository_relative(path: Path) -> str:
-    """Render ``path`` relative to the repository when it sits inside it.
+    """Render a portable source reference without leaking a host path."""
 
-    An export supplied from outside the repository is recorded absolutely rather
-    than raising, so a run against a scratch copy still produces a manifest.
-    """
     resolved = path.resolve()
     try:
         return str(resolved.relative_to(REPOSITORY_ROOT))
     except ValueError:
-        return str(resolved)
+        return f"external-input/{resolved.name}"
 
 
 def normalize_jurisdiction(value: Any) -> str:
@@ -171,28 +167,6 @@ def normalize_jurisdiction(value: Any) -> str:
             "resolve the mapping rather than dropping the record"
         )
     return code
-
-
-def verify_export_pinned(export_path: Path, retrieval_manifest: Path) -> str:
-    """Check the export against the committed retrieval manifest before use.
-
-    Recording a hash after the fact does not pin anything: ``--export`` is
-    overridable and the export is gitignored, so a wrong endpoint would
-    otherwise produce a successful run carrying an authoritative-looking hash.
-    This study has already been burned once by a near-identical SBIR.gov
-    endpoint serving a different product, so the check runs before aggregation
-    and refuses rather than warns.
-    """
-    expected = json.loads(retrieval_manifest.read_text(encoding="utf-8"))["sha256"]
-    actual = sha256_file(export_path)
-    if actual != expected:
-        raise ValidationError(
-            f"export at {export_path} has sha256 {actual}, but {retrieval_manifest.name} "
-            f"pins {expected}. This is a different export, so the comparison would not be "
-            "this study. Re-download the pinned vintage, or pass --allow-unpinned to run "
-            "against another export and have the result labelled unpinned."
-        )
-    return actual
 
 
 def classify_cell(delta: int, dollar_delta: int, tolerance: int) -> str:
@@ -221,7 +195,11 @@ def classify_cell(delta: int, dollar_delta: int, tolerance: int) -> str:
     return "pipeline_defect"
 
 
-def load_award_export(path: Path, report_years: tuple[int, ...] = REPORT_YEARS) -> pd.DataFrame:
+def load_award_export(
+    path: Path,
+    retrieval_manifest: Path = DEFAULT_RETRIEVAL_MANIFEST,
+    report_years: tuple[int, ...] = REPORT_YEARS,
+) -> tuple[pd.DataFrame, AwardExportSourceMetadata]:
     """Load award rows for ``report_years`` from a pinned SBIR.gov export.
 
     No de-duplication is applied. Distinct ``(Contract, Phase)`` pairs already
@@ -230,13 +208,15 @@ def load_award_export(path: Path, report_years: tuple[int, ...] = REPORT_YEARS) 
     tolerance absorbs. Rows with a blank jurisdiction are dropped and counted,
     because the published tables have no cell to hold them.
     """
-    frame = pd.read_csv(
-        path,
-        usecols=["Award Year", "Program", "Phase", "State", "Award Amount"],
-        dtype=str,
-        low_memory=False,
-    )
-    frame["report_year"] = pd.to_numeric(frame["Award Year"], errors="coerce")
+    verified = load_verified_award_export(path, retrieval_manifest)
+    frame = verified.frame.loc[
+        :, ["Award Year", "Program", "Phase", "State", "Award Amount"]
+    ].copy()
+    basis = FiscalYearBasis.AWARD_YEAR_FIELD_V1
+    frame["report_year"] = [
+        basis.parse(value, row_location=f"CSV record {index + 2}")
+        for index, value in enumerate(frame["Award Year"])
+    ]
     frame["amount"] = pd.to_numeric(frame["Award Amount"], errors="coerce")
     frame = frame[frame["report_year"].isin(report_years)].copy()
     frame["report_year"] = frame["report_year"].astype(int)
@@ -254,7 +234,7 @@ def load_award_export(path: Path, report_years: tuple[int, ...] = REPORT_YEARS) 
             "export carries values the published tables cannot hold: "
             f"programs={unknown_programs} phases={unknown_phases}"
         )
-    return frame
+    return frame, verified.metadata
 
 
 def recompute_cells(awards: pd.DataFrame, report_year: int) -> pd.DataFrame:
@@ -349,7 +329,12 @@ def compare_year(
     right = recompute_cells(awards, report_year)
     merged = left.merge(right, on=["jurisdiction", "program", "phase"], how="outer")
     merged["report_year"] = report_year
-    for column in ("published_count", "recomputed_count", "published_dollars", "recomputed_dollars"):
+    for column in (
+        "published_count",
+        "recomputed_count",
+        "published_dollars",
+        "recomputed_dollars",
+    ):
         merged[column] = merged[column].fillna(0).astype("int64")
 
     merged["delta"] = merged["recomputed_count"] - merged["published_count"]
@@ -357,7 +342,7 @@ def compare_year(
     merged["tolerance"] = merged["published_count"].map(cell_tolerance)
     merged["within_tolerance"] = merged["delta"].abs() <= merged["tolerance"]
     merged["classification"] = [
-        classify_cell(int(row.delta), int(row.dollar_delta), int(row.tolerance))
+        classify_cell(_integer(row.delta), _integer(row.dollar_delta), _integer(row.tolerance))
         for row in merged.itertuples()
     ]
 
@@ -395,7 +380,9 @@ def compare_year(
         recomputed_dollars=recomputed_dollars,
         dollar_delta=recomputed_dollars - published_dollars,
         dollar_delta_fraction=(
-            (recomputed_dollars - published_dollars) / published_dollars if published_dollars else 0.0
+            (recomputed_dollars - published_dollars) / published_dollars
+            if published_dollars
+            else 0.0
         ),
         classification_counts={
             name: int((merged["classification"] == name).sum()) for name in CELL_CLASSES
@@ -407,14 +394,14 @@ def compare_year(
             jurisdiction=str(record.jurisdiction),
             program=str(record.program),
             phase=str(record.phase),
-            published_count=int(record.published_count),
-            recomputed_count=int(record.recomputed_count),
-            delta=int(record.delta),
-            tolerance=int(record.tolerance),
+            published_count=_integer(record.published_count),
+            recomputed_count=_integer(record.recomputed_count),
+            delta=_integer(record.delta),
+            tolerance=_integer(record.tolerance),
             within_tolerance=bool(record.within_tolerance),
-            published_dollars=int(record.published_dollars),
-            recomputed_dollars=int(record.recomputed_dollars),
-            dollar_delta=int(record.dollar_delta),
+            published_dollars=_integer(record.published_dollars),
+            recomputed_dollars=_integer(record.recomputed_dollars),
+            dollar_delta=_integer(record.dollar_delta),
             classification=str(record.classification),
         )
         for record in merged.itertuples()
@@ -428,14 +415,13 @@ def run(
     output_dir: Path = DEFAULT_OUTPUT_DIR,
     report_years: tuple[int, ...] = REPORT_YEARS,
     retrieval_manifest: Path = DEFAULT_RETRIEVAL_MANIFEST,
-    allow_unpinned: bool = False,
 ) -> dict[str, Any]:
     """Recompute, compare, and write the cell table plus a run manifest."""
-    if allow_unpinned:
-        export_sha256 = sha256_file(export_path)
-    else:
-        export_sha256 = verify_export_pinned(export_path, retrieval_manifest)
-    awards = load_award_export(export_path, report_years)
+    awards, source_metadata = load_award_export(
+        export_path,
+        retrieval_manifest,
+        report_years,
+    )
     summaries: list[YearComparison] = []
     cells: list[CellComparison] = []
     published_inputs: dict[str, str] = {}
@@ -447,7 +433,7 @@ def run(
         published_path = published_dir / f"awards_by_state_fy{str(report_year)[2:]}.csv"
         if not published_path.exists():
             raise ValidationError(f"captured published table missing: {published_path}")
-        published_inputs[published_path.name] = sha256_file(published_path)
+        published_inputs[published_path.name] = file_sha256(published_path)
         published = pd.read_csv(published_path)
         identity_violations.extend(verify_published_identities(published, report_year))
         summary, year_cells = compare_year(awards, published, report_year)
@@ -473,14 +459,21 @@ def run(
         "inputs": {
             "award_export": {
                 "path": _repository_relative(export_path),
-                "sha256": export_sha256,
-                "pinned": not allow_unpinned,
+                "sha256": source_metadata.sha256,
+                "bytes": source_metadata.size_bytes,
+                "rows": source_metadata.row_count,
+                "ordered_schema_sha256": source_metadata.ordered_schema_sha256,
+                "source_url": source_metadata.source_url,
+                "retrieved_at": source_metadata.retrieved_at.isoformat(),
+                "pinned": True,
                 "retrieval_manifest": _repository_relative(retrieval_manifest),
             },
             "published_tables": published_inputs,
         },
         "decisions": {
             "window": "Award Year field",
+            "fiscal_year_basis": FiscalYearBasis.AWARD_YEAR_FIELD_V1.value,
+            "award_grain": AwardGrain.EXPORT_ROW_V1.value,
             "jurisdiction_profile": JURISDICTION_PROFILE.value,
             "deduplication": "none",
             "dropped_blank_jurisdiction": int(awards.attrs.get("dropped_blank_jurisdiction", 0)),
@@ -504,7 +497,9 @@ def run(
         "years": [asdict(summary) for summary in summaries],
         "verdict": {
             "totals_within_tolerance": all(summary.total_within_tolerance for summary in summaries),
-            "cells_outside_tolerance": sum(summary.cells_outside_tolerance for summary in summaries),
+            "cells_outside_tolerance": sum(
+                summary.cells_outside_tolerance for summary in summaries
+            ),
             "pipeline_defect_cells": sum(
                 summary.classification_counts["pipeline_defect"] for summary in summaries
             ),
@@ -536,12 +531,6 @@ def main() -> int:
     parser.add_argument("--published-dir", type=Path, default=DEFAULT_PUBLISHED_DIR)
     parser.add_argument("--output-dir", type=Path, default=DEFAULT_OUTPUT_DIR)
     parser.add_argument("--retrieval-manifest", type=Path, default=DEFAULT_RETRIEVAL_MANIFEST)
-    parser.add_argument(
-        "--allow-unpinned",
-        action="store_true",
-        help="run against an export whose hash does not match the pinned vintage; "
-        "the run manifest records the result as unpinned",
-    )
     arguments = parser.parse_args()
 
     result = run(
@@ -549,7 +538,6 @@ def main() -> int:
         arguments.published_dir,
         arguments.output_dir,
         retrieval_manifest=arguments.retrieval_manifest,
-        allow_unpinned=arguments.allow_unpinned,
     )
     for year in result["years"]:
         classes = ", ".join(
