@@ -129,13 +129,13 @@ frozen_artifacts:
   - path: studies/sba-annual-report-structural-comparison/reviews/revision-11-evidence-audit.md
     sha256: f60888d4ddcaf5485f783bd11dd045e9095745c38c8798f14729ceb3b9733407
   - path: scripts/data/render_sba_structural_comparison.py
-    sha256: 787fb2093c612f8b8851847cf16eaa1bcdb83e68931165c2100a4223f98c3267
+    sha256: 7ce3b93fce5ba75b9623ad3d6af79aeade71d31958a2d4cfdb316042bb35ca60
   - path: scripts/data/reproduce_sba_structural_comparison.py
     sha256: 741187a34827ea0df008ca627aedd239a008d7e5f9937d70eb43a607baeab436
   - path: studies/sba-annual-report-structural-comparison/release/public-result.json
-    sha256: b87c38ebcc43621d5bb83aaa1102006bc5ab61a8da33e8ed6645eb0b76f87dd2
+    sha256: b32462aa1fd904f49f1a463843ce2f0ed5fee24cd83689f026cf2f9e81df73b4
   - path: docs/public/sba-structural-comparison.md
-    sha256: 8ab91c64cf60eed4876bf4b7dd3db6c4023c4d50de5c49f30c533b34c741ae02
+    sha256: ec09438d5788f8e1ee4b64fbb2b8035ff587264f222e3832c316a901788b0d41
 implementation:
   - path: packages/sbir-analytics/sbir_analytics/assets/sba_annual_report_structural_comparison/producer.py
     symbol: produce_count_sidecar

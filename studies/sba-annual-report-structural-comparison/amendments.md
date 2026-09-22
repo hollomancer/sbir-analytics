@@ -573,3 +573,35 @@ sealed components named by the attestation and seal inventory, and the replay
 verifier requires their bytes. The version-only `requirements.lock` is not a
 substitute for those evaluated artifacts. They are not installed by the normal
 reproduction path.
+
+## Revision 12 — 2026-09-22 — remove duplicated disclosure paragraph
+
+**Status:** Validated and non-citable. The 632 cells, the estimand, the
+validation result, and every disclosed measure are unchanged.
+
+The owner review found that the reader-facing page stated the 208/148 split,
+the 57 zero-versus-zero cells, and the 219-of-575 exact count twice: once in
+the result paragraph and again after the summary table. The numbers agreed, so
+this was a readability defect, not a correctness defect. A cold reader who
+meets the same three measures twice on one screen may look for a distinction
+that does not exist.
+
+The renderer no longer emits the post-table paragraph. The pre-table paragraph
+and the `Absolute difference` and `Zero vs. zero` table columns still carry
+every measure, and the machine-readable sidecar still reports
+`positive_difference_cells`, `negative_difference_cells`,
+`nonzero_union_cells`, and `nonzero_union_exact_cells`. No measure was removed
+from the packet.
+
+Re-frozen bytes: `scripts/data/render_sba_structural_comparison.py`,
+`studies/sba-annual-report-structural-comparison/release/public-result.json`,
+and `docs/public/sba-structural-comparison.md`. The public sidecar content
+digest moved to
+`23bde7b3ac2dc7d3619e4dfe5b922d0ffdbfd256919b5def6b7cfb9c2b9780cd`. The
+detached release checksum inventory and every `study.yaml` frozen pin were
+updated and verified.
+
+These are claim-facing bytes. Under the revision-11 rule, this revision still
+requires its own evidence audit and a cold named-reader review of these exact
+bytes before release. Neither is recorded yet, so the packet remains
+non-citable and this revision is not release-ready.

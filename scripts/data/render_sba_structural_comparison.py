@@ -915,12 +915,6 @@ def render_markdown(payload: Mapping[str, Any]) -> str:
             f"**{aggregate['absolute_difference']:,}** | **276** | "
             f"**{aggregate['zero_vs_zero_cells']:,}** | **356** |",
             "",
-            f"The signed total nets {aggregate['positive_difference_cells']:,} positive cells "
-            f"against {aggregate['negative_difference_cells']:,} negative cells. Of the 276 "
-            f"exact cells, {aggregate['zero_vs_zero_cells']:,} are zero versus zero. Among "
-            f"the {aggregate['nonzero_union_cells']:,} cells where either source reports a "
-            f"nonzero count, {aggregate['nonzero_union_exact_cells']:,} are exact and 356 differ.",
-            "",
             "Every nonzero difference remains `unresolved`. The study applies no tolerance",
             "verdict, dollar comparison, or causal mismatch label.",
             "",

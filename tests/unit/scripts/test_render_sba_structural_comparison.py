@@ -67,7 +67,8 @@ def test_committed_public_artifacts_regenerate_byte_for_byte() -> None:
     markdown = MARKDOWN.read_text(encoding="utf-8")
     for disclosure in (
         "absolute cell differences sum to 869",
-        "208 positive cells against 148 negative cells",
+        "208 positive and 148 negative recomputed-minus-published differences",
+        "cell differences cannot cancel each other",
         "57 are zero versus zero",
         "575 cells where either source reports a nonzero count",
         "1 had blank `State` and was excluded",
@@ -76,6 +77,7 @@ def test_committed_public_artifacts_regenerate_byte_for_byte() -> None:
         "study-only code MH",
     ):
         assert disclosure in markdown
+    assert markdown.count("57 are zero versus zero") == 1
 
 
 def test_registered_pair_rejects_a_manual_markdown_edit(tmp_path: Path) -> None:

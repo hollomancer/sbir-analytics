@@ -34,7 +34,7 @@
       {
         "label": "Public result renderer",
         "path": "scripts/data/render_sba_structural_comparison.py",
-        "sha256": "787fb2093c612f8b8851847cf16eaa1bcdb83e68931165c2100a4223f98c3267"
+        "sha256": "7ce3b93fce5ba75b9623ad3d6af79aeade71d31958a2d4cfdb316042bb35ca60"
       },
       {
         "label": "Environment lock",
@@ -7826,6 +7826,6 @@
       "threshold_met": true
     }
   },
-  "content_sha256": "315587761de27092df09cb1c394e86f2ad1f3cdcc7a199341e849108d4e7537f",
+  "content_sha256": "23bde7b3ac2dc7d3619e4dfe5b922d0ffdbfd256919b5def6b7cfb9c2b9780cd",
   "schema_version": 2
 }
