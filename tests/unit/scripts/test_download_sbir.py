@@ -109,15 +109,17 @@ class TestChangeDetection:
         assert [d.name for d in (tmp_path / VINTAGE_DIR).iterdir()] == [Path(first["vintage"]).name]
 
     def test_changed_payload_creates_new_vintage(self, tmp_path, fake_fetch):
-        _set(fake_fetch, CSV_A)
-        download_sbir_awards(tmp_path)
-
-        _set(fake_fetch, CSV_B)
-        # Force a distinct vintage date so the two do not collide.
         with patch(
             "sbir_etl.extractors.source_downloads.sbir._utc_now",
-            return_value=datetime(2026, 9, 22, tzinfo=UTC),
+            side_effect=(
+                datetime(2026, 9, 21, tzinfo=UTC),
+                datetime(2026, 9, 22, tzinfo=UTC),
+            ),
         ):
+            _set(fake_fetch, CSV_A)
+            download_sbir_awards(tmp_path)
+
+            _set(fake_fetch, CSV_B)
             result = download_sbir_awards(tmp_path)
 
         assert result["changed"] is True
