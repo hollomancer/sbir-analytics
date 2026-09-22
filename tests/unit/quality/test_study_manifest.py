@@ -104,6 +104,29 @@ def test_manifest_reference_validation_checks_hash_and_symbol(tmp_path: Path) ->
     assert any("symbol 'missing' is missing" in error for error in errors)
 
 
+def test_external_frozen_source_does_not_have_to_be_committed(tmp_path: Path) -> None:
+    artifact = _write(tmp_path, "specs/example.md", "frozen design\n")
+    _write(tmp_path, "sbir_etl/example.py", "def run_study():\n    return None\n")
+    raw = _manifest(hashlib.sha256(artifact.read_bytes()).hexdigest())
+    raw["frozen_artifacts"].append(
+        {
+            "path": "data/raw/exact-source.csv",
+            "sha256": "b" * 64,
+            "external_source": True,
+        }
+    )
+    manifest_path = _write(
+        tmp_path,
+        "studies/example-study/study.yaml",
+        yaml.safe_dump(raw),
+    )
+
+    manifest = load_study_manifest(manifest_path)
+
+    assert manifest.frozen_artifacts[-1].external_source is True
+    assert validate_manifest_file(manifest_path, repository_root=tmp_path) == []
+
+
 @pytest.mark.parametrize(
     "module_source",
     [

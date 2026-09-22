@@ -159,6 +159,11 @@ install-core: ## Install only the reusable sbir-etl library dependencies
 	@$(call info,Installing core sbir-etl dependencies)
 	$(call run,uv sync)
 
+.PHONY: reproduce-sba-structural
+reproduce-sba-structural: ## Reproduce the bounded SBA count comparison
+	@$(call info,Reproducing the SBA annual-report structural comparison)
+	$(call run,PYTHONPATH="$(CURDIR):$(CURDIR)/packages/sbir-analytics" uv run --no-sync python scripts/data/reproduce_sba_structural_comparison.py)
+
 .PHONY: doctor
 doctor: ## Verify the local Python development environment
 	@$(call info,Checking local development environment)

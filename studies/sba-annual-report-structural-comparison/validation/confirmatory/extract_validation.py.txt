@@ -1,0 +1,524 @@
+#!/usr/bin/env python3
+"""Independent extractor for the sealed SBA structural-fidelity v5 packet."""
+
+from __future__ import annotations
+
+import csv
+import hashlib
+import io
+import json
+import re
+import sys
+from collections import Counter
+from datetime import datetime, timezone
+from pathlib import Path
+
+
+SUBMISSION = Path(__file__).resolve().parent
+PACKET = Path("/private/tmp/sba-structural-blind-packet-v5")
+PACKET_MANIFEST = PACKET / "packet-manifest.json"
+EXPECTED_PACKET_MANIFEST_SHA256 = (
+    "51033aca620e71f71fc18d6ae398d27fe238fbf7c7d6cda4e748ba7db3299314"
+)
+POPULATION = PACKET / "study/validation-population-v1.csv"
+SOURCE_MANIFEST = PACKET / "study/source-manifest.json"
+MAPPING_PATH = SUBMISSION / "jurisdiction-mapping.json"
+OUTPUT_PATH = SUBMISSION / "validation-values.csv"
+DIAGNOSTICS_PATH = SUBMISSION / "run-diagnostics.json"
+
+SUBMISSION_HEADER = [
+    "unit_id",
+    "target",
+    "report_year",
+    "table_number",
+    "jurisdiction",
+    "program",
+    "phase",
+    "value",
+    "status",
+    "source_page",
+    "source_locator",
+    "missing_reason",
+]
+
+POPULATION_HEADER = [
+    "unit_id",
+    "target",
+    "report_year",
+    "jurisdiction",
+    "program",
+    "phase",
+]
+
+SOURCE_COPY_NAMES = {
+    "sbir-gov-award-export-2026-09-17": "award_data.csv",
+    "sba-annual-report-fy2020": "fy2020.pdf",
+    "sba-annual-report-fy2021": "fy2021.pdf",
+    "sba-annual-report-fy2022": "fy2022.pdf",
+}
+
+PDF_CONFIG = {
+    2020: {"source_id": "sba-annual-report-fy2020", "table": 18, "rows": 53},
+    2021: {"source_id": "sba-annual-report-fy2021", "table": 18, "rows": 53},
+    2022: {"source_id": "sba-annual-report-fy2022", "table": 20, "rows": 52},
+}
+
+COUNT_COLUMNS = (
+    ("SBIR", "Phase I", 0),
+    ("STTR", "Phase I", 2),
+    ("SBIR", "Phase II", 4),
+    ("STTR", "Phase II", 6),
+)
+
+
+def utc_now() -> str:
+    return datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+
+
+def sha256(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as stream:
+        for chunk in iter(lambda: stream.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def verify_file(path: Path, size: int, digest: str) -> None:
+    if not path.is_file():
+        raise RuntimeError(f"missing file: {path}")
+    actual_size = path.stat().st_size
+    if actual_size != size:
+        raise RuntimeError(f"byte-count mismatch: {path}: {actual_size} != {size}")
+    actual_digest = sha256(path)
+    if actual_digest != digest:
+        raise RuntimeError(f"SHA-256 mismatch: {path}: {actual_digest} != {digest}")
+
+
+def load_json(path: Path):
+    with path.open("r", encoding="utf-8") as stream:
+        return json.load(stream)
+
+
+def packet_preflight() -> dict:
+    manifest_digest = sha256(PACKET_MANIFEST)
+    if manifest_digest != EXPECTED_PACKET_MANIFEST_SHA256:
+        raise RuntimeError("packet-manifest SHA-256 mismatch")
+    packet_manifest = load_json(PACKET_MANIFEST)
+    files = packet_manifest.get("files")
+    if not isinstance(files, list) or not files:
+        raise RuntimeError("packet manifest has no declared files")
+    for declaration in files:
+        relative = Path(declaration["path"])
+        if relative.is_absolute() or ".." in relative.parts:
+            raise RuntimeError(f"unsafe packet path: {relative}")
+        digest = declaration["sha256"]
+        if not re.fullmatch(r"[0-9a-f]{64}", digest):
+            raise RuntimeError(f"invalid declared SHA-256: {relative}")
+        size = declaration["size_bytes"]
+        if not isinstance(size, int) or size < 0:
+            raise RuntimeError(f"invalid declared byte count: {relative}")
+        verify_file(PACKET / relative, size, digest)
+    return packet_manifest
+
+
+def load_population() -> tuple[list[dict[str, str]], set[tuple[int, str, str, str]], set[tuple[int, str, str, str]]]:
+    with POPULATION.open("r", encoding="utf-8-sig", newline="") as stream:
+        reader = csv.DictReader(stream)
+        if reader.fieldnames != POPULATION_HEADER:
+            raise RuntimeError("population ordered header mismatch")
+        rows = list(reader)
+    if len(rows) != 1264:
+        raise RuntimeError(f"population row count mismatch: {len(rows)}")
+    unit_ids = [row["unit_id"] for row in rows]
+    if len(set(unit_ids)) != 1264:
+        raise RuntimeError("population unit_id duplicate")
+
+    published = set()
+    recomputed = set()
+    for row in rows:
+        try:
+            year = int(row["report_year"])
+        except ValueError as exc:
+            raise RuntimeError(f"invalid population year for {row['unit_id']}") from exc
+        if year not in PDF_CONFIG:
+            raise RuntimeError(f"unexpected population year: {year}")
+        if row["program"] not in {"SBIR", "STTR"}:
+            raise RuntimeError(f"unexpected population program: {row['program']}")
+        if row["phase"] not in {"Phase I", "Phase II"}:
+            raise RuntimeError(f"unexpected population phase: {row['phase']}")
+        key = (year, row["jurisdiction"], row["program"], row["phase"])
+        if row["target"] == "published_count":
+            published.add(key)
+        elif row["target"] == "recomputed_count":
+            recomputed.add(key)
+        else:
+            raise RuntimeError(f"unexpected population target: {row['target']}")
+    if len(published) != 632 or len(recomputed) != 632 or published != recomputed:
+        raise RuntimeError("population target/key balance mismatch")
+    return rows, published, recomputed
+
+
+def verify_sources(source_manifest: dict, packet_manifest: dict) -> dict[str, dict]:
+    if source_manifest.get("schema_version") != 1:
+        raise RuntimeError("source manifest schema version mismatch")
+    if source_manifest.get("capture_gate", {}).get("allowed") is not True:
+        raise RuntimeError("source manifest capture gate is not allowed")
+    if source_manifest.get("capture_gate", {}).get("blockers") != []:
+        raise RuntimeError("source manifest has capture blockers")
+    sources = source_manifest.get("sources")
+    if not isinstance(sources, list) or len(sources) != 4:
+        raise RuntimeError("source manifest must declare four sources")
+    by_id = {source["source_id"]: source for source in sources}
+    if set(by_id) != set(SOURCE_COPY_NAMES):
+        raise RuntimeError("source identity set mismatch")
+    packet_declarations = {entry["path"]: entry for entry in packet_manifest["files"]}
+    checks = {}
+    for source_id, source in by_id.items():
+        local_path = source["local_path"]
+        declaration = packet_declarations.get(local_path)
+        if declaration is None:
+            raise RuntimeError(f"source missing from packet manifest: {source_id}")
+        if declaration["sha256"] != source["sha256"] or declaration["size_bytes"] != source["size_bytes"]:
+            raise RuntimeError(f"packet/source declaration mismatch: {source_id}")
+        packet_path = PACKET / local_path
+        fresh_path = SUBMISSION / "retrieved" / SOURCE_COPY_NAMES[source_id]
+        verify_file(packet_path, source["size_bytes"], source["sha256"])
+        verify_file(fresh_path, source["size_bytes"], source["sha256"])
+        checks[source_id] = {
+            "durable_uri": source["durable_uri"],
+            "declared_size_bytes": source["size_bytes"],
+            "declared_sha256": source["sha256"],
+            "packet_copy_verified": True,
+            "fresh_retrieval_verified": True,
+        }
+    return checks
+
+
+def extract_published(
+    source_manifest: dict,
+    mapping: dict[str, str],
+    eligible_keys: set[tuple[int, str, str, str]],
+) -> tuple[dict[tuple[int, str, str, str], tuple[int, int, int]], dict[str, dict]]:
+    from pypdf import PdfReader
+
+    sources = {source["source_id"]: source for source in source_manifest["sources"]}
+    jurisdiction_codes = set(mapping.values())
+    published = {}
+    diagnostics = {}
+    for year, config in PDF_CONFIG.items():
+        source = sources[config["source_id"]]
+        path = SUBMISSION / "retrieved" / SOURCE_COPY_NAMES[config["source_id"]]
+        reader = PdfReader(str(path))
+        expected_page_count = source["page_count"]
+        if len(reader.pages) != expected_page_count:
+            raise RuntimeError(f"FY{year} page-count mismatch: {len(reader.pages)} != {expected_page_count}")
+
+        title = f"Table {config['table']}: SBIR/STTR Awards by U.S. State and Territory"
+        title_pages = []
+        for index, page in enumerate(reader.pages):
+            page_text = page.extract_text() or ""
+            normalized_page_text = " ".join(page_text.split())
+            table_header = "State SBIR Phase I STTR Phase I SBIR Phase II STTR Phase II"
+            if title in page_text and table_header in normalized_page_text:
+                title_pages.append(index)
+        if len(title_pages) != 1:
+            raise RuntimeError(f"FY{year} table title occurrence ambiguity: {title_pages}")
+        first_index = title_pages[0]
+        target_indices = (first_index, first_index + 1)
+        if target_indices[1] >= len(reader.pages):
+            raise RuntimeError(f"FY{year} table continuation page missing")
+
+        rows = {}
+        page_for_code = {}
+        for page_index in target_indices:
+            page_number = page_index + 1
+            text = reader.pages[page_index].extract_text(extraction_mode="layout") or ""
+            for line in text.splitlines():
+                parts = line.split()
+                if not parts or parts[0] not in jurisdiction_codes:
+                    continue
+                code = parts[0]
+                if code in rows:
+                    raise RuntimeError(f"FY{year} duplicate printed jurisdiction row: {code}")
+                if len(parts) != 15:
+                    raise RuntimeError(
+                        f"FY{year} ambiguous printed row token count for {code}: {len(parts)}"
+                    )
+                cells = parts[1:]
+                for offset in range(0, 14, 2):
+                    if not re.fullmatch(r"[0-9]+", cells[offset]):
+                        raise RuntimeError(f"FY{year} unreadable count cell for {code} at offset {offset}")
+                for offset in range(1, 14, 2):
+                    if not re.fullmatch(r"\$?[0-9][0-9,]*", cells[offset]):
+                        raise RuntimeError(f"FY{year} unreadable dollar cell geometry for {code} at offset {offset}")
+                rows[code] = cells
+                page_for_code[code] = page_number
+
+        expected_codes = {
+            key[1] for key in eligible_keys if key[0] == year
+        }
+        if len(rows) != config["rows"]:
+            raise RuntimeError(f"FY{year} printed row count mismatch: {len(rows)} != {config['rows']}")
+        if set(rows) != expected_codes:
+            missing = sorted(expected_codes - set(rows))
+            extra = sorted(set(rows) - expected_codes)
+            raise RuntimeError(f"FY{year} printed/population jurisdiction mismatch: missing={missing}, extra={extra}")
+
+        year_cells = 0
+        for code, cells in rows.items():
+            for program, phase, offset in COUNT_COLUMNS:
+                key = (year, code, program, phase)
+                if key not in eligible_keys or key in published:
+                    raise RuntimeError(f"FY{year} unexpected or duplicate printed key: {key}")
+                published[key] = (int(cells[offset]), page_for_code[code], config["table"])
+                year_cells += 1
+        if year_cells != config["rows"] * 4:
+            raise RuntimeError(f"FY{year} eligible cell count mismatch")
+        diagnostics[str(year)] = {
+            "page_count": len(reader.pages),
+            "table_number": config["table"],
+            "table_pdf_pages": [index + 1 for index in target_indices],
+            "printed_jurisdiction_rows": len(rows),
+            "eligible_count_columns_per_row": 4,
+            "published_count_cells": year_cells,
+            "duplicate_printed_keys": 0,
+            "omitted_printed_keys": 0,
+            "ambiguous_or_unreadable_cells": 0,
+        }
+    if set(published) != eligible_keys:
+        raise RuntimeError("published key completeness mismatch")
+    return published, diagnostics
+
+
+def extract_recomputed(
+    source_manifest: dict,
+    mapping: dict[str, str],
+    eligible_keys: set[tuple[int, str, str, str]],
+) -> tuple[Counter, dict]:
+    source = next(
+        item for item in source_manifest["sources"]
+        if item["source_id"] == "sbir-gov-award-export-2026-09-17"
+    )
+    expected_header = source_manifest["award_export_ordered_header"]
+    if len(expected_header) != source["column_count"]:
+        raise RuntimeError("declared export header column count mismatch")
+    header_bytes = json.dumps(expected_header, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
+    header_digest = hashlib.sha256(header_bytes).hexdigest()
+    if header_digest != source["ordered_header_sha256"]:
+        raise RuntimeError("declared export header fingerprint mismatch")
+
+    export_path = SUBMISSION / "retrieved" / SOURCE_COPY_NAMES[source["source_id"]]
+    counts = Counter()
+    parsed_rows = 0
+    retained_rows = 0
+    dropped_blank_state_rows = 0
+    blank_award_year_rows = 0
+    index = {name: position for position, name in enumerate(expected_header)}
+    with export_path.open("rb") as binary:
+        stream = io.TextIOWrapper(binary, encoding="utf-8-sig", newline="")
+        reader = csv.reader(stream)
+        try:
+            actual_header = next(reader)
+        except StopIteration as exc:
+            raise RuntimeError("empty export") from exc
+        if actual_header != expected_header:
+            raise RuntimeError("export ordered header mismatch")
+        if len(actual_header) != source["column_count"]:
+            raise RuntimeError("export column count mismatch")
+        for source_row_number, row in enumerate(reader, start=2):
+            parsed_rows += 1
+            if len(row) != len(expected_header):
+                raise RuntimeError(
+                    f"export row {source_row_number} column count mismatch: {len(row)}"
+                )
+            year_text = row[index["Award Year"]]
+            if year_text == "":
+                blank_award_year_rows += 1
+                continue
+            stripped_year = year_text.strip()
+            if stripped_year == "" or not re.fullmatch(r"[+-]?[0-9]+", stripped_year):
+                raise RuntimeError(f"invalid nonblank Award Year at export row {source_row_number}")
+            year = int(stripped_year)
+            if year not in PDF_CONFIG:
+                continue
+            retained_rows += 1
+            program = row[index["Program"]]
+            phase = row[index["Phase"]]
+            if program not in {"SBIR", "STTR"}:
+                raise RuntimeError(f"blocking retained Program at export row {source_row_number}")
+            if phase not in {"Phase I", "Phase II"}:
+                raise RuntimeError(f"blocking retained Phase at export row {source_row_number}")
+            state = row[index["State"]]
+            if state == "":
+                dropped_blank_state_rows += 1
+                continue
+            code = mapping.get(state)
+            if code is None:
+                raise RuntimeError(f"unmapped retained State at export row {source_row_number}: {state!r}")
+            key = (year, code, program, phase)
+            if key not in eligible_keys:
+                raise RuntimeError(f"mapped export key outside frozen population at row {source_row_number}: {key}")
+            counts[key] += 1
+
+    if parsed_rows != source["row_count"]:
+        raise RuntimeError(f"export parsed row count mismatch: {parsed_rows} != {source['row_count']}")
+    for key in eligible_keys:
+        counts.setdefault(key, 0)
+    if set(counts) != eligible_keys:
+        raise RuntimeError("export key completeness mismatch after zero-fill")
+    diagnostics = {
+        "ordered_header_verified": True,
+        "ordered_header_sha256": header_digest,
+        "column_count": len(expected_header),
+        "parsed_source_rows": parsed_rows,
+        "retained_fy2020_fy2022_rows_before_blank_state_drop": retained_rows,
+        "dropped_blank_state_rows": dropped_blank_state_rows,
+        "retained_counted_rows_after_blank_state_drop": retained_rows - dropped_blank_state_rows,
+        "blank_award_year_rows": blank_award_year_rows,
+        "deduplicated_rows": 0,
+        "countable_unit": "one parsed export row",
+        "zero_filled_eligible_groups": sum(1 for value in counts.values() if value == 0),
+    }
+    return counts, diagnostics
+
+
+def write_submission(
+    population_rows: list[dict[str, str]],
+    published: dict[tuple[int, str, str, str], tuple[int, int, int]],
+    recomputed: Counter,
+    mapping: dict[str, str],
+) -> dict:
+    code_to_name = {code: name for name, code in mapping.items()}
+    if len(code_to_name) != len(mapping):
+        raise RuntimeError("jurisdiction mapping codes are not unique")
+    written_ids = set()
+    missing_count = 0
+    with OUTPUT_PATH.open("w", encoding="utf-8", newline="") as stream:
+        writer = csv.writer(stream, lineterminator="\r\n", quoting=csv.QUOTE_MINIMAL)
+        writer.writerow(SUBMISSION_HEADER)
+        for population_row in population_rows:
+            unit_id = population_row["unit_id"]
+            if unit_id in written_ids:
+                raise RuntimeError(f"duplicate submission unit_id: {unit_id}")
+            written_ids.add(unit_id)
+            year = int(population_row["report_year"])
+            jurisdiction = population_row["jurisdiction"]
+            program = population_row["program"]
+            phase = population_row["phase"]
+            key = (year, jurisdiction, program, phase)
+            target = population_row["target"]
+            if target == "published_count":
+                value, source_page, table_number = published[key]
+                locator = (
+                    f"PDF page {source_page}; Table {table_number}; row {jurisdiction}; "
+                    f"column {program} {phase} award count (#)"
+                )
+            else:
+                value = recomputed[key]
+                source_page = ""
+                table_number = ""
+                state_name = code_to_name[jurisdiction]
+                locator = (
+                    f"award_data.csv; Award Year={year}; State={state_name}; "
+                    f"Program={program}; Phase={phase}; RFC4180 row-group count"
+                )
+            if not isinstance(value, int) or value < 0:
+                raise RuntimeError(f"invalid output value for {unit_id}")
+            writer.writerow(
+                [
+                    unit_id,
+                    target,
+                    year,
+                    table_number,
+                    jurisdiction,
+                    program,
+                    phase,
+                    value,
+                    "observed",
+                    source_page,
+                    locator,
+                    "",
+                ]
+            )
+    if len(written_ids) != 1264:
+        raise RuntimeError("submission unit count mismatch")
+
+    with OUTPUT_PATH.open("r", encoding="utf-8", newline="") as stream:
+        reader = csv.DictReader(stream)
+        if reader.fieldnames != SUBMISSION_HEADER:
+            raise RuntimeError("written submission header mismatch")
+        rows = list(reader)
+    if len(rows) != 1264 or len({row["unit_id"] for row in rows}) != 1264:
+        raise RuntimeError("written submission completeness mismatch")
+    for row in rows:
+        if row["status"] == "missing":
+            missing_count += 1
+            if row["value"] != "" or row["missing_reason"] == "":
+                raise RuntimeError("invalid missing-row contract")
+        elif row["status"] == "observed":
+            if not re.fullmatch(r"[0-9]+", row["value"]):
+                raise RuntimeError("invalid observed value")
+            if row["missing_reason"] != "":
+                raise RuntimeError("observed row has a missing reason")
+        else:
+            raise RuntimeError("invalid submission status")
+        if row["target"] == "published_count":
+            expected_table = "18" if row["report_year"] in {"2020", "2021"} else "20"
+            if row["table_number"] != expected_table or not row["source_page"]:
+                raise RuntimeError("published source/table contract failure")
+        elif row["target"] == "recomputed_count":
+            if row["table_number"] or row["source_page"]:
+                raise RuntimeError("recomputed source/table contract failure")
+        else:
+            raise RuntimeError("unexpected written target")
+        if not row["source_locator"]:
+            raise RuntimeError("empty source locator")
+    return {
+        "unit_count": len(rows),
+        "unique_unit_id_count": len({row["unit_id"] for row in rows}),
+        "missing_count": missing_count,
+        "observed_count": len(rows) - missing_count,
+        "ordered_header": SUBMISSION_HEADER,
+        "rfc4180_writer": "Python csv.writer with newline='' and CRLF line terminators",
+    }
+
+
+def main() -> None:
+    run_started_at = utc_now()
+    packet_manifest = packet_preflight()
+    source_manifest = load_json(SOURCE_MANIFEST)
+    source_checks = verify_sources(source_manifest, packet_manifest)
+    population_rows, published_keys, recomputed_keys = load_population()
+    mapping = load_json(MAPPING_PATH)
+    if not isinstance(mapping, dict) or len(mapping) != 53:
+        raise RuntimeError("jurisdiction mapping entry count mismatch")
+    if any(not isinstance(name, str) or not re.fullmatch(r"[A-Z]{2}", code) for name, code in mapping.items()):
+        raise RuntimeError("invalid jurisdiction mapping shape")
+    published, pdf_diagnostics = extract_published(source_manifest, mapping, published_keys)
+    recomputed, export_diagnostics = extract_recomputed(source_manifest, mapping, recomputed_keys)
+    submission_diagnostics = write_submission(population_rows, published, recomputed, mapping)
+    diagnostics = {
+        "status": "complete",
+        "run_started_at_utc": run_started_at,
+        "run_finished_at_utc": utc_now(),
+        "packet_manifest_sha256": sha256(PACKET_MANIFEST),
+        "packet_file_count": len(packet_manifest["files"]),
+        "packet_files_all_verified": True,
+        "source_checks": source_checks,
+        "captured_table_csvs_accessed": False,
+        "pdf_extraction": pdf_diagnostics,
+        "export_extraction": export_diagnostics,
+        "submission": submission_diagnostics,
+        "prohibited_material_exposure": False,
+    }
+    with DIAGNOSTICS_PATH.open("w", encoding="utf-8", newline="\n") as stream:
+        json.dump(diagnostics, stream, ensure_ascii=False, indent=2, sort_keys=True)
+        stream.write("\n")
+
+
+if __name__ == "__main__":
+    try:
+        main()
+    except Exception as exc:
+        print(f"ABORT: {exc}", file=sys.stderr)
+        raise

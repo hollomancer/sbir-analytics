@@ -21,7 +21,7 @@ frozen_artifacts:
   - path: studies/sba-annual-report-tables/design.md
     sha256: c4e99ae9f0243e5b61a17678f6fb5cf45fc82afc230381f8c5fdec5a24c13efe
   - path: studies/sba-annual-report-tables/amendments.md
-    sha256: 2920c84732e5ca8337aeb702e0a48a10feaab2ff8dbedd8c81945acbb8d681b3
+    sha256: ab433c432a55b9caebcb18a7066c7ce1544f6f730019738851de0a6466f71438
   - path: studies/sba-annual-report-tables/definitions-fy22.md
     sha256: 883b87b7f839bff4ea734716e6545ccca748a538fb4ed153e8f3de033e7acecb
   - path: studies/sba-annual-report-tables/definition-decisions.md
@@ -31,7 +31,7 @@ frozen_artifacts:
   - path: studies/sba-annual-report-tables/assembly-methodology.md
     sha256: dfb88cc6d852a8004e42ef22c12cbe039092266b2a84cee67a6ab0b0ecdb3eee
   - path: studies/sba-annual-report-tables/award-export-2026-09-17.meta.json
-    sha256: 4e414920e429414da21f639db8b710f286074c50d7de494300ad2c2adb00ac95
+    sha256: 54776d98b8eb8f831a5e550b63440b30a90e573fa614944fbe628f135e550e23
 implementation:
   - path: scripts/data/sba_annual_report_tables.py
     symbol: main

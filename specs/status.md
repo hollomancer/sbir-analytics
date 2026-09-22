@@ -1,6 +1,6 @@
 # Specification Status Registry
 
-Reviewed: 2026-08-03
+Reviewed: 2026-09-21
 
 This registry is the cleanup checkpoint for top-level specs. It does not replace
 the requirements, design, or tasks files; it records whether a spec is a current
@@ -34,6 +34,14 @@ bypassing lifecycle review; the status and rationale still require human judgmen
   versus R01-equivalent transaction-cost study. Target tier is `exploratory`;
   the study contract is `reproducible` and non-citable. NSF/DOE/NASA/DoD
   series, Dagster, and evidence promotion are out of scope.
+- **`award-export-semantics` — Maintenance.** Primitives contract for the one
+  source-faithful SBIR.gov export-row grain, the one award-year profile needed
+  by the SBA annual-report study, and pinned source metadata. It does not move
+  data, define award identity, or authorize a public claim.
+- **`award-export-source-pipeline` — Maintenance.** Pipelines contract for the exact
+  42-column SBIR.gov raw reader, pin-before-use verification, new-capture
+  vintage layout, and migration of the SBA annual-report study only. Existing
+  storage moves and other reader migrations require separate review.
 - **`agency-private-capital-comparison` — Active.** The NSF Phase 1 real-data
   gate is materialized for review but remains non-citable and unsigned. Phase 2
   now has a maintained, deterministic 2009Q1–2024Q4 SEC DERA Form D staging
@@ -190,6 +198,16 @@ bypassing lifecycle review; the status and rationale still require human judgmen
   estimand contract, and blinded validation.
 - **`sbir-ma-match-rate-by-fy` — Gated backlog.** Analysis-only F2 follow-up on
   completed M&A detection. Start only when FY match-rate reporting is requested.
+- **`sba-annual-report-citable-release` — Active release work.** The bounded
+  FY2020-FY2022 structural comparison is `validated`, not citable. Durable
+  source retrieval and the prospectively frozen full-population fidelity test
+  passed at 1,264/1,264 operands. The generated renderer, sidecar, clean replay,
+  and mutation checks pass. After Revision 11 disclosed absolute disagreement,
+  zero-versus-zero cells, and row-handling diagnostics, its exact-byte evidence
+  audit returned `GO` and cold named-reader review returned `BRIEF` with no
+  remediation. Publication remains gated on the closed citable materialization
+  state, immutable tag and citation metadata, and owner approval. Existing
+  post-hoc bands do not support the claim.
 - **`state-local-tax-rates` — Maintenance.** Existing hardcoded 2024 provider
   works. Remaining work is data-file/provenance cleanup for fiscal v2.
 - **`supplier-share-census` — Active.** Exploratory, non-citable F2 census of

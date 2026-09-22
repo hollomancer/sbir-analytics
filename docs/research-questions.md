@@ -112,9 +112,17 @@ lists below may name only those ranks or an explicit refusal.
   of its stale identity-rule materialization.
 - **SBIR program managers** — NSF, NIH, DoD, DOE, SBA program offices. The
   same [B2](#b2-unlabeled-follow-on) and [B3](#b3-unrecorded-phase-iii)
-  census proxies. STTR partner type ([B1](#b1-sttr-partner-types)) and
+  census proxies. The current-vintage award-count comparison
+  ([D1](#d1-award-totals)) is **Validated, not citable**; it supports
+  inspection of bounded count differences, not source equivalence. STTR
+  partner type ([B1](#b1-sttr-partner-types)) and
   spinout vs. subcontract ([B2](#b2-sttr-spinout)) are **Not computable**
   (Phase 0 design only).
+- **Fiscal-policy and state economic-development analysts** — Treasury, OMB,
+  JCT, and state economic-development offices. The current-vintage award-count
+  comparison ([D1](#d1-award-totals)) is **Validated, not citable**; it
+  supports inspection of bounded count differences, not source equivalence or
+  an estimate of economic return.
 - **Investors** — VC, PE, angels, family offices, corporate VC.
   Private-to-SBIR leverage ([F3](#f3-form-d-leverage)) is **Not
   computable**. Crowd-in vs. crowd-out ([F3](#f3-crowd-in-vs-crowd-out))
@@ -835,13 +843,22 @@ spending produce measurable new knowledge?*
 *Audience: Treasury, OMB, JCT, state economic-development offices. What is the
 dollar return on the SBIR program?*
 
+<a id="d1-descriptive-tier-1"></a>
+
 ### D1. Descriptive (Tier 1)
 
-- **Award totals**
+- <a id="d1-award-totals"></a>**Award totals**
   What are award totals by state, agency, and phase?
-  *Deps: none · Refs: [L18] · Study: [sba-annual-report-tables](../studies/sba-annual-report-tables/study.yaml)
-  (structural check of the published state tables, FY2020-FY2022; recoverability
-  within a declared band, not a restatement of the published counts)*
+  **Status:** A reproducible, non-citable historical study records the first
+  structural check. A separate current-vintage comparison is Validated, not
+  citable. A separate blinded-role implementation reproduced 1,264 of 1,264
+  operands with an exact complete-population point interval of
+  `[1.0, 1.0]`; this validates capture and transformation fidelity, not
+  agreement between sources. Neither study reproduces the unavailable
+  publication-era export.
+  *Deps: none · Refs: [L18] · Studies:
+  [historical work](../studies/sba-annual-report-tables/study.yaml),
+  [prospective structural comparison](../studies/sba-annual-report-structural-comparison/study.yaml)*
 
 - **NAICS coverage and fallback usage**
   What is NAICS-sector coverage across awards, and how often is the fallback
