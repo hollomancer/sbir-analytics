@@ -18,8 +18,9 @@ calculate those differences.
 
 **Validated, not citable.** The fidelity test matched 1,264/1,264 operands with
 the exact complete-population point interval `[1.0, 1.0]`. The public renderer
-and its sidecar now reproduce byte-for-byte. The named-reader, materialization,
-owner-approval, and tagged-release requirements govern citable promotion.
+and its sidecar now reproduce byte-for-byte. The final cold reader review
+returned `BRIEF`. Materialization, owner approval, and tagged-release
+requirements still govern citable promotion.
 
 ## What this study does not show
 
@@ -49,7 +50,7 @@ population, separate blinded-role submission, and audit record.
 From a release checkout, run:
 
 ```bash
-make install
+make install-core
 make reproduce-sba-structural
 ```
 
@@ -60,9 +61,9 @@ rebuilds the count comparison and requires byte identity with
 It also reconciles the 1,264-value confirmatory submission at SHA-256
 `66827a11e860da48a9da215ab982722fa182ceb2726a9ef05a182922c61bae2a`.
 It verifies the public sidecar at SHA-256
-`31c079dbbc6e1e3d635fd504a7ce28f0add511d1a7e7490e1e9c4d2205c9adc0`
+`a0b81cc9d700de5fae4cfa1857a13fc593ba47223362968d55a0b071f1516e85`
 and the generated Markdown at SHA-256
-`140962e490df125d618a808e8871c34c339375bc4c633fc91d59c1e168c2055c`.
+`9f643c041a3a8747927c5565a7be5a0a3621d3d63ff30858f2ba614b6726c742`.
 
 ## Review history
 
@@ -72,8 +73,10 @@ and the generated Markdown at SHA-256
 - Sealed confirmatory artifacts recorded: commit `56acfb0f`.
 - Post-result evidence audit: go with required changes for `validated`; not
   authorized for `citable`.
-- Named-reader review: review records are preserved under `reviews/`; only a
-  successful cold review can satisfy the release requirement.
+- Release-readiness evidence audit: `GO` for the core-only reproduction path
+  and final cold-reader review; no merge or citation authority.
+- Final named-reader review: `BRIEF` on the exact Revision 10 public hashes;
+  no remediation and no merge or citation authority.
 - Release tag: pending.
 
 Read [the amendment record](amendments.md) for every invalid or

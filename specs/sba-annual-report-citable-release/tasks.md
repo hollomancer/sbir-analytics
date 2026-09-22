@@ -64,6 +64,8 @@
     citation metadata is intentionally withheld until an actual immutable tag
     exists.
 
-- [ ] 12. Request explicit approval before merging any release work.
+- [x] 12. Request explicit approval before merging any release work.
   - Verify: no merge occurs without the repository owner's approval.
   - Requirements: release governance
+  - Current state: approval was requested after the draft PR became green. No
+    approval has been received. The PR remains draft and unmerged.

@@ -72,7 +72,7 @@ It cannot detect a rule error shared by both separate implementations.
 From the repository root in a tagged release checkout, run:
 
 ```bash
-make install
+make install-core
 make reproduce-sba-structural
 ```
 
@@ -93,7 +93,7 @@ uv run python scripts/data/render_sba_structural_comparison.py
 | Count producer | `packages/sbir-analytics/sbir_analytics/assets/sba_annual_report_structural_comparison/producer.py` | `bff52a594e4d77a2094c584e59365d4fd8be7dc381f2029246927fdebec5445a` |
 | Count reproduction command | `scripts/data/run_sba_structural_comparison.py` | `a8d2aa68e40e5748c241795599bf7c432abb013cfe7c26a020c5fbc29c6be538` |
 | Public reproduction command | `scripts/data/reproduce_sba_structural_comparison.py` | `741187a34827ea0df008ca627aedd239a008d7e5f9937d70eb43a607baeab436` |
-| Public result renderer | `scripts/data/render_sba_structural_comparison.py` | `e591e661bbb206045d9ff60a6d1f7c34bba328099452235e601bae07c6c2732c` |
+| Public result renderer | `scripts/data/render_sba_structural_comparison.py` | `d666b51fe4e18256c0359fccd88d1fcad9a610699861ab5a4d970b2ad2de7572` |
 | Environment lock | `uv.lock` | `b9f214496158828da145a19db9c7d5cb4fc52765eeacb9a394312a2b6cf34893` |
 | 632-cell count comparison | `studies/sba-annual-report-structural-comparison/results/count-comparison.csv` | `e86ab66905f65adaa7fdb721ced6bcbc7b3991a288ba37156f1efe9b4bed7381` |
 | Confirmatory packet manifest | `studies/sba-annual-report-structural-comparison/validation/blind-packet-manifest-v5.json` | `51033aca620e71f71fc18d6ae398d27fe238fbf7c7d6cda4e748ba7db3299314` |
@@ -104,11 +104,11 @@ uv run python scripts/data/render_sba_structural_comparison.py
 | Sealed-component hashes | `studies/sba-annual-report-structural-comparison/validation/confirmatory/sealed-components.sha256` | `c452750aa2b717c4c5781cc758b19ef6566cb98421aa64e39d11554844c302b0` |
 | Post-result evidence audit | `studies/sba-annual-report-structural-comparison/reviews/post-result-evidence-audit.md` | `ac05b2e6d888b0b60e1ea57e0b5a32b9a4f70b6bc4d7dcb118af399975411b4a` |
 
-Public sidecar content SHA-256: `f14554ebc7b78ceceee5a6a2589736d39f07b356a4c625a2b30dc12798295e14`.
+Public sidecar content SHA-256: `9a1e9d6081fa0aaae554727cde589cdc47a86a09f0988fa8b2bc887aea01ed49`.
 This content digest is SHA-256 over the sidecar's `content` object encoded as
 canonical JSON with sorted keys and compact separators. It differs from the
 whole-file SHA-256 because the file also stores this digest and schema version.
 
 ## Release gates still open
 
-- Release governance requires a successful frozen named-reader record, explicit owner approval before merge, a version 0.18.0 release, and an immutable annotated tag before citable promotion.
+- Release governance requires explicit owner approval before merge, an immutable annotated version 0.18.0 tag, tag-bound citation metadata, and a citable-promotion evidence audit. The named-reader gate is complete.

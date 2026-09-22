@@ -575,7 +575,7 @@ def build_payload(
         "release_blockers": list(manifest.materialization.blockers),
         "artifact_hashes": _artifact_records(root, frozen_hashes),
         "reproduction": {
-            "setup_command": "make install",
+            "setup_command": "make install-core",
             "one_command": REPRODUCTION_COMMAND,
             "renderer_command": RENDER_COMMAND,
         },

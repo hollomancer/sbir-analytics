@@ -39,12 +39,12 @@ total is not an omitted-award estimate, a source-correctness verdict, or a
 causal explanation. One parsed export row counts once, `Award Year` supplies
 the year, and the study does not deduplicate.
 
-The tagged release may make that statement citable only if an outside reader
-states the claim and limits correctly and the release gate opens. The public
-rendering now passes its byte-stable round-trip checks. The prospective
-fidelity validation passed at 1,264/1,264 with the point interval `[1.0, 1.0]`,
-and the evidence audit accepted the bounded claim. Until the remaining gates
-close, treat the packet as validated and non-citable.
+The tagged release may make that statement citable only after the release gate
+opens. The public rendering passes its byte-stable round-trip checks. The
+prospective fidelity validation passed at 1,264/1,264 with the point interval
+`[1.0, 1.0]`, the evidence audit accepted the bounded claim, and the final cold
+reader review returned `BRIEF`. Until the remaining gates close, treat the
+packet as validated and non-citable.
 
 This study does not reproduce the unavailable publication-era SBIR.gov export.
 It does not certify either source as complete or correct. It does not claim
@@ -68,7 +68,7 @@ refuses any byte sequence that does not match the frozen source manifest.
 ```bash
 git clone https://github.com/hollomancer/sbir-analytics
 cd sbir-analytics
-make install
+make install-core
 make reproduce-sba-structural
 ```
 
@@ -114,5 +114,8 @@ listed explicitly in [STATUS.md](STATUS.md) and in each `study.yaml`.
 
 For contributor details, see the [research-question inventory](docs/research-questions.md),
 [study-contract rules](studies/README.md), and
-[development guide](CONTRIBUTING.md). The software is MIT licensed. Research
-claims remain bounded by their study contracts and release records.
+[development guide](CONTRIBUTING.md). The
+[repository map](docs/public/repository-map.md) states the purpose and evidence
+relationship of every tracked top-level directory. The software is MIT
+licensed. Research claims remain bounded by their study contracts and release
+records.

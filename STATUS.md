@@ -13,7 +13,7 @@ final citation metadata.
 
 | Study | Validation result | Why it is not citable |
 | --- | --- | --- |
-| [SBA annual-report structural comparison](docs/public/sba-structural-comparison.md) | A separate blinded-role implementation reproduced 1,264/1,264 count operands; exact point interval `[1.0, 1.0]` | A successful frozen named-reader record, product-scoped materialization, owner approval, and tagged release are required |
+| [SBA annual-report structural comparison](docs/public/sba-structural-comparison.md) | A separate blinded-role implementation reproduced 1,264/1,264 count operands; exact point interval `[1.0, 1.0]`; final cold reader verdict `BRIEF` | Product-scoped materialization, owner approval, and an immutable tagged release remain required |
 
 ## Reproducible research, not citable
 

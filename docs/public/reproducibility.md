@@ -11,9 +11,12 @@ are not required. The source bundle is about 402 MB.
 From a tagged release checkout, run:
 
 ```bash
-make install
+make install-core
 make reproduce-sba-structural
 ```
+
+The reproduction command adds the study producer source path for this run. It
+does not install or start Dagster, Neo4j, or the other workspace packages.
 
 The command performs these checks before it reports success:
 

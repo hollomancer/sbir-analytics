@@ -120,14 +120,18 @@ frozen_artifacts:
     sha256: 504390bc92d684430f56b2183209a0ee1b22fe210d4dd1d16079d1cc616f080d
   - path: studies/sba-annual-report-structural-comparison/reviews/named-reader-review-4.md
     sha256: e1f5a3307ff6f63350b409d4696ce29e42eb0e189d3d756c0cfe80cf002067e1
+  - path: studies/sba-annual-report-structural-comparison/reviews/named-reader-review-5.md
+    sha256: 9be456743c6eb7f7836d66333274bf116483b82be2f5bd48b00552e9aab8d846
+  - path: studies/sba-annual-report-structural-comparison/reviews/release-readiness-evidence-audit.md
+    sha256: 4cfd4ae3c88a13197bb7b9071b420f78b1899bfbec0b6066a900a5933ed78e24
   - path: scripts/data/render_sba_structural_comparison.py
-    sha256: e591e661bbb206045d9ff60a6d1f7c34bba328099452235e601bae07c6c2732c
+    sha256: d666b51fe4e18256c0359fccd88d1fcad9a610699861ab5a4d970b2ad2de7572
   - path: scripts/data/reproduce_sba_structural_comparison.py
     sha256: 741187a34827ea0df008ca627aedd239a008d7e5f9937d70eb43a607baeab436
   - path: studies/sba-annual-report-structural-comparison/release/public-result.json
-    sha256: 31c079dbbc6e1e3d635fd504a7ce28f0add511d1a7e7490e1e9c4d2205c9adc0
+    sha256: a0b81cc9d700de5fae4cfa1857a13fc593ba47223362968d55a0b071f1516e85
   - path: docs/public/sba-structural-comparison.md
-    sha256: 140962e490df125d618a808e8871c34c339375bc4c633fc91d59c1e168c2055c
+    sha256: 9f643c041a3a8747927c5565a7be5a0a3621d3d63ff30858f2ba614b6726c742
 implementation:
   - path: packages/sbir-analytics/sbir_analytics/assets/sba_annual_report_structural_comparison/producer.py
     symbol: produce_count_sidecar
@@ -149,9 +153,9 @@ materialization:
   allowed: false
   blockers:
     - >-
-      Release governance requires a successful frozen named-reader record,
-      explicit owner approval before merge, a version 0.18.0 release, and an
-      immutable annotated tag before citable promotion.
+      Release governance requires explicit owner approval before merge, an
+      immutable annotated version 0.18.0 tag, tag-bound citation metadata, and
+      a citable-promotion evidence audit. The named-reader gate is complete.
 permitted_claims:
   - >-
     Validated, not citable: for all 632 award-count cells printed in FY2020

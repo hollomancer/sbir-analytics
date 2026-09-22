@@ -472,3 +472,38 @@ The regenerated Markdown has SHA-256
 `140962e490df125d618a808e8871c34c339375bc4c633fc91d59c1e168c2055c`.
 The clean reproduction command passed. A fresh cold named-reader review of
 those exact bytes returned `BRIEF` with no remediation.
+
+## Revision 10 — 2026-09-22 — minimal public setup and release-state correction
+
+**Status:** Validated and non-citable. The result and validation are unchanged.
+
+The completion audit found that the public page still instructed readers to run
+the full workspace install. The release path now uses `make install-core` and
+adds only the study producer source directory while it runs. An isolated locked
+environment reproduced all 632 cells and 1,264 validation operands without
+Dagster, Neo4j, `sbir_graph`, or `sbir_ml` installed.
+
+The materialization blocker no longer lists the completed named-reader gate as
+pending. It now lists only owner approval, the immutable version 0.18.0 tag,
+tag-bound citation metadata, and a citable-promotion evidence audit.
+
+These changes do not alter the estimand, source bytes, row grain, year basis,
+jurisdiction profile, comparison cells, validation design, validation result,
+claim, or non-claims. The renderer SHA-256 is
+`d666b51fe4e18256c0359fccd88d1fcad9a610699861ab5a4d970b2ad2de7572`.
+The regenerated public JSON SHA-256 is
+`a0b81cc9d700de5fae4cfa1857a13fc593ba47223362968d55a0b071f1516e85`.
+The regenerated Markdown SHA-256 is
+`9f643c041a3a8747927c5565a7be5a0a3621d3d63ff30858f2ba614b6726c742`.
+The canonical content SHA-256 is
+`9a1e9d6081fa0aaae554727cde589cdc47a86a09f0988fa8b2bc887aea01ed49`.
+
+The release-readiness evidence audit returned `GO`. It retained the validated
+status without a new prospective run and authorized a fresh cold-reader review
+of the exact revised public hashes. It did not authorize merge, tag,
+publication, materialization, citation, or citable promotion.
+
+The fresh cold named-reader review returned `BRIEF` on those exact hashes. The
+reader reconstructed the claim, limits, minimal setup, and remaining gates
+without oral context. No remediation remains. The verdict did not authorize
+merge, tag, publication, materialization, citation, or citable promotion.

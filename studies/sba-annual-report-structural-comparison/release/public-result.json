@@ -34,7 +34,7 @@
       {
         "label": "Public result renderer",
         "path": "scripts/data/render_sba_structural_comparison.py",
-        "sha256": "e591e661bbb206045d9ff60a6d1f7c34bba328099452235e601bae07c6c2732c"
+        "sha256": "d666b51fe4e18256c0359fccd88d1fcad9a610699861ab5a4d970b2ad2de7572"
       },
       {
         "label": "Environment lock",
@@ -7721,13 +7721,13 @@
     ],
     "prepared_for": "SBIR program managers and policy analysts in Treasury, OMB, JCT, and state economic-development offices",
     "release_blockers": [
-      "Release governance requires a successful frozen named-reader record, explicit owner approval before merge, a version 0.18.0 release, and an immutable annotated tag before citable promotion."
+      "Release governance requires explicit owner approval before merge, an immutable annotated version 0.18.0 tag, tag-bound citation metadata, and a citable-promotion evidence audit. The named-reader gate is complete."
     ],
     "release_status": "Validated, not citable",
     "reproduction": {
       "one_command": "make reproduce-sba-structural",
       "renderer_command": "uv run python scripts/data/render_sba_structural_comparison.py",
-      "setup_command": "make install"
+      "setup_command": "make install-core"
     },
     "result_summary_claim": "The comparison contains 632 count cells: 276 are exact and 356 are unresolved. Across the same cells, recomputed minus published counts sum to +333. This +333 total is not an omitted-award estimate, a source-correctness verdict, or a causal explanation.",
     "rules_plain_language": "Count each parsed export row once, use Award Year as the year, and do not deduplicate.",
@@ -7789,6 +7789,6 @@
       "threshold_met": true
     }
   },
-  "content_sha256": "f14554ebc7b78ceceee5a6a2589736d39f07b356a4c625a2b30dc12798295e14",
+  "content_sha256": "9a1e9d6081fa0aaae554727cde589cdc47a86a09f0988fa8b2bc887aea01ed49",
   "schema_version": 1
 }

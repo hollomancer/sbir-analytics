@@ -39,6 +39,11 @@ def test_committed_public_artifacts_regenerate_byte_for_byte() -> None:
     assert renderer.serialize_payload(payload) == SIDECAR.read_text(encoding="utf-8")
     assert renderer.render_markdown(payload) == MARKDOWN.read_text(encoding="utf-8")
     assert payload["content"]["release_status"] == "Validated, not citable"
+    assert payload["content"]["reproduction"] == {
+        "setup_command": "make install-core",
+        "one_command": "make reproduce-sba-structural",
+        "renderer_command": "uv run python scripts/data/render_sba_structural_comparison.py",
+    }
 
 
 def test_registered_pair_rejects_a_manual_markdown_edit(tmp_path: Path) -> None:

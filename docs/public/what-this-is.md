@@ -17,5 +17,6 @@ relationship queries and cannot strengthen a claim.
 
 Use [STATUS.md](../../STATUS.md) to find the current public evidence boundary.
 Use [the evidence-status guide](evidence-status.md) to interpret the labels.
+Use [the repository map](repository-map.md) to identify each top-level path.
 Read the [validated SBA structural comparison](sba-structural-comparison.md) for
 the current reader-facing release candidate.
