@@ -10,7 +10,7 @@ version.
 
 ## [Unreleased]
 
-## [0.18.0] — 2026-09-21
+## [0.18.0] — 2026-09-22
 
 ### Added
 
@@ -23,6 +23,25 @@ version.
   arithmetic, validation values, or rendered output.
 - Added durable, exact-byte acquisition for the September 17, 2026 SBIR.gov
   export and the three official SBA annual reports.
+- Added a deterministic study-readiness preflight
+  (`python -m scripts.jev_preflight.cli`). It applies fixed claim and evidence
+  rules to `studies/sba-annual-report-tables` and writes a decision report to
+  `reports/ci/jev-preflight.json`. Jev is evaluated only in private shadow mode
+  against a frozen synthetic matrix; it makes no authoritative decision.
+  Evidence promotion and publication approval stay out of scope. (#782)
+- Added the `Deterministic Study Preflight` CI job, invoked through
+  `make check-jev-preflight`. The job runs on pull requests that touch the
+  preflight surface, fails closed when its dependencies are missing rather than
+  skipping, and uploads the decision report as an artifact. Preflight
+  configuration now goes through the shared YAML reader. (#784)
+- Added an exploratory, non-blocking CI failure-triage pilot
+  (`scripts/ci/jev_triage`) with typed contracts, log sanitization,
+  deterministic policy and rendering, a fake transport, and hermetic tests. The
+  `Experimental Jev Triage Contract` job is `continue-on-error` and runs only on
+  internal pull requests. Triage output cannot change check conclusions, skip
+  tests, suppress security findings, or control merges. Live Jev calls remain
+  gated on API documentation, data-retention review, disclosure terms,
+  credentials, and an approved shadow-evaluation protocol. (#780)
 
 ### Changed
 
