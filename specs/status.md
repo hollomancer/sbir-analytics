@@ -185,8 +185,10 @@ bypassing lifecycle review; the status and rationale still require human judgmen
   FY2020-FY2022 structural comparison is `validated`, not citable. Durable
   source retrieval and the prospectively frozen full-population fidelity test
   passed at 1,264/1,264 operands. The generated renderer, sidecar, clean replay,
-  and mutation checks pass, and the final cold named-reader review returned
-  `BRIEF`. Publication remains gated on the closed citable materialization
+  and mutation checks pass. After Revision 11 disclosed absolute disagreement,
+  zero-versus-zero cells, and row-handling diagnostics, its exact-byte evidence
+  audit returned `GO` and cold named-reader review returned `BRIEF` with no
+  remediation. Publication remains gated on the closed citable materialization
   state, immutable tag and citation metadata, and owner approval. Existing
   post-hoc bands do not support the claim.
 - **`state-local-tax-rates` — Maintenance.** Existing hardcoded 2024 provider

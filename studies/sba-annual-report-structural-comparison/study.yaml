@@ -122,6 +122,8 @@ frozen_artifacts:
     sha256: e1f5a3307ff6f63350b409d4696ce29e42eb0e189d3d756c0cfe80cf002067e1
   - path: studies/sba-annual-report-structural-comparison/reviews/named-reader-review-5.md
     sha256: 9be456743c6eb7f7836d66333274bf116483b82be2f5bd48b00552e9aab8d846
+  - path: studies/sba-annual-report-structural-comparison/reviews/named-reader-review-6.md
+    sha256: 94d733043150ddaaba689ff135053bef7bc65f0f1d1f365731c946d8b24aa23e
   - path: studies/sba-annual-report-structural-comparison/reviews/release-readiness-evidence-audit.md
     sha256: 4cfd4ae3c88a13197bb7b9071b420f78b1899bfbec0b6066a900a5933ed78e24
   - path: studies/sba-annual-report-structural-comparison/reviews/revision-11-evidence-audit.md

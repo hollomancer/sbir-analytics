@@ -38,3 +38,18 @@ citation or release. The citable materialization state, immutable tag and
 citation metadata, and owner merge approval remain open. Any change to the
 estimand, population, source identity, transformation rules, threshold, claim,
 or non-claim still requires a numbered study amendment.
+
+## Revision 2 — 2026-09-22 — owner-review disclosure remediation
+
+The claim-facing result now reports signed difference `+333` beside absolute
+cell difference 869, the 208/148 direction counts, 57 zero-versus-zero cells,
+and 219 exact cells among the 575-cell nonzero union. It also discloses one
+excluded blank-`State` export row and 60 zero-filled groups. These are
+mechanical summaries and diagnostics of the unchanged frozen result.
+
+The study amendment records the Run 3 ordering limitation and a forward-only
+pre-reconciliation invalidity rule. The prospective v1 design and all run
+artifacts remain unchanged. The exact-byte evidence audit returned `GO` and the
+fresh cold named-reader review returned `BRIEF` with no remediation. Neither
+review authorized merge, tag, publication, materialization, citation, or
+`citable` promotion.

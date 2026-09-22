@@ -53,8 +53,9 @@
     claim and non-claims without oral context.
   - Requirements: publication gates 6 and 8, 4.3
   - Current state: the evidence audit authorized `validated`, and the final
-    cold named-reader review returned `BRIEF`. Neither review authorized
-    citation, materialization, merge, release, or tagging.
+    Revision 11 exact-byte evidence audit returned `GO`; its fresh cold
+    named-reader review returned `BRIEF` with no remediation. Neither review
+    authorized citation, materialization, merge, release, or tagging.
 
 - [ ] 11. Prepare the immutable release packet and citation metadata.
   - Verify: every packet file has a digest and the reproduction command works
