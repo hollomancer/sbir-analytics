@@ -1,0 +1,4 @@
+{"case_id":"dev-config","split":"development","gold_failure_class":"configuration","gold_owner_area":"ci_infrastructure","retry_safe":false}
+{"case_id":"holdout-code","split":"holdout","gold_failure_class":"code_defect","gold_owner_area":"identity","retry_safe":false}
+{"case_id":"holdout-flake","split":"holdout","gold_failure_class":"known_flake","gold_owner_area":"ci_infrastructure","retry_safe":true}
+{"case_id":"holdout-dependency","split":"holdout","gold_failure_class":"dependency","gold_owner_area":"packaging","retry_safe":false}

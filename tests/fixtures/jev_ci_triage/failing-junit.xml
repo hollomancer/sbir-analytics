@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<testsuite name="pytest" tests="2" failures="1">
+  <testcase classname="tests.unit.test_network" name="test_registry_timeout">
+    <failure type="ConnectionError">Authorization: Bearer ghp_abcdefghijklmnop
+password=&quot;first second&quot;
+connection refused by package registry</failure>
+  </testcase>
+  <testcase classname="tests.unit.test_network" name="test_local_parser" />
+</testsuite>

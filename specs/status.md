@@ -100,6 +100,13 @@ bypassing lifecycle review; the status and rationale still require human judgmen
   as the reference adapter, and `usaspending_refresh_batch` on the job.
   Per-source adapters stay split (#443 NIH RePORTER, then SAM/PatentsView).
   Tasks 6.1–6.2 remain optional Phase 2 expansion.
+- **`jev-ci-triage` — Active.** Exploratory, non-blocking CI failure-triage
+  pilot. Stage 0 may implement typed contracts, sanitization, deterministic
+  policy and rendering, a fake transport, and hermetic tests. Live Jev calls
+  remain gated on API documentation, data-retention review, disclosure terms,
+  credentials, and an approved shadow-evaluation protocol. Jev output must not
+  change check conclusions, skip tests, suppress security findings, or control
+  merges.
 - **`jev-preflight` — Active.** Exploratory, non-citable study-readiness
   vertical slice. It applies deterministic claim and evidence rules to
   `studies/sba-annual-report-tables`, then evaluates Jev only in private shadow
