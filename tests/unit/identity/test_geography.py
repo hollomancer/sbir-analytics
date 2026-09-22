@@ -55,8 +55,12 @@ def test_sba_annual_report_profile_preserves_exact_table_names() -> None:
     assert normalize_us_jurisdiction("Alabama", profile=profile) == "AL"
     assert normalize_us_jurisdiction("Marshall Islands", profile=profile) == "MH"
     assert normalize_us_jurisdiction("Virgin Islands", profile=profile) is None
+    assert normalize_us_jurisdiction("Guam", profile=profile) is None
     assert normalize_us_jurisdiction("alabama", profile=profile) is None
+    assert normalize_us_jurisdiction("Alabama ", profile=profile) is None
+    assert normalize_us_jurisdiction(" Alabama", profile=profile) is None
     assert normalize_us_jurisdiction("AL", profile=profile) is None
+    assert us_jurisdiction_name("MH") is None
 
 
 def test_versioned_maps_are_immutable() -> None:

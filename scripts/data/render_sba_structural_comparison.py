@@ -29,6 +29,9 @@ STUDY_DIRECTORY = Path("studies") / STUDY_ID
 COMPARISON_REFERENCE = (STUDY_DIRECTORY / "results/count-comparison.csv").as_posix()
 STUDY_MANIFEST_REFERENCE = (STUDY_DIRECTORY / "study.yaml").as_posix()
 SOURCE_MANIFEST_REFERENCE = (STUDY_DIRECTORY / "source-manifest.json").as_posix()
+RUN_DIAGNOSTICS_REFERENCE = (
+    STUDY_DIRECTORY / "validation/confirmatory/run-diagnostics.json"
+).as_posix()
 SIDECAR_REFERENCE = (STUDY_DIRECTORY / "release/public-result.json").as_posix()
 MARKDOWN_REFERENCE = "docs/public/sba-structural-comparison.md"
 RELEASE_STATUS = "Validated, not citable"
@@ -59,27 +62,60 @@ EXPECTED_YEAR_SUMMARIES = {
         "published_total": 7136,
         "recomputed_total": 7315,
         "signed_difference": 179,
+        "absolute_difference": 373,
+        "positive_difference_cells": 77,
+        "negative_difference_cells": 44,
         "exact_cells": 91,
+        "zero_vs_zero_cells": 23,
+        "nonzero_union_cells": 189,
+        "nonzero_union_exact_cells": 68,
         "unresolved_cells": 121,
     },
     2021: {
         "published_total": 6783,
         "recomputed_total": 6881,
         "signed_difference": 98,
+        "absolute_difference": 274,
+        "positive_difference_cells": 69,
+        "negative_difference_cells": 55,
         "exact_cells": 88,
+        "zero_vs_zero_cells": 20,
+        "nonzero_union_cells": 192,
+        "nonzero_union_exact_cells": 68,
         "unresolved_cells": 124,
     },
     2022: {
         "published_total": 6583,
         "recomputed_total": 6639,
         "signed_difference": 56,
+        "absolute_difference": 222,
+        "positive_difference_cells": 62,
+        "negative_difference_cells": 49,
         "exact_cells": 97,
+        "zero_vs_zero_cells": 14,
+        "nonzero_union_cells": 194,
+        "nonzero_union_exact_cells": 83,
         "unresolved_cells": 111,
     },
 }
 EXPECTED_CELL_COUNT = 632
 EXPECTED_EXACT_COUNT = 276
 EXPECTED_UNRESOLVED_COUNT = 356
+EXPECTED_AGGREGATE_SUMMARY = {
+    "signed_difference": 333,
+    "absolute_difference": 869,
+    "positive_difference_cells": 208,
+    "negative_difference_cells": 148,
+    "zero_vs_zero_cells": 57,
+    "nonzero_union_cells": 575,
+    "nonzero_union_exact_cells": 219,
+}
+EXPECTED_EXPORT_ROW_HANDLING = {
+    "retained_rows_before_blank_state_exclusion": 20836,
+    "blank_state_rows_excluded": 1,
+    "counted_rows": 20835,
+    "zero_filled_eligible_groups": 60,
+}
 EXPECTED_VALIDATION_COUNT = 1264
 EXACT_INTERVAL_METHOD = "exact complete-population point interval; no sampling"
 SHA256_PATTERN = re.compile(r"[0-9a-f]{64}")
@@ -122,9 +158,7 @@ ARTIFACT_LABELS = {
     (
         STUDY_DIRECTORY / "validation/confirmatory/validation-values.csv"
     ).as_posix(): "Independent validation values",
-    (
-        STUDY_DIRECTORY / "validation/confirmatory/run-diagnostics.json"
-    ).as_posix(): "Confirmatory run diagnostics",
+    RUN_DIAGNOSTICS_REFERENCE: "Confirmatory run diagnostics",
     (
         STUDY_DIRECTORY / "validation/confirmatory/reconciliation.json"
     ).as_posix(): "Confirmatory reconciliation",
@@ -308,13 +342,53 @@ def _summarize_years(cells: Sequence[Mapping[str, Any]]) -> list[dict[str, int]]
                 "published_total": sum(cell["published_count"] for cell in selected),
                 "recomputed_total": sum(cell["recomputed_count"] for cell in selected),
                 "signed_difference": sum(cell["signed_difference"] for cell in selected),
+                "absolute_difference": sum(cell["absolute_difference"] for cell in selected),
+                "positive_difference_cells": sum(
+                    cell["signed_difference"] > 0 for cell in selected
+                ),
+                "negative_difference_cells": sum(
+                    cell["signed_difference"] < 0 for cell in selected
+                ),
                 "exact_cells": sum(cell["comparison_status"] == "exact" for cell in selected),
+                "zero_vs_zero_cells": sum(
+                    cell["published_count"] == 0 and cell["recomputed_count"] == 0
+                    for cell in selected
+                ),
+                "nonzero_union_cells": sum(
+                    cell["published_count"] != 0 or cell["recomputed_count"] != 0
+                    for cell in selected
+                ),
+                "nonzero_union_exact_cells": sum(
+                    cell["comparison_status"] == "exact"
+                    and (cell["published_count"] != 0 or cell["recomputed_count"] != 0)
+                    for cell in selected
+                ),
                 "unresolved_cells": sum(
                     cell["comparison_status"] == "unresolved" for cell in selected
                 ),
             }
         )
     return summaries
+
+
+def _aggregate_summary(cells: Sequence[Mapping[str, Any]]) -> dict[str, int]:
+    return {
+        "signed_difference": sum(cell["signed_difference"] for cell in cells),
+        "absolute_difference": sum(cell["absolute_difference"] for cell in cells),
+        "positive_difference_cells": sum(cell["signed_difference"] > 0 for cell in cells),
+        "negative_difference_cells": sum(cell["signed_difference"] < 0 for cell in cells),
+        "zero_vs_zero_cells": sum(
+            cell["published_count"] == 0 and cell["recomputed_count"] == 0 for cell in cells
+        ),
+        "nonzero_union_cells": sum(
+            cell["published_count"] != 0 or cell["recomputed_count"] != 0 for cell in cells
+        ),
+        "nonzero_union_exact_cells": sum(
+            cell["comparison_status"] == "exact"
+            and (cell["published_count"] != 0 or cell["recomputed_count"] != 0)
+            for cell in cells
+        ),
+    }
 
 
 def _frozen_hashes(manifest: StudyManifest) -> dict[str, str]:
@@ -381,7 +455,11 @@ def _summary_claim(manifest: StudyManifest) -> str:
     claim = manifest.permitted_claims[1]
     required_fragments = (
         "632 count cells: 276 are exact and 356 are unresolved",
-        "recomputed minus published counts sum to +333",
+        "Recomputed minus published counts sum to +333",
+        "absolute cell differences sum to 869",
+        "57 are zero versus zero",
+        "575 cells where either source reports a nonzero count, 219 are exact",
+        "208 positive and 148 negative",
         "not an omitted-award estimate",
         "source-correctness verdict",
         "causal explanation",
@@ -390,6 +468,36 @@ def _summary_claim(manifest: StudyManifest) -> str:
     if missing:
         raise PublicResultError(f"summary claim is missing required text: {missing}")
     return claim
+
+
+def _export_row_handling(
+    diagnostics: Mapping[str, Any], frozen_hashes: Mapping[str, str]
+) -> dict[str, Any]:
+    extraction = diagnostics.get("export_extraction")
+    if not isinstance(extraction, dict):
+        raise PublicResultError("confirmatory diagnostics lacks export_extraction")
+    handling = {
+        "retained_rows_before_blank_state_exclusion": extraction.get(
+            "retained_fy2020_fy2022_rows_before_blank_state_drop"
+        ),
+        "blank_state_rows_excluded": extraction.get("dropped_blank_state_rows"),
+        "counted_rows": extraction.get("retained_counted_rows_after_blank_state_drop"),
+        "zero_filled_eligible_groups": extraction.get("zero_filled_eligible_groups"),
+    }
+    if handling != EXPECTED_EXPORT_ROW_HANDLING:
+        raise PublicResultError(
+            "confirmatory export-row diagnostics differ: "
+            f"expected {EXPECTED_EXPORT_ROW_HANDLING}, got {handling}"
+        )
+    expected_sha256 = frozen_hashes.get(RUN_DIAGNOSTICS_REFERENCE)
+    if expected_sha256 is None:
+        raise PublicResultError("study manifest does not freeze confirmatory run diagnostics")
+    return {
+        **handling,
+        "countable_unit": "one parsed export row",
+        "artifact_path": RUN_DIAGNOSTICS_REFERENCE,
+        "artifact_sha256": expected_sha256,
+    }
 
 
 def _validate_manifest(manifest: StudyManifest) -> None:
@@ -502,6 +610,7 @@ def build_payload(
     comparison_path: Path | None = None,
     study_manifest_path: Path | None = None,
     source_manifest_path: Path | None = None,
+    run_diagnostics_path: Path | None = None,
 ) -> dict[str, Any]:
     """Build the public sidecar from the three declared study inputs."""
 
@@ -509,6 +618,7 @@ def build_payload(
     comparison_path = comparison_path or root / COMPARISON_REFERENCE
     study_manifest_path = study_manifest_path or root / STUDY_MANIFEST_REFERENCE
     source_manifest_path = source_manifest_path or root / SOURCE_MANIFEST_REFERENCE
+    run_diagnostics_path = run_diagnostics_path or root / RUN_DIAGNOSTICS_REFERENCE
     manifest = load_study_manifest(study_manifest_path)
     _validate_manifest(manifest)
     frozen_hashes = _frozen_hashes(manifest)
@@ -535,6 +645,17 @@ def build_payload(
         )
     source_manifest = _read_json_object(source_manifest_path, "source manifest")
 
+    expected_diagnostics_sha = frozen_hashes.get(RUN_DIAGNOSTICS_REFERENCE)
+    if expected_diagnostics_sha is None:
+        raise PublicResultError("study manifest does not freeze confirmatory run diagnostics")
+    actual_diagnostics_sha = file_sha256(run_diagnostics_path)
+    if actual_diagnostics_sha != expected_diagnostics_sha:
+        raise PublicResultError(
+            "confirmatory run diagnostics hash differs from the study manifest: "
+            f"expected {expected_diagnostics_sha}, got {actual_diagnostics_sha}"
+        )
+    run_diagnostics = _read_json_object(run_diagnostics_path, "confirmatory run diagnostics")
+
     result = manifest.validation_result
     assert result is not None  # checked by _validate_manifest
     content: dict[str, Any] = {
@@ -547,16 +668,23 @@ def build_payload(
         "rules_plain_language": (
             "Count each parsed export row once, use Award Year as the year, and do not deduplicate."
         ),
+        "jurisdiction_rule_plain_language": (
+            "Match only the 53 frozen full names exactly, with case and whitespace preserved. "
+            "Exclude and count blank State rows; block every other unmapped nonblank State. "
+            "Marshall Islands maps to study-only code MH, outside the general canonical set."
+        ),
         "comparison": {
             "definition": "signed_difference = recomputed_count - published_count",
             "cell_count": EXPECTED_CELL_COUNT,
             "exact_cells": EXPECTED_EXACT_COUNT,
             "unresolved_cells": EXPECTED_UNRESOLVED_COUNT,
+            "aggregate_summary": _aggregate_summary(cells),
             "yearly_summaries": _summarize_years(cells),
             "cells": cells,
             "artifact_path": COMPARISON_REFERENCE,
             "artifact_sha256": expected_comparison_sha,
         },
+        "export_row_handling": _export_row_handling(run_diagnostics, frozen_hashes),
         "validation": {
             "scope": "source-capture and transformation fidelity; not source agreement",
             "metric": result.metric,
@@ -581,7 +709,7 @@ def build_payload(
         },
     }
     payload = {
-        "schema_version": 1,
+        "schema_version": 2,
         "content_sha256": _canonical_sha256(content),
         "content": content,
     }
@@ -591,8 +719,8 @@ def build_payload(
 
 def _validate_payload(payload: Mapping[str, Any]) -> Mapping[str, Any]:
     _expect_keys(payload, {"schema_version", "content_sha256", "content"}, "public sidecar")
-    if payload["schema_version"] != 1:
-        raise PublicResultError("public sidecar schema_version must be 1")
+    if payload["schema_version"] != 2:
+        raise PublicResultError("public sidecar schema_version must be 2")
     content_sha256 = payload["content_sha256"]
     content = payload["content"]
     if not isinstance(content_sha256, str) or SHA256_PATTERN.fullmatch(content_sha256) is None:
@@ -612,7 +740,9 @@ def _validate_payload(payload: Mapping[str, Any]) -> Mapping[str, Any]:
         "bounded_claim",
         "result_summary_claim",
         "rules_plain_language",
+        "jurisdiction_rule_plain_language",
         "comparison",
+        "export_row_handling",
         "validation",
         "sources",
         "non_claims",
@@ -630,6 +760,21 @@ def _validate_payload(payload: Mapping[str, Any]) -> Mapping[str, Any]:
     comparison = content["comparison"]
     if not isinstance(comparison, dict):
         raise PublicResultError("public sidecar comparison must be an object")
+    _expect_keys(
+        comparison,
+        {
+            "definition",
+            "cell_count",
+            "exact_cells",
+            "unresolved_cells",
+            "aggregate_summary",
+            "yearly_summaries",
+            "cells",
+            "artifact_path",
+            "artifact_sha256",
+        },
+        "public sidecar comparison",
+    )
     cells = comparison.get("cells")
     if not isinstance(cells, list):
         raise PublicResultError("public sidecar comparison cells must be an array")
@@ -637,6 +782,11 @@ def _validate_payload(payload: Mapping[str, Any]) -> Mapping[str, Any]:
     summaries = _summarize_years(typed_cells)
     if comparison.get("yearly_summaries") != summaries:
         raise PublicResultError("public sidecar yearly summaries do not match its cells")
+    aggregate_summary = _aggregate_summary(typed_cells)
+    if comparison.get("aggregate_summary") != aggregate_summary:
+        raise PublicResultError("public sidecar aggregate summary does not match its cells")
+    if aggregate_summary != EXPECTED_AGGREGATE_SUMMARY:
+        raise PublicResultError("public sidecar aggregate summary differs from the frozen result")
     if (
         comparison.get("cell_count") != EXPECTED_CELL_COUNT
         or comparison.get("exact_cells") != EXPECTED_EXACT_COUNT
@@ -659,7 +809,42 @@ def _validate_payload(payload: Mapping[str, Any]) -> Mapping[str, Any]:
         or validation.get("confirmatory") is not True
     ):
         raise PublicResultError("public sidecar validation result differs from the frozen result")
-    for claim_field in ("bounded_claim", "result_summary_claim", "rules_plain_language"):
+    export_row_handling = content["export_row_handling"]
+    if not isinstance(export_row_handling, dict):
+        raise PublicResultError("public sidecar export_row_handling must be an object")
+    expected_handling_keys = {
+        *EXPECTED_EXPORT_ROW_HANDLING,
+        "countable_unit",
+        "artifact_path",
+        "artifact_sha256",
+    }
+    _expect_keys(export_row_handling, expected_handling_keys, "public sidecar export_row_handling")
+    observed_handling = {key: export_row_handling[key] for key in EXPECTED_EXPORT_ROW_HANDLING}
+    if observed_handling != EXPECTED_EXPORT_ROW_HANDLING:
+        raise PublicResultError("public sidecar export-row diagnostics differ from the frozen run")
+    if (
+        export_row_handling["countable_unit"] != "one parsed export row"
+        or export_row_handling["artifact_path"] != RUN_DIAGNOSTICS_REFERENCE
+        or not isinstance(export_row_handling["artifact_sha256"], str)
+        or SHA256_PATTERN.fullmatch(export_row_handling["artifact_sha256"]) is None
+    ):
+        raise PublicResultError("public sidecar export-row diagnostic provenance is invalid")
+    if (
+        export_row_handling["counted_rows"]
+        != export_row_handling["retained_rows_before_blank_state_exclusion"]
+        - export_row_handling["blank_state_rows_excluded"]
+        or export_row_handling["counted_rows"]
+        != sum(cell["recomputed_count"] for cell in typed_cells)
+        or export_row_handling["zero_filled_eligible_groups"]
+        != sum(cell["recomputed_count"] == 0 for cell in typed_cells)
+    ):
+        raise PublicResultError("public sidecar export-row diagnostics fail arithmetic checks")
+    for claim_field in (
+        "bounded_claim",
+        "result_summary_claim",
+        "rules_plain_language",
+        "jurisdiction_rule_plain_language",
+    ):
         if not isinstance(content[claim_field], str) or not content[claim_field].strip():
             raise PublicResultError(f"public sidecar {claim_field} is blank")
     if not isinstance(content["non_claims"], list) or len(content["non_claims"]) != 8:
@@ -678,6 +863,8 @@ def render_markdown(payload: Mapping[str, Any]) -> str:
 
     content = _validate_payload(payload)
     comparison = content["comparison"]
+    aggregate = comparison["aggregate_summary"]
+    export_rows = content["export_row_handling"]
     validation = content["validation"]
     lines = [
         f"# {content['title']}",
@@ -695,6 +882,8 @@ def render_markdown(payload: Mapping[str, Any]) -> str:
         "",
         f"In plain language: {content['rules_plain_language']}",
         "",
+        f"Jurisdiction rule: {content['jurisdiction_rule_plain_language']}",
+        "",
         "The validation supports source-capture and transformation fidelity. It does not",
         "establish agreement between the SBA annual reports and SBIR.gov.",
         "",
@@ -702,11 +891,13 @@ def render_markdown(payload: Mapping[str, Any]) -> str:
         "",
         content["result_summary_claim"],
         "",
-        "The signed difference is the recomputed count minus the published count.",
+        "The signed difference is the recomputed count minus the published count. The",
+        "absolute difference removes that sign before summing, so positive and negative",
+        "cell differences cannot cancel each other.",
         "",
         "| Fiscal year | SBA table | Cells | Published total | Recomputed total | "
-        "Signed difference | Exact | Unresolved |",
-        "| ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |",
+        "Signed difference | Absolute difference | Exact | Zero vs. zero | Unresolved |",
+        "| ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |",
     ]
     for summary in comparison["yearly_summaries"]:
         lines.append(
@@ -714,17 +905,42 @@ def render_markdown(payload: Mapping[str, Any]) -> str:
             f"{summary['cell_count']:,} | {summary['published_total']:,} | "
             f"{summary['recomputed_total']:,} | "
             f"{_format_signed(summary['signed_difference'])} | "
-            f"{summary['exact_cells']:,} | {summary['unresolved_cells']:,} |"
+            f"{summary['absolute_difference']:,} | {summary['exact_cells']:,} | "
+            f"{summary['zero_vs_zero_cells']:,} | {summary['unresolved_cells']:,} |"
         )
     lines.extend(
         [
-            "| **Total** | — | **632** | **20,502** | **20,835** | **+333** | **276** | **356** |",
+            "| **Total** | — | **632** | **20,502** | **20,835** | "
+            f"**{_format_signed(aggregate['signed_difference'])}** | "
+            f"**{aggregate['absolute_difference']:,}** | **276** | "
+            f"**{aggregate['zero_vs_zero_cells']:,}** | **356** |",
+            "",
+            f"The signed total nets {aggregate['positive_difference_cells']:,} positive cells "
+            f"against {aggregate['negative_difference_cells']:,} negative cells. Of the 276 "
+            f"exact cells, {aggregate['zero_vs_zero_cells']:,} are zero versus zero. Among "
+            f"the {aggregate['nonzero_union_cells']:,} cells where either source reports a "
+            f"nonzero count, {aggregate['nonzero_union_exact_cells']:,} are exact and 356 differ.",
             "",
             "Every nonzero difference remains `unresolved`. The study applies no tolerance",
             "verdict, dollar comparison, or causal mismatch label.",
             "",
             f"The complete cell-level result is in `{comparison['artifact_path']}` "
             f"(SHA-256 `{comparison['artifact_sha256']}`).",
+            "",
+            "## Export-row handling",
+            "",
+            f"Of {export_rows['retained_rows_before_blank_state_exclusion']:,} export rows "
+            "retained for FY2020–FY2022 before jurisdiction handling, "
+            f"{export_rows['blank_state_rows_excluded']} had blank `State` and was excluded "
+            "under the frozen rule. This is one export row, not necessarily one unique award. "
+            f"The remaining {export_rows['counted_rows']:,} rows were counted.",
+            "",
+            f"{export_rows['zero_filled_eligible_groups']:,} eligible jurisdiction/program/phase "
+            "groups had no retained export row and received a recomputed count of zero. "
+            "These are fixed diagnostics for this source vintage, not tolerances.",
+            "",
+            f"Diagnostics: `{export_rows['artifact_path']}` "
+            f"(SHA-256 `{export_rows['artifact_sha256']}`).",
             "",
             "## Validation result",
             "",

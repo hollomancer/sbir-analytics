@@ -18,9 +18,27 @@ calculate those differences.
 
 **Validated, not citable.** The fidelity test matched 1,264/1,264 operands with
 the exact complete-population point interval `[1.0, 1.0]`. The public renderer
-and its sidecar now reproduce byte-for-byte. The final cold reader review
-returned `BRIEF`. Materialization, owner approval, and tagged-release
-requirements still govern citable promotion.
+and its sidecar reproduce byte-for-byte. Every claim-facing revision requires
+an evidence audit and a cold reader review of its exact bytes. Materialization,
+owner approval, and tagged-release requirements still govern citable promotion.
+
+## Comparison summary
+
+The 632 cells contain 276 exact and 356 unresolved comparisons. Signed
+recomputed-minus-published differences sum to `+333`; absolute cell
+differences sum to `869`. Fifty-seven exact cells are zero versus zero. Among
+the 575 cells where either source is nonzero, 219 are exact. The 356 unresolved
+cells comprise 208 positive and 148 negative differences.
+
+Of 20,836 export rows retained for FY2020-FY2022 before jurisdiction handling,
+one had blank `State` and was excluded under the frozen rule. The remaining
+20,835 rows were counted. Sixty eligible groups had no retained row and
+received a recomputed count of zero.
+
+The study profile accepts only its 53 exact, case-sensitive, untrimmed full
+jurisdiction names. Every unmapped nonblank value blocks the run. Its
+`Marshall Islands` to `MH` mapping is study-specific, not an extension of the
+general canonical jurisdiction set.
 
 ## What this study does not show
 
@@ -61,9 +79,9 @@ rebuilds the count comparison and requires byte identity with
 It also reconciles the 1,264-value confirmatory submission at SHA-256
 `66827a11e860da48a9da215ab982722fa182ceb2726a9ef05a182922c61bae2a`.
 It verifies the public sidecar at SHA-256
-`a0b81cc9d700de5fae4cfa1857a13fc593ba47223362968d55a0b071f1516e85`
+`b87c38ebcc43621d5bb83aaa1102006bc5ab61a8da33e8ed6645eb0b76f87dd2`
 and the generated Markdown at SHA-256
-`9f643c041a3a8747927c5565a7be5a0a3621d3d63ff30858f2ba614b6726c742`.
+`8ab91c64cf60eed4876bf4b7dd3db6c4023c4d50de5c49f30c533b34c741ae02`.
 
 ## Review history
 
@@ -75,8 +93,8 @@ and the generated Markdown at SHA-256
   authorized for `citable`.
 - Release-readiness evidence audit: `GO` for the core-only reproduction path
   and final cold-reader review; no merge or citation authority.
-- Final named-reader review: `BRIEF` on the exact Revision 10 public hashes;
-  no remediation and no merge or citation authority.
+- Claim-facing evidence and cold-reader records: see `reviews/`. A review
+  satisfies the gate only when it names the exact current public hashes.
 - Release tag: pending.
 
 Read [the amendment record](amendments.md) for every invalid or

@@ -507,3 +507,69 @@ The fresh cold named-reader review returned `BRIEF` on those exact hashes. The
 reader reconstructed the claim, limits, minimal setup, and remaining gates
 without oral context. No remediation remains. The verdict did not authorize
 merge, tag, publication, materialization, citation, or citable promotion.
+
+## Revision 11 — 2026-09-22 — disagreement disclosure and procedure hardening
+
+**Status:** Validated and non-citable. The 632 cells and validation result are
+unchanged. The amended claim-facing bytes require a fresh evidence audit and
+cold named-reader review before release.
+
+The owner review found that reporting only the signed aggregate understated
+the cell-level disagreement because positive and negative differences cancel.
+The unchanged frozen comparison has these descriptive summaries:
+
+- 276 exact cells and 356 unresolved cells;
+- a signed recomputed-minus-published sum of `+333`;
+- an absolute cell-difference sum of `869`;
+- 208 positive and 148 negative differences;
+- 57 zero-versus-zero cells among the 276 exact cells; and
+- 219 exact cells among the 575 cells where either value is nonzero.
+
+The public result now reports those measures together. They are mechanical
+summaries of the existing signed and absolute differences in the frozen
+632-cell estimand. They do not estimate missing or extra unique awards, decide
+which source is correct, classify a cause, or change a mismatch status.
+
+The public result also discloses frozen row-handling diagnostics. Of 20,836
+export rows retained for FY2020-FY2022 before jurisdiction handling, one had a
+blank `State` and was excluded under the declared rule. The remaining 20,835
+rows were counted. Sixty eligible jurisdiction/program/phase groups had no
+retained row and received a recomputed count of zero. These values are fixed
+diagnostics for this source vintage, not tolerances.
+
+The study-only jurisdiction profile accepts 53 exact, case-sensitive,
+untrimmed full names. It does not accept codes, aliases, lowercase variants, or
+whitespace variants. The producer excludes and counts blank `State` rows, then
+blocks every other unmapped nonblank value. `Marshall Islands` maps to `MH`
+only in this study profile. `MH` is not added to the general canonical
+jurisdiction set, and the study profile must not be reused as a general U.S.
+jurisdiction normalizer.
+
+### Run 3 retrospective limitation
+
+The Run 3 attestation records the malformed packet's leading `+` byte and an
+extractor finish time of `2026-09-21T22:49:03Z`. The reconciliation has no
+timestamp and contains both the 1,264/1,264 numerical score and the invalidity
+decision. The attestation, submission, and reconciliation first entered Git
+together at commit `1b7760d`. The record therefore does not establish that the
+coordinator formally declared the run invalid before computing or observing
+its score.
+
+The malformed byte existed in the prospectively frozen Packet v3, and the
+extractor recorded it before handoff. Run 3 and its nonconfirmatory score were
+disclosed before later packet freezes. Run 5 then independently matched all
+1,264 operands. The record shows no observed score-shopping, but the procedure
+had an audit hole. Run 3 remains nonconfirmatory and no public claim relies on
+it.
+
+For every future evaluated run, packet-gate invalidity must be declared and
+sealed from gate evidence before reconciliation. An invalid run must receive
+no numerator, threshold result, or reconciliation artifact. Any future
+evaluated run must freeze this rule in a new prospective design version; this
+revision does not rewrite `validation-design-v1.md` after its result.
+
+The two confirmatory dependency wheels remain in the packet. They are exact
+sealed components named by the attestation and seal inventory, and the replay
+verifier requires their bytes. The version-only `requirements.lock` is not a
+substitute for those evaluated artifacts. They are not installed by the normal
+reproduction path.

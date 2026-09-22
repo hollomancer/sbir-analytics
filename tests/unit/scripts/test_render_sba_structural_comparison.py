@@ -12,6 +12,7 @@ import pytest
 
 from scripts.ci import check_study_artifact_roundtrip as roundtrip
 from scripts.data import render_sba_structural_comparison as renderer
+from sbir_etl.quality.study_manifest import load_study_manifest
 
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -38,12 +39,43 @@ def test_committed_public_artifacts_regenerate_byte_for_byte() -> None:
 
     assert renderer.serialize_payload(payload) == SIDECAR.read_text(encoding="utf-8")
     assert renderer.render_markdown(payload) == MARKDOWN.read_text(encoding="utf-8")
+    assert payload["schema_version"] == 2
     assert payload["content"]["release_status"] == "Validated, not citable"
+    assert payload["content"]["comparison"]["aggregate_summary"] == {
+        "signed_difference": 333,
+        "absolute_difference": 869,
+        "positive_difference_cells": 208,
+        "negative_difference_cells": 148,
+        "zero_vs_zero_cells": 57,
+        "nonzero_union_cells": 575,
+        "nonzero_union_exact_cells": 219,
+    }
+    assert payload["content"]["export_row_handling"] == {
+        "retained_rows_before_blank_state_exclusion": 20836,
+        "blank_state_rows_excluded": 1,
+        "counted_rows": 20835,
+        "zero_filled_eligible_groups": 60,
+        "countable_unit": "one parsed export row",
+        "artifact_path": renderer.RUN_DIAGNOSTICS_REFERENCE,
+        "artifact_sha256": "bf8c932dd8725f2f3e66309c0318987d4a1eed485e6651d064f2037e9f68dbb8",
+    }
     assert payload["content"]["reproduction"] == {
         "setup_command": "make install-core",
         "one_command": "make reproduce-sba-structural",
         "renderer_command": "uv run python scripts/data/render_sba_structural_comparison.py",
     }
+    markdown = MARKDOWN.read_text(encoding="utf-8")
+    for disclosure in (
+        "absolute cell differences sum to 869",
+        "208 positive cells against 148 negative cells",
+        "57 are zero versus zero",
+        "575 cells where either source reports a nonzero count",
+        "1 had blank `State` and was excluded",
+        "60 eligible jurisdiction/program/phase groups",
+        "case and whitespace preserved",
+        "study-only code MH",
+    ):
+        assert disclosure in markdown
 
 
 def test_registered_pair_rejects_a_manual_markdown_edit(tmp_path: Path) -> None:
@@ -109,6 +141,50 @@ def test_render_rejects_internally_drifted_summary_even_when_rehashed() -> None:
 
     with pytest.raises(renderer.PublicResultError, match="yearly summaries do not match"):
         renderer.render_markdown(payload)
+
+
+def test_render_rejects_drifted_aggregate_even_when_rehashed() -> None:
+    payload = copy.deepcopy(renderer.build_payload(ROOT))
+    payload["content"]["comparison"]["aggregate_summary"]["absolute_difference"] = 333
+    payload["content_sha256"] = renderer._canonical_sha256(payload["content"])
+
+    with pytest.raises(renderer.PublicResultError, match="aggregate summary does not match"):
+        renderer.render_markdown(payload)
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [("blank_state_rows_excluded", 40), ("zero_filled_eligible_groups", 59)],
+)
+def test_render_rejects_drifted_export_diagnostics_even_when_rehashed(
+    field: str, value: int
+) -> None:
+    payload = copy.deepcopy(renderer.build_payload(ROOT))
+    payload["content"]["export_row_handling"][field] = value
+    payload["content_sha256"] = renderer._canonical_sha256(payload["content"])
+
+    with pytest.raises(renderer.PublicResultError, match="diagnostics differ from the frozen run"):
+        renderer.render_markdown(payload)
+
+
+def test_summary_claim_cannot_revert_to_signed_only_framing() -> None:
+    manifest = load_study_manifest(ROOT / renderer.STUDY_MANIFEST_REFERENCE)
+    signed_only = manifest.model_copy(
+        update={
+            "permitted_claims": [
+                manifest.permitted_claims[0],
+                (
+                    "The comparison contains 632 count cells: 276 are exact and 356 are "
+                    "unresolved. Across the same cells, recomputed minus published counts "
+                    "sum to +333. This total is not an omitted-award estimate, a "
+                    "source-correctness verdict, or a causal explanation."
+                ),
+            ]
+        }
+    )
+
+    with pytest.raises(renderer.PublicResultError, match="summary claim is missing"):
+        renderer._summary_claim(signed_only)
 
 
 def test_registry_names_the_public_result_pair() -> None:

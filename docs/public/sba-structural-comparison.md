@@ -13,26 +13,40 @@ For all 632 award-count cells printed in FY2020 Table 18, FY2021 Table 18, and F
 
 In plain language: Count each parsed export row once, use Award Year as the year, and do not deduplicate.
 
+Jurisdiction rule: Match only the 53 frozen full names exactly, with case and whitespace preserved. Exclude and count blank State rows; block every other unmapped nonblank State. Marshall Islands maps to study-only code MH, outside the general canonical set.
+
 The validation supports source-capture and transformation fidelity. It does not
 establish agreement between the SBA annual reports and SBIR.gov.
 
 ## Comparison result
 
-The comparison contains 632 count cells: 276 are exact and 356 are unresolved. Across the same cells, recomputed minus published counts sum to +333. This +333 total is not an omitted-award estimate, a source-correctness verdict, or a causal explanation.
+The comparison contains 632 count cells: 276 are exact and 356 are unresolved. Recomputed minus published counts sum to +333, while absolute cell differences sum to 869. Of the 276 exact cells, 57 are zero versus zero. Among the 575 cells where either source reports a nonzero count, 219 are exact. The unresolved cells comprise 208 positive and 148 negative recomputed-minus-published differences. These summaries are not an omitted-award estimate, a source-correctness verdict, or a causal explanation.
 
-The signed difference is the recomputed count minus the published count.
+The signed difference is the recomputed count minus the published count. The
+absolute difference removes that sign before summing, so positive and negative
+cell differences cannot cancel each other.
 
-| Fiscal year | SBA table | Cells | Published total | Recomputed total | Signed difference | Exact | Unresolved |
-| ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| FY2020 | 18 | 212 | 7,136 | 7,315 | +179 | 91 | 121 |
-| FY2021 | 18 | 212 | 6,783 | 6,881 | +98 | 88 | 124 |
-| FY2022 | 20 | 208 | 6,583 | 6,639 | +56 | 97 | 111 |
-| **Total** | — | **632** | **20,502** | **20,835** | **+333** | **276** | **356** |
+| Fiscal year | SBA table | Cells | Published total | Recomputed total | Signed difference | Absolute difference | Exact | Zero vs. zero | Unresolved |
+| ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| FY2020 | 18 | 212 | 7,136 | 7,315 | +179 | 373 | 91 | 23 | 121 |
+| FY2021 | 18 | 212 | 6,783 | 6,881 | +98 | 274 | 88 | 20 | 124 |
+| FY2022 | 20 | 208 | 6,583 | 6,639 | +56 | 222 | 97 | 14 | 111 |
+| **Total** | — | **632** | **20,502** | **20,835** | **+333** | **869** | **276** | **57** | **356** |
+
+The signed total nets 208 positive cells against 148 negative cells. Of the 276 exact cells, 57 are zero versus zero. Among the 575 cells where either source reports a nonzero count, 219 are exact and 356 differ.
 
 Every nonzero difference remains `unresolved`. The study applies no tolerance
 verdict, dollar comparison, or causal mismatch label.
 
 The complete cell-level result is in `studies/sba-annual-report-structural-comparison/results/count-comparison.csv` (SHA-256 `e86ab66905f65adaa7fdb721ced6bcbc7b3991a288ba37156f1efe9b4bed7381`).
+
+## Export-row handling
+
+Of 20,836 export rows retained for FY2020–FY2022 before jurisdiction handling, 1 had blank `State` and was excluded under the frozen rule. This is one export row, not necessarily one unique award. The remaining 20,835 rows were counted.
+
+60 eligible jurisdiction/program/phase groups had no retained export row and received a recomputed count of zero. These are fixed diagnostics for this source vintage, not tolerances.
+
+Diagnostics: `studies/sba-annual-report-structural-comparison/validation/confirmatory/run-diagnostics.json` (SHA-256 `bf8c932dd8725f2f3e66309c0318987d4a1eed485e6651d064f2037e9f68dbb8`).
 
 ## Validation result
 
@@ -93,7 +107,7 @@ uv run python scripts/data/render_sba_structural_comparison.py
 | Count producer | `packages/sbir-analytics/sbir_analytics/assets/sba_annual_report_structural_comparison/producer.py` | `bff52a594e4d77a2094c584e59365d4fd8be7dc381f2029246927fdebec5445a` |
 | Count reproduction command | `scripts/data/run_sba_structural_comparison.py` | `a8d2aa68e40e5748c241795599bf7c432abb013cfe7c26a020c5fbc29c6be538` |
 | Public reproduction command | `scripts/data/reproduce_sba_structural_comparison.py` | `741187a34827ea0df008ca627aedd239a008d7e5f9937d70eb43a607baeab436` |
-| Public result renderer | `scripts/data/render_sba_structural_comparison.py` | `d666b51fe4e18256c0359fccd88d1fcad9a610699861ab5a4d970b2ad2de7572` |
+| Public result renderer | `scripts/data/render_sba_structural_comparison.py` | `787fb2093c612f8b8851847cf16eaa1bcdb83e68931165c2100a4223f98c3267` |
 | Environment lock | `uv.lock` | `b9f214496158828da145a19db9c7d5cb4fc52765eeacb9a394312a2b6cf34893` |
 | 632-cell count comparison | `studies/sba-annual-report-structural-comparison/results/count-comparison.csv` | `e86ab66905f65adaa7fdb721ced6bcbc7b3991a288ba37156f1efe9b4bed7381` |
 | Confirmatory packet manifest | `studies/sba-annual-report-structural-comparison/validation/blind-packet-manifest-v5.json` | `51033aca620e71f71fc18d6ae398d27fe238fbf7c7d6cda4e748ba7db3299314` |
@@ -104,11 +118,11 @@ uv run python scripts/data/render_sba_structural_comparison.py
 | Sealed-component hashes | `studies/sba-annual-report-structural-comparison/validation/confirmatory/sealed-components.sha256` | `c452750aa2b717c4c5781cc758b19ef6566cb98421aa64e39d11554844c302b0` |
 | Post-result evidence audit | `studies/sba-annual-report-structural-comparison/reviews/post-result-evidence-audit.md` | `ac05b2e6d888b0b60e1ea57e0b5a32b9a4f70b6bc4d7dcb118af399975411b4a` |
 
-Public sidecar content SHA-256: `9a1e9d6081fa0aaae554727cde589cdc47a86a09f0988fa8b2bc887aea01ed49`.
+Public sidecar content SHA-256: `315587761de27092df09cb1c394e86f2ad1f3cdcc7a199341e849108d4e7537f`.
 This content digest is SHA-256 over the sidecar's `content` object encoded as
 canonical JSON with sorted keys and compact separators. It differs from the
 whole-file SHA-256 because the file also stores this digest and schema version.
 
 ## Release gates still open
 
-- Release governance requires explicit owner approval before merge, an immutable annotated version 0.18.0 tag, tag-bound citation metadata, and a citable-promotion evidence audit. The named-reader gate is complete.
+- Release governance requires explicit owner approval before merge, an immutable annotated version 0.18.0 tag, tag-bound citation metadata, and a citable-promotion evidence audit. Every claim-facing revision also requires an evidence audit and a cold named-reader review of its exact bytes.

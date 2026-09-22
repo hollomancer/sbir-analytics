@@ -34,7 +34,7 @@
       {
         "label": "Public result renderer",
         "path": "scripts/data/render_sba_structural_comparison.py",
-        "sha256": "d666b51fe4e18256c0359fccd88d1fcad9a610699861ab5a4d970b2ad2de7572"
+        "sha256": "787fb2093c612f8b8851847cf16eaa1bcdb83e68931165c2100a4223f98c3267"
       },
       {
         "label": "Environment lock",
@@ -84,6 +84,15 @@
     ],
     "bounded_claim": "For all 632 award-count cells printed in FY2020 Table 18, FY2021 Table 18, and FY2022 Table 20, this study reports the differences between those published counts and counts computed from the pinned September 17, 2026 SBIR.gov export under EXPORT_ROW_V1, AWARD_YEAR_FIELD_V1, and the frozen program, phase, and jurisdiction rules. A separate blinded-role implementation reproduced 1,264 of 1,264 count operands. The recorded interval is [1.0, 1.0] using the method: exact complete-population point interval; no sampling.",
     "comparison": {
+      "aggregate_summary": {
+        "absolute_difference": 869,
+        "negative_difference_cells": 148,
+        "nonzero_union_cells": 575,
+        "nonzero_union_exact_cells": 219,
+        "positive_difference_cells": 208,
+        "signed_difference": 333,
+        "zero_vs_zero_cells": 57
+      },
       "artifact_path": "studies/sba-annual-report-structural-comparison/results/count-comparison.csv",
       "artifact_sha256": "e86ab66905f65adaa7fdb721ced6bcbc7b3991a288ba37156f1efe9b4bed7381",
       "cell_count": 632,
@@ -7678,37 +7687,65 @@
       "unresolved_cells": 356,
       "yearly_summaries": [
         {
+          "absolute_difference": 373,
           "cell_count": 212,
           "exact_cells": 91,
+          "negative_difference_cells": 44,
+          "nonzero_union_cells": 189,
+          "nonzero_union_exact_cells": 68,
+          "positive_difference_cells": 77,
           "published_total": 7136,
           "recomputed_total": 7315,
           "report_year": 2020,
           "signed_difference": 179,
           "table_number": 18,
-          "unresolved_cells": 121
+          "unresolved_cells": 121,
+          "zero_vs_zero_cells": 23
         },
         {
+          "absolute_difference": 274,
           "cell_count": 212,
           "exact_cells": 88,
+          "negative_difference_cells": 55,
+          "nonzero_union_cells": 192,
+          "nonzero_union_exact_cells": 68,
+          "positive_difference_cells": 69,
           "published_total": 6783,
           "recomputed_total": 6881,
           "report_year": 2021,
           "signed_difference": 98,
           "table_number": 18,
-          "unresolved_cells": 124
+          "unresolved_cells": 124,
+          "zero_vs_zero_cells": 20
         },
         {
+          "absolute_difference": 222,
           "cell_count": 208,
           "exact_cells": 97,
+          "negative_difference_cells": 49,
+          "nonzero_union_cells": 194,
+          "nonzero_union_exact_cells": 83,
+          "positive_difference_cells": 62,
           "published_total": 6583,
           "recomputed_total": 6639,
           "report_year": 2022,
           "signed_difference": 56,
           "table_number": 20,
-          "unresolved_cells": 111
+          "unresolved_cells": 111,
+          "zero_vs_zero_cells": 14
         }
       ]
     },
+    "export_row_handling": {
+      "artifact_path": "studies/sba-annual-report-structural-comparison/validation/confirmatory/run-diagnostics.json",
+      "artifact_sha256": "bf8c932dd8725f2f3e66309c0318987d4a1eed485e6651d064f2037e9f68dbb8",
+      "blank_state_rows_excluded": 1,
+      "countable_unit": "one parsed export row",
+      "counted_rows": 20835,
+      "retained_rows_before_blank_state_exclusion": 20836,
+      "zero_filled_eligible_groups": 60
+    },
+    "jurisdiction_rule_plain_language": "Match only the 53 frozen full names exactly, with case and whitespace preserved. Exclude and count blank State rows; block every other unmapped nonblank State. Marshall Islands maps to study-only code MH, outside the general canonical set.",
     "non_claims": [
       "The study does not reproduce the unavailable publication-era SBIR.gov export.",
       "The study does not certify SBIR.gov or the SBA annual reports as complete or correct.",
@@ -7721,7 +7758,7 @@
     ],
     "prepared_for": "SBIR program managers and policy analysts in Treasury, OMB, JCT, and state economic-development offices",
     "release_blockers": [
-      "Release governance requires explicit owner approval before merge, an immutable annotated version 0.18.0 tag, tag-bound citation metadata, and a citable-promotion evidence audit. The named-reader gate is complete."
+      "Release governance requires explicit owner approval before merge, an immutable annotated version 0.18.0 tag, tag-bound citation metadata, and a citable-promotion evidence audit. Every claim-facing revision also requires an evidence audit and a cold named-reader review of its exact bytes."
     ],
     "release_status": "Validated, not citable",
     "reproduction": {
@@ -7729,7 +7766,7 @@
       "renderer_command": "uv run python scripts/data/render_sba_structural_comparison.py",
       "setup_command": "make install-core"
     },
-    "result_summary_claim": "The comparison contains 632 count cells: 276 are exact and 356 are unresolved. Across the same cells, recomputed minus published counts sum to +333. This +333 total is not an omitted-award estimate, a source-correctness verdict, or a causal explanation.",
+    "result_summary_claim": "The comparison contains 632 count cells: 276 are exact and 356 are unresolved. Recomputed minus published counts sum to +333, while absolute cell differences sum to 869. Of the 276 exact cells, 57 are zero versus zero. Among the 575 cells where either source reports a nonzero count, 219 are exact. The unresolved cells comprise 208 positive and 148 negative recomputed-minus-published differences. These summaries are not an omitted-award estimate, a source-correctness verdict, or a causal explanation.",
     "rules_plain_language": "Count each parsed export row once, use Award Year as the year, and do not deduplicate.",
     "sources": [
       {
@@ -7789,6 +7826,6 @@
       "threshold_met": true
     }
   },
-  "content_sha256": "9a1e9d6081fa0aaae554727cde589cdc47a86a09f0988fa8b2bc887aea01ed49",
-  "schema_version": 1
+  "content_sha256": "315587761de27092df09cb1c394e86f2ad1f3cdcc7a199341e849108d4e7537f",
+  "schema_version": 2
 }

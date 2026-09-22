@@ -34,16 +34,24 @@ The candidate claim is:
 > interval; no sampling`.
 
 The comparison contains 632 count cells: 276 are exact and 356 are unresolved.
-Across the same cells, recomputed minus published counts sum to +333. This +333
-total is not an omitted-award estimate, a source-correctness verdict, or a
-causal explanation. One parsed export row counts once, `Award Year` supplies
-the year, and the study does not deduplicate.
+Recomputed minus published counts sum to +333, while absolute cell differences
+sum to 869. Of the 276 exact cells, 57 are zero versus zero. Among the 575 cells
+where either source reports a nonzero count, 219 are exact. The unresolved
+cells comprise 208 positive and 148 negative recomputed-minus-published
+differences. These summaries are not an omitted-award estimate, a
+source-correctness verdict, or a causal explanation.
+
+One parsed export row counts once, `Award Year` supplies the year, and the study
+does not deduplicate. Of 20,836 retained FY2020-FY2022 rows, one had blank
+`State` and was excluded under the frozen rule; 20,835 rows were counted.
+Sixty eligible jurisdiction/program/phase groups had no retained row and
+received a recomputed count of zero.
 
 The tagged release may make that statement citable only after the release gate
 opens. The public rendering passes its byte-stable round-trip checks. The
 prospective fidelity validation passed at 1,264/1,264 with the point interval
-`[1.0, 1.0]`, the evidence audit accepted the bounded claim, and the final cold
-reader review returned `BRIEF`. Until the remaining gates close, treat the
+`[1.0, 1.0]`. Every claim-facing revision requires an evidence audit and a cold
+reader review of its exact bytes. Until the remaining gates close, treat the
 packet as validated and non-citable.
 
 This study does not reproduce the unavailable publication-era SBIR.gov export.
