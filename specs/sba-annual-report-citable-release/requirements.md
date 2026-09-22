@@ -3,7 +3,7 @@
 > **Lifecycle status:** Active release work
 > **Spec-file progress:** Validated result recorded; citable release gates open
 > Anchors inventory question **D1** in
-> [docs/research-questions.md](../../docs/research-questions.md#d1-descriptive-tier-1).
+> [docs/research-questions.md](../../docs/research-questions.md#d1-award-totals).
 
 **Target epistemic tier:** `evidence`
 
@@ -132,7 +132,8 @@ when its evidence changes, so that hidden drift cannot preserve the same claim.
 - Durable access to all four exact source files — COMPLETE
 - Approved prospective validation design and result — COMPLETE
 - Pre-run and post-result evidence-auditor review — COMPLETE
-- Public renderer and named-reader review — IN PROGRESS
+- Public renderer, round trip, and mutation checks — COMPLETE
+- Named-reader review — COMPLETE (`BRIEF`; no citation or release authority)
 
 ## Out of scope
 

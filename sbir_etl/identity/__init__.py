@@ -30,6 +30,7 @@ from .exact_awards import (
     resolve_award_identities,
 )
 from .geography import (
+    SBA_ANNUAL_REPORT_JURISDICTIONS_V1,
     US_JURISDICTION_NAMES_V1,
     US_JURISDICTION_VARIATIONS_V1,
     USJurisdictionProfile,
@@ -55,6 +56,7 @@ __all__ = [
     "EXACT_AWARD_IDENTITY_VERSION",
     "SBIR_AWARD_KEY_FIELDS",
     "SBIR_AWARD_KEY_VERSION",
+    "SBA_ANNUAL_REPORT_JURISDICTIONS_V1",
     "SUFFIX_TOKENS",
     "US_JURISDICTION_NAMES_V1",
     "US_JURISDICTION_VARIATIONS_V1",

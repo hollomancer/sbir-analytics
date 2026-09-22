@@ -32,8 +32,9 @@ evaluated extraction. Run 5 reproduced 1,264 of 1,264 count operands with the
 exact complete-population point interval `[1.0, 1.0]`. The post-result evidence
 audit authorized `validated` only.
 
-The public renderer, explanatory sidecar, mutation checks, named-reader review,
-product-scoped materialization gate, immutable release packet, and owner merge
-approval remain open. Any change to the estimand, population, source identity,
-transformation rules, threshold, claim, or non-claim still requires a numbered
-study amendment.
+The public renderer, explanatory sidecar, clean replay, and mutation checks now
+pass. The final cold named-reader review returned `BRIEF`; it did not authorize
+citation or release. The citable materialization state, immutable tag and
+citation metadata, and owner merge approval remain open. Any change to the
+estimand, population, source identity, transformation rules, threshold, claim,
+or non-claim still requires a numbered study amendment.

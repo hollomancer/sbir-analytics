@@ -55,7 +55,10 @@ DISCOVERABILITY_ALLOWLIST: dict[tuple[str, str], str] = {
     ("ma-discovery-recall", "F2"): "predates this check; no F2 bullet names the recall study",
     ("transition-scoring", "B2"): "predates this check; B2 describes the scorer without linking it",
     ("transition-scoring", "B3"): "predates this check; B3 describes the scorer without linking it",
-    ("sbir-ma-dated-signal-study", "F1"): "predates this check; no F1 bullet names the dated-signal study",
+    (
+        "sbir-ma-dated-signal-study",
+        "F1",
+    ): "predates this check; no F1 bullet names the dated-signal study",
 }
 
 # Only the past-participle rank word counts. ``validates`` is the ordinary verb
@@ -290,10 +293,7 @@ def validate_study_discoverability(
     return violations
 
 
-def load_question_study_ids(
-
-    *, repository_root: Path = REPOSITORY_ROOT
-) -> dict[str, set[str]]:
+def load_question_study_ids(*, repository_root: Path = REPOSITORY_ROOT) -> dict[str, set[str]]:
     """Map each study-listed section ID to the study IDs that list it."""
 
     listed: dict[str, set[str]] = {}

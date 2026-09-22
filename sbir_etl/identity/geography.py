@@ -23,6 +23,7 @@ class USJurisdictionProfile(StrEnum):
 
     STRICT_V1 = "us-jurisdiction-strict-v1"
     PERMISSIVE_PREFIX_V1 = "us-jurisdiction-permissive-prefix-v1"
+    SBA_ANNUAL_REPORT_TABLE_V1 = "sba-annual-report-table-v1"
 
     # Note: PERMISSIVE_PREFIX_V1 is a documented bridge preserving the patent
     # transformer's legacy behavior (arbitrary two-letter pass-through + prefix
@@ -124,6 +125,21 @@ US_JURISDICTION_VARIATIONS_V1: Mapping[str, str] = MappingProxyType(
     }
 )
 
+# Exact printed names accepted by the FY2020-FY2022 SBA annual-report table
+# comparison. This profile preserves the study's pre-validation mapping. It
+# intentionally excludes U.S. territories absent from those frozen tables and
+# includes the table's Marshall Islands row.
+SBA_ANNUAL_REPORT_JURISDICTIONS_V1: Mapping[str, str] = MappingProxyType(
+    {
+        **{
+            name: code
+            for code, name in US_JURISDICTION_NAMES_V1.items()
+            if code not in {"AS", "GU", "MP", "VI"}
+        },
+        "Marshall Islands": "MH",
+    }
+)
+
 
 def _label_key(value: Any) -> str:
     if value is None:
@@ -156,6 +172,11 @@ def normalize_us_jurisdiction(
     first canonical name beginning with the supplied prefix is selected.
     """
 
+    if profile is USJurisdictionProfile.SBA_ANNUAL_REPORT_TABLE_V1:
+        if not isinstance(value, str):
+            return None
+        return SBA_ANNUAL_REPORT_JURISDICTIONS_V1.get(value)
+
     key = _label_key(value)
     if not key:
         return None
@@ -184,6 +205,7 @@ def us_jurisdiction_name(code: Any) -> str | None:
 
 __all__ = [
     "EPISTEMIC_TIER",
+    "SBA_ANNUAL_REPORT_JURISDICTIONS_V1",
     "US_JURISDICTION_NAMES_V1",
     "US_JURISDICTION_VARIATIONS_V1",
     "USJurisdictionProfile",

@@ -16,6 +16,11 @@ from typing import Any
 
 import pandas as pd
 
+from sbir_etl.identity.geography import (
+    SBA_ANNUAL_REPORT_JURISDICTIONS_V1,
+    USJurisdictionProfile,
+    normalize_us_jurisdiction,
+)
 from sbir_etl.extractors.sbir_award_export import (
     SBIR_GOV_SOURCE_COLUMNS,
     load_verified_award_export,
@@ -124,63 +129,9 @@ LEAF_COUNT_COLUMNS = {
     ("STTR", "Phase II"): "sttr_p2_n",
 }
 
-# Exact mapping frozen by validation-design-v1.md. It is
-# intentionally narrower than the repository-wide jurisdiction normalizer.
-JURISDICTION_BY_NAME = {
-    "Alabama": "AL",
-    "Alaska": "AK",
-    "Arizona": "AZ",
-    "Arkansas": "AR",
-    "California": "CA",
-    "Colorado": "CO",
-    "Connecticut": "CT",
-    "Delaware": "DE",
-    "District of Columbia": "DC",
-    "Florida": "FL",
-    "Georgia": "GA",
-    "Hawaii": "HI",
-    "Idaho": "ID",
-    "Illinois": "IL",
-    "Indiana": "IN",
-    "Iowa": "IA",
-    "Kansas": "KS",
-    "Kentucky": "KY",
-    "Louisiana": "LA",
-    "Maine": "ME",
-    "Maryland": "MD",
-    "Marshall Islands": "MH",
-    "Massachusetts": "MA",
-    "Michigan": "MI",
-    "Minnesota": "MN",
-    "Mississippi": "MS",
-    "Missouri": "MO",
-    "Montana": "MT",
-    "Nebraska": "NE",
-    "Nevada": "NV",
-    "New Hampshire": "NH",
-    "New Jersey": "NJ",
-    "New Mexico": "NM",
-    "New York": "NY",
-    "North Carolina": "NC",
-    "North Dakota": "ND",
-    "Ohio": "OH",
-    "Oklahoma": "OK",
-    "Oregon": "OR",
-    "Pennsylvania": "PA",
-    "Puerto Rico": "PR",
-    "Rhode Island": "RI",
-    "South Carolina": "SC",
-    "South Dakota": "SD",
-    "Tennessee": "TN",
-    "Texas": "TX",
-    "Utah": "UT",
-    "Vermont": "VT",
-    "Virginia": "VA",
-    "Washington": "WA",
-    "West Virginia": "WV",
-    "Wisconsin": "WI",
-    "Wyoming": "WY",
-}
+# Exact mapping frozen by validation-design-v1.md. The versioned shared profile
+# intentionally remains narrower than the general jurisdiction normalizer.
+JURISDICTION_BY_NAME = SBA_ANNUAL_REPORT_JURISDICTIONS_V1
 
 
 class StructuralComparisonError(ValueError):
@@ -748,7 +699,12 @@ def _recomputed_counts(
     blank_state = frame["State"].astype(str).str.strip().eq("")
     dropped_blank = int(blank_state.sum())
     frame = frame.loc[~blank_state].copy()
-    frame["jurisdiction"] = frame["State"].map(JURISDICTION_BY_NAME)
+    frame["jurisdiction"] = frame["State"].map(
+        lambda value: normalize_us_jurisdiction(
+            value,
+            profile=USJurisdictionProfile.SBA_ANNUAL_REPORT_TABLE_V1,
+        )
+    )
     unmapped = sorted(set(frame.loc[frame["jurisdiction"].isna(), "State"]))
     if unmapped:
         raise StructuralComparisonError(

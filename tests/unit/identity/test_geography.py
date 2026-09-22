@@ -1,6 +1,7 @@
 import pytest
 
 from sbir_etl.identity.geography import (
+    SBA_ANNUAL_REPORT_JURISDICTIONS_V1,
     US_JURISDICTION_NAMES_V1,
     US_JURISDICTION_VARIATIONS_V1,
     USJurisdictionProfile,
@@ -47,8 +48,21 @@ def test_permissive_profile_freezes_legacy_patent_behavior() -> None:
     assert normalize_us_jurisdiction("NEW", profile=profile) == "NH"
 
 
+def test_sba_annual_report_profile_preserves_exact_table_names() -> None:
+    profile = USJurisdictionProfile.SBA_ANNUAL_REPORT_TABLE_V1
+
+    assert len(SBA_ANNUAL_REPORT_JURISDICTIONS_V1) == 53
+    assert normalize_us_jurisdiction("Alabama", profile=profile) == "AL"
+    assert normalize_us_jurisdiction("Marshall Islands", profile=profile) == "MH"
+    assert normalize_us_jurisdiction("Virgin Islands", profile=profile) is None
+    assert normalize_us_jurisdiction("alabama", profile=profile) is None
+    assert normalize_us_jurisdiction("AL", profile=profile) is None
+
+
 def test_versioned_maps_are_immutable() -> None:
     with pytest.raises(TypeError):
         US_JURISDICTION_NAMES_V1["XX"] = "Example"  # type: ignore[index]
     with pytest.raises(TypeError):
         US_JURISDICTION_VARIATIONS_V1["EXAMPLE"] = "XX"  # type: ignore[index]
+    with pytest.raises(TypeError):
+        SBA_ANNUAL_REPORT_JURISDICTIONS_V1["Example"] = "XX"  # type: ignore[index]

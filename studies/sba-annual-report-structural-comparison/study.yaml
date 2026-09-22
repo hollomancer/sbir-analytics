@@ -37,7 +37,9 @@ frozen_artifacts:
     sha256: 5ba60852f1cc44b23afdbf810ecf0cff77d714d10ffc786a9b73416d7c000fd1
     external_source: true
   - path: packages/sbir-analytics/sbir_analytics/assets/sba_annual_report_structural_comparison/producer.py
-    sha256: dff20751bec1424419ad8ed2406e082f8a6fca3eac8850c5d388e756ac24b56c
+    sha256: bff52a594e4d77a2094c584e59365d4fd8be7dc381f2029246927fdebec5445a
+  - path: sbir_etl/identity/geography.py
+    sha256: b2961c8f77086d3fb33e5f3e8fdce22a56da60004883d274c8431c1fcae00280
   - path: scripts/data/acquire_sba_structural_sources.py
     sha256: 66aef6ebf3d2b936c09c0cc4c0343fbb27880ccb7fa07486fbf86848e2e8831d
   - path: scripts/data/run_sba_structural_comparison.py
@@ -106,12 +108,36 @@ frozen_artifacts:
     sha256: f0fa19c6845758ab08074a0cfa8b7aecb71c999ca73d62883bc25cc018c4e548
   - path: studies/sba-annual-report-structural-comparison/reviews/post-result-evidence-audit.md
     sha256: ac05b2e6d888b0b60e1ea57e0b5a32b9a4f70b6bc4d7dcb118af399975411b4a
+  - path: studies/sba-annual-report-structural-comparison/reviews/named-reader-review-1.md
+    sha256: 2c3bb71a194b922846476a726d3e9ce7c621dd00e913c8ac61ee1426b92bf7d6
+  - path: studies/sba-annual-report-structural-comparison/reviews/claim-amendment-evidence-audit.md
+    sha256: 47c5203067a24b0887cd1aff9856bd44ff29cd92313457af6d57a516fde52a21
+  - path: studies/sba-annual-report-structural-comparison/reviews/named-reader-review-2.md
+    sha256: 05a62ef470a4e70ddedf5f9ed7ae9d88b33140c0860f07a9c40a64b4eecef63e
+  - path: studies/sba-annual-report-structural-comparison/reviews/named-reader-review-3.md
+    sha256: 23922bf0d8248f3e7db2dc520114e6bc9028fb2bb252c680b1d189c1f2ab9dd8
+  - path: studies/sba-annual-report-structural-comparison/reviews/jurisdiction-profile-refactor-evidence-audit.md
+    sha256: 504390bc92d684430f56b2183209a0ee1b22fe210d4dd1d16079d1cc616f080d
+  - path: studies/sba-annual-report-structural-comparison/reviews/named-reader-review-4.md
+    sha256: e1f5a3307ff6f63350b409d4696ce29e42eb0e189d3d756c0cfe80cf002067e1
+  - path: scripts/data/render_sba_structural_comparison.py
+    sha256: e591e661bbb206045d9ff60a6d1f7c34bba328099452235e601bae07c6c2732c
+  - path: scripts/data/reproduce_sba_structural_comparison.py
+    sha256: 741187a34827ea0df008ca627aedd239a008d7e5f9937d70eb43a607baeab436
+  - path: studies/sba-annual-report-structural-comparison/release/public-result.json
+    sha256: 31c079dbbc6e1e3d635fd504a7ce28f0add511d1a7e7490e1e9c4d2205c9adc0
+  - path: docs/public/sba-structural-comparison.md
+    sha256: 140962e490df125d618a808e8871c34c339375bc4c633fc91d59c1e168c2055c
 implementation:
   - path: packages/sbir-analytics/sbir_analytics/assets/sba_annual_report_structural_comparison/producer.py
     symbol: produce_count_sidecar
   - path: scripts/data/acquire_sba_structural_sources.py
     symbol: acquire_sources
   - path: scripts/data/run_sba_structural_comparison.py
+    symbol: main
+  - path: scripts/data/render_sba_structural_comparison.py
+    symbol: render_markdown
+  - path: scripts/data/reproduce_sba_structural_comparison.py
     symbol: main
 identity_policy:
   strategy: >-
@@ -123,14 +149,9 @@ materialization:
   allowed: false
   blockers:
     - >-
-      The generated public renderer and explanatory sidecar are not frozen or
-      registered for byte-stable round-trip verification.
-    - >-
-      A named outside reader has not completed the public packet without oral
-      context.
-    - >-
-      The validated packet has not been approved for merge, released as
-      version 0.18.0, or assigned an immutable annotated tag.
+      Release governance requires a successful frozen named-reader record,
+      explicit owner approval before merge, a version 0.18.0 release, and an
+      immutable annotated tag before citable promotion.
 permitted_claims:
   - >-
     Validated, not citable: for all 632 award-count cells printed in FY2020
@@ -138,11 +159,15 @@ permitted_claims:
     differences between those published counts and counts computed from the
     pinned September 17, 2026 SBIR.gov export under EXPORT_ROW_V1,
     AWARD_YEAR_FIELD_V1, and the frozen program, phase, and jurisdiction rules.
-    An independent full-population extraction reproduced 1,264 of 1,264 count
-    operands with the point interval [1.0, 1.0] under the exact complete-
-    population point interval; no sampling method. This statement is not
-    citable until the product-scoped materialization and tagged-release gates
-    open.
+    A separate blinded-role implementation reproduced 1,264 of 1,264 count
+    operands. The recorded interval is [1.0, 1.0] using the method: exact
+    complete-population point interval; no sampling. This statement is not
+    citable until the product-scoped materialization and tagged-release gates open.
+  - >-
+    The comparison contains 632 count cells: 276 are exact and 356 are
+    unresolved. Across the same cells, recomputed minus published counts sum
+    to +333. This +333 total is not an omitted-award estimate, a
+    source-correctness verdict, or a causal explanation.
 limitations:
   - The study does not reproduce the unavailable publication-era SBIR.gov export.
   - The study does not certify SBIR.gov or the SBA annual reports as complete or correct.
@@ -150,7 +175,8 @@ limitations:
   - The study does not compare or validate award-dollar totals.
   - The study does not measure commercialization, program effects, or economic return.
   - The study does not validate M&A, private-capital, or other repository outputs.
-  - The validation does not detect a rule error shared by both independent implementations.
+  - The validation does not detect a rule error shared by both separate implementations.
+  - Independence is between named blinded roles and separate implementations in this repository; it is not an unaffiliated third-party replication.
 validation_design:
   addressable_population: >-
     All 1,264 count operands underlying the 632 printed and export-derived cells
@@ -170,7 +196,7 @@ validation_result:
   design_path: studies/sba-annual-report-structural-comparison/validation-design-v1.md
   design_sha256: 7373d7e189bf8dce3ec4611064f698571053b3fb397e213e1bf8873424839fa3
   evaluated_on: 2026-09-21
-  metric: exact independently extracted count operands
+  metric: exact count operands extracted by the separate blinded role
   numerator: 1264
   denominator: 1264
   interval_low: 1.0

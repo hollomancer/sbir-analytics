@@ -184,9 +184,10 @@ bypassing lifecycle review; the status and rationale still require human judgmen
 - **`sba-annual-report-citable-release` — Active release work.** The bounded
   FY2020-FY2022 structural comparison is `validated`, not citable. Durable
   source retrieval and the prospectively frozen full-population fidelity test
-  passed at 1,264/1,264 operands. Publication remains gated on the generated
-  renderer and sidecar, mutation checks, named-reader review, product-scoped
-  materialization gate, immutable release packet, and owner approval. Existing
+  passed at 1,264/1,264 operands. The generated renderer, sidecar, clean replay,
+  and mutation checks pass, and the final cold named-reader review returned
+  `BRIEF`. Publication remains gated on the closed citable materialization
+  state, immutable tag and citation metadata, and owner approval. Existing
   post-hoc bands do not support the claim.
 - **`state-local-tax-rates` — Maintenance.** Existing hardcoded 2024 provider
   works. Remaining work is data-file/provenance cleanup for fiscal v2.

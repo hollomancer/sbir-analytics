@@ -391,3 +391,84 @@ It does not establish agreement between the two upstream sources. The 632-cell
 sidecar contains 276 exact comparisons and 356 unresolved differences. The
 Revision 1 permitted claim and all adjacent non-claims remain in force, with
 the added shared-mode-rule-error limitation.
+
+## Revision 7 — 2026-09-21 — first named-reader remediation
+
+**Status:** Validated and non-citable. A second named-reader review is required.
+
+The first cold named-reader review returned `MISLABELED`. The packet lacked a
+declared reader, did not link its generated result, and exposed premature
+citation metadata. It also used "independent" without stating that independence
+was between blinded roles and separate implementations inside this repository.
+
+The reviewer selected the 276 exact and 356 unresolved comparison summary as
+the sentence most likely to be quoted. The study now lists that summary and the
+aggregate `+333` signed difference in `permitted_claims`. The claim states that
+`+333` is not an omitted-award estimate, source-correctness verdict, or causal
+explanation. These values are mechanical summaries of the already frozen
+632-cell sidecar; they do not change the estimand, threshold, validation result,
+or mismatch classifications.
+
+The public packet now declares its readers, links the generated result, uses the
+canonical `Validated, not citable` label, qualifies the blinded-role boundary,
+includes fresh-checkout setup, explains the two digests, and defers citation
+metadata until an immutable tag exists. The result page is now
+`docs/public/sba-structural-comparison.md`.
+
+A supplemental evidence audit independently recomputed the 276/356/+333
+summary and approved it as a mechanical summary within the validated estimand.
+It required no new validation and authorized a second cold named-reader review.
+
+## Revision 8 — 2026-09-21 — named-reader gate completed
+
+**Status:** Validated and non-citable. The named-reader comprehension gate passed.
+
+The second cold review found only one inventory-routing defect: D1 did not
+appear under **Start here** for the readers declared by the packet. The human-
+authorized release work now routes D1 to SBIR program managers and to Treasury,
+OMB, JCT, and state economic-development analysts. The inventory labels the
+study `Validated, not citable` and blocks source-equivalence and economic-return
+over-reads.
+
+A fresh third review began at the root README. It returned `BRIEF`. The reader
+correctly stated the source vintage, row-count grain, 632-cell coverage,
+1,264-operand fidelity meaning, 276 exact and 356 unresolved cells, `+333`
+signed aggregate, and all adjacent non-claims without oral context. The review
+did not authorize citation, materialization, merge, release, or tagging.
+
+## Revision 9 — 2026-09-21 — shared jurisdiction profile migration
+
+**Status:** Evidence audit passed with required provenance-only remediation.
+
+The repository identity guard found the exact jurisdiction map embedded in the
+validated producer. The producer now calls the versioned
+`SBA_ANNUAL_REPORT_TABLE_V1` profile in `sbir_etl.identity.geography`. That
+profile preserves the exact 53 printed names and codes used by the validated
+implementation, including Marshall Islands and excluding four territories not
+present in the frozen comparison tables.
+
+The current producer SHA-256 is
+`bff52a594e4d77a2094c584e59365d4fd8be7dc381f2029246927fdebec5445a`.
+The shared geography primitive SHA-256 is
+`b2961c8f77086d3fb33e5f3e8fdce22a56da60004883d274c8431c1fcae00280`.
+The previous validated producer remains identified in Revisions 1 through 6 as
+`dff20751bec1424419ad8ed2406e082f8a6fca3eac8850c5d388e756ac24b56c`.
+
+Acceptance requires byte identity with the frozen 632-cell sidecar, exact
+reconciliation against all 1,264 confirmatory operands, the identity boundary,
+focused primitive and producer tests, and an evidence-auditor decision. A
+failure keeps the previous producer authoritative and blocks release.
+
+The evidence audit verified all acceptance conditions and found no change to
+the estimand, population, threshold, numerical result, claim, or non-claim. It
+authorized the existing `validated` result to remain in force without a new
+prospective validation run. It required regenerated public artifacts because
+their producer-provenance field changes, followed by a clean replay and a fresh
+cold named-reader review of those exact bytes.
+
+The regenerated public JSON has SHA-256
+`31c079dbbc6e1e3d635fd504a7ce28f0add511d1a7e7490e1e9c4d2205c9adc0`.
+The regenerated Markdown has SHA-256
+`140962e490df125d618a808e8871c34c339375bc4c633fc91d59c1e168c2055c`.
+The clean reproduction command passed. A fresh cold named-reader review of
+those exact bytes returned `BRIEF` with no remediation.

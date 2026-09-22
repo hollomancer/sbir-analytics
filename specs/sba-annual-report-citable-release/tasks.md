@@ -30,11 +30,11 @@
     remain unresolved.
   - Requirements: 1.2, 2.4-2.5, 3.3
 
-- [ ] 6. Build the public renderer and register its sidecar round trip.
+- [x] 6. Build the public renderer and register its sidecar round trip.
   - Verify: regeneration is byte-stable and manual edits fail the check.
   - Requirements: 3.1-3.3
 
-- [ ] 7. Add clean-replay and mutation tests.
+- [x] 7. Add clean-replay and mutation tests.
   - Verify: all six required mutations fail or visibly change the result.
   - Requirements: 4.1-4.2
 
@@ -43,21 +43,26 @@
     interval or reconciliation, confirmatory status, and threshold outcome.
   - Requirements: publication gates 3-5
 
-- [ ] 9. Reconcile the materialization gate for the descriptive product.
+- [x] 9. Reconcile the materialization gate for the descriptive product.
   - Verify: historical-sample reproduction remains blocked; only the reviewed
     structural-comparison product can advance.
   - Requirements: publication gate 7
 
-- [ ] 10. Run the post-result evidence audit and named-reader review.
+- [x] 10. Run the post-result evidence audit and named-reader review.
   - Verify: both records are in the packet and the reader correctly states the
     claim and non-claims without oral context.
   - Requirements: publication gates 6 and 8, 4.3
-  - Current state: post-result evidence audit complete; named-reader review pending.
+  - Current state: the evidence audit authorized `validated`, and the final
+    cold named-reader review returned `BRIEF`. Neither review authorized
+    citation, materialization, merge, release, or tagging.
 
 - [ ] 11. Prepare the immutable release packet and citation metadata.
   - Verify: every packet file has a digest and the reproduction command works
     from a clean checkout.
   - Requirements: 3.1-3.4, 4.2
+  - Current state: the validated packet and clean replay are ready; final
+    citation metadata is intentionally withheld until an actual immutable tag
+    exists.
 
 - [ ] 12. Request explicit approval before merging any release work.
   - Verify: no merge occurs without the repository owner's approval.
