@@ -34,5 +34,7 @@
 
 ## Later, separate PR
 
-- [ ] 2.1 Decide whether a non-blocking CI application is justified.
+- [x] 2.1 Decide whether a non-blocking CI application is justified.
   - Verify: a separate approved spec names changed-file scope and failure behavior.
+  - Decision: implement deterministic contract-drift enforcement under
+    `specs/jev-ci-enforcement`; keep live Jev calls out of CI.

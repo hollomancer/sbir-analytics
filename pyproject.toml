@@ -227,6 +227,7 @@ markers = [
     "slow: long-running tests (>5 seconds) - excluded from PR unit shards",
     "e2e: end-to-end tests - hermetic cases run on every PR",
     "real_data: tests using approved real data - operator-run only",
+    "jev_preflight: path-scoped deterministic preflight enforcement tests",
     "weekly: comprehensive fixture validation - full and scheduled suites",
     "regression: regression prevention tests for known bugs",
     "performance: performance/benchmark tests",

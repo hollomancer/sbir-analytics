@@ -1,10 +1,16 @@
 """Command line interface for deterministic and shadow study preflight."""
 
 import argparse
+import sys
 from pathlib import Path
 
 from .annual_report import build_annual_report_preflight, load_annual_report_claims
 from .engine import assess_readiness
+from .enforce import (
+    configuration_error_report,
+    evaluate_annual_report_policy,
+    load_enforcement_policy,
+)
 from .evaluate import (
     evaluate_matrix,
     evaluate_shadow_matrix,
@@ -20,6 +26,7 @@ from .render import render_result
 EPISTEMIC_TIER = "exploratory"
 REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_MATRIX = REPOSITORY_ROOT / "tests" / "fixtures" / "jev_preflight" / "readiness-matrix.jsonl"
+DEFAULT_CI_POLICY = REPOSITORY_ROOT / "specs" / "jev-ci-enforcement" / "policy.yaml"
 
 
 def _write_result(output: Path, content: str) -> None:
@@ -78,13 +85,29 @@ def run_evaluate_shadow(args: argparse.Namespace) -> int:
 
     report = evaluate_shadow_matrix(load_matrix(args.matrix), load_shadow_bundle(args.predictions))
     write_shadow_evaluation(report, args.output)
-    return 0 if not (
-        report.missing_case_ids
-        or report.unexpected_case_ids
-        or report.status_disagreement_case_ids
-        or report.first_blocker_disagreement_case_ids
-    ) else 1
-    return 0
+    return (
+        0
+        if not (
+            report.missing_case_ids
+            or report.unexpected_case_ids
+            or report.status_disagreement_case_ids
+            or report.first_blocker_disagreement_case_ids
+        )
+        else 1
+    )
+
+
+def run_ci_annual_report(args: argparse.Namespace) -> int:
+    """Enforce the reviewed annual-report decisions without a model call."""
+
+    try:
+        policy = load_enforcement_policy(args.policy)
+        report = evaluate_annual_report_policy(args.repository_root, policy)
+    except Exception as error:  # The CI boundary must write a report before failing closed.
+        report = configuration_error_report(error)
+        print(report.violations[0].message, file=sys.stderr)
+    _write_result(args.output, report.model_dump_json(indent=2) + "\n")
+    return 0 if report.passed else 1
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -93,7 +116,9 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     subparsers = parser.add_subparsers(dest="command", required=True)
 
-    annual = subparsers.add_parser("annual-report", help="Run deterministic annual-report preflight")
+    annual = subparsers.add_parser(
+        "annual-report", help="Run deterministic annual-report preflight"
+    )
     annual.add_argument("--case-id", required=True)
     annual.add_argument("--repository-root", type=Path, default=REPOSITORY_ROOT)
     annual.add_argument("--output-json", type=Path, required=True)
@@ -105,7 +130,9 @@ def build_parser() -> argparse.ArgumentParser:
     matrix.add_argument("--output", type=Path, required=True)
     matrix.set_defaults(handler=run_matrix)
 
-    shadow_matrix = subparsers.add_parser("shadow-matrix", help="Run private live Jev matrix shadow")
+    shadow_matrix = subparsers.add_parser(
+        "shadow-matrix", help="Run private live Jev matrix shadow"
+    )
     shadow_matrix.add_argument("--matrix", type=Path, default=DEFAULT_MATRIX)
     shadow_matrix.add_argument("--output", type=Path, required=True)
     shadow_matrix.add_argument("--timeout-seconds", type=float, default=10.0)
@@ -126,6 +153,15 @@ def build_parser() -> argparse.ArgumentParser:
     evaluate_shadow.add_argument("--predictions", type=Path, required=True)
     evaluate_shadow.add_argument("--output", type=Path, required=True)
     evaluate_shadow.set_defaults(handler=run_evaluate_shadow)
+
+    ci_annual = subparsers.add_parser(
+        "ci-annual-report",
+        help="Enforce reviewed deterministic annual-report decisions",
+    )
+    ci_annual.add_argument("--repository-root", type=Path, default=REPOSITORY_ROOT)
+    ci_annual.add_argument("--policy", type=Path, default=DEFAULT_CI_POLICY)
+    ci_annual.add_argument("--output", type=Path, required=True)
+    ci_annual.set_defaults(handler=run_ci_annual_report)
     return parser
 
 

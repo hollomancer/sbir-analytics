@@ -254,6 +254,12 @@ lint-boundaries: ## Architecture, epistemic-tier, identity, config, hygiene, and
 	$(call run,uv run python scripts/ci/check_deterministic_as_of.py)
 	$(call run,uv run python scripts/ci/check_identity_boundaries.py)
 
+.PHONY: check-jev-preflight
+check-jev-preflight: ## Enforce configured deterministic study-readiness decisions
+	@$(call info,Checking deterministic study preflight policy)
+	$(call run,uv run pytest tests/unit/scripts/test_jev_ci_enforcement.py -m jev_preflight)
+	$(call run,uv run python -m scripts.jev_preflight.cli ci-annual-report --output reports/ci/jev-preflight.json)
+
 .PHONY: docs-check
 # Thin alias for the hygiene script only. Full boundary coverage lives in
 # `make lint-boundaries` (which also runs this script). Prefer lint-boundaries
@@ -699,6 +705,7 @@ ci-local: ## Reproduce pull-request CI locally (not the post-merge full suite)
 	@$(call info,Running pull-request CI checks locally)
 	@$(MAKE) lint
 	@$(MAKE) lint-boundaries
+	@$(MAKE) check-jev-preflight
 	@$(call info,Validating Dagster definitions)
 	@uv run python -c "from dagster import Definitions; from sbir_analytics.definitions import defs; Definitions.validate_loadable(defs)"
 	@$(call info,Validating compose files)
@@ -709,7 +716,7 @@ ci-local: ## Reproduce pull-request CI locally (not the post-merge full suite)
 	@$(call info,Running detect-secrets)
 	@uv run detect-secrets scan --baseline .secrets.baseline
 	@$(call info,Running PR unit shards locally)
-	@uv run pytest tests/unit/ -m "not slow"
+	@uv run pytest tests/unit/ -m "not slow and not jev_preflight"
 	@$(call info,Running hermetic E2E)
 	@uv run pytest tests/e2e/ -m "not requires_api and not real_data"
 	@$(call success,Pull-request CI checks completed)

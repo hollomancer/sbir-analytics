@@ -43,3 +43,15 @@ uv run python -m scripts.jev_preflight.cli shadow-annual-report \
 ```
 
 Do not commit live outputs or describe them as a public model benchmark.
+
+## Deterministic CI enforcement
+
+Run the same offline contract check used by pull requests:
+
+```bash
+make check-jev-preflight
+```
+
+The check compares both annual-report decisions with
+`specs/jev-ci-enforcement/policy.yaml`. It fails on ruleset, claim-coverage,
+status, or first-blocker drift. It never reads `TYPESAFE_API_KEY` or calls Jev.
