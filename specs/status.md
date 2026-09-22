@@ -100,6 +100,11 @@ bypassing lifecycle review; the status and rationale still require human judgmen
   as the reference adapter, and `usaspending_refresh_batch` on the job.
   Per-source adapters stay split (#443 NIH RePORTER, then SAM/PatentsView).
   Tasks 6.1–6.2 remain optional Phase 2 expansion.
+- **`jev-preflight` — Active.** Exploratory, non-citable study-readiness
+  vertical slice. It applies deterministic claim and evidence rules to
+  `studies/sba-annual-report-tables`, then evaluates Jev only in private shadow
+  mode against a frozen synthetic matrix. CI enforcement, evidence promotion,
+  publication approval, and authoritative model decisions are out of scope.
 - **`ma-discovery-integration` — Active.** M&A recall is a selected F2/A4
   implementation target. Fail-closed search, C3, pair-name guards, and the
   `ma-discovery-recall` study (exploratory; materialization closed) are in
