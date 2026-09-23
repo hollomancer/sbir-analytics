@@ -19,9 +19,6 @@ from sbir_etl.config.schemas import (
     LoggingConfig,
     MADiscoveryConfig,
     MetricsConfig,
-    ModernBertConfig,
-    ModernBertNeo4jConfig,
-    Neo4jConfig,
     PathsConfig,
     PipelineConfig,
     PipelineMetadata,
@@ -256,84 +253,6 @@ class TestEnrichmentRefreshConfig:
         config = EnrichmentRefreshConfig()
         assert isinstance(config.usaspending, EnrichmentSourceConfig)
         assert config.usaspending.cadence_days == 1
-
-
-class TestNeo4jConfig:
-    """Tests for Neo4jConfig model."""
-
-    @pytest.mark.parametrize(
-        "uri,username,password,database,batch_size,threads,timeout",
-        [
-            ("bolt://localhost:7687", "neo4j", None, "neo4j", 1000, 4, 300),  # defaults
-            (
-                "bolt://prod-neo4j:7687",
-                "admin",
-                "secret",
-                "sbir",
-                1000,
-                4,
-                300,
-            ),  # custom connection
-            ("bolt://localhost:7687", "neo4j", None, "neo4j", 5000, 8, 600),  # custom performance
-        ],
-        ids=["defaults", "custom_connection", "custom_performance"],
-    )
-    def test_values(self, uri, username, password, database, batch_size, threads, timeout):
-        """Test Neo4jConfig with various values."""
-        if uri == "bolt://localhost:7687" and batch_size == 1000:  # defaults
-            config = Neo4jConfig()
-        elif password == "secret":  # custom connection
-            config = Neo4jConfig(
-                uri=uri,
-                username=username,
-                password=password,  # pragma: allowlist secret
-                database=database,
-            )
-        else:  # custom performance
-            config = Neo4jConfig(
-                batch_size=batch_size,
-                parallel_threads=threads,
-                transaction_timeout_seconds=timeout,
-            )
-
-        assert config.uri == uri
-        assert config.username == username
-        assert config.password == password
-        assert config.database == database
-        assert config.batch_size == batch_size
-        assert config.parallel_threads == threads
-        assert config.transaction_timeout_seconds == timeout
-
-
-class TestModernBertNeo4jConfig:
-    """Tests for ModernBertNeo4jConfig — validates the config/base.yaml
-    ml.modernbert.neo4j block ahead of the SIMILAR_TO edge-loading asset
-    (specs/modernbert-analysis-layer, task 2.1) landing."""
-
-    def test_defaults_match_base_yaml(self):
-        config = ModernBertNeo4jConfig()
-        assert config.enabled is False
-        assert config.batch_size == 1000
-        assert config.dry_run is False
-        assert config.prune_previous is False
-
-    def test_custom_values(self):
-        config = ModernBertNeo4jConfig(
-            enabled=True, batch_size=500, dry_run=True, prune_previous=True
-        )
-        assert config.enabled is True
-        assert config.batch_size == 500
-        assert config.dry_run is True
-        assert config.prune_previous is True
-
-    def test_batch_size_must_be_positive(self):
-        with pytest.raises(ValidationError):
-            ModernBertNeo4jConfig(batch_size=0)
-
-    def test_modernbert_config_exposes_neo4j_field(self):
-        config = ModernBertConfig()
-        assert isinstance(config.neo4j, ModernBertNeo4jConfig)
-        assert config.neo4j.enabled is False
 
 
 class TestExtractionConfig:
@@ -780,7 +699,6 @@ class TestPipelineConfig:
         assert config.pipeline["environment"] == "development"
         assert isinstance(config.paths, PathsConfig)
         assert isinstance(config.data_quality, DataQualityConfig)
-        assert isinstance(config.neo4j, Neo4jConfig)
 
     def test_pipeline_metadata_attribute_access(self):
         """Pipeline metadata supports attribute and dict-style access."""
@@ -796,17 +714,14 @@ class TestPipelineConfig:
         """Test accessing nested configuration objects."""
         config = PipelineConfig()
         assert config.logging.level == "INFO"
-        assert config.neo4j.uri == "bolt://localhost:7687"
         assert config.duckdb.database_path == "data/processed/sbir.duckdb"
 
     def test_custom_nested_values(self):
         """Test PipelineConfig with custom nested values."""
         config = PipelineConfig(
             logging=LoggingConfig(level="DEBUG"),
-            neo4j=Neo4jConfig(uri="bolt://prod:7687"),
         )
         assert config.logging.level == "DEBUG"
-        assert config.neo4j.uri == "bolt://prod:7687"
 
     def test_extra_fields_allowed(self):
         """Test PipelineConfig allows extra fields."""
@@ -821,7 +736,6 @@ class TestPipelineConfig:
         assert isinstance(config.data_quality, DataQualityConfig)
         assert isinstance(config.enrichment, EnrichmentConfig)
         assert isinstance(config.enrichment_refresh, EnrichmentRefreshConfig)
-        assert isinstance(config.neo4j, Neo4jConfig)
         assert isinstance(config.extraction, ExtractionConfig)
         assert isinstance(config.validation, ValidationConfig)
         assert isinstance(config.transformation, TransformationConfig)
@@ -864,7 +778,6 @@ class TestTransformationConfig:
         assert config.company_deduplication["similarity_threshold"] == 0.85
         assert config.company_deduplication["min_company_name_length"] == 3
         assert config.award_normalization["currency"] == "USD"
-        assert config.graph_preparation["batch_size"] == 1000
 
     def test_custom_values(self):
         """Test TransformationConfig with custom values."""

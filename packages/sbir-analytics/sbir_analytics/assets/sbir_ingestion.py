@@ -371,7 +371,7 @@ def validated_sbir_awards(
         },
     )
 
-    # Persist for downstream processing (e.g. Neo4j loading)
+    # Persist for downstream processing.
     s3_uri = _save_parquet(validated_df, "validated/sbir_awards.parquet", context)
 
     # Build audit summary for metadata (strip sample indices for serialization —

@@ -49,7 +49,7 @@ Do not use the retired `pytest-shard`, `--shard-id`, or zero-based shard numberi
 ## Full and scheduled runs
 
 Pushes to `main`, weekly scheduled runs, and `workflow_dispatch` run the full discoverable `tests/`
-tree with a Neo4j service and branch coverage. The combined first-party coverage report must remain
+tree with branch coverage. The combined first-party coverage report must remain
 at or above 70%. The workflow excludes `requires_api` tests. Files under `tests/validation/` are
 operator programs excluded from pytest discovery; executable reference tests live under
 `tests/integration/` so the full suite collects them.
@@ -75,7 +75,7 @@ make test
 `make ci-local` is the local analog of a pull-request run: `make lint`,
 `make lint-boundaries`, Dagster definition validation, compose `config -q`,
 Bandit, `detect-secrets scan --baseline`, `pytest tests/unit/ -m "not slow"`,
-and hermetic `tests/e2e/`. It does not run actionlint, Neo4j integration,
+and hermetic `tests/e2e/`. It does not run actionlint,
 the Docker image build, or the post-merge 70% coverage suite.
 
 `make validate` (`lint` + `make test`) remains the local analog of

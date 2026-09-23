@@ -1,6 +1,6 @@
-"""Freeze-hash guard for the STTR spinout-linkage design (Revision 1).
+"""Freeze-hash guard for the STTR spinout-linkage design (Revision 2).
 
-`specs/sttr-spinout-linkage/amendments.md`'s Revision 1 entry freezes
+`specs/sttr-spinout-linkage/amendments.md`'s latest approved entry freezes
 `specs/sttr-spinout-linkage/design.md` at its raw-byte SHA-256 and requires
 "a materializing asset [to] recompute this hash against the working copy
 before running and fail closed on any mismatch" -- including a mismatch
@@ -29,7 +29,7 @@ from pathlib import Path
 
 
 class DesignNotFrozenError(RuntimeError):
-    """`design.md`'s working-copy bytes no longer match the Revision 1 freeze
+    """`design.md`'s working-copy bytes no longer match the Revision 2 freeze
     recorded in `amendments.md`."""
 
 
@@ -43,17 +43,17 @@ def _find_repo_root(start: Path) -> Path:
 _REPO_ROOT = _find_repo_root(Path(__file__).resolve())
 DESIGN_PATH = _REPO_ROOT / "specs" / "sttr-spinout-linkage" / "design.md"
 
-# specs/sttr-spinout-linkage/amendments.md, "## Revision 1 -- FREEZE", the
+# specs/sttr-spinout-linkage/amendments.md, "## Revision 2", the
 # "Frozen file" bullet: raw-byte SHA-256 of design.md at freeze time
-# (2026-08-14). Do not hand-edit this constant on a design.md change --
+# (2026-09-23). Do not hand-edit this constant on a design.md change --
 # amendments.md's append-only rule requires a new numbered revision first;
 # update both together. `test_freeze_guard.py` asserts this constant still
 # matches what is parseable out of amendments.md.
-FROZEN_DESIGN_SHA256 = "52d8b531d56f3b91e1d3b0946e1ac91dd6f5dfeab371e3d48f87dc5e6095ac49"
+FROZEN_DESIGN_SHA256 = "5ffb2c28a58d50bc9155e3412f0ec243c6c4c762f971e305b5394564d105f9de"
 
 
 def verify_design_frozen(design_path: Path = DESIGN_PATH) -> str:
-    """Fail closed unless `design_path`'s raw bytes match the Revision 1 freeze.
+    """Fail closed unless `design_path`'s raw bytes match the Revision 2 freeze.
 
     Returns the verified SHA-256 hex digest on success.
     """
@@ -67,7 +67,7 @@ def verify_design_frozen(design_path: Path = DESIGN_PATH) -> str:
     actual = hashlib.sha256(content).hexdigest()
     if actual != FROZEN_DESIGN_SHA256:
         raise DesignNotFrozenError(
-            f"design.md has drifted from the Revision 1 freeze recorded in "
+            f"design.md has drifted from the Revision 2 freeze recorded in "
             f"amendments.md: expected SHA-256 {FROZEN_DESIGN_SHA256}, found {actual}. "
             "Record a new numbered amendment in amendments.md before proceeding."
         )

@@ -4,6 +4,7 @@
 import ast
 import hashlib
 import json
+from contextlib import ExitStack
 from pathlib import Path
 
 from pydantic import ValidationError
@@ -11,9 +12,16 @@ from pydantic import ValidationError
 from sbir_etl.exceptions import ConfigurationError
 from sbir_etl.quality.study_manifest import StudyManifest, load_study_manifest
 
+from scripts.ci.released_studies import (
+    ReleasedStudyError,
+    load_released_studies,
+    released_study_root,
+    verify_current_release_subtree,
+    verify_release_checksums,
+)
+
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
-STUDIES_ROOT = REPOSITORY_ROOT / "studies"
 
 
 def _repository_path(relative: str, repository_root: Path) -> Path:
@@ -166,21 +174,73 @@ def validate_manifest_file(
     )
 
 
-def main() -> int:
-    manifests = sorted(STUDIES_ROOT.glob("*/study.yaml"))
+def validate_repository_manifests(
+    repository_root: Path = REPOSITORY_ROOT,
+) -> tuple[int, list[str]]:
+    """Validate active studies at HEAD and released studies in immutable trees."""
+
+    manifests = sorted((repository_root / "studies").glob("*/study.yaml"))
     if not manifests:
-        print("No study manifests found under studies/*/study.yaml")
-        return 1
+        return 0, ["No study manifests found under studies/*/study.yaml"]
+    try:
+        releases = load_released_studies(repository_root)
+    except (OSError, ValueError, ReleasedStudyError) as exc:
+        return len(manifests), [f"invalid released-study registry: {exc}"]
 
     failures: list[str] = []
-    for path in manifests:
-        relative = path.relative_to(REPOSITORY_ROOT).as_posix()
-        failures.extend(f"{relative}: {error}" for error in validate_manifest_file(path))
+    seen_releases: set[str] = set()
+    with ExitStack() as stack:
+        released_roots: dict[str, Path] = {}
+        for path in manifests:
+            study_id = path.parent.name
+            binding = releases.get(study_id)
+            validation_root = repository_root
+            validation_path = path
+            if binding is not None:
+                try:
+                    validation_root = released_roots.setdefault(
+                        study_id,
+                        stack.enter_context(released_study_root(repository_root, binding)),
+                    )
+                except (OSError, ReleasedStudyError) as exc:
+                    failures.append(f"{path.relative_to(repository_root)}: {exc}")
+                    continue
+                validation_path = validation_root / "studies" / study_id / "study.yaml"
+                failures.extend(
+                    f"{path.relative_to(repository_root)}: {error}"
+                    for error in verify_release_checksums(validation_root, binding)
+                )
+                failures.extend(
+                    f"{path.relative_to(repository_root)}: {error}"
+                    for error in verify_current_release_subtree(
+                        repository_root,
+                        validation_root,
+                        binding,
+                    )
+                )
+                seen_releases.add(study_id)
+            failures.extend(
+                f"{path.relative_to(repository_root)}: {error}"
+                for error in validate_manifest_file(
+                    validation_path,
+                    repository_root=validation_root,
+                )
+            )
+
+    missing = sorted(set(releases) - seen_releases)
+    failures.extend(
+        f"released-study registry names missing study: {study_id}" for study_id in missing
+    )
+    return len(manifests), failures
+
+
+def main() -> int:
+    count, failures = validate_repository_manifests()
     if failures:
         print("Study manifest validation failed:")
         print("\n".join(failures))
         return 1
-    print(f"Validated {len(manifests)} study manifest(s).")
+    print(f"Validated {count} study manifest(s).")
     return 0
 
 

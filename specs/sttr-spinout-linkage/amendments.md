@@ -143,3 +143,22 @@ requires its own numbered amendment here, per the append-only rule above.
 - **Visibility at approval:** Same as Revision 0. **No classification result, incidence count,
   coverage count, negative-control result, or adjudication result had been computed or seen at the
   time of this freeze.**
+
+## Revision 2 — Neo4j retirement terminology amendment
+
+- **Approved:** 2026-09-23 — the repository owner authorized retirement of Neo4j and its public,
+  runtime, and research-projection surfaces in a separate breaking-change pull request.
+- **Reason:** Remove the frozen design's references to a retired disposable graph projection and
+  replace a deleted architecture-plan link with the surviving assertion-governance ADR. This keeps
+  the design usable after the infrastructure retirement without presenting Neo4j as current
+  capability.
+- **Frozen file:** `design.md`, raw-byte **SHA-256:**
+  `5ffb2c28a58d50bc9155e3412f0ec243c6c4c762f971e305b5394564d105f9de`.
+- **Criteria impact:** None. The cascade, evidence dimensions, source rules, similarity method,
+  thresholds, precedence, windows, validation gates, and evidence status are unchanged. Parquet
+  remains authoritative; this revision removes only the optional service-projection language and
+  updates governance terminology and links.
+- **Freeze status:** **FROZEN.** Materializing code must verify the Revision 2 digest above. This
+  amendment does not authorize materialization, promotion, publication, or a citable claim.
+- **Visibility at approval:** This maintenance amendment used no newly computed STTR classification,
+  incidence, coverage, negative-control, or adjudication result.

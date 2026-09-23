@@ -178,8 +178,8 @@ GitHub Actions becomes lint, typecheck, test, and image build only.
 - `Makefile` — the `test-s3` target (197-200) and the three `USE_S3_FIRST` toggle
   blocks (242-288).
 
-Unchanged: Neo4j service containers, the `start-neo4j` / `stop-neo4j` composite
-actions, and `build-images.yml`. That layer is already correctly scoped.
+The graph-service containers and their composite actions were outside this AWS
+decommission slice. ADR-006 later retired them from the repository.
 
 ## Phase 5 — Tests
 

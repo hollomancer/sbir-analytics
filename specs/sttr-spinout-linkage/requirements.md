@@ -82,17 +82,17 @@ independent institute) has ever served as an STTR partner, by agency and fiscal 
 3. WHEN seed lists overlap (e.g., a university-administered FFRDC), THE System SHALL apply the
    precedence order proposed in [design.md](design.md#partner-type-classification) (owner decision pending).
 
-### Requirement 3 — CANDIDATE graph assertions with typed absence
+### Requirement 3 — CANDIDATE assertions with typed absence
 
 **User story:** As a pipeline engineer, I want linkage and partner-type results emitted only as
-`CANDIDATE` assertions with per-dimension typed absence, so that no graph-derived rate can be
+`CANDIDATE` assertions with per-dimension typed absence, so that no derived rate can be
 mistaken for a validated finding.
 
 #### Acceptance Criteria
 
 1. WHEN emitting an assertion, THE System SHALL set `claim_status = CANDIDATE`,
    `support_class = C`, `permitted_use = INVESTIGATIVE_ONLY`, per
-   [neo4j-epistemic-assertions-plan.md](../../docs/architecture/neo4j-epistemic-assertions-plan.md).
+   [ADR-005](../../docs/decisions/ADR-005-transition-candidates-as-assertions.md).
 2. THE System SHALL keep Parquet authoritative and SHALL NOT introduce any new causal edge type.
 
 ### Requirement 4 — RQ2 matched-comparison design (design only)

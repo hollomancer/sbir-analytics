@@ -33,8 +33,6 @@ or non-citable analysis:
 - Form D and other private-capital matching.
 - NASA and NIH comparative-outcome designs.
 - Marginal-award identification and social-return break-even design.
-- Neo4j graph loaders and visualizations. The graph is a derived read
-  projection, not the authoritative research database.
 - Notebooks unless their header and a study contract explicitly state a higher
   status.
 
@@ -45,6 +43,8 @@ The live exploratory study contracts are indexed in
 
 - [Form D fundraising](studies/form-d-fundraising/) is retired. Its former
   numerical claims are suppressed pending a governed rebuild.
+- [The graph projection](archive/neo4j/) is retired. Governed Parquet and DuckDB
+  records remain authoritative.
 - `docs/archive/`, `specs/archive/`, and `scripts/archive/` preserve historical
   decisions and selected provenance. Archived material is not a maintained
   capability.

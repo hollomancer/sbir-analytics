@@ -7,11 +7,6 @@ This module contains:
 
 from __future__ import annotations
 
-import json
-import os
-from pathlib import Path
-from typing import Any
-
 import pandas as pd
 from loguru import logger
 
@@ -23,7 +18,6 @@ from .utils import (
     Output,
     asset,
     asset_check,
-    neo4j_skip_requested,
     save_dataframe_parquet,
 )
 
@@ -268,113 +262,3 @@ def transformed_cet_company_profiles() -> Output:
     )
 
     return Output(value=str(artifact_path), metadata=metadata)  # type: ignore[arg-type]
-
-
-# ============================================================================
-# Neo4j Loading Assets (Consolidated from cet_neo4j_loading_assets.py)
-# ============================================================================
-
-# Neo4j loader imports (import-safe)
-try:
-    from sbir_graph.loaders.neo4j import LoadMetrics, Neo4jClient, Neo4jConfig
-except Exception:  # pragma: no cover
-    Neo4jClient = None  # type: ignore
-    Neo4jConfig = None  # type: ignore
-    LoadMetrics = None  # type: ignore
-
-try:
-    from sbir_graph.loaders.neo4j import CETLoader, CETLoaderConfig
-except Exception:  # pragma: no cover
-    CETLoader = None  # type: ignore
-    CETLoaderConfig = None  # type: ignore
-
-# Configuration Defaults for Neo4j Loading
-DEFAULT_NEO4J_URI = os.environ.get("NEO4J_URI", "bolt://localhost:7687")
-DEFAULT_NEO4J_USER = os.environ.get("NEO4J_USER", "neo4j")
-DEFAULT_NEO4J_PASSWORD = os.environ.get("NEO4J_PASSWORD", "neo4j")
-DEFAULT_NEO4J_DATABASE = os.environ.get("NEO4J_DATABASE", "neo4j")
-
-DEFAULT_PROCESSED_DIR_NEO4J = Path("data/processed")
-DEFAULT_TAXONOMY_PARQUET = DEFAULT_PROCESSED_DIR_NEO4J / "cet_taxonomy.parquet"
-DEFAULT_TAXONOMY_JSON = DEFAULT_PROCESSED_DIR_NEO4J / "cet_taxonomy.json"
-
-DEFAULT_AWARD_CLASS_PARQUET = DEFAULT_PROCESSED_DIR_NEO4J / "cet_award_classifications.parquet"
-DEFAULT_AWARD_CLASS_JSON = DEFAULT_PROCESSED_DIR_NEO4J / "cet_award_classifications.ndjson"
-
-DEFAULT_COMPANY_PROFILES_PARQUET = DEFAULT_PROCESSED_DIR_NEO4J / "cet_company_profiles.parquet"
-DEFAULT_COMPANY_PROFILES_JSON = DEFAULT_PROCESSED_DIR_NEO4J / "cet_company_profiles.ndjson"
-
-DEFAULT_OUTPUT_DIR = Path(os.environ.get("SBIR_ETL__CET__NEO4J_OUTPUT_DIR", "data/loaded/neo4j"))
-
-
-def _get_neo4j_client():
-    """Get Neo4j client with error handling."""
-    # Check if Neo4j loading is explicitly skipped
-    skip_neo4j = neo4j_skip_requested()
-
-    if Neo4jClient is None or Neo4jConfig is None:
-        if skip_neo4j:
-            return None  # Gracefully skip when explicitly requested
-        else:
-            raise RuntimeError(
-                "Neo4j client unavailable but Neo4j loading not skipped. Set SKIP_NEO4J_LOADING=true to skip."
-            )
-
-    try:
-        config = Neo4jConfig(
-            uri=DEFAULT_NEO4J_URI,
-            username=DEFAULT_NEO4J_USER,
-            password=DEFAULT_NEO4J_PASSWORD,
-            database=DEFAULT_NEO4J_DATABASE,
-        )
-        client = Neo4jClient(config)
-        # Test connection
-        with client.session() as session:
-            session.run("RETURN 1")
-        return client
-    except Exception as e:
-        if skip_neo4j:
-            return None  # Gracefully skip when explicitly requested
-        else:
-            raise RuntimeError(
-                f"Neo4j connection failed but Neo4j loading not skipped: {e}. Set SKIP_NEO4J_LOADING=true to skip."
-            )
-
-
-def _read_parquet_or_ndjson(
-    parquet_path: Path, json_path: Path, expected_columns: tuple
-) -> list[dict]:
-    """Read data from parquet or fallback to NDJSON."""
-    if pd is None:
-        return []  # type: ignore[unreachable]
-
-    try:
-        if parquet_path.exists():
-            df = pd.read_parquet(parquet_path)
-            return df.to_dict(orient="records")
-        elif json_path.exists():
-            records = []
-            with json_path.open("r", encoding="utf-8") as fh:
-                for line in fh:
-                    if line.strip():
-                        try:
-                            records.append(json.loads(line))
-                        except Exception:
-                            continue
-            return records
-    except Exception:
-        pass
-    return []
-
-
-def _serialize_metrics(metrics: Any) -> dict[str, Any]:
-    """Serialize LoadMetrics to dict."""
-    if metrics is None:
-        return {}
-    return {
-        "nodes_created": getattr(metrics, "nodes_created", 0),
-        "nodes_updated": getattr(metrics, "nodes_updated", 0),
-        "relationships_created": getattr(metrics, "relationships_created", 0),
-        "relationships_updated": getattr(metrics, "relationships_updated", 0),
-        "execution_time_ms": getattr(metrics, "execution_time_ms", 0),
-    }

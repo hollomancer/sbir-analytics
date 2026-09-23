@@ -153,7 +153,7 @@ Thresholds are configurable. See [scoring-guide.md](scoring-guide.md) for tuning
 
 Each detection includes an auditable JSON evidence bundle recording all signal evaluations, vendor match details, and raw contract/award data. See [evidence-bundles.md](evidence-bundles.md) for the full schema and field definitions.
 
-Storage: NDJSON file (`data/processed/transitions_evidence.ndjson`) and as a property on the `TRANSITIONED_TO` Neo4j relationship.
+Storage: governed NDJSON or Parquet artifact (`data/processed/transitions_evidence.ndjson`).
 
 ## Configuration & Customization
 
@@ -236,7 +236,7 @@ Four built-in presets (High Precision, Balanced, Broad Discovery, CET Focused) c
 
 5. **Evidence Bundle**
    - Includes all signal details, vendor match info, contract details
-   - Stored as JSON on Neo4j relationship
+   - Stored with the governed transition record
 
 ### Output
 

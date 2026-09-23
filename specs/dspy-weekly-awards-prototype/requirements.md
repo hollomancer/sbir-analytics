@@ -372,7 +372,7 @@ briefing.
 - Production changes in the planning PR.
 - Weekly synopsis, company or PI diligence, and live retrieval. Frozen company
   web context is permitted only in the preregistered robustness phase.
-- RAG, vector storage, tool-using agents, raw Cypher, Dagster execution, or MCP
+- RAG, vector storage, tool-using agents, arbitrary database queries, Dagster execution, or MCP
   exposure.
 - Entity-resolution, topic-clustering, mission-alignment, or NAICS-to-BEA
   decisions.

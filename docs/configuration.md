@@ -18,10 +18,9 @@ source of truth for fields, defaults, and validation constraints.
 
 1. Load `config/base.yaml`.
 2. Deep-merge the selected profile, when present: `dev.yaml`, `test.yaml`, or `prod.yaml`.
-3. Map the legacy `loading.neo4j` block to the runtime `neo4j` section.
-4. Add runtime defaults for Neo4j, logging, and monitoring.
-5. Apply `SBIR_ETL__...` environment overrides.
-6. Validate and return a `PipelineConfig`.
+3. Add runtime defaults for logging and monitoring.
+4. Apply `SBIR_ETL__...` environment overrides.
+5. Validate and return a `PipelineConfig`.
 
 Later layers take precedence.
 
@@ -59,17 +58,6 @@ overrides should be expressed in a profile YAML file instead.
 
 `SBIR_ETL__PIPELINE__ENVIRONMENT` selects the profile and is not reapplied as a generic override.
 
-### Neo4j secrets and connection settings
-
-The loader also supports these direct variables:
-
-```bash
-export NEO4J_URI=bolt://localhost:7687
-export NEO4J_USER=neo4j
-export NEO4J_PASSWORD='local-password'
-export NEO4J_DATABASE=neo4j
-```
-
 Keep secrets out of committed YAML. The live server uses `.env.server`; preserve that file and
 follow the [self-hosted server runbook](deployment/self-hosted-server.md) before any live operation.
 
@@ -81,7 +69,6 @@ from sbir_etl.config.loader import get_config
 config = get_config()
 print(config.pipeline.environment)
 print(config.enrichment.performance.chunk_size)
-print(config.neo4j.uri)
 ```
 
 `get_config()` is cached. Tests or long-running processes that change environment variables must
@@ -123,7 +110,6 @@ The root `PipelineConfig` currently exposes:
 | `enrichment_refresh` | Incremental refresh cadence, state, and freshness metrics |
 | `extraction` | SBIR and USAspending extraction settings |
 | `validation` / `transformation` | Record validation and transformation behavior |
-| `neo4j` | Graph connection, database, batching, and concurrency |
 | `logging` / `metrics` | Structured logs and runtime metrics |
 | `duckdb` | Local analytical database settings |
 | `company_categorization` | Contract-based company categorization |

@@ -1,6 +1,6 @@
 # Specification Status Registry
 
-Reviewed: 2026-09-21
+Reviewed: 2026-09-23
 
 This registry is the cleanup checkpoint for top-level specs. It does not replace
 the requirements, design, or tasks files; it records whether a spec is a current
@@ -59,9 +59,10 @@ bypassing lifecycle review; the status and rationale still require human judgmen
   Phase 1 artifacts were materialized.
 - **`bea-nipa-tax-rates` — Active.** The NIPA provider exists; the remaining
   work is the on-disk cache and removal of hardcoded effective-rate consumers.
-- **`company-categorization` — Maintenance.** About 80% complete. Evaluate the
-  remaining Neo4j loader and docs against the current `:Organization` graph
-  schema before implementation.
+- **`company-categorization` — Maintenance.** About 80% complete. The governed
+  categorization table remains supported; its unused graph publication path was
+  removed with `neo4j-retirement`. Complete only the remaining table-owned
+  validation and documentation work.
 - **`cross-agency-taxonomy` — Gated backlog.** M3 research target. Prerequisite
   classifier/tools exist, but this spec's batch run, report, and Dagster wiring
   are not implemented.
@@ -137,8 +138,15 @@ bypassing lifecycle review; the status and rationale still require human judgmen
   stay on their existing builder. Census and cohort classifiers remain
   exploratory.
 - **`modernbert-analysis-layer` — Maintenance.** Core embeddings and similarity
-  are implemented. Neo4j loading, quality metrics, and Bayesian routing remain
-  scoped follow-ups.
+  are implemented. Quality metrics and Bayesian routing remain scoped
+  follow-ups; graph-service integration was removed from scope.
+- **`neo4j-retirement` — Maintenance.** Pipelines-tier operational retirement of the unused
+  Neo4j projection, `sbir-graph` package, graph-only Dagster paths, and graph service.
+  Governed Parquet and DuckDB records remain authoritative. PR #788 is merged and the
+  annotated `v0.18.0` tag preserves its reviewed packet and the last supported graph
+  implementation. Repository removal and tag-bound historical study validation are complete
+  without changing frozen study bytes. The one-time operator cutover still requires a verified
+  final dump. Live graph-data deletion and replacement graph work are out of scope.
 - **`naics-enricher-consolidation` — Maintenance.** Consolidation is largely
   complete. Remaining obsolete audit/golden-file tasks should not be revived as
   written.

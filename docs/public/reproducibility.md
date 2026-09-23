@@ -3,7 +3,7 @@
 **Prepared for:** SBIR program managers and policy analysts in Treasury, OMB,
 JCT, and state economic-development offices
 
-Use Python 3.11 or 3.12 and `uv`. Docker, Neo4j, API keys, and running services
+Use Python 3.11 or 3.12 and `uv`. Docker, API keys, and running services
 are not required. The source bundle is about 402 MB.
 
 ## Run the public check
@@ -11,12 +11,13 @@ are not required. The source bundle is about 402 MB.
 From a tagged release checkout, run:
 
 ```bash
+git checkout v0.18.0
 make install-core
 make reproduce-sba-structural
 ```
 
 The reproduction command adds the study producer source path for this run. It
-does not install or start Dagster, Neo4j, or the other workspace packages.
+does not install or start Dagster or the other workspace packages.
 
 The command performs these checks before it reports success:
 

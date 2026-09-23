@@ -1,7 +1,7 @@
 """USPTO (United States Patent and Trademark Office) assets package.
 
 This package contains modularized Dagster assets for USPTO patent data processing,
-including extraction, parsing, validation, transformation, and Neo4j loading.
+including extraction, parsing, validation, and transformation.
 
 Module Structure:
 - utils: Shared utilities, helpers, and Dagster re-exports
@@ -9,7 +9,6 @@ Module Structure:
 - parsing: File parsing and initial validation
 - validation: Data quality validation and checks
 - transformation: Data transformation and entity extraction
-- loading: Neo4j graph database loading
 - ai_extraction: AI-based entity extraction and predictions
 
 Pipeline Stages:
@@ -17,8 +16,7 @@ Pipeline Stages:
 2. Parsing: Parse raw files into structured data
 3. Validation: Validate data quality, uniqueness, and integrity
 4. Transformation: Transform into patent assignments and entities
-5. Loading: Load into Neo4j graph database
-6. AI Extraction: AI-based entity extraction (optional)
+5. AI Extraction: AI-based entity extraction (optional)
 
 Exported Assets:
 - Raw: raw_uspto_assignments, raw_uspto_assignees, raw_uspto_assignors,
@@ -27,8 +25,6 @@ Exported Assets:
   parsed_uspto_documentids, parsed_uspto_conveyances
 - Validated: validated_uspto_assignments
 - Transformed: transformed_patent_assignments, transformed_patents, transformed_patent_entities
-- Loaded: loaded_patents, loaded_patent_assignments, loaded_patent_entities,
-  loaded_patent_relationships
 - AI: raw_uspto_ai_extract, uspto_ai_deduplicate, raw_uspto_ai_human_sample_extraction,
   raw_uspto_ai_predictions, validated_uspto_ai_cache_stats, raw_uspto_ai_human_sample,
   enriched_uspto_ai_patent_join
@@ -59,17 +55,6 @@ from .extraction import (
     raw_uspto_assignors,
     raw_uspto_conveyances,
     raw_uspto_documentids,
-)
-
-# Loading module
-from .loading import (
-    assignment_load_success_rate,
-    loaded_patent_assignments,
-    loaded_patent_entities,
-    loaded_patent_relationships,
-    loaded_patents,
-    patent_load_success_rate,
-    patent_relationship_cardinality,
 )
 
 # Parsing module
@@ -104,13 +89,6 @@ from .validation import (
 )
 
 
-# Backward compatibility aliases
-neo4j_patents = loaded_patents
-neo4j_patent_assignments = loaded_patent_assignments
-neo4j_patent_entities = loaded_patent_entities
-neo4j_patent_relationships = loaded_patent_relationships
-
-
 __all__ = [
     # Extraction
     "raw_uspto_assignments",
@@ -137,19 +115,6 @@ __all__ = [
     "transformed_patent_entities",
     "uspto_transformation_success_check",
     "uspto_company_linkage_check",
-    # Loading
-    "loaded_patents",
-    "loaded_patent_assignments",
-    "loaded_patent_entities",
-    "loaded_patent_relationships",
-    "patent_load_success_rate",
-    "assignment_load_success_rate",
-    "patent_relationship_cardinality",
-    # Backward compatibility aliases
-    "neo4j_patents",
-    "neo4j_patent_assignments",
-    "neo4j_patent_entities",
-    "neo4j_patent_relationships",
     # Utility functions
     "asset",
     "asset_check",

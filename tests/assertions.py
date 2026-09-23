@@ -156,45 +156,6 @@ def assert_award_fields_equal(
         )
 
 
-def assert_valid_neo4j_load_metrics(metrics: Any, min_nodes: int = 0) -> None:
-    """Assert Neo4j LoadMetrics has valid structure.
-
-    Args:
-        metrics: LoadMetrics instance
-        min_nodes: Minimum expected nodes created/updated
-
-    Raises:
-        AssertionError: If metrics are invalid
-    """
-    # Check required attributes exist
-    assert hasattr(metrics, "nodes_created"), "Missing nodes_created attribute"
-    assert hasattr(metrics, "nodes_updated"), "Missing nodes_updated attribute"
-    assert hasattr(metrics, "relationships_created"), "Missing relationships_created"
-    assert hasattr(metrics, "errors"), "Missing errors attribute"
-
-    # Validate types
-    assert isinstance(metrics.nodes_created, dict), "nodes_created should be dict"
-    assert isinstance(metrics.nodes_updated, dict), "nodes_updated should be dict"
-    assert isinstance(metrics.relationships_created, dict), "relationships_created should be dict"
-    assert isinstance(metrics.errors, int), "errors should be int"
-
-    # Validate counts are non-negative
-    assert metrics.errors >= 0, f"errors should be non-negative, got {metrics.errors}"
-
-    for label, count in metrics.nodes_created.items():
-        assert count >= 0, f"nodes_created[{label}] should be non-negative, got {count}"
-
-    for label, count in metrics.nodes_updated.items():
-        assert count >= 0, f"nodes_updated[{label}] should be non-negative, got {count}"
-
-    # Optional validation
-    if min_nodes > 0:
-        total_nodes = sum(metrics.nodes_created.values()) + sum(metrics.nodes_updated.values())
-        assert total_nodes >= min_nodes, (
-            f"Total nodes {total_nodes} is less than minimum {min_nodes}"
-        )
-
-
 def assert_valid_cet_classification(
     classification: Any,
     min_score: float | None = None,

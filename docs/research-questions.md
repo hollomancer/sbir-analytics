@@ -567,7 +567,7 @@ statutory goal is Phase III commercialization.*
   Which SBIR companies show the highest transition success rate, and which are
   consistent repeat performers?
   Lerner [L10] found growth concentrated in high-VC zip codes.
-  *Deps: ER · Refs: [L10] · Spec: [queries/transition-queries.md](queries/transition-queries.md)*
+  *Deps: ER · Refs: [L10] · Method: [transition overview](transition/overview.md)*
 
 - <a id="b1-sttr-partner-types"></a>**STTR research-institution partner types**
   Of STTR awards, what types of research institutions appear as partners —
@@ -1051,7 +1051,7 @@ non-destructively when a current A–D question needs them. The
   *Deps: IMP + transition detection*
 
 - **Raw vs. effective values downstream**
-  Which downstream consumers (Neo4j, CET, transition detection) should use raw
+  Which downstream consumers (governed tables, CET, transition detection) should use raw
   versus effective values?
   *Deps: IMP*
 

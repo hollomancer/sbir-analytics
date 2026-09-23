@@ -16,7 +16,6 @@ All assets follow a consistent naming pattern based on their pipeline stage:
 | **Validation** | `validated_` | `validation` | Schema validation and quality checks |
 | **Enrichment** | `enriched_` | `enrichment` | External data enrichment |
 | **Transformation** | `transformed_` | `transformation` | Business logic and normalization |
-| **Loading** | `loaded_` | `loading` | Database loading and relationship creation |
 
 ### Asset Name Structure
 
@@ -30,7 +29,6 @@ All assets follow a consistent naming pattern based on their pipeline stage:
 - `validated_uspto_assignments` - Validated USPTO assignment data
 - `enriched_cet_award_classifications` - CET-enriched award classifications
 - `transformed_patent_assignments` - Transformed patent assignment data
-- `loaded_transitions` - Loaded transition data in Neo4j
 
 ### Entity Types
 
@@ -77,19 +75,13 @@ Assets are organized into logical groups that reflect pipeline stages:
 - Relationship preparation
 - Examples: `transformed_patent_assignments`, `transformed_transition_scores`
 
-### Loading Group (`loading`)
-
-- Database loading operations
-- Relationship creation
-- Index and constraint management
-- Examples: `loaded_patents`, `loaded_transitions`
-
 ## Change History
 
 - **October 2025** – Standardized 47 asset function names and decorator parameters to follow the stage prefixes above.
 - Updated 15 downstream dependencies to reference the renamed assets, ensuring Dagster dependency graphs remained intact.
 - Consolidated group names (`sbir_ingestion`, `usaspending_ingestion`, `transition`, etc.) into the five-stage taxonomy (`extraction`, `validation`, `enrichment`, `transformation`, `loading`).
-- Expanded `loaded_*` coverage to include Neo4j patent and transition loaders and aligned CET assets with the enrichment and transformation stages.
+- The former `loaded_*` graph assets were retired with the graph service. Current assets end at
+  governed tabular outputs.
 
 See project release notes for the full task breakdown and code references.
 
@@ -112,10 +104,6 @@ The following assets have been renamed to follow the new standards:
 
 - `parsed_uspto_assignees` → `validated_uspto_assignees`
 - `parsed_uspto_assignors` → `validated_uspto_assignors`
-- `neo4j_patents` → `loaded_patents`
-- `neo4j_patent_assignments` → `loaded_patent_assignments`
-- `neo4j_patent_entities` → `loaded_patent_entities`
-- `neo4j_patent_relationships` → `loaded_patent_relationships`
 
 ### CET Assets
 
@@ -123,11 +111,6 @@ The following assets have been renamed to follow the new standards:
 - `cet_award_classifications` → `enriched_cet_award_classifications`
 - `cet_patent_classifications` → `enriched_cet_patent_classifications`
 - `cet_company_profiles` → `transformed_cet_company_profiles`
-- `neo4j_cetarea_nodes` → `loaded_cet_areas`
-- `neo4j_award_cet_enrichment` → `loaded_award_cet_enrichment`
-- `neo4j_company_cet_enrichment` → `loaded_company_cet_enrichment`
-- `neo4j_award_cet_relationships` → `loaded_award_cet_relationships`
-- `neo4j_company_cet_relationships` → `loaded_company_cet_relationships`
 
 ### Transition Assets
 
@@ -138,9 +121,6 @@ The following assets have been renamed to follow the new standards:
 - `transition_evidence_v1` → `transformed_transition_evidence`
 - `transition_detections` → `transformed_transition_detections`
 - `transition_analytics` → `transformed_transition_analytics`
-- `neo4j_transitions` → `loaded_transitions`
-- `neo4j_transition_relationships` → `loaded_transition_relationships`
-- `neo4j_transition_profiles` → `loaded_transition_profiles`
 
 ### USPTO AI Assets
 

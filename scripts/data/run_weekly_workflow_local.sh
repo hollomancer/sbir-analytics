@@ -14,12 +14,6 @@ SCHEMA_PATH="${SCHEMA_PATH:-docs/data/sbir_awards_columns.json}"
 DEFAULT_SOURCE_URL="https://data.www.sbir.gov/mod_awarddatapublic/award_data.csv"
 SOURCE_URL="${SOURCE_URL:-$DEFAULT_SOURCE_URL}"
 
-# Neo4j connection (read from environment or use defaults)
-NEO4J_URI="${NEO4J_URI:-}"
-NEO4J_USER="${NEO4J_USER:-neo4j}"
-NEO4J_PASSWORD="${NEO4J_PASSWORD:-neo4j}"
-NEO4J_DATABASE="${NEO4J_DATABASE:-neo4j}"
-
 echo "======================================"
 echo "SBIR Awards Refresh Validation - Local Run"
 echo "======================================"
@@ -28,7 +22,6 @@ echo "Configuration:"
 echo "  Data source: $SOURCE_URL"
 echo "  Data path: $DATA_PATH"
 echo "  Metadata dir: $METADATA_DIR"
-echo "  Neo4j URI: ${NEO4J_URI:-<not configured>}"
 echo ""
 
 # Step 1: Download SBIR awards CSV
@@ -82,7 +75,6 @@ uv run python scripts/data/run_sbir_ingestion_checks.py \
   --output-dir "$METADATA_DIR" \
   --report-json "$METADATA_DIR/sbir_validation_report.json" \
   --summary-md "$METADATA_DIR/ingestion_summary.md"
-VALIDATED_CSV="$METADATA_DIR/validated_sbir_awards.csv"
 echo "✓ Ingestion validation complete"
 echo ""
 
@@ -104,34 +96,6 @@ SBIR_E2E_AWARD_CSV="$DATA_PATH" uv run pytest \
 echo "✓ Integration tests passed"
 echo ""
 
-# Step 8-10: Neo4j steps (optional)
-if [ -n "$NEO4J_URI" ]; then
-    echo "==> Step 8: Resetting Neo4j database..."
-    export NEO4J_URI NEO4J_USER NEO4J_PASSWORD NEO4J_DATABASE
-    uv run python scripts/data/reset_neo4j_sbir.py
-    echo "✓ Neo4j reset complete"
-    echo ""
-
-    echo "==> Step 9: Loading data to Neo4j..."
-    uv run python scripts/data/run_neo4j_sbir_load.py \
-      --validated-csv "$VALIDATED_CSV" \
-      --output-dir "$METADATA_DIR" \
-      --summary-md "$METADATA_DIR/neo4j_load_summary.md" || true
-    echo "✓ Neo4j load complete"
-    echo ""
-
-    echo "==> Step 10: Running Neo4j smoke checks..."
-    uv run python scripts/data/run_neo4j_smoke_checks.py \
-      --output-json "$METADATA_DIR/neo4j_smoke_check.json" \
-      --output-md "$METADATA_DIR/neo4j_smoke_check.md" || true
-    echo "✓ Neo4j smoke checks complete"
-    echo ""
-else
-    echo "⚠️  Skipping Neo4j steps (NEO4J_URI not set)"
-    echo "   To enable, set: export NEO4J_URI=bolt://localhost:7687"
-    echo ""
-fi
-
 echo "======================================"
 echo "✅ Workflow complete!"
 echo "======================================"
@@ -143,8 +107,4 @@ echo "  - Validation summary: $METADATA_DIR/latest.md"
 echo "  - Input profile: $METADATA_DIR/inputs_profile.md"
 echo "  - Ingestion summary: $METADATA_DIR/ingestion_summary.md"
 echo "  - Enrichment summary: $METADATA_DIR/enrichment_summary.md"
-if [ -n "$NEO4J_URI" ]; then
-echo "  - Neo4j load summary: $METADATA_DIR/neo4j_load_summary.md"
-echo "  - Neo4j smoke checks: $METADATA_DIR/neo4j_smoke_check.md"
-fi
 echo ""

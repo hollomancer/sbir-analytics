@@ -1,4 +1,4 @@
-"""Unit tests for sbir_analytics.clients (DagsterClient, MetricsCollector, re-exports)."""
+"""Unit tests for sbir_analytics.clients."""
 
 from __future__ import annotations
 
@@ -171,20 +171,7 @@ class TestMetricsCollector:
         assert len(metrics) == 1
 
 
-# ---------------------------------------------------------------------------
-# Re-exports from sbir-graph
-# ---------------------------------------------------------------------------
-
-
-class TestReExports:
-    def test_neo4j_classes_importable(self):
-        from sbir_analytics.clients import Neo4jClient
-
-        # Verify they're the actual sbir-graph classes
-        from sbir_graph.loaders.neo4j.client import Neo4jClient as GraphClient
-
-        assert Neo4jClient is GraphClient
-
+class TestExports:
     def test_all_exports(self):
         from sbir_analytics import clients
 
@@ -192,10 +179,6 @@ class TestReExports:
             "AssetStatus",
             "DagsterClient",
             "MetricsCollector",
-            "Neo4jClient",
-            "Neo4jConfig",
-            "Neo4jHealthStatus",
-            "Neo4jStatistics",
             "PipelineMetrics",
             "RunResult",
         }

@@ -15,7 +15,10 @@ from sbir_etl.quality.study_manifest import (
     ValidationResult,
     load_study_manifest,
 )
-from scripts.ci.validate_study_manifests import validate_manifest_file
+from scripts.ci.validate_study_manifests import (
+    validate_manifest_file,
+    validate_repository_manifests,
+)
 
 
 def _write(root: Path, relative: str, content: str) -> Path:
@@ -168,12 +171,10 @@ def test_implementation_symbol_still_rejects_names_bound_only_inside_a_function(
 
 def test_repository_study_manifests_are_valid() -> None:
     repository_root = Path(__file__).resolve().parents[3]
-    manifests = sorted((repository_root / "studies").glob("*/study.yaml"))
+    count, errors = validate_repository_manifests(repository_root)
 
-    assert manifests
-    assert all(
-        validate_manifest_file(path, repository_root=repository_root) == [] for path in manifests
-    )
+    assert count > 0
+    assert errors == []
 
 
 def test_validation_design_requires_all_four_fields() -> None:
