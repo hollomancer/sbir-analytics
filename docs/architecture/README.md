@@ -15,5 +15,5 @@ Forward-looking designs, not descriptions of what exists today.
 
 | Plan | Status |
 |---|---|
-Neo4j and its proposed assertion projection were retired by
-[ADR-006](../decisions/ADR-006-retire-neo4j.md).
+| [Dagster reorganization](dagster-reorganization-plan.md) | Proposed |
+| [Neo4j retirement](../decisions/ADR-006-retire-neo4j.md) | Accepted; retires Neo4j and its proposed assertion projection |

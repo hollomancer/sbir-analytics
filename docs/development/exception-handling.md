@@ -44,7 +44,7 @@ All exceptions include optional numeric error codes for programmatic handling:
 
 - **1xxx**: Configuration errors (`CONFIG_LOAD_FAILED`, `CONFIG_VALIDATION_FAILED`)
 - **2xxx**: Data quality errors (`VALIDATION_FAILED`, `QUALITY_THRESHOLD_NOT_MET`)
-- **3xxx**: External dependencies (`DATABASE_QUERY_FAILED`, `API_REQUEST_FAILED`, `R_FUNCTION_FAILED`)
+- **3xxx**: External dependencies (`API_REQUEST_FAILED`, `R_FUNCTION_FAILED`)
 - **4xxx**: File I/O errors (`FILE_NOT_FOUND`, `FILE_READ_FAILED`)
 - **5xxx**: Pipeline stage errors (`EXTRACTION_FAILED`, `ENRICHMENT_FAILED`)
 

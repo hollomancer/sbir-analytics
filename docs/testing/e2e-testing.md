@@ -45,7 +45,7 @@ in the same image. Override the host path with `E2E_ARTIFACT_DIR` when needed.
 Run the scenario runner from the installed workspace:
 
 ```bash
-uv run python scripts/run_e2e_tests.py --scenario minimal --timeout 120
+ENVIRONMENT=test uv run python scripts/run_e2e_tests.py --scenario minimal --timeout 120
 ```
 
 Supported scenarios are:
