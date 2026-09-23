@@ -1,98 +1,62 @@
 # SBIR/STTR Commercialization Analytics
 
-[![CI](https://github.com/hollomancer/sbir-analytics/actions/workflows/ci.yml/badge.svg)](https://github.com/hollomancer/sbir-analytics/actions/workflows/ci.yml)
-[![Python 3.11](https://img.shields.io/badge/python-3.11-blue.svg)](https://www.python.org/downloads/)
-[![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+This is a personal research project about a fairly simple question: what happens
+after a small business wins an SBIR or STTR award?
 
-A research project linking federal SBIR/STTR award data to
-downstream commercialization signals (federal contracts,
-patents, private financing, and acquisitions) to better
-understand what happens after a small business wins an SBIR award.
+The public award record tells you who received the money and what they proposed
+to do with it. It is much worse at telling you what happened next. Did the
+company win a follow-on contract? File a patent? Raise private capital? Get
+acquired? This repo is my attempt to piece together some of those outcomes from
+public data.
 
-## My role and use of AI
+## About this project (please read first)
 
-- Defined the research agenda and functional requirements, starting with the
-  policy questions in [docs/research-questions.md](docs/research-questions.md).
-- Selected public data sources and specified the entity-linkage, analytical,
-  and reporting methods used to investigate those questions.
-- Set evidence and validation boundaries, including what the outputs can and
-  cannot support.
-- Used Claude and Codex extensively to implement and iterate on the software,
-  then reviewed the work through tests, reproducibility checks, and documented
-  evidence limits.
+- I work in the SBIR/STTR domain, but I am not a trained data scientist or ML
+  engineer. What I bring to the project is the domain framing: which questions
+  seem worth asking, how they connect to the policy literature, and what data
+  might plausibly answer them.
+- I built this with substantial help from Claude and Codex. I directed the work,
+  made the research and design choices, and review the outputs, but a lot of the
+  implementation was written and iterated with AI coding agents.
+- This is a side project, not an agency product or a production service. Nothing
+  here represents the position of any agency.
 
-This is independent research software developed on personal time. It is not an
-agency product or a production service, and its findings do not represent the
-position of any agency.
-
-## See it work
-
-The fastest end-to-end example is a deterministic Army procurement-transition
-packet built entirely from committed synthetic data:
-
-Run `make install` from the repository root first; `make install-core` omits the
-`sbir_ml` package used by this example.
-
-```bash
-uv run python scripts/data/monthly_procurement_transition_report.py \
-  --month 2026-06 \
-  --awards examples/army_science_technology_awards.csv \
-  --candidates examples/army_science_technology_candidates.csv \
-  --opportunities examples/army_science_technology_opportunities.csv \
-  --output-root /tmp/procurement-transition-example
-```
-
-Read the [example walkthrough](examples/army-procurement-transition.md)
-and compare the result with the committed
-[expected report](examples/army_science_technology_report.md). Every company,
-award, opportunity, and judgment in this example is synthetic; it demonstrates
-the workflow and evidence trail, not live acquisition intelligence.
-
-The repository separates software capability from evidentiary maturity:
-
-| Capability | Current status | Evidence or boundary |
-| --- | --- | --- |
-| Procurement-transition reporting | Exploratory; runnable synthetic demonstration | [Synthetic example and expected output](examples/army-procurement-transition.md) |
-| Award ingestion, entity resolution, and graph loading | Implemented; real-data setup required | Operational capability, not an evidence claim; see the [getting-started guide](docs/getting-started/README.md) and [architecture](docs/architecture/detailed-overview.md) |
-| Phase III outcome analysis | Reproducible; not validated or approved for citation | [Phase III census study record](studies/phase-iii-census/study.yaml) |
-| Private-capital, M&A, and fiscal analyses | Exploratory and data-dependent | [Research output status index](docs/research/README.md) and the limitations below |
+If you only read one other thing, make it
+[docs/research-questions.md](docs/research-questions.md). That is the real heart
+of the project. The pipeline is mostly scaffolding for chipping away at those
+questions.
 
 ## Questions I'm trying to answer
 
-SBIR/STTR is a ~$4B/year federal program whose statutory goal is
-*commercialization* — turning early-stage R&D awards into products, contracts,
-and companies. But the program's own tracking of what happens after Phase II has
-challenges (GAO has flagged Phase III data as unreliable for years). This project
-is an attempt to reconstruct those outcomes by joining the public award
-record to other public datasets. A few of the questions it explores:
+SBIR/STTR is a roughly $4 billion-per-year federal program whose statutory goal
+is *commercialization*—turning early-stage R&D into products, contracts, and
+companies. Tracking what happens after Phase II is notoriously difficult, and
+GAO has flagged the quality of Phase III data for years.
+
+A few of the things I'm exploring:
 
 - **Follow-on private investment.** Do SBIR awardees go on to raise private
-  capital, and how much? This uses **SEC Form D** (Regulation D exempt-offering
-  notices) to build a private financing profile for awardee firms, and compares
-  it against the SBIR funding they received.
-- **Mergers & acquisitions / exits.** Which SBIR firms get acquired, by whom,
-  and how long after their first award? This detects M&A events from **SEC EDGAR
-  filings** (8-K and Form D full-text search) and looks at patterns by funding
-  agency (e.g. biotech vs. defense) and acquirer type.
-- **Phase II → Phase III transition latency.** How long does it take an awardee
-  to go from finishing Phase II to landing a first follow-on federal contract,
-  and how does that vary by agency and technology area?
-- **Technology classification & patent linkage.** Which awards map to
-  Critical & Emerging Technology (CET) areas, and which awards produced patents?
-- **Economic & fiscal impact.** Rough exploratory estimates of tax receipts and
-  economic activity attributable to award spending, using BEA input-output tables
-  where available and fallback assumptions when live BEA inputs are unavailable.
+  capital, and how much? SEC Form D filings provide one imperfect window into
+  that question.
+- **Mergers and acquisitions.** Which SBIR firms get acquired, by whom, and how
+  long after their first award? This work looks for signals in SEC EDGAR filings.
+- **Phase II to Phase III transition time.** How long does it take an awardee to
+  land a follow-on federal contract, and how does that differ by agency or
+  technology area?
+- **Technology and patent links.** Which awards map to Critical and Emerging
+  Technology areas, and which ones appear to have produced patents?
+- **Economic and fiscal effects.** What can public input-output data tell us
+  about the economic activity associated with award spending? This part is
+  especially exploratory.
 
-The full, sourced inventory in
-[docs/research-questions.md](docs/research-questions.md) is the heart of the
-project: the code and studies exist to investigate and validate those questions.
+The [full list](docs/research-questions.md) is sourced and organized by policy
+area. Some questions are much more answerable than others.
 
 ## What it actually does
 
-At a mechanical level, this is an ETL pipeline that ingests several public
-datasets, resolves them to common entities (the hard part — companies appear
-under different names and identifiers across sources), and loads the result into
-a graph so the relationships can be queried.
+Mechanically, this is an ETL pipeline. It pulls in several public datasets,
+tries to figure out which records refer to the same company (the hard part), and
+loads the resulting relationships into Neo4j and analytical files.
 
 ```text
 Public sources                  Processing                 Outputs
@@ -105,147 +69,143 @@ SEC EDGAR filings        │      transform → load
 BEA input-output tables  ┘      (orchestrated by Dagster)
 ```
 
-- **Entity resolution** cascades through UEI → CAGE → DUNS → fuzzy-name matching
-  to decide when an SBIR recipient is the same firm that later won a contract,
-  filed a patent, or raised capital.
-- **Graph model (Neo4j).** Awards, firms, contracts, patents, and capital events
-  become nodes and edges, which is what makes the cross-dataset questions above
-  expressible as queries.
-- **A couple of ML/heuristic components** live in `packages/sbir-ml/`: a CET
-  technology classifier and a Phase II→III transition detector. These are
-  still being actively worked on.
+- **Entity resolution** starts with identifiers such as UEI, CAGE, and DUNS,
+  then falls back to fuzzy name matching. A company rarely uses exactly the same
+  name everywhere.
+- **The graph** connects firms, awards, contracts, patents, and capital events so
+  they can be queried together.
+- **The ML-ish pieces** live in `packages/sbir-ml/`. There is a CET classifier
+  and a Phase II-to-III transition detector. Both are pragmatic research tools,
+  not polished production models.
 
-## Repository structure
+## Want to see something run?
 
-```text
-sbir_etl/              Core ETL library: extractors, enrichers, transformers,
-                       validators, models, config, quality, utils
-packages/
-  sbir-analytics/      Dagster assets, jobs, and sensors (orchestration)
-  sbir-graph/          Neo4j loaders
-  sbir-ml/             CET classifier and transition-detection models
-config/                Thresholds, paths, performance settings (base.yaml)
-docs/                  research-questions.md (start here), architecture, methodology
-specs/                 Per-feature design notes; status.md is the lifecycle registry
-studies/               Versioned contracts for reproducible, citable research
-tests/                 Unit, integration, functional, and end-to-end suites
-examples/              Standalone demo scripts (see examples/README.md)
-notebooks/             Notebook-first research workbench and reusable examples
-scripts/               One-off analysis and operational scripts (exploratory tier)
+The easiest end-to-end example builds a procurement-transition report from
+small synthetic datasets committed to the repo. It does not need credentials,
+Neo4j, or any external data.
+
+```bash
+make install
+
+uv run python scripts/data/monthly_procurement_transition_report.py \
+  --month 2026-06 \
+  --awards examples/army_science_technology_awards.csv \
+  --candidates examples/army_science_technology_candidates.csv \
+  --opportunities examples/army_science_technology_opportunities.csv \
+  --output-root /tmp/procurement-transition-example
 ```
 
-The live deployment runs Docker Compose behind Tailscale.
-See the [deployment overview](docs/deployment/README.md) for the current model.
+The [walkthrough](examples/army-procurement-transition.md) explains what it is
+doing, and the repo includes an [expected report](examples/army_science_technology_report.md)
+for comparison. All of the companies, awards, opportunities, and judgments in
+this example are made up. It demonstrates the workflow, not live acquisition
+intelligence.
 
-## Suggested reading path
+## How seriously should I take the results?
 
-If you want the fastest route to the domain insight without reading the whole
-repository, start with these documents in order:
+It depends on the result.
 
-1. [Research questions](docs/research-questions.md): the core policy and
-   evaluation questions the project is trying to answer.
-2. [Army procurement-transition example](examples/army-procurement-transition.md):
-   a runnable vertical slice with synthetic inputs and a committed expected report.
-3. [Epistemic tiers](docs/steering/epistemic-tiers.md): the contract that decides
-   what each artifact in this repository is allowed to claim, and what it costs
-   to move a result from exploratory to citable.
-4. [Study contracts](studies/README.md): how the project distinguishes exploratory,
-   reproducible, validated, and citable work.
-5. [SEC EDGAR SBIR learnings](docs/research/sec-edgar-sbir-learnings.md):
-   practical findings from using EDGAR to detect SBIR-related exits and
-   financing signals.
-6. [SBIR Form D fundraising analysis](docs/research/sbir-form-d-fundraising-analysis.md):
-   the private-capital lens on awardee commercialization.
-7. [Phase transition latency](docs/phase-transition-latency.md): how the repo
-   thinks about timing from SBIR awards to follow-on federal contracts.
-8. [SBIR identification methodology](docs/sbir-identification-methodology.md):
-   the methodology behind identifying and linking SBIR firms across datasets.
+- The ingestion, entity-resolution, and graph-loading code is implemented, but
+  running it on real data requires source downloads, credentials, and local
+  services.
+- The procurement-transition example above is a runnable demonstration built
+  from synthetic data.
+- The Phase III census is reproducible, but it is not yet validated or approved
+  for citation. Its current record is in
+  [studies/phase-iii-census](studies/phase-iii-census/study.yaml).
+- The private-capital, M&A, and fiscal work is exploratory and data-dependent.
 
-## Running it
+The repo uses [epistemic tiers](docs/steering/epistemic-tiers.md) to keep a useful
+analysis from quietly turning into a stronger claim than the evidence supports.
+That machinery can sound a little grand, but the basic idea is just: label what
+you know, label what you do not, and do not confuse working code with validated
+evidence.
 
-The project targets **Python 3.11** and uses
-[`uv`](https://github.com/astral-sh/uv) for
-dependency management. There is intentionally no `requirements.txt` — the
-dependency set is defined by `pyproject.toml` and pinned in `uv.lock`. (If you
-need a flat list, run `uv export`.)
+## Running the full project
+
+The project targets Python 3.11 and uses
+[`uv`](https://github.com/astral-sh/uv) for dependency management.
 
 ```bash
 git clone https://github.com/hollomancer/sbir-analytics
 cd sbir-analytics
-make install        # install the full local stack with uv
-make dev            # start the Dagster UI at http://localhost:3000
+make install        # install the full local stack
+make dev            # start Dagster at http://localhost:3000
 ```
 
-`make install-core` installs only the reusable `sbir_etl` library dependencies;
-it does not install Dagster or the application packages. `make help` lists every
-available target. Most data sources need an API key or a
-local bulk download; copy `.env.example` to `.env` and fill in what you have.
-A local Neo4j instance is required to materialize the graph — `docker compose --profile dev up`
-brings one up along with the supporting services. See
-[docs/getting-started/](docs/getting-started/README.md) for a fuller walkthrough.
+Most data sources require an API key or a local bulk download. Copy
+`.env.example` to `.env` and fill in what you have. You will also need a local
+Neo4j instance to build the graph. The
+[getting-started guide](docs/getting-started/README.md) has the longer version.
 
-> **Note on data and reproducibility.** No award data is committed to this repo
-> (only a small NAICS→BEA reference table). Reproducing the analyses end-to-end
-> means downloading the source datasets yourself and supplying your own API
-> credentials, which is a non-trivial amount of setup. Core components are
-> designed to run locally, but full end-to-end reproduction requires source-data
-> downloads, API credentials, and local services such as Neo4j.
+No real award corpus is committed here, so reproducing the analyses end to end
+is a non-trivial setup job. `make install-core` installs only the reusable
+`sbir_etl` library; it leaves out Dagster and the application packages.
 
-### Verifying a checkout
-
-None of these need credentials, network access, or Neo4j — they run against a
-fresh clone and are the same gates CI enforces:
+Useful checks for a local checkout:
 
 ```bash
-make install          # uv sync --extra stack-dev
-make test-unit        # ~5,800 unit tests, under a minute
-make lint             # Ruff lint + format across the repo, MyPy over sbir_etl and the packages
-make lint-boundaries  # architecture, epistemic-tier, config, and study guards
-make docs-check       # dead doc links, stale commands, spec-registry coverage
+make test-unit
+make lint
+make lint-boundaries
+make docs-check
 ```
 
-The remaining suites need services: `uv run pytest -m integration` expects a
-local Neo4j (`make neo4j-up`), and `make docker-e2e` drives the full stack.
+Integration tests need local services. `make help` lists the available targets.
 
-## Versioning
+## Where things live
 
-The repository follows [Semantic Versioning 2.0.0](https://semver.org/) with synchronized
-versions for the root ETL project and the three packages under `packages/`. Git release tags use
-the form `vMAJOR.MINOR.PATCH`. See the [versioning and release policy](docs/steering/versioning.md)
-for compatibility boundaries, increment rules, and the release checklist, and
-[CHANGELOG.md](CHANGELOG.md) for what has landed in each release.
+```text
+sbir_etl/              Core ETL code
+packages/
+  sbir-analytics/      Dagster assets, jobs, and sensors
+  sbir-graph/          Neo4j loaders
+  sbir-ml/             CET and transition-detection models
+config/                Shared settings and thresholds
+docs/                  Research questions, methods, architecture, and operations
+specs/                 Feature designs and status
+studies/               Reproducible research contracts
+notebooks/             Exploratory research
+scripts/               One-off analysis and operational tools
+examples/              Small demonstrations and synthetic inputs
+tests/                 Unit, integration, functional, and end-to-end tests
+```
 
-## Limitations
+If you want the technical tour, see the
+[architecture overview](docs/architecture/detailed-overview.md).
 
-- **Entity resolution is probabilistic.** Cross-dataset matches use fuzzy logic
-  and will include false positives and misses. Match rates and confidence are
-  tracked but not perfect, and they bound the reliability of everything
-  downstream.
-- **Several analyses are pilots or partial.** For example, the UCC-1
-  secured-debt work was a California-only pilot; some literature benchmarks
-  (NASEM leverage ratios, Howell's VC findings) are *targets to reproduce*, and
-  the reproductions are approximate rather than validated replications.
-- **Phase III / transition data is known to be unreliable** at the source (GAO
-  has documented this). This project infers transitions rather than reading them
-  from authoritative records, so the numbers are estimates.
-- **The ML components are approximate.** The CET classifier and transition
-  detector are pragmatic heuristics with a target precision benchmark, not
-  rigorously evaluated production models.
-- **Nothing here is peer-reviewed or official.** This reflects my own analysis
-  on personal time and does not represent the position of any agency.
+## Honest limitations
 
-## License
+- **Entity resolution is probabilistic.** Fuzzy matching creates false positives
+  and misses. Those errors flow into everything downstream.
+- **The underlying outcome data is incomplete.** Phase III records are a
+  particular problem, so inferred transitions are estimates rather than an
+  authoritative census.
+- **Several analyses are pilots or partial.** Some use limited geographies,
+  fallback assumptions, or literature values that have not been independently
+  validated.
+- **The ML components are approximate.** They have benchmark targets, but they
+  are not rigorously evaluated production models.
+- **Nothing here is peer-reviewed or official.** It is independent research I do
+  on personal time.
 
-MIT — see [LICENSE](LICENSE). Copyright (c) 2025 Conrad Hollomon.
+## A few useful links
 
-Contributions are welcome; see [CONTRIBUTING.md](CONTRIBUTING.md) for the local
-workflow and review expectations.
+- [Research questions](docs/research-questions.md)
+- [Research output status](docs/research/README.md)
+- [Study contracts](studies/README.md)
+- [Contributing](CONTRIBUTING.md)
+- [Release history](CHANGELOG.md)
+- [Versioning policy](docs/steering/versioning.md)
+
+The project is available under the [MIT License](LICENSE).
 
 ## Acknowledgments
 
-- [BEA API](https://apps.bea.gov/api/) — Bureau of Economic Analysis input-output tables
-- [stateior](https://github.com/USEPA/stateior) — EPA state-level I-O model
-- [ModernBERT-Embed](https://huggingface.co/nomic-ai/modernbert-embed-base) — Nomic AI embedding model
-- [SEC EDGAR EFTS](https://efts.sec.gov) — SEC full-text filing search
-- [SAM.gov Data Services](https://api.sam.gov) — federal entity registration data
-- The GAO, NASEM, CRS, and academic studies cited throughout [docs/research-questions.md](docs/research-questions.md)
+This work uses data and methods from the
+[Bureau of Economic Analysis](https://apps.bea.gov/api/),
+[stateior](https://github.com/USEPA/stateior),
+[SEC EDGAR](https://efts.sec.gov), [SAM.gov](https://api.sam.gov), and the other
+public and academic sources cited throughout the research-question inventory.
+The embedding work uses
+[ModernBERT-Embed](https://huggingface.co/nomic-ai/modernbert-embed-base).
