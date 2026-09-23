@@ -78,8 +78,8 @@ specs (A: 4 unbuilt + UCC-1; F: 2 design-only). The unbuilt work is not lagging 
 is **at the frontier**, which is consistent with the map's finding that these questions are not
 yet covered by peer-reviewed SBIR-specific research. The two clearest "buildable now, high
 policy value, design-only" targets are **leverage-ratio-analysis (A3)** and
-**patent-cost-spillover (C3)** — both have published benchmarks (NASEM 4:1; Myers & Lanahan 3×)
-to validate against.
+**patent-cost-spillover (C3)** — both have published benchmarks (NASEM 4:1; NIH ~$1.5M marginal
+cost per patent) to compare against.
 
 *Files: `spec_status_summary.csv` (20 specs with area, status, evidence),
 `spec_status.png` (status × policy-area overview).*

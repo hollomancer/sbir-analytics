@@ -7,14 +7,15 @@ inventory with page counts, text-quality scores, and SHA-256 hashes:
 
 ## Headline
 
-The corpus is **deep on Order 1 and thin everywhere else**. It could support extending the SBA
-annual-report replication from three report-years to a **1990–2022 panel, after OCR and after the
-absent table definitions are settled**. That extension is not a finished product: 19 of the 51
-documents have no text layer, and the published-sample replication of [L18] (three report-years)
-stays separate from any historical extension. It contributes benchmark sources to Orders 3 and 5, and
-**nothing at all** to Orders 2, 4, 6, 7, and 8.
+The corpus is **deep on Order 1 and thin everywhere else**. It does not support a 1990–2022
+replication panel. The [extension record](../../studies/sba-annual-report-tables/extension-to-eight-years.md) finds extractable state tables in eight
+report-years, and six of them usable for the replication (FY2016–FY2022, less FY2019). The image-only
+pre-2009 SBIR volumes carry state tables, but they support long-run description only, not the
+replication. The published-sample replication of [L18] (three report-years) stays separate from
+any extension. The corpus contributes benchmark sources to Orders 3 and 5, and **nothing at all**
+to Orders 2, 4, 6, 7, and 8.
 
-| Order | Study | Docs | Pages | Extractable now |
+| Order | Study | Docs | Pages | Text layer |
 | ---: | --- | ---: | ---: | ---: |
 | 1 | SBA annual-report tables [L18] | 46 | 1,983 | 27 |
 | 3 | DoD economic-impact studies [L19] — benchmark context only | 3 | 109 | 3 |
@@ -35,8 +36,9 @@ The split falls along an awkward line:
 - **`sbir_annual_report_series` (FY1990–FY2008, 19 docs): image-only.** This is the entire
   pre-2009 SBIR-program series, including all four years (1990–1993) that exist in no other form.
 
-So for FY1994–FY2008 the STTR half of the program is extractable and the SBIR half is not. A
-combined SBIR+STTR panel before FY2009 requires OCR; an STTR-only panel does not.
+So for FY1994–FY2008 the STTR volumes carry text and the SBIR volumes do not. No STTR volume of
+that era prints a state table, so a text layer does not give a pre-2009 state panel. The SBIR
+volumes do print one, but only after OCR, and only for the SBIR program.
 
 **Report-years whose document has a text layer (27):** 1994, 1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008, 2009, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019, 2020, 2021, 2022.
 A text layer does not mean the state table is in it. The FY2015 and FY2019 state tables are
@@ -117,9 +119,11 @@ None of those are in the corpus, and none are obtainable by supplying more SBA d
    recovered from its image at cell level only. Most of the 27 text-layer documents have no state
    table, so the panel does not extend to all of them. Next work follows the
    [gap assessment](corpus-gap-assessment.md).
-3. **Treat the 19 image-only documents as a separate capability**, not a continuation. They
-   would extend the panel to 1990 and complete the pre-2009 SBIR series, but the
-   extraction cannot be validated the same way.
+3. **Treat the 19 image-only documents as a separate capability**, not a continuation. The
+   [extension record](../../studies/sba-annual-report-tables/extension-to-eight-years.md#the-1990s-sbir-volumes-do-carry-state-tables---the-earlier-inference-was-wrong)
+   found that they carry state tables and extracted FY1995. They cannot extend the replication
+   panel: they are SBIR-only and state no count basis. Their value is long-run description. The
+   two additive identities are a necessary check on them, not a sufficient one.
 4. **Read [L1] and [L2] for the NASEM obligations-ratio definition** before building anything
    against Order 3. The DoD TechLink volume in the corpus is an [L19]-family ROI study; its 22:1
    output ratio is not the quantity Order 3 replicates, and reading it for that definition would

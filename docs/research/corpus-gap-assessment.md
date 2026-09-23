@@ -73,13 +73,12 @@ way in `source-acquisition-orders-3-5.md`.
 
 ### 5. The 1990-2008 SBIR volumes, with a cheap test first
 
-Nineteen image-only documents, 616 pages, covering nineteen report-years of deep history. **Do not
-commit to extracting all of them yet.** The STTR volumes of the same era do carry text, and probing
-all fifteen found **no state-and-territory table in any of them** - no page even mentions awards by
-state. Whether the SBIR volumes of that era print such a table is therefore unknown rather than
-assumed. Rasterising two or three of them and looking is a few minutes of work and decides whether
-the remaining 600-odd pages are worth extracting. Either way these years predate the basis statement
-by more than a decade, so their value is long-run description, not replication.
+Nineteen image-only documents, 616 pages, covering nineteen report-years of deep history. The
+STTR volumes of the same era carry text but have **no state-and-territory table**. The spot-check of
+the SBIR volumes is done: the
+[extension record](../../studies/sba-annual-report-tables/extension-to-eight-years.md#the-1990s-sbir-volumes-do-carry-state-tables---the-earlier-inference-was-wrong)
+found state tables in FY1995 and FY2002 and extracted FY1995. These years predate the basis
+statement by more than a decade, so their value is long-run description, not replication.
 
 ## What would not help
 
@@ -95,5 +94,7 @@ by more than a decade, so their value is long-run description, not replication.
 1. Done: FY2019's partial table is rasterised and read at cell level only. See the
    [extension record](../../studies/sba-annual-report-tables/extension-to-eight-years.md#fy2019-recovered-partial-and-defective-in-a-second-way)
    and `studies/sba-annual-report-tables/extension/extension_fy2019_cells.csv`.
-2. Spot-check two or three 1990s SBIR volumes for a state table before committing to the rest.
+2. Done: the 1990s SBIR volumes carry state tables, and FY1995 is extracted. See the
+   [extension record](../../studies/sba-annual-report-tables/extension-to-eight-years.md#the-1990s-sbir-volumes-do-carry-state-tables---the-earlier-inference-was-wrong).
+   Extracting the rest is long-run descriptive work, not replication.
 3. Everything else is acquisition-bound and can wait on someone outside this environment.
