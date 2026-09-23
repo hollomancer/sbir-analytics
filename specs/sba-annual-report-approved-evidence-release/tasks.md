@@ -73,6 +73,7 @@
 
 - [ ] 13. Record one final pinned claim-approval review and promote the manifest.
   - Verify: the review approves the exact `permitted_claims` and limitations,
-    its path and SHA-256 appear in `frozen_artifacts` and `claim_approval`, and
+    its path and SHA-256 appear in `frozen_artifacts` and `claim_approval`,
+    `claim_approval.claim_boundary_sha256` matches those fields, and
     `evidence_status: approved` passes the manifest and research-status guards.
   - Requirements: evidence-approval gate 6

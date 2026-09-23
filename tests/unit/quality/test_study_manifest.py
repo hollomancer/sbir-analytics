@@ -13,6 +13,7 @@ from sbir_etl.quality.study_manifest import (
     ThresholdBasis,
     ValidationDesign,
     ValidationResult,
+    claim_boundary_sha256,
     load_study_manifest,
 )
 from scripts.ci.validate_study_manifests import validate_manifest_file
@@ -295,6 +296,9 @@ def test_promoted_manifest_loads_with_validation_design(
         raw["claim_approval"] = {
             "review_path": "reviews/approval.md",
             "review_sha256": "b" * 64,
+            "claim_boundary_sha256": claim_boundary_sha256(
+                raw["permitted_claims"], raw["limitations"]
+            ),
             "approved_on": "2026-09-23",
         }
     path = _write(tmp_path, "example-study/study.yaml", yaml.safe_dump(raw))
@@ -317,6 +321,9 @@ def _promoted(status: EvidenceStatus) -> dict:
         raw["claim_approval"] = {
             "review_path": "reviews/approval.md",
             "review_sha256": "b" * 64,
+            "claim_boundary_sha256": claim_boundary_sha256(
+                raw["permitted_claims"], raw["limitations"]
+            ),
             "approved_on": "2026-09-23",
         }
     return raw
@@ -461,6 +468,38 @@ def test_approved_status_requires_one_pinned_claim_review(tmp_path: Path) -> Non
     path = _write(tmp_path, "example-study/study.yaml", yaml.safe_dump(raw))
     with pytest.raises(ValidationError, match="cannot predate the validation result"):
         load_study_manifest(path)
+
+
+@pytest.mark.parametrize(
+    "edit",
+    [
+        lambda raw: raw["permitted_claims"].append("An unreviewed broader claim."),
+        lambda raw: raw["permitted_claims"].__setitem__(0, raw["permitted_claims"][0] + " More."),
+        lambda raw: raw["limitations"].pop(),
+        lambda raw: raw["limitations"].reverse(),
+    ],
+    ids=["claim-added", "claim-reworded", "limitation-removed", "limitations-reordered"],
+)
+def test_approval_breaks_when_claim_boundary_changes(tmp_path: Path, edit) -> None:
+    """A pinned review approves one claim boundary, not whatever the manifest says later."""
+    raw = _promoted(EvidenceStatus.APPROVED)
+    raw["limitations"] = ["First limitation.", "Second limitation."]
+    raw["claim_approval"]["claim_boundary_sha256"] = claim_boundary_sha256(
+        raw["permitted_claims"], raw["limitations"]
+    )
+    path = _write(tmp_path, "example-study/study.yaml", yaml.safe_dump(raw))
+    assert load_study_manifest(path).evidence_status is EvidenceStatus.APPROVED
+
+    edit(raw)
+    path = _write(tmp_path, "example-study/study.yaml", yaml.safe_dump(raw))
+    with pytest.raises(ValidationError, match="the approved claim boundary has changed"):
+        load_study_manifest(path)
+
+
+def test_claim_boundary_digest_separates_claims_from_limitations() -> None:
+    """Moving a sentence from limitations into claims widens the claim, so it must differ."""
+    sentence = "The comparison covers FY2020 only."
+    assert claim_boundary_sha256([sentence], []) != claim_boundary_sha256([], [sentence])
 
 
 def test_count_threshold_requires_a_frozen_population() -> None:

@@ -11,8 +11,9 @@ This page shows which questions each research note or report helps answer, how
 much confidence to place in it, and which data it covers. See
 [research-questions.md](../research-questions.md) for the full list of questions.
 
-Do not cite an output as a validated finding unless its linked
-`studies/<study-id>/study.yaml` file says `approved`. A working pipeline or a dated
+Do not present an output's substantive claim as approved evidence unless its linked
+`studies/<study-id>/study.yaml` file says `approved`. You may cite any immutable
+release, but state its actual evidence status with it. A working pipeline or a dated
 report may still be early research. See [evidence levels](../steering/epistemic-tiers.md)
 and [study requirements](../../studies/README.md) for the review rules.
 

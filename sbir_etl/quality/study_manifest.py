@@ -1,5 +1,7 @@
 """Versioned contracts for research studies and approved external evidence."""
 
+import hashlib
+import json
 from datetime import date
 from enum import StrEnum
 from pathlib import Path
@@ -80,13 +82,31 @@ class MaterializationGate(BaseModel):
         return self
 
 
+def claim_boundary_sha256(permitted_claims: list[str], limitations: list[str]) -> str:
+    """Return the SHA-256 of a manifest's claim boundary in canonical JSON form.
+
+    The digest covers ``permitted_claims`` and ``limitations`` in their listed
+    order, so any edit, addition, removal, or reordering changes it.
+    """
+
+    boundary = {"limitations": limitations, "permitted_claims": permitted_claims}
+    canonical = json.dumps(boundary, ensure_ascii=False, separators=(",", ":"), sort_keys=True)
+    return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+
+
 class ClaimApproval(BaseModel):
-    """One final, pinned review approving the manifest's claim boundary."""
+    """One final, pinned review approving the manifest's claim boundary.
+
+    ``claim_boundary_sha256`` binds the approval to the exact ``permitted_claims``
+    and ``limitations`` that were reviewed. A later edit to either field breaks
+    the approval until a new review records the new digest.
+    """
 
     model_config = ConfigDict(extra="forbid")
 
     review_path: str = Field(min_length=1)
     review_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    claim_boundary_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
     approved_on: date
 
     @field_validator("review_path")
@@ -424,6 +444,13 @@ class StudyManifest(BaseModel):
                 "claim_approval.review_sha256 does not match the frozen hash of "
                 f"{approval.review_path!r}"
             )
+        if approval.claim_boundary_sha256 != claim_boundary_sha256(
+            self.permitted_claims, self.limitations
+        ):
+            raise ValueError(
+                "claim_approval.claim_boundary_sha256 does not match the manifest's "
+                "permitted_claims and limitations; the approved claim boundary has changed"
+            )
         result = self.validation_result
         if result is not None and approval.approved_on < result.evaluated_on:
             raise ValueError("claim_approval.approved_on cannot predate the validation result")
@@ -519,5 +546,6 @@ __all__ = [
     "ThresholdBasis",
     "ValidationDesign",
     "ValidationResult",
+    "claim_boundary_sha256",
     "load_study_manifest",
 ]

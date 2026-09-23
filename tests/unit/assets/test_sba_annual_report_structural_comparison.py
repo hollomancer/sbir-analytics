@@ -14,6 +14,7 @@ from sbir_etl.extractors.sbir_award_export import (
     ordered_columns_sha256,
 )
 from sbir_etl.models.award_export import AwardExportSourceMetadata
+from sbir_etl.quality.study_manifest import claim_boundary_sha256
 from sbir_etl.utils.data.file_io import file_sha256
 
 
@@ -641,6 +642,9 @@ def _materialization_inputs(
         manifest["claim_approval"] = {
             "review_path": approval_pin.reference,
             "review_sha256": approval_pin.sha256,
+            "claim_boundary_sha256": claim_boundary_sha256(
+                manifest["permitted_claims"], manifest["limitations"]
+            ),
             "approved_on": "2026-09-23",
         }
     manifest_path = output_dir / "study.yaml"
