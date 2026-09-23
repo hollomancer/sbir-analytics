@@ -40,7 +40,7 @@ USAspending.gov (DATA Act, P.L. 113-101)
   ↓  Database dump or API
 This pipeline (DuckDB extraction)
   ↓  classify_sbir_award()
-Neo4j graph / analytical outputs
+Governed Parquet / analytical outputs
 ```
 
 For grants, the chain is:
@@ -54,7 +54,7 @@ USAspending.gov
   ↓  Database dump
 This pipeline (ALN-based filtering)
   ↓  Cross-referenced with SBIR.gov
-Neo4j graph / analytical outputs
+Governed Parquet / analytical outputs
 ```
 
 ### 1.3 Identification Methods by Confidence Level

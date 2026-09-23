@@ -169,7 +169,7 @@ def main() -> int:
         json.dump({"metadata": validated_metadata_serialized}, handle, indent=2)
         handle.write("\n")
 
-    # Save validated DataFrame as CSV for downstream use (e.g., Neo4j loading)
+    # Save the validated DataFrame as CSV for downstream analysis.
     validated_df.to_csv(validated_csv_path, index=False)
 
     with report_json_path.open("w", encoding="utf-8") as handle:

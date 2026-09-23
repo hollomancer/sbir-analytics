@@ -15,7 +15,7 @@
 
 - [x] 1.2 Triage the full-repository run: fix label mistakes (one-line justification
       each), allowlist genuine edges with reason + removal condition. Expected seeds:
-      `sbir_neo4j_loading.py`, `defense_release.py`, `supply_chain/__init__.py`.
+      the former graph-loading asset, `defense_release.py`, and `supply_chain/__init__.py`.
   - Verify: guard exits 0; allowlist entries each name a removal condition; diff of
     label corrections reviewed against the tier doc's classification questions.
   - Requirements: 1.3, 1.4
@@ -71,7 +71,7 @@
     max score", which the reimplementation follows. Imports only
     `enum`/`pandas`/`.company_names`. Identity + tier guards pass.
 
-- [x] 2.3 Rewire `sbir_neo4j_loading.py` to the identity policy; delete
+- [x] 2.3 Rewire the former graph-loading asset to the identity policy; delete
       `company_canonicalizer.py` or reduce it to an exploratory shim with no package
       importers; remove the allowlist entry.
   - Verify: tier guard passes with the entry removed; `tests/unit/loaders` and asset

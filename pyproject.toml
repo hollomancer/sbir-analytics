@@ -1,6 +1,6 @@
 [project]
 name = "sbir-etl"
-version = "0.18.0"
+version = "0.19.0"
 description = "SBIR ETL library — extract, enrich, and transform SBIR/STTR awards data"
 authors = [{name = "Conrad Hollomon", email = "conrad.hollomon@pm.me"}]
 readme = "README.md"
@@ -70,18 +70,16 @@ dev = [
     "types-PyYAML>=6.0.0,<7.0.0",
     "types-tqdm>=4.67.3.20260408,<5.0.0",
     "pre-commit>=3.5.0,<5.0.0",
-    "testcontainers[neo4j]>=4.0.0,<5.0.0",
 ]
 # Meta-extra for full local stack — installs all first-party packages.
 # Use with: uv sync --extra stack-dev  (requires workspace checkout)
 stack-dev = [
     "sbir-etl[dev]",
     "sbir-ml",
-    "sbir-graph",
     "sbir-analytics",
 ]
 # Locked production environment used by Dockerfile. sbir-analytics supplies
-# Dagster, graph, ML/NLP, USPTO file parsing, and monitoring; the additional
+# Dagster, ML/NLP, USPTO file parsing, and monitoring; the additional
 # ETL extras cover browser downloads, remote archive streaming, and phonetics.
 server = [
     "sbir-analytics",
@@ -93,7 +91,6 @@ server = [
 
 [tool.uv.sources]
 sbir-ml = { path = "packages/sbir-ml", editable = true }
-sbir-graph = { path = "packages/sbir-graph", editable = true }
 sbir-analytics = { path = "packages/sbir-analytics", editable = true }
 
 [tool.bandit]
@@ -146,10 +143,8 @@ ignore = [
 ]
 
 [tool.ruff.lint.isort]
-# Treat neo4j as a known third-party library that gets its own group
-known-third-party = ["neo4j"]
 # Your project imports
-known-first-party = ["sbir_etl", "sbir_ml", "sbir_graph", "sbir_analytics"]
+known-first-party = ["sbir_etl", "sbir_ml", "sbir_analytics"]
 # Allow more flexibility in grouping
 split-on-trailing-comma = false
 force-single-line = false
@@ -188,7 +183,6 @@ plugins = ["pydantic.mypy"]
 [[tool.mypy.overrides]]
 module = [
     "dagster.*",
-    "neo4j.*",
     "duckdb.*",
     "plotly.*",
     "sklearn.*",
@@ -236,10 +230,8 @@ markers = [
     "transition: tests related to transition detection",
     "fiscal: tests related to fiscal analysis",
     "cet: tests related to CET classification",
-    "neo4j: tests requiring real Neo4j connection (not mocked)",
     "requires_s3: tests requiring S3 access",
     "requires_api: tests requiring external API access",
-    "requires_neo4j: tests requiring Neo4j driver",
     "requires_bea_api: tests requiring BEA API key",
     "requires_hf: tests requiring HuggingFace token",
     "requires_ml: tests requiring ML dependencies",

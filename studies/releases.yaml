@@ -1,0 +1,15 @@
+schema_version: 1
+releases:
+  sba-annual-report-structural-comparison:
+    tag: v0.18.0
+    source_revision: 15e11ed45c3ce5adf6a2441bdd0092a255dc730f
+    tree_oid: 0d8e2c6709abaaf9c3eab710ddd063911e7a2871
+    checksum_manifest: studies/sba-annual-report-structural-comparison/release/checksums.sha256
+    checksum_errata:
+      - path: Makefile
+        inventory_sha256: 0642933e6b07c7c59af0ea943c70165580914583d0e00480977359315eb667df
+        release_sha256: cabddecd49bf6534c1c07764fee2391fe65b3f90b05f624aca9b77732481268b
+        reason: >-
+          The v0.18.0 squash merge retained the already-merged deterministic Jev Make targets
+          from main, while the detached inventory retained the reviewed PR-branch Makefile hash.
+          The tag is immutable; all other 40 inventory entries match exactly.

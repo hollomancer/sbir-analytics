@@ -26,7 +26,7 @@ config/
 ├── docker.yaml            # Compose overrides
 ├── prod.yaml              # Live/server profile
 ├── test.yaml              # Test profile
-└── <subsystem>/           # CET, transition, fiscal, Neo4j, and report config
+└── <subsystem>/           # CET, transition, fiscal, and report config
 ```
 
 ### Data Organization
@@ -57,7 +57,7 @@ docs/
 ├── architecture/          # System design documents
 ├── data/                  # Sources, refreshes, and data dictionaries
 ├── deployment/            # Deployment guides and runbooks
-├── schemas/               # Neo4j schema documentation
+├── schemas/               # Historical graph mappings and source field references
 ├── steering/              # Durable engineering and evidence rules
 └── archive/               # Historical, non-operational documents
 ```

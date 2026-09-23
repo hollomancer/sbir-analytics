@@ -178,13 +178,6 @@ artifacts/
 *.feather
 *.duckdb.wal
 
-# Neo4j runtime data
-neo4j/data/
-neo4j/logs/
-
-# Keep import/ only if you intentionally version static inputs
-# neo4j/import/
-
 # Dagster local state
 .dagster_home/
 dagster_home/

@@ -42,20 +42,19 @@ the clean deployment checkout. Use the documented Make targets; do not run
 `git clean`, destructive resets, or hand-written Compose teardown commands
 there. Treat materialization as a live-data mutation: confirm persistent
 storage is mounted and the stack is healthy first — `make server-health` is
-the concrete check (compose status plus environment, dependency, and Neo4j
-connectivity checks run inside the code-server container). Run it before any
+the concrete check (compose status plus environment and dependency checks run
+inside the code-server container). Run it before any
 live materialization and before enabling any schedule. Keep schedules disabled
 until their jobs have completed successfully by hand with the inputs available
 on this host.
 
 ## What runs here
 
-The `server` Compose profile (`docker-compose.server.yml`) runs exactly four
+The `server` Compose profile (`docker-compose.server.yml`) runs exactly three
 services:
 
 | Service | Purpose | Host bind | Tailnet ingress |
 |---------|---------|-----------|-----------------|
-| `neo4j` | Graph store | `127.0.0.1:7474` / `7687` | TLS Bolt `17687` (opt-in) |
 | `dagster-code-server` | Shared Dagster code location | none | none |
 | `dagster-webserver` | Orchestration UI (prod mode) | `127.0.0.1:3000` | HTTPS `443` |
 | `dagster-daemon` | Schedules + sensors | — | none |
@@ -75,10 +74,6 @@ caveat and [Workload placement](#workload-placement).
   and terminates TLS automatically
   ([docs](https://tailscale.com/docs/features/tailscale-serve)):
   - `https://<host>/` → Dagster (`127.0.0.1:3000`)
-  - `bolt+s://<host>:17687` → Neo4j Bolt (`127.0.0.1:7687`, opt-in)
-- **Neo4j remains loopback-only at the host boundary.** Tailscale Serve is the
-  sole proxy to Bolt, and a separate least-privilege grant restricts that route
-  to trusted operators. Neo4j Browser's HTTP port `7474` is never served.
 - **Tailscale Funnel is prohibited.** The helper never enables Funnel; the
   services must never be reachable from the public internet.
 - **Defense in depth.** Dagster relies on Tailscale identity plus a
@@ -93,7 +88,7 @@ at it in `.env.server`. Replace `/path/to/persistent-storage` with an absolute
 host path; do not copy this placeholder literally:
 
 ```bash
-mkdir -p /path/to/persistent-storage/sbir-analytics/{data,reports,logs,artifacts,neo4j,backups}
+mkdir -p /path/to/persistent-storage/sbir-analytics/{data,reports,logs,artifacts}
 ```
 
 ```dotenv
@@ -101,12 +96,10 @@ SERVER_DATA_DIR=/path/to/persistent-storage/sbir-analytics/data
 SERVER_REPORTS_DIR=/path/to/persistent-storage/sbir-analytics/reports
 SERVER_LOGS_DIR=/path/to/persistent-storage/sbir-analytics/logs
 SERVER_ARTIFACTS_DIR=/path/to/persistent-storage/sbir-analytics/artifacts
-SERVER_NEO4J_DIR=/path/to/persistent-storage/sbir-analytics/neo4j
-SERVER_BACKUP_DIR=/path/to/persistent-storage/sbir-analytics/backups
 ```
 
-> Persistent storage is **not a backup by itself.** Run `make server-backup`
-> regularly and copy the dump to a second failure domain.
+> Persistent storage is **not a backup by itself.** Back up governed data and
+> Dagster metadata to a second failure domain.
 
 ### 2. Start at boot
 
@@ -129,22 +122,20 @@ make server-tailscale-status
 ```
 
 `--bg` keeps the routes active after Tailscale or the device restarts. Setup
-**refuses to replace** an existing route on port 443 or an enabled 17687 route.
-Neo4j tailnet access defaults to disabled.
+**refuses to replace** an existing route on port 443.
 
 ### 4. MagicDNS URLs
 
 With MagicDNS enabled the services are reachable at your node's DNS name:
 
 - Dagster: `https://<node>.<tailnet>.ts.net/`
-- Neo4j: `bolt+s://<node>.<tailnet>.ts.net:17687` (trusted operators only)
 
 `make server-tailscale-up` prints the exact URLs for this node.
 
 ## Bring-up
 
 ```bash
-cp .env.server.example .env.server     # fill in NEO4J_PASSWORD
+cp .env.server.example .env.server     # fill in required source credentials
 make server-check                      # docker, storage, ports, tailscale, bindings
 make server-up                         # repeats preflight, then starts localhost-only stack
 make server-tailscale-up               # expose via Tailscale Serve
@@ -212,9 +203,8 @@ non-root deployment change is reverted first.
 
 ## Tailscale grant (least privilege)
 
-Restrict who can reach the server. Tag the server node `tag:sbir-server`, grant
-analysts access to the Dagster UI, and grant Neo4j separately to trusted
-operators. Grants are the recommended current policy mechanism
+Restrict who can reach the server. Tag the server node `tag:sbir-server` and
+grant analysts access to the Dagster UI. Grants are the recommended current policy mechanism
 ([docs](https://tailscale.com/docs/reference/syntax/grants)). Apply this from
 the admin console manually:
 
@@ -225,11 +215,6 @@ the admin console manually:
       "src": ["group:sbir-analysts"],
       "dst": ["tag:sbir-server"],
       "ip":  ["tcp:443"]
-    },
-    {
-      "src": ["group:sbir-neo4j-operators"],
-      "dst": ["tag:sbir-server"],
-      "ip":  ["tcp:17687"]
     }
   ],
   "tagOwners": {
@@ -238,65 +223,18 @@ the admin console manually:
 }
 ```
 
-Define `group:sbir-neo4j-operators` in the same policy, or replace it with the
-exact operator login email for a single-user grant.
-
-Neo4j's host ports (`7474`/`7687`) remain absent. Operators reach only the
-TLS-terminated Serve port `17687`; no grant should expose Browser HTTP or the
-loopback Bolt port directly.
-
-Apply the operator grant before enabling the route. Then set this in the live
-`.env.server` and rerun `make server-tailscale-up`:
-
-```dotenv
-NEO4J_TAILNET_BOLT_ENABLED=true
-NEO4J_TAILNET_BOLT_PORT=17687
-```
-
-Leave the flag false unless direct operator access is actively required.
-
-## iPhone graph access
-
-Install Tailscale and
-[PocketGraph](https://apps.apple.com/us/app/pocketgraph/id1604368926) on the
-iPhone. Sign in to the tailnet as a member of `group:sbir-neo4j-operators`,
-enable the route only after its grant is active, then configure PocketGraph
-with:
-
-```text
-Protocol: bolt+s
-Host: <node>.<tailnet>.ts.net
-Port: 17687
-Database: neo4j
-Username: neo4j
-Password: <current rotated Neo4j password>
-```
-
-PocketGraph is a third-party client and can execute arbitrary Cypher. The
-Community Edition deployment does not provide the repository's API-level
-read-only guard for this direct connection, so restrict the grant and
-credentials to trusted operators. Do not configure `7474`, use `bolt://`, or
-enable Funnel.
-
 ## Day-2 operations
 
 | Task | Command |
 |------|---------|
 | Status | `make server-status` |
 | Logs | `make server-logs SERVICE=dagster-webserver` |
-| Backup Neo4j | `make server-backup` |
 | Stop (keep data) | `make server-down` |
 | Remove Serve routes | `make server-tailscale-down` |
 
 `make server-down` stops containers but **preserves** the `dagster_home` volume
-and all bind-mounted data. `make server-tailscale-down` removes **only** the
-443/17687 routes and never runs the destructive global
-`tailscale serve reset`.
-
-Neo4j Community Edition cannot create an online `neo4j-admin` dump. The backup
-helper therefore stops Neo4j briefly, writes the dump, and always attempts to
-restart it—even if the dump fails or the command is interrupted. A completed dump is retained if
-restart fails so recovery work cannot erase the backup.
+and all bind-mounted data. `make server-tailscale-down` removes only the managed
+HTTPS route and never runs the destructive global `tailscale serve reset`.
 
 ### Schedules
 
@@ -319,9 +257,8 @@ restart fails so recovery work cannot erase the backup.
 ### Manual NSF defense-lineage canary
 
 The `nsf_defense_lineage_refresh_job` writes a research release and static
-graph files only. It does **not** select a Neo4j loader or mutate Neo4j. Do not
-pair this canary with `core_refresh_job`, a graph load, or any other
-materialization.
+network files only. Do not pair this canary with `core_refresh_job` or any
+other materialization.
 
 All configured paths are paths inside the Linux container. A host file below
 `SERVER_DATA_DIR` is visible below `/app/data`; a host file below
@@ -409,11 +346,10 @@ research-ready. Before enabling any schedule or sensor, record the run ID,
 input vintage, output path, row grain, cardinality, and semantic checks in
 `server-status.local.md`. In particular:
 
-- Compare source rows at their declared grain with the corresponding Neo4j
-  nodes. The SBIR award grain is `award_id` plus phase; duplicate
-  `FinancialTransaction.transaction_id` values must fail before graph mutation.
-- For phase progressions, require zero `FOLLOWS` self-loops and verify that the
-  stored endpoint phases match the intended progression.
+- Compare source and output rows at their declared grain. The SBIR award grain
+  is `award_id` plus phase; duplicate identifiers must fail before publication.
+- For phase progressions, require zero self-links and verify that the endpoint
+  phases match the intended progression.
 - For weekly reports, verify every included award date falls within both ends
   of the reported window. A successful report process with future-dated rows is
   a failed rollout gate.
@@ -422,9 +358,8 @@ input vintage, output path, row grain, cardinality, and semantic checks in
   compact `SR2`/`SR3` or `ST2`/`ST3` codes; a successful zero-row output is not
   sufficient when coded source rows exist.
 
-Back up Neo4j immediately before a first full load. If a semantic gate fails,
-keep schedules and sensors stopped, retain a forensic dump if useful, and
-restore the pre-load dump before serving the graph as canonical.
+If a semantic gate fails, keep schedules and sensors stopped. Retain the
+failed output and manifest for diagnosis. Do not publish it as canonical.
 
 ### Bounded USAspending contract refresh
 
@@ -579,11 +514,10 @@ to `false` if the code server starts hitting its limit.
   Verify with `make server-status` and `make server-tailscale-status`.
 - **After Tailscale reconnect:** routes resume automatically. If missing,
   re-run `make server-tailscale-up`.
-- **After container restart:** Neo4j and Dagster metadata persist on host
-  storage and the `dagster_home` volume; no data loss.
+- **After container restart:** analytical data and Dagster metadata persist on
+  host storage and the `dagster_home` volume; no data loss.
 - **After storage failure:** restore or re-mount the configured storage, then
   `make server-up`.
-  Restore Neo4j from the latest `server-backup` dump if the store is damaged.
 
 ## Verifying isolation
 
@@ -594,13 +528,12 @@ unreachable (connection refused/timeout):
 curl -m 5 http://<server-lan-ip>:3000/        # fails
 ```
 
-From a Tailscale analyst device, Dagster succeeds on 443 while Neo4j remains
-unreachable. From a trusted operator device, TLS Bolt succeeds on 17687; direct
-connections to 7474/7687 remain unreachable.
+From a Tailscale analyst device, Dagster succeeds on port 443. No other
+application port is served.
 
 ## Workload placement
 
-- **Local, always-on:** Neo4j, Dagster, DuckDB, and core analytics.
+- **Local, always-on:** Dagster, DuckDB, and core analytics.
 - **Local, on-demand:** public USAspending Contracts_Full download and bounded
   SBIR-vendor filtering into Parquet.
 - **Local, on-demand and capacity-gated:** CET/scikit-learn, bounded USPTO NLP,

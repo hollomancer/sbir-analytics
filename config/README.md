@@ -31,9 +31,6 @@ export SBIR_ETL__LOGGING__LEVEL=DEBUG
 export SBIR_ETL__ENRICHMENT__PERFORMANCE__CHUNK_SIZE=10000
 ```
 
-Neo4j connection values can be supplied directly with `NEO4J_URI`, `NEO4J_USER`,
-`NEO4J_PASSWORD`, and `NEO4J_DATABASE`. Do not commit credentials to YAML.
-
 ## Domain configuration
 
 Subdirectories such as `cet/`, `fiscal/`, `ml/`, and `transition/` contain configuration owned by

@@ -27,9 +27,9 @@ tracked documentation.
 Review before:
 
 - deployment bring-up, rebuild, upgrade, shutdown, or recovery;
-- any live Dagster materialization or graph load;
+- any live Dagster materialization;
 - enabling or changing a schedule, sensor, or source-data download;
-- Tailscale Serve or Neo4j ingress changes;
+- Tailscale Serve ingress changes;
 - backup, restore, persistent-storage, or credential-rotation work;
 - a change to deployment code, Compose configuration, Make targets, or the
   server runbook.
@@ -49,7 +49,7 @@ Review before:
    print `.env.server`, environment values, credentials, tokens, private host
    paths that need not be disclosed, or data contents.
 5. Classify every proposed command by mutation and blast radius. Identify
-   service interruption, data replacement, graph mutation, schedule activation,
+   service interruption, data replacement, schedule activation,
    ingress, and secret-handling effects.
 6. Evaluate the preflight gates below and produce a verdict. If the operation is
    safe, hand the exact reviewed sequence back to the caller for separately
@@ -73,8 +73,7 @@ Review before:
 - The Docker `dagster_home` named volume will be preserved.
 - No command uses `docker compose down -v`, destructive Git cleanup/reset, or
   an ad hoc teardown outside the documented Make targets.
-- A current recovery path exists; first full graph loads require an immediate
-  pre-load Neo4j backup.
+- A current recovery path exists for governed data and Dagster metadata.
 
 ### Health and workload
 
@@ -98,11 +97,8 @@ Review before:
 ### Network boundary
 
 - Host ports remain bound to `127.0.0.1`.
-- Ingress remains Tailscale Serve over tailnet-only HTTPS or explicitly enabled
-  TLS-terminated Bolt.
-- Tailscale Funnel, public exposure, LAN exposure, Browser HTTP ingress, and
-  direct host Bolt exposure remain prohibited.
-- Neo4j Bolt access is separately restricted to trusted operators.
+- Ingress remains Tailscale Serve over tailnet-only HTTPS.
+- Tailscale Funnel, public exposure, and LAN exposure remain prohibited.
 
 ## Output Format
 

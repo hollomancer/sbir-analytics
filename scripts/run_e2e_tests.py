@@ -49,11 +49,7 @@ def get_test_config(scenario: str) -> dict[str, Any]:
 
 def check_environment() -> bool:
     """Check if the environment is properly configured for E2E testing."""
-    required_vars = [
-        "NEO4J_USERNAME",
-        "NEO4J_PASSWORD",
-        "SBIR_ETL__NEO4J__BOLT_URL",
-    ]
+    required_vars = ["ENVIRONMENT"]
 
     missing_vars = []
     for var in required_vars:
@@ -154,7 +150,6 @@ def run_e2e_tests(scenario: str, timeout: int) -> int:
                 "--cov=sbir_etl",
                 "--cov=packages/sbir-analytics/sbir_analytics",
                 "--cov=packages/sbir-ml/sbir_ml",
-                "--cov=packages/sbir-graph/sbir_graph",
                 "--cov-branch",
                 "--cov-report=term-missing",
                 f"--cov-report=html:{coverage_dir}",

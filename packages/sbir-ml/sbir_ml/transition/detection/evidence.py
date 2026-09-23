@@ -5,8 +5,7 @@ This module creates comprehensive audit trails for each detected transition,
 documenting all signals, scores, and supporting data to ensure transparency
 and reproducibility.
 
-Evidence bundles are serialized to JSON and stored on Neo4j relationship
-properties for query-time inspection and verification.
+Evidence bundles are serialized to JSON for inspection and verification.
 """
 
 from __future__ import annotations

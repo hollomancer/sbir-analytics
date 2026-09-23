@@ -1,15 +1,11 @@
-# USPTO Patents — Source, Field Reference, and Graph Mapping
+# USPTO Patents — Source and Field Reference
 
 ## Overview
 
-This document covers USPTO patent assignment data end to end:
+This document covers the first two stages of USPTO patent assignment data:
 
 1. The raw USPTO Stata source tables.
 2. The nested Pydantic model produced by the ETL (`sbir_etl/models/uspto_models.py`).
-3. How that data is written into Neo4j by `packages/sbir-graph/sbir_graph/loaders/neo4j/patents.py`.
-
-For the overall graph index see [neo4j.md](neo4j.md). For the unified node references
-see [organization-schema.md](organization-schema.md) and [individual-schema.md](individual-schema.md).
 
 **Data source:** [USPTO Patent Assignment Dataset](https://www.uspto.gov/ip-policy/economic-research/research-datasets/patent-assignment-dataset)
 **Update frequency:** Monthly
@@ -179,79 +175,9 @@ Lowercase values: `assignment`, `license`, `security_interest`, `merger`, `other
 
 ---
 
-## 3. Neo4j graph mapping
-
-The loader (`patents.py`) writes the following labels and relationships. There is **no**
-`:PatentEntity` node and **no** `FUNDED_BY` edge for patents — assignees/assignors become
-unified `Organization` or `Individual` nodes, and SBIR linkage uses `GENERATED_FROM`.
-
-### Nodes
-
-| Label | Key | Source |
-|-------|-----|--------|
-| `Patent` | `grant_doc_num` | `documentid` / `PatentDocument` |
-| `PatentAssignment` | `rf_id` | `assignment` + `assignment_conveyance` |
-| `Organization` | `organization_id` (`org_patent_<entity_id>`) | non-individual assignees/assignors (`COMPANY`, `UNIVERSITY`, `GOVERNMENT`) |
-| `Individual` | `individual_id` (`ind_patent_<entity_id>`) | individual assignees/assignors |
-
-`Patent` node properties include `grant_doc_num`, `title`, `abstract`, `language`,
-`appno_date`, `grant_date`, `publication_date`, `filing_date`, `raw_metadata`.
-`PatentAssignment` properties include `rf_id`, `file_id`, `conveyance_type`,
-`conveyance_description`, `employer_assign`, `grant_doc_num`, `execution_date`,
-`recorded_date`.
-
-> Patent assignees/assignors are routed to the unified `Organization` / `Individual`
-> labels (see [organization-schema.md](organization-schema.md) and
-> [individual-schema.md](individual-schema.md)). The legacy `:PatentEntity`
-> constraint/index definitions have been removed from the loader; no `:PatentEntity`
-> nodes were ever created.
-
-### Relationships
-
-| Type | Direction |
-|------|-----------|
-| `ASSIGNED_VIA` | `Patent` → `PatentAssignment` |
-| `ASSIGNED_TO` | `PatentAssignment` → `Organization` / `Individual` (assignee, by `entity_id`) |
-| `ASSIGNED_FROM` | `PatentAssignment` → `Organization` / `Individual` (assignor, by `entity_id`) |
-| `CHAIN_OF` | `PatentAssignment` → `PatentAssignment` (sequential ownership) |
-| `OWNS` | `Organization` (COMPANY, by `uei`) → `Patent` |
-| `GENERATED_FROM` | `Patent` → `Award` (SBIR-funded patents, by `award_id`) |
-
-### Constraints and indexes (from `patents.py`)
-
-- `Patent.grant_doc_num` UNIQUE; index on `appno_date`.
-- `PatentAssignment.rf_id` UNIQUE; index on `exec_date`.
-- `Organization.organization_id` UNIQUE; indexes on `entity_id`, `normalized_name`.
-
-### Example queries
-
-```cypher
-// All assignments for a patent, in execution order
-MATCH (p:Patent {grant_doc_num: "10123456"})-[:ASSIGNED_VIA]->(a:PatentAssignment)
-RETURN a
-ORDER BY a.execution_date ASC
-```
-
-```cypher
-// Patent portfolio of an SBIR company
-MATCH (o:Organization {organization_type: "COMPANY"})-[:OWNS]->(p:Patent)
-RETURN o.name, count(p) AS patent_count
-ORDER BY patent_count DESC
-```
-
-```cypher
-// SBIR-funded patents linked to their source award
-MATCH (p:Patent)-[:GENERATED_FROM]->(ft:FinancialTransaction {transaction_type: "AWARD"})
-RETURN p.grant_doc_num, p.title, ft.award_id
-```
-
----
-
 ## References
 
 - [USPTO Patent Assignment Dataset](https://www.uspto.gov/ip-policy/economic-research/research-datasets/patent-assignment-dataset)
 - Pydantic models: `sbir_etl/models/uspto_models.py`
 - USPTO extractor: `sbir_etl/extractors/uspto_extractor.py`
 - Patent transformer: `sbir_etl/transformers/patent_transformer.py`
-- Patent loader: `packages/sbir-graph/sbir_graph/loaders/neo4j/patents.py`
-- Graph index: [neo4j.md](neo4j.md)

@@ -15,8 +15,8 @@ text classifier.
 
 What this module does NOT do: it does not assemble the cascade
 (`kernel.classify_linkage` takes the `D5TextTrail` this module returns as one
-of five caller-supplied inputs), and it does not write Parquet, Neo4j, or any
-`CANDIDATE` assertion -- scoring only.
+of five caller-supplied inputs), and it does not write Parquet, a service
+database, or any `CANDIDATE` assertion -- scoring only.
 
 Epistemic tier: exploratory (`specs/sttr-spinout-linkage/tasks.md` header):
 no tests or abstractions beyond what a single probe needs, and no citable

@@ -8,17 +8,10 @@ SCRIPT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 # shellcheck source=scripts/server/env-file.sh
 . "$SCRIPT_DIR/env-file.sh"
 load_env_key DAGSTER_PORT
-load_env_key NEO4J_BOLT_PORT
-load_env_key NEO4J_TAILNET_BOLT_ENABLED
-load_env_key NEO4J_TAILNET_BOLT_PORT
 
 DAGSTER_PORT="${DAGSTER_PORT:-3000}"
-NEO4J_BOLT_PORT="${NEO4J_BOLT_PORT:-7687}"
-NEO4J_TAILNET_BOLT_ENABLED="${NEO4J_TAILNET_BOLT_ENABLED:-false}"
-NEO4J_TAILNET_BOLT_PORT="${NEO4J_TAILNET_BOLT_PORT:-17687}"
 DAGSTER_TARGET="http://127.0.0.1:${DAGSTER_PORT}"
 LEGACY_API_TARGET="http://127.0.0.1:8010"
-NEO4J_TARGET="127.0.0.1:${NEO4J_BOLT_PORT}"
 STATE_HELPER="$SCRIPT_DIR/tailscale-route-state.py"
 MUTATION_OUTPUT=""
 LAST_MUTATION_OUTPUT=""
@@ -26,7 +19,6 @@ PENDING_PORT=""
 PENDING_TARGET=""
 PENDING_TLS_HOST=""
 CREATED_443=0
-CREATED_NEO4J=0
 ROLLBACK_ON_EXIT=0
 
 RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'; BLUE='\033[0;34m'; NC='\033[0m'
@@ -67,34 +59,6 @@ require_tailscale() {
   if ! tailscale status >/dev/null 2>&1; then
     error "Tailscale is not running or not logged in. Run: tailscale up"
     exit 1
-  fi
-}
-
-neo4j_tailnet_enabled() {
-  case "$NEO4J_TAILNET_BOLT_ENABLED" in
-    1|true|TRUE|yes|YES) return 0 ;;
-    0|false|FALSE|no|NO) return 1 ;;
-    *)
-      error "NEO4J_TAILNET_BOLT_ENABLED must be true or false."
-      exit 2
-      ;;
-  esac
-}
-
-validate_neo4j_tailnet_port() {
-  case "$NEO4J_TAILNET_BOLT_PORT" in
-    ''|*[!0-9]*|??????*)
-      error "NEO4J_TAILNET_BOLT_PORT must be an integer between 1 and 65535."
-      exit 2
-      ;;
-  esac
-  if [ "$NEO4J_TAILNET_BOLT_PORT" -lt 1 ] || [ "$NEO4J_TAILNET_BOLT_PORT" -gt 65535 ]; then
-    error "NEO4J_TAILNET_BOLT_PORT must be an integer between 1 and 65535."
-    exit 2
-  fi
-  if [ "$NEO4J_TAILNET_BOLT_PORT" -eq 443 ]; then
-    error "NEO4J_TAILNET_BOLT_PORT must not conflict with managed Serve port 443."
-    exit 2
   fi
 }
 
@@ -192,28 +156,6 @@ configure_route() {
   PENDING_TARGET=""
 }
 
-configure_neo4j_route() {
-  port="$1"
-  target="$2"
-  tls_host="$3"
-  PENDING_PORT="$port"
-  PENDING_TARGET="$target"
-  PENDING_TLS_HOST="$tls_host"
-  if ! run_tailscale_mutation serve --yes --bg "--tls-terminated-tcp=$port" "tcp://$target"; then
-    return 1
-  fi
-
-  state=$(route_state "$port" "$target" "$tls_host") || return 1
-  if [ "$state" != "owned" ]; then
-    error "Tailscale did not install the expected TLS/TCP $port route."
-    return 1
-  fi
-  CREATED_NEO4J=1
-  PENDING_PORT=""
-  PENDING_TARGET=""
-  PENDING_TLS_HOST=""
-}
-
 remove_owned_route() {
   port="$1"
   target="$2"
@@ -265,10 +207,6 @@ rollback_transaction() {
     PENDING_TARGET=""
     PENDING_TLS_HOST=""
   fi
-  if [ "$CREATED_NEO4J" -eq 1 ]; then
-    rollback_expected_route "$NEO4J_TAILNET_BOLT_PORT" "$NEO4J_TARGET" "$NEO4J_TLS_HOST" || true
-    CREATED_NEO4J=0
-  fi
   if [ "$CREATED_443" -eq 1 ]; then
     rollback_expected_route 443 "$DAGSTER_TARGET" || true
     CREATED_443=0
@@ -277,21 +215,13 @@ rollback_transaction() {
 
 cmd_up() {
   require_tailscale
-  validate_neo4j_tailnet_port
-  NEO4J_TLS_HOST=$(tailscale_dns_name || true)
-  if [ -z "$NEO4J_TLS_HOST" ]; then
-    error "Could not determine this node's Tailscale DNS name for Neo4j TLS."
+  TAILSCALE_HOST=$(tailscale_dns_name || true)
+  if [ -z "$TAILSCALE_HOST" ]; then
+    error "Could not determine this node's Tailscale DNS name."
     exit 1
   fi
   state_443=$(route_state 443 "$DAGSTER_TARGET") || exit 1
   state_legacy_8443=$(route_state 8443 "$LEGACY_API_TARGET") || exit 1
-  state_neo4j=$(
-    route_state "$NEO4J_TAILNET_BOLT_PORT" "$NEO4J_TARGET" "$NEO4J_TLS_HOST"
-  ) || exit 1
-  enable_neo4j=0
-  if neo4j_tailnet_enabled; then
-    enable_neo4j=1
-  fi
 
   if [ "$state_443" = "occupied" ]; then
     error "Serve port 443 has a different owner or target; refusing to overwrite it."
@@ -307,19 +237,6 @@ cmd_up() {
       warn "Serve port 8443 has another target; leaving it untouched."
       ;;
   esac
-  if [ "$state_neo4j" = "occupied" ]; then
-    error "Serve port $NEO4J_TAILNET_BOLT_PORT has a different owner or target."
-    error "Inspect with: tailscale serve status"
-    exit 1
-  fi
-  if [ "$enable_neo4j" -eq 0 ]; then
-    if [ "$state_neo4j" = "owned" ]; then
-      remove_owned_route "$NEO4J_TAILNET_BOLT_PORT" "$NEO4J_TARGET" "$NEO4J_TLS_HOST"
-      success "Removed the disabled Neo4j TLS/TCP route."
-    fi
-    state_neo4j="disabled"
-  fi
-
   ROLLBACK_ON_EXIT=1
   if [ "$state_443" = "free" ]; then
     info "Configuring HTTPS 443 -> $DAGSTER_TARGET..."
@@ -328,20 +245,7 @@ cmd_up() {
     success "HTTPS 443 already has the expected Dagster route."
   fi
 
-  if [ "$state_neo4j" = "disabled" ]; then
-    info "Neo4j tailnet access is disabled in $ENV_FILE."
-  elif [ "$state_neo4j" = "free" ]; then
-    warn "Confirm the group:sbir-neo4j-operators Tailscale grant is active before exposing Bolt."
-    info "Configuring TLS/TCP $NEO4J_TAILNET_BOLT_PORT -> $NEO4J_TARGET..."
-    configure_neo4j_route "$NEO4J_TAILNET_BOLT_PORT" "$NEO4J_TARGET" "$NEO4J_TLS_HOST" || exit 1
-  else
-    success "TLS/TCP $NEO4J_TAILNET_BOLT_PORT already has the expected Neo4j route."
-  fi
-
-  info "Dagster: https://${NEO4J_TLS_HOST}/"
-  if [ "$state_neo4j" != "disabled" ]; then
-    info "Neo4j:  bolt+s://${NEO4J_TLS_HOST}:${NEO4J_TAILNET_BOLT_PORT}"
-  fi
+  info "Dagster: https://${TAILSCALE_HOST}/"
   ROLLBACK_ON_EXIT=0
   success "Tailscale Serve routes are active (Funnel remains disabled)."
 }
@@ -354,27 +258,14 @@ cmd_status() {
 
 cmd_down() {
   require_tailscale
-  validate_neo4j_tailnet_port
-  NEO4J_TLS_HOST=$(tailscale_dns_name || true)
-  if [ -z "$NEO4J_TLS_HOST" ]; then
-    error "Could not determine this node's Tailscale DNS name for Neo4j TLS."
-    exit 1
-  fi
   state_443=$(route_state 443 "$DAGSTER_TARGET") || exit 1
-  state_neo4j=$(route_state "$NEO4J_TAILNET_BOLT_PORT" "$NEO4J_TARGET" "$NEO4J_TLS_HOST") || exit 1
 
-  if [ "$state_443" = "occupied" ] || [ "$state_neo4j" = "occupied" ]; then
+  if [ "$state_443" = "occupied" ]; then
     error "A requested port has a different Serve owner or target; nothing was removed."
     error "Inspect with: tailscale serve status"
     exit 1
   fi
 
-  if [ "$state_neo4j" = "owned" ]; then
-    remove_owned_route "$NEO4J_TAILNET_BOLT_PORT" "$NEO4J_TARGET" "$NEO4J_TLS_HOST"
-    success "Removed the SBIR Neo4j TLS/TCP route."
-  else
-    warn "No SBIR Neo4j TLS/TCP route to remove."
-  fi
   if [ "$state_443" = "owned" ]; then
     remove_owned_route 443 "$DAGSTER_TARGET"
     success "Removed the SBIR HTTPS 443 route."

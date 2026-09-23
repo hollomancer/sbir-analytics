@@ -27,7 +27,7 @@ separately in ``tests/unit/assets/test_dagster_definitions.py``.
 The asset itself is hermetic by construction: with no
 ``data/processed/cet_award_classifications.{parquet,ndjson}`` present, it
 writes a `{"ok": True, "reason": "no_input"}` report and succeeds rather than
-requiring a trained model or Neo4j, so no dependency mocking is needed here.
+requiring a trained model, so no dependency mocking is needed here.
 """
 
 from __future__ import annotations

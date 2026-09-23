@@ -10,6 +10,30 @@ version.
 
 ## [Unreleased]
 
+### Breaking
+
+- Retired the Neo4j service and the `sbir-graph` workspace package. Governed
+  Parquet and DuckDB artifacts remain the analytical authority. The annotated
+  `v0.18.0` tag is the last supported graph implementation.
+
+### Changed
+
+- Dagster jobs now stop at their table and report artifacts instead of writing
+  a second graph projection.
+- Development, CI, Docker, and server profiles no longer require graph
+  credentials, ports, health checks, or service startup.
+- Released-study validation now checks the SBA packet in its immutable release
+  tree, which lets the moving repository update its dependency lock without
+  changing frozen study bytes. It also records the immutable tag's one exact
+  checksum erratum: the squash-merged `Makefile` contains the already-merged
+  Jev targets while the detached inventory records the reviewed branch hash.
+
+### Removed
+
+- Removed graph-only loaders, migrations, queries, scripts, configuration,
+  tests, and CI actions. No host data, Docker volume, or historical dump is
+  deleted by this change.
+
 ## [0.18.0] — 2026-09-22
 
 ### Added

@@ -44,7 +44,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # therefore reuse this layer and the Chromium layer below.
 COPY pyproject.toml uv.lock README.md ./
 COPY packages/sbir-analytics/pyproject.toml packages/sbir-analytics/README.md ./packages/sbir-analytics/
-COPY packages/sbir-graph/pyproject.toml ./packages/sbir-graph/
 COPY packages/sbir-ml/pyproject.toml packages/sbir-ml/README.md ./packages/sbir-ml/
 
 RUN --mount=type=cache,target=/root/.cache/uv \
@@ -59,7 +58,7 @@ RUN playwright install --with-deps chromium \
 
 # Copy the complete workspace and install its first-party packages as ordinary
 # wheels. PYTHONPATH intentionally keeps the historical repo-root `sbir_etl`
-# import behavior; the three packages below resolve from the installed wheels
+# import behavior; the two packages below resolve from the installed wheels
 # unless the development Compose profile explicitly mounts live source paths.
 COPY --chown=sbir:sbir sbir_etl/ ./sbir_etl/
 COPY --chown=sbir:sbir packages/ ./packages/

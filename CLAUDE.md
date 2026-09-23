@@ -2,7 +2,7 @@
 
 ## Project
 
-Graph-based ETL: SBIR awards → Neo4j. Dagster orchestration, DuckDB processing, Docker deployment.
+Research ETL for SBIR/STTR data. Dagster orchestrates governed Parquet and DuckDB pipelines.
 
 **Intent / north star:** [docs/research-questions.md](docs/research-questions.md) is the canonical inventory of what this repo exists to answer. Use it to judge whether a proposed change serves a real question vs. adds incidental scope.
 
@@ -133,7 +133,6 @@ for runtime discovery. `make docs-check` requires the copies to match.
 sbir_etl/                 # Core ETL library (extractors, enrichers, transformers, validators, models, config, quality, utils)
 packages/
   sbir-analytics/         # Dagster assets, jobs, sensors
-  sbir-graph/             # Neo4j loaders
   sbir-ml/                # ML models (CET, transition detection)
 config/base.yaml          # Thresholds, paths, performance settings
 studies/                  # Versioned contracts for reproducible and citable research
@@ -144,7 +143,7 @@ studies/                  # Versioned contracts for reproducible and citable res
 - **Monitoring:** Use `sbir_etl.utils` decorators and `AlertCollector`
 - **CI:** Edit `.github/workflows/*.yml`, upload artifacts to `reports/`
 - **Tests:** Place in `tests/unit|integration|e2e/`; use the Make targets or `uv run pytest`
-- **Neo4j:** Modify `packages/sbir-graph/sbir_graph/loaders/`, use MERGE operations
+- **Analytical storage:** Keep governed records in Parquet or DuckDB; studies freeze exact inputs
 
 ## Research and analysis workflow
 
@@ -182,7 +181,7 @@ make install                           # uv sync --extra stack-dev (run this fir
 make test-unit                         # Unit tests
 uv run pytest -m integration           # Integration tests
 uv run pytest -n auto                  # Parallel execution
-make lint                              # Ruff over the repo, MyPy over sbir_etl + sbir-graph + sbir-ml
+make lint                              # Ruff over the repo, MyPy over sbir_etl + sbir-ml
 make lint-boundaries                   # Same boundary/hygiene guards as CI (incl. identity + epistemic tiers)
 make ci-local                         # PR analog: lint, guards, Bandit, detect-secrets, unit -m "not slow", hermetic e2e
 make docs-check                        # Hygiene subset only (also included in lint-boundaries)

@@ -86,7 +86,7 @@ Show the high-level pipeline:
 - USPTO patents
 - SAM.gov entity records
 - BEA / fiscal inputs
-- Dagster, DuckDB, Neo4j, and reports
+- Dagster, DuckDB, governed Parquet tables, and reports
 
 The point is not to show every asset. The point is to show that the architecture
 can connect policy questions to evidence.
