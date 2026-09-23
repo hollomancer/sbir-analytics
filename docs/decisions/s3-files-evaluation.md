@@ -88,7 +88,7 @@ these workloads.
 
 **2. The 60-second write sync delay is a liability.**
 Our pipeline writes validated/enriched Parquet files to S3 and then immediately triggers
-downstream assets (e.g., Neo4j loading) that may read them. A 60-second window where
+downstream assets that may read them. A 60-second window where
 writes are visible via NFS but not via S3 API creates a consistency hazard — especially
 since our Dagster sensors and some assets use the S3 API directly.
 

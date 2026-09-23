@@ -1,9 +1,8 @@
-"""Candidate transition assertions: the durable contract behind Neo4j.
+"""Candidate transition assertions stored as the durable analytical contract.
 
 ADR-005 makes a content-addressed Parquet snapshot of typed candidate
 assertions the authoritative record for inferred award-to-contract
-derivations. Neo4j is a disposable read projection that cannot strengthen an
-assertion's meaning.
+derivations.
 
 Everything published through this package is candidate-only:
 ``CANDIDATE`` / ``C`` / ``INVESTIGATIVE_ONLY``, and not citable.

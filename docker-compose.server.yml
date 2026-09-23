@@ -2,8 +2,7 @@
 #
 # A private server profile for a single always-on host. Images are built for the
 # container runtime's native architecture.
-# It runs only the services needed to serve the graph and orchestration UI:
-#   - neo4j              (private graph store; host port bound to loopback only)
+# It runs only the services needed for the orchestration UI:
 #   - dagster-code-server (shared internal Dagster code location)
 #   - dagster-webserver  (orchestration UI, production mode)
 #   - dagster-daemon     (schedules/sensors)
@@ -13,7 +12,6 @@
 #     no service is reachable over the LAN.
 #   * Tailscale Serve is the ONLY ingress (tailnet-only HTTPS/TLS):
 #       443  -> Dagster (127.0.0.1:3000)
-#       17687 -> Neo4j Bolt (127.0.0.1:7687; trusted operators only)
 #   * Tailscale Funnel is prohibited (see docs/deployment/self-hosted-server.md).
 #
 # Usage:
@@ -32,13 +30,6 @@ x-server-environment: &server-environment
   PYTHONPATH: /app
   PYTHONUNBUFFERED: 1
   SERVICE_STARTUP_TIMEOUT: ${SERVICE_STARTUP_TIMEOUT:-120}
-  # Neo4j connection settings (in-network; tailnet access uses Tailscale Serve)
-  SBIR_ETL__NEO4J__HOST: ${SBIR_ETL__NEO4J__HOST:-neo4j}
-  SBIR_ETL__NEO4J__PORT: ${SBIR_ETL__NEO4J__PORT:-7687}
-  NEO4J_URI: ${NEO4J_URI:-bolt://neo4j:7687}
-  NEO4J_USER: ${NEO4J_USER:-neo4j}
-  NEO4J_PASSWORD: ${NEO4J_PASSWORD:?NEO4J_PASSWORD is required for the server profile}
-  NEO4J_DATABASE: ${NEO4J_DATABASE:-neo4j}
   # Heavy assets (ML, fiscal, USPTO NLP) are loaded so they can be run by hand;
   # nothing schedules them. See .env.server.example for the capacity caveat.
   DAGSTER_LOAD_HEAVY_ASSETS: ${DAGSTER_LOAD_HEAVY_ASSETS:-true}
@@ -89,53 +80,6 @@ x-server-environment: &server-environment
 
 services:
   # ===========================================================================
-  # Neo4j graph database (loopback-only; Tailscale Serve terminates remote TLS)
-  # ===========================================================================
-  neo4j:
-    image: neo4j:${NEO4J_VERSION:-5.20.0}
-    container_name: ${NEO4J_CONTAINER_NAME:-sbir-server-neo4j}
-    profiles:
-      - server
-    environment:
-      - NEO4J_AUTH=${NEO4J_AUTH:-${NEO4J_USER:-neo4j}/${NEO4J_PASSWORD:?NEO4J_PASSWORD is required}}
-      # Export healthcheck-only credentials under a neutral prefix. The Neo4j
-      # entrypoint interprets arbitrary NEO4J_* variables as config settings.
-      - SBIR_SERVER_NEO4J_USER=${NEO4J_USER:-neo4j}
-      - SBIR_SERVER_NEO4J_PASSWORD=${NEO4J_PASSWORD:?NEO4J_PASSWORD is required}
-      - NEO4J_ACCEPT_LICENSE_AGREEMENT=yes
-      - 'NEO4J_PLUGINS=${NEO4J_PLUGINS:-["apoc"]}'
-      - NEO4J_server_memory_heap_max__size=${NEO4J_server_memory_heap_max__size:-1G}
-      - NEO4J_server_memory_heap_initial__size=${NEO4J_server_memory_heap_initial__size:-512M}
-      - NEO4J_server_memory_pagecache_size=${NEO4J_server_memory_pagecache_size:-512M}
-      - NEO4J_db_logs_query_enabled=${NEO4J_db_logs_query_enabled:-OFF}
-    ports:
-      # Loopback-only. Remote Bolt is available only through the opt-in Tailscale TLS route.
-      - "127.0.0.1:${NEO4J_HTTP_PORT:-7474}:7474"
-      - "127.0.0.1:${NEO4J_BOLT_PORT:-7687}:7687"
-    volumes:
-      - ${SERVER_NEO4J_DIR:-./data/neo4j}/data:/data
-      - ${SERVER_NEO4J_DIR:-./data/neo4j}/logs:/logs
-      - ${SERVER_NEO4J_DIR:-./data/neo4j}/import:/var/lib/neo4j/import
-      - neo4j_plugins:/plugins
-    networks:
-      - sbir-server-network
-    healthcheck:
-      test:
-        - "CMD-SHELL"
-        - "cypher-shell -u \"$${SBIR_SERVER_NEO4J_USER}\" -p \"$${SBIR_SERVER_NEO4J_PASSWORD}\" 'RETURN 1' >/dev/null 2>&1 || exit 1"
-      interval: 15s
-      timeout: 10s
-      retries: 12
-      start_period: 40s
-    restart: ${SERVER_RESTART_POLICY:-unless-stopped}
-    deploy:
-      resources:
-        limits:
-          memory: 2G
-        reservations:
-          memory: 1G
-
-  # ===========================================================================
   # Dagster code location (internal gRPC; never published to the host)
   # ===========================================================================
   dagster-code-server:
@@ -160,9 +104,6 @@ services:
       - dagster_home:/app/dagster_home
     expose:
       - "4000"
-    depends_on:
-      neo4j:
-        condition: service_healthy
     healthcheck:
       test:
         - CMD
@@ -222,8 +163,6 @@ services:
       # Loopback-only; Tailscale Serve maps HTTPS 443 -> 127.0.0.1:3000.
       - "127.0.0.1:${DAGSTER_PORT:-3000}:3000"
     depends_on:
-      neo4j:
-        condition: service_healthy
       dagster-code-server:
         condition: service_healthy
     healthcheck:
@@ -273,8 +212,6 @@ services:
       - ${SERVER_ARTIFACTS_DIR:-./artifacts}:/app/artifacts:rw
       - dagster_home:/app/dagster_home
     depends_on:
-      neo4j:
-        condition: service_healthy
       dagster-code-server:
         condition: service_healthy
       dagster-webserver:
@@ -303,8 +240,6 @@ services:
 volumes:
   # Shared Dagster metadata (schedule ticks, run storage) across web + daemon.
   dagster_home:
-    driver: local
-  neo4j_plugins:
     driver: local
 
 # =============================================================================

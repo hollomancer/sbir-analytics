@@ -56,8 +56,8 @@ figure.
 **`CitationNetworkBuilder`** (`citation_network.py`)
 Inputs: USPTO citing → cited pairs (after precondition ingestion), patent-award linkage.
 Outputs: directed citation graph with SBIR/non-SBIR node labels, serialized as an
-adjacency list for CitationDiffusionCalculator (not loaded into Neo4j in this spec — separate
-concern).
+adjacency list for CitationDiffusionCalculator (not loaded into a database service in this spec —
+separate concern).
 
 **`CitationDiffusionCalculator`**
 Inputs: citation graph from CitationNetworkBuilder.

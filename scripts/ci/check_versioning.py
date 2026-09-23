@@ -13,7 +13,6 @@ ROOT = Path(__file__).resolve().parents[2]
 PROJECTS = {
     "sbir-etl": ROOT / "pyproject.toml",
     "sbir-analytics": ROOT / "packages/sbir-analytics/pyproject.toml",
-    "sbir-graph": ROOT / "packages/sbir-graph/pyproject.toml",
     "sbir-ml": ROOT / "packages/sbir-ml/pyproject.toml",
 }
 LOCK_FILE = ROOT / "uv.lock"

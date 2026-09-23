@@ -18,8 +18,8 @@
 - [x] 2.1 Extend `sbir_etl/models/enrichment.py` (or add a new module) with data classes for `EnrichmentFreshnessRecord` capturing `award_id`, `source`, `last_attempt_at`, `last_success_at`, `payload_hash`, and `status`.
   - Notes: Created `sbir_etl/models/enrichment.py` with `EnrichmentFreshnessRecord` dataclass, `EnrichmentFreshnessRecordModel` Pydantic model, `EnrichmentStatus` enum, and `EnrichmentDeltaEvent` for delta tracking.
 
-- [x] 2.2 Update enrichment outputs to persist per-source freshness rows to DuckDB/Parquet (`data/derived/enrichment_freshness.parquet`) and to Neo4j properties.
-  - Notes: Created `sbir_etl/utils/enrichment/freshness.py` with `FreshnessStore` class for Parquet persistence. Neo4j persistence helper (`persist_to_neo4j`) included.
+- [x] 2.2 Update enrichment outputs to persist per-source freshness rows to DuckDB/Parquet (`data/derived/enrichment_freshness.parquet`).
+  - Notes: Created `sbir_etl/utils/enrichment/freshness.py` with `FreshnessStore` class for Parquet persistence.
 
 - [x] 2.3 Add migration/utility to backfill freshness metadata for existing enriched awards after the first iterative run.
   - Notes: Created `scripts/backfill_enrichment_freshness.py` for initializing freshness records from existing enriched data.

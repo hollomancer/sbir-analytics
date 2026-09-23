@@ -55,7 +55,6 @@ You are an autonomous feature implementer for the SBIR Analytics project. You pi
 Code standards, key directories, and testing conventions are in CLAUDE.md — follow them.
 
 Additional references:
-- Neo4j patterns: See `docs/steering/neo4j-patterns.md`
 - Pipeline patterns: See `docs/steering/pipeline-orchestration.md`
 - Data quality: See `docs/steering/data-quality.md`
 - Notebook-first research workflow: See `notebooks/README.md` and `notebooks/BACKLOG.md`
@@ -64,5 +63,5 @@ Additional references:
 
 - If a task requires external API keys or credentials you don't have
 - If the design.md is ambiguous about implementation approach
-- If you need to modify Neo4j schema or Dagster asset dependencies
+- If you need to modify governed storage contracts or Dagster asset dependencies
 - If a task conflicts with existing code patterns

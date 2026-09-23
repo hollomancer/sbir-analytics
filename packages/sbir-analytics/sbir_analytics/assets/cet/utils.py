@@ -9,25 +9,10 @@ This module provides:
 from __future__ import annotations
 
 import json
-import os
 from pathlib import Path
 from typing import Any
 
 import pandas as pd
-
-
-# Values of SKIP_NEO4J_LOADING that request a skip. Repo-wide convention, shared by
-# every Neo4j client factory (company_categorization.py, transition/utils.py,
-# uspto/utils.py, sec_edgar_enrichment.py, sbir_neo4j_loading.py). The skip gate and
-# the client factory must read the same set: if they disagree, a value one accepts
-# and the other rejects makes the asset demand a connection it has already decided
-# not to open.
-SKIP_NEO4J_VALUES = frozenset({"true", "1", "yes"})
-
-
-def neo4j_skip_requested() -> bool:
-    """Return True when SKIP_NEO4J_LOADING requests skipping Neo4j work."""
-    return os.getenv("SKIP_NEO4J_LOADING", "false").lower() in SKIP_NEO4J_VALUES
 
 
 # ============================================================================
@@ -214,16 +199,3 @@ def _read_parquet_or_ndjson(
         return records
 
     raise FileNotFoundError(f"No input artifact found at {parquet_path} or {json_path}")
-
-
-def _serialize_metrics(metrics: Any) -> dict[str, Any]:
-    """Serialize LoadMetrics to dict."""
-    if metrics is None:
-        return {}
-    return {
-        "nodes_created": getattr(metrics, "nodes_created", 0),
-        "nodes_updated": getattr(metrics, "nodes_updated", 0),
-        "relationships_created": getattr(metrics, "relationships_created", 0),
-        "relationships_updated": getattr(metrics, "relationships_updated", 0),
-        "execution_time_ms": getattr(metrics, "execution_time_ms", 0),
-    }

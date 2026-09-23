@@ -171,7 +171,7 @@ This categorization system is part of a larger SBIR analytics platform that:
 1. Collects SBIR award data from SBIR.gov
 2. Enriches it with additional federal contract data from USAspending
 3. Links it with patent data from the USPTO
-4. Stores everything in a graph database for analysis
+4. Stores governed analytical records in Parquet and DuckDB
 5. Provides insights about SBIR companies, their capabilities, and program outcomes
 
 The company categorization adds an important dimension to understanding SBIR companies beyond just their SBIR awards, helping stakeholders make more informed decisions about the program and its participants.

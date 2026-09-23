@@ -32,7 +32,7 @@ Local pre-commit hook            Runs in CI as
 ─────────────────────            ──────────────
 Standard file checks       →     (local only)
 Ruff (prod roots + tests)  →     ci.yml · quality job (whole repo via `ruff check .`)
-MyPy (sbir_etl only)       →     ci.yml · quality job (also sbir-graph + sbir-ml)
+MyPy (sbir_etl only)       →     ci.yml · quality job (also sbir-ml)
 (no local hook)            →     make lint-boundaries / ci.yml quality guards
 (no local hook)            →     ci.yml · security job (Bandit)
 (no local hook)            →     ci.yml · security job (detect-secrets)
@@ -59,7 +59,7 @@ The scopes below are the current contract, including intentional differences:
 | **Ruff** (lint) | Four production roots + `tests/` | Whole repository (`ruff check .`) | `.pre-commit-config.yaml` + `pyproject.toml` | Local hook is narrower; use `make lint` for CI parity |
 | **Ruff** (format) | Four production roots + `tests/` | Whole repository (`ruff format --check .`) | `.pre-commit-config.yaml` + `pyproject.toml` | Same intentional gap as lint |
 | **Ruff** (UP042 / StrEnum) | No hook | `sbir_etl` + `packages` + `tests` via `--preview --select UP042` | `Makefile` `lint` + `ci.yml` | Preview rule; targeted so other preview lints stay off |
-| **MyPy** (types) | `sbir_etl/` | `sbir_etl/`, `sbir-graph`, `sbir-ml` | `.pre-commit-config.yaml` + `pyproject.toml` | CI is deliberately broader |
+| **MyPy** (types) | `sbir_etl/` | `sbir_etl/`, `sbir-ml` | `.pre-commit-config.yaml` + `pyproject.toml` | CI is deliberately broader |
 | **Boundary guards** | No hook; `make lint-boundaries` | Same scripts as Make | `Makefile` + `ci.yml` | Must stay identical |
 | **Bandit** (security) | No hook | `sbir_etl/` and `packages/` | `ci.yml` + `pyproject.toml` | Blocking `security` job |
 | **Standard hooks** | All files | N/A | `.pre-commit-config.yaml` | YAML validation, EOL, trailing whitespace (local only) |
@@ -70,7 +70,7 @@ The scopes below are the current contract, including intentional differences:
 **Why is local MyPy limited to `sbir_etl/`?**
 
 - Tests, scripts, and examples are not production code
-- CI adds the production `sbir-graph` and `sbir-ml` roots
+- CI adds the production `sbir-ml` root
 - The narrower local hook keeps commit-time feedback fast; run the CI command
   below before pushing changes to either additional package
 
@@ -190,9 +190,9 @@ This workflow runs on:
 **Jobs (in parallel/sequence):**
 
 1. **quality** ("Lint, Types, and Guards")
-   - Runs: `ruff check .`, `ruff format --check .`, `mypy sbir_etl packages/sbir-graph/sbir_graph packages/sbir-ml/sbir_ml`, Dagster definition validation, the architecture/documentation/hygiene guards (same scripts as `make lint-boundaries`), compose-file validation, and actionlint.
+   - Runs: `ruff check .`, `ruff format --check .`, `mypy sbir_etl packages/sbir-ml/sbir_ml`, Dagster definition validation, the architecture/documentation/hygiene guards (same scripts as `make lint-boundaries`), compose-file validation, and actionlint.
    - Purpose: Pull-request and push quality gate. Ruff covers the whole repository
-     (broader than the local pre-commit hook); MyPy adds `sbir-graph` and `sbir-ml`
+     (broader than the local pre-commit hook); MyPy adds `sbir-ml`
      to the local `sbir_etl` scope.
    - Time: ~5-10 minutes.
 
@@ -277,7 +277,7 @@ Local hook environments and CI select tool versions independently:
 |------|-------|----|----|
 | Ruff scope | `.pre-commit-config.yaml` | `ci.yml` | Local: production roots + tests. CI / `make lint`: whole repo |
 | Ruff config | `pyproject.toml` | `pyproject.toml` | Identical |
-| MyPy scope | `pyproject.toml` + `.pre-commit-config.yaml` | `ci.yml` | Local: `sbir_etl`. CI: `sbir_etl` **plus** `sbir-graph` and `sbir-ml`, all in the `quality` job |
+| MyPy scope | `pyproject.toml` + `.pre-commit-config.yaml` | `ci.yml` | Local: `sbir_etl`. CI: `sbir_etl` **plus** `sbir-ml`, both in the `quality` job |
 | MyPy config | `pyproject.toml` | `pyproject.toml` | Identical |
 | Boundary guards | `Makefile` `lint-boundaries` | `ci.yml` quality job | Must stay identical |
 | Bandit scope | No hook; manual command available | `ci.yml` | CI scans `sbir_etl/` and `packages/` in the `security` job |
@@ -336,8 +336,8 @@ uv run python -m ruff format --check .
 pre-commit run mypy --all-files
 uv run python -m mypy sbir_etl
 
-# CI deliberately adds sbir-graph and sbir-ml
-uv run python -m mypy sbir_etl packages/sbir-graph/sbir_graph packages/sbir-ml/sbir_ml
+# CI deliberately adds sbir-ml
+uv run python -m mypy sbir_etl packages/sbir-ml/sbir_ml
 ```
 
 ### "Hook modified files I didn't touch"
@@ -429,7 +429,7 @@ exclude = [
 ```
 
 **Reason:** These are not production code. Local pre-commit focuses on
-`sbir_etl/`; CI also type-checks the `sbir-graph` and `sbir-ml` production
+`sbir_etl/`; CI also type-checks the `sbir-ml` production
 packages while leaving tests, scripts, and examples out of scope.
 
 If you need type checking for a specific file, add:

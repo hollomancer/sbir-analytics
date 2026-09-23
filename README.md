@@ -69,18 +69,21 @@ intended reader-facing page.
 ## Reproduce or challenge the candidate
 
 The public path uses Python 3.11 or 3.12 and
-[`uv`](https://docs.astral.sh/uv/). It does not require Docker, Neo4j, API keys,
-or a running service. It downloads about 402 MB of public source files and
+[`uv`](https://docs.astral.sh/uv/). It does not require Docker, API keys, or a
+running service. It downloads about 402 MB of public source files and
 refuses any byte sequence that does not match the frozen source manifest.
 
 ```bash
 git clone https://github.com/hollomancer/sbir-analytics
 cd sbir-analytics
+git checkout v0.18.0
 make install-core
 make reproduce-sba-structural
 ```
 
-The command retrieves the declared source bytes, verifies hashes, row counts,
+The command must run from the tagged study checkout; moving `main` deliberately
+does not rewrite the released environment lock. It retrieves the declared
+source bytes, verifies hashes, row counts,
 page counts, and schema, rebuilds the count sidecar, reconciles the confirmatory
 submission, and checks the public sidecar and Markdown byte-for-byte. After a
 citable release exists, use the release tag—not a moving branch—and verify the
@@ -109,14 +112,14 @@ narrower explanation.
   evidence path.
 
 Content-addressed study artifacts and governed analytical files are
-authoritative. DuckDB and Parquet hold analytical records. Neo4j is an optional,
-derived read projection; publishing a graph cannot strengthen a claim.
+authoritative. DuckDB and Parquet hold analytical records. A mutable service
+database is not part of the evidence boundary.
 
 ## Experimental work
 
 The repository also contains M&A discovery, Form D matching, transition
-scoring, return-on-investment design, graph projections, and other research in
-development. These paths remain useful for candidate generation and methods
+scoring, return-on-investment design, and other research in development. These
+paths remain useful for candidate generation and methods
 work, but they are not evidence for commercialization outcomes. Their status is
 listed explicitly in [STATUS.md](STATUS.md) and in each `study.yaml`.
 

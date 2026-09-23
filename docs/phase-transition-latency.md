@@ -95,5 +95,5 @@ pair table is ~1.5× the size of the Phase III contract table.
 ### Explicitly out of scope (v1)
 
 - Topic / technology matching beyond firm identity.
-- Neo4j loading — DuckDB aggregates are sufficient.
+- Any external database projection — DuckDB aggregates are sufficient.
 - Filtering outliers or negative latencies.

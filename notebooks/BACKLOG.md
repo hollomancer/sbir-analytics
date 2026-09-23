@@ -70,8 +70,6 @@ canonical generator; they stay `exploratory` and non-citable until explicitly pr
   `download_uspto.py`, `download_uspto_browser.py`, `extract_b82_patents.py`.
 - Refresh and pipeline checks: `profile_sbir_inputs.py`, `awards_refresh_validation.py`,
   `run_sbir_ingestion_checks.py`, `run_sbir_enrichment_check.py`.
-- Neo4j operations: `reset_neo4j_sbir.py`, `run_neo4j_sbir_load.py`,
-  `run_neo4j_smoke_checks.py`.
 - Recurring products and migrations: `weekly_awards_report.py`,
   `build_phase3_prospect_digest.py`, `migrate_nano_report_artifacts.py`.
 - Publication verification: `nano_verify_report_figures.py`, `verify_tech_area_figures.py`.
