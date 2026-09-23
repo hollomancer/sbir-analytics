@@ -38,16 +38,21 @@ The split falls along an awkward line:
 So for FY1994–FY2008 the STTR half of the program is extractable and the SBIR half is not. A
 combined SBIR+STTR panel before FY2009 requires OCR; an STTR-only panel does not.
 
-**Report-years extractable without OCR (27):** 1994, 1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008, 2009, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019, 2020, 2021, 2022.
+**Report-years whose document has a text layer (27):** 1994, 1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008, 2009, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019, 2020, 2021, 2022.
+A text layer does not mean the state table is in it. The FY2015 and FY2019 state tables are
+embedded images; see [corpus-gap-assessment.md](corpus-gap-assessment.md) and the
+[extension record](../../studies/sba-annual-report-tables/extension-to-eight-years.md).
 
 Note FY2010 and FY2011 have no standalone report; they are covered by the consolidated
 FY2009–FY2011 volume, so the span has no true gap.
 
 Text quality for the 32 documents with a text layer was scored by stopword density
-(all fall in 0.18–0.28, i.e. all readable prose) and a garbage-token rate (0.01–0.05). The two
-measures do not separate cleanly into tiers, so the inventory records the scores per document
-rather than asserting a hard clean/noisy boundary. One caution: `STTR_1994` renders its title as
-"$TTR", a title-page glyph error rather than a document-wide problem (garbage rate 0.03).
+(all fall in 0.18–0.28, i.e. all readable prose) and a garbage-token rate (0.01–0.05). The
+inventory's `tier` column and the gap assessment's text-layer table do draw a clean/noisy line
+(27 `clean_digital`, 5 `ocr_noisy`). The two measures do not separate cleanly, so treat that line
+as a working label and use the per-document scores when the distinction matters. One caution:
+`STTR_1994` renders its title as "$TTR", a title-page glyph error rather than a document-wide
+problem (garbage rate 0.03).
 
 ## Order 3 — DoD follow-on multiplier benchmarks
 
@@ -85,8 +90,8 @@ these are benchmark inputs, not a licence to promote the multiplier's evidence s
 
 Both are short and agency-specific. The NCI document is a two-pager and will not carry a
 replicable table set on its own. The roadmap notes label validity is unresolved for Order 5 and
-hand-label validation is gated, so these serve as published-outcome targets rather than
-validation data.
+hand-label validation is gated. Neither document is an Order 5 transition source; treat both as
+economic-impact context only, not as published-outcome targets or validation data.
 
 ## What this corpus does not advance
 
@@ -100,16 +105,18 @@ None of those are in the corpus, and none are obtainable by supplying more SBA d
 
 ## Recommended sequencing
 
-1. **Decide the four undetermined FY22 definitions first.** State attribution, the
-   first-time-winner lookback, amendment handling, and zero-dollar records are absent from the FY22
-   source. Extending the panel before settling them multiplies the same ambiguity across
-   27 years instead of resolving it once. Whether the older reports state what FY22 omits
-   is itself worth checking — the earlier volumes are often more explicit about methodology.
-   The Order 1 start gate requires these decisions, not only captured PDFs.
-2. **Then extend Order 1 across the 27 OCR-free report-years.** The FY22 capture established the
-   extraction and validation pattern; the FY2009–FY2022 volumes are structurally similar and should
-   follow directly. Once the definitions are frozen, this is the highest-value extension and needs
-   no new extraction capability.
+1. **The four undetermined FY22 definitions are settled.** State attribution, the
+   first-time-winner lookback, amendment handling, and zero-dollar records are closed in
+   [`definition-decisions.md`](../../studies/sba-annual-report-tables/definition-decisions.md),
+   at the evidence levels recorded there. `sources.yaml` records `gate_satisfied: true`. Do not
+   redo them; read that record before changing any of the four.
+2. **The Order 1 extension is recorded.**
+   [`extension-to-eight-years.md`](../../studies/sba-annual-report-tables/extension-to-eight-years.md)
+   finds eight report-years with extractable state tables (FY2013, FY2014, FY2016-FY2018,
+   FY2020-FY2022) and six usable on a stated count basis (FY2016-FY2022, less FY2019). FY2019 was
+   recovered from its image at cell level only. Most of the 27 text-layer documents have no state
+   table, so the panel does not extend to all of them. Next work follows the
+   [gap assessment](corpus-gap-assessment.md).
 3. **Treat the 19 image-only documents as a separate capability**, not a continuation. They
    would extend the panel to 1990 and complete the pre-2009 SBIR series, but the
    extraction cannot be validated the same way.

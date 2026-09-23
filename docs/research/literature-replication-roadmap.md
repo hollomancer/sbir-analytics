@@ -66,7 +66,7 @@ a named spec is active, gated, or limited to a lower tier.
 | 4 | NASEM agency patent-cost tables [L3-L6] | C2, C3 | Award-patent linkage exists; no citation network is required | Published patent and award denominator definitions recovered |
 | 5 | Agency transition and commercialization tables [L1-L4, L6, L12, L47] | A2, B2, B3 | Transition and Phase III census machinery exists, but label validity is unresolved | Recover the outcome data. Hand-label validation remains gated; check the [registry](../../specs/status.md). |
 | 6 | Repeat-awardee economic contributions [L41] | B, C, D | Award, patent, and procurement channels exist; several published outcomes do not | Every published outcome source and coding protocol is available |
-| 7 | DOE knowledge spillovers [L9] | C3 | The exact design needs new text, policy, patent-universe, and econometric inputs | Obtain the AEA package and licensed inputs. The implementation spec remains gated; check the [registry](../../specs/status.md). |
+| 7 | DOE knowledge spillovers [L9] | C3 | The exact design needs new text, policy, patent-universe, and econometric inputs | Obtain the AEA package and licensed inputs. No implementation spec exists yet; check the [registry](../../specs/status.md). |
 | 8 | Restricted-data causal and structural studies [L10, L11, L34, L36, L40, L43, L44] | A, B, D, E, F | Core treatment, control, or outcome records are unavailable in the current repository | Data-use approval and the original replication package are in hand |
 
 ### 1. SBA annual-report tables
@@ -168,9 +168,10 @@ the exact replication blocked. Do not replace the missing outcome with an availa
 
 ### 7. Myers-Lanahan DOE spillovers
 
-The registered `patent-cost-spillover` spec now separates citation-network measures from the
-Myers-Lanahan estimand. Do not implement either path until the registry gate opens. The paper uses
-state matching-policy variation and technology-space similarity.
+The registered `patent-cost-spillover` spec covers only the descriptive citation-network measure
+and states that it does not estimate the Myers-Lanahan effect. No implementation spec exists yet
+for this replication. Do not implement it until one is written and the registry lists it as open.
+The paper uses state matching-policy variation and technology-space similarity.
 
 - Run the authors' AEA replication package against the original inputs as a baseline.
 - Add versioned DOE funding-opportunity text and state matching-policy timing and amount data.
@@ -228,11 +229,12 @@ and live-upstream reproduction checks. The remaining gaps are:
    outcomes.
 8. **Independent labels.** Entity lineage and Phase III validation remain too limited for citable
    transition claims.
-9. **Question-to-literature links.** Eleven of the fifteen additions in [L34-L48] are only in the
-   bibliography: [L35], [L37], [L39], [L40], [L41], [L42], [L43], [L44], [L45], [L46], [L47].
-   The other four are attached to a question already: [L34] in Order 8 above, and [L36], [L38]
-   and [L48] on the STTR spinout-linkage question in `research-questions.md`. Measured against
-   the current `research-questions.md` body text, bibliography entries excluded.
+9. **Question-to-literature links.** Thirteen of the fifteen additions in [L34-L48] are not
+   attached to any question in `research-questions.md`: [L34], [L35], [L37], [L39], [L40], [L41],
+   [L42], [L43], [L44], [L45], [L46], [L47], [L48]. Only [L36] and [L38] are, on the STTR
+   spinout-linkage question. This roadmap uses [L34] in Order 8 above. Measured against the
+   current `research-questions.md` question text; the bibliography and maintenance note are
+   excluded.
 
 ## First implementation tranche
 

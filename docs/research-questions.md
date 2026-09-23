@@ -817,7 +817,8 @@ spending produce measurable new knowledge?*
   What spillover effect is identified from DOE funding, using the paper's state matching-policy
   variation and technology-space similarity design?
   **Target:** reproduce Myers & Lanahan's ~3× estimate and ~60% U.S.-retained result in roadmap
-  Order 7. This inferential replication has no implementation spec yet.
+  Order 7. This inferential replication has no implementation spec yet; a citable result needs a
+  spec at the `evidence` epistemic tier.
   *Deps: full patent universe, DOE opportunity text, state policy data · Refs: [L9], [L5] · Plan:
   [literature-replication-roadmap.md](research/literature-replication-roadmap.md#7-myers-lanahan-doe-spillovers)*
 

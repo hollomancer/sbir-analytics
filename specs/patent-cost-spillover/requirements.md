@@ -5,14 +5,14 @@
 > **Status:** Gated backlog — zero cost/citation/spillover analytical-layer
 > implementation as of July 2026.
 > Anchors inventory questions **C3a–c** in [docs/research-questions.md](../../docs/research-questions.md).
-> Target benchmark: **NIH ~$1.5M marginal cost per patent** [L5]. That is the only benchmark this
-> spec's outputs may be compared against.
+> Target benchmark: **NIH ~$1.5M marginal cost per patent** [L3][L6]. That is the only
+> benchmark this spec's outputs may be compared against.
 >
 > **Not benchmarks for this spec.** Myers and Lanahan AER 2022 (~3× DOE spillover, ~60%
 > U.S.-retained) [L9] estimates a different quantity by a different design, and this spec's
 > descriptive citation-network measure is not an estimate of it. Replicating it belongs to
-> roadmap Order 7, behind a spec at the inferential tier; see
-> [the replication roadmap](../../docs/research/literature-replication-roadmap.md).
+> roadmap Order 7, which has no spec yet and needs one at the `evidence` epistemic tier;
+> see [the replication roadmap](../../docs/research/literature-replication-roadmap.md).
 
 **Research question anchor:** C3 — marginal cost per patent and spillover multiplier (inferential
 tier). This spec delivers the **marginal-cost** half of C3 plus a separately named descriptive
@@ -117,8 +117,8 @@ that estimates the same quantity. I want incompatible estimands reported separat
    replication error, because this spec does not replicate that paper. Replication requires
    the authors' state-policy and technology-similarity design, which is causal inference and
    sits above this spec's `pipelines` target tier. It is roadmap Order 7 work and is **not** an
-   acceptance criterion here; it needs its own spec at the inferential tier, and that spec is
-   not yet ungated in [the status registry](../../specs/status.md).
+   acceptance criterion here. It needs its own spec at the `evidence` epistemic tier, and no
+   such spec exists yet in [the status registry](../../specs/status.md).
 4. WHEN emitting the reconciliation, THE System SHALL produce both a JSON artifact
    and a markdown summary to `reports/patent-spillover/reconciliation/`.
 

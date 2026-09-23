@@ -66,8 +66,9 @@ artifacts. The implemented core sits in **commercialization (B)** and **data inf
 - **leverage-ratio-analysis (A)** — the **DoD ~4:1 leverage-ratio** flagship (A3). Spec is
   design-only, but prerequisites (entity resolution, SBIR identification, USAspending
   enrichment) are **all live on `main`** — so this is buildable now, not blocked.
-- **patent-cost-spillover (C)** — marginal-cost-per-patent and the **Myers & Lanahan ~3×
-  spillover** reproduction (C3a–c). Design-only, **zero implementation code**.
+- **patent-cost-spillover (C)** — marginal-cost-per-patent and a descriptive citation-network
+  diffusion measure (C3a–c). Design-only, **zero implementation code**. NIH marginal-cost
+  benchmark only; the Myers & Lanahan replication is roadmap Order 7.
 
 ## Cross-reference to the literature map
 

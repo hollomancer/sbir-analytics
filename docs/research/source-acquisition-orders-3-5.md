@@ -40,7 +40,7 @@ from the ratio alone.
 
 *The Journal of Technology Transfer*, **vol. 50, issue 4, pp. 1363–1395**; online 2024-09-24,
 issue-dated 2025. The bibliography's `(2025)` is the issue year and is correct as a citation; the
-2024 date is online-first. The volume, issue and page range above are new and complete the entry.
+2024 date is online-first. The volume, issue and page range above confirm the existing entry.
 
 Springer subscription content. Acquisition route is institutional access.
 

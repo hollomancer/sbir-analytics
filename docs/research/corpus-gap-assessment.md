@@ -92,6 +92,8 @@ by more than a decade, so their value is long-run description, not replication.
 
 ## Suggested order
 
-1. Rasterise and read FY2019's partial table; add its 27 jurisdictions at cell level only.
+1. Done: FY2019's partial table is rasterised and read at cell level only. See the
+   [extension record](../../studies/sba-annual-report-tables/extension-to-eight-years.md#fy2019-recovered-partial-and-defective-in-a-second-way)
+   and `studies/sba-annual-report-tables/extension/extension_fy2019_cells.csv`.
 2. Spot-check two or three 1990s SBIR volumes for a state table before committing to the rest.
 3. Everything else is acquisition-bound and can wait on someone outside this environment.
