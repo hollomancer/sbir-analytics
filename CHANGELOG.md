@@ -10,6 +10,13 @@ version.
 
 ## [Unreleased]
 
+### Changed
+
+- Replaced the ambiguous highest study status `citable` with `approved`.
+  Approved evidence now requires a passed prospective validation and one pinned
+  claim-boundary review; bibliographic citation, operational materialization,
+  and repository-owner merge authority remain separate controls.
+
 ## [0.18.0] — 2026-09-22
 
 ### Added

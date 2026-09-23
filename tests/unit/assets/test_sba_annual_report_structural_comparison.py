@@ -581,17 +581,20 @@ def _materialization_inputs(
     def renderer(frame: pd.DataFrame) -> bytes:
         return ("count-only\n" + frame.to_csv(index=False, lineterminator="\n")).encode()
 
-    rendered_path = output_dir / "citable.txt"
+    rendered_path = output_dir / "approved.txt"
     rendered_path.write_bytes(renderer(product.frame))
-    rendered_pin = _pin(rendered_path, "output/citable.txt")
+    rendered_pin = _pin(rendered_path, "output/approved.txt")
+    approval_path = output_dir / "claim-approval.md"
+    approval_path.write_text("Approved for the manifest's permitted claim.\n", encoding="utf-8")
+    approval_pin = _pin(approval_path, "reviews/claim-approval.md")
     production_pins = [pin for _, pin in study._production_pins(fixture.inputs)]
-    all_pins = [*production_pins, production_pin, validation_pin, rendered_pin]
+    all_pins = [*production_pins, production_pin, validation_pin, rendered_pin, approval_pin]
     design = fixture.inputs.validation_design
     manifest = {
         "schema_version": 1,
         "study_id": study.STUDY_ID,
         "title": "Fixture structural comparison",
-        "evidence_status": "citable" if threshold_met else "validated",
+        "evidence_status": "approved" if threshold_met else "validated",
         "research_questions": ["B2"],
         "estimand": "Signed and absolute differences for all 632 count cells.",
         "frozen_artifacts": [{"path": pin.reference, "sha256": pin.sha256} for pin in all_pins],
@@ -634,6 +637,12 @@ def _materialization_inputs(
             "post_hoc_analyses": [],
         },
     }
+    if threshold_met:
+        manifest["claim_approval"] = {
+            "review_path": approval_pin.reference,
+            "review_sha256": approval_pin.sha256,
+            "approved_on": "2026-09-23",
+        }
     manifest_path = output_dir / "study.yaml"
     manifest_path.write_text(yaml.safe_dump(manifest, sort_keys=False), encoding="utf-8")
     return (
@@ -647,7 +656,7 @@ def _materialization_inputs(
     )
 
 
-def test_citable_materialization_requires_renderer_round_trip(tmp_path: Path) -> None:
+def test_approved_materialization_requires_renderer_round_trip(tmp_path: Path) -> None:
     fixture = _fixture_bundle(tmp_path)
     product = study.build_count_comparison(
         fixture.inputs,
@@ -656,7 +665,7 @@ def test_citable_materialization_requires_renderer_round_trip(tmp_path: Path) ->
     materialization, _ = _materialization_inputs(tmp_path, fixture, product)
 
     with pytest.raises(study.StructuralComparisonError, match="renderer round-trip mismatch"):
-        study.verify_citable_materialization(
+        study.verify_approved_materialization(
             fixture.inputs,
             materialization,
             pdf_page_counter=_page_count,
@@ -664,7 +673,7 @@ def test_citable_materialization_requires_renderer_round_trip(tmp_path: Path) ->
         )
 
 
-def test_citable_materialization_returns_verified_counts(tmp_path: Path) -> None:
+def test_approved_materialization_returns_verified_counts(tmp_path: Path) -> None:
     fixture = _fixture_bundle(tmp_path)
     product = study.build_count_comparison(
         fixture.inputs,
@@ -672,7 +681,7 @@ def test_citable_materialization_returns_verified_counts(tmp_path: Path) -> None
     )
     materialization, renderer = _materialization_inputs(tmp_path, fixture, product)
 
-    record = study.verify_citable_materialization(
+    record = study.verify_approved_materialization(
         fixture.inputs,
         materialization,
         pdf_page_counter=_page_count,
@@ -684,7 +693,7 @@ def test_citable_materialization_returns_verified_counts(tmp_path: Path) -> None
     assert record.validation_value_count == 1264
 
 
-def test_citable_materialization_rejects_output_hash_mismatch(tmp_path: Path) -> None:
+def test_approved_materialization_rejects_output_hash_mismatch(tmp_path: Path) -> None:
     fixture = _fixture_bundle(tmp_path)
     product = study.build_count_comparison(
         fixture.inputs,
@@ -694,7 +703,7 @@ def test_citable_materialization_rejects_output_hash_mismatch(tmp_path: Path) ->
     materialization.rendered_output.path.write_bytes(b"tampered")
 
     with pytest.raises(study.StructuralComparisonError, match="byte count mismatch"):
-        study.verify_citable_materialization(
+        study.verify_approved_materialization(
             fixture.inputs,
             materialization,
             pdf_page_counter=_page_count,
@@ -702,7 +711,7 @@ def test_citable_materialization_rejects_output_hash_mismatch(tmp_path: Path) ->
         )
 
 
-def test_citable_materialization_rejects_implementation_manifest_mismatch(
+def test_approved_materialization_rejects_implementation_manifest_mismatch(
     tmp_path: Path,
 ) -> None:
     fixture = _fixture_bundle(tmp_path)
@@ -721,7 +730,7 @@ def test_citable_materialization_rejects_implementation_manifest_mismatch(
     )
 
     with pytest.raises(study.StructuralComparisonError, match="producer implementation"):
-        study.verify_citable_materialization(
+        study.verify_approved_materialization(
             fixture.inputs,
             materialization,
             pdf_page_counter=_page_count,
@@ -729,7 +738,7 @@ def test_citable_materialization_rejects_implementation_manifest_mismatch(
         )
 
 
-def test_failed_validation_cannot_materialize_citable_output(tmp_path: Path) -> None:
+def test_failed_validation_cannot_materialize_approved_output(tmp_path: Path) -> None:
     fixture = _fixture_bundle(tmp_path)
     product = study.build_count_comparison(
         fixture.inputs,
@@ -742,8 +751,8 @@ def test_failed_validation_cannot_materialize_citable_output(tmp_path: Path) -> 
         threshold_met=False,
     )
 
-    with pytest.raises(study.StructuralComparisonError, match="evidence_status citable"):
-        study.verify_citable_materialization(
+    with pytest.raises(study.StructuralComparisonError, match="evidence_status approved"):
+        study.verify_approved_materialization(
             fixture.inputs,
             materialization,
             pdf_page_counter=_page_count,

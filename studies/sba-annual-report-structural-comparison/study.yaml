@@ -37,7 +37,7 @@ frozen_artifacts:
     sha256: 5ba60852f1cc44b23afdbf810ecf0cff77d714d10ffc786a9b73416d7c000fd1
     external_source: true
   - path: packages/sbir-analytics/sbir_analytics/assets/sba_annual_report_structural_comparison/producer.py
-    sha256: bff52a594e4d77a2094c584e59365d4fd8be7dc381f2029246927fdebec5445a
+    sha256: d20dc0d31bb680f723c1f0120ef72c4d6a31560026fea9b06236a5fa02b6ab96
   - path: sbir_etl/identity/geography.py
     sha256: b2961c8f77086d3fb33e5f3e8fdce22a56da60004883d274c8431c1fcae00280
   - path: scripts/data/acquire_sba_structural_sources.py
@@ -129,13 +129,13 @@ frozen_artifacts:
   - path: studies/sba-annual-report-structural-comparison/reviews/revision-11-evidence-audit.md
     sha256: f60888d4ddcaf5485f783bd11dd045e9095745c38c8798f14729ceb3b9733407
   - path: scripts/data/render_sba_structural_comparison.py
-    sha256: 7ce3b93fce5ba75b9623ad3d6af79aeade71d31958a2d4cfdb316042bb35ca60
+    sha256: 47b471bc5accbc82eb2eef085b50ac6f45681e4bdf32da1fdd40fdf72e660ad8
   - path: scripts/data/reproduce_sba_structural_comparison.py
     sha256: 741187a34827ea0df008ca627aedd239a008d7e5f9937d70eb43a607baeab436
   - path: studies/sba-annual-report-structural-comparison/release/public-result.json
-    sha256: b32462aa1fd904f49f1a463843ce2f0ed5fee24cd83689f026cf2f9e81df73b4
+    sha256: 2a1d51f82c270db4ac472acfd3ed6866ec72df3d582c43a456a7dea7d71a8441
   - path: docs/public/sba-structural-comparison.md
-    sha256: ec09438d5788f8e1ee4b64fbb2b8035ff587264f222e3832c316a901788b0d41
+    sha256: c949175058e592ca0b59f3f3410d1aea8b7bb16578500a51c4aa9eee7637418b
 implementation:
   - path: packages/sbir-analytics/sbir_analytics/assets/sba_annual_report_structural_comparison/producer.py
     symbol: produce_count_sidecar
@@ -161,21 +161,21 @@ materialization:
   allowed: false
   blockers:
     - >-
-      Release governance requires explicit owner approval before merge, an
-      immutable annotated version 0.18.0 tag, tag-bound citation metadata, and
-      a citable-promotion evidence audit. Every claim-facing revision also
-      requires an evidence audit and a cold named-reader review of its exact bytes.
+      Operational materialization requires repository-owner approval for the
+      specific run. This gate does not determine evidence approval or whether
+      an immutable artifact may be cited.
 permitted_claims:
   - >-
-    Validated, not citable: for all 632 award-count cells printed in FY2020
+    Validated, not approved evidence: for all 632 award-count cells printed in FY2020
     Table 18, FY2021 Table 18, and FY2022 Table 20, this study reports the
     differences between those published counts and counts computed from the
     pinned September 17, 2026 SBIR.gov export under EXPORT_ROW_V1,
     AWARD_YEAR_FIELD_V1, and the frozen program, phase, and jurisdiction rules.
     A separate blinded-role implementation reproduced 1,264 of 1,264 count
     operands. The recorded interval is [1.0, 1.0] using the method: exact
-    complete-population point interval; no sampling. This statement is not
-    citable until the product-scoped materialization and tagged-release gates open.
+    complete-population point interval; no sampling. An immutable release may
+    be cited with this validated status attached, but the repository does not
+    approve the substantive claim until a pinned claim-approval review is recorded.
   - >-
     The comparison contains 632 count cells: 276 are exact and 356 are
     unresolved. Recomputed minus published counts sum to +333, while absolute

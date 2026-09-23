@@ -46,7 +46,7 @@ def _manifest(artifact_sha256: str) -> dict:
         },
         "materialization": {"allowed": False, "blockers": ["Validation is incomplete."]},
         "permitted_claims": ["The study can be reproduced."],
-        "limitations": ["The result is not citable."],
+        "limitations": ["The result is not approved evidence."],
     }
 
 
@@ -267,7 +267,7 @@ VALIDATION_RESULT = {
 }
 
 
-@pytest.mark.parametrize("status", [EvidenceStatus.VALIDATED, EvidenceStatus.CITABLE])
+@pytest.mark.parametrize("status", [EvidenceStatus.VALIDATED, EvidenceStatus.APPROVED])
 def test_promoted_manifest_requires_validation_design(
     tmp_path: Path, status: EvidenceStatus
 ) -> None:
@@ -282,7 +282,7 @@ def test_promoted_manifest_requires_validation_design(
     assert any("requires a validation_design block" in error for error in errors)
 
 
-@pytest.mark.parametrize("status", [EvidenceStatus.VALIDATED, EvidenceStatus.CITABLE])
+@pytest.mark.parametrize("status", [EvidenceStatus.VALIDATED, EvidenceStatus.APPROVED])
 def test_promoted_manifest_loads_with_validation_design(
     tmp_path: Path, status: EvidenceStatus
 ) -> None:
@@ -290,6 +290,13 @@ def test_promoted_manifest_loads_with_validation_design(
     raw["evidence_status"] = status.value
     raw["validation_design"] = VALIDATION_DESIGN
     raw["validation_result"] = VALIDATION_RESULT
+    if status is EvidenceStatus.APPROVED:
+        raw["frozen_artifacts"].append({"path": "reviews/approval.md", "sha256": "b" * 64})
+        raw["claim_approval"] = {
+            "review_path": "reviews/approval.md",
+            "review_sha256": "b" * 64,
+            "approved_on": "2026-09-23",
+        }
     path = _write(tmp_path, "example-study/study.yaml", yaml.safe_dump(raw))
 
     manifest = load_study_manifest(path)
@@ -305,10 +312,17 @@ def _promoted(status: EvidenceStatus) -> dict:
     raw["evidence_status"] = status.value
     raw["validation_design"] = dict(VALIDATION_DESIGN)
     raw["validation_result"] = dict(VALIDATION_RESULT)
+    if status is EvidenceStatus.APPROVED:
+        raw["frozen_artifacts"].append({"path": "reviews/approval.md", "sha256": "b" * 64})
+        raw["claim_approval"] = {
+            "review_path": "reviews/approval.md",
+            "review_sha256": "b" * 64,
+            "approved_on": "2026-09-23",
+        }
     return raw
 
 
-@pytest.mark.parametrize("status", [EvidenceStatus.VALIDATED, EvidenceStatus.CITABLE])
+@pytest.mark.parametrize("status", [EvidenceStatus.VALIDATED, EvidenceStatus.APPROVED])
 def test_promoted_manifest_requires_validation_result(
     tmp_path: Path, status: EvidenceStatus
 ) -> None:
@@ -321,7 +335,7 @@ def test_promoted_manifest_requires_validation_result(
         load_study_manifest(path)
 
 
-@pytest.mark.parametrize("status", [EvidenceStatus.VALIDATED, EvidenceStatus.CITABLE])
+@pytest.mark.parametrize("status", [EvidenceStatus.VALIDATED, EvidenceStatus.APPROVED])
 def test_promoted_manifest_requires_threshold_basis(tmp_path: Path, status: EvidenceStatus) -> None:
     raw = _promoted(status)
     del raw["validation_design"]["threshold_basis"]
@@ -346,7 +360,7 @@ def test_reproducible_manifest_may_omit_threshold_basis_and_result(tmp_path: Pat
     assert manifest.validation_result is None
 
 
-@pytest.mark.parametrize("status", [EvidenceStatus.VALIDATED, EvidenceStatus.CITABLE])
+@pytest.mark.parametrize("status", [EvidenceStatus.VALIDATED, EvidenceStatus.APPROVED])
 def test_post_hoc_result_cannot_promote(tmp_path: Path, status: EvidenceStatus) -> None:
     """A result from a design changed after the data were seen is reportable, not confirmatory."""
     raw = _promoted(status)
@@ -358,7 +372,7 @@ def test_post_hoc_result_cannot_promote(tmp_path: Path, status: EvidenceStatus) 
         load_study_manifest(path)
 
 
-@pytest.mark.parametrize("status", [EvidenceStatus.VALIDATED, EvidenceStatus.CITABLE])
+@pytest.mark.parametrize("status", [EvidenceStatus.VALIDATED, EvidenceStatus.APPROVED])
 def test_result_design_hash_must_match_the_pinned_design(
     tmp_path: Path, status: EvidenceStatus
 ) -> None:
@@ -370,7 +384,7 @@ def test_result_design_hash_must_match_the_pinned_design(
         load_study_manifest(path)
 
 
-@pytest.mark.parametrize("status", [EvidenceStatus.VALIDATED, EvidenceStatus.CITABLE])
+@pytest.mark.parametrize("status", [EvidenceStatus.VALIDATED, EvidenceStatus.APPROVED])
 def test_result_design_path_must_be_pinned(tmp_path: Path, status: EvidenceStatus) -> None:
     raw = _promoted(status)
     raw["validation_result"]["design_path"] = "specs/not-pinned.md"
@@ -380,7 +394,7 @@ def test_result_design_path_must_be_pinned(tmp_path: Path, status: EvidenceStatu
         load_study_manifest(path)
 
 
-@pytest.mark.parametrize("status", [EvidenceStatus.VALIDATED, EvidenceStatus.CITABLE])
+@pytest.mark.parametrize("status", [EvidenceStatus.VALIDATED, EvidenceStatus.APPROVED])
 def test_design_hash_of_a_different_frozen_artifact_is_rejected(
     tmp_path: Path, status: EvidenceStatus
 ) -> None:
@@ -399,7 +413,7 @@ def test_design_hash_of_a_different_frozen_artifact_is_rejected(
         load_study_manifest(path)
 
 
-def test_validated_records_a_missed_threshold_but_citable_rejects_it(tmp_path: Path) -> None:
+def test_validated_records_a_missed_threshold_but_approved_rejects_it(tmp_path: Path) -> None:
     """validated means the preregistered test ran and its outcome is on the record."""
     raw = _promoted(EvidenceStatus.VALIDATED)
     raw["validation_result"].update(
@@ -416,9 +430,36 @@ def test_validated_records_a_missed_threshold_but_citable_rejects_it(tmp_path: P
     assert manifest.validation_result is not None
     assert manifest.validation_result.threshold_met is False
 
-    raw["evidence_status"] = EvidenceStatus.CITABLE.value
+    raw["evidence_status"] = EvidenceStatus.APPROVED.value
     path = _write(tmp_path, "example-study/study.yaml", yaml.safe_dump(raw))
     with pytest.raises(ValidationError, match="requires validation_result.threshold_met"):
+        load_study_manifest(path)
+
+
+def test_approved_status_requires_one_pinned_claim_review(tmp_path: Path) -> None:
+    raw = _promoted(EvidenceStatus.APPROVED)
+    del raw["claim_approval"]
+    path = _write(tmp_path, "example-study/study.yaml", yaml.safe_dump(raw))
+
+    with pytest.raises(ValidationError, match="requires a claim_approval block"):
+        load_study_manifest(path)
+
+    raw = _promoted(EvidenceStatus.APPROVED)
+    raw["claim_approval"]["review_path"] = "reviews/unpinned.md"
+    path = _write(tmp_path, "example-study/study.yaml", yaml.safe_dump(raw))
+    with pytest.raises(ValidationError, match="is not listed in frozen_artifacts"):
+        load_study_manifest(path)
+
+    raw = _promoted(EvidenceStatus.APPROVED)
+    raw["claim_approval"]["review_sha256"] = "c" * 64
+    path = _write(tmp_path, "example-study/study.yaml", yaml.safe_dump(raw))
+    with pytest.raises(ValidationError, match="does not match the frozen hash"):
+        load_study_manifest(path)
+
+    raw = _promoted(EvidenceStatus.APPROVED)
+    raw["claim_approval"]["approved_on"] = "2026-09-12"
+    path = _write(tmp_path, "example-study/study.yaml", yaml.safe_dump(raw))
+    with pytest.raises(ValidationError, match="cannot predate the validation result"):
         load_study_manifest(path)
 
 
@@ -506,7 +547,7 @@ def test_count_basis_requires_a_whole_number_threshold() -> None:
         ValidationDesign(**fields)
 
 
-@pytest.mark.parametrize("status", [EvidenceStatus.VALIDATED, EvidenceStatus.CITABLE])
+@pytest.mark.parametrize("status", [EvidenceStatus.VALIDATED, EvidenceStatus.APPROVED])
 def test_promoted_manifest_requires_threshold_value(tmp_path: Path, status: EvidenceStatus) -> None:
     raw = _promoted(status)
     del raw["validation_design"]["threshold_value"]

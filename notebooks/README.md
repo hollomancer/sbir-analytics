@@ -3,7 +3,7 @@
 This directory is the workbench for exploratory research tied to
 [`docs/research-questions.md`](../docs/research-questions.md). Use notebooks to inspect cohorts,
 test assumptions, compare definitions, review matches, and develop the narrative around tables and
-figures. New notebooks are [`exploratory` tier](../docs/steering/epistemic-tiers.md) and non-citable
+figures. New notebooks are [`exploratory` tier](../docs/steering/epistemic-tiers.md) and unapproved
 by default.
 
 Notebooks are not the canonical home for reusable calculations, scheduled work, or published
@@ -61,7 +61,7 @@ silently change a notebook's tier:
    [`docs/steering/epistemic-tiers.md`](../docs/steering/epistemic-tiers.md).
 2. Extract recurring calculations into the canonical pipeline or evidence implementation.
 3. Keep or add a thin CLI or Dagster asset for repeatable artifact generation.
-4. For citable work, add the frozen spec, SHA enforcement, blocking asset checks, and declared
+4. For approved evidence, add the frozen spec, SHA enforcement, blocking asset checks, and declared
    estimand required by the `evidence` contract.
 5. Keep the notebook as narrative, diagnostics, sensitivity checks, and calls to canonical code;
    record the promotion in [`BACKLOG.md`](BACKLOG.md).
@@ -96,5 +96,5 @@ silently change a notebook's tier:
 The examples are completed exploratory companion views over canonical artifacts. Their source
 scripts continue to be the repeatable computation layer. In the repository's
 [epistemic-tier doctrine](../docs/steering/epistemic-tiers.md), this directory is the workbench
-population of the exploratory tier—non-citable by definition unless explicitly promoted through
+population of the exploratory tier—unapproved by definition unless explicitly promoted through
 the path above.

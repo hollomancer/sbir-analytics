@@ -12,7 +12,7 @@ much confidence to place in it, and which data it covers. See
 [research-questions.md](../research-questions.md) for the full list of questions.
 
 Do not cite an output as a validated finding unless its linked
-`studies/<study-id>/study.yaml` file says `citable`. A working pipeline or a dated
+`studies/<study-id>/study.yaml` file says `approved`. A working pipeline or a dated
 report may still be early research. See [evidence levels](../steering/epistemic-tiers.md)
 and [study requirements](../../studies/README.md) for the review rules.
 

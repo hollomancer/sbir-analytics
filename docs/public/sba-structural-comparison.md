@@ -2,10 +2,10 @@
 
 **Prepared for:** SBIR program managers and policy analysts in Treasury, OMB, JCT, and state economic-development offices
 
-> **Status: Validated, not citable.**
+> **Status: Validated, not approved evidence.**
 
-This page reports a validated current-vintage structural comparison. The release
-gates are still closed. Do not quote this result as a released finding.
+This page reports a validated current-vintage structural comparison. It may be
+cited as such, but the repository has not approved its substantive claims.
 
 ## Bounded claim
 
@@ -102,10 +102,10 @@ uv run python scripts/data/render_sba_structural_comparison.py
 | Source manifest | `studies/sba-annual-report-structural-comparison/source-manifest.json` | `be8adfce554b2811cb612428bebab314f061b2a808b9cc957ad0311797388db3` |
 | Validation design | `studies/sba-annual-report-structural-comparison/validation-design-v1.md` | `7373d7e189bf8dce3ec4611064f698571053b3fb397e213e1bf8873424839fa3` |
 | Frozen validation population | `studies/sba-annual-report-structural-comparison/validation-population-v1.csv` | `48dfdf1ea70e9a74378c21a3a661795540ebd6450c77365ebdad76c6569b68c1` |
-| Count producer | `packages/sbir-analytics/sbir_analytics/assets/sba_annual_report_structural_comparison/producer.py` | `bff52a594e4d77a2094c584e59365d4fd8be7dc381f2029246927fdebec5445a` |
+| Count producer | `packages/sbir-analytics/sbir_analytics/assets/sba_annual_report_structural_comparison/producer.py` | `d20dc0d31bb680f723c1f0120ef72c4d6a31560026fea9b06236a5fa02b6ab96` |
 | Count reproduction command | `scripts/data/run_sba_structural_comparison.py` | `a8d2aa68e40e5748c241795599bf7c432abb013cfe7c26a020c5fbc29c6be538` |
 | Public reproduction command | `scripts/data/reproduce_sba_structural_comparison.py` | `741187a34827ea0df008ca627aedd239a008d7e5f9937d70eb43a607baeab436` |
-| Public result renderer | `scripts/data/render_sba_structural_comparison.py` | `7ce3b93fce5ba75b9623ad3d6af79aeade71d31958a2d4cfdb316042bb35ca60` |
+| Public result renderer | `scripts/data/render_sba_structural_comparison.py` | `47b471bc5accbc82eb2eef085b50ac6f45681e4bdf32da1fdd40fdf72e660ad8` |
 | Environment lock | `uv.lock` | `b9f214496158828da145a19db9c7d5cb4fc52765eeacb9a394312a2b6cf34893` |
 | 632-cell count comparison | `studies/sba-annual-report-structural-comparison/results/count-comparison.csv` | `e86ab66905f65adaa7fdb721ced6bcbc7b3991a288ba37156f1efe9b4bed7381` |
 | Confirmatory packet manifest | `studies/sba-annual-report-structural-comparison/validation/blind-packet-manifest-v5.json` | `51033aca620e71f71fc18d6ae398d27fe238fbf7c7d6cda4e748ba7db3299314` |
@@ -116,11 +116,11 @@ uv run python scripts/data/render_sba_structural_comparison.py
 | Sealed-component hashes | `studies/sba-annual-report-structural-comparison/validation/confirmatory/sealed-components.sha256` | `c452750aa2b717c4c5781cc758b19ef6566cb98421aa64e39d11554844c302b0` |
 | Post-result evidence audit | `studies/sba-annual-report-structural-comparison/reviews/post-result-evidence-audit.md` | `ac05b2e6d888b0b60e1ea57e0b5a32b9a4f70b6bc4d7dcb118af399975411b4a` |
 
-Public sidecar content SHA-256: `23bde7b3ac2dc7d3619e4dfe5b922d0ffdbfd256919b5def6b7cfb9c2b9780cd`.
+Public sidecar content SHA-256: `91648b4d6588c747eca728dccb56411786e6d69389cbf6caef9eeba3c0144fd0`.
 This content digest is SHA-256 over the sidecar's `content` object encoded as
 canonical JSON with sorted keys and compact separators. It differs from the
 whole-file SHA-256 because the file also stores this digest and schema version.
 
-## Release gates still open
+## Operational materialization gate
 
-- Release governance requires explicit owner approval before merge, an immutable annotated version 0.18.0 tag, tag-bound citation metadata, and a citable-promotion evidence audit. Every claim-facing revision also requires an evidence audit and a cold named-reader review of its exact bytes.
+- Operational materialization requires repository-owner approval for the specific run. This gate does not determine evidence approval or whether an immutable artifact may be cited.

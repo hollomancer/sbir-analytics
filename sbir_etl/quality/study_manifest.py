@@ -1,4 +1,4 @@
-"""Versioned contracts for research studies and externally citable evidence."""
+"""Versioned contracts for research studies and approved external evidence."""
 
 from datetime import date
 from enum import StrEnum
@@ -20,7 +20,7 @@ class EvidenceStatus(StrEnum):
     EXPLORATORY = "exploratory"
     REPRODUCIBLE = "reproducible"
     VALIDATED = "validated"
-    CITABLE = "citable"
+    APPROVED = "approved"
     RETIRED = "retired"
 
 
@@ -59,7 +59,12 @@ class IdentityPolicy(BaseModel):
 
 
 class MaterializationGate(BaseModel):
-    """Whether production outputs may currently be generated or quoted."""
+    """Whether production outputs may currently be generated.
+
+    This operational authorization is independent of evidence status. Opening
+    the gate does not approve a claim, and approving a claim does not authorize
+    a production run.
+    """
 
     model_config = ConfigDict(extra="forbid")
 
@@ -73,6 +78,23 @@ class MaterializationGate(BaseModel):
         if self.allowed and self.blockers:
             raise ValueError("an open materialization gate cannot name blockers")
         return self
+
+
+class ClaimApproval(BaseModel):
+    """One final, pinned review approving the manifest's claim boundary."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    review_path: str = Field(min_length=1)
+    review_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    approved_on: date
+
+    @field_validator("review_path")
+    @classmethod
+    def reject_blank(cls, v: str) -> str:
+        if not v.strip():
+            raise ValueError("must not be blank")
+        return v
 
 
 class ThresholdBasis(StrEnum):
@@ -169,8 +191,9 @@ class ValidationResult(BaseModel):
 
     A result is recorded with its uncertainty and travels with every number the
     study emits. ``threshold_met`` is recorded, not required: ``validated`` means
-    the design was run as written and its outcome is on the record; ``citable``
-    additionally requires the threshold to have been met.
+    the design was run as written and its outcome is on the record; ``approved``
+    additionally requires the threshold to have been met and a pinned review
+    approving the claim boundary.
 
     ``design_path`` and ``design_sha256`` together name the exact bytes that were
     evaluated, and the manifest checks that pair against ``frozen_artifacts``. A
@@ -316,10 +339,11 @@ class StudyManifest(BaseModel):
     validation_design: ValidationDesign | None = None
     validation_result: ValidationResult | None = None
     reproduction: ReproductionContract | None = None
+    claim_approval: ClaimApproval | None = None
 
     @model_validator(mode="after")
     def require_validation_design_after_reproducible(self) -> "StudyManifest":
-        if self.evidence_status in {EvidenceStatus.VALIDATED, EvidenceStatus.CITABLE}:
+        if self.evidence_status in {EvidenceStatus.VALIDATED, EvidenceStatus.APPROVED}:
             if self.validation_design is None:
                 raise ValueError(
                     f"evidence_status '{self.evidence_status}' requires a validation_design block"
@@ -340,7 +364,7 @@ class StudyManifest(BaseModel):
 
     @model_validator(mode="after")
     def require_confirmatory_result_after_reproducible(self) -> "StudyManifest":
-        if self.evidence_status not in {EvidenceStatus.VALIDATED, EvidenceStatus.CITABLE}:
+        if self.evidence_status not in {EvidenceStatus.VALIDATED, EvidenceStatus.APPROVED}:
             return self
         status = self.evidence_status.value
         design = self.validation_design
@@ -373,10 +397,36 @@ class StudyManifest(BaseModel):
                 f"validation_result.design_sha256 does not match the frozen hash of "
                 f"{result.design_path!r}; the evaluated design is not the pinned one"
             )
-        if self.evidence_status is EvidenceStatus.CITABLE and not result.threshold_met:
+        if self.evidence_status is EvidenceStatus.APPROVED and not result.threshold_met:
             raise ValueError(
-                "evidence_status 'citable' requires validation_result.threshold_met to be true"
+                "evidence_status 'approved' requires validation_result.threshold_met to be true"
             )
+        return self
+
+    @model_validator(mode="after")
+    def approved_claim_has_pinned_review(self) -> "StudyManifest":
+        """Approval is one auditable decision, not a stack of release ceremonies."""
+
+        if self.evidence_status is not EvidenceStatus.APPROVED:
+            return self
+        approval = self.claim_approval
+        if approval is None:
+            raise ValueError("evidence_status 'approved' requires a claim_approval block")
+        frozen_by_path = {artifact.path: artifact.sha256 for artifact in self.frozen_artifacts}
+        pinned_sha = frozen_by_path.get(approval.review_path)
+        if pinned_sha is None:
+            raise ValueError(
+                f"claim_approval.review_path {approval.review_path!r} is not listed in "
+                "frozen_artifacts"
+            )
+        if pinned_sha != approval.review_sha256:
+            raise ValueError(
+                "claim_approval.review_sha256 does not match the frozen hash of "
+                f"{approval.review_path!r}"
+            )
+        result = self.validation_result
+        if result is not None and approval.approved_on < result.evaluated_on:
+            raise ValueError("claim_approval.approved_on cannot predate the validation result")
         return self
 
     @model_validator(mode="after")
@@ -456,6 +506,7 @@ def load_study_manifest(path: Path) -> StudyManifest:
 
 
 __all__ = [
+    "ClaimApproval",
     "EvidenceStatus",
     "FrozenArtifact",
     "IdentityPolicy",

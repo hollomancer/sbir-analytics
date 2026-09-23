@@ -40,7 +40,7 @@ def _protocol(intended_rank: str) -> CutProtocol:
     )
 
 
-@pytest.mark.parametrize("rank", ["reproducible", "validated", "citable"])
+@pytest.mark.parametrize("rank", ["reproducible", "validated", "approved"])
 def test_dirty_tree_refuses_a_promotion_intended_capture(rank: str) -> None:
     errors = dirty_tree_errors(_protocol(rank), dirty=True)
 

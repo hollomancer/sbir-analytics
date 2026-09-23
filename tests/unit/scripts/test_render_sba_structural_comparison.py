@@ -39,8 +39,8 @@ def test_committed_public_artifacts_regenerate_byte_for_byte() -> None:
 
     assert renderer.serialize_payload(payload) == SIDECAR.read_text(encoding="utf-8")
     assert renderer.render_markdown(payload) == MARKDOWN.read_text(encoding="utf-8")
-    assert payload["schema_version"] == 2
-    assert payload["content"]["release_status"] == "Validated, not citable"
+    assert payload["schema_version"] == 3
+    assert payload["content"]["release_status"] == "Validated, not approved evidence"
     assert payload["content"]["comparison"]["aggregate_summary"] == {
         "signed_difference": 333,
         "absolute_difference": 869,
@@ -82,7 +82,7 @@ def test_committed_public_artifacts_regenerate_byte_for_byte() -> None:
 
 def test_registered_pair_rejects_a_manual_markdown_edit(tmp_path: Path) -> None:
     sidecar = tmp_path / "public-result.json"
-    markdown = tmp_path / "first-citable-study.md"
+    markdown = tmp_path / "validated-study.md"
     script = tmp_path / "scripts/data/render_sba_structural_comparison.py"
     sidecar.parent.mkdir(parents=True, exist_ok=True)
     script.parent.mkdir(parents=True)

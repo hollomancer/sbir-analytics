@@ -9,7 +9,7 @@ claims:
     measurement: Agreement between recomputed and publication-era award counts.
     horizon: FY2020-FY2022 report years.
     decision_use: Public reproduction claim.
-    target_evidence_status: citable
+    target_evidence_status: approved
     required_source_outcome: published_sample_reproduction
     inputs_must_be_pinned: true
     definitions_must_be_complete: true

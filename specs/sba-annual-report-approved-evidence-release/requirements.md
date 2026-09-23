@@ -1,7 +1,7 @@
-# SBA Annual-Report Structural Comparison Release — Requirements
+# SBA Annual-Report Approved Evidence — Requirements
 
 > **Lifecycle status:** Active release work
-> **Spec-file progress:** Validated result recorded; citable release gates open
+> **Spec-file progress:** Validated result recorded; final claim approval remains open
 > Anchors inventory question **D1** in
 > [docs/research-questions.md](../../docs/research-questions.md#d1-award-totals).
 
@@ -19,26 +19,27 @@ not applied as written.
 
 ## Done when
 
-After a prospectively frozen fidelity test passes, an external reader can cite
-one released descriptive comparison. The reader can retrieve the exact input,
+After a prospectively frozen fidelity test passes and one pinned final review
+approves the claim boundary, the repository can mark one descriptive comparison
+as approved evidence. The reader can retrieve the exact input,
 verify its identity, reproduce every count, inspect every mismatch, and state
 the non-claims without private context.
 
-The validated comparison exists. This definition of done still controls the
-citable release.
+The validated comparison exists. This definition of done controls evidence
+approval, not bibliographic citation or operational materialization.
 
 ## Background
 
-The study is validated and non-citable. It is a current-vintage structural
+The study is validated and not approved evidence. It is a current-vintage structural
 comparison, not a reproduction of the historical SBA input. Its prospective
 full-population fidelity validation matched 1,264 of 1,264 operands with an
 exact point interval of `[1.0, 1.0]`. The earlier comparison bands were derived
 after observing the same 632 cells, so they do not validate or promote the
 study.
 
-## Publication gates
+## Evidence-approval gates
 
-All gates must close before the study becomes citable:
+All gates must close before the study becomes approved evidence:
 
 1. The exact 394,636,989-byte export and the three exact SBA report PDFs are
    durably retrievable. Each source verifies against its frozen SHA-256 and byte
@@ -50,10 +51,13 @@ All gates must close before the study becomes citable:
 4. The validation result is confirmatory and records its interval or complete
    reconciliation, as appropriate.
 5. `validation_result.threshold_met` is true.
-6. An evidence auditor approves the claim boundary and freeze history.
-7. The current closed materialization gate is reconciled for this descriptive
-   product without reopening the blocked historical-sample reproduction claim.
-8. A named outside reader completes the public packet without oral context.
+6. One final review, pinned in the study manifest, approves the exact claim
+   boundary and freeze history and confirms that the claim and non-claims are
+   understandable without oral context.
+
+An immutable release, citation metadata, repository-owner merge approval, and
+operational materialization remain required where their own workflows call for
+them. They do not strengthen or determine the study's evidence status.
 
 ## Requirements
 
@@ -108,7 +112,8 @@ reproduce and challenge the result from a stable release.
    registered sidecar. Manual result edits SHALL fail the round-trip check.
 3. THE packet SHALL expose count cells and mismatch evidence. It SHALL suppress
    dollar verdicts.
-4. THE release SHALL cite a tag or immutable archive, not a moving branch.
+4. WHEN the packet is published or cited, THE reference SHALL identify a tag or
+   immutable archive, not a moving branch.
 
 ### Requirement 4 — Hostile-reading checks
 
@@ -122,8 +127,8 @@ when its evidence changes, so that hidden drift cannot preserve the same claim.
    result and digest.
 2. A clean checkout SHALL reproduce the packet using only documented access and
    setup steps.
-3. A named outside reader SHALL be able to restate the claim and non-claims
-   correctly without oral guidance.
+3. THE final claim-approval review SHALL confirm that the claim and non-claims
+   can be restated correctly without oral guidance.
 
 ## Dependencies
 
@@ -133,7 +138,8 @@ when its evidence changes, so that hidden drift cannot preserve the same claim.
 - Approved prospective validation design and result — COMPLETE
 - Pre-run and post-result evidence-auditor review — COMPLETE
 - Public renderer, round trip, and mutation checks — COMPLETE
-- Named-reader review — COMPLETE (`BRIEF`; no citation or release authority)
+- Reader-comprehension review — COMPLETE (`BRIEF`; retained as supporting evidence)
+- Final pinned claim-approval review — OPEN
 
 ## Out of scope
 

@@ -8,10 +8,10 @@ Innovation Research (SBIR) and Small Business Technology Transfer (STTR) data.
 It is a research instrument, not an official program database, a
 commercialization platform, or a verified record of company outcomes.
 
-Start with [STATUS.md](STATUS.md). It states which studies are citable,
-reproducible but not citable, exploratory, or archived. Status comes from a
-versioned study contract. A working pipeline, chart, or large test suite does
-not make a result citable.
+Start with [STATUS.md](STATUS.md). It states which studies are approved
+evidence, validated, reproducible, exploratory, or archived. Status comes from
+a versioned study contract. A working pipeline, chart, citation, or large test
+suite does not make a result approved evidence.
 
 ## The first public release candidate
 
@@ -47,12 +47,13 @@ does not deduplicate. Of 20,836 retained FY2020-FY2022 rows, one had blank
 Sixty eligible jurisdiction/program/phase groups had no retained row and
 received a recomputed count of zero.
 
-The tagged release may make that statement citable only after the release gate
-opens. The public rendering passes its byte-stable round-trip checks. The
-prospective fidelity validation passed at 1,264/1,264 with the point interval
-`[1.0, 1.0]`. Every claim-facing revision requires an evidence audit and a cold
-reader review of its exact bytes. Until the remaining gates close, treat the
-packet as validated and non-citable.
+The repository may approve that statement only after one final pinned review
+authorizes the exact claim boundary. The public rendering passes its
+byte-stable round-trip checks. The prospective fidelity validation passed at
+1,264/1,264 with the point interval
+`[1.0, 1.0]`. A substantive change to the claim, method, input, or limitation
+requires renewed independent review. Until the approval review is recorded,
+treat the packet as validated and not approved evidence.
 
 This study does not reproduce the unavailable publication-era SBIR.gov export.
 It does not certify either source as complete or correct. It does not claim
@@ -82,9 +83,10 @@ make reproduce-sba-structural
 
 The command retrieves the declared source bytes, verifies hashes, row counts,
 page counts, and schema, rebuilds the count sidecar, reconciles the confirmatory
-submission, and checks the public sidecar and Markdown byte-for-byte. After a
-citable release exists, use the release tag—not a moving branch—and verify the
-checksums in its study packet.
+submission, and checks the public sidecar and Markdown byte-for-byte. When
+citing the result, use an immutable release tag—not a moving branch—and verify the
+checksums in its study packet. Citation identifies those immutable bytes; it
+does not imply that the repository approved every substantive claim they contain.
 
 To challenge the result, start with the
 [study contract](studies/sba-annual-report-structural-comparison/study.yaml),
@@ -96,17 +98,20 @@ narrower explanation.
 
 ## Evidence model
 
-- **Citable** means a tagged study release has frozen sources, a declared
-  estimand, a passed prospective validation, an open materialization gate, and
-  completed evidence and outside-reader reviews.
-- **Validated, not citable** means the prospective test was run as frozen and
-  its result is recorded, but publication or release gates remain closed.
-- **Reproducible, not citable** means the inputs and implementation can be
-  rerun, but a public claim is still blocked.
+- **Approved evidence** means the study passed its prospective validation
+  threshold and one pinned final review approved the manifest's bounded claims.
+- **Validated, not approved** means the prospective test was run as frozen and
+  its result is recorded, but final claim approval is absent.
+- **Reproducible, not validated** means the inputs and implementation can be
+  rerun, but validation is incomplete.
 - **Exploratory** means hypothesis generation, candidate discovery,
   measurement development, or an unverified linkage.
 - **Archived** means preserved for provenance, not maintained as a live
   evidence path.
+
+Any immutable release may be cited for what it contains. Evidence status says
+what claims the repository endorses; publication metadata, merge approval, and
+operational materialization remain separate controls.
 
 Content-addressed study artifacts and governed analytical files are
 authoritative. DuckDB and Parquet hold analytical records. Neo4j is an optional,

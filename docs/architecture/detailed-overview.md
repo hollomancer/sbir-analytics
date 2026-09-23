@@ -99,7 +99,7 @@ consumer and evidence contract require it.
 Pipeline completion is not evidence validation. The repository distinguishes reusable primitives,
 operational pipelines, validated evidence, and exploratory analysis through
 [epistemic tiers](../steering/epistemic-tiers.md). Study manifests record the data cut, method,
-permitted claims, and evidence status. A result is not externally citable solely because code can
+permitted claims, and evidence status. A result is not approved evidence solely because code can
 compute it.
 
 ## Deployment boundary
@@ -125,7 +125,7 @@ Lambda, Step Functions, and S3 are not part of the current architecture.
 | CI and tests | [Testing index](../testing/README.md) |
 | Live operations | [self-hosted server runbook](../deployment/self-hosted-server.md) |
 | Graph model | [Neo4j schema](../schemas/neo4j.md) and [migrations](../migrations.md) |
-| Evidence and citability | [Epistemic tiers](../steering/epistemic-tiers.md), [study contracts](../../studies/README.md) |
+| Evidence approval | [Epistemic tiers](../steering/epistemic-tiers.md), [study contracts](../../studies/README.md) |
 
 Narrow references may explain one subsystem in depth, but they should link to these owners rather
 than restating commands, thresholds, or deployment facts.

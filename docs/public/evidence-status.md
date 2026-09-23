@@ -1,26 +1,27 @@
 # Evidence status
 
-The repository uses five public status labels.
+The repository uses five public evidence-status labels. These labels govern
+which substantive claims the repository endorses; they do not govern whether a
+reader may bibliographically cite an immutable artifact.
 
-## Citable
+## Approved evidence
 
-A tagged study release has exact source identity, a frozen contract, an
-executable result, prospective validation, an open publication gate, an
-evidence audit, and an outside-reader review. Only the claim listed in that
-release is authorized.
+The study passed its prospectively frozen validation threshold and has one
+final, pinned claim-boundary review. Only the claims listed in the manifest are
+approved. Publication metadata, repository-owner merge authority, and
+operational materialization are separate release controls.
 
-## Validated, not citable
+## Validated, not approved
 
 The frozen validation design was run as written, and its result and uncertainty
 are recorded. A validated result can still fail its threshold. Even when the
-threshold passes, publication, outside-reader, materialization, or release
-gates can keep the result non-citable.
+threshold passes, the final claim-boundary review may remain incomplete.
 
-## Reproducible, not citable
+## Reproducible, not validated
 
-The declared inputs and implementation can rerun. One or more validation,
-review, source-recovery, or release gates remain closed. Reproducibility does
-not establish truth or authorize a public finding.
+The declared inputs and implementation can rerun. One or more validation or
+source-recovery requirements remain incomplete. Reproducibility does not
+establish truth or authorize a substantive finding.
 
 ## Exploratory
 
@@ -33,6 +34,8 @@ must not be presented as a validated result.
 The work is kept for history, provenance, or migration context. It is not a
 maintained evidence path.
 
-The `evidence_status` and `materialization` fields in each study manifest are
-the machine-checked authority. Directory names, test counts, dashboards, and
-fresh timestamps are not evidence-status signals.
+The `evidence_status` field in each study manifest is the machine-checked
+authority for claim approval. The independent `materialization` field controls
+whether an operation may run. Directory names, test counts, dashboards, fresh
+timestamps, citation metadata, and an open materialization gate are not
+evidence-status signals.

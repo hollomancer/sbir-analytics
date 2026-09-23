@@ -8,7 +8,7 @@ from scripts.ci import check_research_question_status as guard
 def test_denial_phrases_are_not_status_claims() -> None:
     text = (
         "Not computable. Phase 0 design only (exploratory, non-citable); "
-        "not validated, and not approved for citation. No citable study "
+        "not validated, and not approved evidence. No approved evidence "
         "manifest exists."
     )
 
@@ -16,23 +16,24 @@ def test_denial_phrases_are_not_status_claims() -> None:
     assert guard.claimed_ranks("Not currently computable.") == ()
     assert guard.claimed_ranks("Never computable from public data.") == ()
     assert guard.claimed_ranks("Cannot be validated without a hand-labelled sample.") == ()
-    assert guard.claimed_ranks("This is not yet a citable result.") == ()
+    assert guard.claimed_ranks("This is not yet approved evidence.") == ()
 
 
-def test_citable_claim_and_citable_study_are_rank_claims() -> None:
-    assert guard.claimed_ranks("Citable claim: the DoD follow-on multiplier is 4.1:1.") == (
-        "citable",
+def test_approved_evidence_is_a_rank_but_citable_is_bibliographic() -> None:
+    assert guard.claimed_ranks("Approved evidence: the DoD follow-on multiplier is 4.1:1.") == (
+        "approved",
     )
-    assert guard.claimed_ranks("Citable study result approved for external reporting.") == (
-        "citable",
+    assert guard.claimed_ranks("Study result is approved evidence for external reporting.") == (
+        "approved",
     )
-    assert guard.claimed_ranks("A citable study manifest backs this line.") == ("citable",)
+    assert guard.claimed_ranks("Cite the immutable release for this study.") == ()
+    assert guard.claimed_ranks("Citable from the immutable release tag.") == ()
 
 
 def test_partially_computable_and_validated_are_claims() -> None:
     assert guard.claimed_ranks("Partially computable for the classified subset.") == ("computable",)
     assert guard.claimed_ranks("Validated against the frozen design.") == ("validated",)
-    assert guard.claimed_ranks("Citable under the approved study contract.") == ("citable",)
+    assert guard.claimed_ranks("Approved evidence under the study contract.") == ("approved",)
     assert guard.claimed_ranks("Validated under the approved study contract.") == ("validated",)
 
 
@@ -47,8 +48,8 @@ def test_leading_negations_generalize_beyond_fixed_phrases() -> None:
         "Not fully validated.",
         "This is not computable.",
         "It isn't computable.",
-        "No citable claim is authorized until the gates pass.",
-        "Non-citable pending review.",
+        "No approved evidence is authorized until the review passes.",
+        "Not approved evidence pending review.",
         "Coverage remains unvalidated.",
     )
 
@@ -94,15 +95,15 @@ def test_computable_requires_reproducible_study() -> None:
     assert reproducible == []
 
 
-def test_validated_and_citable_require_matching_ranks() -> None:
-    markdown = "### B3. Inferential\n\n**Status:** Validated and citable.\n*Deps: ID*\n"
+def test_validated_and_approved_require_matching_ranks() -> None:
+    markdown = "### B3. Inferential\n\n**Status:** Validated and approved evidence.\n*Deps: ID*\n"
 
     only_validated = guard.validate_inventory(markdown, {"B3": EvidenceStatus.VALIDATED})
-    citable = guard.validate_inventory(markdown, {"B3": EvidenceStatus.CITABLE})
+    approved = guard.validate_inventory(markdown, {"B3": EvidenceStatus.APPROVED})
 
     assert len(only_validated) == 1
-    assert "claims 'citable'" in only_validated[0].message
-    assert citable == []
+    assert "claims 'approved'" in only_validated[0].message
+    assert approved == []
 
 
 def test_retired_study_does_not_authorize_computable() -> None:
@@ -150,7 +151,7 @@ def test_claim_outside_numbered_section_is_rejected() -> None:
         "**Status:** Computable from the dated note.\n"
     )
 
-    violations = guard.validate_inventory(markdown, {"F4": EvidenceStatus.CITABLE})
+    violations = guard.validate_inventory(markdown, {"F4": EvidenceStatus.APPROVED})
 
     assert len(violations) == 1
     assert "outside a numbered A–F section" in violations[0].message
@@ -177,7 +178,7 @@ def test_non_question_heading_clears_inherited_section_id() -> None:
         "### F4. Predictive (Tier 4)\n\n"
         "## Output products & audiences\n\n"
         "### Form D fundraising analysis (published)\n\n"
-        "**Status:** Citable for the 2024 vintage.\n"
+        "**Status:** Approved evidence for the 2024 vintage.\n"
     )
 
     blocks = list(guard.iter_status_blocks(markdown))

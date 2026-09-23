@@ -94,7 +94,7 @@ beyond the documented study or pilot.
 
 Relevant methods and data cuts live under [`docs/research/`](../research/) and `studies/`. A row in
 this table means the repository has a documented use, not that the source is complete, loaded into
-Neo4j, or externally citable.
+Neo4j, or approved for external evidence claims.
 
 ## Quality controls
 

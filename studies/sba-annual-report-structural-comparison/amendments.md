@@ -605,3 +605,25 @@ These are claim-facing bytes. Under the revision-11 rule, this revision still
 requires its own evidence audit and a cold named-reader review of these exact
 bytes before release. Neither is recorded yet, so the packet remains
 non-citable and this revision is not release-ready.
+
+## Revision 13 — 2026-09-23 — separate evidence approval from citation and operations
+
+**Status:** Validated, not approved evidence. The 632 cells, estimand,
+validation result, permitted numerical claims, and limitations are unchanged.
+
+The repository-wide evidence vocabulary now uses `approved` for the highest
+study rank. Bibliographic citation identifies an immutable artifact; it is not
+an endorsement of every claim in that artifact. Operational materialization
+and repository-owner merge authority are also independent controls rather than
+scientific evidence.
+
+Promotion now requires the existing prospective validation threshold plus one
+final pinned `claim_approval` review of the exact manifest claim boundary. The
+prior requirement for another promotion audit and a cold-reader review of
+every changed byte is retired as duplicative. A new independent review remains
+required when a substantive claim, method, input, or limitation changes, not
+for editorial or governance-only changes.
+
+This amendment changes status vocabulary and release governance only. It does
+not approve the study, open its operational materialization gate, or alter the
+frozen release packet.

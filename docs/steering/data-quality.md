@@ -8,7 +8,7 @@ Status: active
 # Data Quality Contract
 
 Data quality means that an artifact is faithful to its declared source, grain, identity rules, and
-validation contract. It does not, by itself, make a research interpretation valid or citable.
+validation contract. It does not, by itself, make a research interpretation valid or approved.
 
 ## Sources of truth
 

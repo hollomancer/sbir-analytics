@@ -215,7 +215,7 @@ class MaterializationInputs:
 
 @dataclass(frozen=True)
 class MaterializationGateRecord:
-    """Typed proof that the citable-output boundary passed."""
+    """Typed proof that the approved materialization boundary passed."""
 
     study_id: str
     cell_count: int
@@ -964,16 +964,18 @@ def _verify_manifest(
         raise StructuralComparisonError(
             f"study manifest has wrong study_id: expected {STUDY_ID}, observed {manifest.study_id}"
         )
-    if manifest.evidence_status is not EvidenceStatus.CITABLE:
-        raise StructuralComparisonError("citable materialization requires evidence_status citable")
+    if manifest.evidence_status is not EvidenceStatus.APPROVED:
+        raise StructuralComparisonError(
+            "approved materialization requires evidence_status approved"
+        )
     if not manifest.materialization.allowed:
         blockers = "; ".join(manifest.materialization.blockers)
-        raise StructuralComparisonError(f"citable materialization is blocked: {blockers}")
+        raise StructuralComparisonError(f"approved materialization is blocked: {blockers}")
     design = manifest.validation_design
     result = manifest.validation_result
     if design is None or design.threshold_basis is not ThresholdBasis.COUNT_ON_FROZEN_POPULATION:
         raise StructuralComparisonError(
-            "citable materialization requires a count-on-frozen-population validation design"
+            "approved materialization requires a count-on-frozen-population validation design"
         )
     if design.threshold_value != EXPECTED_VALIDATION_VALUE_COUNT:
         raise StructuralComparisonError(
@@ -985,7 +987,7 @@ def _verify_manifest(
         )
     if result is None or not result.threshold_met:
         raise StructuralComparisonError(
-            "citable materialization requires validation_result.threshold_met true"
+            "approved materialization requires validation_result.threshold_met true"
         )
     if (
         result.design_path != production_inputs.validation_design.reference
@@ -1018,7 +1020,7 @@ def _verify_manifest(
         )
 
 
-def verify_citable_materialization(
+def verify_approved_materialization(
     production_inputs: ProductionInputs,
     materialization_inputs: MaterializationInputs,
     *,
@@ -1102,7 +1104,7 @@ __all__ = [
     "load_validation_population",
     "produce_count_sidecar",
     "validate_count_sidecar",
-    "verify_citable_materialization",
+    "verify_approved_materialization",
     "verify_production_inputs",
     "verify_validation_values",
 ]
