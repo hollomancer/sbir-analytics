@@ -25,12 +25,18 @@ class EvidenceStatus(StrEnum):
 
 
 class FrozenArtifact(BaseModel):
-    """A repository artifact whose exact bytes are part of the study contract."""
+    """An exact artifact whose bytes are part of the study contract.
+
+    An external source is acquired separately and cannot be checked during a
+    source-free repository validation. Its study producer must verify the
+    declared digest before use.
+    """
 
     model_config = ConfigDict(extra="forbid")
 
     path: str = Field(min_length=1)
     sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    external_source: bool = False
 
 
 class ImplementationReference(BaseModel):

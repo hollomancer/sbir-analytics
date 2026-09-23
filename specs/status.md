@@ -1,6 +1,6 @@
 # Specification Status Registry
 
-Reviewed: 2026-08-03
+Reviewed: 2026-09-21
 
 This registry is the cleanup checkpoint for top-level specs. It does not replace
 the requirements, design, or tasks files; it records whether a spec is a current
@@ -34,6 +34,14 @@ bypassing lifecycle review; the status and rationale still require human judgmen
   versus R01-equivalent transaction-cost study. Target tier is `exploratory`;
   the study contract is `reproducible` and non-citable. NSF/DOE/NASA/DoD
   series, Dagster, and evidence promotion are out of scope.
+- **`award-export-semantics` — Maintenance.** Primitives contract for the one
+  source-faithful SBIR.gov export-row grain, the one award-year profile needed
+  by the SBA annual-report study, and pinned source metadata. It does not move
+  data, define award identity, or authorize a public claim.
+- **`award-export-source-pipeline` — Maintenance.** Pipelines contract for the exact
+  42-column SBIR.gov raw reader, pin-before-use verification, new-capture
+  vintage layout, and migration of the SBA annual-report study only. Existing
+  storage moves and other reader migrations require separate review.
 - **`agency-private-capital-comparison` — Active.** The NSF Phase 1 real-data
   gate is materialized for review but remains non-citable and unsigned. Phase 2
   now has a maintained, deterministic 2009Q1–2024Q4 SEC DERA Form D staging
@@ -100,6 +108,23 @@ bypassing lifecycle review; the status and rationale still require human judgmen
   as the reference adapter, and `usaspending_refresh_batch` on the job.
   Per-source adapters stay split (#443 NIH RePORTER, then SAM/PatentsView).
   Tasks 6.1–6.2 remain optional Phase 2 expansion.
+- **`jev-ci-triage` — Active.** Exploratory, non-blocking CI failure-triage
+  pilot. Stage 0 may implement typed contracts, sanitization, deterministic
+  policy and rendering, a fake transport, and hermetic tests. Live Jev calls
+  remain gated on API documentation, data-retention review, disclosure terms,
+  credentials, and an approved shadow-evaluation protocol. Jev output must not
+  change check conclusions, skip tests, suppress security findings, or control
+  merges.
+- **`jev-preflight` — Active.** Exploratory, non-citable study-readiness
+  vertical slice. It applies deterministic claim and evidence rules to
+  `studies/sba-annual-report-tables`, then evaluates Jev only in private shadow
+  mode against a frozen synthetic matrix. CI enforcement, evidence promotion,
+  publication approval, and authoritative model decisions are out of scope.
+- **`jev-ci-enforcement` — Active.** Exploratory deterministic contract-drift
+  check stacked on `jev-preflight`. It runs only for declared annual-report and
+  preflight paths, compares current status and first blocker with a reviewed
+  policy, and uploads a non-citable report. Live Jev calls, prose scanning,
+  merge approval, and repository-wide study coverage are out of scope.
 - **`ma-discovery-integration` — Active.** M&A recall is a selected F2/A4
   implementation target. Fail-closed search, C3, pair-name guards, and the
   `ma-discovery-recall` study (exploratory; materialization closed) are in
@@ -173,6 +198,16 @@ bypassing lifecycle review; the status and rationale still require human judgmen
   estimand contract, and blinded validation.
 - **`sbir-ma-match-rate-by-fy` — Gated backlog.** Analysis-only F2 follow-up on
   completed M&A detection. Start only when FY match-rate reporting is requested.
+- **`sba-annual-report-citable-release` — Active release work.** The bounded
+  FY2020-FY2022 structural comparison is `validated`, not citable. Durable
+  source retrieval and the prospectively frozen full-population fidelity test
+  passed at 1,264/1,264 operands. The generated renderer, sidecar, clean replay,
+  and mutation checks pass. After Revision 11 disclosed absolute disagreement,
+  zero-versus-zero cells, and row-handling diagnostics, its exact-byte evidence
+  audit returned `GO` and cold named-reader review returned `BRIEF` with no
+  remediation. Publication remains gated on the closed citable materialization
+  state, immutable tag and citation metadata, and owner approval. Existing
+  post-hoc bands do not support the claim.
 - **`state-local-tax-rates` — Maintenance.** Existing hardcoded 2024 provider
   works. Remaining work is data-file/provenance cleanup for fiscal v2.
 - **`supplier-share-census` — Active.** Exploratory, non-citable F2 census of
@@ -181,6 +216,12 @@ bypassing lifecycle review; the status and rationale still require human judgmen
   are authorized; point headlines remain suppressed on incomplete coverage, and citation remains
   gated on complete Form D/EFTS search coverage, a stratified hand review,
   face-validity anchors, and negative-control review.
+- **`sbir-roi-comparative-tests` — Active.** The exploratory contract scaffolding is
+  complete. Four closed study manifests cover marginal-award identification,
+  NIH and NASA mechanism comparisons, and social-return break-even analysis.
+  Empirical work remains gated on scored applications, pinned comparator
+  cohorts, audited outcomes, and complete welfare ledgers. No current manifest
+  authorizes a numerical or citable return claim.
 - **`sttr-spinout-linkage` — Active.** Phase 0 design frozen as Revision 1 (exploratory,
   non-citable); implementation (`tasks.md` Phase 1) is unblocked. Proposes a deterministic
   public-data classifier splitting each STTR SBC↔RI relationship into spinout vs.

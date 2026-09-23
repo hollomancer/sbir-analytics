@@ -65,6 +65,8 @@ def validate_manifest_references(
         except ValueError as exc:
             errors.append(str(exc))
             continue
+        if artifact.external_source:
+            continue
         if not path.is_file():
             errors.append(f"frozen artifact does not exist: {artifact.path}")
             continue
@@ -94,9 +96,7 @@ def validate_manifest_references(
                 f"implementation symbol {reference.symbol!r} is missing from {reference.path}"
             )
 
-    errors.extend(
-        _evaluated_design_errors(manifest, repository_root=repository_root)
-    )
+    errors.extend(_evaluated_design_errors(manifest, repository_root=repository_root))
     return errors
 
 

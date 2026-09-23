@@ -21,21 +21,7 @@ total only, FY2013-FY2022 print the full jurisdiction-by-program-by-phase grid.
 
 ## Ranked gaps
 
-### 1. The FY2023 and FY2024 annual reports - highest value
-
-The corpus stops at FY2022. The pinned export already holds **6,325 awards for award-year 2023 and
-6,412 for 2024**, so the data side is ready and only the published tables are missing. Both years
-would fall inside the stated-basis era, taking the usable panel from six report-years to **eight**,
-and they sit at report ages 2 and 3 - the youngest end. Whether young report-years sit lower in
-whatever band the Order 1 study commits is exactly what these two would test out of sample; if they
-also state a snapshot date, they test the snapshot-lag reading as well. The figures that make this
-interesting are on the Order 1 stack and are exploratory there, so they are not repeated here.
-
-**Access:** sbir.gov returns HTTP 403 to non-browser clients, so this needs a browser download, the
-same route by which the FY2020-FY2022 volumes arrived. Nothing else in this list has a better
-value-to-effort ratio.
-
-### 2. Two image-only tables - work rather than acquisition
+### 1. Two image-only tables - work rather than acquisition
 
 No OCR engine is installed (no tesseract, ocrmypdf, pdftoppm or ghostscript, and no pytesseract or
 easyocr), and package metadata for them is not reachable from this environment. That does not block
@@ -57,7 +43,7 @@ verification". Verification against the source line, not a second model pass, is
   is probably present and complete. It predates the basis statement, so it is descriptive only and
   must not enter a tolerance envelope.
 
-### 3. SBA's table-construction methodology for the pre-FY2016 years
+### 2. SBA's table-construction methodology for the pre-FY2016 years
 
 The single acquisition that would most improve the panel's *quality* rather than its length. It
 would settle what the FY2013 and FY2014 tables count, and if their basis turns out to match the
@@ -66,15 +52,15 @@ assembly rule (FY2016 p39, that the report is a summation of individual uploaded
 on how the state tables themselves were constructed before the basis sentence appeared. Candidate
 sources: SBA's agency data-call instructions for those years, or a methodology annex.
 
-### 4. The sbir.gov impact reports
+### 3. The sbir.gov impact reports
 
 Listed at sbir.gov/impact/impact-reports, which returns 403 to non-browser clients (sbir.gov's own
 policy, not a sandbox restriction). **Not a new file set.** The page lists the five agency
 economic-impact PDFs already in the 51-document inventory (DoD 1995-2018, Navy 2000-2013, USAF
-FY2015, NASA 2017, NCI 2018) and a National Academies link that is gap 5. Nothing remains to fetch
+FY2015, NASA 2017, NCI 2018) and a National Academies link that is gap 4. Nothing remains to fetch
 here; kept as a record that the page was checked.
 
-### 5. Four closed-access works
+### 4. Four closed-access works
 
 Needed for roadmap orders 3 and 5, with no open-access copy in Unpaywall, Semantic Scholar, PMC or
 CrossRef, and no `best_oa_pdf_url` in OpenAlex. Identifiers verified: [L1] NASEM 2026
@@ -85,7 +71,7 @@ Not yet assigned to an order: Research Policy 54(9) 2025 `10.1016/j.respol.2025.
 incidental find with unresolved authors and an unverified OA flag, not an [L#] entry. Filed the same
 way in `source-acquisition-orders-3-5.md`.
 
-### 6. The 1990-2008 SBIR volumes, with a cheap test first
+### 5. The 1990-2008 SBIR volumes, with a cheap test first
 
 Nineteen image-only documents, 616 pages, covering nineteen report-years of deep history. **Do not
 commit to extracting all of them yet.** The STTR volumes of the same era do carry text, and probing
@@ -106,7 +92,6 @@ by more than a decade, so their value is long-run description, not replication.
 
 ## Suggested order
 
-1. Ask for the FY2023 and FY2024 reports - two years of panel for one browser download.
-2. Rasterise and read FY2019's partial table; add its 27 jurisdictions at cell level only.
-3. Spot-check two or three 1990s SBIR volumes for a state table before committing to the rest.
-4. Everything else is acquisition-bound and can wait on someone outside this environment.
+1. Rasterise and read FY2019's partial table; add its 27 jurisdictions at cell level only.
+2. Spot-check two or three 1990s SBIR volumes for a state table before committing to the rest.
+3. Everything else is acquisition-bound and can wait on someone outside this environment.

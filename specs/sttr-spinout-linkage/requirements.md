@@ -113,7 +113,9 @@ run later without post-hoc specification freedom.
 - `sbir_etl.identity` — company/organization-name normalization and similarity primitives
   (`normalize_company_name`, `company_name_similarity`, versioned `CompanyNameProfile`,
   `CompanyNameMetric`, `RecoveryStatus`) (EXISTS). Reused; not forked.
-- Graph epistemic-assertion contract — ADR-005 (`DimensionStatus`, `CANDIDATE` assertions) (PROPOSED, no production implementation).
+- Graph epistemic-assertion contract — ADR-005 (`DimensionStatus`, `CANDIDATE` assertions)
+  (ACCEPTED 2026-09-19, no production implementation). Contract keys are namespaced
+  `USASPENDING:`; `USAID:` is forbidden.
 - The named `nih-commercialization-linkage` kernel (`resolve_identity`, `classify_linkage`,
   `generic_token_guard`, `signal_absent_reason`) — **DOES NOT EXIST** in the repo today. This
   spec proposes it as new `exploratory`-tier code built on the primitives above; see

@@ -1,8 +1,11 @@
 # Neo4j Epistemic Assertions: Minimum Viable Migration Plan
 
-**Status:** Revised proposal; no production implementation has started. Review comments addressed
+**Status:** Accepted 2026-09-19 by [ADR-005](../decisions/ADR-005-transition-candidates-as-assertions.md);
+no production implementation has started. Review comments addressed
 (2026-08-05): ADR renumbered to ADR-005, §3.6 marked contingent-and-deferred under ADR-004, §4.2
-harmonized with spec-declaration guard.
+harmonized with spec-declaration guard. Contract-key namespace renamed from `USAID:` to
+`USASPENDING:` (2026-09-19) under ADR-005 §Decision 2; the old prefix collided with the U.S.
+Agency for International Development.
 
 **Repository baseline audited:** `origin/main` at `8500c0c6` on 2026-08-04
 
@@ -202,7 +205,7 @@ generated_unique_award_id
     -> unresolved: count and fail strict publication
 ```
 
-Resolved values are namespaced as `USAID:<generated_unique_award_id>` or
+Resolved values are namespaced as `USASPENDING:<generated_unique_award_id>` or
 `LEGACY:<agency>|<parent_idv>|<piid>` and carry `ContractKeyMethod`. Bare PIID is retained only as a
 search, display, and audit field; it never precedes either award-level key or enters
 `assertion_id`. The Award Data Archive extractor normalizes raw `contract_award_unique_key` into
@@ -824,7 +827,7 @@ PR 1 may introduce a different key only if it proves the key is stable, unique, 
 every validated Phase II row and documents the migration.
 
 `object_contract_key` is produced only by the PR 1 shared resolver. It is
-`USAID:<normalized-generated-id>` when a documented generated-ID alias is available, otherwise
+`USASPENDING:<normalized-generated-id>` when a documented generated-ID alias is available, otherwise
 `LEGACY:<agency-code>|<parent-idv>|<piid>` when every exact composite component is present. The
 resolver does not substitute agency names, generic `award_id`, `contract_id`, or bare PIID. It
 returns `object_contract_key_method` with the key. Conflicting generated aliases, incomplete legacy
@@ -833,7 +836,7 @@ than one namespaced key or method fail strict materialization; they are not reco
 heuristically.
 
 The active normalized USAspending producer already requires generated award and transaction IDs,
-so production inputs should normally resolve as `USAID:`. The fallback exists for explicitly
+so production inputs should normally resolve as `USASPENDING:`. The fallback exists for explicitly
 identified legacy inputs that retain exact agency-code, parent-IDV, and PIID components; it does not
 weaken normalized-source requirements.
 
@@ -960,7 +963,7 @@ independent detector outputs are introduced later, publication must first define
 selection or aggregation/fusion contract; it must not change the logical ID to encode the detector.
 Until that decision is made, duplicate logical IDs in one snapshot are blocking.
 
-A later source snapshot that resolves a prior `LEGACY:` object to `USAID:` produces a different
+A later source snapshot that resolves a prior `LEGACY:` object to `USASPENDING:` produces a different
 logical `assertion_id`. V1 records a new content-addressed claim rather than rewriting or silently
 coalescing the older one. A cross-namespace identity map or migration is deferred until a consumer
 demonstrates the need.
@@ -1011,7 +1014,7 @@ topology for compatibility. There are never two live producers.
 
 | Required invariant | MVP enforcement | Level |
 | --- | --- | --- |
-| Every assertion resolves its subject and contract object | Require `USAID:` or complete `LEGACY:` key plus matching `ContractKeyMethod`; bare PIID and unresolved keys never publish; `MATCH` complete graph endpoints before graph publication | Blocking |
+| Every assertion resolves its subject and contract object | Require `USASPENDING:` or complete `LEGACY:` key plus matching `ContractKeyMethod`; bare PIID and unresolved keys never publish; `MATCH` complete graph endpoints before graph publication | Blocking |
 | Generated identity has precedence | Resolve documented generated-ID aliases before the exact legacy composite, reject conflicts or award-splitting mixed methods, and count every method outcome | Blocking |
 | Every assertion records method and version | Require method ID, version, fingerprint, and ranking definition | Blocking |
 | Every action/evidence reference resolves to a source snapshot | Resolve every namespaced action or source key to a bound snapshot manifest entry | Blocking |
@@ -1099,7 +1102,7 @@ not claim to validate factual precision.
 | Human acceptance criteria | Not required for candidate-only publication | Who may accept a claim and what support is sufficient |
 | Legacy consumers | Return 410 for the live metric and offer only a versioned frozen response when required | Owner identifies any external client and the frozen response expiry |
 | Census/assertion grain confusion | Name the census action-pair, assertion award-contract, and action-evidence units; preserve frozen artifacts and census quantities while versioning the shared key representation | Any future estimand must declare which grain and anchor rule it uses |
-| Legacy fallback identity risk | Prefix and method-tag fallback keys, count their use, and never coalesce them silently with `USAID:` keys | Add an explicit cross-namespace identity map only when a consumer needs reconciliation |
+| Legacy fallback identity risk | Prefix and method-tag fallback keys, count their use, and never coalesce them silently with `USASPENDING:` keys | Add an explicit cross-namespace identity map only when a consumer needs reconciliation |
 | Anchor ambiguity | Keep detector action, earliest award action, and earliest positive-obligation action distinct; preserve signed latency | Study-specific temporal and funding restrictions remain downstream inclusion rules |
 | Multiple detectors | Keep method out of logical ID and permit one current revision per logical claim in V1 | Define selection or fusion before publishing multiple detector outputs |
 
@@ -1337,7 +1340,7 @@ frozen census artifact.
 
 1. Context: incompatible publication contracts and causal overstatement.
 2. Decision boundary: one candidate award-contract assertion family.
-3. Contract identity: `USAID:` generated award key, typed `LEGACY:` fallback, bare PIID forbidden,
+3. Contract identity: `USASPENDING:` generated award key, typed `LEGACY:` fallback, bare PIID forbidden,
    unresolved identity blocks publication.
 4. Shared boundary: assertion and census reuse the UEI-only pair builder, contract-key resolver,
    and action identity, then apply independent downstream gates.

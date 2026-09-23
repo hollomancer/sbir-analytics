@@ -159,7 +159,9 @@ jobs:
           python-version: ${{ env.PYTHON_VERSION }}
           install-dev-deps: "true"
 
-      # Unit tests only, minus the slow marker. No Neo4j, no services.
+      # Unit tests only, minus slow and path-scoped preflight enforcement.
+      # The dedicated preflight job runs that marker when relevant paths change.
+      # No Neo4j, no services.
       #
       # Split by recorded duration rather than by test-ID hash. pytest-shard
       # balanced counts, which left one shard reliably drawing the slow tests —
@@ -173,11 +175,22 @@ jobs:
       # against 46s with `-n 0` on a 4-core runner, so both layers earn keep.
       - name: Run unit tests
         run: |
+          mkdir -p reports/ci
           uv run pytest tests/unit/ \
-            -m "not slow" \
+            -m "not slow and not jev_preflight" \
             --splits 4 --group ${{ matrix.shard }} \
             --splitting-algorithm least_duration \
-            --durations-path tests/.test_durations
+            --durations-path tests/.test_durations \
+            --junitxml="reports/ci/junit-fast-${{ matrix.shard }}.xml"
+
+      - name: Upload structured test result
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: junit-fast-${{ matrix.shard }}
+          path: reports/ci/junit-fast-${{ matrix.shard }}.xml
+          if-no-files-found: error
+          retention-days: 3
 
   test-e2e:
     name: Hermetic E2E Tests
@@ -319,6 +332,8 @@ jobs:
     outputs:
       docker: ${{ steps.filter.outputs.docker }}
       integration: ${{ steps.filter.outputs.integration }}
+      jev: ${{ steps.filter.outputs.jev }}
+      jev_preflight: ${{ steps.filter.outputs.jev_preflight }}
       setup: ${{ steps.filter.outputs.setup }}
     steps:
       - uses: actions/checkout@v7
@@ -353,11 +368,121 @@ jobs:
               - 'tests/neo4j_service.py'
               - 'pyproject.toml'
               - 'uv.lock'
+            # Exercise the no-key Jev boundary only when that pilot changes.
+            # The job is non-blocking and internal-PR-only.
+            jev:
+              - '.github/workflows/ci.yml'
+              - 'scripts/ci/jev_triage/**'
+              - 'specs/jev-ci-triage/**'
+              - 'tests/fixtures/jev_ci_triage/**'
+              - 'tests/unit/scripts/test_jev_ci_triage*.py'
             # setup_dev.sh also consumes the root lock and project metadata.
             setup:
               - 'scripts/setup_dev.sh'
               - 'uv.lock'
               - 'pyproject.toml'
+            # This job enforces only the named annual-report application. A
+            # study without an adapter and reviewed policy remains out of scope.
+            jev_preflight:
+              - 'studies/sba-annual-report-tables/**'
+              - 'scripts/jev_preflight/**'
+              - 'scripts/data/sba_annual_report_tables.py'
+              - 'scripts/ci/validate_study_manifests.py'
+              - 'sbir_etl/config/yaml_io.py'
+              - 'sbir_etl/quality/study_manifest.py'
+              - 'specs/jev-preflight/**'
+              - 'specs/jev-ci-enforcement/**'
+              - 'tests/unit/scripts/test_jev_preflight.py'
+              - 'tests/unit/scripts/test_jev_ci_enforcement.py'
+              - '.github/workflows/ci.yml'
+              - 'Makefile'
+              - 'pyproject.toml'
+              - 'uv.lock'
+
+  jev-preflight:
+    name: Deterministic Study Preflight
+    needs: [detect-changes]
+    if: |
+      github.event_name == 'pull_request' &&
+      needs.detect-changes.outputs.jev_preflight == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Setup Python and UV
+        uses: ./.github/actions/setup-python-uv
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          install-dev-deps: "true"
+
+      - name: Enforce deterministic study-readiness policy
+        run: make check-jev-preflight
+
+      - name: Upload deterministic preflight report
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: jev-preflight-report
+          path: reports/ci/jev-preflight.json
+          if-no-files-found: error
+          retention-days: 14
+
+  jev-triage-contract:
+    name: Experimental Jev Triage Contract
+    needs: [detect-changes, test-fast]
+    if: >-
+      always() &&
+      github.event_name == 'pull_request' &&
+      needs.detect-changes.outputs.jev == 'true' &&
+      github.event.pull_request.head.repo.full_name == github.repository
+    continue-on-error: true
+    permissions:
+      actions: read
+      contents: read
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Setup Python and UV
+        uses: ./.github/actions/setup-python-uv
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          install-dev-deps: "true"
+
+      - name: Download JUnit artifacts
+        uses: actions/download-artifact@v8
+        with:
+          pattern: junit-fast-*
+          path: reports/ci/downloaded
+          merge-multiple: true
+
+      - name: Exercise sanitized no-key triage
+        run: |
+          uv run python -m scripts.ci.jev_triage.cli dry-run \
+            --junit-dir reports/ci/downloaded \
+            --fake-decision tests/fixtures/jev_ci_triage/fake-decision.json \
+            --output-dir reports/jev-ci-triage/observed
+          uv run python -m scripts.ci.jev_triage.cli dry-run \
+            --junit-dir tests/fixtures/jev_ci_triage \
+            --fake-decision tests/fixtures/jev_ci_triage/fake-decision.json \
+            --output-dir reports/jev-ci-triage/fixture
+          uv run python -m scripts.ci.jev_triage.cli evaluate \
+            --corpus tests/fixtures/jev_ci_triage/evaluation-corpus.jsonl \
+            --predictions tests/fixtures/jev_ci_triage/evaluation-predictions.jsonl \
+            --output reports/jev-ci-triage/synthetic-evaluation.json \
+            --synthetic-fixture
+          cat reports/jev-ci-triage/fixture/summary.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload no-key triage artifacts
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: jev-triage-contract
+          path: reports/jev-ci-triage/
+          if-no-files-found: error
+          retention-days: 3
 
   docker:
     name: Docker Build and Smoke Test

@@ -156,20 +156,38 @@ def test_discovery_confirmed_signal_is_independent_evidence():
 
 
 def test_raw_press_hits_are_not_independent_corroboration():
+    # A raw hit list on `press_evidence` must not count as confirmed press.
     form_d_plus_hits = {
         "signals": {"form_d_business_combination": True},
         "form_d_detail": {"filing_date": "2020-01-01"},
-        "press_wire_signals": [
+        "press_evidence": [
             {"title": "Unrelated hit", "link": "https://example.com", "source": "PRNewswire"}
         ],
     }
     assert evidence_sources(form_d_plus_hits) == ["form_d"]
     assert is_independent_of_form_d(form_d_plus_hits) is False
-    hits_only = {"press_wire_signals": form_d_plus_hits["press_wire_signals"]}
+    hits_only = {"press_evidence": form_d_plus_hits["press_evidence"]}
     assert evidence_sources(hits_only) == []
     assert is_independent_of_form_d(hits_only) is False
     extract_token = {"source": "form_d", "evidence": "business combination offering"}
     assert evidence_sources(extract_token) == []
+
+
+def test_confirmed_press_evidence_is_independent_of_form_d():
+    scalar = {
+        "signals": {"form_d_business_combination": True},
+        "form_d_detail": {"filing_date": "2020-01-01"},
+        "press_evidence": "Reuters: Buyer Inc completed its acquisition of Gamma Co",
+    }
+    assert evidence_sources(scalar) == ["form_d", "press"]
+    assert is_independent_of_form_d(scalar) is True
+
+    signalled = {
+        "signals": {"form_d_business_combination": True, "press_confirmed": True},
+        "form_d_detail": {"filing_date": "2020-01-01"},
+    }
+    assert evidence_sources(signalled) == ["form_d", "press"]
+    assert is_independent_of_form_d(signalled) is True
 
 
 def test_unlinked_form_d_combination_is_preserved_for_review():

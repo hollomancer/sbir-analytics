@@ -1,7 +1,7 @@
 ---
 Type: Research plan
 Maintainer: Conrad Hollomon
-Last-Reviewed: 2026-09-14
+Last-Reviewed: 2026-09-23
 Status: proposed
 ---
 
@@ -233,7 +233,6 @@ and live-upstream reproduction checks. The remaining gaps are:
    The other four are attached to a question already: [L34] in Order 8 above, and [L36], [L38]
    and [L48] on the STTR spinout-linkage question in `research-questions.md`. Measured against
    the current `research-questions.md` body text, bibliography entries excluded.
-
 
 ## First implementation tranche
 

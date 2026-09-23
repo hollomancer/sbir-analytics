@@ -1,0 +1,140 @@
+{
+  "decisions": {
+    "award_grain": "export-row-v1",
+    "deduplication": "none",
+    "dropped_blank_jurisdiction": 1,
+    "fiscal_year_basis": "award-year-field-v1",
+    "jurisdiction_profile": "us-jurisdiction-strict-v1",
+    "window": "Award Year field"
+  },
+  "dollar_band_status": "No published-dollar tolerance is committed. Dollar deltas are reported as measured and carry no verdict. The whole-dollar allowance is used only to classify a cell whose counts agree as `rounding`.",
+  "inputs": {
+    "award_export": {
+      "bytes": 394636989,
+      "ordered_schema_sha256": "9f4ddf95992ccfb3a641d0f98bcf3ed591b9f3d5972cfd186d3d91708cc65127",
+      "path": "data/raw/sbir/award-export/2026-09-17/award_data.csv",
+      "pinned": true,
+      "retrieval_manifest": "studies/sba-annual-report-tables/award-export-2026-09-17.meta.json",
+      "retrieved_at": "2026-09-17T01:32:00+00:00",
+      "rows": 219590,
+      "sha256": "aed146eab56f370c9f3fe7f562475e3eedfc61cca2eba112c830fac6f73bf38a",
+      "source_url": "https://data.www.sbir.gov/mod_awarddatapublic/award_data.csv?versionId=Jm_ZxEbD5MStDhkSNjahwgKY8QAYoJlm"
+    },
+    "published_tables": {
+      "awards_by_state_fy20.csv": "0c8465c210f122a75b42b5afef147f688e73cec6a82a230f0d33f377def3403c",
+      "awards_by_state_fy21.csv": "cb43a8ec5de2b70a97f240f329a3a19a749b0f85910b5229593a5267dc1c1cde",
+      "awards_by_state_fy22.csv": "64533444bb4b6aa5468c35d5649bc0256d412592f7a46893549b951c61d07649"
+    }
+  },
+  "published_identity_check": {
+    "allowance_usd": 1,
+    "by_identity": {
+      "all_dollars": 22,
+      "sbir_dollars": 15,
+      "sttr_dollars": 1
+    },
+    "capture_defects": 0,
+    "classified_rounding": 38,
+    "violations": 38
+  },
+  "study_id": "sba-annual-report-tables",
+  "tolerances": {
+    "cell_floor_rows": 6,
+    "cell_relative_fraction": 0.2,
+    "total_count_band_fraction": 0.03,
+    "total_count_one_sided": true
+  },
+  "verdict": {
+    "cells_outside_tolerance": 0,
+    "pipeline_defect_cells": 0,
+    "published_sample_outcome": "blocked",
+    "structural_check_passed": true,
+    "totals_within_tolerance": true
+  },
+  "years": [
+    {
+      "cells": 212,
+      "cells_exact": 91,
+      "cells_outside_tolerance": 0,
+      "cells_over": 77,
+      "cells_under": 44,
+      "classification_counts": {
+        "definition_mismatch": 0,
+        "exact": 31,
+        "pipeline_defect": 0,
+        "revised_upstream": 181,
+        "rounding": 0
+      },
+      "deficit_rows": 97,
+      "displacement_floor": 97,
+      "dollar_delta": 72816937,
+      "dollar_delta_fraction": 0.018748292516004357,
+      "published_dollars": 3883923666,
+      "published_total": 7136,
+      "recomputed_dollars": 3956740603,
+      "recomputed_total": 7315,
+      "report_year": 2020,
+      "surplus_rows": 276,
+      "total_band": 214,
+      "total_delta": 179,
+      "total_delta_fraction": 0.02508408071748879,
+      "total_within_tolerance": true
+    },
+    {
+      "cells": 212,
+      "cells_exact": 88,
+      "cells_outside_tolerance": 0,
+      "cells_over": 69,
+      "cells_under": 55,
+      "classification_counts": {
+        "definition_mismatch": 0,
+        "exact": 32,
+        "pipeline_defect": 0,
+        "revised_upstream": 180,
+        "rounding": 0
+      },
+      "deficit_rows": 88,
+      "displacement_floor": 88,
+      "dollar_delta": -51112560,
+      "dollar_delta_fraction": -0.013143620660767373,
+      "published_dollars": 3888773217,
+      "published_total": 6783,
+      "recomputed_dollars": 3837660657,
+      "recomputed_total": 6881,
+      "report_year": 2021,
+      "surplus_rows": 186,
+      "total_band": 203,
+      "total_delta": 98,
+      "total_delta_fraction": 0.014447884416924664,
+      "total_within_tolerance": true
+    },
+    {
+      "cells": 208,
+      "cells_exact": 97,
+      "cells_outside_tolerance": 0,
+      "cells_over": 62,
+      "cells_under": 49,
+      "classification_counts": {
+        "definition_mismatch": 0,
+        "exact": 35,
+        "pipeline_defect": 0,
+        "revised_upstream": 173,
+        "rounding": 0
+      },
+      "deficit_rows": 83,
+      "displacement_floor": 83,
+      "dollar_delta": 58540927,
+      "dollar_delta_fraction": 0.013217280446494862,
+      "published_dollars": 4429120441,
+      "published_total": 6583,
+      "recomputed_dollars": 4487661368,
+      "recomputed_total": 6639,
+      "report_year": 2022,
+      "surplus_rows": 139,
+      "total_band": 197,
+      "total_delta": 56,
+      "total_delta_fraction": 0.00850675983594106,
+      "total_within_tolerance": true
+    }
+  ]
+}

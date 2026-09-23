@@ -1,0 +1,18 @@
+{
+  "access_license_note": "Public HTTPS access. No separate license statement was captured; this records access to a public administrative export, not a license grant.",
+  "award_grain": "export-row-v1",
+  "column_count": 42,
+  "operator_identity": "repository-maintainer",
+  "ordered_schema_sha256": "9f4ddf95992ccfb3a641d0f98bcf3ed591b9f3d5972cfd186d3d91708cc65127",
+  "retrieval_tool": "not-recorded-legacy-capture",
+  "retrieval_tool_version": "not-recorded",
+  "retrieved_at": "2026-09-17T01:32:00Z",
+  "row_count": 219590,
+  "schema_version": 1,
+  "sha256": "aed146eab56f370c9f3fe7f562475e3eedfc61cca2eba112c830fac6f73bf38a",
+  "size_bytes": 394636989,
+  "source_url": "https://data.www.sbir.gov/mod_awarddatapublic/award_data.csv?versionId=Jm_ZxEbD5MStDhkSNjahwgKY8QAYoJlm",
+  "upstream_date_unknown_reason": null,
+  "upstream_object_version": "Jm_ZxEbD5MStDhkSNjahwgKY8QAYoJlm",
+  "upstream_published_at": "2026-09-01T05:42:41Z"
+}

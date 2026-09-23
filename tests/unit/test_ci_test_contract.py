@@ -22,12 +22,12 @@ def test_ci_has_a_weekly_full_suite_schedule() -> None:
     assert workflow["jobs"]["test-full"]["if"] == "github.event_name != 'pull_request'"
 
 
-def test_literature_map_refresh_is_a_monday_pr_job() -> None:
+def test_literature_map_refresh_is_manual_only() -> None:
     workflow = yaml.load(
         (REPOSITORY_ROOT / ".github/workflows/literature-map.yml").read_text(encoding="utf-8"),
         Loader=yaml.BaseLoader,
     )
-    assert workflow["on"]["schedule"] == [{"cron": "17 9 * * 1"}]
+    assert set(workflow["on"]) == {"workflow_dispatch"}
     assert workflow["permissions"]["contents"] == "write"
     assert workflow["permissions"]["pull-requests"] == "write"
     run_step = next(

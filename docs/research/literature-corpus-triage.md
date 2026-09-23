@@ -25,9 +25,9 @@ stays separate from any historical extension. It contributes benchmark sources t
 
 **19 of 51 documents (616 pages) have no text layer at all** — 0 extractable
 characters per page. They are image-only scans and need page rendering plus vision extraction,
-which is a materially different job from parsing a text layer: it cannot be validated by the
-internal-identity checks that made the FY22 capture trustworthy, and every figure needs
-independent verification.
+which is a materially different job from parsing a text layer. The internal-identity checks used
+for the FY22 capture remain necessary, but they are not sufficient for image extraction: every
+figure also needs independent verification against the rendered source line.
 
 The split falls along an awkward line:
 

@@ -46,6 +46,21 @@ START_HERE_LINK = re.compile(r"\]\(#([^)]+)\)")
 EXPLICIT_ANCHOR = re.compile(r'<a\s+(?:[^>]*?\s)?id=["\']([^"\']+)["\']', re.I)
 REFUSAL_STATUS = re.compile(r"\bnot\s+(?:computable|estimable)\b", re.IGNORECASE)
 
+# Sections a study lists but the inventory does not link back, predating the
+# discoverability check. A burndown list, not an exemption: an entry that no
+# longer violates is itself reported, so the list can only shrink. Every entry
+# needs a non-blank reason, so an exemption cannot be added without saying why.
+DISCOVERABILITY_ALLOWLIST: dict[tuple[str, str], str] = {
+    ("ma-discovery-recall", "A4"): "predates this check; no A4 bullet names the recall study",
+    ("ma-discovery-recall", "F2"): "predates this check; no F2 bullet names the recall study",
+    ("transition-scoring", "B2"): "predates this check; B2 describes the scorer without linking it",
+    ("transition-scoring", "B3"): "predates this check; B3 describes the scorer without linking it",
+    (
+        "sbir-ma-dated-signal-study",
+        "F1",
+    ): "predates this check; no F1 bullet names the dated-signal study",
+}
+
 # Only the past-participle rank word counts. ``validates`` is the ordinary verb
 # ("the review validates the cohort component") and is not a rank claim.
 RANK_PATTERNS: tuple[tuple[str, re.Pattern[str]], ...] = (
@@ -185,6 +200,110 @@ def collect_status_claims(markdown: str) -> list[StatusClaim]:
                 )
             )
     return claims
+
+
+def _section_spans(markdown: str) -> dict[str, tuple[int, int]]:
+    """First and last line number of each ``### <SECTION>`` block."""
+    lines = markdown.splitlines()
+    starts: list[tuple[int, str]] = []
+    for index, line in enumerate(lines, start=1):
+        match = SECTION_HEADING.match(line)
+        if match:
+            starts.append((index, match.group(2).upper()))
+    spans: dict[str, tuple[int, int]] = {}
+    for position, (line_number, section) in enumerate(starts):
+        end = starts[position + 1][0] - 1 if position + 1 < len(starts) else len(lines)
+        # A section ID can head more than one block; widen to cover them all.
+        first, last = spans.get(section, (line_number, end))
+        spans[section] = (min(first, line_number), max(last, end))
+    return spans
+
+
+def validate_study_discoverability(
+    markdown: str,
+    studies: dict[str, set[str]],
+    *,
+    path: str,
+) -> list[StatusViolation]:
+    """Require a section a study lists to link back to that study.
+
+    ``load_question_study_ranks`` reads the inventory-to-study direction: a
+    reserved rank needs a manifest. This is the other direction. A manifest
+    that lists ``F3`` is claiming the inventory routes a reader from ``### F3``
+    to it, and nothing checked that the link exists — so a study could declare
+    a section it was unreachable from.
+    """
+
+    spans = _section_spans(markdown)
+    lines = markdown.splitlines()
+    violations: list[StatusViolation] = [
+        StatusViolation(
+            path=path,
+            line_number=1,
+            message=f"discoverability allowlist entry {entry} has no reason; state why",
+        )
+        for entry, reason in sorted(DISCOVERABILITY_ALLOWLIST.items())
+        if not reason.strip()
+    ]
+    still_violating: set[tuple[str, str]] = set()
+    for section in sorted(studies):
+        span = spans.get(section)
+        if span is None:
+            violations.append(
+                StatusViolation(
+                    path=path,
+                    line_number=1,
+                    message=(
+                        f"{', '.join(sorted(studies[section]))} lists {section}, but the "
+                        f"inventory has no ### {section} section"
+                    ),
+                )
+            )
+            continue
+        first, last = span
+        body = "\n".join(lines[first - 1 : last])
+        for study_id in sorted(studies[section]):
+            if f"studies/{study_id}/" not in body:
+                if (study_id, section) in DISCOVERABILITY_ALLOWLIST:
+                    still_violating.add((study_id, section))
+                    continue
+                violations.append(
+                    StatusViolation(
+                        path=path,
+                        line_number=first,
+                        message=(
+                            f"{study_id} lists {section} in research_questions, but "
+                            f"### {section} does not link studies/{study_id}/; add the "
+                            f"link or drop {section} from the manifest"
+                        ),
+                    )
+                )
+    violations.extend(
+        StatusViolation(
+            path=path,
+            line_number=1,
+            message=(
+                f"stale allowlist entry ({reason}): {entry[0]} now reaches {entry[1]}; "
+                "remove it from DISCOVERABILITY_ALLOWLIST"
+            ),
+        )
+        for entry, reason in sorted(DISCOVERABILITY_ALLOWLIST.items())
+        if entry not in still_violating
+    )
+    return violations
+
+
+def load_question_study_ids(*, repository_root: Path = REPOSITORY_ROOT) -> dict[str, set[str]]:
+    """Map each study-listed section ID to the study IDs that list it."""
+
+    listed: dict[str, set[str]] = {}
+    for path in sorted((repository_root / "studies").glob("*/study.yaml")):
+        manifest = load_study_manifest(path)
+        if manifest.evidence_status is EvidenceStatus.RETIRED:
+            continue
+        for question in manifest.research_questions:
+            listed.setdefault(question.strip().upper(), set()).add(manifest.study_id)
+    return listed
 
 
 def load_question_study_ranks(
@@ -402,6 +521,7 @@ def validate_repository(*, repository_root: Path = REPOSITORY_ROOT) -> list[Stat
     try:
         markdown = inventory.read_text(encoding="utf-8")
         ranks = load_question_study_ranks(repository_root=repository_root)
+        listed = load_question_study_ids(repository_root=repository_root)
     except (OSError, ValueError, ConfigurationError) as exc:
         return [
             StatusViolation(
@@ -413,6 +533,7 @@ def validate_repository(*, repository_root: Path = REPOSITORY_ROOT) -> list[Stat
     return [
         *validate_inventory(markdown, ranks, path=INVENTORY_PATH.as_posix()),
         *validate_start_here(markdown, path=INVENTORY_PATH.as_posix()),
+        *validate_study_discoverability(markdown, listed, path=INVENTORY_PATH.as_posix()),
     ]
 
 
