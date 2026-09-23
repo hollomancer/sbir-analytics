@@ -8,6 +8,11 @@ are deployment details supplied locally; they are not part of this contract.
 
 ## Live instance on the server host
 
+> **Before you deploy v0.19.0:** complete the
+> [Neo4j retirement cutover](neo4j-retirement-cutover.md) first.
+> Take the final graph dump on `v0.18.0`.
+> Version `v0.19.0` removes `make server-backup` and the graph Serve route.
+
 The designated server host runs the live SBIR Analytics deployment. Before any
 operation, read `docs/deployment/server-status.local.md` on that host when it
 exists. It records the actual checkout and storage paths for that installation.
@@ -98,8 +103,13 @@ SERVER_LOGS_DIR=/path/to/persistent-storage/sbir-analytics/logs
 SERVER_ARTIFACTS_DIR=/path/to/persistent-storage/sbir-analytics/artifacts
 ```
 
-> Persistent storage is **not a backup by itself.** Back up governed data and
-> Dagster metadata to a second failure domain.
+> Persistent storage is **not a backup by itself.** The repository provides no
+> backup tooling. Copy these to a second failure domain:
+>
+> - The four `SERVER_DATA_DIR`, `SERVER_REPORTS_DIR`, `SERVER_LOGS_DIR`, and
+>   `SERVER_ARTIFACTS_DIR` directories.
+> - The `dagster_home` named volume of the `sbir-server` Compose project.
+>   It holds Dagster run storage and schedule ticks.
 
 ### 2. Start at boot
 

@@ -8,6 +8,7 @@ schema, frozen-artifact hashes, and implementation entry points.
 
 `studies/releases.yaml` binds a completed study to an annotated release tag, commit, and Git tree.
 CI validates that tagged tree instead of applying the moving repository environment to the release.
+For a released study, CI checks the implementation files in the tagged release tree, not their HEAD copies.
 It also requires the current `studies/<study-id>/` subtree to have the tagged paths and bytes.
 Checksum errata must name one exact path and both expected hashes. Unused or changed errata fail.
 

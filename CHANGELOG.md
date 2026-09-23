@@ -17,6 +17,20 @@ version.
 - Retired the Neo4j service and the `sbir-graph` workspace package. Governed
   Parquet and DuckDB artifacts remain the analytical authority. The annotated
   `v0.18.0` tag is the last supported graph implementation.
+- Removed the public Python names `Neo4jConfig`, `ModernBertNeo4jConfig`,
+  `persist_to_neo4j`, `PatentAnalysisAnalyzer`, `ErrorCode.NEO4J_CONNECTION_FAILED`,
+  and `ErrorCode.NEO4J_QUERY_FAILED`.
+- Removed the Make targets `neo4j-up`, `neo4j-down`, `neo4j-reset`,
+  `neo4j-check`, `db-shell`, and `server-backup`. The server Tailscale helper
+  no longer manages the graph Bolt route. Complete the
+  [Neo4j retirement cutover](https://github.com/hollomancer/sbir-analytics/blob/v0.19.0/docs/deployment/neo4j-retirement-cutover.md)
+  before you deploy this release.
+
+### Added
+
+- Added the `check_retired_neo4j_references.py` guard to `make lint-boundaries`,
+  `make docs-check`, and the CI guard step. It rejects operational references to
+  the retired graph service.
 
 ### Changed
 
@@ -29,12 +43,22 @@ version.
   changing frozen study bytes. It also records the immutable tag's one exact
   checksum erratum: the squash-merged `Makefile` contains the already-merged
   Jev targets while the detached inventory records the reviewed branch hash.
+- Released-study validation no longer re-hashes a released study's frozen
+  artifacts outside its study folder at HEAD. It needs a full clone with tags,
+  so the CI jobs that run it now check out with `fetch-depth: 0`.
+- Renamed the CI job "Neo4j Integration Tests" to "Service-free Integration
+  Tests".
+- Re-froze the `sttr-spinout-linkage` design as Revision 2 with a new
+  SHA-256 (`5ffb2c28…`). The amendment removes graph-projection wording and
+  does not change any criteria.
 
 ### Removed
 
 - Removed graph-only loaders, migrations, queries, scripts, configuration,
   tests, and CI actions. No host data, Docker volume, or historical dump is
   deleted by this change.
+- Removed the `neo4j` and `requires_neo4j` pytest markers and the `NEO4J_*`
+  keys from `.env.example` and `.env.server.example`.
 
 ## [0.18.0] — 2026-09-22
 
