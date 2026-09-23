@@ -28,6 +28,9 @@ version.
 
 ### Added
 
+- Added `CITATION.cff` describing the software at the `v0.19.0` tag. It
+  declares no preferred research citation, because no study has its claims
+  approved as evidence.
 - Added the `check_retired_neo4j_references.py` guard to `make lint-boundaries`,
   `make docs-check`, and the CI guard step. It rejects operational references to
   the retired graph service.
