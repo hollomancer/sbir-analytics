@@ -5,10 +5,18 @@
 > **Status:** Gated backlog — zero cost/citation/spillover analytical-layer
 > implementation as of July 2026.
 > Anchors inventory questions **C3a–c** in [docs/research-questions.md](../../docs/research-questions.md).
-> Target benchmarks: NIH ~$1.5M marginal cost per patent; Myers and Lanahan AER 2022 ~3× DOE
-> spillover, ~60% U.S.-retained [L9][L5]. The Myers-Lanahan result is not a citation ratio.
+> Target benchmark: **NIH ~$1.5M marginal cost per patent** [L3][L6]. That is the only
+> benchmark this spec's outputs may be compared against.
+>
+> **Not benchmarks for this spec.** Myers and Lanahan AER 2022 (~3× DOE spillover, ~60%
+> U.S.-retained) [L9] estimates a different quantity by a different design, and this spec's
+> descriptive citation-network measure is not an estimate of it. Replicating it belongs to
+> roadmap Order 7, which has no spec yet and needs one at the `evidence` epistemic tier;
+> see [the replication roadmap](../../docs/research/literature-replication-roadmap.md).
 
-**Research question anchor:** C3 — marginal cost per patent and spillover multiplier (inferential tier)
+**Research question anchor:** C3 — marginal cost per patent and spillover multiplier (inferential
+tier). This spec delivers the **marginal-cost** half of C3 plus a separately named descriptive
+citation measure. The spillover-multiplier half is not in scope here; it is roadmap Order 7.
 **Answers for:** R&D policy researchers, OSTP analysts, agency R&D directors
 **Complexity tier:** Inferential (Tier 3)
 
@@ -87,8 +95,8 @@ Myers-Lanahan spillover estimand.
    THE System SHALL NOT compare it with the Myers-Lanahan 3× or 60% estimates.
 5. WHEN the citation data has a lag window (USPTO citation records typically lag
    grant date by 12–24 months), THE System SHALL document the citation-window cutoff
-   used and its effect on the multiplier, so the figure is not compared naively to
-   studies using different windows.
+   used and its effect on the citation-network diffusion measure, so the figure is not
+   compared naively to studies using different windows.
 
 ---
 
@@ -105,9 +113,12 @@ that estimates the same quantity. I want incompatible estimands reported separat
 2. WHEN the marginal-cost figure diverges from NIH's ~$1.5M by more than 50%, THE
    System SHALL identify at least one methodology difference (linkage coverage, award
    denominator scope, patent-type filter) that accounts for the gap.
-3. WHEN replicating Myers and Lanahan [L9], THE System SHALL use the authors' state-policy
-   and technology-similarity design. THE System SHALL NOT treat citation-ratio differences
-   as replication error.
+3. THE System SHALL NOT treat citation-network differences from Myers and Lanahan [L9] as
+   replication error, because this spec does not replicate that paper. Replication requires
+   the authors' state-policy and technology-similarity design, which is causal inference and
+   sits above this spec's `pipelines` target tier. It is roadmap Order 7 work and is **not** an
+   acceptance criterion here. It needs its own spec at the `evidence` epistemic tier, and no
+   such spec exists yet in [the status registry](../../specs/status.md).
 4. WHEN emitting the reconciliation, THE System SHALL produce both a JSON artifact
    and a markdown summary to `reports/patent-spillover/reconciliation/`.
 

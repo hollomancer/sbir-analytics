@@ -807,10 +807,20 @@ spending produce measurable new knowledge?*
   Compare against the NIH/NSF figures in NASEM reviews.
   *Deps: ER, PATLINK · Refs: [L3], [L4], [L6] · Spec: [../specs/patent-cost-spillover/](../specs/patent-cost-spillover/)*
 
-- **Spillover multiplier**
-  What is the spillover multiplier — non-SBIR patent citations to SBIR patents?
-  **Target:** reproduce Myers & Lanahan's ~3× for DOE, with ~60% U.S.-retained.
-  *Deps: PATLINK · Refs: [L9], [L5]*
+- **Citation-network diffusion**
+  How many inbound non-SBIR citations are observed per SBIR-linked patent? This is a descriptive
+  network measure, not the Myers-Lanahan spillover estimand, and it must not be compared with that
+  paper's ~3× or ~60% estimates.
+  *Deps: PATLINK · Spec: [../specs/patent-cost-spillover/](../specs/patent-cost-spillover/)*
+
+- **Myers-Lanahan DOE spillovers**
+  What spillover effect is identified from DOE funding, using the paper's state matching-policy
+  variation and technology-space similarity design?
+  **Target:** reproduce Myers & Lanahan's ~3× estimate and ~60% U.S.-retained result in roadmap
+  Order 7. This inferential replication has no implementation spec yet; a citable result needs a
+  spec at the `evidence` epistemic tier.
+  *Deps: full patent universe, DOE opportunity text, state policy data · Refs: [L9], [L5] · Plan:
+  [literature-replication-roadmap.md](research/literature-replication-roadmap.md#7-myers-lanahan-doe-spillovers)*
 
 - **Cost and spillover variation**
   How do patent cost and spillover vary by technology area, firm size, and award

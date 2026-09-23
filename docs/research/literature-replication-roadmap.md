@@ -1,7 +1,7 @@
 ---
 Type: Research plan
 Maintainer: Conrad Hollomon
-Last-Reviewed: 2026-09-14
+Last-Reviewed: 2026-09-23
 Status: proposed
 ---
 
@@ -60,13 +60,13 @@ a named spec is active, gated, or limited to a lower tier.
 
 | Order | Study or benchmark | Questions | Why it is in this position | Start gate |
 | ---: | --- | --- | --- | --- |
-| 1 | SBA annual-report tables [L18] | A1, D1 | Direct grouping of public award records | Exact table definitions and report-year source files captured |
-| 2 | CSIS entrant and graduation analysis [L32], with GAO concentration benchmarks [L14] | A1 | Current code already computes HHI, top shares, geography, and entrants | Published cohort and classification rules recovered |
+| 1 | SBA annual-report tables [L18] | A1, D1 | Direct grouping of public award records | Report-year source files captured **and** all nine required table definitions accounted for — including the four absent from every report year, which need documented project decisions, not assumptions in the implementation |
+| 2 | CSIS entrant and graduation analysis [L32], with GAO concentration benchmarks [L14] | A1 ([L14] concentration), A2 ([L32] entrants and graduation) | Current code already computes HHI, top shares, geography, and entrants | Published cohort and classification rules recovered |
 | 3 | NASEM DoD follow-on multiplier [L1], with [L2] as the earlier benchmark | A3, D3 | The core multiplier asset already exists | Recover the NASEM rules. The validation spec remains active at `exploratory`; check the [registry](../../specs/status.md). |
 | 4 | NASEM agency patent-cost tables [L3-L6] | C2, C3 | Award-patent linkage exists; no citation network is required | Published patent and award denominator definitions recovered |
 | 5 | Agency transition and commercialization tables [L1-L4, L6, L12, L47] | A2, B2, B3 | Transition and Phase III census machinery exists, but label validity is unresolved | Recover the outcome data. Hand-label validation remains gated; check the [registry](../../specs/status.md). |
 | 6 | Repeat-awardee economic contributions [L41] | B, C, D | Award, patent, and procurement channels exist; several published outcomes do not | Every published outcome source and coding protocol is available |
-| 7 | DOE knowledge spillovers [L9] | C3 | The exact design needs new text, policy, patent-universe, and econometric inputs | Obtain the AEA package and licensed inputs. The implementation spec remains gated; check the [registry](../../specs/status.md). |
+| 7 | DOE knowledge spillovers [L9] | C3 | The exact design needs new text, policy, patent-universe, and econometric inputs | Obtain the AEA package and licensed inputs. No implementation spec exists yet; check the [registry](../../specs/status.md). |
 | 8 | Restricted-data causal and structural studies [L10, L11, L34, L36, L40, L43, L44] | A, B, D, E, F | Core treatment, control, or outcome records are unavailable in the current repository | Data-use approval and the original replication package are in hand |
 
 ### 1. SBA annual-report tables
@@ -168,9 +168,10 @@ the exact replication blocked. Do not replace the missing outcome with an availa
 
 ### 7. Myers-Lanahan DOE spillovers
 
-The registered `patent-cost-spillover` spec now separates citation-network measures from the
-Myers-Lanahan estimand. Do not implement either path until the registry gate opens. The paper uses
-state matching-policy variation and technology-space similarity.
+The registered `patent-cost-spillover` spec covers only the descriptive citation-network measure
+and states that it does not estimate the Myers-Lanahan effect. No implementation spec exists yet
+for this replication. Do not implement it until one is written and the registry lists it as open.
+The paper uses state matching-policy variation and technology-space similarity.
 
 - Run the authors' AEA replication package against the original inputs as a baseline.
 - Add versioned DOE funding-opportunity text and state matching-policy timing and amount data.
@@ -228,8 +229,12 @@ and live-upstream reproduction checks. The remaining gaps are:
    outcomes.
 8. **Independent labels.** Entity lineage and Phase III validation remain too limited for citable
    transition claims.
-9. **Question-to-literature links.** Most additions in [L34-L48] remain only in the bibliography.
-   [L36] and [L38] are already linked to the STTR spinout question.
+9. **Question-to-literature links.** Thirteen of the fifteen additions in [L34-L48] are not
+   attached to any question in `research-questions.md`: [L34], [L35], [L37], [L39], [L40], [L41],
+   [L42], [L43], [L44], [L45], [L46], [L47], [L48]. Only [L36] and [L38] are, on the STTR
+   spinout-linkage question. This roadmap uses [L34] in Order 8 above. Measured against the
+   current `research-questions.md` question text; the bibliography and maintenance note are
+   excluded.
 
 ## First implementation tranche
 
@@ -237,7 +242,9 @@ Start with the shared registry and the minimum retrieval-manifest work needed by
 build a general research framework beyond those three studies.
 
 1. Add replication registry entries and frozen method notes for [L18], [L32], and [L1].
-2. Stage and verify the historical source cuts for their published periods.
+2. Verify the [L18] report-year files already captured and inventoried in the
+   [corpus triage](literature-corpus-triage.md) against their recorded SHA-256 values. [L32] and
+   [L1] are not in that corpus and still need staging for their published periods.
 3. Reproduce the SBA tables and CSIS series.
 4. Retier the multiplier validation spec before implementing or running its design.
 5. Create one study manifest per replication at `exploratory`. Promote it to `reproducible` when

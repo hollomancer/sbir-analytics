@@ -12,7 +12,7 @@ The existing USPTO pipeline ingests patent grant data but **does not yet ingest 
 citation pairs** (citing_patent → cited_patent). The `PatentCitation` model exists in the
 graph schema but citations are not yet loaded as graph relationships
 (`docs/research-questions.md` A2 note). Citation ingestion is a hard prerequisite for
-Requirement 2 (spillover) and must be completed before Phase 2 of this spec begins.
+Requirement 2 (citation-network diffusion) and must be completed before Phase 2 of this spec begins.
 Phase 1 (marginal cost) has no citation dependency and can proceed independently.
 
 ### Data Flow
@@ -28,14 +28,14 @@ PatentCostCalculator
     ←── USPTO citation pairs (precondition ingestion)
 CitationNetworkBuilder
     ↓ directed citation graph (SBIR-labeled nodes)
-SpilloverCalculator
-    ↓ inbound/outbound multipliers per agency
+CitationDiffusionCalculator
+    ↓ inbound/outbound citation-network measures per agency
     ↓
-NASEMReconciler
+BenchmarkReconciler
     ↓
 reports/patent-spillover/
     ├── cost_by_agency.json
-    ├── spillover_by_agency.json
+    ├── citation_diffusion_by_agency.json
     ├── stratified/
     │   ├── by_cet_area.json
     │   ├── by_firm_size.json
@@ -56,19 +56,19 @@ figure.
 **`CitationNetworkBuilder`** (`citation_network.py`)
 Inputs: USPTO citing → cited pairs (after precondition ingestion), patent-award linkage.
 Outputs: directed citation graph with SBIR/non-SBIR node labels, serialized as an
-adjacency list for SpilloverCalculator (not loaded into a database service in this spec — separate
-concern).
+adjacency list for CitationDiffusionCalculator (not loaded into a database service in this spec —
+separate concern).
 
-**`SpilloverCalculator`**
+**`CitationDiffusionCalculator`**
 Inputs: citation graph from CitationNetworkBuilder.
-Outputs: inbound spillover multiplier (non-SBIR → SBIR citations / SBIR patent count),
-U.S.-retained fraction, per-agency and per-CET breakdowns. Documents citation-window
-cutoff in every output artifact.
+Outputs: inbound non-SBIR citations per SBIR-linked patent plus separately named inbound and
+outbound citation counts, with per-agency and per-CET breakdowns. Documents the citation-window
+cutoff in every output artifact. These descriptive outputs are not Myers-Lanahan estimates.
 
-**`NASEMReconciler`**
-Stores benchmark constants (NIH ~$1.5M, DOE ~3×, ~60% U.S.-retained).
-Produces structured reconciliation comparing pipeline output to each benchmark, with
-methodology-difference attribution. Emits JSON + markdown.
+**`BenchmarkReconciler`**
+Stores the NIH marginal-cost benchmark (~$1.5M) and produces a structured reconciliation with
+methodology-difference attribution. It labels citation-network diffusion separately and does not
+compare it with the Myers-Lanahan ~3× or ~60% estimates. Emits JSON + markdown.
 
 ### Output Format
 
