@@ -297,7 +297,7 @@ def test_promoted_manifest_loads_with_validation_design(
             "review_path": "reviews/approval.md",
             "review_sha256": "b" * 64,
             "claim_boundary_sha256": claim_boundary_sha256(
-                raw["permitted_claims"], raw["limitations"]
+                raw["estimand"], raw["permitted_claims"], raw["limitations"]
             ),
             "approved_on": "2026-09-23",
         }
@@ -322,7 +322,7 @@ def _promoted(status: EvidenceStatus) -> dict:
             "review_path": "reviews/approval.md",
             "review_sha256": "b" * 64,
             "claim_boundary_sha256": claim_boundary_sha256(
-                raw["permitted_claims"], raw["limitations"]
+                raw["estimand"], raw["permitted_claims"], raw["limitations"]
             ),
             "approved_on": "2026-09-23",
         }
@@ -477,15 +477,22 @@ def test_approved_status_requires_one_pinned_claim_review(tmp_path: Path) -> Non
         lambda raw: raw["permitted_claims"].__setitem__(0, raw["permitted_claims"][0] + " More."),
         lambda raw: raw["limitations"].pop(),
         lambda raw: raw["limitations"].reverse(),
+        lambda raw: raw.__setitem__("estimand", raw["estimand"] + " Broadened."),
     ],
-    ids=["claim-added", "claim-reworded", "limitation-removed", "limitations-reordered"],
+    ids=[
+        "claim-added",
+        "claim-reworded",
+        "limitation-removed",
+        "limitations-reordered",
+        "estimand-changed",
+    ],
 )
 def test_approval_breaks_when_claim_boundary_changes(tmp_path: Path, edit) -> None:
     """A pinned review approves one claim boundary, not whatever the manifest says later."""
     raw = _promoted(EvidenceStatus.APPROVED)
     raw["limitations"] = ["First limitation.", "Second limitation."]
     raw["claim_approval"]["claim_boundary_sha256"] = claim_boundary_sha256(
-        raw["permitted_claims"], raw["limitations"]
+        raw["estimand"], raw["permitted_claims"], raw["limitations"]
     )
     path = _write(tmp_path, "example-study/study.yaml", yaml.safe_dump(raw))
     assert load_study_manifest(path).evidence_status is EvidenceStatus.APPROVED
@@ -499,7 +506,34 @@ def test_approval_breaks_when_claim_boundary_changes(tmp_path: Path, edit) -> No
 def test_claim_boundary_digest_separates_claims_from_limitations() -> None:
     """Moving a sentence from limitations into claims widens the claim, so it must differ."""
     sentence = "The comparison covers FY2020 only."
-    assert claim_boundary_sha256([sentence], []) != claim_boundary_sha256([], [sentence])
+    assert claim_boundary_sha256("e", [sentence], []) != claim_boundary_sha256("e", [], [sentence])
+
+
+def test_claim_boundary_digest_ignores_unicode_normalization_form() -> None:
+    composed, decomposed = "caf\u00e9", "cafe\u0301"
+    assert composed != decomposed
+    assert claim_boundary_sha256(composed, [], []) == claim_boundary_sha256(decomposed, [], [])
+
+
+@pytest.mark.parametrize("status", [EvidenceStatus.VALIDATED, EvidenceStatus.REPRODUCIBLE])
+def test_claim_approval_is_rejected_below_approved(tmp_path: Path, status) -> None:
+    """A leftover approval block on an unapproved study reads as approval that does not exist."""
+    raw = _promoted(EvidenceStatus.APPROVED)
+    raw["evidence_status"] = status.value
+    path = _write(tmp_path, "example-study/study.yaml", yaml.safe_dump(raw))
+    with pytest.raises(ValidationError, match="only allowed at evidence_status 'approved'"):
+        load_study_manifest(path)
+
+
+def test_claim_approval_review_cannot_be_the_validation_design(tmp_path: Path) -> None:
+    """Pinning the design file as the review satisfies the hash check without any review."""
+    raw = _promoted(EvidenceStatus.APPROVED)
+    design_path = raw["validation_result"]["design_path"]
+    raw["claim_approval"]["review_path"] = design_path
+    raw["claim_approval"]["review_sha256"] = raw["validation_result"]["design_sha256"]
+    path = _write(tmp_path, "example-study/study.yaml", yaml.safe_dump(raw))
+    with pytest.raises(ValidationError, match="is a validation input"):
+        load_study_manifest(path)
 
 
 def test_count_threshold_requires_a_frozen_population() -> None:

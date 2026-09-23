@@ -2,6 +2,7 @@
 
 import hashlib
 import json
+import unicodedata
 from datetime import date
 from enum import StrEnum
 from pathlib import Path
@@ -82,14 +83,25 @@ class MaterializationGate(BaseModel):
         return self
 
 
-def claim_boundary_sha256(permitted_claims: list[str], limitations: list[str]) -> str:
+def claim_boundary_sha256(
+    estimand: str, permitted_claims: list[str], limitations: list[str]
+) -> str:
     """Return the SHA-256 of a manifest's claim boundary in canonical JSON form.
 
-    The digest covers ``permitted_claims`` and ``limitations`` in their listed
-    order, so any edit, addition, removal, or reordering changes it.
+    The digest covers ``estimand``, ``permitted_claims``, and ``limitations``,
+    with lists in their listed order, so any edit, addition, removal, or
+    reordering changes it. Text is NFC-normalized first, so two Unicode
+    spellings of the same characters give the same digest.
     """
 
-    boundary = {"limitations": limitations, "permitted_claims": permitted_claims}
+    def nfc(text: str) -> str:
+        return unicodedata.normalize("NFC", text)
+
+    boundary = {
+        "estimand": nfc(estimand),
+        "limitations": [nfc(item) for item in limitations],
+        "permitted_claims": [nfc(item) for item in permitted_claims],
+    }
     canonical = json.dumps(boundary, ensure_ascii=False, separators=(",", ":"), sort_keys=True)
     return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
 
@@ -97,9 +109,9 @@ def claim_boundary_sha256(permitted_claims: list[str], limitations: list[str]) -
 class ClaimApproval(BaseModel):
     """One final, pinned review approving the manifest's claim boundary.
 
-    ``claim_boundary_sha256`` binds the approval to the exact ``permitted_claims``
-    and ``limitations`` that were reviewed. A later edit to either field breaks
-    the approval until a new review records the new digest.
+    ``claim_boundary_sha256`` binds the approval to the exact ``estimand``,
+    ``permitted_claims``, and ``limitations`` that were reviewed. A later edit to
+    any of them breaks the approval until a new review records the new digest.
     """
 
     model_config = ConfigDict(extra="forbid")
@@ -427,9 +439,14 @@ class StudyManifest(BaseModel):
     def approved_claim_has_pinned_review(self) -> "StudyManifest":
         """Approval is one auditable decision, not a stack of release ceremonies."""
 
-        if self.evidence_status is not EvidenceStatus.APPROVED:
-            return self
         approval = self.claim_approval
+        if self.evidence_status is not EvidenceStatus.APPROVED:
+            if approval is not None:
+                raise ValueError(
+                    f"claim_approval is only allowed at evidence_status 'approved', not "
+                    f"'{self.evidence_status.value}'"
+                )
+            return self
         if approval is None:
             raise ValueError("evidence_status 'approved' requires a claim_approval block")
         frozen_by_path = {artifact.path: artifact.sha256 for artifact in self.frozen_artifacts}
@@ -444,12 +461,21 @@ class StudyManifest(BaseModel):
                 "claim_approval.review_sha256 does not match the frozen hash of "
                 f"{approval.review_path!r}"
             )
+        study_inputs = {self.validation_result.design_path} if self.validation_result else set()
+        if self.validation_design and self.validation_design.frozen_population_artifact:
+            study_inputs.add(self.validation_design.frozen_population_artifact)
+        if approval.review_path in study_inputs:
+            raise ValueError(
+                f"claim_approval.review_path {approval.review_path!r} is a validation input, "
+                "not a separate approval review"
+            )
         if approval.claim_boundary_sha256 != claim_boundary_sha256(
-            self.permitted_claims, self.limitations
+            self.estimand, self.permitted_claims, self.limitations
         ):
             raise ValueError(
                 "claim_approval.claim_boundary_sha256 does not match the manifest's "
-                "permitted_claims and limitations; the approved claim boundary has changed"
+                "estimand, permitted_claims, and limitations; the approved claim boundary "
+                "has changed"
             )
         result = self.validation_result
         if result is not None and approval.approved_on < result.evaluated_on:

@@ -643,7 +643,7 @@ def _materialization_inputs(
             "review_path": approval_pin.reference,
             "review_sha256": approval_pin.sha256,
             "claim_boundary_sha256": claim_boundary_sha256(
-                manifest["permitted_claims"], manifest["limitations"]
+                manifest["estimand"], manifest["permitted_claims"], manifest["limitations"]
             ),
             "approved_on": "2026-09-23",
         }

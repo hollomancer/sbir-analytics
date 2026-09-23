@@ -82,16 +82,18 @@ The status vocabulary is intentionally small:
 - `approved`: `validated`, with `threshold_met: true`, plus one final pinned
   `claim_approval` review authorizing the claims listed in its manifest. The
   review path and SHA-256 must also appear in `frozen_artifacts`.
-  `claim_boundary_sha256` binds the approval to the exact `permitted_claims` and
-  `limitations` that were reviewed; compute it with
-  `sbir_etl.quality.study_manifest.claim_boundary_sha256`. A later edit to
-  either field fails validation until a new review records the new digest:
+  `claim_boundary_sha256` binds the approval to the exact `estimand`,
+  `permitted_claims`, and `limitations` that were reviewed; compute it with
+  `sbir_etl.quality.study_manifest.claim_boundary_sha256`. A later edit to any
+  of them fails validation until a new review records the new digest. The review
+  must be its own file, not the validation design or population. A
+  `claim_approval` block is rejected below `approved`:
 
   ```yaml
   claim_approval:
     review_path: studies/<id>/reviews/claim-approval.md
     review_sha256: <hash of the final approval review>
-    claim_boundary_sha256: <digest of permitted_claims and limitations>
+    claim_boundary_sha256: <digest of estimand, permitted_claims, and limitations>
     approved_on: 2026-09-23
   ```
 - `retired`: retained for provenance but superseded or no longer supported.
