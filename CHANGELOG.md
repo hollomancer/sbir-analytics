@@ -10,7 +10,7 @@ version.
 
 ## [Unreleased]
 
-## [0.19.0] — 2026-09-23
+## [0.19.0] — 2026-09-24
 
 ### Breaking
 
@@ -19,7 +19,22 @@ version.
   `v0.18.0` tag is the last supported graph implementation.
 - Removed the public Python names `Neo4jConfig`, `ModernBertNeo4jConfig`,
   `persist_to_neo4j`, `PatentAnalysisAnalyzer`, `ErrorCode.NEO4J_CONNECTION_FAILED`,
-  and `ErrorCode.NEO4J_QUERY_FAILED`.
+  and `ErrorCode.NEO4J_QUERY_FAILED`. `sbir_analytics.clients` no longer
+  re-exports `Neo4jClient`, `Neo4jConfig`, `Neo4jHealthStatus`, or
+  `Neo4jStatistics`, and `PipelineConfig` no longer has a typed `neo4j` field.
+- Removed the graph-loading Dagster assets and their groups: every `neo4j_*`
+  asset (for example `neo4j_sbir_awards`, `neo4j_company_categorization`, and
+  `neo4j_sec_edgar_enrichment`), every `loaded_*` asset (for example
+  `loaded_transitions`, `loaded_cet_areas`, and `loaded_patents`), and the
+  `neo4j_cet` and `neo4j_loading` groups. Saved asset selections that name them
+  no longer resolve.
+- Removed the `SKIP_NEO4J_LOADING` switch, the `SBIR_ETL__NEO4J__*` overrides,
+  and the legacy `loading.neo4j` configuration mapping. Stale values do not
+  cause a configuration error, and nothing reads them:
+  - `SKIP_NEO4J_LOADING` is ignored.
+  - `SBIR_ETL__NEO4J__*` values become an untyped `neo4j` extra on the config.
+  - A YAML `loading.neo4j` section stays under an untyped `loading` extra; it is
+    no longer mapped to `neo4j`.
 - Removed the Make targets `neo4j-up`, `neo4j-down`, `neo4j-reset`,
   `neo4j-check`, `db-shell`, and `server-backup`. The server Tailscale helper
   no longer manages the graph Bolt route. Complete the
