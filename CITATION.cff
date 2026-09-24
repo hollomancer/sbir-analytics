@@ -16,7 +16,7 @@ repository-code: https://github.com/hollomancer/sbir-analytics
 url: https://github.com/hollomancer/sbir-analytics
 license: MIT
 version: 0.19.0
-date-released: 2026-09-23
+date-released: 2026-09-24
 identifiers:
   - type: url
     value: https://github.com/hollomancer/sbir-analytics/releases/tag/v0.19.0

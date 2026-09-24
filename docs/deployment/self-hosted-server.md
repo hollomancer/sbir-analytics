@@ -11,7 +11,8 @@ are deployment details supplied locally; they are not part of this contract.
 > **Before you deploy v0.19.0:** complete the
 > [Neo4j retirement cutover](neo4j-retirement-cutover.md) first.
 > Take the final graph dump on `v0.18.0`.
-> Version `v0.19.0` removes `make server-backup` and the graph Serve route.
+> Version `v0.19.0` removes `make server-backup`.
+> Version `v0.19.0` cannot remove the graph Serve route.
 
 The designated server host runs the live SBIR Analytics deployment. Before any
 operation, read `docs/deployment/server-status.local.md` on that host when it
