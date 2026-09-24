@@ -33,8 +33,8 @@ Key design tenets:
                                                                        naics, patents
                                                                               │
                                                                               ▼
-                                                                       Neo4j loaders
                                                                        Dagster assets
+                                                                       study inputs
                                                                               │
                                                                               ▼
                                                                        Quality checks
@@ -99,7 +99,7 @@ imputed_sbir_awards
         │
         ├──► reports/imputation/coverage.json
         ├──► reports/imputation/backtest.json (CI gate)
-        └──► downstream enrichers + Neo4j loaders
+        └──► downstream enrichers + analytical tables
 ```
 
 ## Components
@@ -177,8 +177,8 @@ award_date_is_imputed: bool = False
 imputation: list[ImputationEntry] = Field(default_factory=list)
 ```
 
-For DuckDB/Parquet persistence the struct serializes as a nested list; for Neo4j the
-list flattens to `imputation_methods: list[str]` plus the per-field boolean flags.
+For DuckDB/Parquet persistence the struct serializes as a nested list. The per-field
+boolean flags support efficient filtering without discarding full provenance.
 
 ### 4. Method Implementations
 
@@ -405,7 +405,7 @@ def imputed_sbir_awards(
 ) -> pd.DataFrame: ...
 ```
 
-Existing downstream assets (enrichment, Neo4j load) rewire their dependency from
+Existing downstream enrichment assets rewire their dependency from
 `validated_sbir_awards` to `imputed_sbir_awards`. Quality checks run on both.
 
 ### 7. Backtest Harness
@@ -424,7 +424,7 @@ Existing downstream assets (enrichment, Neo4j load) rewire their dependency from
 |---|---|
 | `packages/sbir-ml/` (CET, transition detection) | `raw_*` by default; opt-in flag to include imputed |
 | `packages/sbir-analytics/` reporting | Effective columns + `_is_imputed` flags surfaced |
-| `packages/sbir-graph/` Neo4j loaders | Effective values; `is_imputed` flags as node properties |
+| Governed analytical tables | Effective values; `is_imputed` flags and provenance struct |
 | `sbir_etl/quality/checks.py` | Both — raw for source thresholds, effective for effective thresholds |
 
 ## Testing Strategy
@@ -433,7 +433,7 @@ Existing downstream assets (enrichment, Neo4j load) rewire their dependency from
 - **Property tests:** Raw columns byte-identical pre/post imputation; idempotency
   (running imputation twice yields identical output).
 - **Integration:** End-to-end pipeline run on a fixture bulk-download snapshot, asserting
-  Dagster assets materialize and Neo4j loaders persist `is_imputed` flags.
+  Dagster assets materialize and Parquet/DuckDB preserve `is_imputed` flags.
 - **Backtest gate in CI:** Fails the build if any method regresses.
 - **Precision benchmark:** `packages/sbir-ml/` evaluation tests re-run with imputation
   enabled to confirm ≥85% transition-scoring precision holds when ML opts in.
@@ -456,7 +456,7 @@ would close.
 | Model-based (multivariate) | MICE, missForest, k-NN | Expensive, opaque, assumes MAR. Poor fit: most SBIR missingness is MNAR (older records) and has dedicated deterministic fixes |
 | ML / representation | Denoising autoencoders, GAIN, tabular transformers | Overkill for ~6 imputable fields; opaque provenance; not justified by current gaps |
 | Embedding nearest-neighbor | TF-IDF / sentence embeddings on `award_abstract` | Useful in one spot: `naics_code` when entirely missing and abstract length > 100 chars |
-| Multiple imputation | Generate N plausible values, propagate uncertainty | Only warranted for downstream statistical inference (regression coefficients) — not for point estimates, graph properties, or reporting |
+| Multiple imputation | Generate N plausible values, propagate uncertainty | Only warranted for downstream statistical inference (regression coefficients) — not for point estimates or reporting |
 | Uncertainty-aware | Conformal prediction, bootstrap confidence | Implemented indirectly via the three-tier `ImputationEntry.confidence` field and backtest-derived tier assignments |
 
 ### Why the chosen methods win

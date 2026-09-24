@@ -22,9 +22,6 @@ concurrency:
 
 env:
   PYTHON_VERSION: "3.11"
-  NEO4J_IMAGE: "neo4j:5"
-  NEO4J_USERNAME: "neo4j"
-  NEO4J_PASSWORD: "password"  # pragma: allowlist secret
   SBIR_ETL__PIPELINE__ENVIRONMENT: test
 
 jobs:
@@ -34,6 +31,8 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
 
       - name: Setup Python and UV
         uses: ./.github/actions/setup-python-uv
@@ -60,10 +59,10 @@ jobs:
       - name: Run Ruff format check
         run: uv run python -m ruff format --check .
 
-      - name: Run MyPy on core, graph, and ML packages
-        run: uv run python -m mypy sbir_etl packages/sbir-graph/sbir_graph packages/sbir-ml/sbir_ml
+      - name: Run MyPy on core and ML packages
+        run: uv run python -m mypy sbir_etl packages/sbir-ml/sbir_ml
 
-      # Importing and validating the complete graph catches duplicate asset
+      # Importing and validating the complete definitions catches duplicate asset
       # keys, unresolved jobs, invalid partition mappings, and missing
       # resources. In-process validation takes about a second once the
       # environment is installed, so keep it on every PR instead of hiding it
@@ -90,6 +89,7 @@ jobs:
           # the similarity contract. Previously exercised only by its own unit
           # test, which caught accidents but not drift.
           uv run python scripts/ci/check_identity_boundaries.py
+          uv run python scripts/ci/check_retired_neo4j_references.py
 
       # Compose validation needs no image and takes about a second, so it
       # lives here rather than behind the docker job's build. That also means
@@ -152,6 +152,8 @@ jobs:
         shard: [1, 2, 3, 4]
     steps:
       - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
 
       - name: Setup Python and UV
         uses: ./.github/actions/setup-python-uv
@@ -161,7 +163,7 @@ jobs:
 
       # Unit tests only, minus slow and path-scoped preflight enforcement.
       # The dedicated preflight job runs that marker when relevant paths change.
-      # No Neo4j, no services.
+      # No external services.
       #
       # Split by recorded duration rather than by test-ID hash. pytest-shard
       # balanced counts, which left one shard reliably drawing the slow tests —
@@ -216,20 +218,14 @@ jobs:
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
 
       - name: Setup Python and UV
         uses: ./.github/actions/setup-python-uv
         with:
           python-version: ${{ env.PYTHON_VERSION }}
           install-dev-deps: "true"
-
-      - name: Start Neo4j
-        uses: ./.github/actions/start-neo4j
-        with:
-          container-name: test-neo4j
-          neo4j-image: ${{ env.NEO4J_IMAGE }}
-          neo4j-user: ${{ env.NEO4J_USERNAME }}
-          neo4j-password: ${{ env.NEO4J_PASSWORD }}
 
       # The whole tests/ tree — broader than any previous gate. The old CI only
       # ever ran tests/unit, tests/integration, and tests/e2e, and excluded the
@@ -243,28 +239,16 @@ jobs:
       # One exclusion: requires_api needs live external APIs and credentials;
       # it does not belong in CI at all.
       - name: Run full test suite
-        env:
-          NEO4J_URI: "bolt://localhost:7687"
-          NEO4J_USER: ${{ env.NEO4J_USERNAME }}
-          NEO4J_PASSWORD: ${{ env.NEO4J_PASSWORD }}
-          REQUIRE_NEO4J: "1"
         run: |
           uv run pytest tests/ \
             -m "not requires_api" \
             --cov=sbir_etl \
             --cov=packages/sbir-analytics/sbir_analytics \
             --cov=packages/sbir-ml/sbir_ml \
-            --cov=packages/sbir-graph/sbir_graph \
             --cov-branch \
             --cov-fail-under=70 \
             --cov-report=xml \
             --cov-report=term
-
-      - name: Stop Neo4j
-        if: always()
-        uses: ./.github/actions/stop-neo4j
-        with:
-          container-name: test-neo4j
 
       - name: Upload coverage artifact
         if: ${{ !cancelled() && hashFiles('coverage.xml') != '' }}
@@ -275,12 +259,8 @@ jobs:
           if-no-files-found: error
           retention-days: 14
 
-      - name: Neo4j logs on failure
-        if: failure()
-        run: docker logs test-neo4j --tail 100 || true
-
   test-integration:
-    name: Neo4j Integration Tests
+    name: Service-free Integration Tests
     needs: [detect-changes]
     if: |
       github.event_name == 'pull_request' &&
@@ -296,34 +276,10 @@ jobs:
           python-version: ${{ env.PYTHON_VERSION }}
           install-dev-deps: "true"
 
-      - name: Start Neo4j
-        uses: ./.github/actions/start-neo4j
-        with:
-          container-name: test-neo4j
-          neo4j-image: ${{ env.NEO4J_IMAGE }}
-          neo4j-user: ${{ env.NEO4J_USERNAME }}
-          neo4j-password: ${{ env.NEO4J_PASSWORD }}
-
       # This lane runs alongside the four unit shards. It is conditional on
-      # graph/storage changes so ordinary asset and documentation PRs do not
-      # pay the container startup cost.
+      # integration-sensitive code and test changes.
       - name: Run integration tests
-        env:
-          NEO4J_URI: "bolt://localhost:7687"
-          NEO4J_USER: ${{ env.NEO4J_USERNAME }}
-          NEO4J_PASSWORD: ${{ env.NEO4J_PASSWORD }}
-          REQUIRE_NEO4J: "1"
         run: uv run pytest tests/integration/ -m "integration and not slow"
-
-      - name: Neo4j logs on failure
-        if: failure()
-        run: docker logs test-neo4j --tail 100 || true
-
-      - name: Stop Neo4j
-        if: always()
-        uses: ./.github/actions/stop-neo4j
-        with:
-          container-name: test-neo4j
 
   detect-changes:
     name: Detect File Changes
@@ -355,17 +311,15 @@ jobs:
               - 'pyproject.toml'
               - 'packages/*/pyproject.toml'
               - 'uv.lock'
-            # Run the real Neo4j contract only when graph persistence or its
-            # test harness changes. The full suite still runs after merge.
+            # Run service-free integration tests when their code or harness changes.
             integration:
-              - 'packages/sbir-graph/**'
-              - 'packages/sbir-analytics/sbir_analytics/assets/sbir_neo4j_loading.py'
-              - 'packages/sbir-analytics/sbir_analytics/assets/transition/loading.py'
-              - 'packages/sbir-analytics/sbir_analytics/assets/uspto/loading.py'
+              - 'sbir_etl/**'
+              - 'packages/sbir-analytics/**'
+              - 'packages/sbir-ml/**'
+              - 'config/**'
               - 'tests/integration/**'
               - 'tests/conftest.py'
               - 'tests/conftest_shared.py'
-              - 'tests/neo4j_service.py'
               - 'pyproject.toml'
               - 'uv.lock'
             # Exercise the no-key Jev boundary only when that pilot changes.
@@ -409,6 +363,8 @@ jobs:
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
 
       - name: Setup Python and UV
         uses: ./.github/actions/setup-python-uv

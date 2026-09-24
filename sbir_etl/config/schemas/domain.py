@@ -416,24 +416,6 @@ class ModernBertTextConfig(BaseModel):
     )
 
 
-class ModernBertNeo4jConfig(BaseModel):
-    """Configuration for loading ModernBert similarity edges into Neo4j.
-
-    Validates the pre-authored config/base.yaml block ahead of the
-    (Award)-[:SIMILAR_TO]->(Patent) loading asset landing (specs/modernbert-analysis-layer,
-    task 2.1) — currently inert since nothing reads it yet.
-    """
-
-    enabled: bool = Field(
-        default=False, description="Enable (Award)-[:SIMILAR_TO]->(Patent) edge loading"
-    )
-    batch_size: int = Field(default=1000, ge=1, description="Batch size for Neo4j MERGE operations")
-    dry_run: bool = Field(default=False, description="Validate without committing changes")
-    prune_previous: bool = Field(
-        default=False, description="Remove previous SIMILAR_TO edges before loading"
-    )
-
-
 class ModernBertConfig(BaseModel):
     """Configuration for ModernBert patent-award similarity embeddings."""
 
@@ -445,8 +427,6 @@ class ModernBertConfig(BaseModel):
     api: ModernBertApiConfig = Field(default_factory=ModernBertApiConfig)
     local: ModernBertLocalConfig = Field(default_factory=ModernBertLocalConfig)
     text: ModernBertTextConfig = Field(default_factory=ModernBertTextConfig)
-    neo4j: ModernBertNeo4jConfig = Field(default_factory=ModernBertNeo4jConfig)
-
     similarity_threshold: float = Field(
         default=0.80,
         ge=0.0,
@@ -704,7 +684,6 @@ __all__ = [
     "ModernBertApiConfig",
     "ModernBertConfig",
     "ModernBertLocalConfig",
-    "ModernBertNeo4jConfig",
     "ModernBertTextConfig",
     "OTConsortiumConfig",
     "SensitivityConfig",

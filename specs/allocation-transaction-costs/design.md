@@ -17,7 +17,7 @@ scripts/data/allocation_transaction_costs.py
 docs/research/allocation-transaction-costs.md
 ```
 
-No `sbir_etl/` primitives, no Dagster, no Neo4j, no modular-analysis-platform
+No `sbir_etl/` primitives, no Dagster, no database service, no modular-analysis-platform
 profile. Grain is mechanism-year published statistics.
 
 ## Data flow

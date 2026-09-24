@@ -4,6 +4,14 @@ This directory records the epistemic status of analyses without changing the run
 package structure. Each study lives at `studies/<study-id>/study.yaml`; CI verifies its
 schema, frozen-artifact hashes, and implementation entry points.
 
+## Immutable release registry
+
+`studies/releases.yaml` binds a completed study to an annotated release tag, commit, and Git tree.
+CI validates that tagged tree instead of applying the moving repository environment to the release.
+For a released study, CI checks the implementation files in the tagged release tree, not their HEAD copies.
+It also requires the current `studies/<study-id>/` subtree to have the tagged paths and bytes.
+Checksum errata must name one exact path and both expected hashes. Unused or changed errata fail.
+
 The status vocabulary is intentionally small:
 
 - `exploratory`: useful working analysis, not a stable result;

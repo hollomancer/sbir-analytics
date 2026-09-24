@@ -6,7 +6,7 @@ This module provides a `VendorResolver` class that encapsulates logic to resolve
 vendor/company identities across multiple identifier spaces (UEI, CAGE, DUNS)
 and by fuzzy name matching. It is intended to be used by the transition
 detection pipeline to map contract award vendor references to canonical
-company entities used elsewhere in the system (SBIR awards, Neo4j nodes, etc).
+company entities used elsewhere in the system, including SBIR awards.
 
 Features:
 - Exact identifier matching (UEI, CAGE, DUNS)

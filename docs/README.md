@@ -43,7 +43,7 @@ Use these before quoting a result or starting a feature from an old spec.
 | Performance measurement | [Performance runbook](performance.md) |
 | Deployment navigation | [Deployment index](deployment/README.md) |
 | Live self-hosted server operations | [self-hosted server runbook](deployment/self-hosted-server.md) |
-| Neo4j migrations | [Migration guide](migrations.md) |
+| Retired graph implementation | [Retirement record](../archive/neo4j/README.md) |
 | Decisions | [Architecture decision records](decisions/README.md) |
 
 ## Data and subsystems
@@ -51,16 +51,13 @@ Use these before quoting a result or starting a feature from an old spec.
 - [Data sources](data/README.md)
 - [Dagster pipelines](architecture/dagster-pipelines.md)
 - [Asset naming](architecture/asset-naming-standards.md)
-- [DuckDB CET analysis](architecture/duckdb-cet-analysis.md)
 - [Transition detection](transition/README.md)
 - [Machine learning](ml/README.md)
 - [Fiscal pipeline](fiscal/sbir-fiscal-pipeline-guide.md)
-- [Neo4j schema](schemas/neo4j.md)
 - [Other Transaction consortium tiers](ot-consortium/tiers.md)
 - [NSSTS 2026 alignment](nssts-2026-alignment.md)
 - [Statistical reporting utility](guides/statistical-reporting.md)
 - [Enrichment](enrichment/README.md) — enricher catalogue and per-source integrations
-- [Transition Cypher queries](queries/transition-queries.md)
 
 There is no generated API reference. The package map and dependency rules live in the
 [architecture overview](architecture/detailed-overview.md).
@@ -71,7 +68,6 @@ There is no generated API reference. The package map and dependency rules live i
 - [Data quality](steering/data-quality.md)
 - [Enrichment patterns](steering/enrichment-patterns.md)
 - [Pipeline orchestration](steering/pipeline-orchestration.md)
-- [Neo4j patterns](steering/neo4j-patterns.md)
 - [Repository structure](steering/structure.md) and [technology choices](steering/tech.md)
 - [Glossary](steering/glossary.md)
 - [ML methodology review](steering/ml-methodology-review.md)

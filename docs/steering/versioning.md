@@ -10,10 +10,9 @@ version:
 
 - `sbir-etl` in the root `pyproject.toml`
 - `sbir-analytics` in `packages/sbir-analytics/pyproject.toml`
-- `sbir-graph` in `packages/sbir-graph/pyproject.toml`
 - `sbir-ml` in `packages/sbir-ml/pyproject.toml`
 
-`uv.lock` must record the same version for all four local packages. Independent package versions
+`uv.lock` must record the same version for all three local packages. Independent package versions
 are intentionally out of scope until the packages have separate release cadences or consumers.
 
 Runtime release metadata must match that synchronized version as well. The authoritative Python
@@ -30,7 +29,7 @@ depend:
 - documented Python imports, functions, classes, and command-line entry points;
 - configuration keys and their documented meaning;
 - Dagster asset keys, job names, partitions, and materialization contracts;
-- persisted DuckDB, Parquet, and Neo4j schemas and stable identifiers;
+- persisted DuckDB and Parquet schemas and stable identifiers;
 - documented inputs, outputs, and operational commands.
 
 Research findings, internal implementation details, experimental scripts, and explicitly unstable
@@ -71,9 +70,9 @@ Steps run in this order. Each is labeled with whether it is machine-gated
 
 1. **(Operator)** Review user-visible changes since the latest release and choose the required
    increment.
-2. **(Required — CI)** Update all four `pyproject.toml` versions, `sbir_etl.__version__`, and
+2. **(Required — CI)** Update all three `pyproject.toml` versions, `sbir_etl.__version__`, and
    `config/base.yaml`'s `pipeline.version` to the same `MAJOR.MINOR.PATCH` value.
-3. **(Required — CI)** Run `uv lock` to update the four local-package entries in `uv.lock`; runtime
+3. **(Required — CI)** Run `uv lock` to update the three local-package entries in `uv.lock`; runtime
    defaults and User-Agents derive from `sbir_etl.__version__` and do not need separate edits.
 4. **(Required — CI)** Run `uv run python scripts/ci/check_versioning.py --tag vMAJOR.MINOR.PATCH`.
 5. **(Required — CI)** Add the version's `CHANGELOG.md` section. The release workflow reads it for

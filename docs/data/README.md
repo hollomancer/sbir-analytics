@@ -8,8 +8,7 @@ Status: active
 # Data Sources Overview
 
 No SBIR/STTR award data is committed to this repository. Full reproduction requires downloading
-the public source datasets, supplying API credentials where required, and provisioning local disk
-and services such as Neo4j.
+the public source datasets, supplying API credentials where required, and provisioning local disk.
 
 The live data plane runs on the self-hosted server. Source-download jobs write to
 the local data root on persistent storage; GitHub Actions is CI only. All source schedules default to stopped until a manual run
@@ -93,8 +92,8 @@ beyond the documented study or pilot.
 | Other Transaction and consortium records | Procurement-pathway classification | Bounded methodology work; coverage varies by source |
 
 Relevant methods and data cuts live under [`docs/research/`](../research/) and `studies/`. A row in
-this table means the repository has a documented use, not that the source is complete, loaded into
-Neo4j, or approved for external evidence claims.
+this table means the repository has a documented use, not that the source is complete, governed,
+or approved for external evidence claims.
 
 ## Quality controls
 

@@ -48,10 +48,9 @@ is the initial method rollout; Phase 5 hardens operability.
   threshold remains 95%.
 - [ ] 2.3 Emit run-level imputation summary log to `reports/imputation/summary.json`
   with per-field impute rate, per-method counts, per-confidence distribution.
-- [ ] 2.4 Add `imputation_methods` list property and `<field>_is_imputed` booleans to
-  Neo4j loaders in `packages/sbir-graph/sbir_graph/loaders/`.
-  → **verify**: Cypher query `MATCH (a:Award) WHERE a.award_date_is_imputed = true
-  RETURN count(a)` returns expected count on fixture load.
+- [ ] 2.4 Verify `imputation` structs and `<field>_is_imputed` booleans round-trip
+  through Parquet and DuckDB.
+  → **verify**: A fixture query returns the expected imputed-award count and provenance.
 
 ## Phase 3 — Dagster integration
 
@@ -137,7 +136,7 @@ is the initial method rollout; Phase 5 hardens operability.
   values.
 - [ ] 5.4 Add integration test in `tests/integration/` that materializes
   `imputed_sbir_awards` + downstream enrichment on a fixture snapshot and asserts
-  provenance fields round-trip through DuckDB and Neo4j.
+  provenance fields round-trip through Parquet and DuckDB.
 - [ ] 5.5 Document the imputation layer in `docs/steering/imputation.md`: method
   catalog, confidence definitions, consumer contract, and operator runbook for
   toggling methods.

@@ -25,9 +25,9 @@ normalization, given/family splitting, and generic-token stripping built on
 the same `generic_token_guard` used for organization names.
 
 Every emitted assertion this kernel supports is a `CANDIDATE` assertion only
-(`docs/architecture/neo4j-epistemic-assertions-plan.md`, ADR-005): no
+(`docs/decisions/ADR-005-transition-candidates-as-assertions.md`): no
 `SPUN_OUT_OF` edge type, no `ACCEPTED`/`REJECTED` claim status. This module
-does not touch Neo4j or any graph writer; it returns plain Python values.
+does not touch persistence writers; it returns plain Python values.
 
 Epistemic tier: exploratory. This is new, spec-local code per the O-0
 resolution ("(a) build the four kernel functions as new exploratory-tier code

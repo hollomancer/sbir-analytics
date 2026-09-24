@@ -16,7 +16,6 @@ from .data import (
     ExtractionConfig,
     LoggingConfig,
     MetricsConfig,
-    Neo4jConfig,
     PathsConfig,
     SbirDuckDBConfig,
     SbirValidationConfig,
@@ -87,7 +86,6 @@ class PipelineConfig(BaseModel):
         default_factory=EnrichmentRefreshConfig,
         description="Iterative enrichment refresh configuration",
     )
-    neo4j: Neo4jConfig = Field(default_factory=Neo4jConfig)
     extraction: ExtractionConfig = Field(default_factory=ExtractionConfig)
     validation: ValidationConfig = Field(default_factory=ValidationConfig)
     transformation: TransformationConfig = Field(default_factory=TransformationConfig)
@@ -135,7 +133,6 @@ __all__ = [
     "MADiscoveryConfig",
     "MetricsConfig",
     "MLConfig",
-    "Neo4jConfig",
     "OTConsortiumConfig",
     "PathsConfig",
     "PipelineConfig",

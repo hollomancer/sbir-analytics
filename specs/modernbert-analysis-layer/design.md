@@ -21,7 +21,7 @@ Stage 2: Bayesian Similarity Routing
     ↓ (Category-Aware Similarities + Uncertainty)
 Stage 3: Bayesian Embedding Routing
     ↓ (Domain-Specialized Embeddings + Uncertainty)
-Final Outputs (Neo4j, Reports, Baselines)
+Final Outputs (Parquet, Reports, Baselines)
 ```
 
 ### Dagster Assets (Additive)
@@ -42,7 +42,6 @@ Final Outputs (Neo4j, Reports, Baselines)
 
 ### Integration Assets
 
-- `neo4j_bayesian_similarity_edges` (optional; off by default)
 - `modernbert_performance_baselines` → `reports/benchmarks/modernbert_bayesian.json`
 
 ### LoRA-Based Expert Implementation Strategy
@@ -336,7 +335,7 @@ class CalibrationMonitor:
 #### 3. System Integration Gates
 
 - End-to-end pipeline success rate: > 95%
-- Neo4j loading success rate: > 99%
+- Governed output write success rate: > 99%
 - Performance regression: < 20% latency increase
 
 ## Testing Strategy
@@ -377,7 +376,7 @@ def test_bayesian_pipeline_integration():
     # Test classification → similarity → embedding flow
     # Test uncertainty propagation across stages
     # Test quality gate enforcement
-    # Test Neo4j integration with uncertainty metadata
+    # Test governed similarity output with uncertainty metadata
 ```
 
 #### 2. Uncertainty Calibration Testing

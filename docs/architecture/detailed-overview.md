@@ -8,7 +8,7 @@ Status: active
 # Architecture Overview
 
 SBIR Analytics is a Python monorepo that turns public SBIR/STTR and related federal data into
-reusable analytical datasets, a Neo4j graph, and reproducible research outputs. The architecture is
+governed analytical datasets and reproducible research outputs. The architecture is
 question-driven: new components must serve a question in the
 [canonical inventory](../research-questions.md), not merely add a new data source or technology.
 
@@ -18,15 +18,14 @@ question-driven: new components must serve a question in the
 sbir_etl/                         shared ETL, identity, models, configuration,
                                   validation, quality, and monitoring primitives
 packages/sbir-analytics/          Dagster assets, jobs, schedules, sensors, and tools
-packages/sbir-graph/              Neo4j loaders, queries, and migrations
 packages/sbir-ml/                 CET, transition, and model-specific code
 studies/                           frozen analytical contracts and study outputs
 scripts/                           operator and transitional entry points
 ```
 
 Dependencies point inward toward `sbir_etl`. Workspace packages may consume shared primitives;
-`sbir_etl` must not import workspace packages, and the graph and ML packages must not depend on one
-another. `scripts/ci/check_architecture_boundaries.py` enforces these rules.
+`sbir_etl` must not import workspace packages. `scripts/ci/check_architecture_boundaries.py`
+enforces these rules.
 
 There is no generated API reference. Use this map to find the right package, then read the source
 and its tests. A hand-maintained module index drifts silently — the one that used to live at
@@ -41,7 +40,6 @@ later, its tool and Make target belong in the repository first.
 | Tabular processing | pandas, DuckDB, PyArrow | `sbir_etl/`, assets, studies |
 | Configuration | Pydantic and YAML | `sbir_etl/config/`, `config/` |
 | Orchestration | Dagster | `packages/sbir-analytics/` |
-| Graph | Neo4j 5 | `packages/sbir-graph/` |
 | Machine learning | scikit-learn; PyTorch/Transformers where required | `packages/sbir-ml/` |
 | Containers | Docker Compose | root Compose files |
 | Quality and tests | Ruff, MyPy, pytest | root configuration and `tests/` |
@@ -57,11 +55,11 @@ extract and snapshot ──▶ validate and normalize ──▶ enrich and class
     └──────────────▶ Parquet / DuckDB                     ▼
                                                    transform and link
                                                           │
-                            ┌─────────────────────────────┴─────────────┐
-                            ▼                                           ▼
-                       Neo4j graph                              study datasets
-                                                                        ▼
-                                                          manifests, reports, evidence
+                                                          ▼
+                                                 governed analytical tables
+                                                          │
+                                                          ▼
+                                                 study datasets and manifests
 ```
 
 Operational source pipelines currently cover SBIR.gov, USAspending, SAM.gov, and USPTO data.
@@ -70,7 +68,7 @@ other bounded sources. A source appearing in a study does not imply a scheduled 
 pipeline; [data documentation](../data/README.md) records that distinction.
 
 Company identity is a shared contract. Normalization and matching live in `sbir_etl/identity/` and
-must be reused by source-specific enrichers, graph loading, and studies. See the
+must be reused by source-specific enrichers and studies. See the
 [company identity contract](../steering/company-identity.md).
 
 ## Execution surfaces
@@ -83,16 +81,15 @@ must be reused by source-specific enrichers, graph loading, and studies. See the
   modules instead of becoming a second implementation.
 - **Studies:** frozen inputs, parameters, code references, and evidence status under `studies/`.
 
-## Storage and graph boundary
+## Storage boundary
 
-Parquet and DuckDB are the primary analytical interchange formats. Neo4j represents linked
-organizations, awards/financial transactions, patents, technology areas, and their evidence-backed
-relationships. Graph writes belong in `packages/sbir-graph/sbir_graph/loaders/neo4j/`, use stable
-identities, and remain idempotent. Schema changes use the [migration system](../migrations.md).
+Parquet files are the authoritative analytical records. DuckDB provides bounded queries over those
+records. Content-addressed study artifacts freeze the exact inputs used by a released result.
+Static network JSON or edge tables may support a named analysis, but they are derived products and
+cannot strengthen the evidence status of their inputs.
 
-Research-only outputs such as a capital-event Parquet file do not become graph entities merely
-because a future research question might use them. Add a graph representation only when an active
-consumer and evidence contract require it.
+Neo4j and the `sbir-graph` package were retired in ADR-006. See the
+[retirement record](../decisions/ADR-006-retire-neo4j.md) for the rationale and preserved history.
 
 ## Evidence boundary
 
@@ -105,7 +102,7 @@ compute it.
 ## Deployment boundary
 
 The only live data plane is the dedicated checkout on the self-hosted server.
-Docker Compose runs Dagster and Neo4j; persistent data lives under the host
+Docker Compose runs Dagster; persistent data lives under the host
 paths configured in `.env.server`; ingress is Tailscale Serve only. GitHub
 Actions performs CI and never materializes live data. The ignored
 `docs/deployment/server-status.local.md` records current host paths and state.
@@ -124,7 +121,7 @@ Lambda, Step Functions, and S3 are not part of the current architecture.
 | Local commands and containers | [Getting started](../getting-started/README.md), [Docker](../development/docker.md) |
 | CI and tests | [Testing index](../testing/README.md) |
 | Live operations | [self-hosted server runbook](../deployment/self-hosted-server.md) |
-| Graph model | [Neo4j schema](../schemas/neo4j.md) and [migrations](../migrations.md) |
+| Storage authority | This overview and [epistemic tiers](../steering/epistemic-tiers.md) |
 | Evidence approval | [Epistemic tiers](../steering/epistemic-tiers.md), [study contracts](../../studies/README.md) |
 
 Narrow references may explain one subsystem in depth, but they should link to these owners rather

@@ -61,8 +61,6 @@ class TestConfigurationEnvironments:
 
         assert isinstance(config, PipelineConfig)
         # Dev environment should have specific settings
-        assert config.neo4j.uri in ("bolt://localhost:7687", "bolt://neo4j:7687")
-        assert config.neo4j.username == "neo4j"
         assert config.logging.level == "DEBUG"
         assert config.duckdb.memory_limit_gb == 2
 
@@ -85,14 +83,12 @@ class TestConfigurationEnvironments:
 
         assert isinstance(config, PipelineConfig)
         # Prod environment should have specific settings
-        assert config.neo4j.uri.startswith("bolt://")
         assert config.pipeline.environment == "production"
         assert config.pipeline.version == __version__
         assert config.duckdb.memory_limit_gb == 8
 
-    def test_load_production_alias(self, config_dir, monkeypatch):
-        """The long production name loads prod.yaml and resolves runtime database config."""
-        monkeypatch.setenv("NEO4J_DATABASE", "analytics")
+    def test_load_production_alias(self, config_dir):
+        """The long production name loads the production profile."""
         reload_config()
 
         config = get_config(
@@ -102,7 +98,6 @@ class TestConfigurationEnvironments:
         assert config.pipeline.environment == "production"
         assert config.pipeline.version == __version__
         assert config.duckdb.memory_limit_gb == 8
-        assert config.neo4j.database == "analytics"
 
     def test_canonical_environment_variable_selects_profile(self, config_dir, monkeypatch):
         """The canonical environment variable controls profile selection."""
@@ -145,13 +140,11 @@ class TestConfigurationEnvironments:
 
         assert config.pipeline.environment == "test"
         assert config.duckdb.database_path == ":memory:"
-        assert config.neo4j.batch_size == 500
 
     def test_environment_variable_override(self, config_dir):
         """Test environment variable overrides configuration."""
         # Set environment variable override
-        os.environ["SBIR_ETL__NEO4J__URI"] = "bolt://custom-host:7687"
-        os.environ["SBIR_ETL__NEO4J__USERNAME"] = "custom_user"
+        os.environ["SBIR_ETL__LOGGING__LEVEL"] = "WARNING"
 
         try:
             reload_config()
@@ -159,12 +152,10 @@ class TestConfigurationEnvironments:
                 environment="dev", config_dir=config_dir, apply_env_overrides_flag=True
             )
 
-            assert config.neo4j.uri == "bolt://custom-host:7687"
-            assert config.neo4j.username == "custom_user"
+            assert config.logging.level == "WARNING"
         finally:
             # Clean up
-            del os.environ["SBIR_ETL__NEO4J__URI"]
-            del os.environ["SBIR_ETL__NEO4J__USERNAME"]
+            del os.environ["SBIR_ETL__LOGGING__LEVEL"]
 
     def test_nested_environment_variable_override(self, config_dir):
         """Test nested environment variable overrides."""
@@ -197,7 +188,7 @@ class TestConfigurationEnvironments:
 
     def test_integer_environment_variable(self, config_dir):
         """Test integer conversion in environment variables."""
-        os.environ["SBIR_ETL__NEO4J__BATCH_SIZE"] = "500"
+        os.environ["SBIR_ETL__DUCKDB__MEMORY_LIMIT_GB"] = "3"
 
         try:
             reload_config()
@@ -205,9 +196,9 @@ class TestConfigurationEnvironments:
                 environment="dev", config_dir=config_dir, apply_env_overrides_flag=True
             )
 
-            assert config.neo4j.batch_size == 500
+            assert config.duckdb.memory_limit_gb == 3
         finally:
-            del os.environ["SBIR_ETL__NEO4J__BATCH_SIZE"]
+            del os.environ["SBIR_ETL__DUCKDB__MEMORY_LIMIT_GB"]
 
     def test_config_caching(self, config_dir):
         """Test that configuration is cached properly."""
@@ -251,7 +242,6 @@ class TestConfigurationEnvironments:
 
         # Verify all main sections exist
         assert config.pipeline is not None
-        assert config.neo4j is not None
         assert config.data_quality is not None
         assert config.enrichment is not None
         assert config.extraction is not None
@@ -287,21 +277,6 @@ class TestConfigurationEnvironments:
         assert "base_url" in config.enrichment.sam_gov
         assert config.enrichment.usaspending_api is not None
         assert "base_url" in config.enrichment.usaspending_api
-
-    def test_neo4j_configuration(self, config_dir):
-        """Test Neo4j connection configuration."""
-        reload_config()
-        config = get_config(
-            environment="dev", config_dir=config_dir, apply_env_overrides_flag=False
-        )
-
-        # Verify Neo4j config
-        assert config.neo4j.uri.startswith("bolt://")
-        assert config.neo4j.username is not None
-        assert config.neo4j.password is not None
-        assert config.neo4j.database is not None
-        assert isinstance(config.neo4j.batch_size, int)
-        assert config.neo4j.batch_size > 0
 
     def test_logging_configuration(self, config_dir):
         """Test logging configuration."""

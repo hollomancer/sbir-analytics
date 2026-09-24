@@ -5,12 +5,13 @@ from __future__ import annotations
 import copy
 import csv
 import json
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
 from pathlib import Path
 
 import pytest
 
 from scripts.ci import check_study_artifact_roundtrip as roundtrip
+from scripts.ci.released_studies import load_released_studies, released_study_root
 from scripts.data import render_sba_structural_comparison as renderer
 from sbir_etl.quality.study_manifest import load_study_manifest
 
@@ -19,6 +20,13 @@ ROOT = Path(__file__).resolve().parents[3]
 COMPARISON = ROOT / renderer.COMPARISON_REFERENCE
 SIDECAR = ROOT / renderer.SIDECAR_REFERENCE
 MARKDOWN = ROOT / renderer.MARKDOWN_REFERENCE
+
+
+@pytest.fixture(scope="module")
+def reviewed_release_root() -> Iterator[Path]:
+    binding = load_released_studies(ROOT)["sba-annual-report-structural-comparison"]
+    with released_study_root(ROOT, binding) as root:
+        yield root
 
 
 def _write_mutated_comparison(destination: Path, mutate: Callable[[dict[str, str]], None]) -> None:
@@ -34,8 +42,10 @@ def _write_mutated_comparison(destination: Path, mutate: Callable[[dict[str, str
         writer.writerows(rows)
 
 
-def test_committed_public_artifacts_regenerate_byte_for_byte() -> None:
-    payload = renderer.build_payload(ROOT)
+def test_committed_public_artifacts_regenerate_byte_for_byte(
+    reviewed_release_root: Path,
+) -> None:
+    payload = renderer.build_payload(reviewed_release_root)
 
     assert renderer.serialize_payload(payload) == SIDECAR.read_text(encoding="utf-8")
     assert renderer.render_markdown(payload) == MARKDOWN.read_text(encoding="utf-8")
@@ -123,7 +133,10 @@ def test_comparison_reader_rejects_changed_arithmetic(tmp_path: Path) -> None:
         renderer.load_comparison_cells(comparison)
 
 
-def test_payload_rejects_a_coherent_changed_count_by_frozen_hash(tmp_path: Path) -> None:
+def test_payload_rejects_a_coherent_changed_count_by_frozen_hash(
+    tmp_path: Path,
+    reviewed_release_root: Path,
+) -> None:
     comparison = tmp_path / "changed-count.csv"
 
     def mutate(row: dict[str, str]) -> None:
@@ -133,11 +146,13 @@ def test_payload_rejects_a_coherent_changed_count_by_frozen_hash(tmp_path: Path)
     _write_mutated_comparison(comparison, mutate)
 
     with pytest.raises(renderer.PublicResultError, match="count comparison hash differs"):
-        renderer.build_payload(ROOT, comparison_path=comparison)
+        renderer.build_payload(reviewed_release_root, comparison_path=comparison)
 
 
-def test_render_rejects_internally_drifted_summary_even_when_rehashed() -> None:
-    payload = copy.deepcopy(renderer.build_payload(ROOT))
+def test_render_rejects_internally_drifted_summary_even_when_rehashed(
+    reviewed_release_root: Path,
+) -> None:
+    payload = copy.deepcopy(renderer.build_payload(reviewed_release_root))
     payload["content"]["comparison"]["yearly_summaries"][0]["published_total"] += 1
     payload["content_sha256"] = renderer._canonical_sha256(payload["content"])
 
@@ -145,8 +160,10 @@ def test_render_rejects_internally_drifted_summary_even_when_rehashed() -> None:
         renderer.render_markdown(payload)
 
 
-def test_render_rejects_drifted_aggregate_even_when_rehashed() -> None:
-    payload = copy.deepcopy(renderer.build_payload(ROOT))
+def test_render_rejects_drifted_aggregate_even_when_rehashed(
+    reviewed_release_root: Path,
+) -> None:
+    payload = copy.deepcopy(renderer.build_payload(reviewed_release_root))
     payload["content"]["comparison"]["aggregate_summary"]["absolute_difference"] = 333
     payload["content_sha256"] = renderer._canonical_sha256(payload["content"])
 
@@ -159,9 +176,11 @@ def test_render_rejects_drifted_aggregate_even_when_rehashed() -> None:
     [("blank_state_rows_excluded", 40), ("zero_filled_eligible_groups", 59)],
 )
 def test_render_rejects_drifted_export_diagnostics_even_when_rehashed(
-    field: str, value: int
+    field: str,
+    value: int,
+    reviewed_release_root: Path,
 ) -> None:
-    payload = copy.deepcopy(renderer.build_payload(ROOT))
+    payload = copy.deepcopy(renderer.build_payload(reviewed_release_root))
     payload["content"]["export_row_handling"][field] = value
     payload["content_sha256"] = renderer._canonical_sha256(payload["content"])
 

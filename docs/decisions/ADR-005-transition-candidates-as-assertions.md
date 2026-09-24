@@ -2,10 +2,15 @@
 Type: Decision
 Maintainer: Conrad Hollomon
 Last-Reviewed: 2026-09-19
-Status: accepted
+Status: accepted; graph projection superseded by ADR-006
 ---
 
 # ADR-005: Represent Transition Candidates as Typed Assertions Before Neo4j Projection
+
+> **Current boundary:** [ADR-006](ADR-006-retire-neo4j.md) supersedes this record's
+> Neo4j projection, legacy-edge, package-boundary, and graph-migration decisions. The assertion
+> identity, typed-absence, candidate-semantics, Parquet snapshot, and study-boundary decisions
+> remain active.
 
 ## Context
 
@@ -17,8 +22,7 @@ shared contract. Four surfaces disagree on the shape of the same concept:
   signal dimensions.
 - `packages/sbir-analytics/sbir_analytics/assets/transition/` produces a simpler candidate
   score table plus separate NDJSON evidence.
-- `packages/sbir-graph/sbir_graph/loaders/neo4j/transitions.py` expects a third DataFrame
-  shape.
+- The retired graph loader expected a third DataFrame shape.
 
 The failing boundary is
 `packages/sbir-analytics/sbir_analytics/assets/transition/utils.py`.
@@ -33,9 +37,9 @@ Separately, the existing graph edges overstate what the evidence supports: an in
 derivation is published as a causal-sounding relationship with no claim status, no typed
 absence, and no provenance for the detector run that produced it.
 
-This decision records the architecture proposed and reviewed in
-[Neo4j epistemic assertions plan](../architecture/neo4j-epistemic-assertions-plan.md)
-(revised 2026-08-05, audited against `origin/main` at `8500c0c6`). The plan reserved this
+This decision records the architecture proposed and reviewed in the now-retired
+Neo4j epistemic-assertions plan (revised 2026-08-05, audited against `origin/main`
+at `8500c0c6`). The plan reserved this
 ADR's filename and outlined its content in §2; the record was never written, while
 downstream code and specs began citing "ADR-005" as a dependency
 (`scripts/sttr_spinout_linkage/kernel.py`, `specs/sttr-spinout-linkage/`). This ADR closes
@@ -133,7 +137,7 @@ action and date. Source references are stored as keys. No `SourceRecord`,
   non-deterministic identity, untyped absence, and causal overstatement in place. The
   defect is independent of the larger architecture, but fixing it alone does not make a
   derivation pinnable by a study.
-- **Make Neo4j the authoritative store for derivations.** Rejected. A live graph has no
+- **Treat Neo4j as the authoritative store for derivations.** Rejected. A live graph has no
   natural snapshot, so studies pinned to graph state are pinned to nothing, and Tier 1
   descriptive aggregation is worse there than in DuckDB. Neo4j also cannot add evidential
   weight to an inference it merely stores.
@@ -175,7 +179,7 @@ action and date. Source references are stored as keys. No `SourceRecord`,
 
 ## Implementation notes
 
-Sequenced as three PRs per §9 of the plan.
+The original sequence used three PRs. ADR-006 cancelled the graph-projection slice.
 
 - **PR 1 — Candidate assertion contract and content-addressed snapshot.** Adds
   `sbir_etl/assertions/` (`enums.py`, `models.py`, `identifiers.py`, `validation.py`,
@@ -183,12 +187,10 @@ Sequenced as three PRs per §9 of the plan.
   `sbir_etl/models/phase_iii_candidate.py`, and moves the Phase III candidate and census
   assets onto the shared resolver. Deterministic identity in `identifiers.py` is what
   replaces the random UUID.
-- **PR 2 — Neo4j assertion projection and legacy-writer stop.** Adds
-  `loaders/neo4j/assertions.py` and `convenience_edges.py`, migration
-  `008_assertion_read_model.py`, the `sbir_graph -> sbir_etl.assertions` allowance in
-  `scripts/ci/check_architecture_boundaries.py`, and stops the legacy writer.
-- **PR 3 — Consumer/study binding and legacy retirement.** Binds studies and the
-  explorer surface to the snapshot and retires legacy topology.
+- **PR 2 — cancelled by ADR-006.** The graph assertion projection and legacy-writer
+  migration did not become part of the supported architecture.
+- **PR 3 — consumer/study binding.** Binds studies and the explorer surface to the
+  authoritative snapshot.
 
 Two discrepancies to resolve during execution, not blockers on this decision:
 
@@ -206,8 +208,8 @@ definition and have the kernel import it rather than mirror it.
 
 ## References
 
-- [Neo4j epistemic assertions plan](../architecture/neo4j-epistemic-assertions-plan.md) —
-  full design, risk table, and file-level sequence
+- [ADR-006: Retire Neo4j](ADR-006-retire-neo4j.md) — supersedes the projection,
+  package-boundary, and graph-migration clauses
 - [ADR-004: Retire the Private Analytics API](ADR-004-retire-private-analytics-api.md) —
   discharges the external-client decision and gates §3.6
 - [ADR-001: Allow Negative Obligation Amounts in Federal Contracts](ADR-001-negative-obligations.md)

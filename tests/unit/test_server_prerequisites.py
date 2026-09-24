@@ -1,7 +1,7 @@
 """Tests for scripts/server/check-prerequisites.sh (--bindings-only mode).
 
-The --bindings-only mode validates loopback bindings and required secrets
-without needing Docker or Tailscale, so it can be exercised in CI.
+The --bindings-only mode validates loopback bindings without needing Docker or
+Tailscale, so it can be exercised in CI.
 """
 
 import subprocess
@@ -17,7 +17,6 @@ pytestmark = [pytest.mark.fast, pytest.mark.unit]
 
 GOOD_ENV = """
 SERVER_LOOPBACK=127.0.0.1
-NEO4J_PASSWORD=a-real-password
 """.lstrip()
 
 
@@ -49,15 +48,6 @@ def test_rejects_non_loopback_binding(tmp_path):
     assert "loopback" in (result.stdout + result.stderr).lower()
 
 
-def test_rejects_placeholder_neo4j_password(tmp_path):
-    env_file = tmp_path / ".env.server"
-    env_file.write_text(
-        GOOD_ENV.replace("NEO4J_PASSWORD=a-real-password", "NEO4J_PASSWORD=change_me")
-    )
-    result = _run(env_file)
-    assert result.returncode == 1
-
-
 def test_env_file_is_parsed_as_data_not_executed(tmp_path):
     marker = tmp_path / "executed"
     env_file = tmp_path / ".env.server"
@@ -75,7 +65,7 @@ def test_env_file_is_parsed_as_data_not_executed(tmp_path):
 
 def test_rejects_duplicate_allowlisted_key(tmp_path):
     env_file = tmp_path / ".env.server"
-    env_file.write_text(GOOD_ENV + "NEO4J_PASSWORD=change_me\n")
+    env_file.write_text(GOOD_ENV + "DAGSTER_PORT=3000\nDAGSTER_PORT=3001\n")
 
     result = _run(env_file)
 

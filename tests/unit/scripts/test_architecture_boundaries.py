@@ -33,9 +33,7 @@ def test_declared_downstream_dependencies_are_allowed(tmp_path: Path) -> None:
     _write(
         tmp_path,
         "packages/sbir-analytics/sbir_analytics/example.py",
-        "from sbir_etl.models import Award\n"
-        "from sbir_ml.transition import scoring\n"
-        "from sbir_graph import loaders\n",
+        "from sbir_etl.models import Award\nfrom sbir_ml.transition import scoring\n",
     )
 
     assert not boundaries.scan_package("sbir_analytics", analytics, repository_root=tmp_path)

@@ -12,8 +12,8 @@ that is approved evidence earns trust only for its own declared claim.
 The authoritative public unit is a versioned study packet. A packet identifies
 the exact source bytes, code, environment, machine-readable result, rendered
 result, and reviews used for one claim. DuckDB, Parquet, and content-addressed
-files hold governed analytical records. Neo4j is an optional projection for
-relationship queries and cannot strengthen a claim.
+files hold governed analytical records. Mutable service state cannot strengthen
+a claim.
 
 Use [STATUS.md](../../STATUS.md) to find the current public evidence boundary.
 Use [the evidence-status guide](evidence-status.md) to interpret the labels.

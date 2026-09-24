@@ -1,7 +1,7 @@
 """Schemas for data pipeline infrastructure and runtime settings.
 
 Consolidated from data_pipeline.py and runtime.py.
-Covers: extraction, validation, transformation, Neo4j, DuckDB,
+Covers: extraction, validation, transformation, DuckDB,
 paths, logging, metrics, CLI, and company categorization.
 """
 
@@ -129,31 +129,6 @@ class DataQualityConfig(BaseModel):
         return _coerce_percentage_mapping(value, field_name="data_quality")
 
 
-class Neo4jConfig(BaseModel):
-    """Configuration for Neo4j connectivity."""
-
-    uri: str = Field(default="bolt://localhost:7687")
-    database: str = Field(default="neo4j")
-    username: str = Field(default="neo4j")
-    password_env_var: str = Field(default="NEO4J_PASSWORD")
-    password: str | None = Field(default=None, description="Password (can be set from env var)")
-    max_connection_lifetime: int = Field(default=3600)
-    encrypted: bool = Field(default=False)
-    verify_certificate: bool = Field(default=True)
-    retries: int = Field(default=3)
-    retry_delay_seconds: int = Field(default=5)
-    enable_tls: bool = Field(default=False)
-
-    # Performance / loading options
-    batch_size: int = 1000
-    parallel_threads: int = 4
-    create_constraints: bool = True
-    create_indexes: bool = True
-    transaction_timeout_seconds: int = 300
-    retry_on_deadlock: bool = True
-    max_deadlock_retries: int = 3
-
-
 class ExtractionConfig(BaseModel):
     """Configuration for data extraction."""
 
@@ -194,11 +169,6 @@ class TransformationConfig(BaseModel):
         default_factory=lambda: {
             "currency": "USD",
             "standardize_program_names": True,
-        }
-    )
-    graph_preparation: dict[str, Any] = Field(
-        default_factory=lambda: {
-            "batch_size": 1000,
         }
     )
 
@@ -410,7 +380,6 @@ __all__ = [
     "ExtractionConfig",
     "LoggingConfig",
     "MetricsConfig",
-    "Neo4jConfig",
     "PathsConfig",
     "SamGovConfig",
     "SbirDuckDBConfig",

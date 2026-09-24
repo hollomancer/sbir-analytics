@@ -91,7 +91,7 @@ fi
 echo -e "${GREEN}✓ pytest installed${NC}"
 
 # Check key dependencies
-DEPS=("pydantic" "loguru" "neo4j" "pandas")
+DEPS=("pydantic" "loguru" "pandas")
 for dep in "${DEPS[@]}"; do
     if ! python -c "import $dep" 2>/dev/null; then
         echo -e "${RED}❌ $dep not installed${NC}"

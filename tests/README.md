@@ -5,8 +5,8 @@
 | Category | Purpose | External Services | Run Frequency |
 | --- | --- | --- | --- |
 | **Unit** | Single function/class isolation | None (all mocked) | Every commit |
-| **Integration** | Multiple components working together | May require Neo4j | PR merge |
-| **E2E** | Full pipeline from input to output | May require Neo4j, APIs | Nightly |
+| **Integration** | Multiple components working together | None in the CI selection | PR merge |
+| **E2E** | Full pipeline from input to output | External-API cases are separately marked | Nightly |
 | **Functional** | User-facing behavior validation | Minimal | PR merge |
 
 ## Running Tests
@@ -34,9 +34,6 @@ uv run pytest --cov=sbir_etl --cov-report=html
 # Skip slow tests
 uv run pytest -m "not slow"
 
-# Only Neo4j tests (requires running Neo4j)
-uv run pytest -m neo4j
-
 # Only integration tests
 uv run pytest -m integration
 ```
@@ -51,12 +48,11 @@ tests/
 │   ├── enrichers/          # Enricher unit tests
 │   ├── transformers/       # Transformer unit tests
 │   └── ...
-├── integration/            # Multi-component tests
-│   ├── neo4j/             # Neo4j-specific integration
-│   ├── cli/               # CLI integration tests
-│   └── ...
+├── integration/            # Multi-component, service-free tests
+│   ├── enrichment/         # Multi-source enrichment tests
+│   ├── fiscal/             # Fiscal pipeline tests
+│   └── transition/         # Transition detection tests
 ├── e2e/                    # End-to-end pipeline tests
-│   └── transition/        # Transition detection E2E
 ├── functional/             # User-facing behavior tests
 ├── fixtures/               # Shared test data
 ├── conftest.py            # Root fixtures
@@ -91,10 +87,6 @@ import pytest
 def test_component_integration():
     ...
 
-@pytest.mark.requires_neo4j
-def test_neo4j_query():
-    ...
-
 @pytest.mark.slow
 def test_large_dataset():
     ...
@@ -106,7 +98,7 @@ Tests run in CI with:
 
 - `--dist=loadgroup` - Respects `@pytest.mark.xdist_group` for test isolation
 - `-n auto` - Parallel execution across CPU cores
-- Skips tests requiring unavailable services (Neo4j, R, external APIs)
+- Skips tests requiring unavailable external APIs or local runtimes
 
 ## Integration and validation execution models
 

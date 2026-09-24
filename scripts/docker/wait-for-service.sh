@@ -8,7 +8,7 @@
 #                       [--user USER --password PASS] [--timeout SEC] [--interval SEC]
 #
 # Examples:
-#   wait-for-service.sh --host neo4j --port 7687 --proto tcp --timeout 120
+#   wait-for-service.sh --host code-server --port 4000 --proto tcp --timeout 120
 #   wait-for-service.sh --host web --port 3000 --proto http --path /server_info --timeout 60
 #
 # Behavior:
@@ -48,7 +48,7 @@ Options:
   -h, --help     Show this help and exit
 
 Examples:
-  $0 --host neo4j --port 7687 --proto tcp --timeout 120
+  $0 --host code-server --port 4000 --proto tcp --timeout 120
   $0 --host web --port 3000 --proto http --path /server_info --timeout 60
 EOF
 }

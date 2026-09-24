@@ -143,7 +143,8 @@ class MAEvent(BaseModel):
 - Auto-tuning the confidence thresholds against a labeled set. Use the boundary thresholds above and revisit after the first manual run.
 - Press-release scraping. The `sbir_etl.enrichers.ma_discovery.press` sibling step was removed 2026-09-12; see the amendment above. `sbir_etl/enrichers/press_wire.py` remains for the weekly digest, which is a forward-looking use a live feed suits.
 - Discovery for non-Form-D-missing firms ("would discovery surface a *better* signal for a row Form D already covered?"). Adds cost without clearly improving recall.
-- A graph loader for discovered M&A events. They flow into `capital_events.parquet` like every other source; the Neo4j path picks them up at the existing `MAEventLoader`.
+- A separate database loader for discovered M&A events. They flow into
+  `capital_events.parquet` like every other source.
 
 ## Open decisions deferred to the implementation PR
 

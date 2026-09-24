@@ -100,7 +100,7 @@ class TestExceptionRetryability:
 
     def test_dependency_errors_not_retryable(self):
         """Test that dependency errors are not retryable."""
-        exc = DependencyError("Package not installed", dependency_name="neo4j")
+        exc = DependencyError("Package not installed", dependency_name="pyarrow")
 
         assert_non_retryable_exception(exc)
         assert not exc.retryable
@@ -113,12 +113,12 @@ class TestExceptionDetailsUsability:
         """Test DependencyError includes installation instructions."""
         exc = DependencyError(
             "Package not found",
-            dependency_name="neo4j",
-            details={"install_command": "pip install neo4j"},
+            dependency_name="pyarrow",
+            details={"install_command": "pip install pyarrow"},
         )
 
         assert "install_command" in exc.details
-        assert "pip install neo4j" in exc.details["install_command"]
+        assert "pip install pyarrow" in exc.details["install_command"]
 
     def test_api_error_includes_endpoint_and_status(self):
         """Test APIError includes useful debugging information."""
