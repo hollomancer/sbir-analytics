@@ -29,9 +29,12 @@ version.
   `neo4j_cet` and `neo4j_loading` groups. Saved asset selections that name them
   no longer resolve.
 - Removed the `SKIP_NEO4J_LOADING` switch, the `SBIR_ETL__NEO4J__*` overrides,
-  and the legacy `loading.neo4j` configuration mapping. Old values do not cause
-  a configuration error: the loader keeps them as an untyped `neo4j` extra that
-  nothing reads.
+  and the legacy `loading.neo4j` configuration mapping. Stale values do not
+  cause a configuration error, and nothing reads them:
+  - `SKIP_NEO4J_LOADING` is ignored.
+  - `SBIR_ETL__NEO4J__*` values become an untyped `neo4j` extra on the config.
+  - A YAML `loading.neo4j` section stays under an untyped `loading` extra; it is
+    no longer mapped to `neo4j`.
 - Removed the Make targets `neo4j-up`, `neo4j-down`, `neo4j-reset`,
   `neo4j-check`, `db-shell`, and `server-backup`. The server Tailscale helper
   no longer manages the graph Bolt route. Complete the
