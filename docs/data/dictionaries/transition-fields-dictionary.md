@@ -678,7 +678,6 @@ Represents company-level aggregated statistics.
 - **Algorithm Details**: `docs/transition/detection-algorithm.md`
 - **Scoring Guide**: `docs/transition/scoring-guide.md`
 - **Evidence Structure**: `docs/transition/evidence-bundles.md`
-- **Neo4j Schema**: `docs/schemas/neo4j.md`
+- **Storage authority**: governed Parquet transition tables and their manifests
 - **Configuration**: `config/transition/detection.yaml`
 - **Data Models**: `sbir_etl/models/transition_models.py`
-

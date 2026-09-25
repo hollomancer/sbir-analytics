@@ -29,9 +29,6 @@ Usage:
     # Generate detailed markdown report
     uv run python scripts/validation/categorization_validation.py --markdown-report report.md
 
-    # Load to Neo4j after categorization
-    uv run python scripts/validation/categorization_validation.py --load-neo4j
-
 Epistemic tier: exploratory. This validates the heuristic categorization
 against a hand-assembled dataset; its results are diagnostics and non-citable.
 """
@@ -1325,73 +1322,6 @@ def generate_markdown_report(results: pd.DataFrame, output_path: str) -> None:
     logger.info(f"\nMarkdown report generated: {output_path}")
 
 
-def load_to_neo4j(results: pd.DataFrame) -> None:
-    """Load categorization results to Neo4j.
-
-    Args:
-        results: DataFrame with categorization results
-    """
-    from sbir_graph.loaders.neo4j import (
-        CompanyCategorizationLoader,
-        CompanyCategorizationLoaderConfig,
-        Neo4jClient,
-        Neo4jConfig,
-    )
-
-    config = get_config()
-    neo4j_cfg = config.neo4j
-
-    logger.info("\n" + "=" * 80)
-    logger.info("LOADING TO NEO4J")
-    logger.info("=" * 80)
-
-    # Initialize Neo4j client
-    client_config = Neo4jConfig(
-        uri=neo4j_cfg.uri,
-        username=neo4j_cfg.username,
-        password=neo4j_cfg.password,
-        database=neo4j_cfg.database,
-        batch_size=neo4j_cfg.batch_size,
-    )
-
-    client = Neo4jClient(client_config)
-
-    try:
-        # Initialize categorization loader
-        loader_config = CompanyCategorizationLoaderConfig(
-            batch_size=neo4j_cfg.batch_size,
-            create_indexes=neo4j_cfg.create_indexes,
-        )
-
-        loader = CompanyCategorizationLoader(client, loader_config)
-
-        # Create indexes
-        if loader_config.create_indexes:
-            logger.info("Creating Neo4j indexes...")
-            loader.create_indexes()
-
-        # Load categorizations
-        categorization_records = results.to_dict(orient="records")
-        logger.info(f"Loading {len(categorization_records)} categorizations to Neo4j...")
-
-        metrics = loader.load_categorizations(categorization_records)
-
-        # Report results
-        successful = metrics.nodes_updated.get("Organization", 0)
-        total = len(categorization_records)
-        success_rate = (successful / total * 100) if total > 0 else 0
-
-        logger.info(
-            f"\nNeo4j load complete: {successful}/{total} companies updated "
-            f"({success_rate:.1f}% success rate)"
-        )
-        if metrics.errors > 0:
-            logger.warning(f"Errors encountered: {metrics.errors}")
-
-    finally:
-        client.close()
-
-
 def main():
     """Main entry point for validation testing."""
     parser = argparse.ArgumentParser(
@@ -1421,9 +1351,6 @@ def main():
         "--markdown-report",
         type=str,
         help="Generate detailed markdown report with categorization insights",
-    )
-    parser.add_argument(
-        "--load-neo4j", action="store_true", help="Load results to Neo4j after categorization"
     )
     parser.add_argument("--verbose", action="store_true", help="Enable verbose logging")
     parser.add_argument(
@@ -1500,10 +1427,6 @@ def main():
         # Generate markdown report if requested
         if args.markdown_report:
             generate_markdown_report(results, args.markdown_report)
-
-        # Load to Neo4j if requested
-        if args.load_neo4j:
-            load_to_neo4j(results)
 
         logger.info("\n" + "=" * 80)
         logger.info("✓ VALIDATION TESTING COMPLETE")

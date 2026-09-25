@@ -3,10 +3,13 @@
 from __future__ import annotations
 
 import importlib.util
+import json
 import sys
 from pathlib import Path
 
 import pytest
+
+from sbir_etl.enrichers.sec_edgar.form_d_scoring import FORM_D_TIER_RULE_VERSION
 
 
 SCRIPT_PATH = (
@@ -34,11 +37,14 @@ def _record(
     person_score: float | None = None,
     address_score: float | None = None,
     state_score: float | None = None,
+    signals_may_span_filings: bool = False,
+    signals_may_span_ciks: bool = False,
 ) -> dict:
     """Construct a Form D record-shaped dict for the audit's expected schema."""
     return {
         "company_name": company,
         "tier": tier,
+        "rule_version": FORM_D_TIER_RULE_VERSION,
         "has_pif": has_pif,
         "has_non_pif": has_non_pif,
         "persons": set(persons),
@@ -47,6 +53,8 @@ def _record(
         "person_score": person_score,
         "address_score": address_score,
         "state_score": state_score,
+        "signals_may_span_filings": signals_may_span_filings,
+        "signals_may_span_ciks": signals_may_span_ciks,
     }
 
 
@@ -74,8 +82,8 @@ class TestFindCrossLinks:
         assert len(xl) == 1
         assert xl[0]["pif_company"] == "PIF_A"
         assert xl[0]["op_company"] == "OP_B"
-        assert xl[0]["link_type"] == "person"
-        assert xl[0]["link_value"] == "ALICE"
+        assert xl[0]["link_types"] == ["person"]
+        assert xl[0]["shared_persons"] == ["ALICE"]
         assert xl[0]["op_tier"] == "high"
 
     def test_finds_cik_based_cross_link(self):
@@ -85,8 +93,8 @@ class TestFindCrossLinks:
         ]
         xl = _mod.find_cross_links(records)
         assert len(xl) == 1
-        assert xl[0]["link_type"] == "cik"
-        assert xl[0]["link_value"] == "123"
+        assert xl[0]["link_types"] == ["cik"]
+        assert xl[0]["shared_ciks"] == ["123"]
 
     def test_dedupes_pif_op_pair_across_signal_types(self):
         """Same (PIF, op) pair sharing both a person AND a CIK should produce
@@ -107,6 +115,9 @@ class TestFindCrossLinks:
         ]
         xl = _mod.find_cross_links(records)
         assert len(xl) == 1
+        assert xl[0]["link_types"] == ["cik", "person"]
+        assert xl[0]["shared_persons"] == ["ALICE"]
+        assert xl[0]["shared_ciks"] == ["999"]
 
     def test_mixed_record_is_treated_as_operating_co(self):
         """A record with both PIF and non-PIF offerings is counted-in-cohort
@@ -133,49 +144,61 @@ class TestFindCrossLinks:
 
 
 class TestClassifyHighTierRobustness:
-    def _xl_with_op(self, op_company, person, address, state, raised=1.0):
+    def _xl_with_op(
+        self,
+        op_company,
+        person,
+        address,
+        state,
+        raised=1.0,
+        link_types=("person",),
+    ):
         return {
             "pif_company": "PIF",
             "op_company": op_company,
-            "link_type": "person",
-            "link_value": "X",
+            "link_types": list(link_types),
+            "shared_persons": ["X"] if "person" in link_types else [],
+            "shared_ciks": ["123"] if "cik" in link_types else [],
             "op_tier": "high",
+            "op_rule_version": FORM_D_TIER_RULE_VERSION,
             "op_raised_counted": raised,
             "op_person_score": person,
             "op_address_score": address,
             "op_state_score": state,
+            "op_signals_may_span_filings": False,
+            "op_signals_may_span_ciks": False,
         }
 
-    def test_both_signals_safe(self):
+    def test_person_and_zip_profile(self):
         xl = [self._xl_with_op("OP", person=0.9, address=1.0, state=1.0)]
         profile = _mod.classify_high_tier_robustness(xl, [])
-        assert len(profile["both_signals"]) == 1
-        assert len(profile["zip_only"]) == 0
-        assert len(profile["person_only_at_risk"]) == 0
+        assert len(profile["person_and_zip"]) == 1
+        assert len(profile["zip_without_person"]) == 0
+        assert len(profile["person_and_state_no_zip"]) == 0
 
-    def test_zip_only_safe(self):
+    def test_zip_without_person_profile(self):
         xl = [self._xl_with_op("OP", person=0.3, address=1.0, state=1.0)]
         profile = _mod.classify_high_tier_robustness(xl, [])
-        assert len(profile["zip_only"]) == 1
-        assert len(profile["both_signals"]) == 0
+        assert len(profile["zip_without_person"]) == 1
+        assert len(profile["person_and_zip"]) == 0
 
-    def test_person_only_at_risk(self):
+    def test_person_plus_state_without_zip_is_its_own_v2_profile(self):
         xl = [self._xl_with_op("OP", person=0.9, address=0.0, state=1.0)]
         profile = _mod.classify_high_tier_robustness(xl, [])
-        assert len(profile["person_only_at_risk"]) == 1
-        assert len(profile["both_signals"]) == 0
-        assert len(profile["zip_only"]) == 0
+        assert len(profile["person_and_state_no_zip"]) == 1
+        assert len(profile["person_and_zip"]) == 0
+        assert len(profile["zip_without_person"]) == 0
 
-    def test_low_scores_classified_as_neither(self):
+    def test_low_scores_classified_as_invalid_under_v2(self):
         xl = [self._xl_with_op("OP", person=0.5, address=0.0, state=0.0)]
         profile = _mod.classify_high_tier_robustness(xl, [])
-        assert len(profile["neither_full"]) == 1
+        assert len(profile["invalid_under_v2"]) == 1
 
     def test_none_scores_treated_as_zero(self):
         xl = [self._xl_with_op("OP", person=None, address=1.0, state=None)]
         profile = _mod.classify_high_tier_robustness(xl, [])
-        # person None → 0 → ZIP-only path
-        assert len(profile["zip_only"]) == 1
+        # person None → 0 → ZIP-without-person path
+        assert len(profile["zip_without_person"]) == 1
 
     def test_multiple_cross_links_for_same_op_collapse(self):
         """If an op is in multiple cross-links, it should be classified once."""
@@ -194,7 +217,7 @@ class TestSummarize:
         """Construct a minimal scenario:
         - PIF_A (low, pif) shares ALICE with OP_HIGH (high), raised=$100M
         - PIF_B (low, pif) shares BOB with OP_MED (medium), raised=$50M
-        - OP_HIGH has person=0.9, ZIP=0 → at-risk
+        - OP_HIGH has person=0.9, state=1, ZIP=0 → v2 person+state profile
         - OP_MED has person=0.9, ZIP=0 → not in high-tier robustness check
         """
         records = [
@@ -245,36 +268,27 @@ class TestSummarize:
         # $150M / $15B = 1.0%
         assert s["hm_pct_of_headline"] == pytest.approx(1.0)
 
-    def test_summary_at_risk_quantification(self):
+    def test_summary_person_state_no_zip_quantification(self):
         records, xl = self._make_records_and_xl()
         s = _mod.summarize(
             xl, records, high_headline_usd=10_000_000_000.0, hm_headline_usd=15_000_000_000.0
         )
-        # OP_HIGH has person=0.9, ZIP=0 → at-risk
-        assert s["at_risk_dollars_usd"] == 100_000_000.0
-        assert s["at_risk_pct_of_high_headline"] == pytest.approx(1.0)
-        assert len(s["at_risk_ops"]) == 1
-        assert s["at_risk_ops"][0]["op_company"] == "OP_HIGH"
+        assert s["person_and_state_no_zip_dollars_usd"] == 100_000_000.0
+        assert s["person_and_state_no_zip_pct_of_high_headline"] == pytest.approx(1.0)
+        assert len(s["person_and_state_no_zip_ops"]) == 1
+        assert s["person_and_state_no_zip_ops"][0]["op_company"] == "OP_HIGH"
 
     def test_summary_handles_zero_headline_without_div_by_zero(self):
         records, xl = self._make_records_and_xl()
         s = _mod.summarize(xl, records, high_headline_usd=0.0, hm_headline_usd=0.0)
         # Should not crash
-        assert s["high_tier_pct_of_headline"] == 0.0
-        assert s["hm_pct_of_headline"] == 0.0
-        assert s["at_risk_pct_of_high_headline"] == 0.0
+        assert s["high_tier_pct_of_headline"] is None
+        assert s["hm_pct_of_headline"] is None
+        assert s["person_and_state_no_zip_pct_of_high_headline"] is None
 
-    def test_cik_only_cross_link_does_not_count_as_at_risk(self):
-        """Regression: at-risk is defined as person-based cross-links where
-        the shared person could be the deciding match signal. A CIK-only
-        cross-link can't make a shared person the deciding signal — there
-        is no shared person. Verify CIK-only cross-links to person-only-
-        confirmed high-tier ops do NOT contribute to at_risk_dollars_usd
-        or at_risk_ops."""
+    def test_cik_only_cross_link_is_preserved_as_identity_review_flag(self):
         # PIF_CIK (low, pif) shares CIK "999" with OP_HIGH_CIK (high)
-        # OP_HIGH_CIK is person-only confirmed (person=0.9, ZIP=0) — would
-        # be at-risk if the cross-link were person-based. Since it's
-        # CIK-based, it must NOT be counted as at-risk.
+        # Shared CIK must remain visible rather than being labeled harmless.
         records = [
             _record("PIF_CIK", "low", has_pif=True, has_non_pif=False, persons=["A"], ciks=["999"]),
             _record(
@@ -293,16 +307,33 @@ class TestSummarize:
         xl = _mod.find_cross_links(records)
         # Confirm we found one CIK-based cross-link
         assert len(xl) == 1
-        assert xl[0]["link_type"] == "cik"
+        assert xl[0]["link_types"] == ["cik"]
 
         s = _mod.summarize(
             xl, records, high_headline_usd=10_000_000_000.0, hm_headline_usd=15_000_000_000.0
         )
-        # Op IS in the high-tier cross-link cohort dollar exposure
         assert s["high_tier_counted_dollars_at_cross_link_op_side"] == 100_000_000.0
-        # But it must NOT contribute to at-risk (which is person-based only)
-        assert s["at_risk_dollars_usd"] == 0.0
-        assert s["at_risk_ops"] == []
+        assert s["distinct_high_tier_ops_with_cik_link"] == 1
+        assert s["high_tier_cik_link_dollars_usd"] == 100_000_000.0
+
+
+class TestLoadRecords:
+    def test_refuses_unversioned_or_stale_tiers(self, tmp_path: Path) -> None:
+        path = tmp_path / "details.jsonl"
+        path.write_text(
+            json.dumps(
+                {
+                    "company_name": "Legacy Co",
+                    "match_confidence": {"tier": "high"},
+                    "offerings": [],
+                }
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+
+        with pytest.raises(ValueError, match="Rescore the complete input first"):
+            _mod.load_records(path, 2009, 2024)
 
 
 class TestNormName:

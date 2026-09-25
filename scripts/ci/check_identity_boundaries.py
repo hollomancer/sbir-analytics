@@ -2,6 +2,7 @@
 """Prevent duplicate identity implementations outside ``sbir_etl.identity``."""
 
 import ast
+import re
 import subprocess
 from dataclasses import dataclass
 from pathlib import Path
@@ -20,6 +21,25 @@ REVIEWED_DIRECT_SCORER_FILES = frozenset(
         "scripts/data/find_same_work_awards.py",
         # Contract tests compare shared adapters with the upstream scorer implementation.
         "tests/unit/identity/test_company_names.py",
+    }
+)
+CANONICAL_COMPANY_NAME_FILE = "sbir_etl/identity/company_names.py"
+# Function names that read as a company-name normalizer. A function matching
+# this pattern must delegate to the versioned primitive rather than carry its
+# own rule, so a new fork cannot reach main without a named profile.
+COMPANY_NAME_FUNCTION_PATTERN = re.compile(r"^_{0,2}(norm|normalize|normalized)(_[a-z0-9]+)*_name$")
+COMPANY_NAME_PRIMITIVE_SYMBOLS = frozenset({"normalize_company_name", "CompanyNameProfile"})
+# Normalizers that do not resolve company identity. Each entry is reviewed:
+# person names and U.S. state names are different concepts with their own
+# contracts, so they do not belong to a company-name profile.
+REVIEWED_NON_COMPANY_NORMALIZERS = frozenset(
+    {
+        # Form D confidence compares principal-investigator and related-person names.
+        ("sbir_etl/enrichers/sec_edgar/form_d_scoring.py", "_normalize_name"),
+        # State names resolve through sbir_etl.identity.geography, not a company profile.
+        ("sbir_etl/transformers/fiscal/refresh_state_rates.py", "_normalize_state_name"),
+        # STTR spinout linkage scores inventor and principal-investigator names.
+        ("scripts/sttr_spinout_linkage/kernel.py", "_normalize_person_name"),
     }
 )
 CANONICAL_JURISDICTION_FILE = "sbir_etl/identity/geography.py"
@@ -66,6 +86,31 @@ def _uses_direct_rapidfuzz_scorer(node: ast.AST) -> bool:
     )
 
 
+def _forks_company_name_normalization(node: ast.AST) -> bool:
+    """Return True for a company-name normalizer that carries its own rule.
+
+    A function is treated as delegating when it names the primitive, names a
+    profile, or calls a sibling normalizer that must itself delegate.
+    """
+
+    if not isinstance(node, (ast.AsyncFunctionDef, ast.FunctionDef)):
+        return False
+    if not COMPANY_NAME_FUNCTION_PATTERN.match(node.name):
+        return False
+    for child in ast.walk(node):
+        if isinstance(child, ast.Name) and child.id in COMPANY_NAME_PRIMITIVE_SYMBOLS:
+            return False
+        if isinstance(child, ast.Attribute) and child.attr in COMPANY_NAME_PRIMITIVE_SYMBOLS:
+            return False
+        if (
+            isinstance(child, ast.Call)
+            and isinstance(child.func, ast.Name)
+            and COMPANY_NAME_FUNCTION_PATTERN.match(child.func.id)
+        ):
+            return False
+    return True
+
+
 def _jurisdiction_mapping_pairs(node: ast.AST) -> int:
     """Count recognizable name/code pairs in a literal mapping."""
 
@@ -108,6 +153,23 @@ def scan_file(
                     message=(
                         "direct RapidFuzz scorer bypasses sbir_etl.identity; use the shared "
                         "similarity contract or document a reviewed non-company exception"
+                    ),
+                )
+            )
+        if (
+            relative != CANONICAL_COMPANY_NAME_FILE
+            and isinstance(node, (ast.AsyncFunctionDef, ast.FunctionDef))
+            and (relative, node.name) not in REVIEWED_NON_COMPANY_NORMALIZERS
+            and _forks_company_name_normalization(node)
+        ):
+            violations.append(
+                IdentityBoundaryViolation(
+                    path=relative,
+                    line_number=node.lineno,
+                    message=(
+                        f"{node.name} normalizes company names outside "
+                        "sbir_etl.identity.company_names; call normalize_company_name with a "
+                        "named CompanyNameProfile, or add a reviewed non-company exception"
                     ),
                 )
             )

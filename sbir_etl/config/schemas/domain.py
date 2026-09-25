@@ -181,6 +181,17 @@ class EnrichmentRefreshConfig(BaseModel):
         ),
         description="SEC EDGAR refresh settings (opt-in, disabled by default)",
     )
+    nih_reporter: EnrichmentSourceConfig = Field(
+        default_factory=lambda: EnrichmentSourceConfig(
+            enabled=False,
+            cadence_days=7,
+            sla_staleness_days=7,
+            batch_size=100,
+            max_concurrent_requests=2,
+            rate_limit_per_minute=30,
+        ),
+        description="NIH RePORTER refresh settings (disabled; adapter is issue #443)",
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -405,24 +416,6 @@ class ModernBertTextConfig(BaseModel):
     )
 
 
-class ModernBertNeo4jConfig(BaseModel):
-    """Configuration for loading ModernBert similarity edges into Neo4j.
-
-    Validates the pre-authored config/base.yaml block ahead of the
-    (Award)-[:SIMILAR_TO]->(Patent) loading asset landing (specs/modernbert-analysis-layer,
-    task 2.1) — currently inert since nothing reads it yet.
-    """
-
-    enabled: bool = Field(
-        default=False, description="Enable (Award)-[:SIMILAR_TO]->(Patent) edge loading"
-    )
-    batch_size: int = Field(default=1000, ge=1, description="Batch size for Neo4j MERGE operations")
-    dry_run: bool = Field(default=False, description="Validate without committing changes")
-    prune_previous: bool = Field(
-        default=False, description="Remove previous SIMILAR_TO edges before loading"
-    )
-
-
 class ModernBertConfig(BaseModel):
     """Configuration for ModernBert patent-award similarity embeddings."""
 
@@ -434,8 +427,6 @@ class ModernBertConfig(BaseModel):
     api: ModernBertApiConfig = Field(default_factory=ModernBertApiConfig)
     local: ModernBertLocalConfig = Field(default_factory=ModernBertLocalConfig)
     text: ModernBertTextConfig = Field(default_factory=ModernBertTextConfig)
-    neo4j: ModernBertNeo4jConfig = Field(default_factory=ModernBertNeo4jConfig)
-
     similarity_threshold: float = Field(
         default=0.80,
         ge=0.0,
@@ -600,6 +591,63 @@ class StatisticalReportingConfig(BaseModel):
         return normalized
 
 
+MA_DISCOVERY_SEARCH_BACKENDS = frozenset({"none", "mock", "snippets", "tavily", "brave"})
+DEFAULT_MA_DISCOVERY_API_KEY_ENV = "SBIR_ETL__MA_DISCOVERY__SEARCH_API_KEY"
+
+
+class MADiscoveryConfig(BaseModel):
+    """Configuration for the M&A web-search discovery path.
+
+    Runtime default is ``none`` (fail-closed). ``mock`` is explicit opt-in.
+    ``snippets`` replays a frozen search-result cut. A live client is used
+    only when ``search_backend`` is a real vendor *and* an API key is present.
+    """
+
+    search_backend: str = Field(
+        default="none",
+        description="Search backend: none (default), mock, snippets, tavily, or brave.",
+    )
+    snippets_path: str | None = Field(
+        default=None,
+        description="JSONL of frozen {query, snippet, link} hits for the snippets backend.",
+    )
+    search_api_key: str | None = Field(
+        default=None,
+        description="API key for the selected backend. Prefer the env var.",
+    )
+    api_key_env_var: str = Field(
+        default=DEFAULT_MA_DISCOVERY_API_KEY_ENV,
+        description="Environment variable holding the search API key.",
+    )
+    rate_limit_per_minute: int = Field(
+        default=60,
+        ge=1,
+        description="Requests per minute for the live search client.",
+    )
+    timeout_seconds: int = Field(
+        default=30,
+        ge=1,
+        description="HTTP timeout in seconds for the live search client.",
+    )
+    max_results: int = Field(
+        default=5,
+        ge=1,
+        le=20,
+        description="Maximum search hits to request per query.",
+    )
+
+    @field_validator("search_backend", mode="before")
+    @classmethod
+    def _normalize_search_backend(cls, value: object) -> object:
+        if not isinstance(value, str):
+            return value
+        normalized = value.strip().lower()
+        if normalized not in MA_DISCOVERY_SEARCH_BACKENDS:
+            known = ", ".join(sorted(MA_DISCOVERY_SEARCH_BACKENDS))
+            raise ValueError(f"search_backend must be one of {known}; got {value!r}")
+        return normalized
+
+
 class OTConsortiumConfig(BaseModel):
     """Configuration for OT consortium Phase III verification tiering."""
 
@@ -625,15 +673,17 @@ class OTConsortiumConfig(BaseModel):
 
 
 __all__ = [
+    "DEFAULT_MA_DISCOVERY_API_KEY_ENV",
     "EnrichmentConfig",
     "EnrichmentRefreshConfig",
     "EnrichmentSourceConfig",
     "FiscalAnalysisConfig",
+    "MA_DISCOVERY_SEARCH_BACKENDS",
+    "MADiscoveryConfig",
     "MLConfig",
     "ModernBertApiConfig",
     "ModernBertConfig",
     "ModernBertLocalConfig",
-    "ModernBertNeo4jConfig",
     "ModernBertTextConfig",
     "OTConsortiumConfig",
     "SensitivityConfig",

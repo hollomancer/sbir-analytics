@@ -12,7 +12,11 @@ distinguish SBIR firms from otherwise similar federal contractors.
 This is an unweighted empirical comparison of 712 retained SBIR firms and 1,029 retained
 screened-negative controls. It is not a matched-set causal estimate, does not generalize to
 the unmatched Phase II population, and does not validate any contract as statutory Phase
-III. The placebo test and hand-labelled validation remain unresolved.
+III. This outcomes run did not invoke the placebo (see Frozen run). The preregistered
+placebo was run separately and is recorded in
+[placebo-results-2026-08-03.md](placebo-results-2026-08-03.md). Hand-labelled validation
+remains unresolved. The [study file](study.yaml) is the clock: the placebo is descriptive
+falsification evidence, not labeled validation.
 
 ## Frozen run
 

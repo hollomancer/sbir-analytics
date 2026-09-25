@@ -32,6 +32,7 @@ Exported Functions:
 from __future__ import annotations
 
 # Client module
+from .adapter import USAspendingSourceAdapter
 from .client import USAspendingAPIClient
 
 # Enricher module
@@ -44,6 +45,7 @@ from .index import extract_table_sample, parse_toc_table_dat_map
 __all__ = [
     # Client
     "USAspendingAPIClient",
+    "USAspendingSourceAdapter",
     # Enricher
     "enrich_sbir_with_usaspending",
     # Index

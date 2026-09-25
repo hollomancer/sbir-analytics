@@ -2,7 +2,7 @@
 
 ## Project
 
-Graph-based ETL: SBIR awards → Neo4j. Dagster orchestration, DuckDB processing, Docker deployment.
+Research ETL for SBIR/STTR data. Dagster orchestrates governed Parquet and DuckDB pipelines.
 
 **Intent / north star:** [docs/research-questions.md](docs/research-questions.md) is the canonical inventory of what this repo exists to answer. Use it to judge whether a proposed change serves a real question vs. adds incidental scope.
 
@@ -10,6 +10,30 @@ Architectural patterns and technical docs live in `docs/steering/`. Feature spec
 Before implementing a spec, check `specs/status.md` and follow
 `docs/development/spec-workflow-guide.md`; a directory can be gated, deferred, or
 an archive candidate even when it still has unchecked tasks.
+
+## Communication
+
+Default to the Federal Plain Language Guidelines (plainlanguage.gov) everywhere:
+chat replies, commit messages, PR bodies, docstrings, notebook narrative, and
+analysis write-ups.
+
+Technical documents use the ASD-STE100 Simplified Technical English writing rules
+instead. A document is technical when the reader will execute it or a machine will
+consume it: the server runbook (`docs/deployment/`), study contracts (`studies/`),
+and the contracts in `docs/steering/`. One instruction per sentence; imperative for
+steps; one meaning per word; procedural sentences at 20 words or fewer. The STE
+dictionary is licensed and not in this repo — apply the writing rules, do not claim
+STE compliance.
+
+- Lead with the finding or the change, then the reasoning. Short, concrete sentences.
+- Prefer ordinary words. Keep the terms that carry real precision here (tier names,
+  estimand, grain, as-of date) and expand an unfamiliar acronym on first use.
+- Be specific: name files, columns, row counts, and actual numbers rather than
+  "significantly" or "a lot".
+- State uncertainty and failure plainly — what a number does not cover, what was not
+  verified, which tier the work sits in. Never dress exploratory work in confident
+  prose; plain language is how tier discipline shows up in writing.
+- No marketing tone, no self-congratulation, no restating the request back.
 
 ## Epistemic tiers
 
@@ -21,7 +45,7 @@ much weight it can carry. Full contracts:
 |------|----------|-------------|
 | `primitives` | One implementation per concept, versioned behavior, comprehensive tests | `sbir_etl/identity/`, `sbir_etl/config/`, `sbir_etl/models/` |
 | `pipelines` | Deterministic, reproducible from a declared data cut, no inference | `sbir_etl/`, `packages/` |
-| `evidence` | Frozen spec + SHA enforcement + blocking asset checks + declared estimand — all four | Phase III census |
+| `evidence` | Frozen spec + SHA enforcement + blocking asset checks + declared estimand — all four | Phase III census (`check_epistemic_tiers.py` enforces amendments SHA paperwork + declared estimand; not full runtime gates) |
 | `exploratory` | Labeled non-citable. Nothing else required. | most of `scripts/` |
 
 Three rules:
@@ -61,9 +85,10 @@ by hand with the inputs available on this host.
 
 ## Agents
 
-Full role instructions live in `.claude/agents/`. The `.Codex/agents/` files
-route Codex agents to the same instructions so the two runtimes do not maintain
-separate copies.
+Full role instructions live in `.claude/agents/`. Those files are **role-only**
+(workflows, verdicts, tier-scaled effort); shared conventions stay here in
+CLAUDE.md. The `.Codex/agents/` files route Codex agents to the same
+instructions so the two runtimes do not maintain separate copies.
 
 | Agent | When to Use | Model |
 |-------|-------------|-------|
@@ -71,9 +96,22 @@ separate copies.
 | `test-fixer` | Failing tests, broken coverage, test diagnostics | sonnet |
 | `quality-sweep` | Lint/type errors, code cleanup after large changes | sonnet |
 | `scope-guard` | Before large implementations — challenges scope creep | opus |
+| `evidence-auditor` | Evidence promotion, study contracts, and citable claims | opus |
+| `named-reader-reviewer` | Outside-reader packet — what the named reader will quote | opus |
+| `deployment-safety-reviewer` | Read-only review before live operations and materialization | opus |
 
 For **spec work**: scope-guard → spec-implementer → test-fixer → quality-sweep.
 For **bug fixes**: skip to test-fixer or quality-sweep directly.
+For **evidence promotion or externally reportable claims**: run evidence-auditor
+before changing study status or presenting the result as validated or citable.
+For **an outside-reader packet** (policy brief, findings record, readout,
+Start-here or Research-targets edit, or a study promotion that would become a
+briefing entry point): run named-reader-reviewer. Route on the packet type, not
+on the header. A missing reader header is one of the defects this reviewer
+reports, so a packet without one still goes to it. It does not authorize
+citation or a Start-here edit.
+For **live deployment or materialization**: run deployment-safety-reviewer
+before the separately authorized operation; the reviewer never executes live mutations.
 
 Each agent reads the tier from the spec and holds to it: `scope-guard` checks the
 declared tier against the contract and can return `RETIER`, `spec-implementer`
@@ -95,7 +133,6 @@ for runtime discovery. `make docs-check` requires the copies to match.
 sbir_etl/                 # Core ETL library (extractors, enrichers, transformers, validators, models, config, quality, utils)
 packages/
   sbir-analytics/         # Dagster assets, jobs, sensors
-  sbir-graph/             # Neo4j loaders
   sbir-ml/                # ML models (CET, transition detection)
 config/base.yaml          # Thresholds, paths, performance settings
 studies/                  # Versioned contracts for reproducible and citable research
@@ -106,7 +143,7 @@ studies/                  # Versioned contracts for reproducible and citable res
 - **Monitoring:** Use `sbir_etl.utils` decorators and `AlertCollector`
 - **CI:** Edit `.github/workflows/*.yml`, upload artifacts to `reports/`
 - **Tests:** Place in `tests/unit|integration|e2e/`; use the Make targets or `uv run pytest`
-- **Neo4j:** Modify `packages/sbir-graph/sbir_graph/loaders/`, use MERGE operations
+- **Analytical storage:** Keep governed records in Parquet or DuckDB; studies freeze exact inputs
 
 ## Research and analysis workflow
 
@@ -144,16 +181,52 @@ make install                           # uv sync --extra stack-dev (run this fir
 make test-unit                         # Unit tests
 uv run pytest -m integration           # Integration tests
 uv run pytest -n auto                  # Parallel execution
-make lint                              # Ruff check over the repository, MyPy over sbir_etl
-make lint-boundaries                   # Architecture, identity, and study guards
-make docs-check                        # Links, stale commands, and repository hygiene
+make lint                              # Ruff over the repo, MyPy over sbir_etl + sbir-ml
+make lint-boundaries                   # Same boundary/hygiene guards as CI (incl. identity + epistemic tiers)
+make ci-local                         # PR analog: lint, guards, Bandit, detect-secrets, unit -m "not slow", hermetic e2e
+make docs-check                        # Hygiene subset only (also included in lint-boundaries)
 ```
 
-Transition scoring changes must maintain the ≥85% Phase III retrospective
-HIGH-precision benchmark. Enforcement today is a fixture-level canary
-(`tests/unit/scripts/test_phase_iii_precision_backtest.py`) that runs on every
-PR; the full benchmark against the S3 corpus is run manually via
-`scripts/phase_iii_precision_backtest.py` and is not yet automated in CI.
+`make lint-boundaries` must stay aligned with the CI quality job's guard step. If
+Make and CI diverge, CI is authoritative and the Makefile is wrong.
+
+### Adversarial cases for matchers and classifiers
+
+Two kinds of function need tests that try to break them, because a false
+positive from either reads as evidence rather than as a crash:
+
+- **Role assignment from free text** — decides who did what to whom.
+  `classify_direction`, `ucc/matcher.is_debtor_side_match`,
+  `sec_edgar._classify_mention`.
+- **Cross-population entity matching** — decides whether two names are the same
+  firm. `identity/company_names` (`company_name_similarity`,
+  `normalize_company_name`), `press_wire._match_company`,
+  `form_d_scoring.compute_form_d_confidence`,
+  `company_fuzzy_matcher` (`build_block_key`, `enrich_awards_with_companies`),
+  `ucc/matcher.classify_match`.
+
+For every rule or branch that can return a positive result, write at least one
+input where that rule must **not** fire. The adversarial cases in
+`tests/unit/scripts/archive/test_refine_ma_medium_tier.py` cover phrasings where
+the subject company is the buyer, the seller, or merely mentioned.
+
+This is not a general testing rule. A field normaliser such as
+`_normalize_state` cannot produce a false positive that reads as evidence, and
+does not need it.
+
+Happy-path coverage is not a substitute. A substring matcher can accept `BAL`
+inside `global`, and a role classifier can accept an acquirer as its target,
+while every positive example still passes. Include negative near-collisions and
+role reversals that exercise the same production decision path.
+
+Transition scoring changes must not silently invert HIGH-threshold polarity.
+Every PR runs `tests/unit/scripts/test_phase_iii_precision_backtest.py`:
+obvious transitions stay HIGH, obvious non-transitions stay below the
+threshold, and a small mixed-signal slice fails if current retrospective
+weights are swapped. That file is not the ≥85% HIGH-precision benchmark.
+The ≥85% number is measured only by a manual run of
+`scripts/phase_iii_precision_backtest.py` against the S3 corpus and is not
+a CI gate.
 
 ## Releases and versioning
 
@@ -172,9 +245,9 @@ PR; the full benchmark against the S3 corpus is run manually via
 ## Code Standards
 
 - Line length: 100
-- Target: Python 3.11
+- Target: Python 3.11–3.12 (`requires-python >=3.11,<3.13`)
 - Ruff rules: E, W, F, I, B, C4, UP
-- Use `StrEnum` not `str, Enum`
+- Use `StrEnum` not `str, Enum` (UP042 via `ruff --preview --select UP042` in `make lint` / CI)
 - Use `datetime.UTC` not `timezone.utc`
 - Do not postpone annotations on a Dagster-decorated function whose context type
   Dagster must inspect at runtime. Follow the local pattern in

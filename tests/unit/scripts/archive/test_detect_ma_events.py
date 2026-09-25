@@ -1,7 +1,13 @@
 """Tests for M&A event detection."""
 
+import json
 import sys
 from pathlib import Path
+
+import pytest
+
+from sbir_etl.enrichers.sec_edgar.form_d_scoring import FORM_D_TIER_RULE_VERSION
+
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[4] / "scripts" / "archive" / "data"))
 
@@ -10,6 +16,8 @@ from detect_sbir_ma_events import (
     build_signals_dict,
     extract_efts_signals,
     extract_form_d_signals,
+    is_acquirer_side_only,
+    main,
     merge_events,
 )
 
@@ -18,7 +26,10 @@ def test_extract_form_d_signals_finds_business_combination():
     records = [
         {
             "company_name": "ACME INC",
-            "match_confidence": {"tier": "high"},
+            "match_confidence": {
+                "rule_version": FORM_D_TIER_RULE_VERSION,
+                "tier": "high",
+            },
             "offerings": [
                 {
                     "filing_date": "2019-03-15",
@@ -42,13 +53,17 @@ def test_extract_form_d_signals_finds_business_combination():
     assert e["event_date"] == "2019-03-15"
     assert e["form_d_detail"]["total_amount_sold"] == 25_000_000
     assert e["form_d_detail"]["related_persons"][0]["name"] == "Jane Doe"
+    assert e["form_d_detail"]["tier_rule_version"] == FORM_D_TIER_RULE_VERSION
 
 
 def test_extract_form_d_signals_skips_non_combo():
     records = [
         {
             "company_name": "BORING INC",
-            "match_confidence": {"tier": "medium"},
+            "match_confidence": {
+                "rule_version": FORM_D_TIER_RULE_VERSION,
+                "tier": "medium",
+            },
             "offerings": [
                 {
                     "filing_date": "2020-06-01",
@@ -67,7 +82,10 @@ def test_extract_form_d_signals_uses_earliest_combo_date():
     records = [
         {
             "company_name": "MULTI INC",
-            "match_confidence": {"tier": "high"},
+            "match_confidence": {
+                "rule_version": FORM_D_TIER_RULE_VERSION,
+                "tier": "high",
+            },
             "offerings": [
                 {
                     "filing_date": "2021-06-01",
@@ -87,6 +105,19 @@ def test_extract_form_d_signals_uses_earliest_combo_date():
     events = extract_form_d_signals(records)
     assert len(events) == 1
     assert events[0]["event_date"] == "2020-01-15"
+
+
+def test_extract_form_d_signals_refuses_unversioned_tiers():
+    with pytest.raises(ValueError, match="Rescore the complete input"):
+        extract_form_d_signals(
+            [
+                {
+                    "company_name": "LEGACY INC",
+                    "match_confidence": {"tier": "high"},
+                    "offerings": [],
+                }
+            ]
+        )
 
 
 # --- EFTS extraction ---
@@ -204,9 +235,174 @@ def test_merge_events_separate_companies():
 # --- Confidence ---
 
 
-def test_assign_confidence_form_d_is_high():
+def test_assign_confidence_form_d_alone_is_not_high():
+    """Form D Item 10 is filed by the acquirer, so alone it is wrong-direction evidence.
+
+    This test previously asserted `high`, which is the defect: grading an
+    acquirer-side flag as strong exit evidence inflated the exit population with
+    rows recording purchases by the SBIR firm.
+    """
     event = {"form_d_detail": {"filing_date": "2020-01-01"}, "efts_detail": None}
+    assert assign_confidence(event) == "low"
+
+
+def test_form_d_with_target_side_efts_still_reaches_high():
+    """A Form D flag alongside target-side evidence is not demoted."""
+    event = {
+        "form_d_detail": {"filing_date": "2020-01-01"},
+        "efts_detail": {"mention_types": ["subsidiary"]},
+    }
     assert assign_confidence(event) == "high"
+
+
+def test_acquirer_side_only_predicate():
+    """The predicate alone. Writer behaviour is asserted end-to-end below."""
+    assert is_acquirer_side_only({"form_d_business_combination": True})
+
+
+def _combo_record(company: str, tier: str) -> dict:
+    return {
+        "company_name": company,
+        "match_confidence": {"rule_version": FORM_D_TIER_RULE_VERSION, "tier": tier},
+        "offerings": [
+            {
+                "filing_date": "2019-03-15",
+                "is_business_combination": True,
+                "total_amount_sold": 1_000_000,
+                "related_persons": [],
+            }
+        ],
+    }
+
+
+def test_tier_gate_drops_a_combination_record_below_high():
+    """The gate is the main population change, so test it on a real combo row.
+
+    A medium-tier record that *has* a business-combination offering is the only
+    case that distinguishes the gate from the combo check. Without it, a
+    regression that removed or inverted the gate would still pass.
+    """
+    events = extract_form_d_signals(
+        [_combo_record("HIGH CO", "high"), _combo_record("MEDIUM CO", "medium")]
+    )
+
+    assert [e["company_name"] for e in events] == ["HIGH CO"]
+
+
+def test_tier_gate_drops_low_as_well_as_medium():
+    events = extract_form_d_signals(
+        [_combo_record("HIGH CO", "high"), _combo_record("LOW CO", "low")]
+    )
+
+    assert [e["company_name"] for e in events] == ["HIGH CO"]
+
+
+def _write_jsonl(path: Path, rows: list[dict]) -> Path:
+    path.write_text("".join(json.dumps(r) + "\n" for r in rows), encoding="utf-8")
+    return path
+
+
+def test_writer_routes_acquirer_side_rows_to_the_sibling_file(tmp_path, monkeypatch, capsys):
+    """End-to-end: the two artifacts, and the reason value on the sibling row.
+
+    The predicate test above would still pass if the writer sent the row to
+    --output, dropped non_exit_reason, or never wrote the sibling at all.
+    """
+    form_d = _write_jsonl(tmp_path / "form_d.jsonl", [_combo_record("ACME INC", "high")])
+    efts = _write_jsonl(
+        tmp_path / "efts.jsonl",
+        [
+            {
+                "company_name": "TARGET CO",
+                "mention_types": ["subsidiary"],
+                "filing_date": "2020-02-02",
+            }
+        ],
+    )
+    awards = tmp_path / "awards.csv"
+    awards.write_text("Company,Agency\n", encoding="utf-8")
+    out = tmp_path / "events.jsonl"
+    non_exit = tmp_path / "non_exit.jsonl"
+
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "detect",
+            "--form-d",
+            str(form_d),
+            "--efts",
+            str(efts),
+            "--awards",
+            str(awards),
+            "--output",
+            str(out),
+            "--non-exit-output",
+            str(non_exit),
+        ],
+    )
+    main()
+    capsys.readouterr()
+
+    exit_rows = [json.loads(line) for line in out.read_text().splitlines() if line.strip()]
+    non_exit_rows = [json.loads(line) for line in non_exit.read_text().splitlines() if line.strip()]
+
+    assert [r["company_name"] for r in non_exit_rows] == ["ACME INC"]
+    assert non_exit_rows[0]["non_exit_reason"] == "acquirer_side"
+    assert "ACME INC" not in [r["company_name"] for r in exit_rows]
+    assert [r["company_name"] for r in exit_rows] == ["TARGET CO"]
+    assert "non_exit_reason" not in exit_rows[0]
+
+
+def test_writer_refuses_to_write_both_artifacts_to_one_path(tmp_path, monkeypatch):
+    """Two buffered handles on one path truncate and overwrite each other."""
+    form_d = _write_jsonl(tmp_path / "form_d.jsonl", [_combo_record("ACME INC", "high")])
+    efts = _write_jsonl(tmp_path / "efts.jsonl", [])
+    awards = tmp_path / "awards.csv"
+    awards.write_text("Company,Agency\n", encoding="utf-8")
+    same = tmp_path / "both.jsonl"
+
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "detect",
+            "--form-d",
+            str(form_d),
+            "--efts",
+            str(efts),
+            "--awards",
+            str(awards),
+            "--output",
+            str(same),
+            "--non-exit-output",
+            str(same),
+        ],
+    )
+    with pytest.raises(SystemExit, match="same file"):
+        main()
+
+
+def test_target_side_efts_keeps_a_row_in_the_exit_artifact():
+    for signal in ("efts_subsidiary", "efts_ma_definitive", "efts_acquisition_text"):
+        assert not is_acquirer_side_only({"form_d_business_combination": True, signal: True}), (
+            signal
+        )
+
+
+def test_low_grade_efts_mentions_do_not_rescue_an_acquirer_side_row():
+    """ma_proxy and ownership_active are graded Low and are not target-side.
+
+    A comparable-table entry or a >5% stake with intent is not evidence the SBIR
+    firm was acquired, so neither keeps an otherwise acquirer-side row in the
+    exit artifact.
+    """
+    for signal in ("efts_ma_proxy", "efts_ownership_active"):
+        assert is_acquirer_side_only({"form_d_business_combination": True, signal: True}), signal
+
+
+def test_a_row_without_a_form_d_flag_is_never_acquirer_side_only():
+    assert not is_acquirer_side_only({"efts_subsidiary": True})
 
 
 def test_assign_confidence_subsidiary_is_high():

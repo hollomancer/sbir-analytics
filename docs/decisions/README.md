@@ -1,7 +1,7 @@
 ---
 Type: Overview
 Maintainer: Conrad Hollomon
-Last-Reviewed: 2026-07-16
+Last-Reviewed: 2026-09-19
 Status: active
 
 ---
@@ -43,6 +43,8 @@ Each ADR follows this structure:
 - [ADR-002: Extract a Standalone ETL Library](./ADR-002-etl-library-extraction.md) - Accepted
 - [ADR-003: Establish APIs Before MCP Adapters](./ADR-003-api-before-mcp.md) - Superseded
 - [ADR-004: Retire the Private Analytics API](./ADR-004-retire-private-analytics-api.md) - Accepted (2026-08-04)
+- [ADR-005: Represent Transition Candidates as Typed Assertions Before Neo4j Projection](./ADR-005-transition-candidates-as-assertions.md) - Accepted (2026-09-19)
+- [ADR-006: Retire Neo4j and Keep Governed Tables Authoritative](./ADR-006-retire-neo4j.md) - Accepted (2026-09-21)
 
 ## Technology Evaluations
 

@@ -10,13 +10,13 @@ The system uses Dagster's asset-based design for pipeline orchestration, where e
 ┌─────────────┐     ┌─────────────┐     ┌─────────────┐     ┌─────────────┐     ┌─────────────┐
 │   EXTRACT   │────▶│   VALIDATE  │────▶│  ENRICH     │────▶│  TRANSFORM  │────▶│    LOAD     │
 │             │     │             │     │             │     │             │     │             │
-│ Download    │     │ Schema      │     │ SAM.gov API │     │ Normalize   │     │ Neo4j       │
-│ CSV/API     │     │ Quality     │     │ USPTO Data  │     │ Standardize │     │ Nodes/Edges │
-│ Parse       │     │ Dedup       │     │ Text Enrich │     │ Calculate   │     │ Indexes     │
+│ Download    │     │ Schema      │     │ SAM.gov API │     │ Normalize   │     │ Parquet     │
+│ CSV/API     │     │ Quality     │     │ USPTO Data  │     │ Standardize │     │ DuckDB      │
+│ Parse       │     │ Dedup       │     │ Text Enrich │     │ Calculate   │     │ Manifests   │
 └─────────────┘     └─────────────┘     └─────────────┘     └─────────────┘     └─────────────┘
       │                   │                   │                   │                   │
       ▼                   ▼                   ▼                   ▼                   ▼
-  raw/*.csv         validated/           enriched/           transformed/        Neo4j Database
+  raw/*.csv         validated/           enriched/           transformed/        governed tables
   raw/*.json        ├─ pass/             ├─ success/         ├─ companies/
                     └─ fail/             └─ partial/         ├─ awards/
                                                               └─ patents/
@@ -38,7 +38,6 @@ Assets organized by functional area:
 - `enrichment` - External data enrichment
 - `cet_pipeline` - CET classification
 - `patent_loading` - USPTO patent data processing
-- `graph_construction` - Neo4j loading and relationship creation
 
 ### Asset Naming Conventions
 
@@ -117,7 +116,7 @@ Assets organized by functional area:
 
 ### Batch Operations
 
-- Batch writes to Neo4j for performance
+- Batch writes to Parquet or DuckDB for performance
 - Configurable batch sizes per operation type
 - Transaction management for data consistency
 - Parallel processing where possible
@@ -266,6 +265,6 @@ def enrichment_success_rate_check(enriched_sbir_awards: pd.DataFrame) -> AssetCh
 - **[configuration.md](../configuration.md)** - Complete pipeline and performance configuration examples
 - **[data-quality.md](data-quality.md)** - Quality framework integrated with asset checks
 - **[enrichment-patterns.md](enrichment-patterns.md)** - Enrichment performance monitoring patterns
-- **[neo4j-patterns.md](neo4j-patterns.md)** - Graph database loading patterns
+- **[ADR-006](../decisions/ADR-006-retire-neo4j.md)** - Graph-service retirement decision
 - **[structure.md](structure.md)** - Code organization and asset structure
 - **[Configuration reference](../configuration.md)** - Current settings and environment overrides

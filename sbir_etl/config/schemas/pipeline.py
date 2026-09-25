@@ -16,7 +16,6 @@ from .data import (
     ExtractionConfig,
     LoggingConfig,
     MetricsConfig,
-    Neo4jConfig,
     PathsConfig,
     SbirDuckDBConfig,
     SbirValidationConfig,
@@ -27,6 +26,7 @@ from .domain import (
     EnrichmentConfig,
     EnrichmentRefreshConfig,
     FiscalAnalysisConfig,
+    MADiscoveryConfig,
     MLConfig,
     OTConsortiumConfig,
     StatisticalReportingConfig,
@@ -86,7 +86,6 @@ class PipelineConfig(BaseModel):
         default_factory=EnrichmentRefreshConfig,
         description="Iterative enrichment refresh configuration",
     )
-    neo4j: Neo4jConfig = Field(default_factory=Neo4jConfig)
     extraction: ExtractionConfig = Field(default_factory=ExtractionConfig)
     validation: ValidationConfig = Field(default_factory=ValidationConfig)
     transformation: TransformationConfig = Field(default_factory=TransformationConfig)
@@ -110,6 +109,10 @@ class PipelineConfig(BaseModel):
         default_factory=OTConsortiumConfig,
         description="OT consortium Phase III verification-tiering configuration",
     )
+    ma_discovery: MADiscoveryConfig = Field(
+        default_factory=MADiscoveryConfig,
+        description="M&A web-search discovery configuration",
+    )
 
     model_config = ConfigDict(
         validate_assignment=True,
@@ -127,9 +130,9 @@ __all__ = [
     "ExtractionConfig",
     "FiscalAnalysisConfig",
     "LoggingConfig",
+    "MADiscoveryConfig",
     "MetricsConfig",
     "MLConfig",
-    "Neo4jConfig",
     "OTConsortiumConfig",
     "PathsConfig",
     "PipelineConfig",

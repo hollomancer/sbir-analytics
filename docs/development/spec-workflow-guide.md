@@ -35,7 +35,9 @@ specs/<feature>/
 
 ### Requirements
 
-Begin `requirements.md` with a compact context block:
+Start from [`specs/REQUIREMENTS_TEMPLATE.md`](../../specs/REQUIREMENTS_TEMPLATE.md).
+Design and tasks shapes live in this guide (there are no separate DESIGN/TASKS template
+files). Begin `requirements.md` with a compact context block:
 
 ```markdown
 # <Feature> Requirements

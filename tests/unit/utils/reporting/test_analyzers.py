@@ -3,7 +3,6 @@
 Tests for base analyzer class and all specialized analyzer implementations:
 - BaseAnalyzer: Common utilities and abstract methods
 - CetClassificationAnalyzer: CET classification analysis
-- PatentAnalysisAnalyzer: Patent validation and loading analysis
 - SbirEnrichmentAnalyzer: SBIR enrichment analysis
 - TransitionDetectionAnalyzer: Transition detection analysis
 """
@@ -20,7 +19,6 @@ pytestmark = pytest.mark.fast
 from sbir_etl.models.quality import ChangesSummary, DataHygieneMetrics, ModuleReport
 from sbir_etl.utils.reporting.analyzers.base_analyzer import AnalysisInsight, ModuleAnalyzer
 from sbir_etl.utils.reporting.analyzers.cet_analyzer import CetClassificationAnalyzer
-from sbir_etl.utils.reporting.analyzers.patent_analyzer import PatentAnalysisAnalyzer
 from sbir_etl.utils.reporting.analyzers.sbir_analyzer import SbirEnrichmentAnalyzer
 from sbir_etl.utils.reporting.analyzers.transition_analyzer import TransitionDetectionAnalyzer
 
@@ -415,13 +413,6 @@ class TestAnalyzerLifecycleCharacterization:
                 "No classified DataFrame available",
             ),
             (
-                PatentAnalysisAnalyzer,
-                "patent_df",
-                "patent_analysis",
-                "load",
-                "No patent DataFrame available",
-            ),
-            (
                 TransitionDetectionAnalyzer,
                 "transitions_df",
                 "transition_detection",
@@ -464,7 +455,6 @@ class TestAnalyzerLifecycleCharacterization:
         [
             (SbirEnrichmentAnalyzer, "enriched_df", "sbir_enrichment", "enrich", 1),
             (CetClassificationAnalyzer, "classified_df", "cet_classification", "transform", 1),
-            (PatentAnalysisAnalyzer, "patent_df", "patent_analysis", "load", 1),
             (
                 TransitionDetectionAnalyzer,
                 "transitions_df",
@@ -514,7 +504,6 @@ class TestAnalyzerLifecycleCharacterization:
         [
             (SbirEnrichmentAnalyzer, "enriched_df", "sbir_enrichment", "enrich", 0),
             (CetClassificationAnalyzer, "classified_df", "cet_classification", "transform", 0),
-            (PatentAnalysisAnalyzer, "patent_df", "patent_analysis", "load", 0),
             (
                 TransitionDetectionAnalyzer,
                 "transitions_df",
@@ -788,186 +777,6 @@ class TestCetClassificationAnalyzer:
 
 # =============================================================================
 # Patent Analysis Analyzer Tests
-# =============================================================================
-
-
-class TestPatentAnalysisAnalyzer:
-    """Tests for the Patent Analysis Analyzer."""
-
-    @pytest.fixture
-    def sample_patent_df(self) -> pd.DataFrame:
-        """Create sample patent DataFrame."""
-        return pd.DataFrame(
-            {
-                "grant_doc_num": ["123456", "234567", "345678", "456789", "567890"],
-                "title": [
-                    "AI Method for Pattern Recognition",
-                    "Quantum Computing System",
-                    "Biotech Diagnostic Tool",
-                    "Advanced Materials Process",
-                    "Energy Storage Device",
-                ],
-                "grant_date": pd.to_datetime(
-                    ["2020-01-15", "2020-03-20", "2020-06-10", "2020-09-05", "2020-12-12"]
-                ),
-                "inventor_names": [
-                    "Smith, John",
-                    "Doe, Jane; Brown, Bob",
-                    "Lee, Alice",
-                    "Chen, Wei; Kim, Min",
-                    "Garcia, Maria",
-                ],
-                "assignee_names": ["Company A", "Company B", "Company C", "Company D", "Company E"],
-                "abstract": ["Abstract 1"] * 5,
-                "claims_count": [20, 15, 25, 18, 22],
-                "citations_count": [10, 8, 12, 15, 9],
-            }
-        )
-
-    def test_initialization(self):
-        """Test patent analyzer initialization."""
-        analyzer = PatentAnalysisAnalyzer()
-
-        assert analyzer.module_name == "patent_analysis"
-        assert "min_validation_pass_rate" in analyzer.thresholds
-        assert len(analyzer.patent_fields) > 0
-        assert len(analyzer.node_types) > 0
-
-    def test_calculate_validation_metrics(self, sample_patent_df):
-        """Test calculating patent validation metrics."""
-        analyzer = PatentAnalysisAnalyzer()
-
-        validation_results = {"valid_records": 5, "invalid_records": 0}
-
-        metrics = analyzer._calculate_validation_metrics(sample_patent_df, validation_results)
-
-        assert metrics["total_records"] == 5
-        assert metrics["valid_records"] == 5
-        assert metrics["validation_pass_rate"] == 1.0
-        assert "field_validation_rates" in metrics
-
-    def test_calculate_quality_scores(self, sample_patent_df):
-        """Test calculating patent quality scores."""
-        analyzer = PatentAnalysisAnalyzer()
-
-        quality_metrics = analyzer._calculate_quality_scores(sample_patent_df, {})
-
-        assert "average_quality_score" in quality_metrics
-        assert "high_quality_records" in quality_metrics
-        assert quality_metrics["total_records"] == 5
-        assert 0 <= quality_metrics["average_quality_score"] <= 1.0
-
-    def test_calculate_patent_specific_metrics(self, sample_patent_df):
-        """Test calculating patent-specific metrics."""
-        analyzer = PatentAnalysisAnalyzer()
-
-        metrics = analyzer._calculate_patent_specific_metrics(sample_patent_df)
-
-        assert "grant_date_range" in metrics
-        assert "title_analysis" in metrics
-        assert "inventor_analysis" in metrics
-        assert "assignee_analysis" in metrics
-
-    def test_get_key_metrics(self, sample_patent_df):
-        """Test extracting key patent analysis metrics."""
-        analyzer = PatentAnalysisAnalyzer()
-
-        module_data = {
-            "patent_df": sample_patent_df,
-            "validation_results": {"valid_records": 5, "invalid_records": 0},
-            "loading_results": {"nodes_created": 50, "relationships_created": 25},
-            "neo4j_stats": {"Patent_nodes": 5},
-        }
-
-        metrics = analyzer.get_key_metrics(module_data)
-
-        assert metrics["total_records"] == 5
-        assert "validation_metrics" in metrics
-        assert "loading_statistics" in metrics
-        assert "quality_scores" in metrics
-        assert "patent_metrics" in metrics
-
-    def test_generate_insights_low_validation_rate(self, sample_patent_df):
-        """Test generating insights for low validation rate."""
-        analyzer = PatentAnalysisAnalyzer()
-
-        module_data = {
-            "patent_df": sample_patent_df,
-            "validation_results": {
-                "validation_pass_rate": 0.85,  # Below threshold
-                "invalid_records": 15,
-            },
-            "loading_results": {},
-        }
-
-        insights = analyzer.generate_insights(module_data)
-
-        assert len(insights) > 0
-        assert any("validation" in i.title.lower() for i in insights)
-
-    def test_analyze_complete_workflow(self, sample_patent_df):
-        """Test complete patent analysis workflow."""
-        analyzer = PatentAnalysisAnalyzer()
-
-        module_data = {
-            "patent_df": sample_patent_df,
-            "validation_results": {"valid_records": 5, "invalid_records": 0},
-            "loading_results": {"duration_seconds": 10.0},
-            "neo4j_stats": {},
-            "run_context": {"run_id": "patent_run_123"},
-        }
-
-        expected_report = analyzer.create_module_report(
-            run_id="patent_run_123",
-            stage="load",
-            total_records=5,
-            records_processed=5,
-            records_failed=0,
-            duration_seconds=10.0,
-            module_metrics=analyzer.get_key_metrics(module_data),
-            data_hygiene=analyzer._calculate_data_hygiene(
-                sample_patent_df, module_data["validation_results"]
-            ),
-            changes_summary=analyzer._calculate_changes_summary(
-                module_data["loading_results"], module_data["neo4j_stats"]
-            ),
-        )
-
-        report = analyzer.analyze(module_data)
-
-        assert isinstance(report, ModuleReport)
-        assert report.module_name == "patent_analysis"
-        assert report.run_id == "patent_run_123"
-        assert report.stage == "load"
-        assert _stable_report_dump(report) == _stable_report_dump(expected_report)
-
-    def test_analyze_uses_validation_counts_and_loading_duration(self, sample_patent_df):
-        """Patent processing counts and duration intentionally come from different sources."""
-        analyzer = PatentAnalysisAnalyzer()
-        module_data = {
-            "patent_df": sample_patent_df,
-            "validation_results": {"valid_records": 3, "invalid_records": 2},
-            "loading_results": {
-                "records_processed": 99,
-                "records_failed": 98,
-                "duration_seconds": 4.0,
-            },
-            "neo4j_stats": {},
-            "run_context": {"run_id": "patent-split-sources"},
-        }
-
-        report = analyzer.analyze(module_data)
-
-        assert report.total_records == 5
-        assert report.records_processed == 3
-        assert report.records_failed == 2
-        assert report.success_rate == 0.6
-        assert report.duration_seconds == 4.0
-        assert report.throughput_records_per_second == 0.75
-
-
-# =============================================================================
-# SBIR Enrichment Analyzer Tests
 # =============================================================================
 
 

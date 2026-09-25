@@ -1,5 +1,9 @@
 # UCC-1 Financing Analysis — Tasks
 
+> **Historical v1 dependency:** Completed checkmarks and row counts below
+> describe the retired `person-or-zip-v1` cohort. They are provenance, not
+> current `corroborated-person-v2` results.
+
 **Status:** Pilot complete through the partial-run epistemic checkpoint;
 extension deferred. See [docs/research/sbir-ucc1-pilot.md](../../../../docs/research/sbir-ucc1-pilot.md)
 ("Recommendation: Stop here") for the rationale. Phases 4–6 and the

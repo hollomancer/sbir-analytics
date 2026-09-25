@@ -756,3 +756,57 @@ estimand, or output metric.
 After approval, any further criterion change requires a new spec revision and a new
 freeze before rerunning. An observed count, control overlap, balance statistic, or
 placebo result is never a justification for changing a clause.
+
+### Approved permutation-separation validation amendment
+
+Revision 16 adds a preregistered validation design to the study without changing any
+criterion, cell, or population. The R15 placebo family — the randomized cyclic group
+derangement of `prior_period_of_performance_end` across firms — is run over the seed list
+`20260802 + i`, `i = 0 … 499`, in that order. The R15 seed `20260801` is excluded from the
+confirmatory sample because its result was visible when the design was written; it runs first
+as an equivalence precondition that must reproduce the recorded R15 final-clause values and
+assignment digest exactly.
+
+The primary statistic is the share of draws in which the actual frame strictly exceeds the
+placebo frame on `surviving_pairs` at the final cumulative clause, with a Wilson 95% interval.
+The threshold is met if and only if the interval's lower bound is at least 0.95. Distinct firms,
+distinct contracts, and every metric in each of the six sensitivity cells are reported with their
+own exceedance shares and intervals but carry no threshold; signed-dollar totals remain
+descriptive. The statistic is defined at the final clause only because the R15 record shows the
+placebo frame carrying more distinct contracts at three intermediate stages; the estimand is the
+full-criteria census.
+
+The per-draw path evaluates the date-independent clauses once and the two date-dependent clauses
+per draw, then applies the frozen final-stage summary and six-cell builder; because every core
+clause is row-wise this is the same intersection `build_census_tables` computes, and fixture
+tests assert it. The runner refuses any draw count other than 500, may be resumed in batches over
+the fixed seed list, and writes no exceedance table or result until every seed is present.
+
+A met threshold authorizes a `validated` rank meaning separation from the frozen placebo family.
+It does not authorize any statement that the proxy identifies statutory Phase III awards. The
+full design is `studies/phase-iii-census/validation-design.md`, pinned in `study.yaml`.
+Production execution requires a separate repository-owner approval.
+
+### Approved execution-binding amendment
+
+Revision 17 binds an R16 run to the code that takes its draws and to the exact Phase 1 inputs the
+R15 materialization record names. It changes no criterion, cell, population, seed, statistic,
+interval, or threshold, and takes no draw.
+
+The run fingerprint recorded with the equivalence precondition previously covered the freeze
+record, the pinned validation design, the input digests and row counts, and the data cut. Because
+the run is resumable across invocations by design, that left one way to pool incomparable draws
+into a single result: editing the per-draw path between batches. The fingerprint now also carries
+the SHA-256 of the permutation module and of the runner script, so a resumed batch must agree with
+the batch that started the store on the code as well as on the data.
+
+The same amendment records the Phase 1 inputs by digest and adds a read-only `--check-inputs`
+preflight that reports each input against its recorded value without taking a draw or asserting
+owner approval. This is a restatement of what the precondition already required rather than a new
+constraint: the recorded R15 final-clause values are a function of those exact bytes, so an input
+rebuilt from a later snapshot produces a different pair frame and a failed precondition. The
+preflight makes that testable before a multi-hour run rather than after its first draw.
+
+The manifest's `design_revision` is now read from the frozen-spec constant rather than written as
+a literal, so it cannot disagree with the revision the run verified.
+

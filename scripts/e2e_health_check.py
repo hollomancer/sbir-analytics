@@ -15,48 +15,9 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 
-def check_neo4j_connection(profile: str = "e2e") -> tuple[bool, str]:
-    """Check Neo4j database connectivity."""
-    try:
-        from neo4j import GraphDatabase
-
-        if profile == "server":
-            uri = os.getenv("NEO4J_URI", "bolt://neo4j:7687")
-            username = os.getenv("NEO4J_USER", "neo4j")
-        else:
-            uri = os.getenv("SBIR_ETL__NEO4J__BOLT_URL", "bolt://neo4j-e2e:7687")
-            username = os.getenv("NEO4J_USERNAME", "neo4j")
-        password = os.getenv("NEO4J_PASSWORD", "e2e-password")
-
-        driver = GraphDatabase.driver(uri, auth=(username, password))
-
-        with driver.session() as session:
-            result = session.run("RETURN 1 as test")
-            record = result.single()
-            if record and record["test"] == 1:
-                driver.close()
-                return True, f"Neo4j connection successful at {uri}"
-            else:
-                driver.close()
-                return False, "Neo4j query returned unexpected result"
-
-    except ImportError:
-        return False, "Neo4j driver not available (pip install neo4j)"
-    except Exception as e:
-        return False, f"Neo4j connection failed: {str(e)}"
-
-
 def check_environment_variables(profile: str = "e2e") -> tuple[bool, str]:
     """Check required environment variables."""
-    if profile == "server":
-        required_vars = ["NEO4J_USER", "NEO4J_PASSWORD", "NEO4J_URI", "ENVIRONMENT"]
-    else:
-        required_vars = [
-            "NEO4J_USERNAME",
-            "NEO4J_PASSWORD",
-            "SBIR_ETL__NEO4J__BOLT_URL",
-            "ENVIRONMENT",
-        ]
+    required_vars = ["ENVIRONMENT"]
 
     missing_vars = []
     for var in required_vars:
@@ -90,7 +51,7 @@ def check_test_data_availability() -> tuple[bool, str]:
 
 def check_python_dependencies(profile: str = "e2e") -> tuple[bool, str]:
     """Check if required Python packages are available."""
-    required_packages = ["dagster", "pandas", "neo4j", "pydantic"]
+    required_packages = ["dagster", "pandas", "pydantic"]
     if profile == "e2e":
         required_packages.append("pytest")
 
@@ -138,12 +99,10 @@ CHECK_PROFILES = {
         "Python Dependencies",
         "Test Data",
         "Resource Constraints",
-        "Neo4j Connection",
     ],
     "server": [
         "Environment Variables",
         "Python Dependencies",
-        "Neo4j Connection",
     ],
 }
 
@@ -155,7 +114,6 @@ def run_health_checks(profile: str = "e2e") -> dict[str, tuple[bool, str]]:
         "Python Dependencies": lambda: check_python_dependencies(profile),
         "Test Data": check_test_data_availability,
         "Resource Constraints": check_resource_constraints,
-        "Neo4j Connection": lambda: check_neo4j_connection(profile),
     }
     checks = {name: all_checks[name] for name in CHECK_PROFILES[profile]}
 

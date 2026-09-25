@@ -31,11 +31,25 @@ Defines a cited, versioned many-to-many policy crosswalk from the canonical
 - `DOD-CTA-14-2022` — the frozen 14 DoD Critical Technology Areas.
 - `DOD-SC-8-2022` — the four focus areas plus four strategic enablers from
   *Securing Defense-Critical Supply Chains* (2022).
+- `NSSTS-CET-14-2026` — the 14 national-security CET areas in Appendix A of the
+  August 2026 National Security Science and Technology Strategy.
 
 `DOD-SC-8-2022` is a repository label, not an official “NDIS-8” taxonomy.
 Each mapping records `direct`, `partial`, or `enabling` strength and a short
 rationale. The supply-chain baseline validates complete CET coverage and
 target referential integrity before producing results.
+
+The file also carries `nssts_mission_needs`, the eight priority national security
+needs from NSSTS Appendix B. Each `NSSTS-CET-14-2026` area records which needs it
+supports and whether the implication is apparent today (`current`) or has yet to
+emerge (`horizon`, shown as a parenthesised check in the source table).
+
+`NSSTS-CET-14-2026` supersedes prior OSTP CET lists for national-security scoping
+but does not replace the canonical `NSTC-2025Q1` taxonomy, which classifies the
+full SBIR portfolio across civilian agencies as well. See
+[NSSTS 2026 alignment](../../docs/nssts-2026-alignment.md) for the reasoning, the
+substantive differences from the 2022 defense list, and the claims the strategy
+does not license.
 
 ### local_rule_classifier.yaml
 

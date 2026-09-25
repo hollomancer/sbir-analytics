@@ -151,7 +151,18 @@ def test_builds_dod_facts_and_latest_window_metrics_without_double_counting() ->
     assert latest["acp10_screening_flag"]
     assert latest["dod_cta14"] == ["trusted_ai_and_autonomy"]
     assert latest["dod_sc8"] == ["cyber_posture"]
-    assert result.metadata["defense_crosswalk_version"] == "DOD-CROSSWALK-2026Q3"
+    assert latest["nssts_cet14"] == ["ai_and_autonomy"]
+    assert latest["nssts_mission_needs"] == [
+        "biological_weapons_defense",
+        "border_security",
+        "cyber_defense",
+        "national_security_ai_and_autonomy",
+        "nuclear_deterrence_and_missile_defense",
+        "space_air_long_range_strike",
+        "transformative_emerging_technology",
+        "undersea",
+    ]
+    assert result.metadata["defense_crosswalk_version"] == "DOD-CROSSWALK-2026Q4"
 
 
 def test_missing_transition_is_not_zero_and_missingness_is_reported() -> None:

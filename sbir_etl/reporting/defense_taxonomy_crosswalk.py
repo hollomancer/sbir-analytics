@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 
 from ..config.yaml_io import read_yaml_mapping
@@ -12,7 +12,9 @@ DEFAULT_CROSSWALK_PATH = (
     Path(__file__).resolve().parents[2] / "config" / "cet" / "defense_crosswalk.yaml"
 )
 DEFAULT_TAXONOMY_PATH = Path(__file__).resolve().parents[2] / "config" / "cet" / "taxonomy.yaml"
-TARGET_KEYS = ("dod_cta14", "dod_sc8")
+TARGET_KEYS = ("dod_cta14", "dod_sc8", "nssts_cet14")
+MISSION_ALIGNMENT_TARGET = "nssts_cet14"
+MISSION_ALIGNMENT_LEVELS = ("current", "horizon")
 
 
 @dataclass(frozen=True)
@@ -24,6 +26,8 @@ class DefenseTaxonomyCrosswalk:
     target_versions: dict[str, str]
     mappings: dict[str, dict[str, tuple[dict[str, str], ...]]]
     source_path: Path
+    mission_needs: tuple[dict[str, str], ...] = ()
+    mission_alignment: dict[str, dict[str, str]] = field(default_factory=dict)
 
     def targets_for(self, cet_id: str, target_taxonomy: str) -> list[str]:
         """Return ordered target IDs for a CET and target taxonomy."""
@@ -44,6 +48,34 @@ class DefenseTaxonomyCrosswalk:
         if entry is None:
             raise KeyError(f"CET ID is absent from defense crosswalk: {cet_id}")
         return [dict(mapping) for mapping in entry[target_taxonomy]]
+
+    def mission_needs_for(
+        self, cet_id: str, strengths: tuple[str, ...] = ("direct",)
+    ) -> dict[str, str]:
+        """Return NSSTS priority national security needs a CET aligns with.
+
+        Alignment is published by NSSTS Appendix B against its own 14 CET areas,
+        not against this repository's canonical 21-area taxonomy. A canonical CET
+        therefore inherits an NSSTS area's mission profile only through a mapping
+        whose strength is listed in ``strengths``. The default is ``direct`` only:
+        a ``partial`` or ``enabling`` mapping means the two areas are not
+        equivalent, so carrying the full mission profile across would overstate
+        what the source table supports.
+
+        Where two inherited areas disagree, ``current`` wins over ``horizon``.
+        """
+
+        entry = self.mappings.get(cet_id)
+        if entry is None:
+            raise KeyError(f"CET ID is absent from defense crosswalk: {cet_id}")
+        needs: dict[str, str] = {}
+        for mapping in entry[MISSION_ALIGNMENT_TARGET]:
+            if mapping["strength"] not in strengths:
+                continue
+            for need_id, level in self.mission_alignment.get(mapping["target"], {}).items():
+                if needs.get(need_id) != "current":
+                    needs[need_id] = level
+        return needs
 
 
 def _canonical_ids(taxonomy_path: Path) -> tuple[str, set[str]]:
@@ -103,6 +135,37 @@ def load_defense_crosswalk(
         if not target_versions[key]:
             raise ValueError(f"authoritative source for {key} must define version")
 
+    raw_needs = payload.get("nssts_mission_needs")
+    if not isinstance(raw_needs, list) or not raw_needs:
+        raise ValueError("defense crosswalk must define nssts_mission_needs")
+    mission_needs: list[dict[str, str]] = []
+    need_ids: set[str] = set()
+    for need in raw_needs:
+        if not isinstance(need, dict):
+            raise ValueError("each nssts_mission_needs entry must be a mapping")
+        need_id = str(need.get("id") or "")
+        name = str(need.get("name") or "")
+        element = str(need.get("strategy_element") or "")
+        if not need_id or not name or not element:
+            raise ValueError("mission need requires id, name, and strategy_element")
+        if need_id in need_ids:
+            raise ValueError(f"duplicate mission need ID: {need_id}")
+        need_ids.add(need_id)
+        mission_needs.append({"id": need_id, "name": name, "strategy_element": element})
+
+    mission_alignment: dict[str, dict[str, str]] = {}
+    for item in target_taxonomies[MISSION_ALIGNMENT_TARGET]:
+        area_id = str(item.get("id"))
+        alignment = item.get("mission_alignment") or {}
+        if not isinstance(alignment, dict):
+            raise ValueError(f"mission_alignment for {area_id} must be a mapping")
+        for need_id, level in alignment.items():
+            if need_id not in need_ids:
+                raise ValueError(f"unknown mission need {need_id!r} for {area_id}")
+            if level not in MISSION_ALIGNMENT_LEVELS:
+                raise ValueError(f"invalid alignment level {level!r} for {area_id}.{need_id}")
+        mission_alignment[area_id] = {str(k): str(v) for k, v in alignment.items()}
+
     raw_mappings = payload.get("mappings")
     if not isinstance(raw_mappings, list):
         raise ValueError("defense crosswalk mappings must be a list")
@@ -150,12 +213,17 @@ def load_defense_crosswalk(
         target_versions=target_versions,
         mappings=normalized,
         source_path=source_path,
+        mission_needs=tuple(mission_needs),
+        mission_alignment=mission_alignment,
     )
 
 
 __all__ = [
     "DEFAULT_CROSSWALK_PATH",
     "DEFAULT_TAXONOMY_PATH",
+    "MISSION_ALIGNMENT_LEVELS",
+    "MISSION_ALIGNMENT_TARGET",
+    "TARGET_KEYS",
     "DefenseTaxonomyCrosswalk",
     "load_defense_crosswalk",
 ]

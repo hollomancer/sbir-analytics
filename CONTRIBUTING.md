@@ -14,7 +14,7 @@ document under `docs/steering/` or `specs/`.
 
 ## Set Up a Development Environment
 
-The supported Python versions are 3.11 and 3.12. From the repository root:
+The supported Python versions are 3.11 and 3.12 (`requires-python >=3.11,<3.13`). From the repository root:
 
 ```bash
 make install
@@ -25,7 +25,7 @@ make test-smoke
 ```
 
 See the full [getting-started guide](docs/getting-started/README.md) to generate
-sample data, start Dagster, or run Neo4j. The synthetic sample workflow does not
+sample data or start Dagster. The synthetic sample workflow does not
 require external API credentials.
 
 ## Find the Right Place to Make a Change
@@ -34,7 +34,6 @@ require external API credentials.
 |---|---|
 | Reusable extraction, enrichment, validation, and models | `sbir_etl/` |
 | Dagster assets, jobs, and sensors | `packages/sbir-analytics/` |
-| Neo4j loaders and queries | `packages/sbir-graph/` |
 | CET and transition ML or heuristics | `packages/sbir-ml/` |
 | Focused operational and analysis entry points | `scripts/` |
 | Architecture and methodology | `docs/` |
@@ -72,14 +71,14 @@ generator for reproducible tests.
 
 ## Open a Pull Request
 
-A pull request should:
+A typical pull request includes:
 
-1. Explain the problem and why the change is in scope.
-2. Identify the research question, bug, or maintenance need it supports.
-3. Describe the user or developer impact.
-4. Include focused tests or explain why the change is documentation-only.
-5. Update affected documentation, configuration examples, and data contracts.
-6. Avoid unrelated cleanup.
+1. An explanation of the problem and why the change is in scope.
+2. The research question, bug, or maintenance need it supports.
+3. User or developer impact.
+4. Focused tests, or an explanation why the change is documentation-only.
+5. Updates to affected documentation, configuration examples, and data contracts.
+6. No unrelated cleanup.
 
 Use a draft pull request while the implementation or validation is incomplete.
 Document any test that could not be run and the credentials, data, or service it

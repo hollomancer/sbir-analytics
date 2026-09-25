@@ -10,15 +10,26 @@ Archived 2026-07-02 as part of the scripts/ triage:
 
 - `data/` — Form D / DoD leverage cluster, M&A exit analyses, Phase III
   universe builders, USAspending lookups, benchmark dataset generators.
-  Their published outputs live in `docs/research/`.
+  Their published outputs live in `docs/research/`. The Form D leverage
+  bootstrap (`bootstrap_form_d_leverage_ci.py`) was restored to
+  `scripts/data/` when `studies/form-d-fundraising` entered
+  `reproducible`; that study is now retired and the bootstrap refuses to run
+  while its v2 rebuild gate is closed.
 - `validation/` — manual spot-check validators referenced only by archived
   docs.
-- Top level — `extract_federal_contracts.py` (superseded extraction path),
-  `run_cet_drift.py` (superseded by the
-  `validated_cet_drift_detection` Dagster asset), `run_transition.py`
-  (superseded by `transition_mvp_job` / `transition_full_job`),
-  `run_full_enrichment.py`, `pipeline_status.py`, `pipeline_metrics.py`
-  (orphaned operator conveniences).
+- Top level — `extract_federal_contracts.py` (superseded extraction path).
+
+Deleted on 2026-09-21 after a repository-wide consumer search found no callers:
+
+- `run_cet_drift.py`, superseded by the
+  `validated_cet_drift_detection` Dagster asset;
+- `run_transition.py`, superseded by `transition_mvp_job` and
+  `transition_full_job`; and
+- `run_full_enrichment.py`, `pipeline_status.py`, and `pipeline_metrics.py`,
+  which were orphaned operator conveniences.
+
+Git history preserves their implementation. They are not active or supported
+research paths.
 
 The broken and superseded scripts identified in the 2026-07-03 second triage
 were deleted in 2026-08. They included obsolete company-search and

@@ -59,6 +59,10 @@ The evaluation rationale is recorded in
 
 ## Glossary
 
+Feature-local evaluation arms for this prototype. "Confidence" below means
+statistical intervals on metrics — not enrichment or transition score bands
+([glossary.md](../../docs/steering/glossary.md)).
+
 - **Legacy arm:** The current batched prompt and manual parser evaluated on the
   restricted official-text corpus. It is a control, not a complete production
   baseline.
@@ -368,7 +372,7 @@ briefing.
 - Production changes in the planning PR.
 - Weekly synopsis, company or PI diligence, and live retrieval. Frozen company
   web context is permitted only in the preregistered robustness phase.
-- RAG, vector storage, tool-using agents, raw Cypher, Dagster execution, or MCP
+- RAG, vector storage, tool-using agents, arbitrary database queries, Dagster execution, or MCP
   exposure.
 - Entity-resolution, topic-clustering, mission-alignment, or NAICS-to-BEA
   decisions.

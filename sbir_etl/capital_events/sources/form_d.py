@@ -11,6 +11,10 @@ from collections.abc import Iterable, Iterator
 from pathlib import Path
 
 from sbir_etl.capital_events.schema import EventType
+from sbir_etl.enrichers.sec_edgar.form_d_scoring import (
+    FORM_D_TIER_RULE_VERSION,
+    require_form_d_tier_rule,
+)
 
 _SECURITY_KEYWORDS = {
     "equity": "equity",
@@ -56,9 +60,13 @@ def build_form_d_events(cohort: Iterable[dict], source_path: Path) -> Iterator[d
             except json.JSONDecodeError:
                 continue
             name = rec.get("company_name")
+            confidence = require_form_d_tier_rule(
+                rec.get("match_confidence"),
+                context=f"Form D record {name or '<unnamed>'!r}",
+            )
             if name not in cohort_names:
                 continue
-            tier = (rec.get("match_confidence") or {}).get("tier")
+            tier = confidence.get("tier")
             if tier != "high":
                 continue
             for offering in rec.get("offerings") or []:
@@ -83,6 +91,7 @@ def build_form_d_events(cohort: Iterable[dict], source_path: Path) -> Iterator[d
                             "num_investors": offering.get("num_investors"),
                             "business_combination": bool(offering.get("is_business_combination")),
                             "is_amendment": bool(offering.get("is_amendment")),
+                            "tier_rule_version": FORM_D_TIER_RULE_VERSION,
                         }
                     ),
                 }

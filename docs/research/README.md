@@ -1,7 +1,7 @@
 ---
 Type: Overview
 Maintainer: Conrad Hollomon
-Last-Reviewed: 2026-08-03
+Last-Reviewed: 2026-08-18
 Status: active
 ---
 
@@ -16,18 +16,34 @@ Do not cite an output as a validated finding unless its linked
 report may still be early research. See [evidence levels](../steering/epistemic-tiers.md)
 and [study requirements](../../studies/README.md) for the review rules.
 
+Every document in this directory should open by declaring its reader — a
+`**Prepared for:**` or `**Audience:**` header line. A doc addressed to policy
+staff or program officers is signed up for plain language and findings-first
+ordering (the policy briefs are the model); a doc declared for maintainers may
+be as technical as it needs to be. Technical appendices linked from a plain
+brief count as maintainer-facing.
+
+## R&D allocation costs
+
+| Output | Questions | Evidence status | Data covered |
+| --- | --- | --- | --- |
+| [Allocation transaction costs](allocation-transaction-costs.md) | C4 | Reproducible study (`studies/allocation-transaction-costs`); not approved for citation | NIH SBIR/STTR vs R01-equivalent, FY2015–2025 |
+
 ## Capital formation, exits, and firm pathways
 
 | Output | Questions | Evidence status | Data covered |
 | --- | --- | --- | --- |
-| [Form D fundraising analysis](sbir-form-d-fundraising-analysis.md) | F1, F3 | Dated analysis; not approved for citation | Form D and SBIR spending, 2009–2024; method revised 2026-04-23 |
-| [DoD Form D leverage](dod-form-d-leverage.md) | A3, A4, F3 | Dated breakdown and follow-up analysis | Combined 2026-06-21 |
-| [Form D data dictionary](form-d-data-dictionary.md) | F1, F3 | Reference for fields and confidence levels | Form D files currently produced by the pipeline |
+| [Form D fundraising analysis](sbir-form-d-fundraising-analysis.md) | F1, F3 | Retired study; former v1 numbers suppressed, no current result | Rebuild gated on pinned issuer-scoped `corroborated-person-v2` inputs |
+| [DoD Form D leverage](dod-form-d-leverage.md) | A3, A4, F3 | Historical v1 breakdown; numerical claims retired pending rebuild | Combined 2026-06-21; stale after tier-rule change |
+| [Form D data dictionary](form-d-data-dictionary.md) | F1, F3 | Reference for versioned fields and unresolved confidence scope | Current `corroborated-person-v2` schema |
 | [NSF Phase I to Phase II baseline comparison](agency-private-capital-phase1-nsf.md) | B2, B3, F3 | Exploratory Phase 1 review; non-citable with incomplete outcomes | Pinned SBIR.gov snapshot (219,500 rows); NSF Phase I firms, 2015–2019 |
+| [Public private-capital baseline candidates](private-capital-published-baselines.md) | F2 | Exploratory cite-only candidates; not loaded into the live registry | Carta Q4 2025 reports; Yearbook 2025–2026 PDFs |
 | [Agency private-capital Phase 2 method](agency-private-capital-phase2-form-d.md) | B2, B3, F3 | Compares matched groups; does not prove cause and effect | No fixed published run |
-| [M&A exit analysis](sbir-ma-exit-analysis.md) | A4, F1, F2 | Dated analysis; likely understates exits because it uses public filings | Run documented 2026-04-23 |
-| [Capital-pathway cohorts](sbir-pathway-cohorts.md) | F1, F2 | Dated group analysis | 3,639 firms with high-confidence matches; 2026-06-23 |
-| [UCC-1 pilot](sbir-ucc1-pilot.md) | F1 | Early, partial pilot for one state | California subset; 2026-05-16 |
+| [M&A exit analysis](sbir-ma-exit-analysis.md) | A4, F1, F2 | Retired combined result; Form D-dependent counts suppressed | Historical method from 2026-04-23; rebuild gated |
+| [Capital-pathway cohorts](sbir-pathway-cohorts.md) | F1, F2 | Historical v1 cohort; current counts suppressed pending v2 rebuild | 2026-06-23 materialization |
+| [NASA, Air Force, and DOE commercialization outcomes](nasa-air-force-doe-commercialization-outcomes.md) | B2, B3, F1, F2, F3 | Exploratory multi-channel comparison; non-citable | First Phase II cohorts; 3-, 5-, and 10-year windows through 2024-12-31 |
+| [Form D and M&A-candidate cross-enrichment](form-d-ma-cross-enrichment.md) | B2, B3, F1, F2, F3 | Exploratory provenance and candidate-relationship layer; non-citable | Current Form D and public-record M&A-candidate files; three-agency analysis test case |
+| [UCC-1 pilot](sbir-ucc1-pilot.md) | F1 | Retired cohort-dependent result; source-access observations retained | Historical California probe; 2026-05-16 |
 | [California UCC API notes](ucc1-bizfileonline-api.md) | E5, F1 | Reference for the data source; not a research result | Web addresses recorded 2026-05-16 |
 | [SEC EDGAR learnings](sec-edgar-sbir-learnings.md) | E5, F1, F2 | Notes on implementation and source behavior | Observations from 2026-04-19 and 2026-04-22 |
 
@@ -43,12 +59,30 @@ and [study requirements](../../studies/README.md) for the review rules.
 | [Commercialization benchmark method](../commercialization-benchmark-methodology.md) | B3 | Method is documented; this repository cannot recreate the local audit | FY2026 local audit described in the document |
 | [Monthly procurement-transition report](../procurement-transition-report.md) | B4, E6 | Instructions for producing a report; not research evidence | Current public-source pipeline |
 
-The Phase III census has its own formal study record: the
-[study file](../../studies/phase-iii-census/study.yaml),
-[February 2026 data-build review](../../studies/phase-iii-census/materialization-2026-02-06.md),
-and [August 2026 control-group identity review](../../studies/phase-iii-census/identity-eligibility-audit-2026-08-03.md).
-The work can be repeated, but it is not yet approved for citation. The comparison
-group, matching, and placebo test are not finished.
+The Phase III census has its own formal study record. The
+[study file](../../studies/phase-iii-census/study.yaml) is the clock:
+`reproducible`, not validated or citable. The
+[February 2026 data-build record](../../studies/phase-iii-census/materialization-2026-02-06.md)
+holds the census ladder, the sensitivity grid, and the blocking one-factor check. The
+2026-08-03
+[identity-eligibility](../../studies/phase-iii-census/identity-eligibility-audit-2026-08-03.md),
+[exact-match balance](../../studies/phase-iii-census/control-matching-audit-2026-08-03.md),
+and [fixed-seed placebo](../../studies/phase-iii-census/placebo-results-2026-08-03.md)
+audits are recorded. [Matched negative-control outcomes](../../studies/phase-iii-census/negative-control-outcomes-2026-08-03.md)
+are descriptive only, and only within the frozen exact-match common-support subset: SBIR
+firms clear the full criteria set about 2.10× as often as controls, with a 0.853 overlap
+coefficient, computed on 712 of 12,042 exact-UEI SBIR firms (5.91%) and 1,029 of 843,777
+screened-negative controls — 4,827 of the 5,539 match-eligible treated firms matched zero
+controls. That ratio is not a population-wide rate. The placebo is one preregistered
+falsification, not labeled validation.
+
+The study file records four standing limitations, not one. The materialized placebo is a
+single non-uniform cyclic derangement rather than an inferential permutation distribution,
+and labeled validation remains unresolved, so no headline census cell, undercount claim, or
+statutory Phase III interpretation is authorized. Negative-control inference is restricted
+to the frozen exact-match common-support subset and does not generalize to unmatched Phase
+II firms. Exact UEI matching misses acquisitions, successors, and UEI changes. And an
+uncoded lineage proxy is not proof of a statutory Phase III award.
 
 ## Economic and fiscal methods
 
@@ -65,14 +99,24 @@ explain how firms were selected and what the results cannot show.
 
 | Area | Questions | Evidence status | Data covered |
 | --- | --- | --- | --- |
-| Nanotechnology: [brief](nanotech_sbir_policy_brief.md), [findings](nanotech_sbir_transition_findings.md), [method](../nano-phase3-methodology.md) | A1, A2, B2, B3, C1 | Early estimates with stated bounds; not final program rates | SBIR.gov FY2025; USAspending FY2024; PatentsView March 2026 |
+| Nanotechnology: [brief](nanotech_sbir_policy_brief.md), [findings](nanotech_sbir_transition_findings.md), [method](../nano-phase3-methodology.md) | A1, A2, B2, B3, C1 | Early estimates; all Form D-dependent figures retired pending v2 rebuild | SBIR.gov FY2025; USAspending FY2024; PatentsView March 2026; historical v1 Form D |
 | Hypersonics: [brief](hypersonics_sbir_policy_brief.md), [findings](hypersonics_sbir_transition_findings.md) | A1, A2, B2, B3, C1 | Early firm group built from several signals; outcome rates are unavailable | SBIR.gov through FY2025 |
 | Quantum information science: [brief](quantum_information_science_sbir_policy_brief.md), [findings](quantum_information_science_sbir_transition_findings.md) | A1, A2, B2, B3, C1 | Early firm group built from several signals; outcome rates are unavailable | SBIR.gov through FY2025 |
 
 ## Research planning and communication
 
+- [Literature replication roadmap](literature-replication-roadmap.md) — exact published-sample
+  replications followed by separately reported current-data extensions, ordered from public-data
+  descriptive studies through restricted-data causal studies. Several orders route into specs that
+  are gated or de-tiered in the [status registry](../../specs/status.md); check it before starting.
+- [Literature corpus triage](literature-corpus-triage.md) and
+  [inventory CSV](literature-corpus-inventory.csv) — the 51 report PDFs supplied 2026-09-17,
+  mapped to roadmap orders with per-document text-layer quality and SHA-256. The corpus is deep on
+  Order 1 and contributes benchmark context only to Orders 3 and 5. Read this before staging any
+  historical source cuts: the files are already inventoried.
 - [Literature map and citation audit](literature-map/README.md) — research published
-  from 2019–2026 and missing coverage across question areas A–F.
+  from 2019–2026 and missing coverage across question areas A–F. The CSV is
+  refreshed manually from OpenAlex (`make literature-map`); authored memos are not.
 - [Solicitation document and requirement evidence plan](solicitation_document_evidence_plan.md) —
   bounded acquisition, linkage, attachment parsing, and classifier gates for A1 and E5; Phase 1 is
   implemented, but this remains a plan rather than research evidence.

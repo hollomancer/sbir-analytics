@@ -294,8 +294,8 @@ def transformed_phase_ii_iii_pairs(
         or DEFAULT_PAIRS_OUTPUT
     )
     ensure_parent_dir(output_path)
-    if not pairs.empty:
-        pairs.to_parquet(output_path, index=False)
+    # Write unconditionally, including when empty; see phase_iii.py for why.
+    pairs.to_parquet(output_path, index=False)
 
     summary = _latency_summary(pairs)
     basis_counts = pairs["identifier_basis"].value_counts().to_dict() if not pairs.empty else {}
@@ -361,8 +361,8 @@ def transformed_phase_transition_survival(
         or DEFAULT_SURVIVAL_OUTPUT
     )
     ensure_parent_dir(output_path)
-    if not survival.empty:
-        survival.to_parquet(output_path, index=False)
+    # Write unconditionally, including when empty; see phase_iii.py for why.
+    survival.to_parquet(output_path, index=False)
 
     total = int(len(survival))
     observed = int(survival["event_observed"].sum()) if total else 0

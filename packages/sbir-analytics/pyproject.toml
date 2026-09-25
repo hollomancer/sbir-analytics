@@ -1,7 +1,7 @@
 [project]
 name = "sbir-analytics"
-version = "0.5.1"
-description = "Full SBIR analytics pipeline — ETL + Dagster orchestration + ML + Neo4j"
+version = "0.19.0"
+description = "Full SBIR analytics pipeline — ETL, Dagster orchestration, and ML"
 authors = [{name = "Conrad Hollomon", email = "conrad.hollomon@pm.me"}]
 readme = "README.md"
 license = {text = "MIT"}
@@ -11,7 +11,6 @@ requires-python = ">=3.11,<3.13"
 dependencies = [
     "sbir-etl[uspto,monitoring]",
     "sbir-ml[nlp]",
-    "sbir-graph",
     # Dagster orchestration
     "dagster>=1.7.0,<2.0.0",
     "dagster-webserver>=1.7.0,<2.0.0",

@@ -1,0 +1,52 @@
+file,report_year,roadmap_order,order_title,series,pages,tier,extractable_now,stop,garb,sha256
+Final_SBA-Consolidated_SBIR_STTR_Program_Annual_Report_for_FYs_2009-2011.pdf,2009,1,SBA annual-report tables [L18],sba_consolidated_annual_report,75,clean_digital,True,0.231,0.04,9b9e89c0c8b7a45c115ff60a60d3954a5cf21964cfe319333127f7b03fdae61c
+SBIR-STTR_FY_2012_Report_Final.pdf,2012,1,SBA annual-report tables [L18],sba_consolidated_annual_report,44,ocr_noisy,True,0.242,0.046,97bef3362a2d119211c280e69d8b724c9b28c619cab7b67ce416596080b8305b
+FY13_SBIR_STTR_AR_Final.pdf,2013,1,SBA annual-report tables [L18],sba_consolidated_annual_report,48,clean_digital,True,0.245,0.035,a72d48d311ee24d94a1afbefb7582bd2c4f1f01acb140585e92c6c1ac967e3c1
+SBIR-STTR_FY14_Annual_Report_to_Congress.pdf,2014,1,SBA annual-report tables [L18],sba_consolidated_annual_report,50,ocr_noisy,True,0.253,0.042,07d8b2b6c6dc89ea1f979e3384a2d3f8e628527b9074c2b4718c6165acf62e4e
+FY15_SBIR-STTR_Annual_Report.pdf,2015,1,SBA annual-report tables [L18],sba_consolidated_annual_report,65,clean_digital,True,0.278,0.039,26ba7b69d18bf5981ce76e7223d71539a491c06eadb3ea66aee5576dccae4442
+FY16 SBIR Annual Report 04082019.pdf,2016,1,SBA annual-report tables [L18],sba_consolidated_annual_report,96,clean_digital,True,0.252,0.04,ac82797e2798df9f6a6ceaae6c3134eac720e070d8bf3c5f0d98ac17d30c6e7d
+SBIR FY2017 ANNUAL REPORT.pdf,2017,1,SBA annual-report tables [L18],sba_consolidated_annual_report,104,clean_digital,True,0.256,0.038,901e9c9b69107dd2101d271c5c7edab594afed9cb70ee0c5757ccbb3d41454f9
+SBA_SBIR_STTR_FY18_Annual_Report-Final_508.pdf,2018,1,SBA annual-report tables [L18],sba_consolidated_annual_report,96,clean_digital,True,0.256,0.039,65dac5750f54998741435b548d2afc796be191a14a459d8abbe945433c57b353
+SBA FY 2019 Annual Report Final_508compliant.pdf,2019,1,SBA annual-report tables [L18],sba_consolidated_annual_report,103,clean_digital,True,0.269,0.032,b799b5254ca62a2cb87cc2649aff6272ffec38a40057a20a70a32b38e857a514
+SBA_SBIR_STTR_FY20_Annual_Report.pdf,2020,1,SBA annual-report tables [L18],sba_consolidated_annual_report,99,clean_digital,True,0.246,0.033,f1f51abb29c71d631451868f31babf2f6f1fe3845df91e534052f1d40dece3d3
+SBA_SBIR_STTR_FY21_Annual_Report.pdf,2021,1,SBA annual-report tables [L18],sba_consolidated_annual_report,95,clean_digital,True,0.245,0.035,30b4dfa9b4c2c2220fc15938d5bd1a44bee92d5aa746b8756dc7d66217c6df55
+SBA_FY22_SBIR_STTR_Annual_Report.pdf,2022,1,SBA annual-report tables [L18],sba_consolidated_annual_report,94,clean_digital,True,0.242,0.036,5ba60852f1cc44b23afdbf810ecf0cff77d714d10ffc786a9b73416d7c000fd1
+AR_Summary_1990_0.pdf,1990,1,SBA annual-report tables [L18],sbir_annual_report_series,59,no_text_layer,False,0.0,0.0,4c3db062437ab7c96bb5cf4f1597b425be3bad5b775ebbda0f8b5879ac22284a
+AR_Summary_1991_0.pdf,1991,1,SBA annual-report tables [L18],sbir_annual_report_series,51,no_text_layer,False,0.0,0.0,a5bcf8b8f2a8f9758ef5d0532cf4569704482e4b5c6e2fd8dda7bf71b465f35c
+AR_Summary_1992_0.pdf,1992,1,SBA annual-report tables [L18],sbir_annual_report_series,49,no_text_layer,False,0.0,0.0,9c727f9ecb1fe8a26b001176c3a4ae447e6bd5ef22409de07715af99485408f1
+AR_Summary_1993.pdf,1993,1,SBA annual-report tables [L18],sbir_annual_report_series,44,no_text_layer,False,0.0,0.0,a5f3bdf1d6c218118aee2248eda81f684e939b97b022c33c204f165b609f1011
+AR_Summary_1994_0.pdf,1994,1,SBA annual-report tables [L18],sbir_annual_report_series,48,no_text_layer,False,0.0,0.0,d4a401f714c45e30dd2c6a98b319b86ab7a3d01725aa32f2ad3650a6314e6810
+AR_Summary_1995_0.pdf,1995,1,SBA annual-report tables [L18],sbir_annual_report_series,53,no_text_layer,False,0.0,0.0,26435a2dbe2ad286764fc56c8886e4fe9ce6532b9c15bcbabcc3dd459de99944
+AR_Summary_1996_0.pdf,1996,1,SBA annual-report tables [L18],sbir_annual_report_series,55,no_text_layer,False,0.0,0.0,442914c71b7465128660d00e6ff8624a90d18962c57d7142e9199317a43aad95
+AR_Summary_1997_0.pdf,1997,1,SBA annual-report tables [L18],sbir_annual_report_series,55,no_text_layer,False,0.0,0.0,31499b2e1d276786512c67228ec42c175c3803c5c312c132eeb24246c4cc84c9
+AR_Summary_1998_0.pdf,1998,1,SBA annual-report tables [L18],sbir_annual_report_series,55,no_text_layer,False,0.0,0.0,162ea757dc3b3fc8a5e37af4b9b85c46689634f5aadcece0fa36b7070619d9eb
+SBIR_1999.pdf,1999,1,SBA annual-report tables [L18],sbir_annual_report_series,17,no_text_layer,False,0.0,0.0,8c1a80724267de974cdc9141e5e4a6f75dba5b45d65982978545883e95a0586b
+AR_Summary_2000_0.pdf,2000,1,SBA annual-report tables [L18],sbir_annual_report_series,19,no_text_layer,False,0.0,0.0,f6c5ddcacd5d7b44fa5360a73ae1ccaa17cdfbe0d0b9dc26093949e560b57750
+SBIR_2001.pdf,2001,1,SBA annual-report tables [L18],sbir_annual_report_series,19,no_text_layer,False,0.0,0.0,b87da0b7e1030174cd2288f949857975f11a276be32851e0bb3faa94ea987590
+SBIR_2002.pdf,2002,1,SBA annual-report tables [L18],sbir_annual_report_series,25,no_text_layer,False,0.0,0.0,ad32f58a31da7c3c4e6242cb2ab8f3355b1e14f36a2beb990f05e37194533333
+SBIR_2003.pdf,2003,1,SBA annual-report tables [L18],sbir_annual_report_series,21,no_text_layer,False,0.0,0.0,c833e1a87d9b8d8128bbb542010ecc66bea82610e430813f29ae980f2e9c5b56
+SBIR_2004.pdf,2004,1,SBA annual-report tables [L18],sbir_annual_report_series,9,no_text_layer,False,0.0,0.0,9a60093717e7d93d985292a2dd8d50e88aacf591637dc93df7508df837ae92f4
+SBIR_2005.pdf,2005,1,SBA annual-report tables [L18],sbir_annual_report_series,8,no_text_layer,False,0.0,0.0,5cee06698f16a8ad3638689502e173de4990623229e474416a5720215a32649e
+SBIR_2006.pdf,2006,1,SBA annual-report tables [L18],sbir_annual_report_series,7,no_text_layer,False,0.0,0.0,d71df031dec39c857e6dbb919af62a8bd5be6ff1ccddf63f7c4e3f2af1d57f31
+SBIR_2007.pdf,2007,1,SBA annual-report tables [L18],sbir_annual_report_series,7,no_text_layer,False,0.0,0.0,aac32e85ea338732211ab4c67fffb26e2dc70de010a01bc3d71aff0ac51e4d1d
+SBIR_2008.pdf,2008,1,SBA annual-report tables [L18],sbir_annual_report_series,15,no_text_layer,False,0.0,0.0,aaf00da0b334259fab2e13e8c59d96c20e9b7d77985d72c097808cc5267764ea
+STTR_1994.pdf,1994,1,SBA annual-report tables [L18],sttr_annual_report_series,27,clean_digital,True,0.235,0.034,094e7d6e7fffd79503b780e4b118a7402c3cf58dad5af30276760fc5de512599
+STTR_1995.pdf,1995,1,SBA annual-report tables [L18],sttr_annual_report_series,41,ocr_noisy,True,0.222,0.04,30f75745f0639428aae4ff9c4b915c55b375dc31250de18baa1447430b0ff155
+STTR_1996.pdf,1996,1,SBA annual-report tables [L18],sttr_annual_report_series,34,clean_digital,True,0.224,0.033,31e8410595296da06eceb1769240bb7ee107415817aab1626f12b5ec7c366642
+STTR_1997.pdf,1997,1,SBA annual-report tables [L18],sttr_annual_report_series,37,clean_digital,True,0.189,0.033,fa78fd2af411fc10998824d79da07fb7ca0b1c0221ec80a7826cc12570813f44
+STTR_1998_0.pdf,1998,1,SBA annual-report tables [L18],sttr_annual_report_series,37,clean_digital,True,0.207,0.027,78632cbaae8e11171268647781a969bcdd75cb5d0a73afbc2b8f3ae7020b40c2
+STTR_1999.pdf,1999,1,SBA annual-report tables [L18],sttr_annual_report_series,38,clean_digital,True,0.192,0.01,5e43ab5a9e090312d86736e95c0fe099803e7a5084ab5f60320b8c40762f6aac
+STTR_2000.pdf,2000,1,SBA annual-report tables [L18],sttr_annual_report_series,33,ocr_noisy,True,0.19,0.04,e2e5ce29823dd0a1704e4066890f37f86ce7204121219c0c6ea53ef31a6baabe
+STTR_2001.pdf,2001,1,SBA annual-report tables [L18],sttr_annual_report_series,33,clean_digital,True,0.191,0.017,cfe5e192c8862d9b7fc5f509c9d0e9407963d3af7bae4ea0781326b0968d6387
+STTR_2002.pdf,2002,1,SBA annual-report tables [L18],sttr_annual_report_series,35,clean_digital,True,0.18,0.016,c6a12a3ca554b32fe1d908fc84c44bfb3ebb41dec8265af2e9a136f062f9d0ed
+STTR_2003.pdf,2003,1,SBA annual-report tables [L18],sttr_annual_report_series,36,clean_digital,True,0.181,0.026,0fc35083b1ce793f1a882765ca6278845c650bde7316d1e6e63755583f508ec8
+STTR_2004.pdf,2004,1,SBA annual-report tables [L18],sttr_annual_report_series,7,clean_digital,True,0.209,0.023,59a8ad0d41b0cf1aee06b556ed7859b54b11ef4b067b47ea9c0099ee2812a4ee
+STTR_2005.pdf,2005,1,SBA annual-report tables [L18],sttr_annual_report_series,10,clean_digital,True,0.245,0.019,88a75ee1ce65b5ac35df4b1bc88ce1e6585dac445f14acb6d88473c1e6042865
+STTR_2006.pdf,2006,1,SBA annual-report tables [L18],sttr_annual_report_series,7,clean_digital,True,0.256,0.021,4109bccea16a98e2dad05348c61b6cfd0d995cc0b9a9327cd60faac3bd11cac7
+STTR_2007.pdf,2007,1,SBA annual-report tables [L18],sttr_annual_report_series,8,clean_digital,True,0.256,0.028,340ee35b0a7df4ead981258623364157708f454a734ca61a4aaca3731d03447b
+STTR_2008.pdf,2008,1,SBA annual-report tables [L18],sttr_annual_report_series,15,clean_digital,True,0.253,0.03,a891cb7c535d547526dc48cf1be10fc3014a787e1e443913b40ba3d61a8aaaff
+NAVY SBIR-STTR National Economic Impacts 2000 - 2013.pdf,2013,3,DoD economic-impact study [L19] (output/sales/tax ROI) - benchmark context not a NASEM input,agency_impact_study,23,clean_digital,True,0.277,0.03,e9d382134bed8984d35cf942d32a836c8ded11a99b20dbbf6ee1156513807751
+USAF SBIR-STTR Economic Impact Study FY2015.pdf,2015,3,DoD economic-impact study [L19] (output/sales/tax ROI) - benchmark context not a NASEM input,agency_impact_study,36,clean_digital,True,0.271,0.027,68b7a85cbfd1ed76342a4425bf3b84b85c3d917ad0a5f911b48b5b4925998a85
+DOD_SBIR Economic Impacts_1995-2018.pdf,2018,3,DoD economic-impact study [L19] (output/sales/tax ROI) - benchmark context not a NASEM input,agency_impact_study,50,ocr_noisy,True,0.266,0.047,ba6e89f48aabb7bd94831e5d002ae29ea7eceb127c40bdbb9c2dcb840d2e3960
+2017_NASA_SBIR-STTR_Economic_Impact_Online.pdf,2017,5,Agency economic-impact context (NASA 2017; NCI [L20]) - not an Order 5 transition source,agency_impact_study,16,clean_digital,True,0.268,0.026,bcf13e4a22278b69edd86b8e6718bad2e90a58e1a9aba8d02afa83545052ac98
+NCI_SBIR_ImpactStudy_2pager.pdf,2018,5,Agency economic-impact context (NASA 2017; NCI [L20]) - not an Order 5 transition source,agency_impact_study,4,clean_digital,True,0.262,0.031,36dee1a46cf269dc9353747abe27489239246595c296a48146425e03f6d93ec8

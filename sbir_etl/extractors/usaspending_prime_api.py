@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import asyncio
-import hashlib
 import json
 import re
 from collections.abc import Awaitable, Callable
@@ -17,6 +16,7 @@ from loguru import logger
 
 from sbir_etl.enrichers.usaspending.client import USAspendingAPIClient
 from sbir_etl.exceptions import APIError
+from sbir_etl.utils.data.file_io import sha256_bytes
 
 USASPENDING_API_BASE = "https://api.usaspending.gov/api/v2"
 USASPENDING_API_DOCUMENTATION = "https://api.usaspending.gov/docs/endpoints"
@@ -56,7 +56,8 @@ _NON_ALNUM = re.compile(r"[^A-Z0-9]")
 
 
 def _sha256(content: bytes) -> str:
-    return hashlib.sha256(content).hexdigest()
+    """Return the SHA-256 hex digest of ``content``."""
+    return sha256_bytes(content)
 
 
 def _canonical(payload: object) -> bytes:

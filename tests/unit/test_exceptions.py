@@ -132,9 +132,9 @@ class TestComponentExceptions:
         assert exc.details["retry_after_seconds"] == 60
 
     def test_configuration_error_not_retryable(self):
-        exc = ConfigurationError("Missing key", config_key="neo4j.uri")
+        exc = ConfigurationError("Missing key", config_key="logging.level")
         assert exc.retryable is False
-        assert exc.details["config_key"] == "neo4j.uri"
+        assert exc.details["config_key"] == "logging.level"
 
     def test_filesystem_error(self):
         exc = FileSystemError("Not found", file_path="/data/awards.csv")
@@ -147,9 +147,9 @@ class TestComponentExceptions:
         assert isinstance(exc, TransformationError)
 
     def test_dependency_error_not_retryable(self):
-        exc = DependencyError("Not installed", dependency_name="neo4j")
+        exc = DependencyError("Not installed", dependency_name="playwright")
         assert exc.retryable is False
-        assert exc.details["dependency_name"] == "neo4j"
+        assert exc.details["dependency_name"] == "playwright"
 
     def test_r_function_error(self):
         exc = RFunctionError("Failed", function_name="calculate_impacts")

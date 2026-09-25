@@ -4,6 +4,10 @@
 **Question**: Should we use DuckDB for CET classification work?
 **Answer**: **Selective Use** - Yes for analytics/aggregation, No for ML pipeline
 
+> **ADR-006 amendment (2026-09-23):** Neo4j and `sbir-graph` are retired. Stage 5 and every
+> graph-load recommendation below are historical analysis and must not be implemented. The
+> pandas, machine-learning, DuckDB aggregation, portfolio, and USPTO recommendations remain.
+
 ---
 
 ## TL;DR Recommendation

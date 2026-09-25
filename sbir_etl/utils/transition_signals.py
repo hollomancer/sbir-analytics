@@ -19,6 +19,9 @@ import json
 from datetime import date
 from pathlib import Path
 
+from sbir_etl.enrichers.sec_edgar.form_d_scoring import require_form_d_rule_version
+from sbir_etl.identity import CompanyNameProfile, normalize_company_name
+
 
 EPISTEMIC_TIER = "exploratory"
 
@@ -39,6 +42,10 @@ NON_DOD_AGENCIES = frozenset(
 DEFAULT_DIGEST = Path("data/processed/sbir_phase3/fy25_phase3_prospect_digest.csv")
 DEFAULT_MA = Path("data/enriched_sbir_ma_events.jsonl")
 DEFAULT_FORM_D = Path("data/form_d_high_conf_cohort.jsonl")
+
+# One key rule for both sides of every signal join. The index and the lookup
+# must use the same profile or a firm silently loses its signals.
+_SIGNAL_KEY = CompanyNameProfile.TRANSITION_SIGNAL_KEY_V1
 
 
 def _safe_float(v: str) -> float:
@@ -88,11 +95,21 @@ def load_ma_signals(jsonl_path: Path) -> dict[str, dict]:
                 continue
             try:
                 rec = json.loads(line)
-                name = rec.get("company_name", "").strip().upper()
+                name = normalize_company_name(rec.get("company_name"), profile=_SIGNAL_KEY)
                 if not name:
                     continue
                 sc = rec.get("signal_count", 0)
                 existing = by_name.get(name)
+                # Known defect, kept for output fidelity: the stored dict uses
+                # the key `ma_signal_count`, so `existing.get("signal_count")`
+                # always reads the 0 default and the test reduces to `sc > 0`.
+                # For a duplicated company name the LAST record with a nonzero
+                # count wins, not the highest — so a 1-signal low-confidence
+                # row displaces a 9-signal high-confidence one. Only 3 of 4,303
+                # names in enriched_sbir_ma_events.jsonl repeat, and for those
+                # last-wins and max-wins agree, so no current output changes.
+                # Fixing it means comparing `ma_signal_count` and re-checking
+                # every published M&A figure.
                 if existing is None or sc > existing.get("signal_count", 0):
                     by_name[name] = {
                         "ma_signal_count": sc,
@@ -106,7 +123,7 @@ def load_ma_signals(jsonl_path: Path) -> dict[str, dict]:
 
 
 def load_form_d_signals(jsonl_path: Path) -> dict[str, dict]:
-    """Load Form D high-confidence matches keyed by company name."""
+    """Load versioned Form D record-high candidates keyed by company name."""
     by_name: dict[str, dict] = {}
     if not jsonl_path.exists():
         return by_name
@@ -117,9 +134,13 @@ def load_form_d_signals(jsonl_path: Path) -> dict[str, dict]:
                 continue
             try:
                 rec = json.loads(line)
-                name = rec.get("company_name", "").strip().upper()
+                name = normalize_company_name(rec.get("company_name"), profile=_SIGNAL_KEY)
                 if not name:
                     continue
+                rule_version = require_form_d_rule_version(
+                    rec.get("form_d_tier_rule_version"),
+                    context=f"Form D cohort record {name!r}",
+                )
                 by_name[name] = {
                     "form_d_total_raised": _safe_float(
                         str(rec.get("form_d_total_raised", "") or "")
@@ -127,6 +148,7 @@ def load_form_d_signals(jsonl_path: Path) -> dict[str, dict]:
                     "form_d_filing_count": _safe_int(str(rec.get("form_d_filing_count", "") or "")),
                     "form_d_latest_date": "",
                     "form_d_confidence": "high",
+                    "form_d_tier_rule_version": rule_version,
                 }
             except json.JSONDecodeError:
                 pass
@@ -159,17 +181,24 @@ def enrich_cohort_with_signals(
     for row in cohort:
         r = dict(row)
         uei = r.get("uei", "")
-        company_upper = r.get("company", "").upper()
+        # Same profile as the index keys above. These previously disagreed:
+        # the index stripped and this did not, so a cohort row whose name
+        # carried trailing whitespace could never match.
+        company_upper = normalize_company_name(r.get("company"), profile=_SIGNAL_KEY)
 
+        # Channel 1: FPDS-coded Phase III (known undercount — GAO-24-106398)
         dig = digest.get(uei, {})
         r["digest_found"] = bool(dig)
         r["sig_fpds_phase3_coded"] = dig.get("has_fy_phase3", False)
         r["sig_fpds_phase3_awards_n"] = dig.get("phase3_awards_n", 0)
         r["sig_fpds_phase3_usd"] = dig.get("phase3_total_usd", 0.0)
+        # Channel 2: Any subsequent federal obligation (broader — includes uncoded P3)
         r["sig_any_federal_obligation"] = (
             dig.get("fy_contracts_in_fpds", 0) > 0 or dig.get("fy_grants_in_fabs", 0) > 0
         )
 
+        # Channel 3: M&A signal (8-K Items 1.01/2.01 via SEC EDGAR).
+        # Includes low/medium/high confidence; split into tiers for reporting.
         ma = ma_signals.get(company_upper, {})
         # Require a positive signal_count so empty enrichment rows don't inflate.
         r["sig_ma_detected"] = bool(ma) and int(ma.get("ma_signal_count") or 0) > 0
@@ -179,11 +208,14 @@ def enrich_cohort_with_signals(
         r["sig_ma_event_date"] = ma.get("ma_event_date", "") if r["sig_ma_detected"] else ""
         r["sig_ma_acquirer"] = ma.get("ma_acquirer", "") if r["sig_ma_detected"] else ""
 
+        # Channel 4: Form D candidate-offering signal, not validated identity or P3 evidence.
         fd = form_d_signals.get(company_upper, {})
         r["sig_form_d_detected"] = bool(fd)
         r["sig_form_d_total_raised"] = fd.get("form_d_total_raised", 0.0)
         r["sig_form_d_latest_date"] = fd.get("form_d_latest_date", "")
+        r["sig_form_d_tier_rule_version"] = fd.get("form_d_tier_rule_version", "")
 
+        # Union signal (DO NOT report as "transition rate" — see methodology doc).
         r["sig_any_positive"] = any(
             [
                 r["sig_fpds_phase3_coded"],
@@ -264,7 +296,7 @@ def enrich_from_artifacts(
         ("sig_fpds_phase3_coded", "FPDS Phase III coded"),
         ("sig_any_federal_obligation", "Any federal obligation"),
         ("sig_ma_detected", "M&A detected"),
-        ("sig_form_d_detected", "Form D (high-conf)"),
+        ("sig_form_d_detected", "Form D (v2 record-high; unvalidated)"),
         ("sig_any_positive", "Union (any)"),
     ]:
         n = sum(1 for r in enriched if r.get(field))

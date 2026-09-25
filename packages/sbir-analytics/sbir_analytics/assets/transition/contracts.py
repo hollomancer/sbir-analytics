@@ -7,7 +7,6 @@ This module contains:
 
 from __future__ import annotations
 
-import hashlib
 import json
 import os
 from collections.abc import Iterable, Mapping
@@ -36,6 +35,7 @@ from .utils import (
     now_utc_iso,
     write_json,
 )
+from sbir_etl.utils.data.file_io import file_sha256_or_none
 
 
 # These are source-provenance fields, not optional conveniences.  A cached parquet
@@ -109,16 +109,9 @@ def _parquet_columns(path: Path) -> list[str]:
     return list(pq.read_schema(path).names)
 
 
-def _file_sha256(path: Path) -> str | None:
-    """Hash one local input without loading it into memory; missing files stay explicit."""
-
-    if not path.is_file():
-        return None
-    digest = hashlib.sha256()
-    with path.open("rb") as file:
-        for chunk in iter(lambda: file.read(1024 * 1024), b""):
-            digest.update(chunk)
-    return digest.hexdigest()
+def _file_sha256(path: Path | None) -> str | None:
+    """Return the SHA-256 hex digest of ``path``, or ``None`` when absent."""
+    return file_sha256_or_none(path)
 
 
 def _read_cached_source_provenance(checks_path: Path) -> dict[str, object]:

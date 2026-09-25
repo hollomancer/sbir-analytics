@@ -1,6 +1,6 @@
 # Test/CI environment configuration
 # This file is loaded when SBIR_ETL__PIPELINE__ENVIRONMENT=test
-# Optimized for CI testing with Docker Neo4j
+# Optimized for isolated CI testing
 
 pipeline:
   environment: "test"
@@ -55,12 +55,6 @@ enrichment:
   sam_gov:
     rate_limit_per_minute: 30
     timeout_seconds: 30
-
-loading:
-  neo4j:
-    batch_size: 500
-    parallel_threads: 2
-    transaction_timeout_seconds: 120
 
 validation:
   strict_schema: false

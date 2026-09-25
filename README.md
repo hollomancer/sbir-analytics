@@ -1,13 +1,14 @@
-# SBIR/STTR Commercialization Analytics
+# SBIR/STTR research instrument
 
 This is a personal research project about a fairly simple question: what happens
 after a small business wins an SBIR or STTR award?
 
 The public award record tells you who received the money and what they proposed
-to do with it. It is much worse at telling you what happened next. Did the
-company win a follow-on contract? File a patent? Raise private capital? Get
-acquired? This repo is my attempt to piece together some of those outcomes from
-public data.
+to do with it. It is much worse at telling you what happened next. This repo
+builds and tests narrow claims about U.S. Small Business Innovation Research
+(SBIR) and Small Business Technology Transfer (STTR) data. It is a research
+instrument, not an official program database, a commercialization platform, or
+a verified record of company outcomes.
 
 ## About this project (please read first)
 
@@ -21,158 +22,131 @@ public data.
 - This is a side project, not an agency product or a production service. Nothing
   here represents the position of any agency.
 
-If you only read one other thing, make it
-[docs/research-questions.md](docs/research-questions.md). That is the real heart
-of the project. The pipeline is mostly scaffolding for chipping away at those
-questions.
+The audience I have in mind is SBIR program managers and policy analysts in
+Treasury, OMB, JCT, and state economic-development offices.
 
-## Questions I'm trying to answer
+Start with [STATUS.md](STATUS.md). It states which studies are citable,
+reproducible but not citable, exploratory, or archived. Status comes from a
+versioned study contract. A working pipeline, chart, or large test suite does
+not make a result citable.
 
-SBIR/STTR is a roughly $4 billion-per-year federal program whose statutory goal
-is *commercialization*—turning early-stage R&D into products, contracts, and
-companies. Tracking what happens after Phase II is notoriously difficult, and
-GAO has flagged the quality of Phase III data for years.
+## The first public release candidate
 
-A few of the things I'm exploring:
+The narrow front door is the
+[SBA annual-report structural comparison](studies/sba-annual-report-structural-comparison/).
+It covers all 632 award-count cells printed in FY2020 Table 18, FY2021 Table
+18, and FY2022 Table 20 of the SBA Annual Reports. It compares those cells with
+counts computed from an exact, pinned September 17, 2026 SBIR.gov export under
+declared row, year, program, phase, and jurisdiction rules.
 
-- **Follow-on private investment.** Do SBIR awardees go on to raise private
-  capital, and how much? SEC Form D filings provide one imperfect window into
-  that question.
-- **Mergers and acquisitions.** Which SBIR firms get acquired, by whom, and how
-  long after their first award? This work looks for signals in SEC EDGAR filings.
-- **Phase II to Phase III transition time.** How long does it take an awardee to
-  land a follow-on federal contract, and how does that differ by agency or
-  technology area?
-- **Technology and patent links.** Which awards map to Critical and Emerging
-  Technology areas, and which ones appear to have produced patents?
-- **Economic and fiscal effects.** What can public input-output data tell us
-  about the economic activity associated with award spending? This part is
-  especially exploratory.
+The candidate claim is:
 
-The [full list](docs/research-questions.md) is sourced and organized by policy
-area. Some questions are much more answerable than others.
+> For all 632 award-count cells printed in FY2020 Table 18, FY2021 Table 18,
+> and FY2022 Table 20, this study reports the differences between those
+> published counts and counts computed from the pinned September 17, 2026
+> SBIR.gov export under `EXPORT_ROW_V1`, `AWARD_YEAR_FIELD_V1`, and the frozen
+> program, phase, and jurisdiction rules. A separate blinded-role
+> implementation reproduced 1,264 of 1,264 count operands. The recorded
+> interval is `[1.0, 1.0]` using the method `exact complete-population point
+> interval; no sampling`.
 
-## What it actually does
+The comparison contains 632 count cells: 276 are exact and 356 are unresolved.
+Recomputed minus published counts sum to +333, while absolute cell differences
+sum to 869. Of the 276 exact cells, 57 are zero versus zero. Among the 575 cells
+where either source reports a nonzero count, 219 are exact. The unresolved
+cells comprise 208 positive and 148 negative recomputed-minus-published
+differences. These summaries are not an omitted-award estimate, a
+source-correctness verdict, or a causal explanation.
 
-Mechanically, this is an ETL pipeline. It pulls in several public datasets,
-tries to figure out which records refer to the same company (the hard part), and
-loads the resulting relationships into Neo4j and analytical files.
+One parsed export row counts once, `Award Year` supplies the year, and the study
+does not deduplicate. Of 20,836 retained FY2020-FY2022 rows, one had blank
+`State` and was excluded under the frozen rule; 20,835 rows were counted.
+Sixty eligible jurisdiction/program/phase groups had no retained row and
+received a recomputed count of zero.
 
-```text
-Public sources                  Processing                 Outputs
-──────────────                  ──────────                 ───────
-SBIR.gov awards          ┐
-USAspending contracts    │      extract → validate
-USPTO patents            ├──►   → enrich (entity         ──►  Neo4j graph
-SAM.gov entities         │        resolution) →               + DuckDB / files
-SEC EDGAR filings        │      transform → load
-BEA input-output tables  ┘      (orchestrated by Dagster)
-```
+The tagged release may make that statement citable only after the release gate
+opens. The public rendering passes its byte-stable round-trip checks. The
+prospective fidelity validation passed at 1,264/1,264 with the point interval
+`[1.0, 1.0]`. Every claim-facing revision requires an evidence audit and a cold
+reader review of its exact bytes. Until the remaining gates close, treat the
+packet as validated and non-citable.
 
-- **Entity resolution** starts with identifiers such as UEI, CAGE, and DUNS,
-  then falls back to fuzzy name matching. A company rarely uses exactly the same
-  name everywhere.
-- **The graph** connects firms, awards, contracts, patents, and capital events so
-  they can be queried together.
-- **The ML-ish pieces** live in `packages/sbir-ml/`. There is a CET classifier
-  and a Phase II-to-III transition detector. Both are pragmatic research tools,
-  not polished production models.
+This study does not reproduce the unavailable publication-era SBIR.gov export.
+It does not certify either source as complete or correct. It does not claim
+official-report equivalence, compare award dollars, measure commercialization
+or program effects, validate M&A or private-capital links, or transfer trust to
+other repository outputs.
 
-## Want to see something run?
+Read [what this is](docs/public/what-this-is.md), the
+[evidence-status guide](docs/public/evidence-status.md), and the
+[reproduction guide](docs/public/reproducibility.md) before using a result. The
+[generated public result](docs/public/sba-structural-comparison.md) is the
+intended reader-facing page.
 
-The easiest end-to-end example builds a procurement-transition report from
-small synthetic datasets committed to the repo. It does not need credentials,
-Neo4j, or any external data.
+## Reproduce or challenge the candidate
 
-```bash
-make install
-
-uv run python scripts/data/monthly_procurement_transition_report.py \
-  --month 2026-06 \
-  --awards examples/army_science_technology_awards.csv \
-  --candidates examples/army_science_technology_candidates.csv \
-  --opportunities examples/army_science_technology_opportunities.csv \
-  --output-root /tmp/procurement-transition-example
-```
-
-The [walkthrough](examples/army-procurement-transition.md) explains what it is
-doing, and the repo includes an [expected report](examples/army_science_technology_report.md)
-for comparison. All of the companies, awards, opportunities, and judgments in
-this example are made up. It demonstrates the workflow, not live acquisition
-intelligence.
-
-## How seriously should I take the results?
-
-It depends on the result.
-
-- The ingestion, entity-resolution, and graph-loading code is implemented, but
-  running it on real data requires source downloads, credentials, and local
-  services.
-- The procurement-transition example above is a runnable demonstration built
-  from synthetic data.
-- The Phase III census is reproducible, but it is not yet validated or approved
-  for citation. Its current record is in
-  [studies/phase-iii-census](studies/phase-iii-census/study.yaml).
-- The private-capital, M&A, and fiscal work is exploratory and data-dependent.
-
-The repo uses [epistemic tiers](docs/steering/epistemic-tiers.md) to keep a useful
-analysis from quietly turning into a stronger claim than the evidence supports.
-That machinery can sound a little grand, but the basic idea is just: label what
-you know, label what you do not, and do not confuse working code with validated
-evidence.
-
-## Running the full project
-
-The project targets Python 3.11 and uses
-[`uv`](https://github.com/astral-sh/uv) for dependency management.
+The public path uses Python 3.11 or 3.12 and
+[`uv`](https://docs.astral.sh/uv/). It does not require Docker, API keys, or a
+running service. It downloads about 402 MB of public source files and
+refuses any byte sequence that does not match the frozen source manifest.
 
 ```bash
 git clone https://github.com/hollomancer/sbir-analytics
 cd sbir-analytics
-make install        # install the full local stack
-make dev            # start Dagster at http://localhost:3000
+git checkout v0.18.0
+make install-core
+make reproduce-sba-structural
 ```
 
-Most data sources require an API key or a local bulk download. Copy
-`.env.example` to `.env` and fill in what you have. You will also need a local
-Neo4j instance to build the graph. The
-[getting-started guide](docs/getting-started/README.md) has the longer version.
+The command must run from the tagged study checkout; moving `main` deliberately
+does not rewrite the released environment lock. It retrieves the declared
+source bytes, verifies hashes, row counts,
+page counts, and schema, rebuilds the count sidecar, reconciles the confirmatory
+submission, and checks the public sidecar and Markdown byte-for-byte. After a
+citable release exists, use the release tag—not a moving branch—and verify the
+checksums in its study packet.
 
-No real award corpus is committed here, so reproducing the analyses end to end
-is a non-trivial setup job. `make install-core` installs only the reusable
-`sbir_etl` library; it leaves out Dagster and the application packages.
+To challenge the result, start with the
+[study contract](studies/sba-annual-report-structural-comparison/study.yaml),
+[source manifest](studies/sba-annual-report-structural-comparison/source-manifest.json),
+[validation design](studies/sba-annual-report-structural-comparison/validation-design-v1.md),
+and [count comparison](studies/sba-annual-report-structural-comparison/results/count-comparison.csv).
+Each disagreement remains `unresolved` unless direct evidence supports a
+narrower explanation.
 
-Useful checks for a local checkout:
+## Evidence model
 
-```bash
-make test-unit
-make lint
-make lint-boundaries
-make docs-check
-```
+- **Citable** means a tagged study release has frozen sources, a declared
+  estimand, a passed prospective validation, an open materialization gate, and
+  completed evidence and outside-reader reviews.
+- **Validated, not citable** means the prospective test was run as frozen and
+  its result is recorded, but publication or release gates remain closed.
+- **Reproducible, not citable** means the inputs and implementation can be
+  rerun, but a public claim is still blocked.
+- **Exploratory** means hypothesis generation, candidate discovery,
+  measurement development, or an unverified linkage.
+- **Archived** means preserved for provenance, not maintained as a live
+  evidence path.
 
-Integration tests need local services. `make help` lists the available targets.
+Content-addressed study artifacts and governed analytical files are
+authoritative. DuckDB and Parquet hold analytical records. A mutable service
+database is not part of the evidence boundary.
 
-## Where things live
+## Experimental work
 
-```text
-sbir_etl/              Core ETL code
-packages/
-  sbir-analytics/      Dagster assets, jobs, and sensors
-  sbir-graph/          Neo4j loaders
-  sbir-ml/             CET and transition-detection models
-config/                Shared settings and thresholds
-docs/                  Research questions, methods, architecture, and operations
-specs/                 Feature designs and status
-studies/               Reproducible research contracts
-notebooks/             Exploratory research
-scripts/               One-off analysis and operational tools
-examples/              Small demonstrations and synthetic inputs
-tests/                 Unit, integration, functional, and end-to-end tests
-```
+The repository also contains M&A discovery, Form D matching, transition
+scoring, return-on-investment design, and other research in development. These
+paths remain useful for candidate generation and methods
+work, but they are not evidence for commercialization outcomes. Their status is
+listed explicitly in [STATUS.md](STATUS.md) and in each `study.yaml`.
 
-If you want the technical tour, see the
-[architecture overview](docs/architecture/detailed-overview.md).
+For contributor details, see the [research-question inventory](docs/research-questions.md),
+[study-contract rules](studies/README.md), and
+[development guide](CONTRIBUTING.md). The
+[repository map](docs/public/repository-map.md) states the purpose and evidence
+relationship of every tracked top-level directory. The software is MIT
+licensed. Research claims remain bounded by their study contracts and release
+records.
 
 ## Honest limitations
 
@@ -181,31 +155,5 @@ If you want the technical tour, see the
 - **The underlying outcome data is incomplete.** Phase III records are a
   particular problem, so inferred transitions are estimates rather than an
   authoritative census.
-- **Several analyses are pilots or partial.** Some use limited geographies,
-  fallback assumptions, or literature values that have not been independently
-  validated.
-- **The ML components are approximate.** They have benchmark targets, but they
-  are not rigorously evaluated production models.
 - **Nothing here is peer-reviewed or official.** It is independent research I do
   on personal time.
-
-## A few useful links
-
-- [Research questions](docs/research-questions.md)
-- [Research output status](docs/research/README.md)
-- [Study contracts](studies/README.md)
-- [Contributing](CONTRIBUTING.md)
-- [Release history](CHANGELOG.md)
-- [Versioning policy](docs/steering/versioning.md)
-
-The project is available under the [MIT License](LICENSE).
-
-## Acknowledgments
-
-This work uses data and methods from the
-[Bureau of Economic Analysis](https://apps.bea.gov/api/),
-[stateior](https://github.com/USEPA/stateior),
-[SEC EDGAR](https://efts.sec.gov), [SAM.gov](https://api.sam.gov), and the other
-public and academic sources cited throughout the research-question inventory.
-The embedding work uses
-[ModernBERT-Embed](https://huggingface.co/nomic-ai/modernbert-embed-base).

@@ -1,14 +1,11 @@
-# Schemas
+# Source schemas
 
-Node and relationship reference for the Neo4j graph, plus source field mappings.
+These documents describe source fields and pipeline models. Governed Parquet tables and study
+manifests are authoritative.
 
 | Document | Scope |
 |---|---|
-| [Neo4j schema](neo4j.md) | Canonical index — start here |
-| [Organization](organization-schema.md) | Organization nodes |
-| [Individual](individual-schema.md) | Individual nodes |
-| [FinancialTransaction](financial-transaction-schema.md) | Award and financial-transaction nodes |
-| [USPTO patents](uspto-patents.md) | Source fields and their graph mapping |
+| [USPTO patents](uspto-patents.md) | USPTO source fields and pipeline models |
 
-Schema changes go through the [migration system](../migrations.md); graph write
-patterns are in [steering/neo4j-patterns.md](../steering/neo4j-patterns.md).
+The graph-only schema documents remain available in the `v0.18.0` release history. See
+[ADR-006](../decisions/ADR-006-retire-neo4j.md) for the retirement decision.

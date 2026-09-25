@@ -1,0 +1,29 @@
+cff-version: 1.2.0
+message: >-
+  Cite this repository for the software and the data-processing methods. No
+  study in this repository has its claims approved as evidence, so this file
+  declares no preferred research citation. See STATUS.md for each study's
+  current evidence status and docs/steering/versioning.md for the release
+  policy.
+title: SBIR/STTR Commercialization Analytics
+type: software
+authors:
+  - family-names: Hollomon
+    given-names: Conrad
+    affiliation: Independent researcher
+    email: conrad.hollomon@pm.me
+repository-code: https://github.com/hollomancer/sbir-analytics
+url: https://github.com/hollomancer/sbir-analytics
+license: MIT
+version: 0.19.0
+date-released: 2026-09-24
+identifiers:
+  - type: url
+    value: https://github.com/hollomancer/sbir-analytics/releases/tag/v0.19.0
+    description: The immutable v0.19.0 release tag this citation describes.
+keywords:
+  - SBIR
+  - STTR
+  - federal research funding
+  - technology commercialization
+  - research data engineering

@@ -21,11 +21,12 @@ Validators:
 - Basic sanity checks for required fields and lengths
 """
 
-import re
 from datetime import date
-from enum import Enum
+from enum import StrEnum
 
 from pydantic import BaseModel, Field, field_validator
+
+from sbir_etl.identity import CompanyNameProfile, normalize_company_name
 
 # ---- Utilities ----
 # Use centralized date parsing utility
@@ -34,17 +35,19 @@ from sbir_etl.utils.identifiers import normalize_uspto_identifier
 
 
 def _normalize_name(name: str | None) -> str | None:
+    """Normalize an assignee or assignor name, preserving ``None``.
+
+    Behavior lives in the ``uspto-assignee-v1`` identity profile. This profile
+    drops ``&`` rather than expanding it to ``AND``, so it cannot share
+    ``vendor-crosswalk-v1``.
+    """
     if name is None:
         return None
-    n = " ".join(str(name).strip().split())
-    # Replace multiple punctuation variants with single spaces for matching purposes
-    n = re.sub(r"[,/&\.]+", " ", n)
-    # Strip any trailing/leading spaces created by the substitution
-    return n.strip()
+    return normalize_company_name(name, profile=CompanyNameProfile.USPTO_ASSIGNEE_V1)
 
 
 # ---- Enums ----
-class ConveyanceType(str, Enum):
+class ConveyanceType(StrEnum):
     ASSIGNMENT = "assignment"
     LICENSE = "license"
     SECURITY_INTEREST = "security_interest"

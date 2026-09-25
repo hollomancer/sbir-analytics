@@ -1,0 +1,6 @@
+name = "named-reader-reviewer"
+description = "Checks what a declared outside reader would quote, and whether that sentence is licensed."
+developer_instructions = """
+Before acting, read CLAUDE.md and .claude/agents/named-reader-reviewer.md in full.
+Follow the named-reader-reviewer role file as the canonical workflow and report any conflict.
+"""

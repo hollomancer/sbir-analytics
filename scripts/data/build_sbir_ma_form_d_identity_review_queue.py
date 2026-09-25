@@ -1,0 +1,174 @@
+#!/usr/bin/env python3
+"""Build the private human-review queue authorized by Amendment 8.
+
+Epistemic tier: exploratory. This script selects only Amendment 7 predicate-
+positive filings and copies bounded source-native comparison fields. It makes no
+identity determination; every output row begins unreviewed.
+
+Human adjudication requires a closed outcome, written rationale, reviewer
+identifier, timestamp, source-reference IDs, and assignment from the closed
+evidence-code list. This script emits empty `evidence_codes` and
+`source_reference_ids` for the reviewer. Prefills are not confirmations:
+`issuer_name_alias_agreement` alone must remain `unresolved`.
+"""
+
+from __future__ import annotations
+
+import argparse
+import hashlib
+import json
+from pathlib import Path
+from xml.etree import ElementTree
+
+from sbir_etl.identity import CompanyNameProfile, normalize_company_name
+
+
+EPISTEMIC_TIER = "exploratory"
+QUEUE_VERSION = "form_d_identity_review_queue_v1"
+
+
+def _records(path: Path) -> list[dict]:
+    with path.open(encoding="utf-8") as handle:
+        return [json.loads(line) for line in handle if line.strip()]
+
+
+def _candidates(path: Path) -> tuple[dict[str, dict], int]:
+    """Return one candidate per accession, and how many ledger rows were collapsed.
+
+    The ledger is written at ``(name_key, accession)`` grain, so one accession
+    appears once per filer-name spelling that normalized to a distinct key --
+    EDGAR emits one index line per filer on a multi-filer submission. Rejecting
+    the repeat would abort the pipeline on any cut that contains one. Collapse
+    to the lowest name_key so the choice is deterministic, and return the
+    collapsed count so the caller can report it.
+    """
+    result: dict[str, dict] = {}
+    collapsed = 0
+    for record in _records(path):
+        accession = record["form_d_index"]["accession_number"]
+        if accession in result:
+            collapsed += 1
+            if str(record.get("name_key", "")) >= str(result[accession].get("name_key", "")):
+                continue
+        result[accession] = record
+    return result, collapsed
+
+
+def _issuer_fields(xml_bytes: bytes) -> tuple[str | None, str | None]:
+    try:
+        root = ElementTree.fromstring(xml_bytes)
+    except ElementTree.ParseError:
+        return None, None
+    issuer = root.find("primaryIssuer")
+    if issuer is None:
+        return None, None
+    name = issuer.findtext("entityName")
+    cik = issuer.findtext("cik")
+    return (name.strip() if name else None, cik.strip() if cik else None)
+
+
+# A candidate records the profile its name_key was built with. The queue has to
+# read it rather than assume the exact one: a widened candidate compared under
+# the exact profile would always disagree on the legal suffix, silently denying
+# it the alias-agreement prefill.
+_EVIDENCE_CODE_BY_PROFILE = {
+    CompanyNameProfile.FORM_D_JOIN_V1: "exact_key_candidate",
+    CompanyNameProfile.RECIPIENT_V1: "legal_form_variant_candidate",
+}
+
+
+def _candidate_profile(candidate: dict) -> CompanyNameProfile:
+    declared = candidate.get("name_key_profile")
+    if declared is None:
+        return CompanyNameProfile.FORM_D_JOIN_V1
+    try:
+        return CompanyNameProfile(declared)
+    except ValueError as error:
+        raise ValueError(f"Candidate declares an unknown name_key_profile: {declared!r}") from error
+
+
+def _candidate_evidence_code(profile: CompanyNameProfile) -> str:
+    """Name the key that produced the candidate, so a reviewer sees which it is."""
+    return _EVIDENCE_CODE_BY_PROFILE.get(profile, f"{profile.value}_candidate")
+
+
+def _verified_xml_bytes(xml_path: Path, expected_sha256: str | None) -> bytes | None:
+    """Return XML bytes only when the on-disk SHA-256 matches the observation."""
+    if not expected_sha256 or not xml_path.is_file():
+        return None
+    xml_bytes = xml_path.read_bytes()
+    if hashlib.sha256(xml_bytes).hexdigest() != expected_sha256:
+        return None
+    return xml_bytes
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--candidates", type=Path, required=True)
+    parser.add_argument("--observations", type=Path, required=True)
+    parser.add_argument("--xml-dir", type=Path, required=True)
+    parser.add_argument("--output", type=Path, required=True)
+    args = parser.parse_args()
+
+    candidates, collapsed_rows = _candidates(args.candidates)
+    observations = _records(args.observations)
+    args.output.parent.mkdir(parents=True, exist_ok=True)
+    queued = 0
+
+    with args.output.open("w", encoding="utf-8") as output:
+        for observation in observations:
+            if observation["predicate_status"] != "true":
+                continue
+            accession = observation["accession_number"]
+            candidate = candidates.get(accession)
+            if candidate is None:
+                raise ValueError(f"Observation without candidate: {accession}")
+            xml_bytes = _verified_xml_bytes(
+                args.xml_dir / f"{accession}.xml", observation.get("xml_sha256")
+            )
+            issuer_name, issuer_cik = _issuer_fields(xml_bytes) if xml_bytes else (None, None)
+            profile = _candidate_profile(candidate)
+            evidence_codes = [_candidate_evidence_code(profile)]
+            if issuer_name:
+                # The issuer name is normalized with the candidate's own
+                # profile. Comparing a widened candidate against an exact-key
+                # issuer name would disagree on the legal suffix alone, which
+                # is the difference the widened key exists to tolerate.
+                issuer_key = normalize_company_name(issuer_name, profile=profile)
+                if issuer_key == candidate["name_key"]:
+                    evidence_codes.append("issuer_name_alias_agreement")
+
+            filing = candidate["form_d_index"]
+            record = {
+                "accession_number": accession,
+                "claim_status": "identity_review_queue",
+                "evidence_codes": [],
+                "form_d_filer_name": filing["filer_name"],
+                "form_d_issuer_cik": issuer_cik,
+                "form_d_issuer_name": issuer_name,
+                "form_type": filing["form_type"],
+                "index_cik": filing["cik"],
+                "name_key": candidate["name_key"],
+                "name_key_profile": candidate["name_key_profile"],
+                "prefilled_evidence_codes": evidence_codes,
+                "queue_version": QUEUE_VERSION,
+                "review_outcome": "unreviewed",
+                "review_rationale": None,
+                "reviewed_at_utc": None,
+                "reviewer_id": None,
+                "sbir_aliases": candidate["sbir_aliases"],
+                "sbir_award_identifiers": candidate["sbir_award_identifiers"],
+                "source_reference_ids": [],
+                "xml_sha256": observation["xml_sha256"] if xml_bytes else None,
+            }
+            output.write(json.dumps(record, sort_keys=True) + "\n")
+            queued += 1
+
+    print(f"Distinct candidate accessions: {len(candidates):,}")
+    print(f"Ledger rows collapsed to a single accession: {collapsed_rows:,}")
+    print(f"Queued rows (predicate_status == 'true'): {queued:,}")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

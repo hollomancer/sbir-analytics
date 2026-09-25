@@ -11,7 +11,7 @@ This page routes readers to the one current deployment runbook. The repository i
 research project, not production software; these notes preserve repeatable operations without
 implying a production-grade service.
 
-> **Operational data caveat.** No SBIR/STTR award data is committed to this repository. Local-development commands in these docs are intended to bring up services, run tests, or exercise pipeline components against small/local inputs after you provide `.env` values. Full dataset reproduction requires downloading the source/bulk datasets yourself, supplying the relevant API credentials, and running supporting services such as Neo4j; reproducing the analyses end-to-end is non-trivial setup, not a one-command deployment.
+> **Operational data caveat.** No SBIR/STTR award data is committed to this repository. Local-development commands in these docs are intended to run tests or exercise pipeline components against small/local inputs after you provide `.env` values. Full dataset reproduction requires downloading the source/bulk datasets yourself and supplying relevant API credentials; it is not a one-command deployment.
 
 ## Choose a path
 
@@ -27,7 +27,7 @@ implying a production-grade service.
 
 Everything runs on one always-on self-hosted server; GitHub Actions is CI only.
 
-1. **Self-hosted server (Dagster)** — source downloads, ETL pipelines, and Neo4j
+1. **Self-hosted server (Dagster)** — source downloads and ETL pipelines
 2. **GitHub Actions** — lint, typecheck, tests. No data plane, no scheduled work, no image publishing.
 3. **Docker (development)** — local development and testing
 
@@ -41,18 +41,15 @@ moved off GitHub Actions. The remaining account-level teardown checklist is trac
 ```text
 ┌─────────────────────────────────────────────────────────────┐
 │                    GitHub Actions (CI only)                  │
-│          lint · typecheck · tests (Neo4j containers)         │
+│               lint · typecheck · service-free tests          │
 └─────────────────────────────────────────────────────────────┘
 
 ┌─────────────────────────────────────────────────────────────┐
 │          Self-hosted server — tailnet-only, always on        │
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐       │
-│  │  downloads   │─▶│  pipelines   │─▶│    Neo4j     │       │
-│  │ (schedules)  │  │  (sensors)   │  │              │       │
-│  └──────────────┘  └──────────────┘  └──────┬───────┘       │
-│         │                                                   │
-│         ▼                                                   │
-│       persistent application data                            │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────────┐   │
+│  │  downloads   │─▶│  pipelines   │─▶│ Parquet / DuckDB │   │
+│  │ (schedules)  │  │  (sensors)   │  │ governed records │   │
+│  └──────────────┘  └──────────────┘  └──────────────────┘   │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -62,7 +59,7 @@ moved off GitHub Actions. The remaining account-level teardown checklist is trac
 |-------|-------------|
 | [Self-hosted server runbook](self-hosted-server.md) | Live checkout, services, schedules, backups, and recovery |
 | [Docker development](../development/docker.md) | Local Compose profiles and troubleshooting |
-| [Neo4j migrations](../migrations.md) | Versioned graph schema and data migrations |
+| [Neo4j retirement](../decisions/ADR-006-retire-neo4j.md) | Why the graph service left the supported stack |
 | [AWS decommission plan](aws-decommission-plan.md) | Remaining external teardown only |
 
 ## Live credentials
@@ -72,7 +69,6 @@ Server credentials live in `.env.server` on the server host (see the
 
 | Variable | Description |
 |----------|-------------|
-| `NEO4J_PASSWORD` | Neo4j password for the server profile |
 | `SAM_GOV_API_KEY` | SAM.gov API key (expires roughly every 60 days) |
 | `USPTO_ODP_API_KEY` | USPTO ODP key, required for PatentsView downloads |
 

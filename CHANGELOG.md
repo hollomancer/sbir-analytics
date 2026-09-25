@@ -10,15 +10,716 @@ version.
 
 ## [Unreleased]
 
+## [0.19.0] — 2026-09-24
+
+### Breaking
+
+- Retired the Neo4j service and the `sbir-graph` workspace package. Governed
+  Parquet and DuckDB artifacts remain the analytical authority. The annotated
+  `v0.18.0` tag is the last supported graph implementation.
+- Removed the public Python names `Neo4jConfig`, `ModernBertNeo4jConfig`,
+  `persist_to_neo4j`, `PatentAnalysisAnalyzer`, `ErrorCode.NEO4J_CONNECTION_FAILED`,
+  and `ErrorCode.NEO4J_QUERY_FAILED`. `sbir_analytics.clients` no longer
+  re-exports `Neo4jClient`, `Neo4jConfig`, `Neo4jHealthStatus`, or
+  `Neo4jStatistics`, and `PipelineConfig` no longer has a typed `neo4j` field.
+- Removed the graph-loading Dagster assets and their groups: every `neo4j_*`
+  asset (for example `neo4j_sbir_awards`, `neo4j_company_categorization`, and
+  `neo4j_sec_edgar_enrichment`), every `loaded_*` asset (for example
+  `loaded_transitions`, `loaded_cet_areas`, and `loaded_patents`), and the
+  `neo4j_cet` and `neo4j_loading` groups. Saved asset selections that name them
+  no longer resolve.
+- Removed the `SKIP_NEO4J_LOADING` switch, the `SBIR_ETL__NEO4J__*` overrides,
+  and the legacy `loading.neo4j` configuration mapping. Stale values do not
+  cause a configuration error, and nothing reads them:
+  - `SKIP_NEO4J_LOADING` is ignored.
+  - `SBIR_ETL__NEO4J__*` values become an untyped `neo4j` extra on the config.
+  - A YAML `loading.neo4j` section stays under an untyped `loading` extra; it is
+    no longer mapped to `neo4j`.
+- Removed the Make targets `neo4j-up`, `neo4j-down`, `neo4j-reset`,
+  `neo4j-check`, `db-shell`, and `server-backup`. The server Tailscale helper
+  no longer manages the graph Bolt route. Complete the
+  [Neo4j retirement cutover](https://github.com/hollomancer/sbir-analytics/blob/v0.19.0/docs/deployment/neo4j-retirement-cutover.md)
+  before you deploy this release.
+
+### Added
+
+- Added `CITATION.cff` describing the software at the `v0.19.0` tag. It
+  declares no preferred research citation, because no study has its claims
+  approved as evidence.
+- Added the `check_retired_neo4j_references.py` guard to `make lint-boundaries`,
+  `make docs-check`, and the CI guard step. It rejects operational references to
+  the retired graph service.
+
+### Changed
+
+- Dagster jobs now stop at their table and report artifacts instead of writing
+  a second graph projection.
+- Development, CI, Docker, and server profiles no longer require graph
+  credentials, ports, health checks, or service startup.
+- Released-study validation now checks the SBA packet in its immutable release
+  tree, which lets the moving repository update its dependency lock without
+  changing frozen study bytes. It also records the immutable tag's one exact
+  checksum erratum: the squash-merged `Makefile` contains the already-merged
+  Jev targets while the detached inventory records the reviewed branch hash.
+- Released-study validation no longer re-hashes a released study's frozen
+  artifacts outside its study folder at HEAD. It needs a full clone with tags,
+  so the CI jobs that run it now check out with `fetch-depth: 0`.
+- Renamed the CI job "Neo4j Integration Tests" to "Service-free Integration
+  Tests".
+- Re-froze the `sttr-spinout-linkage` design as Revision 2 with a new
+  SHA-256 (`5ffb2c28…`). The amendment removes graph-projection wording and
+  does not change any criteria.
+
+### Removed
+
+- Removed graph-only loaders, migrations, queries, scripts, configuration,
+  tests, and CI actions. No host data, Docker volume, or historical dump is
+  deleted by this change.
+- Removed the `neo4j` and `requires_neo4j` pytest markers and the `NEO4J_*`
+  keys from `.env.example` and `.env.server.example`.
+
+## [0.18.0] — 2026-09-22
+
+### Added
+
+- Added a source-faithful, 42-column SBIR.gov award-export reader with explicit
+  export-row and award-year profiles. The reader verifies the exact source and
+  its metadata sidecar before parsing.
+- Added a separate SBA annual-report structural-comparison study. Its evidence
+  producer emits only the 632 declared FY2020-FY2022 count cells, classifies
+  unequal values as unresolved, and blocks on changed sources, rules, keys,
+  arithmetic, validation values, or rendered output.
+- Added durable, exact-byte acquisition for the September 17, 2026 SBIR.gov
+  export and the three official SBA annual reports.
+- Added a deterministic study-readiness preflight
+  (`python -m scripts.jev_preflight.cli`). It applies fixed claim and evidence
+  rules to `studies/sba-annual-report-tables` and writes a decision report to
+  `reports/ci/jev-preflight.json`. Jev is evaluated only in private shadow mode
+  against a frozen synthetic matrix; it makes no authoritative decision.
+  Evidence promotion and publication approval stay out of scope. (#782)
+- Added the `Deterministic Study Preflight` CI job, invoked through
+  `make check-jev-preflight`. The job runs on pull requests that touch the
+  preflight surface, fails closed when its dependencies are missing rather than
+  skipping, and uploads the decision report as an artifact. Preflight
+  configuration now goes through the shared YAML reader. (#784)
+- Added an exploratory, non-blocking CI failure-triage pilot
+  (`scripts/ci/jev_triage`) with typed contracts, log sanitization,
+  deterministic policy and rendering, a fake transport, and hermetic tests. The
+  `Experimental Jev Triage Contract` job is `continue-on-error` and runs only on
+  internal pull requests. Triage output cannot change check conclusions, skip
+  tests, suppress security findings, or control merges. Live Jev calls remain
+  gated on API documentation, data-retention review, disclosure terms,
+  credentials, and an approved shadow-evaluation protocol. (#780)
+
+### Changed
+
+- New SBIR.gov captures use dated vintage directories. The historical SBA
+  study now refuses an unpinned export or a missing metadata sidecar.
+- The exploratory literature-map refresh is manual-only. It no longer runs on
+  a weekly schedule.
+
+### Removed
+
+- Removed five archived operator scripts that had no live consumers and were
+  superseded by maintained jobs or assets.
+
+## [0.17.0] — 2026-09-17
+
+### Breaking
+
+- `detect_sbir_ma_events.py` no longer writes acquirer-side Form D rows to the
+  exit artifact. Form D Item 10 marks a Rule 145 deemed offer and sale by the
+  issuer — the filer is the acquirer — so a row whose only transaction evidence
+  is that flag is written to `--non-exit-output` (`data/sbir_ma_non_exit.jsonl`)
+  with `non_exit_reason='acquirer_side'` instead of to the exit file. Demoting
+  the row was not enough because several consumers treat row presence as an
+  exit. Only target-side EFTS evidence keeps such a row: `efts_subsidiary`,
+  `efts_ma_definitive`, or `efts_acquisition_text`. The low-graded
+  `efts_ma_proxy` and `efts_ownership_active` mentions do not rescue one.
+- The same script now drops Form D records whose identity match did not reach
+  `KEEP_MATCH_TIER` (`high`) before event detection and prints the count it
+  removes, and `assign_confidence` no longer grants `high` on a Form D
+  business-combination flag alone. The two output paths must differ; equal
+  resolved paths exit before either file opens. Tests pin the routing and the
+  bridge-grading guards so neither can be relaxed silently.
+
+### Changed
+
+- The cross-enrichment test that asserted raw press hits are not independent
+  corroboration now uses `press_evidence`, the key `_has_confirmed_press`
+  actually reads, instead of `press_wire_signals`, which #709 removed along
+  with its producer. Nothing reads the removed key, so the assertion held for
+  any unrecognized key while the list-versus-scalar guard went uncovered.
+  Neutering that guard now fails the test. A companion case pins the other
+  side: a confirmed scalar, or the `press_confirmed` signal, does corroborate.
+- Company-name normalization now has one implementation. Eight functions that
+  carried their own rule (`ot_consortium.registry.normalize_cmf_name`,
+  `models.uspto_models._normalize_name`,
+  `transformers.patent_transformer._normalize_name`, and the normalizers in
+  `pull_techport_nasa`, `text_richness_2x2`, `sbir_ma_signal_counts_by_fy`,
+  `bootstrap_form_d_leverage_ci` and `assets/transition/utils`) now call
+  `sbir_etl.identity.normalize_company_name` with a named profile. Five new
+  profiles record the behavior that no existing profile covered: `cmf-v1`,
+  `uspto-assignee-v1`, `benchmark-firm-key-v1`, `lower-join-v1` and
+  `patent-assignee-v1`.
+- Three join keys now collapse interior whitespace runs, which changes 31 of
+  34,459 distinct award company names (0.090%): `bootstrap_form_d_leverage_ci`,
+  `sbir_ma_signal_counts_by_fy` and `assets/transition/utils`. Names such as
+  `"aPeak  Inc."` and `"aPeak Inc."` become one key instead of two. Blank and
+  `None` names now key to `""` rather than `"NONE"` in the TechPort puller.
+- `assets/transition/utils._norm_name` now case-folds rather than lower-cases,
+  because it shares `lower-join-v1` with `sbir_ma_signal_counts_by_fy`, which
+  already case-folded. The two differ only outside ASCII — `"Straße GmbH"` keys
+  to `strasse gmbh` instead of `straße gmbh`. No company name in the current
+  award data is affected: `.lower()` and `.casefold()` agree on all 34,459
+  distinct values.
+- The 14 library digest functions now delegate to the shared SHA-256 helpers.
+  Digest values do not change: each migrated function was checked against
+  `hashlib.sha256` over a multi-chunk payload, so frozen manifest SHAs still
+  match. Digests of serialized structures (`_row_sha256`,
+  `ordered_columns_sha256`, `_ordered_columns_sha256`) are a different concern
+  and are left alone.
+- `scripts/data/build_nano_cohort.py` now imports the signal loaders, classifier
+  and enrichment step from `sbir_etl.utils.transition_signals` instead of
+  holding its own copies of them. The script had redefined seven of that
+  module's nine functions and never imported it, and four copies had drifted.
+  Most consequential: the script's `enrich_cohort_with_signals` set
+  `sig_ma_detected` from a bare name match, while the library also requires at
+  least one recorded signal.
+- The two `sig_ma_detected` definitions produce the same output on the current
+  data. Every one of the 4,303 firms in `enriched_sbir_ma_events.jsonl` has
+  `ma_signal_count >= 1`, so no row changes: a 4,803-row comparison (all
+  indexed firms plus 500 absent ones) shows no field moving, and
+  `sig_ma_detected` stays at 4,303 positives. The divergence was latent, not
+  realized, and unifying the definition is what keeps it that way.
+- **Numbers move.** `enrich_cohort_with_signals` keyed its lookup with
+  `.upper()` while `load_ma_signals` and `load_form_d_signals` keyed the index
+  with `.strip().upper()`. A cohort row whose company name carried leading or
+  trailing whitespace could never match, so firms with real signals scored
+  `sig_ma_detected = False`. All three sites now use one
+  `transition-signal-key-v1` profile. Measured on `award_data.csv` against
+  `enriched_sbir_ma_events.jsonl`: `sig_ma_detected` goes from 4,252 to 4,305
+  distinct company names (+53). The Form D side has the same asymmetry and the
+  same fix, but `load_form_d_signals` fails closed on the current
+  `form_d_high_conf_cohort.jsonl` for an unrelated reason (missing tier rule
+  version), so no Form D number moves until that file is rescored.
+- The Form D candidate ledger is unchanged by default. With
+  `--include-legal-form-variants` off the output is byte-identical to the
+  previous ledger, verified against the `2026-08-30` study index, and with it on
+  the exact rows are unchanged, so filtering to
+  `match_rationale == "exact_form_d_join_v1_name_key"` reproduces the frozen cut
+  exactly.
+
+- The R16 run fingerprint for `phase-iii-census` now also carries the SHA-256
+  of `permutation.py` and of the runner script, so a resumed batch must agree
+  with the batch that opened the store on the execution code as well as on the
+  data. `design_revision` in the run manifest is read from
+  `FROZEN_SPEC_REVISION` rather than written as a literal. Revision 17: no
+  criterion, cell, population, seed, statistic, interval or threshold changes,
+  and no draw is taken.
+
+### Added
+
+- `docs/data/ma-events-refresh.md`, an operator guide for the four-script chain
+  that produces the M&A exit artifacts. It records the required order, the
+  exact error each fail-closed guard raises, measured step-3 throughput
+  (16 events/minute sustained at concurrency 2 — a short sample overstates it),
+  the known defects of the legacy refinement corpus, and the consumers to
+  re-run after a rebuild.
+- `build_phase_iii_placebo_permutation.py --check-inputs` reports each Phase 1
+  input against the digest recorded in `materialization-2026-02-06.md` without
+  taking a draw, so a recovered or re-materialised file can be verified before
+  a multi-hour R16 run rather than after its first draw.
+- `check_identity_boundaries.py` rejects a company-name normalizer that does not
+  reach `sbir_etl.identity.company_names`. Person-name and state-name
+  normalizers are listed as reviewed exceptions; `scripts/archive/` stays
+  unscanned so published numbers keep the normalizer that produced them.
+- `sbir_etl.utils.data.file_io` gains `file_sha256`, `file_sha256_or_none` and
+  `sha256_bytes`. Source-provenance digests were written from scratch in 14
+  library call sites under seven different names, with no shared helper to
+  import.
+- `build_sbir_ma_form_d_candidates.py` gains `--include-legal-form-variants`,
+  which also emits candidates whose names meet only after legal designators are
+  stripped (`recipient-v1`). That profile is broader than its name suggests —
+  it is `matching-v1` with suffix removal, so it also maps punctuation to
+  spaces and folds accents, merging `"Beta-Tech"` with `"Beta Tech"` and
+  `"Zoë Analytics"` with `"Zoe Analytics"`. A legal-form difference is what
+  defeats most
+  SBIR-to-EDGAR name matches: against the full Form D filer universe the widened
+  key raises the share of SBIR firms finding a filer from 5.46% to 12.28%
+  (2,349 more firms). On the `2026-08-30` study index it adds 6,356 candidate
+  rows to the 5,744 the exact key finds.
+- `build_sbir_ma_form_d_identity_review_queue.py` now normalizes the Form D
+  issuer name with the candidate's own `name_key_profile` instead of always the
+  exact profile, and names the key that produced the candidate in
+  `prefilled_evidence_codes` (`exact_key_candidate` or
+  `legal_form_variant_candidate`). Comparing a widened candidate under the
+  exact profile disagreed on the legal suffix alone — the difference the
+  widened key exists to tolerate — silently denying it the alias-agreement
+  prefill.
+- Widened Form D rows carry the fields needed to adjudicate them:
+  `name_key_ambiguous` and `form_d_cik_count` when one key reaches several CIKs
+  (195 of 6,356 rows), `name_key_length` so short keys can be filtered, and
+  `sbir_exact_key_count` / `sbir_exact_keys` when
+  several SBIR spellings collapse onto one widened key. A widened row is a
+  candidate, not a resolution.
+
+### Fixed
+
+- The literature-map refresh no longer aborts when an anchor DOI does not
+  resolve in OpenAlex. The unresolved DOI is recorded with zero hits in
+  `refresh_status.md` and the run continues with the remaining anchors.
+
+## [0.16.0] — 2026-09-15
+
+### Breaking
+
+- `validated_phase_iii_contracts` now also emits task orders placed under an IDV
+  that explicitly declares SBIR/STTR Phase III, so `phase_iii_contracts.parquet`
+  gains rows and every rate derived from it moves. Inheritance is fail-closed:
+  the parent must resolve to one unambiguous IDV, and a general-purpose vehicle
+  that happens to carry a single Phase III order does not confer status on its
+  siblings. A PIID reused by different IDVs is omitted from the lookup rather
+  than guessed at.
+- `PhaseIIIContract` gains a required `phase_iii_evidence` field, alongside
+  optional `parent_contract_id` and `phase_iii_inherited`. Code that constructs
+  the model directly must now state how the row was identified — `direct_10q`,
+  `direct_sbir_phase`, `direct_research`, or `parent_declared`. A validator
+  rejects rows where `phase_iii_inherited` and `phase_iii_evidence` disagree, so
+  a consumer can filter on either one.
+
+### Added
+
+- The C4 allocation transaction-cost study
+  (`studies/allocation-transaction-costs/`,
+  `scripts/data/allocation_transaction_costs.py`,
+  `docs/research/allocation-transaction-costs.md`) compares NIH SBIR against an
+  R01-equivalent baseline. It reports the break-even reviewer-hour count as the
+  identified result and records the directional efficiency claim as
+  underidentified. Hours per award, dollars per award, and cost per awarded
+  dollar stay separate rather than collapsing into one efficiency score.
+  Reviewer hours are anchored in Gallo 2019 with the NSF 2021 Merit Review
+  Survey as a second anchor, the UK full-system estimate as an external
+  benchmark, and the FDP activity decomposition recorded from the primary
+  reports. The total-cost break-even is reported beside the applicant-only one,
+  and the sweep shocks one side at a time.
+- The R16 permutation-separation validation design for `phase-iii-census`:
+  `assets/phase_iii_negative_controls/permutation.py` and
+  `scripts/data/build_phase_iii_placebo_permutation.py` compare the actual frame
+  against 500 seeded placebo frames and report an exceedance share with a Wilson
+  95% interval for the primary statistic and each secondary cell. The design is
+  frozen in `studies/phase-iii-census/validation-design.md` under SHA pinning.
+  `build_placebo_assignment` and `permute_prior_end_dates_across_firms` take an
+  optional `seed`; `criteria.summarize_survivors` and
+  `criteria.build_sensitivity_grid_from_full` are public aliases for the frozen
+  per-stage summaries.
+- Two study-claim CI guards, run by `make lint-boundaries` and the CI quality
+  job. `check_study_artifact_roundtrip.py` requires a rendered deliverable to
+  reproduce from its committed sidecar, and every renderer to be registered or
+  waived with a reason. `check_deterministic_as_of.py` refuses a wall-clock
+  as-of default in the three places that fix a data cut, including the semantic
+  form — a `None` default that the body resolves with `as_of or clock()`, a
+  ternary, or an `if as_of is None:` branch. Neither guard accepts a blank
+  exemption reason: a waiver or allowlist entry with no reason is reported and
+  exempts nothing. Three pre-existing paths are recorded on the as-of burndown
+  allowlist, including `supply_chain/release_validation.py`, where release age
+  moved with the clock.
+- A `named-reader-reviewer` agent role that checks what a declared outside
+  reader would quote from a packet and whether that sentence is licensed. It
+  routes on packet type rather than header presence, so a packet missing its
+  reader header still reaches the check; inventory edits to
+  `docs/research-questions.md` are exempt from the header rule and resolve their
+  reader from the enclosing policy area.
+
+### Fixed
+
+- `validated_phase_iii_contracts` emitted `parent_contract_id` as `NaN` rather
+  than `None` on rows with no parent, because `DataFrame.apply` infers a string
+  dtype over mixed `str`/`None` and rewrites the missing entries. `NaN` is
+  truthy, so `if row["parent_contract_id"]:` was true for every parentless row.
+- The consultant-hours arithmetic in the allocation transaction-cost study was
+  corrected, and an assumption that had been presented as an anchor no longer
+  claims to be one.
+- Pinned study CSVs are stored with LF endings and pinned against normalisation
+  via `.gitattributes`, so a checkout on another platform does not change the
+  bytes a manifest records.
+
+### Changed
+
+- The SBIR-versus-R01 contrast is recorded as an allocation-mechanism
+  comparison, not a performer comparison.
+- Two C4 citations moved off reserved research-question slots, and the new
+  sources were added to the inventory.
+
+## [0.15.0] — 2026-09-14
+
+### Breaking
+
+- A promotion-intended discovery capture now fails closed instead of recording
+  that it should not have run. When a protocol declares `intended_rank` above
+  `exploratory`, `run_ma_discovery_sample.py` refuses to start from a checkout
+  with uncommitted changes, and refuses when git is unusable, because silence is
+  not evidence of cleanliness. `_code_version` had always computed the dirty
+  flag and nothing gated on it; that is how 948 of 1000 pairs in one held-out
+  cut were captured by code whose state is not recoverable from git. Exploratory
+  runs make no rank claim and are unaffected.
+- `validate_study_manifests.py` now fails when a frozen run manifest records a
+  `protocol_sha256` that disagrees with `validation_result.design_sha256`. The
+  protocol pin is checked before a run and nothing stopped it being edited and
+  re-pinned afterwards, which is how one design came to be pinned about ten
+  hours after the replay it was supposed to have preregistered with every
+  run-time check passing. Manifests predating the field are not flagged.
+- `StudyManifest` gains an optional `reproduction` block, and a study that
+  declares one must satisfy it: each `LiveSource` names a `retrieval_manifest`
+  that has to appear in `frozen_artifacts`, and each `ReproductionTolerance`
+  must name a quantity that is either a declared `upstream_measure` or
+  mentioned in the study's estimand, permitted claims, or limitations. A band on
+  a quantity nothing reports cannot be breached.
+- `classify_rebuild` requires an `identity_grain` argument and carries it into
+  the verdict, because a comparison that does not say what "the same rows" meant
+  cannot be audited.
+
+### Added
+
+- `sbir_etl/quality/reproduction.py` classifies a rebuild against a live
+  upstream into exact, upstream drift, pipeline regression, identity
+  divergence, or outside tolerance. Row identity is checked before counts: an
+  upstream can revise a record in place, so equal counts over different rows is
+  the case a count-only comparison silently passes.
+- `run_ma_discovery_sample.py` records `protocol_sha256` and
+  `protocol_yaml_sha256` in its run manifest, so the design a result names can
+  be compared mechanically against the design the run actually read.
+- `specs/upstream-drift-reproduction/` specifies how `reproducible` stays
+  checkable when an input is a live public source that its publisher updates.
+- `studies/sbir-ma-dated-signal-study/` adds a prospective F1 signal protocol at
+  `exploratory`, with sources acquired privately and uncommitted.
+
+### Changed
+
+- `transition-scoring` moves from `exploratory` to `reproducible`. Its fusion
+  corpus rebuilt from committed scripts to 828 rows, 138 positives, and 101
+  firms, matching the frozen figures, and the retrieval manifest for that pull
+  is committed and pinned. An earlier rebuild in the same session produced 822
+  and 137 and was read as archive drift; it was a truncated fetch, which is the
+  distinction the reproduction contract exists to make.
+- `ma-discovery-recall` stays `exploratory` and now records its held-out result
+  rather than leaving the outcome unstated: 4 strict medium/high pairs of 307
+  strict-eligible, Wilson 95% [0.0051, 0.0330], against a preregistered floor of
+  10, with `threshold_met` and `confirmatory` both false and five
+  `post_hoc_analyses` entries. An evidence audit established the pinned design
+  postdates the evaluated run, so the study cannot promote on this cut.
+- `docs/research-questions.md` and `studies/README.md` state that the inventory
+  rank `Validated` requires `validation_result.threshold_met: true`, since a
+  manifest at `validated` no longer implies the threshold was met.
+
+## [0.14.0] — 2026-09-13
+
+### Breaking
+
+- `validated` now means the preregistered validation design was run as written
+  and its result is recorded with uncertainty; it no longer implies the
+  threshold was met. `citable` additionally requires `threshold_met: true`.
+  `StudyManifest` gains a `validation_result` block (numerator, denominator,
+  interval, method, `threshold_met`, `confirmatory`, `post_hoc_analyses`),
+  required at `validated` and above. Its `design_path` and `design_sha256` must
+  match one `frozen_artifacts` entry exactly, so a result cannot cite the hash of
+  some other pinned file as its design, and its `confirmatory` flag must be true
+  to promote. `confirmatory` asserts the design was frozen before the run; the
+  schema does not verify that ordering and the auditor checks it against git.
+  `ValidationDesign` gains `threshold_basis` and `threshold_value` (both
+  required at `validated` and above) and `frozen_population_artifact`
+  (required for count thresholds and checked against `frozen_artifacts`).
+  `decision_threshold` stays prose, so `threshold_value` restates the same
+  threshold as a number the basis is checked against: a count floor can no
+  longer be filed under `threshold_basis: proportion`. The inventory guard
+  now demotes a `validated` manifest whose `threshold_met` is false to
+  `computable`, so a recorded miss cannot surface as a `Validated` answer in
+  `docs/research-questions.md`. Existing manifests below `validated`
+  load unchanged. Documented post-hoc analyses are reportable and are no
+  longer an audit BLOCK by themselves; presenting one as confirmatory still is.
+  (`studies/README.md`, `docs/steering/epistemic-tiers.md`,
+  `.claude/agents/evidence-auditor.md`.)
+
+## [0.13.0] — 2026-09-12
+
+### Breaking
+
+- Removed the press-wire enrichment stage from M&A discovery. Deleted
+  `sbir_etl/enrichers/ma_discovery/press.py`; `enrich_ma_events` and
+  `merge_press_signals` are gone from the package's public exports. All 18 of
+  the stage's matches were false positives, so no true signal is lost.
+- Changed the Form D high-tier rule. A person-name score of at least 0.7 no
+  longer reaches `high` on its own; it now needs an exact ZIP or a state
+  overlap. The historical rule is retired as `person-or-zip-v1` and the current
+  one is `corroborated-person-v2`. Every `match_confidence` object must persist
+  `rule_version`; unversioned or mixed-version inputs fail before analysis.
+- `build_ma_events` no longer emits rows whose `acquirer` is empty. A row that
+  cannot name a counterparty cannot support an exit claim, and a consumer could
+  not tell unknown-acquirer from firm-was-the-buyer.
+- Study manifests at `validated` or `citable` now require a `validation_design`
+  block naming the addressable population, expected yield, decision threshold,
+  and how that threshold was derived. Manifests below that status are
+  unaffected.
+
+### Added
+
+- `sbir_etl/capital_events/cross_enrichment.py`: a provenance layer that links
+  Form D and M&A candidate records and reports whether M&A evidence is
+  independent of the Form D filing it came from. M&A metadata now carries
+  `candidate_status`, `legal_event_validated`, and `cross_enrichment`.
+- Fail-closed M&A discovery with a confirmatory recall floor, a blocking
+  coverage gate, and freeze/replay support for sample runs.
+- Artifact-boundary tests that assert what M&A consumers rely on: every emitted
+  event names a counterparty, `signal_count` matches the signals it reports,
+  and a missing input yields `[]` rather than an error.
+- Adversarial must-not-match cases for the company-matching functions, drawn
+  from real production attribution errors, alongside DUNS-confirmed positives.
+- An audited Form D control-identity universe and an exploratory supplier-share
+  census.
+- Exploratory NASA, Air Force, and DOE post-Phase-II commercialization outcomes
+  analysis.
+- Automated GitHub release publishing from a pushed tag.
+
+### Fixed
+
+- Press-wire watchlist matching used unanchored substring comparison, so every
+  match it produced was a false positive. Matching is now word-boundary
+  anchored with a four-character floor, and each hit records where it matched.
+- Restored the press-wire feeds. BusinessWire's feed returns an error envelope
+  and is dropped until a replacement URL exists; PR Newswire and GlobeNewsWire
+  poll normally.
+### Fixed
+
+- Versioned the Form D tier rule as `corroborated-person-v2`, added a
+  deterministic atomic offline rescorer, and made current downstream consumers
+  reject unversioned or mixed-rule detail rows.
+- Retired the historical `person-or-zip-v1` fundraising result and dependent
+  cohort reports because their local inputs cannot be pinned or fully rebuilt;
+  the replacement study now fails closed on filing/CIK and amendment-chain
+  aggregation gates.
+- Corrected the v0.12.0 Form D amendment shortcut's interpretation: without a
+  filing-number chain key it is an interim heuristic, not a proven lower bound.
+
+## [0.12.0] — 2026-08-31
+
+### Fixed
+
+- `validated_phase_iii_contracts` and the `phase_transition_pairs`/survival
+  assets now write their parquet unconditionally, including when the frame
+  is empty. Skipping the write on an empty result left the previous parquet
+  on disk beside a freshly written `checks.json` reporting `total_rows: 0`,
+  so a legitimate zero-row run looked like a stale one (#692).
+- `load_form_d_control_universe` refuses Form D control-universe staging
+  products (a `.provisional.jsonl`/`.identity-staging.jsonl` filename,
+  staging-shaped records, or a sibling manifest reporting an unready gate)
+  instead of loading them silently on a mismatched identity key (#692).
+- Form D amendment filings no longer inflate `total_form_d_raised` and
+  `offering_count` by being summed alongside the filing they amend. The fix
+  is a documented lower bound, not exact chain collapse — that is blocked on
+  locating the SEC file number that links an amendment to its original (#692).
+- The phase-transition report read latency from `pairs` (one row per matched
+  contract) while reading the transition rate and agency counts from
+  `survival` (one row per Phase II award), mixing two denominators under one
+  transition vocabulary. All three now read `survival` (#692).
+
+### Changed
+
+- Consolidated three reviewed spec proposals into the specs that already own
+  the surface they touch, rather than three new registry entries:
+  `specs/phase-iii-source-materialization/tasks.md` gained the transition
+  source/lineage work, and a new `specs/sec-source-fidelity/` spec covers
+  EDGAR event-date and Form D source fidelity (#692).
+
+## [0.11.0] — 2026-08-26
+
+### Added
+
+- Exploratory, non-citable headcount-at-award readout over the canonical
+  SBIR.gov bulk materialization: schema and agency-year coverage, cap-slackness,
+  near-cap firms, mechanical >500 anomaly buckets, and award-history
+  repeat-award proxies. Uses `PRELOAD_V1` firm merge. Not a cap-removal
+  policy estimate and not a study promotion (#668).
+
+### Changed
+
+- GitHub Action `peter-evans/create-pull-request` 7 → 8 (#670).
+
+## [0.10.0] — 2026-08-19
+
+### Added
+
+- Weekly literature-map refresh: `OpenAlexClient.search_works`,
+  `make literature-map`, and a Monday GitHub Action that opens a PR for
+  new OpenAlex works plus GAO/NAP/CRS/ITIF RSS items. Authored memos and
+  `[L#]` entries are not rewritten (#666).
+- Exploratory, non-citable A-CP7 notebook for top-10 incumbent
+  repeat-winner displacement (descriptive slot counts, not causal
+  crowd-out) (#665).
+
+## [0.9.0] — 2026-08-19
+
+### Added
+
+- Importable M&A discovery toolkit at `sbir_etl.enrichers.ma_discovery`
+  (query generation, keyword verifier, mock search, press-wire merge, and
+  optional CLIs). Name cleaning goes through `sbir_etl.identity`. Search
+  backends and the LLM extractor are not in this release (#661).
+
+### Changed
+
+- `make ci-local` now reproduces pull-request CI (lint, guards, Dagster
+  validate, compose, Bandit, pinned `detect-secrets`, unit `-m "not slow"`,
+  hermetic e2e) instead of the post-merge coverage suite (#660).
+- Phase III PR canary no longer claims to be the ≥85% HIGH-precision
+  benchmark. A mixed-signal slice fails if retrospective weights are
+  swapped; the S3-corpus number stays a manual run (#660).
+
+## [0.8.0] — 2026-08-18
+
+### Added
+
+- Reserved inventory Status ranks (`Computable`, `Validated`, `Citable`) now
+  require a matching `studies/*/study.yaml`. CI enforces the pairing
+  (`scripts/ci/check_research_question_status.py`) (#654, #657).
+- `studies/form-d-fundraising` at `reproducible`: frozen Form D leverage
+  estimand, restored `scripts/data/bootstrap_form_d_leverage_ci.py`, and
+  F3 Status may say Computable. Not validated or citable (#658).
+
+### Changed
+
+- Audience start-here lists only reserved Status ranks or explicit refusals.
+  F3 is split into the Form D leverage estimand and causal questions that
+  design cannot answer. E4–E6 are marked operational. Unbacked F1 M&A point
+  estimates were removed from the inventory (#657).
+- Phase III census research-outputs index now treats `study.yaml` as the
+  clock: August identity, matching, outcomes, and placebo memos are
+  recorded; hand-labeled validation remains open (#656).
+
+## [0.7.1] — 2026-08-18
+
+### Added
+
+- Hermetic end-to-end coverage for `core_refresh_job` (#649).
+- Job-level execution tests for `phase_transition_latency_job`,
+  `cet_full_pipeline_job`, and `cet_drift_job` (#650).
+- Unit tests for the previously untested Neo4j categorization, SEC EDGAR,
+  organization, and patent-loading paths, plus weekly-report LLM digest
+  builders (#651).
+
+### Changed
+
+- Specs that declared `evidence` without the four-item contract were
+  retiered; `phase-iii-census` remains the only evidence target, and CI now
+  requires amendments SHA paperwork plus a declared estimand (#635).
+- The evidence-tier checker fence-strips `amendments.md` before the SHA
+  scan. The new job tests pin `core_refresh_job` membership, the production
+  `cet_drift_job` selection, and the CET pipeline skip path (#652).
+
+### Fixed
+
+- `OrganizationLoader.create_subsidiary_relationships` kept an invalid pair
+  (with a `None` child) and dropped a later valid pair when a mixed batch
+  contained a hole (#652).
+
+## [0.7.0] — 2026-08-18
+
+### Added
+
+- `SourceAdapter` protocol and `SourceRefreshRunner`, with `USAspendingAPIClient`
+  wrapped as the reference adapter, restoring `uv run refresh-enrichment
+  --source usaspending` (#619).
+- Pipelines-tier `AnalysisSpec` / `AnalysisRun` platform with a registry-driven
+  runner, snapshot compare, and `scripts/data/run_analysis.py --profile`; the
+  prior hard-coded tech-area builder CLIs remain as deprecated shims (#619).
+- STTR spinout-linkage exploratory kernel: identity resolution, generic-token
+  guard, typed dimension-absence reasons, and the frozen Order 0–4 linkage
+  cascade (#623), its D1 award-spine loader and design freeze-hash guard
+  (#627), and a D4 money/paper-trail scorer scoring the subcontract and
+  spinout signals as two independent directions (#632).
+- STTR spinout-linkage partner-type seed lists: FFRDC, IPEDS, new-model-org,
+  fiscal-sponsor, and IRS nonprofit-registry data captured; the
+  research-hospitals list is left honestly pending on two dead-end sources
+  (#624).
+- `evidence-auditor` and `deployment-safety-reviewer` specialist review
+  agents, cross-checked against the actual evidence-tier contract and
+  self-hosted server runbook they enforce (#646).
+- A crosswalk from the canonical 21-area CET taxonomy to the 14 national
+  security CET areas in Appendix A of the August 2026 National Security
+  Science and Technology Strategy, with Appendix B's priority-need alignment
+  and a `docs/nssts-2026-alignment.md` explainer of what the strategy does
+  and does not license (#647).
+
+### Changed
+
+- `specs/sttr-spinout-linkage` frozen as Revision 1: all 12 open design
+  questions resolved, including a second research pass confirming no public
+  or paid source directly supplies Bayh-Dole research-institution-to-SBC
+  license records (#620, #626).
+- `make lint-boundaries` now runs the same eight guard scripts as the CI
+  quality job, including two that were previously CI-only (#633).
+- Remaining `(str, Enum)` classes migrated to `StrEnum`, enforced by a
+  targeted `UP042` check in `make lint` and CI; Python version wording
+  unified to 3.11–3.12 throughout (#634).
+- CLAUDE.md and agent role instructions deduplicated behind a single shared
+  pointer (#636).
+- The steering glossary and requirements template point confidence bands at
+  their owning config or doc instead of restating them, and disambiguate
+  enrichment "evidence" from the epistemic `evidence` tier (#637).
+- Steering checklists that read as CI gates but were not enforced anywhere
+  are relabeled as guidance, with the genuinely CI-enforced contracts kept
+  in their own table (#638).
+- Per-spec glossaries scrubbed of confidence bands they never owned;
+  archived specs keep only glossary terms still used in their own
+  requirements text (#639).
+
+### Fixed
+
+- The USAspending refresh pipeline: requests carried only `award_id` and
+  could never match an award, the runner checkpoint was never cleared so an
+  award refreshed once was skipped forever, and NaN identifiers reached the
+  API as the literal string `"nan"` (#621).
+- The analysis platform: `run_analysis.py --profile` wrote no census
+  artifacts, the calibration-drift gate was unreachable from the CLI, and a
+  malformed analysis registry could crash the entire Dagster definitions
+  load instead of just the affected cohort assets (#622).
+- The STTR linkage kernel: a generic-token guard bypass on the exact-match
+  identity path, a guard failure that collapsed into a measured negative
+  instead of blocking the label, `D4MoneyTrail`'s single shared status
+  letting one direction's typed absence suppress the other's real signal,
+  and an unreachable cascade branch (#628).
+- `D4MoneyTrail` construction after the kernel's status-field split, which
+  had been failing `Fast Tests` on every open pull request (#647).
+
+## [0.6.0] — 2026-08-15
+
+### Added
+
+- OpenAlex and PubMed enricher clients with sync facades and mocked unit tests
+  (#616).
+- STTR spinout–subcontract linkage Phase 0 spec (exploratory, gated), dedicated
+  B1/B2 inventory questions, and an exploratory partner-type commercialization
+  notebook (#615).
+- Bayh-Dole / D3 license-source research as O-12: no public microdata for
+  research-institution-to-SBC licenses (#617).
+- A blocking hygiene check that every top-level spec declares a
+  research-question anchor (#612).
+
+### Changed
+
+- Outside-reader Status lines and Form D / Massachusetts report leads now use
+  plain language while staying inside study boundaries (#613).
+
 ### Fixed
 
 - Corrected the live-server health check to use production Neo4j variables and
-  dependencies instead of E2E-only assumptions.
+  dependencies instead of E2E-only assumptions (#611).
 - Made the Tailscale route helper runnable with the macOS system Python used by
-  host preflight checks.
-- Made server rebuilds remove services retired from the Compose definition.
+  host preflight checks (#611).
+- Made server rebuilds remove services retired from the Compose definition
+  (#611).
 - Restored the non-root `sbir` runtime contract for all three Dagster services,
-  including one-time ownership migration for existing persistent directories.
+  including one-time ownership migration for existing persistent directories
+  (#611).
 
 ## [0.5.1] — 2026-08-12
 
@@ -129,7 +830,22 @@ across the root project and the three packages under `packages/`.
 `vMAJOR.MINOR.PATCH` form it requires. Per that policy published tags are never
 moved or reused, so they remain as historical markers.
 
-[Unreleased]: https://github.com/hollomancer/sbir-analytics/compare/v0.5.1...HEAD
+[Unreleased]: https://github.com/hollomancer/sbir-analytics/compare/v0.19.0...HEAD
+[0.19.0]: https://github.com/hollomancer/sbir-analytics/compare/v0.18.0...v0.19.0
+[0.18.0]: https://github.com/hollomancer/sbir-analytics/compare/v0.17.0...v0.18.0
+[0.17.0]: https://github.com/hollomancer/sbir-analytics/compare/v0.16.0...v0.17.0
+[0.16.0]: https://github.com/hollomancer/sbir-analytics/compare/v0.15.0...v0.16.0
+[0.15.0]: https://github.com/hollomancer/sbir-analytics/compare/v0.14.0...v0.15.0
+[0.14.0]: https://github.com/hollomancer/sbir-analytics/compare/v0.13.0...v0.14.0
+[0.13.0]: https://github.com/hollomancer/sbir-analytics/compare/v0.12.0...v0.13.0
+[0.12.0]: https://github.com/hollomancer/sbir-analytics/compare/v0.11.0...v0.12.0
+[0.11.0]: https://github.com/hollomancer/sbir-analytics/compare/v0.10.0...v0.11.0
+[0.10.0]: https://github.com/hollomancer/sbir-analytics/compare/v0.9.0...v0.10.0
+[0.9.0]: https://github.com/hollomancer/sbir-analytics/compare/v0.8.0...v0.9.0
+[0.8.0]: https://github.com/hollomancer/sbir-analytics/compare/v0.7.1...v0.8.0
+[0.7.1]: https://github.com/hollomancer/sbir-analytics/compare/v0.7.0...v0.7.1
+[0.7.0]: https://github.com/hollomancer/sbir-analytics/compare/v0.6.0...v0.7.0
+[0.6.0]: https://github.com/hollomancer/sbir-analytics/compare/v0.5.1...v0.6.0
 [0.5.1]: https://github.com/hollomancer/sbir-analytics/compare/v0.5.0...v0.5.1
 [0.5.0]: https://github.com/hollomancer/sbir-analytics/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/hollomancer/sbir-analytics/compare/v0.3.0...v0.4.0

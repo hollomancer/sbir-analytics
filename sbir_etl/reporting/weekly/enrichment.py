@@ -396,8 +396,19 @@ def poll_press_wire(
     print(f"Polling press wire feeds for {len(company_names)} companies...", file=sys.stderr)
 
     with SyncPressWireClient() as client:
-        client.set_watchlist(list(company_names.keys()))
+        coverage = client.set_watchlist(list(company_names.keys()))
         hits = client.poll()
+
+    review_details = ", ".join(
+        f"{item.company_name!r} [{item.reason.value}]" for item in coverage.review_required
+    )
+    review_suffix = f": {review_details}" if review_details else ""
+    print(
+        f"Press wire automatic watchlist coverage: {coverage.automatic_match_count}/"
+        f"{coverage.requested_count}; human review required for "
+        f"{len(coverage.review_required)} identities{review_suffix}",
+        file=sys.stderr,
+    )
 
     # Group by company key
     results: dict[str, list[PressRelease]] = {}

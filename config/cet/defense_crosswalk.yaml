@@ -1,11 +1,13 @@
-version: "DOD-CROSSWALK-2026Q3"
+version: "DOD-CROSSWALK-2026Q4"
 source_taxonomy: "NSTC-2025Q1"
-last_reviewed: "2026-07-22"
+last_reviewed: "2026-08-18"
 description: >-
   Analyst crosswalk from the repository's canonical 21-area CET taxonomy to
   the frozen 2022 DoD Critical Technology Areas and the eight-part framework
   in DoD's 2022 Securing Defense-Critical Supply Chains report. DOD-SC-8-2022
-  is a repository label, not an official NDIS taxonomy.
+  is a repository label, not an official NDIS taxonomy. The crosswalk also
+  maps to the 14 national-security CET areas in Appendix A of the August 2026
+  National Security Science and Technology Strategy.
 
 authoritative_sources:
   dod_cta14:
@@ -23,6 +25,20 @@ authoritative_sources:
     note: >-
       Four focus areas plus four strategic enablers from the 2022 report.
       This must not be called NDIS-8; the 2024 NDIS has four strategic priorities.
+
+  nssts_cet14:
+    version: "NSSTS-CET-14-2026"
+    title: "National Security Science and Technology Strategy, Appendix A"
+    url: "https://www.whitehouse.gov/wp-content/uploads/2026/08/NSSTS-082026.pdf"
+    note: >-
+      The 14 critical and emerging technology areas in Appendix A of the August
+      2026 NSSTS, which states that it "constitutes an update to the OSTP list of
+      CETs relevant to U.S. national security." The list is deliberately narrower
+      than a general CET inventory: NSSTS scopes it to technologies "that are or
+      may become critically important to U.S. national security." It therefore
+      supersedes prior OSTP CET lists for national-security scoping, but is not a
+      replacement for the canonical 21-area NSTC-2025Q1 taxonomy this repository
+      uses to classify the full SBIR portfolio across all agencies.
 
 mapping_strengths:
   direct: "The CET definition substantially matches the target definition."
@@ -87,6 +103,169 @@ target_taxonomies:
       kind: "strategic_enabler"
       not_derivable_from_cet: true
 
+  nssts_cet14:
+    - id: "advanced_manufacturing_and_materials"
+      name: "Advanced manufacturing and materials"
+      mission_alignment:
+        space_air_long_range_strike: "current"
+        undersea: "current"
+        nuclear_deterrence_and_missile_defense: "current"
+        biological_weapons_defense: "current"
+    - id: "ai_and_autonomy"
+      name: "Artificial intelligence (AI) and autonomy"
+      mission_alignment:
+        space_air_long_range_strike: "current"
+        undersea: "current"
+        national_security_ai_and_autonomy: "current"
+        border_security: "current"
+        nuclear_deterrence_and_missile_defense: "current"
+        cyber_defense: "current"
+        biological_weapons_defense: "current"
+        transformative_emerging_technology: "current"
+    - id: "biotechnology"
+      name: "Biotechnology"
+      mission_alignment:
+        border_security: "current"
+        biological_weapons_defense: "current"
+        transformative_emerging_technology: "current"
+    - id: "communications_and_networking"
+      name: "Communications and networking"
+      mission_alignment:
+        space_air_long_range_strike: "current"
+        undersea: "current"
+        national_security_ai_and_autonomy: "current"
+        border_security: "current"
+        nuclear_deterrence_and_missile_defense: "current"
+        cyber_defense: "current"
+    - id: "directed_energy"
+      name: "Directed energy"
+      mission_alignment:
+        space_air_long_range_strike: "current"
+        nuclear_deterrence_and_missile_defense: "current"
+    - id: "future_computing_technologies"
+      name: "Future computing technologies"
+      mission_alignment:
+        space_air_long_range_strike: "current"
+        undersea: "current"
+        national_security_ai_and_autonomy: "current"
+        border_security: "current"
+        nuclear_deterrence_and_missile_defense: "current"
+        cyber_defense: "current"
+        biological_weapons_defense: "current"
+    - id: "hypersonics_and_advanced_missile_technologies"
+      name: "Hypersonics and advanced missile technologies"
+      mission_alignment:
+        space_air_long_range_strike: "current"
+        national_security_ai_and_autonomy: "current"
+        nuclear_deterrence_and_missile_defense: "current"
+    - id: "information_management_and_cybersecurity"
+      name: "Information management and cybersecurity"
+      mission_alignment:
+        space_air_long_range_strike: "current"
+        undersea: "current"
+        national_security_ai_and_autonomy: "current"
+        border_security: "current"
+        nuclear_deterrence_and_missile_defense: "current"
+        cyber_defense: "current"
+        biological_weapons_defense: "current"
+    - id: "nuclear_energy"
+      name: "Nuclear energy"
+      mission_alignment:
+        space_air_long_range_strike: "current"
+        undersea: "current"
+        nuclear_deterrence_and_missile_defense: "current"
+    - id: "positioning_navigation_and_timing"
+      name: "Positioning, navigation, and timing (PNT)"
+      mission_alignment:
+        space_air_long_range_strike: "current"
+        undersea: "current"
+        national_security_ai_and_autonomy: "current"
+        border_security: "current"
+        nuclear_deterrence_and_missile_defense: "current"
+        cyber_defense: "current"
+    - id: "quantum_information_technologies"
+      name: "Quantum information technologies"
+      mission_alignment:
+        space_air_long_range_strike: "horizon"
+        undersea: "horizon"
+        nuclear_deterrence_and_missile_defense: "horizon"
+        cyber_defense: "horizon"
+        transformative_emerging_technology: "current"
+    - id: "semiconductors_and_microelectronics"
+      name: "Semiconductors and microelectronics"
+      mission_alignment:
+        space_air_long_range_strike: "current"
+        undersea: "current"
+        national_security_ai_and_autonomy: "current"
+        border_security: "current"
+        nuclear_deterrence_and_missile_defense: "current"
+        cyber_defense: "current"
+    - id: "sensing_and_signature_management"
+      name: "Sensing and signature management"
+      mission_alignment:
+        space_air_long_range_strike: "current"
+        undersea: "current"
+        national_security_ai_and_autonomy: "current"
+        border_security: "current"
+        nuclear_deterrence_and_missile_defense: "current"
+        cyber_defense: "current"
+        biological_weapons_defense: "current"
+    - id: "space_technologies"
+      name: "Space technologies"
+      mission_alignment:
+        space_air_long_range_strike: "current"
+        undersea: "current"
+        national_security_ai_and_autonomy: "current"
+        border_security: "current"
+        nuclear_deterrence_and_missile_defense: "current"
+        cyber_defense: "current"
+
+# Priority national security needs from NSSTS Appendix B. Each NSSTS CET area
+# above records which of these it supports, and whether the implication is
+# apparent today ("current") or has yet to emerge ("horizon", shown in the
+# source table as a parenthesised check).
+nssts_mission_needs:
+  - id: "space_air_long_range_strike"
+    name: "Space, air, and long-range strike"
+    source_label: "Space; Air; Long-range strike"
+    strategy_element: "battlefield_advantage"
+    strategy_element_label: "Maintain and advance U.S. technological advantage on the battlefield"
+  - id: "undersea"
+    name: "Undersea"
+    source_label: "Undersea"
+    strategy_element: "battlefield_advantage"
+    strategy_element_label: "Maintain and advance U.S. technological advantage on the battlefield"
+  - id: "national_security_ai_and_autonomy"
+    name: "National security AI and autonomy"
+    source_label: "Nat. sec. AI & autonomy"
+    strategy_element: "battlefield_advantage"
+    strategy_element_label: "Maintain and advance U.S. technological advantage on the battlefield"
+  - id: "border_security"
+    name: "Border security"
+    source_label: "Border sec."
+    strategy_element: "homeland_defense"
+    strategy_element_label: "Protect the homeland and deny strategic advantage to adversaries"
+  - id: "nuclear_deterrence_and_missile_defense"
+    name: "Nuclear deterrence and missile defense"
+    source_label: "Nuclear deterrence; Missile defense"
+    strategy_element: "homeland_defense"
+    strategy_element_label: "Protect the homeland and deny strategic advantage to adversaries"
+  - id: "cyber_defense"
+    name: "Cyber defense"
+    source_label: "Cyber def."
+    strategy_element: "homeland_defense"
+    strategy_element_label: "Protect the homeland and deny strategic advantage to adversaries"
+  - id: "biological_weapons_defense"
+    name: "Biological weapons defense"
+    source_label: "BW def."
+    strategy_element: "homeland_defense"
+    strategy_element_label: "Protect the homeland and deny strategic advantage to adversaries"
+  - id: "transformative_emerging_technology"
+    name: "Leadership in transformative emerging technology"
+    source_label: "Lead in transformative ET"
+    strategy_element: "transformative_leadership"
+    strategy_element_label: "Lead in transformative emerging technology"
+
 mappings:
   - cet_id: "advanced_computing"
     dod_cta14:
@@ -97,6 +276,10 @@ mappings:
       - target: "cyber_posture"
         strength: "enabling"
         rationale: "Advanced computing and software enable cyber defense but are not cyber posture."
+    nssts_cet14:
+      - target: "future_computing_technologies"
+        strength: "direct"
+        rationale: "Both cover advanced and next-generation architectures, high-performance supercomputing, edge computing, and non-Von Neumann modalities."
 
   - cet_id: "advanced_engineering_materials"
     dod_cta14:
@@ -110,6 +293,10 @@ mappings:
       - target: "manufacturing"
         strength: "enabling"
         rationale: "Advanced materials enable production processes and manufacturability."
+    nssts_cet14:
+      - target: "advanced_manufacturing_and_materials"
+        strength: "direct"
+        rationale: "NSSTS folds materials into a combined area covering advanced composites, lightweight metals, high entropy alloys, and materials with tailored properties."
 
   - cet_id: "advanced_gas_turbine_engine_technologies"
     dod_cta14: []
@@ -120,6 +307,13 @@ mappings:
       - target: "manufacturing"
         strength: "enabling"
         rationale: "Turbine production depends on specialized manufacturing capability."
+    nssts_cet14:
+      - target: "hypersonics_and_advanced_missile_technologies"
+        strength: "partial"
+        rationale: "Only the high-speed air-breathing propulsion subset maps; NSSTS retains no standalone turbine engine area."
+      - target: "advanced_manufacturing_and_materials"
+        strength: "enabling"
+        rationale: "Turbine development depends on high-temperature materials, structures, and manufacturing rather than constituting them."
 
   - cet_id: "advanced_manufacturing"
     dod_cta14:
@@ -133,6 +327,10 @@ mappings:
       - target: "castings_and_forgings"
         strength: "partial"
         rationale: "Casting, forging, and associated tooling are a subset of manufacturing."
+    nssts_cet14:
+      - target: "advanced_manufacturing_and_materials"
+        strength: "direct"
+        rationale: "Both cover additive manufacturing beyond prototyping, smart manufacturing, digital threads and twins, and nanomanufacturing."
 
   - cet_id: "advanced_and_networked_sensing_and_signature_management"
     dod_cta14:
@@ -146,6 +344,13 @@ mappings:
       - target: "cyber_posture"
         strength: "enabling"
         rationale: "Networked sensors require secure cyber-physical integration."
+    nssts_cet14:
+      - target: "sensing_and_signature_management"
+        strength: "direct"
+        rationale: "The areas share advanced sensors and sensor systems, distributed apertures, and data processing and fusion."
+      - target: "positioning_navigation_and_timing"
+        strength: "enabling"
+        rationale: "Inertial sensing supports diversified PNT but is not itself a PNT capability."
 
   - cet_id: "advanced_nuclear_energy_systems"
     dod_cta14: []
@@ -153,6 +358,10 @@ mappings:
       - target: "manufacturing"
         strength: "enabling"
         rationale: "Advanced reactors depend on specialized nuclear manufacturing capacity."
+    nssts_cet14:
+      - target: "nuclear_energy"
+        strength: "direct"
+        rationale: "Both cover advanced fission reactors and fusion energy."
 
   - cet_id: "artificial_intelligence"
     dod_cta14:
@@ -163,6 +372,10 @@ mappings:
       - target: "cyber_posture"
         strength: "enabling"
         rationale: "AI supports cyber analysis and defense but is not itself cyber posture."
+    nssts_cet14:
+      - target: "ai_and_autonomy"
+        strength: "direct"
+        rationale: "NSSTS merges AI and autonomy into one area spanning perception, reasoning, foundation models, and next-generation learning techniques."
 
   - cet_id: "autonomous_systems"
     dod_cta14:
@@ -173,6 +386,10 @@ mappings:
       - target: "kinetic_capabilities"
         strength: "enabling"
         rationale: "Autonomous platforms can enable kinetic missions and delivery systems."
+    nssts_cet14:
+      - target: "ai_and_autonomy"
+        strength: "direct"
+        rationale: "NSSTS covers autonomous systems for surface, air, maritime, space, and cyber domains within the merged AI and autonomy area."
 
   - cet_id: "biotechnologies"
     dod_cta14:
@@ -183,6 +400,10 @@ mappings:
       - target: "manufacturing"
         strength: "partial"
         rationale: "Biomanufacturing is a subset of the CET and a manufacturing enabler."
+    nssts_cet14:
+      - target: "biotechnology"
+        strength: "direct"
+        rationale: "Both cover synthetic biology, genome engineering, biomanufacturing, and novel therapeutic design."
 
   - cet_id: "communication_and_networking_technologies"
     dod_cta14:
@@ -196,6 +417,10 @@ mappings:
       - target: "cyber_posture"
         strength: "enabling"
         rationale: "Secure networking is a foundational element of industrial cyber posture."
+    nssts_cet14:
+      - target: "communications_and_networking"
+        strength: "direct"
+        rationale: "Both cover future generation wireless, optical links, software-defined networking and radios, and resilient path-diverse communications."
 
   - cet_id: "directed_energy"
     dod_cta14:
@@ -206,6 +431,10 @@ mappings:
       - target: "kinetic_capabilities"
         strength: "direct"
         rationale: "The 2022 focus area explicitly includes directed-energy weapons."
+    nssts_cet14:
+      - target: "directed_energy"
+        strength: "direct"
+        rationale: "Both cover lasers, high-power microwaves, and particle beams."
 
   - cet_id: "financial_technologies"
     dod_cta14:
@@ -216,6 +445,10 @@ mappings:
       - target: "cyber_posture"
         strength: "enabling"
         rationale: "Secure financial infrastructure contributes to economic and cyber resilience."
+    nssts_cet14:
+      - target: "information_management_and_cybersecurity"
+        strength: "partial"
+        rationale: "Only the distributed ledger and digital asset subset maps; NSSTS retains no standalone financial technology area."
 
   - cet_id: "human_machine_interfaces"
     dod_cta14:
@@ -226,6 +459,13 @@ mappings:
       - target: "kinetic_capabilities"
         strength: "enabling"
         rationale: "Human-machine teaming enables operation of kinetic and autonomous systems."
+    nssts_cet14:
+      - target: "future_computing_technologies"
+        strength: "partial"
+        rationale: "Only brain-computer interfaces and advanced spatial computing map; NSSTS retains no standalone human-machine interface area."
+      - target: "ai_and_autonomy"
+        strength: "enabling"
+        rationale: "Operator interfaces support robotics and embodied intelligence without constituting them."
 
   - cet_id: "hypersonics"
     dod_cta14:
@@ -236,6 +476,10 @@ mappings:
       - target: "kinetic_capabilities"
         strength: "direct"
         rationale: "The 2022 report explicitly includes hypersonic weapons."
+    nssts_cet14:
+      - target: "hypersonics_and_advanced_missile_technologies"
+        strength: "direct"
+        rationale: "NSSTS broadens the area to advanced missiles while retaining hypersonic propulsion, aerodynamics, materials, testing, and defense."
 
   - cet_id: "integrated_sensing_and_cyber"
     dod_cta14:
@@ -249,6 +493,13 @@ mappings:
       - target: "kinetic_capabilities"
         strength: "enabling"
         rationale: "Integrated sensing supports targeting and defensive kinetic systems."
+    nssts_cet14:
+      - target: "sensing_and_signature_management"
+        strength: "partial"
+        rationale: "The sensing half maps to advanced sensors and data processing and fusion."
+      - target: "information_management_and_cybersecurity"
+        strength: "partial"
+        rationale: "The cyber half maps to AI-enabled and autonomous cyber capabilities and cyber-physical systems security."
 
   - cet_id: "quantum_information_science"
     dod_cta14:
@@ -259,6 +510,16 @@ mappings:
       - target: "cyber_posture"
         strength: "partial"
         rationale: "Quantum communications and cryptography map; other quantum subfields do not."
+    nssts_cet14:
+      - target: "quantum_information_technologies"
+        strength: "direct"
+        rationale: "Both cover quantum computing, sensing, communications and networking, and enabling components and algorithms."
+      - target: "positioning_navigation_and_timing"
+        strength: "enabling"
+        rationale: "Quantum sensing enables chip-scale frequency standards, inertial sensors, and atomic clocks for assured PNT."
+      - target: "information_management_and_cybersecurity"
+        strength: "enabling"
+        rationale: "Quantum advances drive the post-quantum cryptography transition without constituting information security."
 
   - cet_id: "renewable_energy_generation_and_storage"
     dod_cta14:
@@ -269,6 +530,7 @@ mappings:
       - target: "energy_storage_and_batteries"
         strength: "partial"
         rationale: "Battery and storage work maps directly; generation-only work does not."
+    nssts_cet14: []
 
   - cet_id: "semiconductors_and_microelectronics"
     dod_cta14:
@@ -282,6 +544,10 @@ mappings:
       - target: "manufacturing"
         strength: "partial"
         rationale: "Semiconductor fabrication and packaging are manufacturing subsets."
+    nssts_cet14:
+      - target: "semiconductors_and_microelectronics"
+        strength: "direct"
+        rationale: "Both cover design automation, advanced process technologies, heterogeneous integration and advanced packaging, and integrated photonics."
 
   - cet_id: "space_technologies_and_systems"
     dod_cta14:
@@ -292,6 +558,13 @@ mappings:
       - target: "kinetic_capabilities"
         strength: "enabling"
         rationale: "Some space sensing, communications, and navigation enable kinetic missions."
+    nssts_cet14:
+      - target: "space_technologies"
+        strength: "direct"
+        rationale: "Both cover launch, space vehicle power and propulsion, on-orbit operations, and cislunar access."
+      - target: "positioning_navigation_and_timing"
+        strength: "enabling"
+        rationale: "Space-based platforms host PNT signals but space technology is broader than PNT."
 
   - cet_id: "trusted_ai_and_autonomy"
     dod_cta14:
@@ -302,6 +575,10 @@ mappings:
       - target: "cyber_posture"
         strength: "enabling"
         rationale: "Trusted AI can support cyber defense and system assurance."
+    nssts_cet14:
+      - target: "ai_and_autonomy"
+        strength: "direct"
+        rationale: "NSSTS places interpretability and control, adversarial robustness, and AI security inside the merged AI and autonomy area."
 
   - cet_id: "integrated_network_systems_of_systems"
     dod_cta14:
@@ -315,3 +592,10 @@ mappings:
       - target: "kinetic_capabilities"
         strength: "enabling"
         rationale: "Integrated command-and-control networks enable kinetic operations."
+    nssts_cet14:
+      - target: "communications_and_networking"
+        strength: "direct"
+        rationale: "Both cover adaptive network controls, modern data exchange, and resilient path-diverse networking across platforms."
+      - target: "information_management_and_cybersecurity"
+        strength: "enabling"
+        rationale: "Networked mission systems depend on network and cyber-physical systems security without constituting it."

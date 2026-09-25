@@ -1,0 +1,216 @@
+schema_version: 1
+study_id: sba-annual-report-tables
+title: SBA SBIR/STTR annual-report state tables, FY2020-FY2022
+evidence_status: reproducible
+research_questions:
+  - D1
+estimand: >-
+  For report-years FY2020-FY2022, recompute the published "SBIR/STTR Awards by
+  U.S. State and Territory" tables from a pinned SBIR.gov award export and
+  measure the deviation of recomputed award counts from the published counts,
+  per jurisdiction x program x phase cell and in total, against a stated
+  tolerance contract, classifying every cell into one frozen difference class.
+  This is the labelled structural check design.md permits when no report-era
+  vintage exists, not a published-sample replication. Not an estimate of program
+  activity, not a corrected version of the published tables, and not a causal or
+  welfare quantity. It establishes whether the published counts are recoverable
+  from the current database within a declared band; it does not establish what
+  the counts were at publication, which is unrecoverable, and the published-
+  sample outcome stays blocked.
+frozen_artifacts:
+  - path: studies/sba-annual-report-tables/design.md
+    sha256: c4e99ae9f0243e5b61a17678f6fb5cf45fc82afc230381f8c5fdec5a24c13efe
+  - path: studies/sba-annual-report-tables/amendments.md
+    sha256: ab433c432a55b9caebcb18a7066c7ce1544f6f730019738851de0a6466f71438
+  - path: studies/sba-annual-report-tables/definitions-fy22.md
+    sha256: 883b87b7f839bff4ea734716e6545ccca748a538fb4ed153e8f3de033e7acecb
+  - path: studies/sba-annual-report-tables/definition-decisions.md
+    sha256: 620c14bbb806f33b64186b74d9eb7de94a7224d8d876c40e7788ed9a539d283d
+  - path: studies/sba-annual-report-tables/cross-year-fy20-fy22.md
+    sha256: a572adb17ec8d2586d325cc7154979f161c79332beb7820c6bb388dd36aa55b5
+  - path: studies/sba-annual-report-tables/assembly-methodology.md
+    sha256: dfb88cc6d852a8004e42ef22c12cbe039092266b2a84cee67a6ab0b0ecdb3eee
+  - path: studies/sba-annual-report-tables/award-export-2026-09-17.meta.json
+    sha256: 54776d98b8eb8f831a5e550b63440b30a90e573fa614944fbe628f135e550e23
+implementation:
+  - path: scripts/data/sba_annual_report_tables.py
+    symbol: main
+  - path: scripts/data/sba_annual_report_tables.py
+    symbol: run
+  - path: scripts/data/sba_annual_report_tables.py
+    symbol: compare_year
+  - path: scripts/data/sba_annual_report_tables.py
+    symbol: recompute_cells
+  - path: scripts/data/sba_annual_report_tables.py
+    symbol: published_cells
+  - path: scripts/data/sba_annual_report_tables.py
+    symbol: cell_tolerance
+  - path: scripts/data/sba_annual_report_tables.py
+    symbol: normalize_jurisdiction
+identity_policy:
+  strategy: >-
+    Grain is the published cell: jurisdiction x program x phase x report-year.
+    Jurisdiction is normalized from the export's current full-name State field
+    to a USPS code with sbir_etl.identity.geography under the
+    us-jurisdiction-strict-v1 profile, which refuses unmapped values rather
+    than dropping them. No firm matching and no award-level identity
+    resolution are performed by this comparison. Award-time address is not
+    recoverable from the export, so jurisdiction assignment reflects the firm's
+    current address of record and is carried as a tolerance, not a rule.
+  version: published-cell-v1
+  negative_evidence_allowed: false
+materialization:
+  allowed: false
+  blockers:
+    - >-
+      No copy of the SBIR.gov award database as it stood when these reports were
+      published still exists, so every comparison here runs a corrected database
+      against an uncorrected published table. design.md fixes the published-sample
+      outcome at `blocked` for exactly this case and admits the comparison only as a
+      labelled structural check. These outputs must therefore not be materialised as a
+      reproduction of the published tables. This blocker can never be lifted: SBIR.gov
+      serves only the current snapshot, and SBA states it pushes corrections to the
+      database while the published report is not revised (FY2016 report, p39).
+      Superseded blockers, recorded so the change is not read as a relaxation. Two
+      earlier blockers were replaced by the one above on 2026-09-17 because neither
+      named a quantity this study claims. (1) The absent published-dollar tolerance:
+      dollars are not in the estimand, which measures award counts, and the dollar
+      columns still carry no verdict - see the dollar limitation below. (2) The inferred
+      first-time-winner rule: that rule is not implemented here, as the earlier blocker
+      itself stated, and its open sub-choice was signed off on 2026-09-17; it remains
+      inferred rather than recovered and is recorded as a limitation. Replacing them
+      tightens rather than relaxes the gate, because the reason now given is permanent
+      whereas both superseded reasons were in principle resolvable.
+permitted_claims:
+  - >-
+    This run is a structural check in the sense design.md defines: table structure and
+    definitions recomputed against the current snapshot, with the published-sample
+    outcome left at blocked. It is not a published-sample reproduction and must not be
+    quoted as one.
+  - >-
+    The published-sample outcome is blocked because no report-era vintage exists.
+    Passing the declared bands does not promote the outcome to reproduced, and design.md
+    admits a current-snapshot comparison only when labelled as a structural check.
+  - >-
+    Given the pinned export, whose sha256 is verified against the committed retrieval
+    manifest before any aggregation, the committed published tables, and the stated
+    bands, the recomputed cell and total counts are deterministic.
+  - >-
+    For FY2020, FY2021 and FY2022 the recomputed total award count exceeds the published
+    total by +2.51%, +1.44% and +0.85% respectively, each inside the one-sided +3% band,
+    and none of the 632 published cells falls outside max(6 rows, 20% of published).
+  - >-
+    Every cell carries exactly one frozen difference class: 98 of 632 are exact, 534 are
+    revised_upstream, and none are pipeline_defect or definition_mismatch. An
+    unclassified cell would keep the study out of reproduced; there are none.
+  - >-
+    The captured published tables satisfy denominator integrity exactly on all three
+    award-count identities and miss by one dollar on 38 row-identity residuals across
+    the three years, every one classified rounding under the declared allowance.
+  - >-
+    Cell-level deviation must be reported as two superimposed effects, never as one.
+    Anything that leaves the repository must be labeled non-citable.
+limitations:
+  - >-
+    The comparison is a corrected database against an uncorrected published table. SBA
+    states the tables are "a summation of the individual awards uploaded to SBA" and
+    that post-publication corrections are pushed to SBIR.gov while the report is not
+    revised (FY2016 report, p39). No report-era export survives, so the publication-era
+    figure is unrecoverable and exact reproduction is impossible in principle, not
+    merely unachieved. design.md anticipated this case and fixed the outcome at blocked.
+  - >-
+    Counts alone match exactly in 41.5-46.6% of cells, and cells run under as often as
+    over. The under-cells are firm relocation rather than counting error; at least 83-97
+    rows per year sit in the wrong jurisdiction. The per-cell band absorbs both effects
+    and must not be read as a count tolerance alone.
+  - >-
+    The band was derived over all 632 published cells, of which 569 have a non-zero
+    published count. max(6 rows, 20%) is the tightest band on the tested grid covering
+    100% of both sets. The 63 zero-count cells are included in the comparison and in the
+    zero-outside claim; the largest recomputed value in any of them is 2 awards, well
+    inside the six-row floor.
+  - >-
+    The FY2020 window holds 7,316 export rows, of which one has a blank jurisdiction and
+    is dropped because no published cell can hold it, leaving 7,315 comparable.
+    Documents that state +180 (+2.52%) are counting the dropped row; the implementation
+    reports +179 (+2.51%) against the comparable set. The two figures differ by exactly
+    that row.
+  - >-
+    The three observed total deltas order with both DoD submission lateness (150 days,
+    149 days, on time) and elapsed time since publication. Three report-years cannot
+    separate the two mechanisms.
+  - >-
+    Dollars are reported without a verdict; see the materialization blockers. The whole-
+    dollar allowance is used only to classify a cell whose counts agree, and is not a
+    dollar reproduction band.
+  - >-
+    Six published cells print zero awards with positive dollars (FY2020 AR, MN and OR
+    STTR Phase II; FY2021 ME STTR Phase I, PR and WY SBIR Phase II). Each was verified
+    against the source PDF and is printed that way, so it is a published-table property
+    the replication must not correct. A cell carrying dollars but no award count is
+    consistent with an amount-only entry against awards counted elsewhere.
+  - >-
+    The window uses the export's Award Year field. FY2016 p39 records that SBA cannot
+    distinguish obligation year from appropriation year for DoD, so for the largest
+    agency the obligation-year basis is not cleanly separable.
+  - >-
+    Of the nine definitions the frozen protocol requires, three are recovered verbatim,
+    one from source methodology, two are partial, one is inferred by reproducing a
+    published figure, one is not applicable in scope, and one is carried as a tolerance.
+    These evidence levels are not equivalent; see sources.yaml
+    definition_decisions.evidence_ladder.
+  - >-
+    Table 20 covers Phase I and Phase II awards while the narrative program totals cover
+    all obligations. The two must not be reconciled to each other.
+  - >-
+    The us-jurisdiction-strict-v1 profile does not carry Marshall Islands, which appears
+    on two award records across the whole export (FY2014, FY2019) and none in
+    FY2020-FY2022. The published FY2020 and FY2021 MH rows are all zeros, so the
+    53-versus-52 row difference carries no awards or dollars. Extending the panel to
+    those years would raise on that jurisdiction by design.
+  - >-
+    The export does not preserve row identity across vintages at the declared grain:
+    over 4.2 months 135 records left and 136 entered the FY2020-FY2022 window. A rebuild
+    comparison under sbir_etl.quality.reproduction.classify_rebuild therefore returns
+    identity_divergence before any band is read. The band below records the magnitude of
+    upstream movement; it does not license agreement, and in-band movement is not a
+    fifth outcome.
+  - >-
+    This study is reproducible in the sense studies/README.md defines, that specified
+    inputs and implementation can be rerun. It is not validated or citable, and
+    reproducible is not a statement about the published-sample outcome.
+  - >-
+    The first-time-winner rule recorded in definition-decisions.md was inferred by
+    reproducing the published 39% figure, not recovered from the source, and it is not
+    implemented in this study. Its one open sub-choice was signed off on 2026-09-17 as
+    any prior SBIR/STTR award, decided on the report's internal scoping evidence rather
+    than on proximity to the published figure, which cannot discriminate because both
+    candidates fall inside the rounding interval of a published 39%. That closed the
+    decision, not the epistemic gap. Cross-validation is impossible because FY2020 and
+    FY2021 publish no comparable statistic, so the rule stays inferred permanently. Any
+    claim resting on it would not be a reproduction of a documented definition. This
+    caveat previously sat in materialization.blockers and was moved here, not dropped,
+    when the blockers were re-scoped.
+reproduction:
+  live_sources:
+    - name: SBIR.gov award export (mod_awarddatapublic)
+      retrieval_manifest: studies/sba-annual-report-tables/award-export-2026-09-17.meta.json
+      upstream_measure: total record count in the export
+      identity_grain: one row per award action as published by SBIR.gov
+  tolerances:
+    - quantity: >-
+        total record count in the export
+      absolute_band: 300
+      derivation: >-
+        This contract governs a rebuild of the pinned export against a later
+        fetch of the same live source, which is what classify_rebuild compares.
+        It does not govern the published-cell comparison; those bands live in
+        sources.yaml published_table_tolerances and the frozen four-way classes
+        in design.md apply there. Movement measured across three vintages of the
+        same endpoint: 219,501 records on 2026-05-11, 219,503 on 2026-08-30 and
+        219,590 on 2026-09-17, so +2 over 3.6 months then +87 in the following 18
+        days, for +89 over 4.2 months. Drift is episodic rather than gradual, so
+        the band is set at 300 to cover roughly three republication events of the
+        size observed rather than extrapolated from an average rate. Read with
+        the identity limitation above: a rebuild at the declared grain returns
+        identity_divergence before this band is reached.

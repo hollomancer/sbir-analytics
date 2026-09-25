@@ -253,12 +253,6 @@ class TestAssetRenamingMap:
         assert ASSET_RENAMING_MAP["parsed_uspto_assignees"] == "validated_uspto_assignees"
         assert ASSET_RENAMING_MAP["parsed_uspto_assignors"] == "validated_uspto_assignors"
 
-    def test_neo4j_to_loaded(self):
-        """Test Neo4j assets renamed to loaded prefix."""
-        assert ASSET_RENAMING_MAP["neo4j_patents"] == "loaded_patents"
-        assert ASSET_RENAMING_MAP["neo4j_patent_assignments"] == "loaded_patent_assignments"
-        assert ASSET_RENAMING_MAP["neo4j_patent_entities"] == "loaded_patent_entities"
-
     def test_cet_taxonomy_renamed(self):
         """Test CET taxonomy renamed correctly."""
         assert ASSET_RENAMING_MAP["cet_taxonomy"] == "raw_cet_taxonomy"
@@ -280,11 +274,6 @@ class TestAssetRenamingMap:
             ASSET_RENAMING_MAP["cet_analytics_aggregates"] == "transformed_cet_analytics_aggregates"
         )
 
-    def test_cet_neo4j_loaded(self):
-        """Test CET Neo4j assets use loaded prefix."""
-        assert ASSET_RENAMING_MAP["neo4j_cetarea_nodes"] == "loaded_cet_areas"
-        assert ASSET_RENAMING_MAP["neo4j_award_cet_enrichment"] == "loaded_award_cet_enrichment"
-
     def test_transition_contracts_renamed(self):
         """Test transition contracts renamed correctly."""
         assert ASSET_RENAMING_MAP["contracts_ingestion"] == "raw_contracts"
@@ -295,14 +284,6 @@ class TestAssetRenamingMap:
         assert ASSET_RENAMING_MAP["transition_scores_v1"] == "transformed_transition_scores"
         assert ASSET_RENAMING_MAP["transition_evidence_v1"] == "transformed_transition_evidence"
         assert ASSET_RENAMING_MAP["transition_detections"] == "transformed_transition_detections"
-
-    def test_transition_neo4j_loaded(self):
-        """Test transition Neo4j assets use loaded prefix."""
-        assert ASSET_RENAMING_MAP["neo4j_transitions"] == "loaded_transitions"
-        assert (
-            ASSET_RENAMING_MAP["neo4j_transition_relationships"]
-            == "loaded_transition_relationships"
-        )
 
     def test_uspto_ai_assets_renamed(self):
         """Test USPTO AI assets renamed correctly."""
@@ -315,7 +296,7 @@ class TestAssetRenamingMap:
 
     def test_renaming_map_has_many_entries(self):
         """Test ASSET_RENAMING_MAP has many entries."""
-        assert len(ASSET_RENAMING_MAP) >= 40  # Should have at least 40 mappings
+        assert len(ASSET_RENAMING_MAP) >= 35  # Covers each retained analytical pipeline
 
     def test_all_values_have_stage_prefix(self):
         """Test all renaming map values have valid stage prefix or are unchanged."""

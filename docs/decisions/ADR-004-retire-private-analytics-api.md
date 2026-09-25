@@ -7,6 +7,10 @@ Status: accepted
 
 # ADR-004: Retire the Private Analytics API
 
+> **Current boundary:** This record retired the HTTP service. Its graph-access references
+> describe the 2026-08-04 state. [ADR-006](ADR-006-retire-neo4j.md) later retired that
+> projection and its operator surface.
+
 ## Context
 
 The repository added a private FastAPI service to expose curated Neo4j queries and analytical
@@ -16,8 +20,9 @@ route. Maintaining those surfaces is not justified by the current research workf
 
 ## Decision
 
-Retire the private analytics API and its API-only snapshot publishing path. Dagster, command-line
-tools, studies, and direct operator access to Neo4j remain the supported execution surfaces.
+Retire the private analytics API and its API-only snapshot publishing path. At the time, Dagster,
+command-line tools, studies, and direct graph access remained supported. ADR-006 later removed the
+graph service and its operator surface.
 
 Do not require an HTTP API before adding another adapter. Any future externally callable interface
 must start from a current consumer and an active research or operational need, then define its own

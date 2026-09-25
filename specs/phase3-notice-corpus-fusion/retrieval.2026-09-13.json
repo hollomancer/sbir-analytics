@@ -1,0 +1,92 @@
+[
+  {
+    "fiscal_year": 2016,
+    "url": "https://falextracts.s3.amazonaws.com/Contract%20Opportunities/Archived%20Data/FY2016_archived_opportunities.csv",
+    "fetched_at": "2026-09-13T23:36:28.846845+00:00",
+    "rows_scanned": 390265,
+    "sbir_notices": 245,
+    "rows_kept": 13,
+    "output": "data/raw/gsa_award_grain/FY2016_award_grain.parquet"
+  },
+  {
+    "fiscal_year": 2017,
+    "url": "https://falextracts.s3.amazonaws.com/Contract%20Opportunities/Archived%20Data/FY2017_archived_opportunities.csv",
+    "fetched_at": "2026-09-13T23:37:22.541065+00:00",
+    "rows_scanned": 418503,
+    "sbir_notices": 215,
+    "rows_kept": 23,
+    "output": "data/raw/gsa_award_grain/FY2017_award_grain.parquet"
+  },
+  {
+    "fiscal_year": 2018,
+    "url": "https://falextracts.s3.amazonaws.com/Contract%20Opportunities/Archived%20Data/FY2018_archived_opportunities.csv",
+    "fetched_at": "2026-09-13T23:51:01.662535+00:00",
+    "rows_scanned": 428147,
+    "sbir_notices": 184,
+    "rows_kept": 17,
+    "output": "data/raw/gsa_award_grain/FY2018_award_grain.parquet"
+  },
+  {
+    "fiscal_year": 2019,
+    "url": "https://falextracts.s3.amazonaws.com/Contract%20Opportunities/Archived%20Data/FY2019_archived_opportunities.csv",
+    "fetched_at": "2026-09-13T23:51:23.239408+00:00",
+    "rows_scanned": 390812,
+    "sbir_notices": 214,
+    "rows_kept": 16,
+    "output": "data/raw/gsa_award_grain/FY2019_award_grain.parquet"
+  },
+  {
+    "fiscal_year": 2020,
+    "url": "https://falextracts.s3.amazonaws.com/Contract%20Opportunities/Archived%20Data/FY2020_archived_opportunities.csv",
+    "fetched_at": "2026-09-13T23:51:41.520217+00:00",
+    "rows_scanned": 375754,
+    "sbir_notices": 215,
+    "rows_kept": 12,
+    "output": "data/raw/gsa_award_grain/FY2020_award_grain.parquet"
+  },
+  {
+    "fiscal_year": 2021,
+    "url": "https://falextracts.s3.amazonaws.com/Contract%20Opportunities/Archived%20Data/FY2021_archived_opportunities.csv",
+    "fetched_at": "2026-09-13T23:52:05.336063+00:00",
+    "rows_scanned": 353877,
+    "sbir_notices": 328,
+    "rows_kept": 4,
+    "output": "data/raw/gsa_award_grain/FY2021_award_grain.parquet"
+  },
+  {
+    "fiscal_year": 2022,
+    "url": "https://falextracts.s3.amazonaws.com/Contract%20Opportunities/Archived%20Data/FY2022_archived_opportunities.csv",
+    "fetched_at": "2026-09-13T23:52:28.417152+00:00",
+    "rows_scanned": 351131,
+    "sbir_notices": 296,
+    "rows_kept": 19,
+    "output": "data/raw/gsa_award_grain/FY2022_award_grain.parquet"
+  },
+  {
+    "fiscal_year": 2023,
+    "url": "https://falextracts.s3.amazonaws.com/Contract%20Opportunities/Archived%20Data/FY2023_archived_opportunities.csv",
+    "fetched_at": "2026-09-13T23:55:47.298204+00:00",
+    "rows_scanned": 391239,
+    "sbir_notices": 258,
+    "rows_kept": 25,
+    "output": "data/raw/gsa_award_grain/FY2023_award_grain.parquet"
+  },
+  {
+    "fiscal_year": 2024,
+    "url": "https://falextracts.s3.amazonaws.com/Contract%20Opportunities/Archived%20Data/FY2024_archived_opportunities.csv",
+    "fetched_at": "2026-09-13T23:56:11.541055+00:00",
+    "rows_scanned": 397676,
+    "sbir_notices": 254,
+    "rows_kept": 6,
+    "output": "data/raw/gsa_award_grain/FY2024_award_grain.parquet"
+  },
+  {
+    "fiscal_year": 2025,
+    "url": "https://falextracts.s3.amazonaws.com/Contract%20Opportunities/Archived%20Data/FY2025_archived_opportunities.csv",
+    "fetched_at": "2026-09-14T00:03:12.854374+00:00",
+    "rows_scanned": 399820,
+    "sbir_notices": 182,
+    "rows_kept": 3,
+    "output": "data/raw/gsa_award_grain/FY2025_award_grain.parquet"
+  }
+]

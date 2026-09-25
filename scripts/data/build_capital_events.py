@@ -28,6 +28,10 @@ from sbir_etl.capital_events.sources.sbir_awards import build_sbir_award_events
 from sbir_etl.capital_events.sources.ucc import build_ucc_events
 from sbir_etl.capital_events.sources.usaspending import build_usaspending_events
 from sbir_etl.capital_events.summarize import summarize_per_firm
+from sbir_etl.enrichers.sec_edgar.form_d_scoring import (
+    FormDTierRuleError,
+    require_form_d_rule_version,
+)
 
 
 def _read_cohort(path: Path) -> list[dict]:
@@ -36,39 +40,42 @@ def _read_cohort(path: Path) -> list[dict]:
         for line in f:
             line = line.strip()
             if line:
-                cohort.append(json.loads(line))
+                row = json.loads(line)
+                require_form_d_rule_version(
+                    row.get("form_d_tier_rule_version"),
+                    context=f"Cohort record {row.get('company_name') or '<unnamed>'!r}",
+                )
+                cohort.append(row)
     return cohort
 
 
 def _to_dataframe(events: list[dict]) -> pd.DataFrame:
     df = pd.DataFrame(events, columns=list(EVENT_TABLE_COLUMNS))
-    return df.sort_values(
-        ["company_name", "event_date", "event_type"], kind="stable"
-    ).reset_index(drop=True)
+    return df.sort_values(["company_name", "event_date", "event_type"], kind="stable").reset_index(
+        drop=True
+    )
 
 
 def main() -> int:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--cohort", type=Path,
-                        default=data_path("form_d_high_conf_cohort.jsonl"))
-    parser.add_argument("--sbir-awards", type=Path,
-                        default=data_path("raw/sbir/award_data.csv"))
-    parser.add_argument("--form-d", type=Path,
-                        default=data_path("form_d_details.jsonl"))
-    parser.add_argument("--ma-events", type=Path,
-                        default=data_path("enriched_sbir_ma_events.jsonl"))
-    parser.add_argument("--usaspending", type=Path,
-                        default=data_path("processed/sbir_phase3/usaspending_phase3_contracts.jsonl"))
-    parser.add_argument("--patents-dir", type=Path,
-                        default=data_path("transformed/uspto"))
-    parser.add_argument("--ucc-matches", type=Path,
-                        default=data_path("ucc1_pilot_matches.jsonl"))
-    parser.add_argument("--out-events", type=Path,
-                        default=data_path("capital_events.parquet"))
-    parser.add_argument("--out-summary", type=Path,
-                        default=data_path("capital_events_per_firm.parquet"))
-    parser.add_argument("--out-sample", type=Path,
-                        default=data_path("capital_events_sample.jsonl"))
+    parser.add_argument("--cohort", type=Path, default=data_path("form_d_high_conf_cohort.jsonl"))
+    parser.add_argument("--sbir-awards", type=Path, default=data_path("raw/sbir/award_data.csv"))
+    parser.add_argument("--form-d", type=Path, default=data_path("form_d_details.jsonl"))
+    parser.add_argument(
+        "--ma-events", type=Path, default=data_path("enriched_sbir_ma_events.jsonl")
+    )
+    parser.add_argument(
+        "--usaspending",
+        type=Path,
+        default=data_path("processed/sbir_phase3/usaspending_phase3_contracts.jsonl"),
+    )
+    parser.add_argument("--patents-dir", type=Path, default=data_path("transformed/uspto"))
+    parser.add_argument("--ucc-matches", type=Path, default=data_path("ucc1_pilot_matches.jsonl"))
+    parser.add_argument("--out-events", type=Path, default=data_path("capital_events.parquet"))
+    parser.add_argument(
+        "--out-summary", type=Path, default=data_path("capital_events_per_firm.parquet")
+    )
+    parser.add_argument("--out-sample", type=Path, default=data_path("capital_events_sample.jsonl"))
     args = parser.parse_args()
 
     if not args.cohort.exists():
@@ -97,6 +104,8 @@ def main() -> int:
             print(f"  {source_name}: {counts[source_name]} events", file=sys.stderr)
         except FileNotFoundError as e:
             print(f"  {source_name}: SKIPPED ({e})", file=sys.stderr)
+        except FormDTierRuleError:
+            raise
         except Exception as e:
             print(f"  {source_name}: ERROR ({type(e).__name__}: {e})", file=sys.stderr)
 

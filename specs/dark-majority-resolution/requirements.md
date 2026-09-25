@@ -1,6 +1,12 @@
 # Dark-Majority Resolution
 
-**Target epistemic tier:** `evidence`
+**Target epistemic tier:** `pipelines`
+
+> Retiered from `evidence` (2026-08-15): the four-item evidence contract (frozen spec + SHA enforcement + blocking asset checks + declared estimand) is not in place here. Re-promote only with an explicit amendments freeze and estimand declaration.
+
+**Research question anchor:** B2 / B3 — award-to-contract transition and transition rate by
+technology area, for the Phase II cohort whose commercialization status is currently
+indeterminate rather than negative
 
 **Problem:** 82.6% of the nanotech Phase II cohort (2,352 of 2,849 awards) has indeterminate
 commercialization status. The findings report (`docs/research/nanotech_sbir_transition_findings.md`,

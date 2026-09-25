@@ -2,8 +2,12 @@
 
 **Target epistemic tier:** `pipelines`
 
-> **Status:** Partially implemented — USAspending iterative enrichment is live (`packages/sbir-analytics/sbir_analytics/assets/usaspending_iterative_enrichment.py`); other sources (SAM.gov, NIH RePORTER, PatentsView) pending.
-> Supports inventory question **E3** (enrichment freshness infrastructure) in [docs/research-questions.md](../../docs/research-questions.md).
+> **Status:** Maintenance — USAspending freshness selection is live; issue #442
+> closes the shared source-adapter lifecycle and wires the unused refresh batch
+> into the job. Per-source adapters (NIH RePORTER #443, SAM.gov, PatentsView)
+> stay split and are not required to close this spec.
+> Supports inventory question **E3** (enrichment freshness infrastructure) in
+> [docs/research-questions.md](../../docs/research-questions.md).
 
 **Research question anchor:** E3 — incremental enrichment refresh to keep company, award, and patent metadata current
 **Answers for:** pipeline engineers
@@ -13,7 +17,13 @@
 
 ## Done when
 
-> A pipeline engineer can state: "The `iterative_enrichment_refresh_job` Dagster job runs nightly after bulk enrichment succeeds, processing only stale or failed records by source. Per-source freshness state is tracked in `data/derived/enrichment_freshness.parquet` and `data/state/enrichment_refresh_state.json`. A targeted refresh can be triggered via `uv run refresh_enrichment --source <name> --window <start>:<end>`."
+> A pipeline engineer can state: "USAspending refresh runs as
+> `usaspending_iterative_enrichment_job` (ledger → stale set → batch) through
+> one `SourceAdapter` / `SourceRefreshRunner` loop that writes freshness and
+> checkpoints. A second source implements `SourceAdapter` and joins the runner
+> without copying pagination, retry, or checkpoint code. An operator can
+> trigger a targeted refresh via `uv run refresh-enrichment --source
+> usaspending` (optional `--window <start>:<end>`)."
 
 ---
 
@@ -27,29 +37,19 @@ This specification implements an iterative API enrichment refresh loop to keep c
 
 ## Glossary
 
-- **PatentsView**: Technical component or system: PatentsView
-- **API**: System component or technology referenced in the implementation
-- **SBIR**: System component or technology referenced in the implementation
-- **SAM**: System component or technology referenced in the implementation
-- **NIH**: System component or technology referenced in the implementation
-- **UEI**: System component or technology referenced in the implementation
-- **DUNS**: System component or technology referenced in the implementation
-- **CET**: System component or technology referenced in the implementation
-- **SLA**: System component or technology referenced in the implementation
-- **CLI**: System component or technology referenced in the implementation
-- **iterative_enrichment_refresh_job**: Code component or file: iterative_enrichment_refresh_job
-- **last_attempt_at**: Code component or file: last_attempt_at
-- **last_success_at**: Code component or file: last_success_at
-- **PipelineConfig.enrichment_refresh**: Code component or file: sbir_etl/config/schemas/pipeline.py — the actual config namespace for iterative-refresh settings (e.g., `config.enrichment_refresh.usaspending.*`).
-- **data/derived/enrichment_freshness.parquet**: Code component or file: the Parquet ledger where per-source freshness metrics are persisted.
-- **data/state/enrichment_refresh_state.json**: Code component or file: the JSON state file tracking per-source last-attempt / last-success timestamps.
-- **uv run refresh_enrichment --source sam_gov --window 2023-10-01:2023-10-07**: Code component or file: uv run refresh_enrichment --source sam_gov --window 2023-10-01:2023-10-07
-- **docs/enrichment/iterative-refresh.md**: Code component or file: docs/enrichment/iterative-refresh.md
-- **Iterative enrichment scheduler**: Key concept: Iterative enrichment scheduler
-- **Per-source refresh policies**: Key concept: Per-source refresh policies
-- **Connector + delta upgrades**: Key concept: Connector + delta upgrades
-- **Freshness telemetry + remediation**: Key concept: Freshness telemetry + remediation
-- **Operator tooling & docs**: Key concept: Operator tooling & docs
+Feature-local terms only. Do not redefine enrichment confidence bands here —
+see [glossary.md](../../docs/steering/glossary.md).
+
+- **`PipelineConfig.enrichment_refresh`** — Config namespace for iterative-refresh
+  settings (`sbir_etl/config/schemas/pipeline.py`), e.g.
+  `config.enrichment_refresh.usaspending.*`.
+- **Freshness ledger** — `data/derived/enrichment_freshness.parquet` (per-source
+  freshness metrics).
+- **Refresh state** — `data/state/enrichment_refresh_state.json` (per-source
+  last-attempt / last-success timestamps).
+- **Operator CLI** — `uv run refresh-enrichment --source usaspending` (shared
+  runner entry point).
+- **Operator docs** — `docs/enrichment/iterative-refresh.md`.
 
 ## Requirements
 
@@ -81,4 +81,4 @@ This specification implements an iterative API enrichment refresh loop to keep c
 
 1. THE System SHALL persist per-source enrichment state to `data/derived/enrichment_freshness.parquet` and `data/state/enrichment_refresh_state.json`, recording attempt count, last success timestamp, and staleness window per source.
 2. THE System SHALL alert (via Dagster asset check or log warning) when any source's last successful enrichment exceeds its configured SLA window.
-3. THE System SHALL support a `--window` CLI flag (`uv run refresh_enrichment --source <name> --window <start>:<end>`) for manual targeted refreshes of specific date ranges.
+3. THE System SHALL support `uv run refresh-enrichment --source <name>` (optional `--window <start>:<end>`) for manual targeted refreshes.

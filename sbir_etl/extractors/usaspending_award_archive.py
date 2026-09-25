@@ -22,6 +22,7 @@ from loguru import logger
 from sbir_etl.models.transition_models import FederalContract
 
 from .contract_extractor import ArchiveSchemaError, ContractExtractor, SourceDataError
+from sbir_etl.utils.data.file_io import file_sha256
 
 
 ARCHIVE_API_URL = "https://api.usaspending.gov/api/v2/bulk_download/list_monthly_files/"
@@ -123,11 +124,8 @@ class AwardArchiveFile:
 
 
 def _sha256(path: Path) -> str:
-    digest = hashlib.sha256()
-    with path.open("rb") as stream:
-        for chunk in iter(lambda: stream.read(1024 * 1024), b""):
-            digest.update(chunk)
-    return digest.hexdigest()
+    """Return the SHA-256 hex digest of ``path``."""
+    return file_sha256(path)
 
 
 def _write_json_atomic(path: Path, payload: Mapping[str, object]) -> None:

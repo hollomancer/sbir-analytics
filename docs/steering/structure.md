@@ -26,7 +26,7 @@ config/
 ├── docker.yaml            # Compose overrides
 ├── prod.yaml              # Live/server profile
 ├── test.yaml              # Test profile
-└── <subsystem>/           # CET, transition, fiscal, Neo4j, and report config
+└── <subsystem>/           # CET, transition, fiscal, and report config
 ```
 
 ### Data Organization
@@ -57,7 +57,7 @@ docs/
 ├── architecture/          # System design documents
 ├── data/                  # Sources, refreshes, and data dictionaries
 ├── deployment/            # Deployment guides and runbooks
-├── schemas/               # Neo4j schema documentation
+├── schemas/               # Historical graph mappings and source field references
 ├── steering/              # Durable engineering and evidence rules
 └── archive/               # Historical, non-operational documents
 ```
@@ -140,9 +140,10 @@ package-to-script dependency behind process execution does not change its direct
 - **Unit tests**: Test individual functions in isolation
 - **Integration tests**: Test component interactions with real databases
 - **Asset checks**: Dagster asset checks for data quality validation
-- **Precision benchmark**: Transition scoring changes maintain the repository's ≥85% precision
-  benchmark. Other coverage and quality gates are owned by CI and subsystem tests rather than a
-  global prose target.
+- **Transition-scoring polarity**: PR unit tests keep HIGH-threshold polarity
+  honest. The ≥85% retrospective precision number is a manual S3-corpus
+  measurement, not a CI gate. Other coverage and quality gates are owned by
+  CI and subsystem tests rather than a global prose target.
 
 ## Import Conventions
 

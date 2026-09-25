@@ -1,0 +1,61 @@
+{
+  "schema_version": 1,
+  "status": "invalid_aborted",
+  "independent_extractor": "/root/sba_blind_extractor",
+  "coordinator": "/root (Codex primary agent)",
+  "packet_manifest_sha256": "68911d57fcb308794813d4ce1b10811ee333661ba799191f3a76068acf5b88e8",
+  "start_utc": "2026-09-21T22:23:27Z",
+  "abort_utc": "2026-09-21T22:27:42Z",
+  "reason": "coordinator invalidated pre-evaluation freeze before first sealed submission",
+  "first_submission_sealed": false,
+  "validation_values_created": false,
+  "prohibited_material_seen": false,
+  "prohibited_material_attestation": "I saw no captured table CSVs, production code or tests, production sidecars or rendered results, historical comparison results, or filled validation output.",
+  "tools_used_so_far": [
+    {
+      "name": "shasum",
+      "version": "6.02",
+      "purpose": "packet and permitted-source SHA-256 verification"
+    },
+    {
+      "name": "jq",
+      "version": "1.7.1-apple",
+      "purpose": "packet-manifest inspection"
+    },
+    {
+      "name": "Python",
+      "version": "3.9.6",
+      "purpose": "permitted-source integrity, population, and extraction preflight checks"
+    },
+    {
+      "name": "pip",
+      "version": "21.2.4",
+      "purpose": "install pinned PDF parser into the isolated output directory"
+    },
+    {
+      "name": "pypdf",
+      "version": "6.1.0",
+      "purpose": "PDF page-count and table-completeness preflight checks"
+    },
+    {
+      "name": "pdfinfo",
+      "version": "26.05.0",
+      "purpose": "declared PDF page-count verification"
+    },
+    {
+      "name": "curl",
+      "version": "8.7.1",
+      "purpose": "read-only durable-URI byte retrieval for SHA-256 verification"
+    },
+    {
+      "name": "ripgrep",
+      "version": "15.2.0",
+      "purpose": "permitted PDF-content preflight search"
+    },
+    {
+      "name": "strings",
+      "version": "Apple system tool; version not reported",
+      "purpose": "permitted PDF-content preflight search"
+    }
+  ]
+}

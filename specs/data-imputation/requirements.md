@@ -62,8 +62,10 @@ choose whether to include imputed values.
   `contract_start_date_fallback`, `agency_phase_median`, `zip5_crosswalk`).
 - **Provenance record** — Per-field metadata capturing whether a value was imputed, by
   which method, from which source fields, with what confidence.
-- **Confidence tier** — `high` / `medium` / `low`, defined per imputation method based on
-  empirical accuracy measured against non-null ground-truth holdouts.
+- **Confidence tier** — Method-local `high` / `medium` / `low` for an imputation
+  method's empirical accuracy against non-null holdouts. Not the steering enrichment
+  bands, transition HIGH/LIKELY/POSSIBLE, or company-categorization award-count
+  tiers — see [glossary.md](../../docs/steering/glossary.md).
 
 ## Requirements
 
@@ -102,8 +104,8 @@ re-deriving imputations each time.
    imputations remain attributable to a specific algorithm even after logic changes.
 4. THE System SHALL log a run-level imputation summary to `reports/imputation/` recording
    per-field impute rates, method distribution, and confidence distribution.
-5. THE System SHALL ensure Neo4j nodes carry the `<field>_is_imputed` flags and
-   `imputation_methods` list as node properties for graph-time filtering.
+5. THE System SHALL preserve `<field>_is_imputed` flags and the `imputation` struct in
+   governed Parquet outputs for query-time filtering.
 
 ### Requirement 3 — Imputable fields and methods
 
@@ -188,8 +190,8 @@ defensible.
 
 ### Requirement 7 — Downstream consumer contract
 
-**User Story:** As a Neo4j loader author, I want a clear contract for consuming imputed
-fields, so that graph queries can opt in or out deterministically.
+**User Story:** As a downstream asset author, I want a clear contract for consuming
+imputed fields, so that analyses can opt in or out deterministically.
 
 #### Acceptance Criteria
 
@@ -201,5 +203,5 @@ fields, so that graph queries can opt in or out deterministically.
 3. THE System SHALL default `packages/sbir-analytics/` reporting assets to reading
    **effective** values (imputed where available) with `_is_imputed` columns surfaced
    in reports.
-4. THE System SHALL default `packages/sbir-graph/` loaders to writing effective values
-   with `is_imputed` flag properties on nodes.
+4. THE System SHALL persist effective values and `is_imputed` flags in governed
+   analytical tables.

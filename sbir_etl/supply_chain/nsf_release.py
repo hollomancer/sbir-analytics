@@ -21,6 +21,7 @@ from sbir_etl.supply_chain.nsf_direct import (
     reconcile_nsf_sbir_awards,
     requested_nsf_award_ids,
 )
+from sbir_etl.utils.data.file_io import file_sha256
 
 DEFAULT_AWARDS = Path("data/raw/sbir/award_data.csv")
 DEFAULT_OUTPUT_DIR = Path("data/processed/nsf_sbir_defense_lineage")
@@ -28,11 +29,8 @@ DEFAULT_SNAPSHOT_ROOT = Path("data/raw/nsf/award_api")
 
 
 def _sha256(path: Path) -> str:
-    digest = hashlib.sha256()
-    with path.open("rb") as handle:
-        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
-            digest.update(chunk)
-    return digest.hexdigest()
+    """Return the SHA-256 hex digest of ``path``."""
+    return file_sha256(path)
 
 
 def _source_metadata(path: Path) -> dict[str, object]:

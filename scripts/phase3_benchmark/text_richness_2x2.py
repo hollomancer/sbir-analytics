@@ -33,6 +33,8 @@ from sklearn.metrics.pairwise import cosine_similarity
 
 from retrieval_metrics import tie_corrected_auc
 
+from sbir_etl.identity import CompanyNameProfile, normalize_company_name
+
 
 def longest_shared_word_run(x: str, y: str, cap: int = 400) -> int:
     """Longest contiguous shared word run — the text-reuse / plagiarism probe. Pure.
@@ -66,15 +68,9 @@ def paired_bootstrap(
     )
 
 
-_SUFFIX = re.compile(
-    r"\b(INC|LLC|CORP|CORPORATION|CO|COMPANY|LTD|LP|LLP|THE|INCORPORATED|TECHNOLOGIES|"
-    r"TECHNOLOGY|TECH|SYSTEMS)\b"
-)
-
-
 def normalize_name(value: object) -> str:
-    text = re.sub(r"[^A-Z0-9 ]", " ", str(value).upper())
-    return re.sub(r"\s+", " ", _SUFFIX.sub(" ", text)).strip()
+    """Build the benchmark firm key via the ``benchmark-firm-key-v1`` profile."""
+    return normalize_company_name(value, profile=CompanyNameProfile.BENCHMARK_FIRM_KEY_V1)
 
 
 def random_negatives(n: int, n_neg: int, seed: int = 0) -> dict[int, np.ndarray]:

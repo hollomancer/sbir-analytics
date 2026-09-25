@@ -14,6 +14,67 @@ from rapidfuzz import fuzz
 
 from ...models.sec_edgar import FormDMatchConfidence
 
+FORM_D_TIER_RULE_PERSON_OR_ZIP_V1 = "person-or-zip-v1"
+FORM_D_TIER_RULE_CORROBORATED_PERSON_V2 = "corroborated-person-v2"
+FORM_D_TIER_RULE_VERSION = FORM_D_TIER_RULE_CORROBORATED_PERSON_V2
+FORM_D_TIER_RULE_VERSIONS: frozenset[str] = frozenset(
+    {
+        FORM_D_TIER_RULE_PERSON_OR_ZIP_V1,
+        FORM_D_TIER_RULE_CORROBORATED_PERSON_V2,
+    }
+)
+
+
+class FormDTierRuleError(ValueError):
+    """A stored confidence tier is absent or uses the wrong named rule."""
+
+
+def require_form_d_rule_version(
+    observed_rule_version: object,
+    *,
+    expected_rule_version: str = FORM_D_TIER_RULE_VERSION,
+    context: str = "Form D record",
+) -> str:
+    """Require one explicit rule version on a detail or derived cohort row."""
+
+    if expected_rule_version not in FORM_D_TIER_RULE_VERSIONS:
+        supported = ", ".join(sorted(FORM_D_TIER_RULE_VERSIONS))
+        raise FormDTierRuleError(
+            f"Unsupported expected Form D tier rule {expected_rule_version!r}; "
+            f"supported rules: {supported}"
+        )
+    if observed_rule_version != expected_rule_version:
+        raise FormDTierRuleError(
+            f"{context} uses Form D tier rule {observed_rule_version!r}; expected "
+            f"{expected_rule_version!r}. Rescore the complete input first with "
+            "scripts/data/rescore_form_d_details.py."
+        )
+    return expected_rule_version
+
+
+def require_form_d_tier_rule(
+    match_confidence: object,
+    *,
+    expected_rule_version: str = FORM_D_TIER_RULE_VERSION,
+    context: str = "Form D record",
+) -> dict:
+    """Return a confidence mapping only when its tier rule is explicit and expected.
+
+    Stored Form D rows predate rule versioning. Consumers must fail closed instead
+    of interpreting an unversioned historical tier as the current rule.
+    """
+
+    if not isinstance(match_confidence, dict):
+        raise FormDTierRuleError(f"{context} has no match_confidence object")
+    observed = match_confidence.get("rule_version")
+    require_form_d_rule_version(
+        observed,
+        expected_rule_version=expected_rule_version,
+        context=context,
+    )
+    return match_confidence
+
+
 # Titles that should be stripped from PI names before matching
 _STRIP_TITLES = re.compile(r"\b(Dr\.|Ph\.D\.|M\.D\.|Mr\.|Mrs\.|Ms\.|Jr\.|Sr\.)\b", re.IGNORECASE)
 # Single-letter initials like "R." (but not "Jr." etc., already handled above)
@@ -25,9 +86,8 @@ _STRIP_INITIALS = re.compile(r"\b[A-Z]\.\s*")
 # offerings; not applied during fetch so raw data stays complete.
 #
 # "Pooled Investment Fund" is excluded because these are VC/PE fund
-# vehicles, not operating company raises.  Some funds are linked to real
-# SBIR companies via shared persons/CIKs (71 cross-links found) — worth
-# revisiting for investor-company relationship mapping.
+# vehicles, not operating-company raises. Shared-person or shared-CIK links
+# remain identity-review flags; they do not establish a portfolio relationship.
 EXCLUDED_INDUSTRY_GROUPS: frozenset[str] = frozenset(
     {
         "Insurance",
@@ -245,6 +305,68 @@ def _normalize_name(name: str) -> str:
     return " ".join(cleaned.split())
 
 
+def assign_form_d_tier(
+    *,
+    person_score: float | None,
+    address_score: float | None,
+    state_score: float | None,
+    rule_version: str = FORM_D_TIER_RULE_VERSION,
+) -> str:
+    """Assign a confidence tier under a named, versioned rule.
+
+    ``person-or-zip-v1`` preserves the historical 2026-04-23 behavior so
+    old materializations remain interpretable. ``corroborated-person-v2``
+    is the current rule: a fuzzy person-name hit needs an exact ZIP or state
+    overlap to reach high, while an exact ZIP remains sufficient by itself.
+    """
+
+    if rule_version not in FORM_D_TIER_RULE_VERSIONS:
+        supported = ", ".join(sorted(FORM_D_TIER_RULE_VERSIONS))
+        raise ValueError(
+            f"Unsupported Form D tier rule {rule_version!r}; expected one of {supported}"
+        )
+
+    person_hit = person_score is not None and person_score >= 0.7
+    address_hit = address_score is not None and address_score >= 1.0
+    state_hit = state_score is not None and state_score >= 1.0
+
+    if rule_version == FORM_D_TIER_RULE_PERSON_OR_ZIP_V1:
+        if person_hit or address_hit:
+            return "high"
+    elif address_hit or (person_hit and state_hit):
+        return "high"
+
+    # Missing state evidence historically received the neutral 0.5 value and
+    # therefore remained medium. Preserve that behavior in both named rules.
+    if state_score is None or state_score >= 0.5 or person_hit:
+        return "medium"
+    return "low"
+
+
+def describe_form_d_signal_scope(offerings: list[dict]) -> dict[str, object]:
+    """Describe the filing/CIK scope from which record-level signals were pooled.
+
+    The legacy detail producer computes one confidence object after pooling every
+    parsed offering attached to an SBIR company. This metadata makes that scope
+    explicit; it does not imply that corroborating signals occurred in one filing.
+    """
+
+    ciks = sorted(
+        {
+            str(offering.get("cik") or "").strip().lstrip("0")
+            for offering in offerings
+            if str(offering.get("cik") or "").strip().lstrip("0")
+        }
+    )
+    return {
+        "unit": "company-record",
+        "offering_count": len(offerings),
+        "distinct_ciks": ciks,
+        "signals_may_span_filings": len(offerings) > 1,
+        "signals_may_span_ciks": len(ciks) > 1,
+    }
+
+
 def compute_form_d_confidence(
     name_score: float,
     pi_names: list[str],
@@ -256,6 +378,7 @@ def compute_form_d_confidence(
     year_of_inc: int | None,
     sbir_zip: str | None = None,
     form_d_zips: list[str] | None = None,
+    rule_version: str = FORM_D_TIER_RULE_VERSION,
 ) -> FormDMatchConfidence:
     """Score match confidence between a Form D filing and an SBIR company.
 
@@ -329,21 +452,30 @@ def compute_form_d_confidence(
     )
 
     # --- Tier (rule-based on discrete signal combinations) ---
-    # Person match and address (ZIP) match are independent confirmation
-    # signals — either one is sufficient for high tier.  This is critical
-    # for HHS/NIH companies where the PI is often an academic collaborator
-    # who does not appear as an officer on the Form D filing.
-    ps = person_score if person_score is not None else 0.5
-    ads = address_score if address_score is not None else 0.5
-    ss = state_score if state_score is not None else 0.5
-    if ps >= 0.7 or ads >= 1.0:
-        tier = "high"
-    elif ss >= 0.5:
-        tier = "medium"
-    else:
-        tier = "low"
+    # An exact ZIP match is sufficient for record-level high under the named
+    # rule. It is not identity validation: addresses can be shared, and the
+    # legacy company record can pool signals across filings or CIKs.
+    #
+    # A fuzzy person-name match is not comparable in strength: ordinary name
+    # variation (a nickname, an initial, two people sharing a common given
+    # name) clears any threshold that also catches real matches — a
+    # companion audit found no score that separates the two populations.
+    # So a person match alone reaches only medium, the same tier a bare
+    # state overlap gets. It reaches high only in conjunction with a second,
+    # independent corroborating signal (exact ZIP, or state overlap paired
+    # with the person hit). Corroboration is checked against the actual
+    # signal values, never the 0.5 defaults substituted below for missing
+    # signals in the medium-tier check — two absent signals must not combine
+    # into a promotion.
+    tier = assign_form_d_tier(
+        person_score=person_score,
+        address_score=address_score,
+        state_score=state_score,
+        rule_version=rule_version,
+    )
 
     return FormDMatchConfidence(
+        rule_version=rule_version,
         tier=tier,
         score=round(composite, 4),
         name_score=name_score,

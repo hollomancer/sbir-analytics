@@ -114,15 +114,6 @@ docker-check-prerequisites: ## Check all prerequisites for Docker development se
 docker-verify: env-check ## Verify Docker setup is working correctly
 	@$(call info,Verifying Docker setup)
 	@set -euo pipefail; \
-	 $(call info,Checking Neo4j connectivity...); \
-	 if $(COMPOSE) --profile dev exec -T neo4j \
-	    cypher-shell -u $${NEO4J_USER:-neo4j} -p $${NEO4J_PASSWORD:-test} 'RETURN 1' >/dev/null 2>&1; then \
-	   $(call success,Neo4j is accessible at bolt://localhost:7687); \
-	 else \
-	   $(call failure,Neo4j is not accessible); \
-	   $(call warn,Check logs with: make docker-logs SERVICE=neo4j); \
-	   exit 1; \
-	 fi; \
 	 $(call info,Checking Dagster UI...); \
 	 if curl -fsS --max-time 3 http://localhost:3000/server_info >/dev/null 2>&1; then \
 	   $(call success,Dagster UI is accessible at http://localhost:3000); \
@@ -142,7 +133,6 @@ docker-verify: env-check ## Verify Docker setup is working correctly
 	 $(call success,✓ Docker setup verification passed!); \
 	 echo ""; \
 	 echo "  • Dagster UI: http://localhost:3000"; \
-	 echo "  • Neo4j Browser: http://localhost:7474"; \
 	 echo "  • View logs: make docker-logs SERVICE=<name>"
 
 # -----------------------------------------------------------------------------
@@ -159,6 +149,11 @@ install-core: ## Install only the reusable sbir-etl library dependencies
 	@$(call info,Installing core sbir-etl dependencies)
 	$(call run,uv sync)
 
+.PHONY: reproduce-sba-structural
+reproduce-sba-structural: ## Reproduce the bounded SBA count comparison
+	@$(call info,Reproducing the SBA annual-report structural comparison)
+	$(call run,PYTHONPATH="$(CURDIR):$(CURDIR)/packages/sbir-analytics" uv run --no-sync python scripts/data/reproduce_sba_structural_comparison.py)
+
 .PHONY: doctor
 doctor: ## Verify the local Python development environment
 	@$(call info,Checking local development environment)
@@ -167,7 +162,7 @@ doctor: ## Verify the local Python development environment
 	  exit 1; \
 	}
 	$(call run,uv run --no-sync python -c 'import sys; assert sys.version_info.major == 3 and 11 <= sys.version_info.minor < 13')
-	$(call run,uv run --no-sync python -c 'import dagster; import pytest; import sbir_analytics; import sbir_etl; import sbir_graph; import sbir_ml')
+	$(call run,uv run --no-sync python -c 'import dagster; import pytest; import sbir_analytics; import sbir_etl; import sbir_ml')
 	$(call run,uv run --no-sync ruff --version)
 	$(call run,uv run --no-sync mypy --version)
 	@$(call success,Development environment is ready)
@@ -175,7 +170,12 @@ doctor: ## Verify the local Python development environment
 .PHONY: test
 test: ## Run all tests
 	@$(call info,Running tests)
-	$(call run,uv run pytest -v --cov=sbir_etl --cov=packages/sbir-analytics/sbir_analytics --cov=packages/sbir-ml/sbir_ml --cov=packages/sbir-graph/sbir_graph --cov-branch --cov-fail-under=70)
+	$(call run,uv run pytest -v --cov=sbir_etl --cov=packages/sbir-analytics/sbir_analytics --cov=packages/sbir-ml/sbir_ml --cov-branch --cov-fail-under=70)
+
+.PHONY: literature-map
+literature-map: ## Refresh the literature map from OpenAlex + grey RSS (CSV + refresh_status.md)
+	@$(call info,Refreshing literature map from OpenAlex and grey-literature feeds)
+	$(call run,uv run python scripts/data/update_literature_map.py)
 
 .PHONY: test-unit
 test-unit: ## Run unit tests only
@@ -225,22 +225,44 @@ lint: ## Run linting and type checking
 	@$(call info,Running linting and type checking)
 	$(call run,uv run ruff check .)
 	$(call run,uv run ruff format --check .)
-	$(call run,uv run mypy sbir_etl packages/sbir-graph/sbir_graph packages/sbir-ml/sbir_ml)
+	# UP042 is still a preview rule; run it targeted so we do not opt into every
+	# unstable preview lint. Prefer StrEnum over (str, Enum) in production code.
+	$(call run,uv run ruff check sbir_etl packages tests --preview --select UP042)
+	$(call run,uv run mypy sbir_etl packages/sbir-ml/sbir_ml)
 
 .PHONY: lint-boundaries
-lint-boundaries: ## Enforce package and archive dependency boundaries
-	@$(call info,Checking architecture boundaries)
+# Keep this list identical to the "Run architecture, documentation, and
+# repository hygiene guards" step in .github/workflows/ci.yml. Local green and
+# CI green must mean the same set of boundary checks; if they diverge, CI wins
+# and this target is a bug.
+lint-boundaries: ## Architecture, epistemic-tier, identity, config, hygiene, and study guards (matches CI)
+	@$(call info,Checking architecture, tier, identity, and repository hygiene guards)
 	$(call run,uv run python scripts/ci/check_architecture_boundaries.py)
+	$(call run,uv run python scripts/ci/check_epistemic_tiers.py)
 	$(call run,uv run python scripts/ci/check_tier_boundaries.py)
 	$(call run,uv run python scripts/ci/check_file_sizes.py)
 	$(call run,uv run python scripts/ci/check_config_boundaries.py)
 	$(call run,uv run python scripts/ci/check_removed_src_references.py)
 	$(call run,uv run python scripts/ci/validate_study_manifests.py)
+	$(call run,uv run python scripts/ci/check_research_question_status.py)
+	$(call run,uv run python scripts/ci/check_study_artifact_roundtrip.py)
+	$(call run,uv run python scripts/ci/check_deterministic_as_of.py)
+	$(call run,uv run python scripts/ci/check_identity_boundaries.py)
+	$(call run,uv run python scripts/ci/check_retired_neo4j_references.py)
+
+.PHONY: check-jev-preflight
+check-jev-preflight: ## Enforce configured deterministic study-readiness decisions
+	@$(call info,Checking deterministic study preflight policy)
+	$(call run,uv run pytest tests/unit/scripts/test_jev_ci_enforcement.py -m jev_preflight)
+	$(call run,uv run python -m scripts.jev_preflight.cli ci-annual-report --output reports/ci/jev-preflight.json)
 
 .PHONY: docs-check
-docs-check: ## Check docs, agent files, spec registry, stale commands, and old code references
+# Documentation hygiene also rejects operational references to retired
+# infrastructure. Full boundary coverage lives in `make lint-boundaries`.
+docs-check: ## Doc links, stale commands, spec registry, mirrors, and retired-service references
 	@$(call info,Running repository hygiene checks)
 	$(call run,uv run python scripts/ci/check_removed_src_references.py)
+	$(call run,uv run python scripts/ci/check_retired_neo4j_references.py)
 
 .PHONY: format
 format: ## Format code
@@ -400,15 +422,14 @@ docker-test: env-check ## Run containerised CI tests (profile=ci)
 docker-e2e: env-check ## Run full end-to-end test suite (profile=ci)
 	@set -euo pipefail; \
 	 $(call info,Running E2E tests (profile: ci)); \
-	 $(call print-cmd,$(COMPOSE) --profile ci up --build --abort-on-container-exit neo4j app); \
+	 $(call print-cmd,$(COMPOSE) --profile ci up --build --abort-on-container-exit app); \
 	 STATUS=0; \
-	 if $(COMPOSE) --profile ci up --build --abort-on-container-exit neo4j app 2>&1; then STATUS=0; else STATUS=$$?; fi; \
+	 if $(COMPOSE) --profile ci up --build --abort-on-container-exit app 2>&1; then STATUS=0; else STATUS=$$?; fi; \
 	 if [ "$(QUIET)" != "1" ]; then printf "$(BLUE)➤$(RESET) E2E tests completed with exit code %s\n" "$$STATUS"; fi; \
 	 if [ $$STATUS -ne 0 ]; then \
 	   $(call failure,E2E tests failed with exit code $$STATUS); \
 	   $(call info,Showing recent logs from failed containers...); \
 	   $(COMPOSE) --profile ci logs --tail=50 app 2>&1 || true; \
-	   $(COMPOSE) --profile ci logs --tail=20 neo4j 2>&1 || true; \
 	 else \
 	   $(call success,E2E tests passed – containers left running for inspection); \
 	 fi; \
@@ -444,39 +465,6 @@ docker-e2e-standard: env-check ## Run the standard E2E scenario
 docker-e2e-debug: env-check ## Open an interactive shell in the CI test container
 	@$(call info,Opening interactive shell in CI test container)
 	$(call run,$(COMPOSE) --profile ci run --rm app sh)
-
-# -----------------------------------------------------------------------------
-# Neo4j helpers
-# -----------------------------------------------------------------------------
-
-.PHONY: neo4j-up
-neo4j-up: env-check ## Start Neo4j only (profile=dev)
-	$(call info,Starting Neo4j (profile: dev))
-	$(call run,$(COMPOSE) --profile dev up -d neo4j)
-
-.PHONY: neo4j-down
-neo4j-down: ## Stop Neo4j (profile=dev)
-	$(call info,Stopping Neo4j (profile: dev))
-	$(call run,$(COMPOSE) --profile dev stop neo4j)
-
-.PHONY: neo4j-reset
-neo4j-reset: neo4j-down ## Reset Neo4j with fresh volumes
-	$(call info,Removing Neo4j volumes)
-	-@docker volume rm neo4j_data neo4j_logs neo4j_import >/dev/null 2>&1 || true
-	$(call info,Bringing Neo4j back up)
-	@$(MAKE) neo4j-up
-
-.PHONY: neo4j-check
-neo4j-check: env-check ## Run the Neo4j health check
-	$(call info,Checking Neo4j health via cypher-shell)
-	@set -euo pipefail; \
-	 if $(COMPOSE) --profile dev exec neo4j \
-	    cypher-shell -u $${NEO4J_USER:-neo4j} -p $${NEO4J_PASSWORD:-password} 'RETURN 1' >/dev/null 2>&1; then \
-	   $(call success,Neo4j responded successfully); \
-	 else \
-	   $(call failure,Neo4j health check failed); \
-	  exit 1; \
-	 fi
 
 # -----------------------------------------------------------------------------
 # Function-specific pipeline runs
@@ -547,13 +535,6 @@ clean-all: ## Remove this project's containers and Compose volumes
 shell: env-check ## Drop into a shell in the app container
 	@$(call info,Opening shell in app container)
 	$(call run,$(COMPOSE) --profile dev run --rm app sh)
-
-.PHONY: db-shell
-db-shell: env-check ## Drop into Neo4j cypher-shell
-	@$(call info,Opening Neo4j cypher-shell)
-	@set -euo pipefail; \
-	 $(COMPOSE) --profile dev exec neo4j \
-	   cypher-shell -u $${NEO4J_USER:-neo4j} -p $${NEO4J_PASSWORD:-password}
 
 .PHONY: validate-config
 validate-config: ## Validate docker-compose.yml and .env files
@@ -632,7 +613,7 @@ server-status: server-env-check ## Show server stack status
 	$(call run,$(SERVER_COMPOSE) --profile server ps)
 
 .PHONY: server-health
-server-health: server-env-check ## Run health checks (env, deps, Neo4j) inside the running stack
+server-health: server-env-check ## Run health checks inside the running stack
 	@$(call info,Checking server stack health)
 	$(call run,$(SERVER_COMPOSE) --profile server ps)
 	$(call run,$(SERVER_COMPOSE) --profile server exec -T dagster-code-server python /app/scripts/e2e_health_check.py --profile server)
@@ -641,11 +622,6 @@ server-health: server-env-check ## Run health checks (env, deps, Neo4j) inside t
 server-logs: server-env-check ## Tail server logs for SERVICE (default dagster-webserver)
 	@$(call info,Tailing server logs for service: $(SERVICE))
 	@$(SERVER_COMPOSE) --profile server logs -f --tail=200 $(SERVICE)
-
-.PHONY: server-backup
-server-backup: server-env-check ## Dump Neo4j to $(SERVER_BACKUP_DIR) (default ./backups)
-	@$(call info,Backing up Neo4j)
-	$(call run,SERVER_ENV_FILE=$(SERVER_ENV_FILE) COMPOSE_FILE=$(SERVER_COMPOSE_FILE) ./scripts/server/backup.sh)
 
 .PHONY: server-tailscale-up
 server-tailscale-up: server-env-check ## Configure persistent Tailscale Serve routes
@@ -674,18 +650,22 @@ server-validate-config: server-env-check ## Validate docker-compose.server.yml
 	 $(call success,$(SERVER_COMPOSE_FILE) is valid)
 
 .PHONY: ci-local
-ci-local: ## Run CI checks locally (mimics GitHub Actions)
-	@$(call info,Running CI checks locally)
-	@set -euo pipefail; \
-	 $(MAKE) validate; \
-	 $(call info,Running secret scan); \
-	 if command -v python3 >/dev/null 2>&1; then \
-	   python3 scripts/ci/scan_secrets.py || exit_code=$$?; \
-	   if [ "$${exit_code:-0}" != "0" ]; then \
-	     $(call failure,Secret scan failed); \
-	     exit $$exit_code; \
-	   fi; \
-	 else \
-	   $(call warn,Python3 not found, skipping secret scan); \
-	 fi; \
-	 $(call success,CI checks completed)
+ci-local: ## Reproduce pull-request CI locally (not the post-merge full suite)
+	@$(call info,Running pull-request CI checks locally)
+	@$(MAKE) lint
+	@$(MAKE) lint-boundaries
+	@$(MAKE) check-jev-preflight
+	@$(call info,Validating Dagster definitions)
+	@uv run python -c "from dagster import Definitions; from sbir_analytics.definitions import defs; Definitions.validate_loadable(defs)"
+	@$(call info,Validating compose files)
+	@docker compose -f docker-compose.yml config -q
+	@docker compose -f docker-compose.server.yml --env-file .env.server.example config -q
+	@$(call info,Running Bandit)
+	@uv run python -m bandit -r sbir_etl packages -c pyproject.toml
+	@$(call info,Running detect-secrets)
+	@uv run detect-secrets scan --baseline .secrets.baseline
+	@$(call info,Running PR unit shards locally)
+	@uv run pytest tests/unit/ -m "not slow and not jev_preflight"
+	@$(call info,Running hermetic E2E)
+	@uv run pytest tests/e2e/ -m "not requires_api and not real_data"
+	@$(call success,Pull-request CI checks completed)

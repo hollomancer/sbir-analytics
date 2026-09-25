@@ -57,26 +57,36 @@ def generate_phase_transition_report(
     con.execute(f"CREATE VIEW survival AS SELECT * FROM read_parquet({_lit(survival)})")
 
     # 1. Latency distribution — percentiles and month-binned histogram.
+    #
+    # Read from `survival`, not `pairs`. One Phase II award can match several
+    # Phase III contracts, so `pairs` carries several rows per award and would
+    # weight multi-contract awards more heavily here — while the transition rate
+    # and agency counts below are computed per award from `survival`. Reporting
+    # both grains under one transition vocabulary mixed the denominators.
+    # `survival.time_days` is the latency to the earliest Phase III action date
+    # for the award, which is the per-award analogue of `pairs.latency_days`.
     percentiles = con.execute(
         """
         SELECT
             count(*)::BIGINT                          AS n,
-            sum(CASE WHEN latency_days < 0 THEN 1 ELSE 0 END)::BIGINT AS negative,
-            approx_quantile(latency_days, 0.10)       AS p10,
-            approx_quantile(latency_days, 0.25)       AS p25,
-            approx_quantile(latency_days, 0.50)       AS p50,
-            approx_quantile(latency_days, 0.75)       AS p75,
-            approx_quantile(latency_days, 0.90)       AS p90,
-            avg(latency_days)                          AS mean
-        FROM pairs
+            sum(CASE WHEN time_days < 0 THEN 1 ELSE 0 END)::BIGINT AS negative,
+            approx_quantile(time_days, 0.10)          AS p10,
+            approx_quantile(time_days, 0.25)          AS p25,
+            approx_quantile(time_days, 0.50)          AS p50,
+            approx_quantile(time_days, 0.75)          AS p75,
+            approx_quantile(time_days, 0.90)          AS p90,
+            avg(time_days)                             AS mean
+        FROM survival
+        WHERE event_observed
         """
     ).fetchone()
 
     histogram = con.execute(
         """
         WITH binned AS (
-            SELECT CAST(floor(latency_days / 30.0) AS INTEGER) AS month_bin
-            FROM pairs
+            SELECT CAST(floor(time_days / 30.0) AS INTEGER) AS month_bin
+            FROM survival
+            WHERE event_observed
         )
         SELECT month_bin, count(*) AS n
         FROM binned
@@ -86,27 +96,27 @@ def generate_phase_transition_report(
     ).fetchall()
 
     # 2. Agency breakdown — match rate + median latency per Phase II agency.
+    # Counts and median latency both come from `survival` at one row per Phase II
+    # award. The previous LEFT JOIN onto `pairs` fanned each agency out to its
+    # pair rows, so the median was pair-weighted while the rate beside it was
+    # award-weighted.
     agency_breakdown = con.execute(
         """
-        WITH per_agency AS (
-            SELECT
-                coalesce(s.phase_ii_agency, 'UNKNOWN') AS agency,
-                count(*)                                AS phase_ii_total,
-                sum(CASE WHEN s.event_observed THEN 1 ELSE 0 END) AS matched
-            FROM survival s
-            GROUP BY 1
-        )
         SELECT
-            p.agency,
-            p.phase_ii_total,
-            p.matched,
-            round(p.matched::DOUBLE / nullif(p.phase_ii_total, 0), 4) AS match_rate,
-            approx_quantile(pa.latency_days, 0.5)                      AS median_latency_days
-        FROM per_agency p
-        LEFT JOIN pairs pa
-               ON coalesce(pa.phase_ii_agency, 'UNKNOWN') = p.agency
-        GROUP BY p.agency, p.phase_ii_total, p.matched
-        ORDER BY p.phase_ii_total DESC
+            coalesce(phase_ii_agency, 'UNKNOWN') AS agency,
+            count(*)                              AS phase_ii_total,
+            sum(CASE WHEN event_observed THEN 1 ELSE 0 END) AS matched,
+            round(
+                sum(CASE WHEN event_observed THEN 1 ELSE 0 END)::DOUBLE
+                / nullif(count(*), 0),
+                4
+            ) AS match_rate,
+            approx_quantile(
+                CASE WHEN event_observed THEN time_days END, 0.5
+            ) AS median_latency_days
+        FROM survival
+        GROUP BY agency
+        ORDER BY phase_ii_total DESC
         """
     ).fetchall()
 

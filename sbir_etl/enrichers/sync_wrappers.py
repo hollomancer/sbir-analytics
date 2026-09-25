@@ -24,6 +24,12 @@ Usage::
 
     with SyncSemanticScholarClient() as s2:
         record = s2.lookup_author("Jane Smith")
+
+    with SyncOpenAlexClient(mailto="you@example.com") as oa:
+        record = oa.lookup("Jane Smith")
+
+    with SyncPubMedClient() as pm:
+        record = pm.lookup("Jane Smith")
 """
 
 from __future__ import annotations
@@ -34,8 +40,10 @@ from ..utils.async_tools import run_sync
 from .fpds_atom import FPDSAtomClient, FPDSRecord
 from .lens_patents import LensPatentClient, LensPatentRecord
 from .opencorporates import CorporateRecord, Officer, OpenCorporatesClient
+from .openalex_client import OpenAlexClient, OpenAlexRecord
 from .orcid_client import ORCIDClient, ORCIDRecord
-from .press_wire import PressRelease, PressWireClient
+from .press_wire import PressRelease, PressWireClient, WatchlistCoverage
+from .pubmed_client import PubMedClient, PubMedRecord
 from .rate_limiting import RateLimiter
 from .sam_gov.client import SAMGovAPIClient
 from .semantic_scholar import PublicationRecord, SemanticScholarClient
@@ -263,6 +271,70 @@ class SyncORCIDClient(_SyncFacade):
         return run_sync(self._client.lookup(name))
 
 
+class SyncOpenAlexClient(_SyncFacade):
+    """Synchronous facade for :class:`OpenAlexClient`.
+
+    Supports ``shared_limiter`` for sharing a global rate budget across
+    worker threads.
+    """
+
+    def __init__(
+        self,
+        *,
+        mailto: str | None = None,
+        timeout: int = 30,
+        rate_limit_per_minute: int = 100,
+        shared_limiter: RateLimiter | None = None,
+    ) -> None:
+        self._client = OpenAlexClient(
+            mailto=mailto,
+            timeout=timeout,
+            rate_limit_per_minute=rate_limit_per_minute,
+            shared_limiter=shared_limiter,
+        )
+
+    def search_authors(self, name: str, limit: int = 5) -> list[dict[str, Any]]:
+        return run_sync(self._client.search_authors(name, limit))
+
+    def get_author_details(self, openalex_id: str) -> dict[str, Any] | None:
+        return run_sync(self._client.get_author_details(openalex_id))
+
+    def lookup(self, name: str) -> OpenAlexRecord | None:
+        return run_sync(self._client.lookup(name))
+
+
+class SyncPubMedClient(_SyncFacade):
+    """Synchronous facade for :class:`PubMedClient`.
+
+    Supports ``shared_limiter`` for sharing a global rate budget across
+    worker threads.
+    """
+
+    def __init__(
+        self,
+        *,
+        api_key: str | None = None,
+        timeout: int = 30,
+        rate_limit_per_minute: int | None = None,
+        shared_limiter: RateLimiter | None = None,
+    ) -> None:
+        self._client = PubMedClient(
+            api_key=api_key,
+            timeout=timeout,
+            rate_limit_per_minute=rate_limit_per_minute,
+            shared_limiter=shared_limiter,
+        )
+
+    def search_pmids(self, author: str, limit: int = 5) -> list[str]:
+        return run_sync(self._client.search_pmids(author, limit))
+
+    def get_author_affiliations(self, pmid: str) -> dict[str, Any] | None:
+        return run_sync(self._client.get_author_affiliations(pmid))
+
+    def lookup(self, name: str) -> PubMedRecord | None:
+        return run_sync(self._client.lookup(name))
+
+
 class SyncOpenCorporatesClient(_SyncFacade):
     """Synchronous facade for :class:`OpenCorporatesClient`.
 
@@ -338,11 +410,15 @@ class SyncPressWireClient(_SyncFacade):
         )
 
     # Watchlist management is pure Python — no need to route through run_sync
-    def set_watchlist(self, company_names: list[str]) -> None:
-        self._client.set_watchlist(company_names)
+    @property
+    def watchlist_report(self) -> WatchlistCoverage:
+        return self._client.watchlist_report
 
-    def add_to_watchlist(self, company_name: str) -> None:
-        self._client.add_to_watchlist(company_name)
+    def set_watchlist(self, company_names: list[str]) -> WatchlistCoverage:
+        return self._client.set_watchlist(company_names)
+
+    def add_to_watchlist(self, company_name: str) -> WatchlistCoverage:
+        return self._client.add_to_watchlist(company_name)
 
     def reset_seen(self) -> None:
         self._client.reset_seen()

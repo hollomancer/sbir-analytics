@@ -2,13 +2,13 @@
 
 from __future__ import annotations
 
-import hashlib
 import json
 from datetime import UTC, date, datetime
 from pathlib import Path
 from typing import Any
 
 import pandas as pd
+from sbir_etl.utils.data.file_io import file_sha256
 
 RELEASE_PRODUCT_SCHEMAS: dict[str, tuple[str, set[str]]] = {
     "direct_awards": (
@@ -130,11 +130,8 @@ _UNIQUE_IDS = {
 
 
 def _sha256(path: Path) -> str:
-    digest = hashlib.sha256()
-    with path.open("rb") as handle:
-        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
-            digest.update(chunk)
-    return digest.hexdigest()
+    """Return the SHA-256 hex digest of ``path``."""
+    return file_sha256(path)
 
 
 def _as_date(value: object) -> date | None:

@@ -1,0 +1,90 @@
+{
+  "lexicon_name": "d5_spinout_phrase_lexicon",
+  "version": "v1",
+  "frozen": "2026-08-15",
+  "purpose": "STTR spinout-linkage D5 text-trail dimension (specs/sttr-spinout-linkage/design.md#evidence-dimensions): a small, deterministic, hand-curated set of phrase patterns that plausibly describe a founding-or-licensing spinout relationship between an STTR small business (SBC) and its research-institution (RI) partner, as opposed to a generic partnership/collaboration mention.",
+  "resolution": "O-4 (specs/sttr-spinout-linkage/open-questions.md#o-4) resolved that a small hand-curated v1 lexicon ships, with the exact phrase list drafted and frozen at task 1.3 implementation time -- this file is that freeze. No ML text classifier; per O-4, that remains explicitly future work.",
+  "scope_note": "v1 searches only the D1 spine's award abstract field. design.md's D5 row also names 'firm text' as a source, but no firm-text field exists on the D1 spine this scorer consumes -- searching a source that is not actually present would misrepresent NOT_MEASURABLE rows as MEASURED. Extending to firm text (e.g. a company-website or SBIR.gov firm-profile corpus) is future work, not invented here.",
+  "matching_rules": "Case-insensitive, deterministic substring/regex matching only (re.IGNORECASE). No fuzzy matching, no stemming beyond the literal alternations spelled out per pattern, no ML/embedding similarity -- per O-4's explicit prohibition on ML matching in v1. A match on any single pattern sets spinout_phrase = True; the lexicon does not weight or count matches.",
+  "cascade_risk_note": "design.md's Order-2 cascade rule lets D5.spinout_phrase serve as one of the two dimensions whose positive signal can trigger SPINOUT_T2 (with independent corroboration required from a second, distinct dimension). A D5 false positive therefore has real downstream cost even though it alone can never assign a label. Every pattern below was chosen to require an explicit founding-, spin-out-, or licensing-specific verb/construction, not a bare relationship word (no 'partner', 'collaborate', 'work with', 'team with', 'support from') -- see 'deliberately_excluded' below.",
+  "patterns": [
+    {
+      "id": "spun_out",
+      "category": "spinout_verb",
+      "pattern": "\\bspun[\\s-]+(out|off)\\s+(of|from)\\b",
+      "examples_matched": ["spun out of MIT", "spun off from the university's lab"],
+      "rationale": "Direct illustrative phrase from design.md's D5 row ('spun out of'); unambiguous founding-event language, not a generic partnership verb."
+    },
+    {
+      "id": "spin_out_noun",
+      "category": "spinout_verb",
+      "pattern": "\\bspin[\\s-]?(out|off)\\s+(of|from)\\b",
+      "examples_matched": ["a spin-out of Stanford University", "spinoff from the RI's research program"],
+      "rationale": "Noun-form variant of spun_out ('spin-off of', 'spinout from') -- same founding-event specificity, common alternate spelling/hyphenation."
+    },
+    {
+      "id": "exclusive_license_from",
+      "category": "license",
+      "pattern": "\\bexclusive(?:ly)?\\s+licens(?:e|ed|ing)\\s+from\\b",
+      "examples_matched": ["holds an exclusive license from the university", "exclusively licensed from the research institution"],
+      "rationale": "Exclusivity is the specific marker: an exclusive license from a named institution is a real IP transfer, not a routine vendor/tool license. Deliberately narrower than design.md's bare illustrative 'licensed from' -- see deliberately_excluded."
+    },
+    {
+      "id": "licensed_technology_from",
+      "category": "license",
+      "pattern": "\\b(?:in-)?licens(?:e|ed)\\s+(?:the\\s+)?technology\\s+from\\b",
+      "examples_matched": ["licensed technology from the university", "in-licensed the technology from the lab"],
+      "rationale": "'technology' as the direct object anchors this to a core-IP license (design.md's 'licensed technology from' variant), not licensing an unrelated tool, dataset, or facility."
+    },
+    {
+      "id": "founded_by_title",
+      "category": "founded_by",
+      "pattern": "\\b(?:co-?)?founded\\s+by\\s+(?:a\\s+|an\\s+|the\\s+)?(?:professor|prof\\.?|dr\\.?|doctor)\\b",
+      "examples_matched": ["founded by Professor Jane Smith", "co-founded by Dr. Lee"],
+      "rationale": "Direct illustrative phrase from design.md's D5 row ('founded by Professor ...'); an academic title after 'founded by' is a strong, specific founding-relationship marker."
+    },
+    {
+      "id": "founded_by_role",
+      "category": "founded_by",
+      "pattern": "\\b(?:co-?)?founded\\s+by\\s+(?:a\\s+|an\\s+|the\\s+)?(?:\\w+\\s+){0,4}?(?:researcher|faculty member|scientist)\\b",
+      "examples_matched": ["founded by a researcher at the institute", "co-founded by a faculty member of the university"],
+      "rationale": "Covers the design.md 'co-founded by a [RI] researcher/faculty member' variant when no academic title word ('Professor'/'Dr.') is used but an academic role noun is; bounded word-gap (<=4 words) keeps the match tied to a single founding clause rather than matching across unrelated sentences."
+    },
+    {
+      "id": "based_on_research_at",
+      "category": "based_on",
+      "pattern": "\\bbased\\s+on\\s+(?:the\\s+)?research\\s+conducted\\s+at\\b",
+      "examples_matched": ["based on research conducted at the university"],
+      "rationale": "Direct illustrative phrase from design.md's D5 row; ties the SBC's core offering to research performed at a named institution, which is the founding-technology-origin signal, not a collaboration mention."
+    },
+    {
+      "id": "based_on_technology_at",
+      "category": "based_on",
+      "pattern": "\\bbased\\s+on\\s+(?:the\\s+)?technology\\s+developed\\s+at\\b",
+      "examples_matched": ["based on technology developed at the research institute"],
+      "rationale": "Direct illustrative phrase from design.md's D5 row; same rationale as based_on_research_at, technology-origin variant."
+    }
+  ],
+  "deliberately_excluded": [
+    {
+      "phrase_or_class": "bare \"licensed from\" (no 'exclusive' / 'technology' qualifier)",
+      "reason": "Too generic -- an abstract can say a firm 'licensed [a component/tool/dataset] from [a vendor]' with no spinout relationship at all. design.md lists 'licensed from' only as an illustrative example, not a frozen requirement; narrowing to exclusive_license_from and licensed_technology_from keeps precision high given D5's Order-2 cascade role."
+    },
+    {
+      "phrase_or_class": "bare \"founded by [Name]\" with no academic title or role noun",
+      "reason": "A founder name alone (no 'Professor'/'Dr.'/'researcher'/'faculty member') cannot be distinguished from a founder with no RI affiliation at all -- would require cross-referencing D2's person trail to mean anything, which is out of scope for a text-only D5 pattern and would double-count evidence D2 already scores independently."
+    },
+    {
+      "phrase_or_class": "\"partnership with\", \"collaboration with\", \"working with\", \"teaming with\", \"in collaboration with\", \"support from\"",
+      "reason": "Exactly the generic partnership/collaboration language the task brief calls out as the false-positive risk to avoid; every STTR abstract describes an SBC-RI collaboration by definition of the program, so these words carry no discriminating signal between SPINOUT and SUBCONTRACT."
+    },
+    {
+      "phrase_or_class": "\"subcontract\", \"subcontractor\", \"teaming agreement\"",
+      "reason": "These are SUBCONTRACT-direction words, not spinout words; including them in a spinout lexicon would be a category error, not merely a precision problem."
+    },
+    {
+      "phrase_or_class": "generic \"technology transfer\" / \"tech transfer office\"",
+      "reason": "Refers to the RI's institutional TTO function, present in many STTR abstracts regardless of whether this particular SBC is a spinout -- not evidence of a founding-or-licensing relationship for the specific award."
+    }
+  ]
+}

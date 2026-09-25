@@ -21,10 +21,6 @@
 #  - Do NOT commit production secrets into this file. Use environment variables or secret mounts.
 #  - The compose files use environment interpolation for many of these values.
 #
-# Example usage:
-#   # read with yq/jq or a small Python loader to merge into runtime env
-#   yq e '.neo4j.host' config/docker.yaml
-
 # Top-level configuration groups
 environment:
   name: "dev"                # dev | test | prod; can be overridden via ENV var ENVIRONMENT
@@ -46,30 +42,6 @@ build:
   cache_from: ""             # e.g. "type=gha"
   cache_to: ""               # e.g. "type=gha,mode=max"
   publish_on_ci: false       # when true CI publish step will push image to registry
-
-neo4j:
-  # Connection and service defaults used by compose and entrypoint scripts.
-  host: "neo4j"
-  http_port: 7474
-  bolt_port: 7687
-  # Authentication: prefer environment variables; do NOT commit secrets here
-  user: "neo4j"
-  password: "change_me"      # pragma: allowlist secret # local placeholder; replace in .env for local dev or via CI secrets
-  # Memory sizing recommendations for local dev vs CI
-  memory:
-    pagecache_size: "256M"
-    heap_max_size: "512M"
-  # Named volumes (compose will define these by default)
-  volumes:
-    data: "neo4j_data"
-    logs: "neo4j_logs"
-    import: "neo4j_import"
-  healthcheck:
-    # cypher-shell check; entrypoint will use credentials from env/.env
-    interval: "10s"
-    timeout: "5s"
-    retries: 12
-    start_period: "10s"
 
 dagster:
   host: "0.0.0.0"
@@ -94,18 +66,13 @@ dagster:
 services:
   # Service-level orchestration hints used by compose overlays and CI scripts.
   dagster_web:
-    depends_on:
-      - neo4j
-    condition: "service_healthy"
+    depends_on: []
   dagster_daemon:
     depends_on:
-      - neo4j
       - dagster_web
     condition: "service_healthy"
   etl_runner:
-    depends_on:
-      - neo4j
-    condition: "service_healthy"
+    depends_on: []
 
 compose:
   base_file: "docker-compose.yml"
@@ -116,9 +83,6 @@ compose:
 
 volumes:
   # Default named volumes. Dev overlay may replace these with host bind mounts for iteration.
-  neo4j_data: "neo4j_data"
-  neo4j_logs: "neo4j_logs"
-  neo4j_import: "neo4j_import"
   reports: "reports"
   logs: "logs"
   data: "data"
@@ -138,7 +102,6 @@ security:
   env_file: ".env"               # local-only .env path (should be gitignored)
   secret_mount_path: "/run/secrets"  # path where orchestrators mount secrets into containers
   secret_conventions:
-    - "NEO4J_PASSWORD"          # example secret names to be provided via env or secret mount
     - "DOCKER_REGISTRY_TOKEN"
 
 logging:
@@ -152,6 +115,5 @@ logging:
 
 notes:
   - "Override sensitive values (passwords, tokens) via environment variables or CI secrets — do not store them here."
-  - "For local development, copy .env.example -> .env and set NEO4J_PASSWORD to a local test value."
   - "Use the provided Makefile targets (make docker-build, make docker-up-dev, make docker-test) to operate the stack."
   - "When adding new container services, document their config keys here so compose overlays and tooling can reference them."

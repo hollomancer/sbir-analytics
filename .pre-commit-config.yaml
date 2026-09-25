@@ -8,19 +8,20 @@ repos:
       - id: end-of-file-fixer
       - id: trailing-whitespace
 
-  # Python linting and formatting (matches CI scope: production packages and tests)
-  # CI equivalent: ruff check <production-roots> tests && ruff format --check <production-roots> tests
+  # Python linting and formatting (narrower than CI by design)
+  # Local: production package roots + tests/
+  # CI equivalent: ruff check . && ruff format --check .  (whole repository)
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: v0.14.4
     hooks:
       - id: ruff
-        files: ^(sbir_etl|packages/sbir-(analytics/sbir_analytics|ml/sbir_ml|graph/sbir_graph)|tests)/
+        files: ^(sbir_etl|packages/sbir-(analytics/sbir_analytics|ml/sbir_ml)|tests)/
         args: [--fix, --exit-non-zero-on-fix]
       - id: ruff-format
-        files: ^(sbir_etl|packages/sbir-(analytics/sbir_analytics|ml/sbir_ml|graph/sbir_graph)|tests)/
+        files: ^(sbir_etl|packages/sbir-(analytics/sbir_analytics|ml/sbir_ml)|tests)/
 
   # Type checking (local subset of the blocking CI scope: sbir_etl only)
-  # CI equivalent: mypy sbir_etl packages/sbir-graph/sbir_graph packages/sbir-ml/sbir_ml
+  # CI equivalent: mypy sbir_etl packages/sbir-ml/sbir_ml
   # The files filter keeps the local hook narrower than CI by design.
   - repo: https://github.com/pre-commit/mirrors-mypy
     rev: v1.18.2
@@ -59,15 +60,18 @@ repos:
 #
 # SCOPE ALIGNMENT WITH CI:
 #   This pre-commit configuration overlaps with, but does not duplicate, the
-#   blocking checks in .github/workflows/ci.yml. Ruff has the same scope in
-#   both places; CI deliberately has broader MyPy and security coverage.
+#   blocking checks in .github/workflows/ci.yml. Ruff is intentionally narrower
+#   locally (production roots + tests); CI runs ruff over the whole repository
+#   via `make lint` / `ruff check .`. CI also has broader MyPy and security
+#   coverage, plus the make lint-boundaries guard suite.
 #
 #   Tool Scope Mapping:
-#   - Ruff (lint/format): all production package roots and tests
-#   - MyPy (type check):  sbir_etl/      [CI also checks sbir-graph, sbir-ml]
+#   - Ruff (lint/format): production package roots + tests  [CI: whole repo]
+#   - MyPy (type check):  sbir_etl/      [CI also checks sbir-ml]
 #   - Bandit (security):  no local hook  [CI checks sbir_etl/ and packages/]
 #   - Standard hooks:     all files       [good practice, not in CI]
 #   - Detect-secrets:     no local hook  [CI scans the working tree against the baseline]
+#   - Boundary guards:    no local hook  [CI + `make lint-boundaries`]
 #
 # SETUP:
 #   Install pre-commit:

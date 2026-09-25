@@ -2,7 +2,7 @@
 
 ## Task Overview
 
-This implementation plan tracks the remaining work for the company categorization feature. Most core functionality has been implemented, including data models, classification logic, enrichment functions, and Dagster assets. The remaining tasks focus on configuration, Neo4j loading, testing, and validation.
+This implementation plan tracks the remaining work for the company categorization feature. Most core functionality has been implemented, including data models, classification logic, enrichment functions, and Dagster assets. The remaining tasks focus on testing and validation.
 
 ## Implementation Status Summary
 
@@ -18,7 +18,6 @@ This implementation plan tracks the remaining work for the company categorizatio
 **Remaining:**
 
 - Configuration schema and defaults
-- Neo4j loader implementation
 - Comprehensive testing
 - High-volume validation
 - Documentation
@@ -194,28 +193,6 @@ This implementation plan tracks the remaining work for the company categorizatio
     - _Requirements: 5.1, 5.2, 5.3, 5.4, 5.5, 6.1, 6.2, 6.3, 6.4, 6.5, 7.1, 7.2, 7.3, 7.4, 7.5_
     - _Status: Configuration exists in `config/base.yaml` with all parameters._
 
-- [ ] 8. Implement Neo4j loader
-  - [ ] 8.1 Create CompanyCategorizationLoader class
-    - Create `CompanyCategorizationLoader` in
-      `packages/sbir-graph/sbir_graph/loaders/neo4j/categorization.py`
-    - Implement `load_categorizations()` method for batch loading
-    - Update existing Company nodes with categorization properties
-    - Handle missing companies gracefully (log warnings)
-    - _Requirements: 8.1, 8.2, 8.3, 8.4, 8.5_
-
-  - [ ] 8.2 Implement Neo4j schema updates
-    - Add categorization properties to Company nodes (classification, product_pct, service_pct, confidence)
-    - Add metadata properties (award_count, psc_family_count, total_dollars, override_reason)
-    - Add agency_breakdown as JSON property
-    - Create indexes for classification and confidence fields
-    - _Requirements: 8.1, 8.2, 8.3, 8.4, 8.5_
-
-  - [ ] 8.3 Test Neo4j loading asset
-    - Verify `neo4j_company_categorization` asset loads successfully
-    - Verify asset check validates load success rate (>95%)
-    - Test with sample data before full dataset
-    - _Requirements: 8.1, 8.2, 8.3, 8.4, 8.5_
-
 - [x] 9. Create integration tests
   - [x]* 9.1 Create test fixtures
     - Create sample SBIR companies with UEI/DUNS/CAGE identifiers
@@ -304,8 +281,7 @@ This implementation plan tracks the remaining work for the company categorizatio
 **Priority 1 (Required for Production):**
 
 1. Configuration schema (Task 7) - Externalize hardcoded thresholds
-2. Neo4j loader (Task 8) - Enable graph database integration
-3. High-volume validation (Task 9.6) - Validate with real data
+2. High-volume validation (Task 9.6) - Validate with real data
 
 **Priority 2 (Quality Assurance):**
 4. Integration tests (Task 9.1-9.5) - Comprehensive test coverage
@@ -314,10 +290,9 @@ This implementation plan tracks the remaining work for the company categorizatio
 ### Execution Order for Remaining Tasks
 
 1. **Configuration (Task 7)** - Add schema and defaults to externalize thresholds
-2. **Neo4j Loader (Task 8)** - Implement loader class and test loading
-3. **High-Volume Validation (Task 9.6)** - Validate with 200+ companies
-4. **Integration Tests (Task 9.1-9.5)** - Comprehensive test suite
-5. **Documentation (Task 10.2-10.3)** - Usage guides and data dictionary
+2. **High-Volume Validation (Task 9.6)** - Validate with 200+ companies
+3. **Integration Tests (Task 9.1-9.5)** - Comprehensive test suite
+4. **Documentation (Task 10.2-10.3)** - Usage guides and data dictionary
 
 ### Key Implementation Details
 
@@ -363,7 +338,6 @@ This implementation plan tracks the remaining work for the company categorizatio
 
 - Asset check: <20% Uncertain classifications
 - Asset check: >50% High confidence classifications
-- Neo4j load success rate: >95%
 - All required fields present and non-null
 - Confidence levels align with award counts
 

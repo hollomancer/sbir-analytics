@@ -44,6 +44,7 @@ def test_iter_job_modules_discovers_job_packages():
     assert "sbir_analytics.assets.jobs.transition_job" in module_names
     assert "sbir_analytics.assets.jobs.fiscal_returns_job" in module_names
     assert "sbir_analytics.assets.jobs.nsf_defense_lineage_job" in module_names
+    assert "sbir_analytics.assets.jobs.nih_reporter_iterative_job" in module_names
 
 
 def test_iter_job_modules_skips_heavy_jobs_when_disabled(monkeypatch):
@@ -71,6 +72,7 @@ def test_iter_public_jobs_returns_job_definitions():
     assert all(isinstance(job, JobDefinition | UnresolvedAssetJobDefinition) for job in jobs)
     assert any(job.name == "transition_full_job" for job in jobs)
     assert any(job.name == "nsf_defense_lineage_refresh_job" for job in jobs)
+    assert any(job.name == "nih_reporter_iterative_enrichment_job" for job in jobs)
 
 
 def test_iter_public_sensors_returns_sensor_definitions():

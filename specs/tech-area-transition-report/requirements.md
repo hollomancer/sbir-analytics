@@ -46,6 +46,8 @@ risk) — is the cheapest way to stop the pattern calcifying as a nanotech one-o
 
 ## Glossary
 
+Feature-local cohort terms for this report path. No confidence bands.
+
 - **`cet_id`** — canonical area key from `config/cet/taxonomy.yaml` (e.g.
   `quantum_information_science`). Report paths and configs use this; no parallel ID namespace.
 - **Method A** — keyword/regex cohort over award title + abstract (primary definition).

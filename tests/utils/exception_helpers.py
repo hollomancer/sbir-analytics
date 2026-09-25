@@ -34,7 +34,7 @@ def assert_exception_structure(
             assert_exception_structure(
                 e,
                 expected_message="Failed to load",
-                expected_component="loader.neo4j",
+                expected_component="extractor.uspto",
                 expected_retryable=True
             )
     """

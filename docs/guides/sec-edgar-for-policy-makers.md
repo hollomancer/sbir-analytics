@@ -192,8 +192,8 @@ and press-release mining. No single signal is authoritative; their
 - **For a technical reader:** see `sbir_etl/enrichers/sec_edgar/` and
   `docs/research/sec-edgar-sbir-learnings.md` for implementation details and
   validation results.
-- **For a data reader:** Neo4j nodes and relationships are documented in
-  `docs/schemas/`.
+- **For a data reader:** governed analytical records and study inputs are documented in
+  `docs/data/` and `studies/`.
 - **For a policy reader with a specific question:** see
   `docs/research-questions.md` for the full inventory of SBIR questions this
   pipeline is designed to answer.

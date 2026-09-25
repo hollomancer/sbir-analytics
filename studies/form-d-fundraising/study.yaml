@@ -1,0 +1,68 @@
+schema_version: 1
+study_id: form-d-fundraising
+title: Retired SBIR spending vs Form D private-capital study
+evidence_status: retired
+research_questions:
+  - F3
+estimand: >-
+  No current estimate is authorized. A future successor would estimate program-level
+  and per-matched-firm ratios of disclosed Form D totalAmountSold to SBIR.gov award
+  dollars for 2009–2024 under a pinned, issuer-scoped corroborated-person-v2
+  materialization. The historical person-or-zip-v1 estimates are withdrawn.
+frozen_artifacts:
+  - path: studies/form-d-fundraising/design.md
+    sha256: fd15408ec51295b28ea314020ffeaccaa7c900e2e290bd874c8dbffe60079440
+  - path: studies/form-d-fundraising/amendments.md
+    sha256: efa0a440911eb5754c9e607f282f1468787090a0c645c37698cce7d5d9d53ddc
+implementation:
+  - path: scripts/data/rescore_form_d_details.py
+    symbol: rescore_jsonl
+  - path: scripts/data/bootstrap_form_d_leverage_ci.py
+    symbol: main
+  - path: sbir_etl/enrichers/sec_edgar/form_d_scoring.py
+    symbol: compute_form_d_confidence
+  - path: sbir_etl/enrichers/sec_edgar/form_d_scoring.py
+    symbol: assign_form_d_tier
+identity_policy:
+  strategy: >-
+    Current target behavior is corroborated-person-v2. Exact ZIP reaches high;
+    fuzzy person similarity reaches high only with ZIP or state overlap. Stored
+    scores remain company-aggregate and may span filings or CIKs, so satisfying
+    the Boolean rule is not identity validation.
+  version: corroborated-person-v2; historical person-or-zip-v1 retired
+  negative_evidence_allowed: false
+materialization:
+  allowed: false
+  blockers:
+    - >-
+      The complete historical Form D and SBIR input bytes are local, gitignored,
+      absent from this checkout, and not pinned by SHA-256, size, and row count.
+    - >-
+      No complete corroborated-person-v2 rescore and dependent-output rebuild has
+      been recorded; unversioned or mixed-version inputs must fail closed.
+    - >-
+      Legacy company-level confidence can pool signals across filings and CIKs.
+      Same-filing or issuer-scoped scoring, or an explicit quarantine with counts,
+      is required before interpreting the high tier.
+    - >-
+      Offering/amendment chains and accessions need a declared aggregation and
+      conflict policy before capital totals can be restored.
+    - >-
+      Realistic person-collision review and the version-2 PIF/CIK cross-link review
+      queue have not been completed on a pinned successor materialization.
+permitted_claims:
+  - >-
+    The historical person-or-zip-v1 study is retired, its numerical results are
+    suppressed, and no corroborated-person-v2 fundraising estimate exists.
+  - >-
+    The offline rescorer deterministically applies a named tier rule to stored
+    signal values; it does not validate identity or same-filing corroboration.
+limitations:
+  - This retired manifest does not authorize a computable, validated, or citable claim.
+  - SEC Form D omits capital raised outside Regulation D and non-detection is not zero.
+  - totalAmountSold is self-reported and not verified by the SEC.
+  - >-
+    Company-name joins, cross-filing signal pooling, multi-CIK records, and amendment
+    aggregation can create both false positives and false negatives; no one-sided
+    lower-bound interpretation is supported.
+  - Bootstrap intervals would capture firm resampling only, not identity or reporting error.

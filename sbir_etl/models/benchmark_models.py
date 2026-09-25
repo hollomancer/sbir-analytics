@@ -20,11 +20,11 @@ from __future__ import annotations
 
 import dataclasses
 from dataclasses import dataclass, field
-from enum import Enum
+from enum import Enum, StrEnum
 from typing import Any
 
 
-class BenchmarkTier(str, Enum):
+class BenchmarkTier(StrEnum):
     """Tier of benchmark applicability."""
 
     NOT_SUBJECT = "not_subject"
@@ -33,7 +33,7 @@ class BenchmarkTier(str, Enum):
     INCREASED_TIER2 = "increased_tier2"
 
 
-class BenchmarkStatus(str, Enum):
+class BenchmarkStatus(StrEnum):
     """Whether a company passes or fails a benchmark."""
 
     PASS = "pass"  # nosec B105 - enum value, not a credential
@@ -42,7 +42,7 @@ class BenchmarkStatus(str, Enum):
     NOT_EVALUABLE = "not_evaluable"  # subject to the benchmark, but input data absent
 
 
-class ConsequenceType(str, Enum):
+class ConsequenceType(StrEnum):
     """Consequence of failing a benchmark."""
 
     NONE = "none"

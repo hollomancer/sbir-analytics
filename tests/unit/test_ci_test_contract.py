@@ -22,6 +22,35 @@ def test_ci_has_a_weekly_full_suite_schedule() -> None:
     assert workflow["jobs"]["test-full"]["if"] == "github.event_name != 'pull_request'"
 
 
+def test_study_validation_jobs_fetch_release_history() -> None:
+    """Jobs that validate released studies must have their source tags."""
+    workflow = _workflow()
+
+    for job_name in ("quality", "test-fast", "test-full", "jev-preflight"):
+        checkout = next(
+            step
+            for step in workflow["jobs"][job_name]["steps"]
+            if step.get("uses") == "actions/checkout@v7"
+        )
+        assert checkout["with"]["fetch-depth"] == "0", job_name
+
+
+def test_literature_map_refresh_is_manual_only() -> None:
+    workflow = yaml.load(
+        (REPOSITORY_ROOT / ".github/workflows/literature-map.yml").read_text(encoding="utf-8"),
+        Loader=yaml.BaseLoader,
+    )
+    assert set(workflow["on"]) == {"workflow_dispatch"}
+    assert workflow["permissions"]["contents"] == "write"
+    assert workflow["permissions"]["pull-requests"] == "write"
+    run_step = next(
+        step
+        for step in workflow["jobs"]["refresh"]["steps"]
+        if step.get("name") == "Refresh the map"
+    )
+    assert run_step["run"] == "uv run python scripts/data/update_literature_map.py"
+
+
 def test_pull_requests_run_the_hermetic_e2e_selection() -> None:
     job = _workflow()["jobs"]["test-e2e"]
     run_step = next(step for step in job["steps"] if step.get("name") == "Run hermetic E2E tests")

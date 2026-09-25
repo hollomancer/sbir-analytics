@@ -8,7 +8,7 @@ report collections for multi-format outputs.
 from __future__ import annotations
 
 from datetime import datetime, timedelta
-from enum import Enum
+from enum import StrEnum
 from pathlib import Path
 from typing import Any
 
@@ -17,7 +17,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from sbir_etl.models.quality import ChangesSummary, DataHygieneMetrics
 
 
-class ReportFormat(str, Enum):
+class ReportFormat(StrEnum):
     """Supported report output formats."""
 
     HTML = "html"

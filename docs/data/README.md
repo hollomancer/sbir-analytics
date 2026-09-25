@@ -8,8 +8,7 @@ Status: active
 # Data Sources Overview
 
 No SBIR/STTR award data is committed to this repository. Full reproduction requires downloading
-the public source datasets, supplying API credentials where required, and provisioning local disk
-and services such as Neo4j.
+the public source datasets, supplying API credentials where required, and provisioning local disk.
 
 The live data plane runs on the self-hosted server. Source-download jobs write to
 the local data root on persistent storage; GitHub Actions is CI only. All source schedules default to stopped until a manual run
@@ -86,15 +85,15 @@ beyond the documented study or pilot.
 
 | Source | Current use | Maturity |
 | --- | --- | --- |
-| SEC EDGAR and Form D | Public-company ownership, disclosed fundraising, and transaction signals | Research workflows; public-filer lower bound |
+| SEC EDGAR and Form D | Public-company ownership, disclosed fundraising, and transaction signals | Exploratory; incomplete coverage plus identity, filing/CIK, and amendment-chain gates |
 | State UCC filings | Secured-debt and financing-pathway pilots | State-specific exploratory pilots |
-| Public M&A and capital-event evidence | Unified firm event timeline | Local Parquet research output; see [Capital events](capital-events.md) |
+| Public M&A and capital-event evidence | Unified firm event timeline | Local Parquet research output; see [Capital events](capital-events.md) and [M&A events refresh](ma-events-refresh.md) |
 | FFATA/FSRS subawards | Prime-to-awardee attribution | Specified recovery work; not a general scheduled source |
 | Other Transaction and consortium records | Procurement-pathway classification | Bounded methodology work; coverage varies by source |
 
 Relevant methods and data cuts live under [`docs/research/`](../research/) and `studies/`. A row in
-this table means the repository has a documented use, not that the source is complete, loaded into
-Neo4j, or externally citable.
+this table means the repository has a documented use, not that the source is complete, governed,
+or externally citable.
 
 ## Quality controls
 
@@ -104,6 +103,7 @@ vintages, and failure reasons rather than relying on static numbers in documenta
 
 Related references:
 
+- [M&A events refresh](ma-events-refresh.md)
 - [Weekly awards report](weekly-awards-report.md)
 - [SBIR weekly ingestion checks](sbir-weekly-checks.md)
 - [Data quality contract](../steering/data-quality.md)

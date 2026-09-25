@@ -1,0 +1,223 @@
+schema_version: 1
+study_id: sba-annual-report-structural-comparison
+title: SBA Annual-Report Award-Count Structural Comparison
+evidence_status: validated
+research_questions:
+  - D1
+estimand: >-
+  For all 632 award-count cells printed in FY2020 Table 18, FY2021 Table 18,
+  and FY2022 Table 20, the signed and absolute differences between the printed
+  counts and counts computed from the exact September 17, 2026 SBIR.gov export
+  under EXPORT_ROW_V1, AWARD_YEAR_FIELD_V1, and the frozen jurisdiction rules.
+frozen_artifacts:
+  - path: studies/sba-annual-report-structural-comparison/source-manifest.json
+    sha256: be8adfce554b2811cb612428bebab314f061b2a808b9cc957ad0311797388db3
+  - path: studies/sba-annual-report-structural-comparison/validation-design-v1.md
+    sha256: 7373d7e189bf8dce3ec4611064f698571053b3fb397e213e1bf8873424839fa3
+  - path: studies/sba-annual-report-structural-comparison/validation-population-v1.csv
+    sha256: 48dfdf1ea70e9a74378c21a3a661795540ebd6450c77365ebdad76c6569b68c1
+  - path: studies/sba-annual-report-tables/award-export-2026-09-17.meta.json
+    sha256: 54776d98b8eb8f831a5e550b63440b30a90e573fa614944fbe628f135e550e23
+  - path: studies/sba-annual-report-tables/data/awards_by_state_fy20.csv
+    sha256: 0c8465c210f122a75b42b5afef147f688e73cec6a82a230f0d33f377def3403c
+  - path: studies/sba-annual-report-tables/data/awards_by_state_fy21.csv
+    sha256: cb43a8ec5de2b70a97f240f329a3a19a749b0f85910b5229593a5267dc1c1cde
+  - path: studies/sba-annual-report-tables/data/awards_by_state_fy22.csv
+    sha256: 64533444bb4b6aa5468c35d5649bc0256d412592f7a46893549b951c61d07649
+  - path: data/raw/sbir/award-export/2026-09-17/award_data.csv
+    sha256: aed146eab56f370c9f3fe7f562475e3eedfc61cca2eba112c830fac6f73bf38a
+    external_source: true
+  - path: data/raw/sba_annual_reports/FY20/SBA_SBIR_STTR_FY20_Annual_Report.pdf
+    sha256: f1f51abb29c71d631451868f31babf2f6f1fe3845df91e534052f1d40dece3d3
+    external_source: true
+  - path: data/raw/sba_annual_reports/FY21/SBA_SBIR_STTR_FY21_Annual_Report.pdf
+    sha256: 30b4dfa9b4c2c2220fc15938d5bd1a44bee92d5aa746b8756dc7d66217c6df55
+    external_source: true
+  - path: data/raw/sba_annual_reports/FY22/SBA_FY22_SBIR_STTR_Annual_Report.pdf
+    sha256: 5ba60852f1cc44b23afdbf810ecf0cff77d714d10ffc786a9b73416d7c000fd1
+    external_source: true
+  - path: packages/sbir-analytics/sbir_analytics/assets/sba_annual_report_structural_comparison/producer.py
+    sha256: bff52a594e4d77a2094c584e59365d4fd8be7dc381f2029246927fdebec5445a
+  - path: sbir_etl/identity/geography.py
+    sha256: b2961c8f77086d3fb33e5f3e8fdce22a56da60004883d274c8431c1fcae00280
+  - path: scripts/data/acquire_sba_structural_sources.py
+    sha256: 66aef6ebf3d2b936c09c0cc4c0343fbb27880ccb7fa07486fbf86848e2e8831d
+  - path: scripts/data/run_sba_structural_comparison.py
+    sha256: a8d2aa68e40e5748c241795599bf7c432abb013cfe7c26a020c5fbc29c6be538
+  - path: uv.lock
+    sha256: b9f214496158828da145a19db9c7d5cb4fc52765eeacb9a394312a2b6cf34893
+  - path: studies/sba-annual-report-structural-comparison/results/count-comparison.csv
+    sha256: e86ab66905f65adaa7fdb721ced6bcbc7b3991a288ba37156f1efe9b4bed7381
+  - path: studies/sba-annual-report-structural-comparison/validation/blind-packet-manifest-v1.json
+    sha256: 68911d57fcb308794813d4ce1b10811ee333661ba799191f3a76068acf5b88e8
+  - path: studies/sba-annual-report-structural-comparison/validation/run-1-abort-attestation.json
+    sha256: 40f21ec26368db1382fa77e88ca3b6151bad1e7697688c2c656c5f5828c85b0f
+  - path: studies/sba-annual-report-structural-comparison/validation/blind-packet-manifest-v2.json
+    sha256: fe77b3de60ae983624be3428d769b0fb3702b3989c5aeedd4af5f8980e6c2c8f
+  - path: studies/sba-annual-report-structural-comparison/validation/run-2/attestation.json
+    sha256: 6a08b1c625df5ee0a0309eea8fc897266584e20b7ea1f2526c39db769da52a2f
+  - path: studies/sba-annual-report-structural-comparison/validation/run-2/extractor.py.txt
+    sha256: 48560827f2204cc29cb7eb55855b7096d1ab1ad22eca396b80532366eeb88837
+  - path: studies/sba-annual-report-structural-comparison/validation/run-2/jurisdiction-mapping.json
+    sha256: fd09990902369d81cdd5619b636b833a1f61e90370929106b9ebd0a12046aaae
+  - path: studies/sba-annual-report-structural-comparison/validation/run-2/requirements.txt
+    sha256: 9953f725dc5908a1266a6e19f1add757d2432e773f261672ce64684cee7165a7
+  - path: studies/sba-annual-report-structural-comparison/validation/blind-packet-manifest-v3.json
+    sha256: 79eaa57a4834b5056c1e4ddd5522dbdb2ee26bc57fcef1a5944dd5ae37511e67
+  - path: studies/sba-annual-report-structural-comparison/validation/run-3/attestation.json
+    sha256: 52a666fc9c04c0c69d3bb3ab0eff47dcdb4d496704be056e4318abb8e4c959bd
+  - path: studies/sba-annual-report-structural-comparison/validation/run-3/blind_extract.py.txt
+    sha256: 6b9fdb4c42b471118ababf98060b2080a679850bc913d50b16427c2ee8c0aafd
+  - path: studies/sba-annual-report-structural-comparison/validation/run-3/dump_pdf_chars.m.txt
+    sha256: 6975d0e39190d1ab0b2b18d60eca60c96d85fb404208e28b1cc9c2c81650f8a6
+  - path: studies/sba-annual-report-structural-comparison/validation/run-3/dump_pdf_lines.m.txt
+    sha256: 87cc0b6e42aa80999cc36377d6cbd5052b152d3714725b2010561b1a5c071f6c
+  - path: studies/sba-annual-report-structural-comparison/validation/run-3/extract_pdf_text.m.txt
+    sha256: b28a944d2076a9b7e4ea6586f6bed49a4be9ffbcf467a1222bb170c1d10228f1
+  - path: studies/sba-annual-report-structural-comparison/validation/run-3/jurisdiction-mapping.json
+    sha256: 6a8f1eda25bc4136edb89fda962a1c7338a909117593475f0a67468a4acf2a88
+  - path: studies/sba-annual-report-structural-comparison/validation/run-3/validation-values.csv
+    sha256: 3f2d9aee873a2c828194cce562b944c617794983fc96d89deea6c2cfd006ef18
+  - path: studies/sba-annual-report-structural-comparison/validation/run-3/reconciliation.json
+    sha256: 6691140c8e037c7cdf6afe0e9a6f9c558b297cd591e71474eea9bcb1877788f8
+  - path: studies/sba-annual-report-structural-comparison/validation/blind-packet-manifest-v4.json
+    sha256: 7ed7733028bd0a56a76ca966d25f65a2b3954324a7a193de4e61b72155aef76d
+  - path: studies/sba-annual-report-structural-comparison/validation/run-4-abort-attestation.json
+    sha256: 8c140d798d8fc666ba02563734163d48774534bf1a78b829374028982eab29c6
+  - path: studies/sba-annual-report-structural-comparison/validation/blind-packet-manifest-v5.json
+    sha256: 51033aca620e71f71fc18d6ae398d27fe238fbf7c7d6cda4e748ba7db3299314
+  - path: studies/sba-annual-report-structural-comparison/validation/confirmatory/attestation.json
+    sha256: 015febb06cb68884d5c703531f6c99feeb56e0a500c1e73f383457406ab300cb
+  - path: studies/sba-annual-report-structural-comparison/validation/confirmatory/reconciliation.json
+    sha256: bca6828884c45fe550a5738f95d59803e0ccbfb6891e7b468ce1f2113a4d92e7
+  - path: studies/sba-annual-report-structural-comparison/validation/confirmatory/run-diagnostics.json
+    sha256: bf8c932dd8725f2f3e66309c0318987d4a1eed485e6651d064f2037e9f68dbb8
+  - path: studies/sba-annual-report-structural-comparison/validation/confirmatory/validation-values.csv
+    sha256: 66827a11e860da48a9da215ab982722fa182ceb2726a9ef05a182922c61bae2a
+  - path: studies/sba-annual-report-structural-comparison/validation/confirmatory/extract_validation.py.txt
+    sha256: a01fce83292576642a89dd077b671a4c67b7e572cfc5b08bf4494526cb9ca670
+  - path: studies/sba-annual-report-structural-comparison/validation/confirmatory/jurisdiction-mapping.json
+    sha256: fd09990902369d81cdd5619b636b833a1f61e90370929106b9ebd0a12046aaae
+  - path: studies/sba-annual-report-structural-comparison/validation/confirmatory/requirements.lock
+    sha256: 90ecaef1ce778fa9556cdb7b55b08459b8f80296fb31af53922c87a5ea9d6694
+  - path: studies/sba-annual-report-structural-comparison/validation/confirmatory/sealed-components.sha256
+    sha256: c452750aa2b717c4c5781cc758b19ef6566cb98421aa64e39d11554844c302b0
+  - path: studies/sba-annual-report-structural-comparison/validation/confirmatory/dependencies/pypdf-5.9.0-py3-none-any.whl
+    sha256: be10a4c54202f46d9daceaa8788be07aa8cd5ea8c25c529c50dd509206382c35
+  - path: studies/sba-annual-report-structural-comparison/validation/confirmatory/dependencies/typing_extensions-4.15.0-py3-none-any.whl
+    sha256: f0fa19c6845758ab08074a0cfa8b7aecb71c999ca73d62883bc25cc018c4e548
+  - path: studies/sba-annual-report-structural-comparison/reviews/post-result-evidence-audit.md
+    sha256: ac05b2e6d888b0b60e1ea57e0b5a32b9a4f70b6bc4d7dcb118af399975411b4a
+  - path: studies/sba-annual-report-structural-comparison/reviews/named-reader-review-1.md
+    sha256: 2c3bb71a194b922846476a726d3e9ce7c621dd00e913c8ac61ee1426b92bf7d6
+  - path: studies/sba-annual-report-structural-comparison/reviews/claim-amendment-evidence-audit.md
+    sha256: 47c5203067a24b0887cd1aff9856bd44ff29cd92313457af6d57a516fde52a21
+  - path: studies/sba-annual-report-structural-comparison/reviews/named-reader-review-2.md
+    sha256: 05a62ef470a4e70ddedf5f9ed7ae9d88b33140c0860f07a9c40a64b4eecef63e
+  - path: studies/sba-annual-report-structural-comparison/reviews/named-reader-review-3.md
+    sha256: 23922bf0d8248f3e7db2dc520114e6bc9028fb2bb252c680b1d189c1f2ab9dd8
+  - path: studies/sba-annual-report-structural-comparison/reviews/jurisdiction-profile-refactor-evidence-audit.md
+    sha256: 504390bc92d684430f56b2183209a0ee1b22fe210d4dd1d16079d1cc616f080d
+  - path: studies/sba-annual-report-structural-comparison/reviews/named-reader-review-4.md
+    sha256: e1f5a3307ff6f63350b409d4696ce29e42eb0e189d3d756c0cfe80cf002067e1
+  - path: studies/sba-annual-report-structural-comparison/reviews/named-reader-review-5.md
+    sha256: 9be456743c6eb7f7836d66333274bf116483b82be2f5bd48b00552e9aab8d846
+  - path: studies/sba-annual-report-structural-comparison/reviews/named-reader-review-6.md
+    sha256: 94d733043150ddaaba689ff135053bef7bc65f0f1d1f365731c946d8b24aa23e
+  - path: studies/sba-annual-report-structural-comparison/reviews/release-readiness-evidence-audit.md
+    sha256: 4cfd4ae3c88a13197bb7b9071b420f78b1899bfbec0b6066a900a5933ed78e24
+  - path: studies/sba-annual-report-structural-comparison/reviews/revision-11-evidence-audit.md
+    sha256: f60888d4ddcaf5485f783bd11dd045e9095745c38c8798f14729ceb3b9733407
+  - path: scripts/data/render_sba_structural_comparison.py
+    sha256: 7ce3b93fce5ba75b9623ad3d6af79aeade71d31958a2d4cfdb316042bb35ca60
+  - path: scripts/data/reproduce_sba_structural_comparison.py
+    sha256: 741187a34827ea0df008ca627aedd239a008d7e5f9937d70eb43a607baeab436
+  - path: studies/sba-annual-report-structural-comparison/release/public-result.json
+    sha256: b32462aa1fd904f49f1a463843ce2f0ed5fee24cd83689f026cf2f9e81df73b4
+  - path: docs/public/sba-structural-comparison.md
+    sha256: ec09438d5788f8e1ee4b64fbb2b8035ff587264f222e3832c316a901788b0d41
+implementation:
+  - path: packages/sbir-analytics/sbir_analytics/assets/sba_annual_report_structural_comparison/producer.py
+    symbol: produce_count_sidecar
+  - path: scripts/data/acquire_sba_structural_sources.py
+    symbol: acquire_sources
+  - path: scripts/data/run_sba_structural_comparison.py
+    symbol: main
+  - path: scripts/data/render_sba_structural_comparison.py
+    symbol: render_markdown
+  - path: scripts/data/reproduce_sba_structural_comparison.py
+    symbol: main
+identity_policy:
+  strategy: >-
+    Match report year, two-letter jurisdiction, program, and phase exactly after
+    applying the study-only frozen jurisdiction profile. That profile accepts
+    only 53 exact, case-sensitive, untrimmed full names. Blank State rows are
+    excluded and counted; every other unmapped nonblank State blocks the run.
+    Marshall Islands maps to MH only in this profile; MH is outside the general
+    canonical jurisdiction set.
+  version: export-row-award-year-v1
+  negative_evidence_allowed: false
+materialization:
+  allowed: false
+  blockers:
+    - >-
+      Release governance requires explicit owner approval before merge, an
+      immutable annotated version 0.18.0 tag, tag-bound citation metadata, and
+      a citable-promotion evidence audit. Every claim-facing revision also
+      requires an evidence audit and a cold named-reader review of its exact bytes.
+permitted_claims:
+  - >-
+    Validated, not citable: for all 632 award-count cells printed in FY2020
+    Table 18, FY2021 Table 18, and FY2022 Table 20, this study reports the
+    differences between those published counts and counts computed from the
+    pinned September 17, 2026 SBIR.gov export under EXPORT_ROW_V1,
+    AWARD_YEAR_FIELD_V1, and the frozen program, phase, and jurisdiction rules.
+    A separate blinded-role implementation reproduced 1,264 of 1,264 count
+    operands. The recorded interval is [1.0, 1.0] using the method: exact
+    complete-population point interval; no sampling. This statement is not
+    citable until the product-scoped materialization and tagged-release gates open.
+  - >-
+    The comparison contains 632 count cells: 276 are exact and 356 are
+    unresolved. Recomputed minus published counts sum to +333, while absolute
+    cell differences sum to 869. Of the 276 exact cells, 57 are zero versus
+    zero. Among the 575 cells where either source reports a nonzero count, 219
+    are exact. The unresolved cells comprise 208 positive and 148 negative
+    recomputed-minus-published differences. These summaries are not an
+    omitted-award estimate, a source-correctness verdict, or a causal explanation.
+limitations:
+  - The study does not reproduce the unavailable publication-era SBIR.gov export.
+  - The study does not certify SBIR.gov or the SBA annual reports as complete or correct.
+  - The study does not establish official-report equivalence.
+  - The study does not compare or validate award-dollar totals.
+  - The study does not measure commercialization, program effects, or economic return.
+  - The study does not validate M&A, private-capital, or other repository outputs.
+  - The validation does not detect a rule error shared by both separate implementations.
+  - Independence is between named blinded roles and separate implementations in this repository; it is not an unaffiliated third-party replication.
+validation_design:
+  addressable_population: >-
+    All 1,264 count operands underlying the 632 printed and export-derived cells
+    in FY2020 Table 18, FY2021 Table 18, and FY2022 Table 20.
+  expected_yield: >-
+    1,264 independently extracted values if all source pages and export rows are readable.
+  decision_threshold: >-
+    The first sealed independent extraction must equal every one of the 1,264
+    frozen production values.
+  threshold_derivation: >-
+    This is a complete deterministic reconciliation. One changed operand changes
+    a released comparison cell and therefore fails the fidelity claim.
+  threshold_basis: count_on_frozen_population
+  threshold_value: 1264
+  frozen_population_artifact: studies/sba-annual-report-structural-comparison/validation-population-v1.csv
+validation_result:
+  design_path: studies/sba-annual-report-structural-comparison/validation-design-v1.md
+  design_sha256: 7373d7e189bf8dce3ec4611064f698571053b3fb397e213e1bf8873424839fa3
+  evaluated_on: 2026-09-21
+  metric: exact count operands extracted by the separate blinded role
+  numerator: 1264
+  denominator: 1264
+  interval_low: 1.0
+  interval_high: 1.0
+  interval_method: exact complete-population point interval; no sampling
+  threshold_met: true
+  confirmatory: true
+  post_hoc_analyses: []
