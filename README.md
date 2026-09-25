@@ -1,81 +1,26 @@
 # SBIR/STTR research instrument
 
-This is a personal research project about a fairly simple question: what happens
-after a small business wins an SBIR or STTR award?
+This is a personal research project about what happens after a small business
+wins an SBIR or STTR award.
 
 The public award record tells you who received the money and what they proposed
-to do with it. It is much worse at telling you what happened next. This repo
+to do with it, but it is much worse at telling you what happened next. This repo
 builds and tests narrow claims about U.S. Small Business Innovation Research
-(SBIR) and Small Business Technology Transfer (STTR) data. It is a research
-instrument, not an official program database, a commercialization platform, or
-a verified record of company outcomes.
+(SBIR) and Small Business Technology Transfer (STTR) data.
 
-## About this project (please read first)
+## About this project
 
 - I work in the SBIR/STTR domain, but I am not a trained data scientist or ML
-  engineer. What I bring to the project is the domain framing: which questions
-  seem worth asking, how they connect to the policy literature, and what data
-  might plausibly answer them.
+  engineer. I am focused on which questions seem worth asking, how they connect
+  to the policy literature, and what data might plausibly answer them.
 - I built this with substantial help from Claude and Codex. I directed the work,
   made the research and design choices, and review the outputs, but a lot of the
   implementation was written and iterated with AI coding agents.
-- This is a side project, not an agency product or a production service. Nothing
-  here represents the position of any agency.
+- This is a side project. Nothing here represents the position of any agency.
 
-The audience I have in mind is SBIR program managers and policy analysts in
-Treasury, OMB, JCT, and state economic-development offices.
+[STATUS.md](STATUS.md) states which studies are citable, reproducible but not
+citable, exploratory, or archived. Status comes from a versioned study contract.
 
-Start with [STATUS.md](STATUS.md). It states which studies are citable,
-reproducible but not citable, exploratory, or archived. Status comes from a
-versioned study contract. A working pipeline, chart, or large test suite does
-not make a result citable.
-
-## The first public release candidate
-
-The narrow front door is the
-[SBA annual-report structural comparison](studies/sba-annual-report-structural-comparison/).
-It covers all 632 award-count cells printed in FY2020 Table 18, FY2021 Table
-18, and FY2022 Table 20 of the SBA Annual Reports. It compares those cells with
-counts computed from an exact, pinned September 17, 2026 SBIR.gov export under
-declared row, year, program, phase, and jurisdiction rules.
-
-The candidate claim is:
-
-> For all 632 award-count cells printed in FY2020 Table 18, FY2021 Table 18,
-> and FY2022 Table 20, this study reports the differences between those
-> published counts and counts computed from the pinned September 17, 2026
-> SBIR.gov export under `EXPORT_ROW_V1`, `AWARD_YEAR_FIELD_V1`, and the frozen
-> program, phase, and jurisdiction rules. A separate blinded-role
-> implementation reproduced 1,264 of 1,264 count operands. The recorded
-> interval is `[1.0, 1.0]` using the method `exact complete-population point
-> interval; no sampling`.
-
-The comparison contains 632 count cells: 276 are exact and 356 are unresolved.
-Recomputed minus published counts sum to +333, while absolute cell differences
-sum to 869. Of the 276 exact cells, 57 are zero versus zero. Among the 575 cells
-where either source reports a nonzero count, 219 are exact. The unresolved
-cells comprise 208 positive and 148 negative recomputed-minus-published
-differences. These summaries are not an omitted-award estimate, a
-source-correctness verdict, or a causal explanation.
-
-One parsed export row counts once, `Award Year` supplies the year, and the study
-does not deduplicate. Of 20,836 retained FY2020-FY2022 rows, one had blank
-`State` and was excluded under the frozen rule; 20,835 rows were counted.
-Sixty eligible jurisdiction/program/phase groups had no retained row and
-received a recomputed count of zero.
-
-The tagged release may make that statement citable only after the release gate
-opens. The public rendering passes its byte-stable round-trip checks. The
-prospective fidelity validation passed at 1,264/1,264 with the point interval
-`[1.0, 1.0]`. Every claim-facing revision requires an evidence audit and a cold
-reader review of its exact bytes. Until the remaining gates close, treat the
-packet as validated and non-citable.
-
-This study does not reproduce the unavailable publication-era SBIR.gov export.
-It does not certify either source as complete or correct. It does not claim
-official-report equivalence, compare award dollars, measure commercialization
-or program effects, validate M&A or private-capital links, or transfer trust to
-other repository outputs.
 
 Read [what this is](docs/public/what-this-is.md), the
 [evidence-status guide](docs/public/evidence-status.md), and the
@@ -132,7 +77,7 @@ Content-addressed study artifacts and governed analytical files are
 authoritative. DuckDB and Parquet hold analytical records. A mutable service
 database is not part of the evidence boundary.
 
-## Experimental work
+## Future work
 
 The repository also contains M&A discovery, Form D matching, transition
 scoring, return-on-investment design, and other research in development. These
@@ -148,12 +93,11 @@ relationship of every tracked top-level directory. The software is MIT
 licensed. Research claims remain bounded by their study contracts and release
 records.
 
-## Honest limitations
+## Limitations
 
 - **Entity resolution is probabilistic.** Fuzzy matching creates false positives
   and misses. Those errors flow into everything downstream.
-- **The underlying outcome data is incomplete.** Phase III records are a
-  particular problem, so inferred transitions are estimates rather than an
-  authoritative census.
+- **Underlying outcome data is incomplete.** Phase III records are a particular problem,
+  so inferred transitions are estimates rather than an authoritative census.
 - **Nothing here is peer-reviewed or official.** It is independent research I do
   on personal time.
