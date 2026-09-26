@@ -3,7 +3,7 @@
 
 Epistemic tier: evidence. This study-owned renderer accepts only the frozen
 FY2020-FY2022 count-comparison contract. It does not classify differences,
-apply tolerances, compare dollars, or approve evidence claims.
+apply tolerances, compare dollars, or authorize citation.
 """
 
 from __future__ import annotations
@@ -34,7 +34,7 @@ RUN_DIAGNOSTICS_REFERENCE = (
 ).as_posix()
 SIDECAR_REFERENCE = (STUDY_DIRECTORY / "release/public-result.json").as_posix()
 MARKDOWN_REFERENCE = "docs/public/sba-structural-comparison.md"
-RELEASE_STATUS = "Validated, not approved evidence"
+RELEASE_STATUS = "Validated, not citable"
 PREPARED_FOR = (
     "SBIR program managers and policy analysts in Treasury, OMB, JCT, "
     "and state economic-development offices"
@@ -424,8 +424,8 @@ def _bounded_claim(manifest: StudyManifest) -> str:
     if len(manifest.permitted_claims) != 2:
         raise PublicResultError("study manifest must contain two permitted result claims")
     source = manifest.permitted_claims[0]
-    prefix = "Validated, not approved evidence: "
-    suffix = " An immutable release may"
+    prefix = "Validated, not citable: "
+    suffix = " This statement is not citable until"
     if not source.startswith(prefix) or suffix not in source:
         raise PublicResultError("study permitted claim does not match the validated release form")
     claim = source.removeprefix(prefix).split(suffix, 1)[0]
@@ -700,7 +700,7 @@ def build_payload(
         },
         "sources": _source_records(source_manifest, frozen_hashes),
         "non_claims": list(manifest.limitations),
-        "materialization_blockers": list(manifest.materialization.blockers),
+        "release_blockers": list(manifest.materialization.blockers),
         "artifact_hashes": _artifact_records(root, frozen_hashes),
         "reproduction": {
             "setup_command": "make install-core",
@@ -709,7 +709,7 @@ def build_payload(
         },
     }
     payload = {
-        "schema_version": 3,
+        "schema_version": 2,
         "content_sha256": _canonical_sha256(content),
         "content": content,
     }
@@ -719,8 +719,8 @@ def build_payload(
 
 def _validate_payload(payload: Mapping[str, Any]) -> Mapping[str, Any]:
     _expect_keys(payload, {"schema_version", "content_sha256", "content"}, "public sidecar")
-    if payload["schema_version"] != 3:
-        raise PublicResultError("public sidecar schema_version must be 3")
+    if payload["schema_version"] != 2:
+        raise PublicResultError("public sidecar schema_version must be 2")
     content_sha256 = payload["content_sha256"]
     content = payload["content"]
     if not isinstance(content_sha256, str) or SHA256_PATTERN.fullmatch(content_sha256) is None:
@@ -746,7 +746,7 @@ def _validate_payload(payload: Mapping[str, Any]) -> Mapping[str, Any]:
         "validation",
         "sources",
         "non_claims",
-        "materialization_blockers",
+        "release_blockers",
         "artifact_hashes",
         "reproduction",
     }
@@ -873,8 +873,8 @@ def render_markdown(payload: Mapping[str, Any]) -> str:
         "",
         f"> **Status: {content['release_status']}.**",
         "",
-        "This page reports a validated current-vintage structural comparison. It may be",
-        "cited as such, but the repository has not approved its substantive claims.",
+        "This page reports a validated current-vintage structural comparison. The release",
+        "gates are still closed. Do not quote this result as a released finding.",
         "",
         "## Bounded claim",
         "",
@@ -999,11 +999,11 @@ def render_markdown(payload: Mapping[str, Any]) -> str:
             "canonical JSON with sorted keys and compact separators. It differs from the",
             "whole-file SHA-256 because the file also stores this digest and schema version.",
             "",
-            "## Operational materialization gate",
+            "## Release gates still open",
             "",
         ]
     )
-    lines.extend(f"- {blocker}" for blocker in content["materialization_blockers"])
+    lines.extend(f"- {blocker}" for blocker in content["release_blockers"])
     return "\n".join(lines) + "\n"
 
 

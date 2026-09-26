@@ -16,12 +16,11 @@ calculate those differences.
 
 ## Status
 
-**Validated, not approved evidence.** The fidelity test matched 1,264/1,264 operands with
+**Validated, not citable.** The fidelity test matched 1,264/1,264 operands with
 the exact complete-population point interval `[1.0, 1.0]`. The public renderer
 and its sidecar reproduce byte-for-byte. Every claim-facing revision requires
-supporting evidence audits and reader reviews. One final pinned review of the
-exact manifest claim boundary governs evidence approval. Operational
-materialization, owner merge approval, and citation metadata are separate controls.
+an evidence audit and a cold reader review of its exact bytes. Materialization,
+owner approval, and tagged-release requirements still govern citable promotion.
 
 ## Comparison summary
 
@@ -91,7 +90,7 @@ and the generated Markdown at SHA-256
 - Valid Packet v5 frozen before extraction: commit `c4874c00`.
 - Sealed confirmatory artifacts recorded: commit `56acfb0f`.
 - Post-result evidence audit: go with required changes for `validated`; not
-  authorized for `approved`.
+  authorized for `citable`.
 - Release-readiness evidence audit: `GO` for the core-only reproduction path
   and final cold-reader review; no merge or citation authority.
 - Claim-facing evidence and cold-reader records: see `reviews/`. A review

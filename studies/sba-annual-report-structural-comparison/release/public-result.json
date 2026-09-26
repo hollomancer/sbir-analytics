@@ -19,7 +19,7 @@
       {
         "label": "Count producer",
         "path": "packages/sbir-analytics/sbir_analytics/assets/sba_annual_report_structural_comparison/producer.py",
-        "sha256": "d20dc0d31bb680f723c1f0120ef72c4d6a31560026fea9b06236a5fa02b6ab96"
+        "sha256": "bff52a594e4d77a2094c584e59365d4fd8be7dc381f2029246927fdebec5445a"
       },
       {
         "label": "Count reproduction command",
@@ -34,7 +34,7 @@
       {
         "label": "Public result renderer",
         "path": "scripts/data/render_sba_structural_comparison.py",
-        "sha256": "47b471bc5accbc82eb2eef085b50ac6f45681e4bdf32da1fdd40fdf72e660ad8"
+        "sha256": "7ce3b93fce5ba75b9623ad3d6af79aeade71d31958a2d4cfdb316042bb35ca60"
       },
       {
         "label": "Environment lock",
@@ -7746,9 +7746,6 @@
       "zero_filled_eligible_groups": 60
     },
     "jurisdiction_rule_plain_language": "Match only the 53 frozen full names exactly, with case and whitespace preserved. Exclude and count blank State rows; block every other unmapped nonblank State. Marshall Islands maps to study-only code MH, outside the general canonical set.",
-    "materialization_blockers": [
-      "Operational materialization requires repository-owner approval for the specific run. This gate does not determine evidence approval or whether an immutable artifact may be cited."
-    ],
     "non_claims": [
       "The study does not reproduce the unavailable publication-era SBIR.gov export.",
       "The study does not certify SBIR.gov or the SBA annual reports as complete or correct.",
@@ -7760,7 +7757,10 @@
       "Independence is between named blinded roles and separate implementations in this repository; it is not an unaffiliated third-party replication."
     ],
     "prepared_for": "SBIR program managers and policy analysts in Treasury, OMB, JCT, and state economic-development offices",
-    "release_status": "Validated, not approved evidence",
+    "release_blockers": [
+      "Release governance requires explicit owner approval before merge, an immutable annotated version 0.18.0 tag, tag-bound citation metadata, and a citable-promotion evidence audit. Every claim-facing revision also requires an evidence audit and a cold named-reader review of its exact bytes."
+    ],
+    "release_status": "Validated, not citable",
     "reproduction": {
       "one_command": "make reproduce-sba-structural",
       "renderer_command": "uv run python scripts/data/render_sba_structural_comparison.py",
@@ -7826,6 +7826,6 @@
       "threshold_met": true
     }
   },
-  "content_sha256": "91648b4d6588c747eca728dccb56411786e6d69389cbf6caef9eeba3c0144fd0",
-  "schema_version": 3
+  "content_sha256": "23bde7b3ac2dc7d3619e4dfe5b922d0ffdbfd256919b5def6b7cfb9c2b9780cd",
+  "schema_version": 2
 }
