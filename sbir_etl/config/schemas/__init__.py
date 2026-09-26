@@ -24,7 +24,6 @@ from .domain import (
     ModernBertConfig,
     OTConsortiumConfig,
     SensitivityConfig,
-    StatisticalReportingConfig,
     TaxParameterConfig,
 )
 from .pipeline import PipelineConfig, PipelineMetadata
@@ -52,7 +51,6 @@ __all__ = [
     "SbirDuckDBConfig",
     "SbirValidationConfig",
     "SensitivityConfig",
-    "StatisticalReportingConfig",
     "TaxParameterConfig",
     "TransformationConfig",
     "ValidationConfig",

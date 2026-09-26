@@ -56,7 +56,6 @@ Use these before quoting a result or starting a feature from an old spec.
 - [Fiscal pipeline](fiscal/sbir-fiscal-pipeline-guide.md)
 - [Other Transaction consortium tiers](ot-consortium/tiers.md)
 - [NSSTS 2026 alignment](nssts-2026-alignment.md)
-- [Statistical reporting utility](guides/statistical-reporting.md)
 - [Enrichment](enrichment/README.md) — enricher catalogue and per-source integrations
 
 There is no generated API reference. The package map and dependency rules live in the

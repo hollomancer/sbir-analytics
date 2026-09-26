@@ -29,7 +29,6 @@ from .domain import (
     MADiscoveryConfig,
     MLConfig,
     OTConsortiumConfig,
-    StatisticalReportingConfig,
 )
 
 
@@ -92,9 +91,6 @@ class PipelineConfig(BaseModel):
     logging: LoggingConfig = Field(default_factory=LoggingConfig)
     metrics: MetricsConfig = Field(default_factory=MetricsConfig)
     duckdb: DuckDBConfig = Field(default_factory=DuckDBConfig)
-    statistical_reporting: StatisticalReportingConfig = Field(
-        default_factory=StatisticalReportingConfig
-    )
     fiscal_analysis: FiscalAnalysisConfig = Field(default_factory=FiscalAnalysisConfig)
     cli: CLIConfig = Field(default_factory=CLIConfig, description="CLI interface configuration")
     company_categorization: CompanyCategorizationConfig = Field(
@@ -139,7 +135,6 @@ __all__ = [
     "PipelineMetadata",
     "SbirDuckDBConfig",
     "SbirValidationConfig",
-    "StatisticalReportingConfig",
     "TransformationConfig",
     "ValidationConfig",
 ]

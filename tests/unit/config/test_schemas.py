@@ -25,7 +25,6 @@ from sbir_etl.config.schemas import (
     SbirDuckDBConfig,
     SbirValidationConfig,
     SensitivityConfig,
-    StatisticalReportingConfig,
     TaxParameterConfig,
     TransformationConfig,
     ValidationConfig,
@@ -421,42 +420,6 @@ class TestDuckDBConfig:
         assert config.enable_query_profiler is True
 
 
-class TestStatisticalReportingConfig:
-    """Tests for StatisticalReportingConfig model."""
-
-    # Tests for removed schema attributes have been removed
-    # generation and modules attributes no longer exist in StatisticalReportingConfig
-
-    def test_default_quality_thresholds(self):
-        """Test StatisticalReportingConfig default quality thresholds."""
-        config = StatisticalReportingConfig()
-        assert config.quality_thresholds["data_completeness_warning"] == 0.90
-        assert config.quality_thresholds["enrichment_success_error"] == 0.70
-
-    def test_quality_thresholds_validator_accepts_valid_values(self):
-        """Test quality thresholds validator accepts valid values."""
-        config = StatisticalReportingConfig(
-            quality_thresholds={
-                "data_completeness_warning": 0.95,
-                "performance_degradation_error": 2.5,
-            }
-        )
-        assert config.quality_thresholds["data_completeness_warning"] == 0.95
-        assert config.quality_thresholds["performance_degradation_error"] == 2.5
-
-    def test_quality_thresholds_validator_rejects_invalid_completeness(self):
-        """Test quality thresholds validator rejects invalid completeness values."""
-        with pytest.raises(ValidationError) as exc_info:
-            StatisticalReportingConfig(quality_thresholds={"data_completeness_warning": 1.5})
-        assert "must be between 0.0 and 1.0" in str(exc_info.value)
-
-    def test_quality_thresholds_validator_rejects_invalid_performance(self):
-        """Test quality thresholds validator rejects invalid performance values."""
-        with pytest.raises(ValidationError) as exc_info:
-            StatisticalReportingConfig(quality_thresholds={"performance_degradation_warning": 0.5})
-        assert "must be >= 1.0" in str(exc_info.value)
-
-
 class TestTaxParameterConfig:
     """Tests for TaxParameterConfig model."""
 
@@ -742,7 +705,6 @@ class TestPipelineConfig:
         assert isinstance(config.logging, LoggingConfig)
         assert isinstance(config.metrics, MetricsConfig)
         assert isinstance(config.duckdb, DuckDBConfig)
-        assert isinstance(config.statistical_reporting, StatisticalReportingConfig)
         assert isinstance(config.fiscal_analysis, FiscalAnalysisConfig)
         assert isinstance(config.cli, CLIConfig)
         assert isinstance(config.ma_discovery, MADiscoveryConfig)

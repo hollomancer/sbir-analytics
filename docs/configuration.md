@@ -113,7 +113,6 @@ The root `PipelineConfig` currently exposes:
 | `logging` / `metrics` | Structured logs and runtime metrics |
 | `duckdb` | Local analytical database settings |
 | `company_categorization` | Contract-based company categorization |
-| `statistical_reporting` | Statistical report generation |
 | `fiscal_analysis` | Fiscal returns and BEA mappings |
 | `ml` | ModernBERT, embeddings, and related model settings |
 | `ot_consortium` | OT consortium verification and tiering |
