@@ -1,6 +1,5 @@
 """Tests for quality models."""
 
-
 import pytest
 from pydantic import ValidationError
 
