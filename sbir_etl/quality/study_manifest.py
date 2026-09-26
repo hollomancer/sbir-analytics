@@ -2,6 +2,7 @@
 
 import hashlib
 import json
+import posixpath
 import unicodedata
 from datetime import date
 from enum import StrEnum
@@ -449,8 +450,12 @@ class StudyManifest(BaseModel):
             return self
         if approval is None:
             raise ValueError("evidence_status 'approved' requires a claim_approval block")
-        frozen_by_path = {artifact.path: artifact.sha256 for artifact in self.frozen_artifacts}
-        pinned_sha = frozen_by_path.get(approval.review_path)
+        # Compare normalized paths, so "./reviews/a.md" cannot pass as a different file.
+        review_path = posixpath.normpath(approval.review_path)
+        frozen_by_path = {
+            posixpath.normpath(artifact.path): artifact.sha256 for artifact in self.frozen_artifacts
+        }
+        pinned_sha = frozen_by_path.get(review_path)
         if pinned_sha is None:
             raise ValueError(
                 f"claim_approval.review_path {approval.review_path!r} is not listed in "
@@ -464,7 +469,7 @@ class StudyManifest(BaseModel):
         study_inputs = {self.validation_result.design_path} if self.validation_result else set()
         if self.validation_design and self.validation_design.frozen_population_artifact:
             study_inputs.add(self.validation_design.frozen_population_artifact)
-        if approval.review_path in study_inputs:
+        if review_path in {posixpath.normpath(path) for path in study_inputs}:
             raise ValueError(
                 f"claim_approval.review_path {approval.review_path!r} is a validation input, "
                 "not a separate approval review"

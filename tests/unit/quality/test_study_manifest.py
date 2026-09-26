@@ -9,6 +9,7 @@ from pydantic import ValidationError
 from sbir_etl.quality.study_manifest import (
     EvidenceStatus,
     LiveSource,
+    StudyManifest,
     ReproductionTolerance,
     ThresholdBasis,
     ValidationDesign,
@@ -17,6 +18,7 @@ from sbir_etl.quality.study_manifest import (
     load_study_manifest,
 )
 from scripts.ci.validate_study_manifests import (
+    _claim_approval_errors,
     validate_manifest_file,
     validate_repository_manifests,
 )
@@ -535,6 +537,74 @@ def test_claim_approval_review_cannot_be_the_validation_design(tmp_path: Path) -
     path = _write(tmp_path, "example-study/study.yaml", yaml.safe_dump(raw))
     with pytest.raises(ValidationError, match="is a validation input"):
         load_study_manifest(path)
+
+
+def test_claim_approval_review_cannot_be_the_validation_population(tmp_path: Path) -> None:
+    raw = _promoted(EvidenceStatus.APPROVED)
+    population = "studies/example-study/population.csv"
+    raw["frozen_artifacts"].append({"path": population, "sha256": "c" * 64})
+    raw["validation_design"].update(
+        threshold_basis="count_on_frozen_population",
+        threshold_value=90,
+        frozen_population_artifact=population,
+    )
+    raw["claim_approval"]["review_path"] = population
+    raw["claim_approval"]["review_sha256"] = "c" * 64
+    path = _write(tmp_path, "example-study/study.yaml", yaml.safe_dump(raw))
+    with pytest.raises(ValidationError, match="is a validation input"):
+        load_study_manifest(path)
+
+
+def test_claim_approval_review_path_is_normalized(tmp_path: Path) -> None:
+    """A "./" prefix must not let the design file pass as a separate review."""
+    raw = _promoted(EvidenceStatus.APPROVED)
+    raw["claim_approval"]["review_path"] = "./" + raw["validation_result"]["design_path"]
+    raw["claim_approval"]["review_sha256"] = raw["validation_result"]["design_sha256"]
+    path = _write(tmp_path, "example-study/study.yaml", yaml.safe_dump(raw))
+    with pytest.raises(ValidationError, match="is a validation input"):
+        load_study_manifest(path)
+
+
+def _approved_with_review(tmp_path: Path, review_text: str):
+    raw = _promoted(EvidenceStatus.APPROVED)
+    _write(tmp_path, raw["claim_approval"]["review_path"], review_text)
+    return StudyManifest.model_validate(raw)
+
+
+def test_review_must_record_study_and_boundary_digest(tmp_path: Path) -> None:
+    manifest = _approved_with_review(tmp_path, "Approved.\n")
+    errors = _claim_approval_errors(manifest, repository_root=tmp_path)
+    assert any("does not name study" in error for error in errors)
+    assert any("does not contain claim_boundary_sha256" in error for error in errors)
+
+    digest = manifest.claim_approval.claim_boundary_sha256
+    manifest = _approved_with_review(tmp_path, f"example-study approves {digest}.\n")
+    assert _claim_approval_errors(manifest, repository_root=tmp_path) == []
+
+
+def test_widened_claim_with_recomputed_digest_fails_against_the_old_review(
+    tmp_path: Path,
+) -> None:
+    """Recomputing the digest after widening a claim must not reuse the old review."""
+    old = _approved_with_review(tmp_path, "")
+    review = f"example-study approves {old.claim_approval.claim_boundary_sha256}.\n"
+    raw = _promoted(EvidenceStatus.APPROVED)
+    raw["permitted_claims"].append("An unreviewed broader claim.")
+    raw["claim_approval"]["claim_boundary_sha256"] = claim_boundary_sha256(
+        raw["estimand"], raw["permitted_claims"], raw["limitations"]
+    )
+    _write(tmp_path, raw["claim_approval"]["review_path"], review)
+    widened = StudyManifest.model_validate(raw)
+    errors = _claim_approval_errors(widened, repository_root=tmp_path)
+    assert any("does not contain claim_boundary_sha256" in error for error in errors)
+
+
+def test_future_approval_date_is_rejected(tmp_path: Path) -> None:
+    raw = _promoted(EvidenceStatus.APPROVED)
+    raw["claim_approval"]["approved_on"] = "2999-01-01"
+    manifest = StudyManifest.model_validate(raw)
+    errors = _claim_approval_errors(manifest, repository_root=tmp_path)
+    assert any("is in the future" in error for error in errors)
 
 
 def test_count_threshold_requires_a_frozen_population() -> None:

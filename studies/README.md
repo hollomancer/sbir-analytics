@@ -94,8 +94,10 @@ The status vocabulary is intentionally small:
   `permitted_claims`, and `limitations` that were reviewed; compute it with
   `sbir_etl.quality.study_manifest.claim_boundary_sha256`. A later edit to any
   of them fails validation until a new review records the new digest. The review
-  must be its own file, not the validation design or population. A
-  `claim_approval` block is rejected below `approved`:
+  must be its own file, not the validation design or population, and its text
+  must contain the study ID and the `claim_boundary_sha256` value it approves.
+  `approved_on` cannot be in the future. A `claim_approval` block is rejected
+  below `approved`:
 
   ```yaml
   claim_approval:
