@@ -66,3 +66,43 @@ reviews remain supporting records; they are not repeated merely because
 editorial or governance bytes change. Substantive changes to a claim, method,
 input, or limitation still require renewed independent review and a new
 immutable version.
+
+## Revision 4 — 2026-09-26 — successor study authorized for the citation rule
+
+This revision authorizes one separate descriptive product under the
+"Gate reconciliation" rule in `design.md`. The product is a successor study
+ID, `sba-annual-report-structural-comparison-release`, whose generated public
+page states the v0.18.0 result's status under the citation rule adopted in
+#792: a study result may be cited from an immutable release only when the
+study is `reproducible` or higher, with its actual evidence status attached.
+
+The successor changes wording, not evidence. It pins the same 632-cell
+comparison, the same 1,264 of 1,264 confirmatory result, the same estimand,
+the same two permitted claims in substance, and the same eight limitations.
+It re-pins only files that changed at HEAD after `v0.18.0`: `producer.py`
+(a rename of `citable` to `approved`), `uv.lock`, and the three study
+scripts that this revision parameterises. Nothing is re-analysed.
+
+Rules for the successor:
+
+1. It starts at `reproducible`. It may record `validated` only after a clean
+   replay at HEAD reproduces `results/count-comparison.csv` byte for byte.
+   Any differing byte is a substantive change and requires renewed
+   independent review under Revision 3.
+2. It must not record `approved` or a `claim_approval` block. Revision 12 of
+   the study record states that the claim-facing bytes still require an
+   evidence audit and a cold named-reader review. The successor does not
+   inherit reviews that never happened.
+3. Its page must repeat the permanent published-sample reproduction blocker.
+   It must not present the result as new, as different from `v0.18.0`, or
+   as a correction of the `v0.18.0` page, which was correct under the rule
+   then in force.
+4. Its page may state that the result may be cited as `validated` only after
+   an evidence audit of the exact manifest, sidecar, and page bytes and a
+   cold named-reader review of the exact page bytes are both recorded in the
+   successor's `amendments.md`.
+5. Until an annotated tag binds the successor in `studies/releases.yaml`, the
+   page must say that its release is pending.
+
+The released `v0.18.0` study folder and page are not modified. CI keeps
+them byte-identical to the tag.
