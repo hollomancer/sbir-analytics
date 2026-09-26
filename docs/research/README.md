@@ -52,6 +52,7 @@ brief count as maintainer-facing.
 | Output | Questions | Evidence status | Data covered |
 | --- | --- | --- | --- |
 | [DoD industrial-base concentration](dod_supply_chain_initial_analysis.md) | A1–A3 | Early descriptive starting point | FY2012–FY2025; main results use FY2021–FY2025 |
+| [SBIR entities in defense-critical NAICS codes](defense_critical_naics_sbir_analysis.md) | A1, A2, B2, B3, D1, E2, E3 | Exploratory public-data screening; non-citable | Public procurement Oct 2008–Jul 2026; SAM extract 2026-09-07; SBIR archive 2026-09-07 |
 | [GSA and OTSB Phase III analysis](sbir-phase3-gsa-otsb-analysis.md) | B2, B3 | Working keyword analysis; known to miss some award codes | FY2008–FY2026 sources assembled 2026-06-28 |
 | [Phase II→III latency method](../phase-transition-latency.md) | B3 | Method works in the pipeline; not an approved finding | Uses the data selected for each pipeline run |
 | [Follow-on multiplier method](../follow-on-multiplier-analysis.md) | A3 | Method works; testing against real outcomes is still open | Uses the selected SBIR and USAspending inputs |
