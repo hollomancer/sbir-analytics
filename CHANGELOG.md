@@ -10,12 +10,26 @@ version.
 
 ## [Unreleased]
 
+### Breaking
+
+- Replaced the highest study status `citable` with `approved`. A
+  `study.yaml` that still says `evidence_status: citable` no longer loads, and
+  `EvidenceStatus.CITABLE` and `verify_citable_materialization` are renamed to
+  `EvidenceStatus.APPROVED` and `verify_approved_materialization`. No current
+  study used `citable`.
+- `approved` now also requires a `claim_approval` block. It pins one review
+  file in `frozen_artifacts`, and its `claim_boundary_sha256` must match the
+  study's estimand, permitted claims, and limitations. CI also requires the
+  review text to contain the study ID and that digest, and rejects a future
+  approval date.
+
 ### Changed
 
-- Replaced the ambiguous highest study status `citable` with `approved`.
-  Approved evidence now requires a passed prospective validation and one pinned
-  claim-boundary review; bibliographic citation, operational materialization,
-  and repository-owner merge authority remain separate controls.
+- A study result may be cited from an immutable release only when the study is
+  `reproducible` or higher, and only with its actual evidence status attached.
+  Exploratory and retired studies may not be cited. Approval, operational
+  materialization, and repository-owner merge authority remain separate
+  controls. The released v0.18.0 SBA structural comparison is unchanged.
 
 ## [0.19.0] — 2026-09-24
 
