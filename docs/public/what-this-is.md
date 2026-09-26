@@ -7,7 +7,7 @@ rules, validation result, limits, and release record.
 
 It is not a general-purpose analytics platform. It is not an official SBA
 database. It is not a verified commercialization-outcomes database. A result
-that is citable earns trust only for its own declared claim.
+that is approved evidence earns trust only for its own declared claim.
 
 The authoritative public unit is a versioned study packet. A packet identifies
 the exact source bytes, code, environment, machine-readable result, rendered

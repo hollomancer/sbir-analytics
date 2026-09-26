@@ -18,8 +18,10 @@ builds and tests narrow claims about U.S. Small Business Innovation Research
   implementation was written and iterated with AI coding agents.
 - This is a side project. Nothing here represents the position of any agency.
 
-[STATUS.md](STATUS.md) states which studies are citable, reproducible but not
-citable, exploratory, or archived. Status comes from a versioned study contract.
+[STATUS.md](STATUS.md) states which studies are approved evidence, validated,
+reproducible, exploratory, or archived. Status comes from a versioned study
+contract. A working pipeline, chart, citation, or large test suite does not make
+a result approved evidence.
 
 
 Read [what this is](docs/public/what-this-is.md), the
@@ -47,9 +49,10 @@ The command must run from the tagged study checkout; moving `main` deliberately
 does not rewrite the released environment lock. It retrieves the declared
 source bytes, verifies hashes, row counts,
 page counts, and schema, rebuilds the count sidecar, reconciles the confirmatory
-submission, and checks the public sidecar and Markdown byte-for-byte. After a
-citable release exists, use the release tag—not a moving branch—and verify the
-checksums in its study packet.
+submission, and checks the public sidecar and Markdown byte-for-byte. When
+citing the result, use an immutable release tag—not a moving branch—and verify the
+checksums in its study packet. Citation identifies those immutable bytes; it
+does not imply that the repository approved every substantive claim they contain.
 
 To challenge the result, start with the
 [study contract](studies/sba-annual-report-structural-comparison/study.yaml),
@@ -61,17 +64,22 @@ narrower explanation.
 
 ## Evidence model
 
-- **Citable** means a tagged study release has frozen sources, a declared
-  estimand, a passed prospective validation, an open materialization gate, and
-  completed evidence and outside-reader reviews.
-- **Validated, not citable** means the prospective test was run as frozen and
-  its result is recorded, but publication or release gates remain closed.
-- **Reproducible, not citable** means the inputs and implementation can be
-  rerun, but a public claim is still blocked.
+- **Approved evidence** means the study passed its prospective validation
+  threshold and one pinned final review approved the manifest's bounded claims.
+- **Validated, not approved** means the prospective test was run as frozen and
+  its result is recorded, but final claim approval is absent.
+- **Reproducible, not validated** means the inputs and implementation can be
+  rerun, but validation is incomplete.
 - **Exploratory** means hypothesis generation, candidate discovery,
   measurement development, or an unverified linkage.
 - **Archived** means preserved for provenance, not maintained as a live
   evidence path.
+
+A study result may be cited from an immutable release only when the study is
+`reproducible` or higher, and only with its actual evidence status attached.
+Exploratory and retired studies may not be cited. Evidence status says what
+claims the repository endorses; publication metadata, merge approval, and
+operational materialization remain separate controls.
 
 Content-addressed study artifacts and governed analytical files are
 authoritative. DuckDB and Parquet hold analytical records. A mutable service

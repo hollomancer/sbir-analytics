@@ -19,7 +19,7 @@ _EVIDENCE_RANK = {
     EvidenceStatus.EXPLORATORY: 0,
     EvidenceStatus.REPRODUCIBLE: 1,
     EvidenceStatus.VALIDATED: 2,
-    EvidenceStatus.CITABLE: 3,
+    EvidenceStatus.APPROVED: 3,
 }
 
 
@@ -91,7 +91,9 @@ def _constraints(preflight: PreflightInput) -> list[BlockingConstraint]:
     current = _EVIDENCE_RANK[preflight.facts.current_evidence_status]
     target = _EVIDENCE_RANK[preflight.claim.target_evidence_status]
     if current < target:
-        status = ReadinessStatus.NARROW if preflight.claim.narrower_claim else ReadinessStatus.REDESIGN
+        status = (
+            ReadinessStatus.NARROW if preflight.claim.narrower_claim else ReadinessStatus.REDESIGN
+        )
         constraints.append(
             BlockingConstraint(
                 code=BlockerCode.EVIDENCE_STATUS_INSUFFICIENT,

@@ -5,6 +5,7 @@ import ast
 import hashlib
 import json
 from contextlib import ExitStack
+from datetime import UTC, datetime
 from pathlib import Path
 
 from pydantic import ValidationError
@@ -105,6 +106,47 @@ def validate_manifest_references(
             )
 
     errors.extend(_evaluated_design_errors(manifest, repository_root=repository_root))
+    errors.extend(_claim_approval_errors(manifest, repository_root=repository_root))
+    return errors
+
+
+def _claim_approval_errors(
+    manifest: StudyManifest,
+    *,
+    repository_root: Path,
+) -> list[str]:
+    """The pinned review has to name the study and the boundary it approves.
+
+    The manifest schema checks that the review file is pinned and that the
+    boundary digest matches the manifest text. It cannot read the review, so
+    an editor could widen a claim, recompute the digest, and keep the old
+    review. Requiring the review to contain the study ID and the digest means
+    a changed boundary also needs a changed, re-pinned review.
+    """
+    approval = manifest.claim_approval
+    if approval is None:
+        return []
+
+    errors: list[str] = []
+    if approval.approved_on > datetime.now(UTC).date():
+        errors.append(f"claim_approval.approved_on {approval.approved_on} is in the future")
+    try:
+        path = _repository_path(approval.review_path, repository_root)
+    except ValueError as exc:
+        return [*errors, str(exc)]
+    if not path.is_file():
+        return errors
+    review = path.read_text(encoding="utf-8")
+    if manifest.study_id not in review:
+        errors.append(
+            f"claim_approval review {approval.review_path} does not name study "
+            f"{manifest.study_id!r}"
+        )
+    if approval.claim_boundary_sha256 not in review:
+        errors.append(
+            f"claim_approval review {approval.review_path} does not contain "
+            "claim_boundary_sha256; the review must record the boundary it approves"
+        )
     return errors
 
 

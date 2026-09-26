@@ -19,7 +19,7 @@ The status vocabulary is intentionally small:
 - `validated`: the study's preregistered validation design was run as written
   and its result, with uncertainty, is on the record. `validated` does **not**
   mean the threshold was met; it means the test was fair and its outcome is
-  known. A manifest at `validated` or `citable` must carry both a
+  known. A manifest at `validated` or `approved` must carry both a
   `validation_design` block and a `validation_result` block:
 
   ```yaml
@@ -87,8 +87,25 @@ The status vocabulary is intentionally small:
      is not post-hoc analysis; it is post-hoc analysis presented as
      confirmation.
 
-- `citable`: `validated`, with `threshold_met: true`, and approved for the
-  claims listed in its manifest;
+- `approved`: `validated`, with `threshold_met: true`, plus one final pinned
+  `claim_approval` review authorizing the claims listed in its manifest. The
+  review path and SHA-256 must also appear in `frozen_artifacts`.
+  `claim_boundary_sha256` binds the approval to the exact `estimand`,
+  `permitted_claims`, and `limitations` that were reviewed; compute it with
+  `sbir_etl.quality.study_manifest.claim_boundary_sha256`. A later edit to any
+  of them fails validation until a new review records the new digest. The review
+  must be its own file, not the validation design or population, and its text
+  must contain the study ID and the `claim_boundary_sha256` value it approves.
+  `approved_on` cannot be in the future. A `claim_approval` block is rejected
+  below `approved`:
+
+  ```yaml
+  claim_approval:
+    review_path: studies/<id>/reviews/claim-approval.md
+    review_sha256: <hash of the final approval review>
+    claim_boundary_sha256: <digest of estimand, permitted_claims, and limitations>
+    approved_on: 2026-09-23
+  ```
 - `retired`: retained for provenance but superseded or no longer supported.
 
 These ranks are the only backing for reserved **Status** words in
@@ -97,24 +114,26 @@ These ranks are the only backing for reserved **Status** words in
 | Inventory Status | Required `evidence_status` |
 |---|---|
 | `Computable` / `Partially computable` | `reproducible` or higher |
-| `Validated` | `validated` with a met threshold, or `citable` |
-| `Citable` | `citable` |
+| `Validated` | `validated` with a met threshold, or `approved` |
+| `Approved evidence` | `approved` |
 
 An exploratory study does not authorize `Computable`. CI
 (`scripts/ci/check_research_question_status.py`) rejects a reserved Status
 claim whose *section* ID is missing from every live manifest or whose highest
 matching study is below the required rank. Authorization is per section
 (`B2`, `F3`), not per question bullet. Negations (`Not computable`, `never
-computable`, `not yet validated`, `no citable claim`, `non-citable`) are
+computable`, `not yet validated`, `no approved evidence`) are
 refusals and do not need a study; the negating word has to come before the rank
-word, so `Citable claim: …` still reads as a claim. The verb `validates` is not
+word, so `Approved evidence: …` still reads as a claim. The verb `validates` is not
 the `validated` rank.
 
 Promotion changes the manifest only after the study meets the next status's requirements.
-A manifest does not make an analysis citable by itself, and a closed materialization gate
-must name the unresolved blocker.
+Evidence approval is independent of operational materialization and bibliographic citation.
+A closed materialization gate must name its operational blocker. A study result may be cited
+from an immutable release only when the study is `reproducible` or higher, and only with its
+actual evidence status attached. Exploratory and retired studies may not be cited.
 
 A `validated` study whose `threshold_met` is `false` is a legitimate and useful end state:
 it says the preregistered test was run fairly and the method did not clear its own bar.
 That is a finding, and it may be cited as one. What it may not do is authorize the
-substantive claim the design was meant to support, and it does not become `citable`.
+substantive claim the design was meant to support, and it does not become `approved`.

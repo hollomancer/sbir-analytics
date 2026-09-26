@@ -96,14 +96,14 @@ instructions so the two runtimes do not maintain separate copies.
 | `test-fixer` | Failing tests, broken coverage, test diagnostics | sonnet |
 | `quality-sweep` | Lint/type errors, code cleanup after large changes | sonnet |
 | `scope-guard` | Before large implementations — challenges scope creep | opus |
-| `evidence-auditor` | Evidence promotion, study contracts, and citable claims | opus |
+| `evidence-auditor` | Evidence promotion, study contracts, and approved claims | opus |
 | `named-reader-reviewer` | Outside-reader packet — what the named reader will quote | opus |
 | `deployment-safety-reviewer` | Read-only review before live operations and materialization | opus |
 
 For **spec work**: scope-guard → spec-implementer → test-fixer → quality-sweep.
 For **bug fixes**: skip to test-fixer or quality-sweep directly.
 For **evidence promotion or externally reportable claims**: run evidence-auditor
-before changing study status or presenting the result as validated or citable.
+before changing study status or presenting the result as validated or approved evidence.
 For **an outside-reader packet** (policy brief, findings record, readout,
 Start-here or Research-targets edit, or a study promotion that would become a
 briefing entry point): run named-reader-reviewer. Route on the packet type, not
@@ -135,7 +135,7 @@ packages/
   sbir-analytics/         # Dagster assets, jobs, sensors
   sbir-ml/                # ML models (CET, transition detection)
 config/base.yaml          # Thresholds, paths, performance settings
-studies/                  # Versioned contracts for reproducible and citable research
+studies/                  # Versioned contracts for reproducible and approved research
 ```
 
 ## Common Patterns
@@ -161,7 +161,7 @@ statistical assumption, or visualization is still changing. New research noteboo
   `sbir_etl/`, packages, or `scripts/data/` into cells.
 - Record inputs, grain, keys, exclusions, as-of dates, assumptions, and deterministic seeds. Clear
   outputs and execution counts before committing.
-- When exploratory work needs to become reusable, scheduled, or citable, make promotion explicit
+- When exploratory work needs to become reusable, scheduled, or approved, make promotion explicit
   and satisfy the destination contract in `docs/steering/epistemic-tiers.md`. Keep the notebook as
   the research record and diagnostic front end; it is not itself an evidence contract.
 

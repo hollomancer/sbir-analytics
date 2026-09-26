@@ -61,7 +61,7 @@ these reports or post them to pull requests. Document that behavior only if a wo
 calling the reporter and publishing its artifacts.
 
 Reports describe metrics supplied by the caller. They do not prove source completeness, validate a
-research estimand, or make findings citable. Use the [data-quality contract](../steering/data-quality.md)
+research estimand, or make findings approved evidence. Use the [data-quality contract](../steering/data-quality.md)
 for pipeline checks and [study contracts](../../studies/README.md) for research evidence.
 
 ## Verification

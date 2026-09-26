@@ -93,7 +93,7 @@ beyond the documented study or pilot.
 
 Relevant methods and data cuts live under [`docs/research/`](../research/) and `studies/`. A row in
 this table means the repository has a documented use, not that the source is complete, governed,
-or externally citable.
+or approved for external evidence claims.
 
 ## Quality controls
 

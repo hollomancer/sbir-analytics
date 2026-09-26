@@ -2,14 +2,14 @@
 """Require reserved inventory Status ranks to have a matching study contract.
 
 ``docs/research-questions.md`` is a public API. The reserved ranks
-``computable``, ``validated``, and ``citable`` may appear as Status claims only
+``computable``, ``validated``, and ``approved evidence`` may appear as Status claims only
 when a ``studies/*/study.yaml`` lists that *section* ID (``B2``, ``F3``, …)
 at the matching ``evidence_status`` (or higher). Authorization is per section,
 not per question bullet: a study listing ``B2`` authorizes every reserved-rank
 Status under ``### B2``.
 
 Negations (``not computable``, ``never computable``, ``not yet validated``,
-``no citable claim``, ``non-citable``, ``not estimable``) are refusals, not
+``no approved evidence``, ``not approved evidence``, ``not estimable``) are refusals, not
 ranks, and do not need a study. The negation has to lead — a rank word with
 nothing negating it in front reads as a claim. The verb ``validates`` is not
 the ``validated`` rank.
@@ -66,14 +66,14 @@ DISCOVERABILITY_ALLOWLIST: dict[tuple[str, str], str] = {
 RANK_PATTERNS: tuple[tuple[str, re.Pattern[str]], ...] = (
     ("computable", re.compile(r"\bcomputable\b", re.IGNORECASE)),
     ("validated", re.compile(r"\bvalidated\b", re.IGNORECASE)),
-    ("citable", re.compile(r"\bcitable\b", re.IGNORECASE)),
+    ("approved", re.compile(r"\bapproved\s+evidence\b", re.IGNORECASE)),
 )
 
 # Negation is read compositionally rather than from a phrase list: a rank word
 # is a refusal when a negating token leads it within the same clause ("not yet
 # computable", "no longer computable", "never computable", "cannot be
-# validated", "no citable claim") or when a negating prefix is attached
-# ("non-citable"). ``unvalidated`` needs no rule — the rank patterns are
+# validated", "no approved evidence") or when a negating prefix is attached.
+# ``unvalidated`` needs no rule — the rank patterns are
 # word-bounded, so they never match inside it.
 NEGATION_TOKEN = re.compile(
     r"\b(?:not|no|never|none|nor|neither|without|cannot|absent|lack(?:s|ed|ing)?"
@@ -91,7 +91,7 @@ NEGATION_WINDOW_WORDS = 4
 REQUIRED_STUDY_STATUS: dict[str, EvidenceStatus] = {
     "computable": EvidenceStatus.REPRODUCIBLE,
     "validated": EvidenceStatus.VALIDATED,
-    "citable": EvidenceStatus.CITABLE,
+    "approved": EvidenceStatus.APPROVED,
 }
 
 STATUS_RANK: dict[EvidenceStatus, int] = {
@@ -99,7 +99,7 @@ STATUS_RANK: dict[EvidenceStatus, int] = {
     EvidenceStatus.EXPLORATORY: 0,
     EvidenceStatus.REPRODUCIBLE: 1,
     EvidenceStatus.VALIDATED: 2,
-    EvidenceStatus.CITABLE: 3,
+    EvidenceStatus.APPROVED: 3,
 }
 
 
@@ -339,7 +339,7 @@ def authorizing_status(manifest: StudyManifest) -> EvidenceStatus:
     honestly records a miss therefore authorizes only ``computable``, so a
     failed method cannot surface as a validated answer.
 
-    ``citable`` already requires ``threshold_met`` at the schema level, so it
+    ``approved`` already requires ``threshold_met`` at the schema level, so it
     needs no demotion here.
     """
     if manifest.evidence_status is not EvidenceStatus.VALIDATED:

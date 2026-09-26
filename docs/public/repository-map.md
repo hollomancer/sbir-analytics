@@ -8,7 +8,7 @@ top-level directory. A path does not gain evidence status from its location.
 | `.Codex/` | Routes Codex roles to project instructions; it produces no research evidence. |
 | `.agents/` | Exposes shared agent skills; it produces no research evidence. |
 | `.claude/` | Defines project review roles; role output counts only when a study freezes the review record. |
-| `.github/` | Runs repository automation and checks; a green workflow does not make a claim citable. |
+| `.github/` | Runs repository automation and checks; a green workflow does not make a claim approved evidence. |
 | `archive/` | Points to preserved historical material that is not an active evidence path. |
 | `config/` | Holds operational configuration; study contracts must freeze any setting used by evidence. |
 | `data/` | Defines local data layout; only manifest-pinned source bytes are authoritative for a study. |

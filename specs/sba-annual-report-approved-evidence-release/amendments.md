@@ -1,7 +1,7 @@
 # SBA Annual-Report Structural Comparison Release — Freeze and Amendment Log
 
-**Status:** Active release work. The validated result is frozen. Citation and
-publication remain blocked.
+**Status:** Active evidence-approval work. The validated result is frozen. One
+final pinned claim-approval review remains open.
 
 The current input candidate is identified by raw-byte SHA-256
 `aed146eab56f370c9f3fe7f562475e3eedfc61cca2eba112c830fac6f73bf38a` and byte
@@ -53,3 +53,16 @@ artifacts remain unchanged. The exact-byte evidence audit returned `GO` and the
 fresh cold named-reader review returned `BRIEF` with no remediation. Neither
 review authorized merge, tag, publication, materialization, citation, or
 `citable` promotion.
+
+## Revision 3 — 2026-09-23 — approval terminology and gate consolidation
+
+The highest evidence status is renamed from `citable` to `approved`. Citation
+of immutable artifacts, operational materialization, and repository-owner merge
+authority are independent workflows, not additional scientific evidence.
+
+The remaining evidence gate is one final pinned review approving the exact
+manifest claim boundary. Existing evidence audits and reader-comprehension
+reviews remain supporting records; they are not repeated merely because
+editorial or governance bytes change. Substantive changes to a claim, method,
+input, or limitation still require renewed independent review and a new
+immutable version.

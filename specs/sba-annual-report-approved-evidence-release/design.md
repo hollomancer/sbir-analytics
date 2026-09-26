@@ -15,7 +15,7 @@ were known.
 > the observed differences. They do not reproduce the publication-era source,
 > establish official-report equivalence, or compare award dollars.
 
-This wording is a draft. It is not permitted until the publication gates close.
+This wording is a draft. It is not approved until the evidence-approval gates close.
 
 ## Validation design decision
 
@@ -79,8 +79,11 @@ future amendment may authorize a separate descriptive structural-comparison
 product while leaving that blocker permanent. It may not relabel the existing
 blocked outcome as achieved.
 
-## Release boundary
+## Release and approval boundaries
 
-The release packet is the citable object. The moving repository remains a
+An immutable release packet is the object a reader cites. The study manifest's
+`approved` rank independently records whether the repository authorizes its
+bounded substantive claims. Operational materialization and repository-owner
+merge authority are separate controls. The moving repository remains a
 research instrument with mixed-status work. Graph data, exploratory notebooks,
 and unrelated studies are outside the packet.

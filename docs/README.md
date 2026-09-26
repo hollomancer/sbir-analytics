@@ -10,7 +10,7 @@ Status: active
 SBIR Analytics is a personal research project for connecting public SBIR/STTR awards to
 procurement, patents, strategic technologies, economic effects, and capital formation. No
 operational award data is committed to the repository, and a working analysis is not automatically
-validated or citable.
+validated or approved evidence.
 
 ## Start here
 
@@ -86,7 +86,7 @@ technical findings:
   [technical findings](research/quantum_information_science_sbir_transition_findings.md)
 
 These pairs intentionally remain separate for different audiences. “Provisional” is not a
-substitute for a citable study manifest; check evidence status before external use.
+substitute for an approved study manifest; check evidence status before external use.
 
 ## Documentation rules
 
