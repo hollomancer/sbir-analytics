@@ -113,9 +113,10 @@ Question statuses should distinguish:
 - **validated:** a study contract and checks support the interpretation;
 - **approved evidence:** the manifest explicitly permits its bounded external claims.
 
-Bibliographic citation is not an evidence rank. Any immutable artifact may be
-cited with its actual status attached; `approved` records repository
-authorization for the manifest's substantive claims.
+Bibliographic citation is not an evidence rank. A study result may be cited
+from an immutable release only at `reproducible` or higher, with its actual
+status attached; exploratory and retired work may not be cited. `approved`
+records repository authorization for the manifest's substantive claims.
 
 ## Historical OpenSpec content
 

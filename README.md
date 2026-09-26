@@ -112,8 +112,10 @@ narrower explanation.
 - **Archived** means preserved for provenance, not maintained as a live
   evidence path.
 
-Any immutable release may be cited for what it contains. Evidence status says
-what claims the repository endorses; publication metadata, merge approval, and
+A study result may be cited from an immutable release only when the study is
+`reproducible` or higher, and only with its actual evidence status attached.
+Exploratory and retired studies may not be cited. Evidence status says what
+claims the repository endorses; publication metadata, merge approval, and
 operational materialization remain separate controls.
 
 Content-addressed study artifacts and governed analytical files are

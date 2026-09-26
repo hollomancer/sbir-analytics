@@ -226,10 +226,11 @@ tier labels:
 | `Computable` / `Partially computable` | `reproducible` or higher |
 | Exploratory / partial / inventory target | none required |
 
-`Approved evidence` is an authorization rank, not a statement about whether a
-reader may cite a repository artifact. Any immutable release can be cited for
-what it actually contains. Approval says only that the repository authorizes
-the manifest's bounded substantive claims.
+`Approved evidence` is an authorization rank, not a citation rule. A study
+result may be cited from an immutable release only at `reproducible` or higher.
+Cite it with its actual evidence status. Do not cite exploratory or retired
+work. Approval says only that the repository authorizes the manifest's bounded
+substantive claims.
 
 A question cannot be marked `Computable` on the strength of exploratory-tier
 work or an exploratory study. `scripts/ci/check_research_question_status.py`

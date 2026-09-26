@@ -3,7 +3,7 @@
 This directory is the workbench for exploratory research tied to
 [`docs/research-questions.md`](../docs/research-questions.md). Use notebooks to inspect cohorts,
 test assumptions, compare definitions, review matches, and develop the narrative around tables and
-figures. New notebooks are [`exploratory` tier](../docs/steering/epistemic-tiers.md) and unapproved
+figures. New notebooks are [`exploratory` tier](../docs/steering/epistemic-tiers.md) and non-citable
 by default.
 
 Notebooks are not the canonical home for reusable calculations, scheduled work, or published
@@ -96,5 +96,5 @@ silently change a notebook's tier:
 The examples are completed exploratory companion views over canonical artifacts. Their source
 scripts continue to be the repeatable computation layer. In the repository's
 [epistemic-tier doctrine](../docs/steering/epistemic-tiers.md), this directory is the workbench
-population of the exploratory tier—unapproved by definition unless explicitly promoted through
+population of the exploratory tier—non-citable by definition unless explicitly promoted through
 the path above.

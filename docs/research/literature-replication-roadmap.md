@@ -32,7 +32,7 @@ strategy.
 ## Completion standard
 
 This standard governs the study contract, not the implementation tier. The first goal is
-`reproducible`, not `citable`. Each replication must have:
+`reproducible`, not `approved`. Each replication must have:
 
 - a frozen protocol that names the paper version, estimand, cohort, source tables, exclusions,
   transformations, and expected tables or figures;

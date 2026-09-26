@@ -46,7 +46,7 @@ much weight it can carry. Full contracts:
 | `primitives` | One implementation per concept, versioned behavior, comprehensive tests | `sbir_etl/identity/`, `sbir_etl/config/`, `sbir_etl/models/` |
 | `pipelines` | Deterministic, reproducible from a declared data cut, no inference | `sbir_etl/`, `packages/` |
 | `evidence` | Frozen spec + SHA enforcement + blocking asset checks + declared estimand — all four | Phase III census (`check_epistemic_tiers.py` enforces amendments SHA paperwork + declared estimand; not full runtime gates) |
-| `exploratory` | Labeled as unapproved evidence. Nothing else required. | most of `scripts/` |
+| `exploratory` | Labeled non-citable. Nothing else required. | most of `scripts/` |
 
 Three rules:
 
@@ -149,7 +149,7 @@ studies/                  # Versioned contracts for reproducible and approved re
 
 Use a **notebook-first** workflow when the research question, cohort definition, matching rule,
 statistical assumption, or visualization is still changing. New research notebooks are
-`exploratory` tier and unapproved by default; a polished notebook does not promote its claims.
+`exploratory` tier and non-citable by default; a polished notebook does not promote its claims.
 
 - Start from `notebooks/_template.ipynb`, tie the work to a concrete entry in
   `docs/research-questions.md`, and reuse the closest notebook under `notebooks/examples/`.

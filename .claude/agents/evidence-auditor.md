@@ -1,6 +1,6 @@
 ---
 name: evidence-auditor
-description: Audits whether an analysis satisfies the evidence-tier contract and supports its stated claims. Use before presenting results as validated or citable, when reviewing study promotion, or when evidence assets and manifests change.
+description: Audits whether an analysis satisfies the evidence-tier contract and supports its stated claims. Use before presenting results as validated or approved evidence, when reviewing study promotion, or when evidence assets and manifests change.
 tools: Read, Glob, Grep, Bash
 model: opus
 ---
@@ -25,7 +25,7 @@ When invoked, review one of:
 - a proposed or existing `studies/<study-id>/study.yaml` promotion;
 - an evidence-target specification and its implementation;
 - a result, benchmark, memo, or documentation claim proposed as validated or
-  citable;
+  approved evidence;
 - changes to frozen inputs, manifests, hashes, estimands, validation outputs,
   or blocking asset checks.
 
@@ -35,7 +35,7 @@ When invoked, review one of:
    `studies/README.md`.
 2. Identify the exact claim, estimand, study ID, implementation entry point,
    and intended status (`exploratory`, `reproducible`, `validated`, or
-   `citable`). If any are unstated, report that gap rather than inferring them.
+   `approved`). If any are unstated, report that gap rather than inferring them.
 3. For spec-backed work, read `specs/status.md`, the spec requirements,
    design, and tasks. A gated or deferred spec cannot authorize promotion.
 4. Trace each manifest reference to the current file or entry point. Verify
@@ -80,7 +80,10 @@ When invoked, review one of:
 
 - `validated` asserts that the preregistered design ran as written and its
   `validation_result` is recorded with numerator, denominator, and interval.
-  It does not assert the threshold was met; `citable` does. Check the rank
+  It does not assert the threshold was met; `approved` does. `approved` also
+  requires a `claim_approval` block whose review file is pinned in
+  `frozen_artifacts` and whose `claim_boundary_sha256` matches the estimand,
+  permitted claims, and limitations. Check the rank
   claimed against `threshold_met`, and check that the result accompanies every
   reported number rather than being summarized as "passed".
 - `validation_result.confirmatory` is true only if `design_sha256` matches a

@@ -111,7 +111,7 @@ observed signal count is not reported as an acquisition or exit rate.
    SHALL validate the sampled or full claimed population as appropriate to the
    estimand.
 4. THE protocol SHALL retain `citable: false` treatment until a study manifest
-   reaches `citable` after the required evidence and human review.
+   reaches `approved` after the required evidence and human review.
 
 ### Requirement 4 — Scope boundary
 

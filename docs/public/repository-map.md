@@ -14,7 +14,7 @@ top-level directory. A path does not gain evidence status from its location.
 | `data/` | Defines local data layout; only manifest-pinned source bytes are authoritative for a study. |
 | `docs/` | Holds public and internal guidance; `study.yaml` controls when summaries disagree. |
 | `examples/` | Demonstrates software usage; examples are not research results. |
-| `exploratory/` | Marks hypothesis generation and unverified analysis as unapproved evidence. |
+| `exploratory/` | Marks hypothesis generation and unverified analysis as non-citable. |
 | `notebooks/` | Holds exploratory work by default; a notebook needs a governed study contract to carry more weight. |
 | `packages/` | Holds orchestration, machine-learning, and analysis code; package location does not establish evidence status. |
 | `sbir_etl/` | Holds shared primitives and deterministic data pipelines; it does not authorize public claims. |

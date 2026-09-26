@@ -575,7 +575,7 @@ statutory goal is Phase III commercialization.*
   universities, FFRDCs, research hospitals, independent institutes, new-model
   research organizations — and has a non-university, non-FFRDC nonprofit ever
   served as an STTR partner?
-  **Status:** Not computable. Phase 0 design only (`exploratory`, not approved evidence);
+  **Status:** Not computable. Phase 0 design only (`exploratory`, non-citable);
   classification criteria are not frozen.
   *Deps: ER · Refs: [L7] · Spec: [../specs/sttr-spinout-linkage/](../specs/sttr-spinout-linkage/)*
 
@@ -592,7 +592,7 @@ statutory goal is Phase III commercialization.*
   Caveat — this is a public-evidence classifiability rate, not true spinout
   prevalence. The PI employer election and the allocation-of-rights agreement
   live in non-public agency award files.
-  **Status:** Not computable. Phase 0 design only (`exploratory`, not approved evidence).
+  **Status:** Not computable. Phase 0 design only (`exploratory`, non-citable).
   Implementation is blocked until open questions are resolved; no approved evidence claim
   is authorized until negative-control and blind-adjudication gates pass. This
   split has not been measured before.
@@ -642,7 +642,7 @@ statutory goal is Phase III commercialization.*
   Compare SBIR contracts against NASA external research procurement only.
   Grants and cooperative agreements are a different instrument and cannot carry
   this contrast.
-  **Status:** Exploratory and not approved evidence. No comparator cohort is materialized.
+  **Status:** Exploratory and non-citable. No comparator cohort is materialized.
   *Deps: agency project data, ER, ID, procurement · Spec:
   [../specs/sbir-roi-comparative-tests/](../specs/sbir-roi-comparative-tests/)
   · Study: [nasa-sbir-vs-external-rd](../studies/nasa-sbir-vs-external-rd/study.yaml)*
@@ -653,7 +653,7 @@ statutory goal is Phase III commercialization.*
   non-SBIR revenue, productivity, and procurement?
   The estimand is local to applicants whose funding changed at that boundary and
   can differ from the average effect across all awards.
-  **Status:** Exploratory and not approved evidence. The manifest authorizes no numerical
+  **Status:** Exploratory and non-citable. The manifest authorizes no numerical
   result. No agency has supplied pinned scores, ranks, or cutoff rules, so the
   required population does not exist yet.
   *Deps: agency application scores and cutoffs, ER, ID, operating status,
@@ -795,7 +795,7 @@ spending produce measurable new knowledge?*
   intermediate outputs. NIH SBIR versus R01 and NASA SBIR versus other external
   research are the first planned studies. Performer type, research stage, award
   architecture, and selection prevent a causal ranking without stronger design.
-  **Status:** Exploratory and not approved evidence. Four manifests and a shared contract
+  **Status:** Exploratory and non-citable. Four manifests and a shared contract
   bundle define the work. No comparator cohort has been materialized.
   *Deps: agency project data, ER, operating status, licensing, SEC EDGAR, M&A,
   procurement, productivity · Spec: [../specs/sbir-roi-comparative-tests/](../specs/sbir-roi-comparative-tests/)
@@ -919,7 +919,7 @@ dollar return on the SBIR program?*
   cost against the strongest feasible alternative federal mechanism. Treat
   private capital and exits as validation signals. Convert revenue to
   incremental value added or surplus before counting benefits.
-  **Status:** Exploratory and not approved evidence. The frozen design defines a break-even
+  **Status:** Exploratory and non-citable. The frozen design defines a break-even
   threshold, not an estimated causal return. No benefit or cost cohort is materialized.
   *Deps: B3, C3, F3, fiscal inputs, mission valuation, spillovers · Spec:
   [../specs/sbir-roi-comparative-tests/](../specs/sbir-roi-comparative-tests/)
@@ -1212,7 +1212,7 @@ The relevant literature is Lerner [L10], Howell [L11], and Kortum & Lerner
   or post-Phase-II prime-contract activity and no observed Form D, M&A, or IPO
   signal? Report the complete persistence x venture-signal matrix rather than a
   binary supplier label, and expose the first-award-cohort censoring gradient.
-  **Status:** Exploratory and not approved evidence. Required Form D/EFTS coverage and
+  **Status:** Exploratory and non-citable. Required Form D/EFTS coverage and
   validation gates are not yet complete; missing signal inputs are
   indeterminate, not negative evidence.
   *Deps: ER, SEC EDGAR, M&A signals, Phase III/FPDS · Spec:
@@ -1257,7 +1257,7 @@ remain outside that design.
   is raised because of the award rather than alongside it?
   This is the identification the retired leverage ratio never had: a ratio
   describes disclosed capital, while a boundary comparison can attribute it.
-  **Status:** Exploratory and not approved evidence. Blocked on the same missing agency
+  **Status:** Exploratory and non-citable. Blocked on the same missing agency
   scores and cutoff rules as the B3 entry. Private capital is a validation
   signal, not a taxpayer benefit by itself.
   *Deps: agency application scores and cutoffs, SEC EDGAR, ER, ID · Refs: [L10], [L11]
@@ -1286,7 +1286,7 @@ remain outside that design.
   For Phase II awardees of any agency, do follow-on funding and exit outcomes
   match published small-business and peer-reviewed entrepreneurial-finance
   baselines?
-  **Status:** Partial and not approved evidence. The Phase 1 NSF review validates the
+  **Status:** Partial and non-citable. The Phase 1 NSF review validates the
   Phase I→II cohort component: 672 of 1,502 firms in the 2015–2019 vintage
   (44.7%, 95% Wilson interval 42.2%–47.3%). It does not yet answer this
   question because transition, survival, M&A, and patent channels were

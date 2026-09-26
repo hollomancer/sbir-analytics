@@ -126,9 +126,10 @@ word, so `Approved evidence: …` still reads as a claim. The verb `validates` i
 the `validated` rank.
 
 Promotion changes the manifest only after the study meets the next status's requirements.
-Evidence approval is independent of operational materialization and bibliographic citation:
-a closed materialization gate must name its operational blocker, while any immutable release
-may be cited with its actual evidence status attached.
+Evidence approval is independent of operational materialization and bibliographic citation.
+A closed materialization gate must name its operational blocker. A study result may be cited
+from an immutable release only when the study is `reproducible` or higher, and only with its
+actual evidence status attached. Exploratory and retired studies may not be cited.
 
 A `validated` study whose `threshold_met` is `false` is a legitimate and useful end state:
 it says the preregistered test was run fairly and the method did not clear its own bar.

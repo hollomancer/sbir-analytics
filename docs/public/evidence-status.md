@@ -1,8 +1,10 @@
 # Evidence status
 
 The repository uses five public evidence-status labels. These labels govern
-which substantive claims the repository endorses; they do not govern whether a
-reader may bibliographically cite an immutable artifact.
+which substantive claims the repository endorses. They also set one citation
+rule: a study result may be cited from an immutable release only when the study
+is reproducible or higher, and only with its actual status attached. Exploratory
+and retired studies may not be cited.
 
 ## Approved evidence
 
