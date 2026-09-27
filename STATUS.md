@@ -14,7 +14,7 @@ claims are not yet repository-approved evidence.
 | Study | Validation result | Why it is not approved evidence |
 | --- | --- | --- |
 | [SBA annual-report structural comparison](docs/public/sba-structural-comparison.md) | A separate blinded-role implementation reproduced 1,264/1,264 count operands; exact point interval `[1.0, 1.0]` | One final pinned review must approve the exact manifest claim boundary |
-| [SBA annual-report structural comparison, release page](docs/public/sba-structural-comparison-release.md) | The same 1,264/1,264 result, restated under the citation rule; cite from release v0.18.0, not the page | One final pinned review must approve the exact manifest claim boundary |
+| [SBA annual-report structural comparison, release page](docs/public/sba-structural-comparison-release.md) | The same 1,264/1,264 result, restated under the citation rule; bound to release v0.20.0 | One final pinned review must approve the exact manifest claim boundary |
 
 ## Reproducible research, not validated
 

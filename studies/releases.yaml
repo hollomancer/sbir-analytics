@@ -13,3 +13,8 @@ releases:
           The v0.18.0 squash merge retained the already-merged deterministic Jev Make targets
           from main, while the detached inventory retained the reviewed PR-branch Makefile hash.
           The tag is immutable; all other 40 inventory entries match exactly.
+  sba-annual-report-structural-comparison-release:
+    tag: v0.20.0
+    source_revision: cfaf44affc92f99413ce6256575c85a044b125cc
+    tree_oid: b1b300f073bb9cea445225370e6fe0595d1391b2
+    checksum_manifest: studies/sba-annual-report-structural-comparison-release/release/checksums.sha256
