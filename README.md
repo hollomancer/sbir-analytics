@@ -28,7 +28,9 @@ Read [what this is](docs/public/what-this-is.md), the
 [evidence-status guide](docs/public/evidence-status.md), and the
 [reproduction guide](docs/public/reproducibility.md) before using a result. The
 [generated public result](docs/public/sba-structural-comparison.md) is the
-intended reader-facing page.
+reader-facing page frozen at v0.18.0. Its "not citable" wording predates the
+citation rule; the [release page](docs/public/sba-structural-comparison-release.md)
+states the current status.
 
 ## Reproduce or challenge the candidate
 

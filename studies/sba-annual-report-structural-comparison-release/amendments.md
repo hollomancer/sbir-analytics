@@ -3,7 +3,7 @@
 This study is the successor product authorized by Revision 4 of
 `specs/sba-annual-report-approved-evidence-release/amendments.md`. It carries
 the `v0.18.0` result of `studies/sba-annual-report-structural-comparison`
-under the citation rule from #792. Nothing is re-analysed.
+under the citation rule from #792. Nothing is re-analyzed.
 
 ## Revision 0 — 2026-09-26 — manifest created and replay at HEAD
 
@@ -65,3 +65,9 @@ With both records pinned, the page's statement that the result may be cited
 as a validated result from release `v0.18.0` is licensed under Revision 4
 rule 4. No release binds this study yet. Neither review authorizes a tag,
 `approved`, a `claim_approval` block, or a Start-here edit.
+
+Revision 4 rule 5 asks the page to say that its release is pending. The page
+does not use that word. It says the study is not bound to a release, that no
+release tag contains it, and that the result is cited from release v0.18.0,
+not from the page. The evidence audit judged that this meets rule 5 in
+substance. This revision records that reading as deliberate.

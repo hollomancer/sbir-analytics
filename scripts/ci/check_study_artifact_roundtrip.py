@@ -108,12 +108,17 @@ class Violation:
 
 def _load_renderer(root: Path, pair: RoundTripPair) -> Any:
     module_path = root / pair.renderer_path
-    spec = importlib.util.spec_from_file_location(f"_roundtrip_{module_path.stem}", module_path)
+    module_name = "_roundtrip_" + pair.renderer_path.replace("/", "_").removesuffix(".py")
+    spec = importlib.util.spec_from_file_location(module_name, module_path)
     if spec is None or spec.loader is None:
         raise ImportError(f"cannot load {pair.renderer_path}")
     module = importlib.util.module_from_spec(spec)
     sys.modules[spec.name] = module
-    spec.loader.exec_module(module)
+    try:
+        spec.loader.exec_module(module)
+    except BaseException:
+        sys.modules.pop(spec.name, None)
+        raise
     return getattr(module, pair.renderer_function)
 
 

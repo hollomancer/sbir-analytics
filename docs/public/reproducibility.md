@@ -54,5 +54,6 @@ Read the [generated public result](sba-structural-comparison.md) for the bounded
 claim, comparison summary, validation meaning, and adjacent non-claims.
 
 The [release page](sba-structural-comparison-release.md) restates the same
-result under the citation rule. Reproduce it with
+result under the citation rule. The older page's "not citable" wording predates
+that rule and is frozen at v0.18.0. Reproduce the release page with
 `make reproduce-sba-structural SBA_STUDY_ID=sba-annual-report-structural-comparison-release`.

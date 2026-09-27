@@ -81,7 +81,7 @@ comparison, the same 1,264 of 1,264 confirmatory result, the same estimand,
 the same two permitted claims in substance, and the same eight limitations.
 It re-pins only files that changed at HEAD after `v0.18.0`: `producer.py`
 (a rename of `citable` to `approved`), `uv.lock`, and the three study
-scripts that this revision parameterises. Nothing is re-analysed.
+scripts that this revision parameterizes. Nothing is re-analyzed.
 
 Rules for the successor:
 

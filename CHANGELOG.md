@@ -25,7 +25,9 @@ version.
 
 ### Added
 
-- Successor study `sba-annual-report-structural-comparison-release` whose generated public page states the v0.18.0 result's status under the citation rule (#796).
+- Successor study `sba-annual-report-structural-comparison-release` whose
+  generated public page states the v0.18.0 result's status under the
+  citation rule (#796).
 
 ### Changed
 
