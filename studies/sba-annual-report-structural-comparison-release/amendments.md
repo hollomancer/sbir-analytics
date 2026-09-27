@@ -64,3 +64,22 @@ Re-frozen bytes:
 Nothing in the result, estimand, permitted claims, limitations, validation
 record, or frozen predecessor packet changed. This revision does not authorize
 a tag, `approved`, a `claim_approval` block, or operational materialization.
+
+## Revision 2 — 2026-09-27 — folder orientation and pinned record
+
+This revision adds `README.md` to this folder. It says what the folder holds,
+where the result artifacts live, and how to reproduce the page. It carries no
+claim beyond the manifest.
+
+This revision also pins `amendments.md` in `frozen_artifacts`. This file is
+the register of every governance decision for the study, so its bytes are now
+part of the frozen packet. Any later revision must re-pin this file after the
+text is final.
+
+No renderer input changed. The sidecar and page are unchanged:
+`release/public-result.json`
+`b905f85492301fdd0f06741126e1fd4132d15e00ebd82c7d11bf0fe08ede657d` and
+`docs/public/sba-structural-comparison-release.md`
+`d54684cc9763a49d238b8f6a1f16ac1c6ba3e3aa4b04d29737ce598902758726`. This
+revision does not authorize a tag, `approved`, a `claim_approval` block, or
+operational materialization.
