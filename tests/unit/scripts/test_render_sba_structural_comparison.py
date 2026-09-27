@@ -29,6 +29,13 @@ def reviewed_release_root() -> Iterator[Path]:
         yield root
 
 
+@pytest.fixture(scope="module")
+def successor_release_root() -> Iterator[Path]:
+    binding = load_released_studies(ROOT)[renderer.SUCCESSOR_STUDY_ID]
+    with released_study_root(ROOT, binding) as root:
+        yield root
+
+
 def _write_mutated_comparison(destination: Path, mutate: Callable[[dict[str, str]], None]) -> None:
     with COMPARISON.open(encoding="utf-8", newline="") as handle:
         reader = csv.DictReader(handle)
@@ -282,15 +289,20 @@ SUCCESSOR_SIDECAR = ROOT / SUCCESSOR.sidecar_reference
 SUCCESSOR_MARKDOWN = ROOT / SUCCESSOR.markdown_reference
 
 
-def test_successor_artifacts_regenerate_byte_for_byte_at_head(
+def test_successor_artifacts_regenerate_byte_for_byte_from_release(
     reviewed_release_root: Path,
+    successor_release_root: Path,
 ) -> None:
-    payload = renderer.build_payload(ROOT, study_id=renderer.SUCCESSOR_STUDY_ID)
+    payload = renderer.build_payload(successor_release_root, study_id=renderer.SUCCESSOR_STUDY_ID)
     released = renderer.build_payload(reviewed_release_root)
     manifest = load_study_manifest(ROOT / SUCCESSOR.manifest_reference)
 
-    assert renderer.serialize_payload(payload) == SUCCESSOR_SIDECAR.read_text(encoding="utf-8")
-    assert renderer.render_markdown(payload) == SUCCESSOR_MARKDOWN.read_text(encoding="utf-8")
+    assert renderer.serialize_payload(payload) == (
+        successor_release_root / SUCCESSOR.sidecar_reference
+    ).read_text(encoding="utf-8")
+    assert renderer.render_markdown(payload) == (
+        successor_release_root / SUCCESSOR.markdown_reference
+    ).read_text(encoding="utf-8")
     assert (
         payload["content"]["release_status"]
         == "Validated; cite from release v0.18.0, not this page"

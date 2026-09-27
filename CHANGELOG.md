@@ -10,6 +10,12 @@ version.
 
 ## [Unreleased]
 
+### Changed
+
+- Bound `sba-annual-report-structural-comparison-release` to tag v0.20.0 in
+  `studies/releases.yaml`; its page may now be cited from that release with
+  status `validated`.
+
 ## [0.20.0] — 2026-09-27
 
 ### Breaking
