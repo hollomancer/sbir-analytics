@@ -222,3 +222,50 @@ def test_registry_names_the_public_result_pair() -> None:
             renderer="scripts/data/render_sba_structural_comparison.py:render_markdown",
         )
     ]
+
+
+def test_profiles_default_to_the_released_study() -> None:
+    default = renderer.PROFILES[renderer.STUDY_ID]
+    successor = renderer.PROFILES[renderer.SUCCESSOR_STUDY_ID]
+
+    assert default.sidecar_reference == renderer.SIDECAR_REFERENCE
+    assert default.markdown_reference == renderer.MARKDOWN_REFERENCE
+    assert default.release_status == "Validated, not citable"
+    assert default.reproduction_command == "make reproduce-sba-structural"
+    assert successor.study_id == "sba-annual-report-structural-comparison-release"
+    assert successor.sidecar_reference != default.sidecar_reference
+    assert successor.markdown_reference != default.markdown_reference
+    assert successor.release_status != default.release_status
+    assert successor.reproduction_command != default.reproduction_command
+
+
+def test_render_rejects_a_sidecar_whose_study_has_no_profile() -> None:
+    payload = json.loads(SIDECAR.read_text(encoding="utf-8"))
+    payload["content"]["study_id"] = "no-such-study"
+    payload["content_sha256"] = renderer._canonical_sha256(payload["content"])
+
+    with pytest.raises(renderer.PublicResultError, match="no renderer profile"):
+        renderer.render_markdown(payload)
+
+
+def test_render_rejects_a_release_status_borrowed_from_another_profile() -> None:
+    payload = json.loads(SIDECAR.read_text(encoding="utf-8"))
+    successor = renderer.PROFILES[renderer.SUCCESSOR_STUDY_ID]
+    payload["content"]["release_status"] = successor.release_status
+    payload["content_sha256"] = renderer._canonical_sha256(payload["content"])
+
+    with pytest.raises(renderer.PublicResultError, match="wrong study or release status"):
+        renderer.render_markdown(payload)
+
+
+def test_build_payload_rejects_an_unknown_study_id(reviewed_release_root: Path) -> None:
+    with pytest.raises(renderer.PublicResultError, match="no renderer profile"):
+        renderer.build_payload(reviewed_release_root, study_id="no-such-study")
+
+
+def test_bounded_claim_uses_the_profile_prefix_and_suffix() -> None:
+    manifest = load_study_manifest(ROOT / renderer.STUDY_MANIFEST_REFERENCE)
+    successor = renderer.PROFILES[renderer.SUCCESSOR_STUDY_ID]
+
+    with pytest.raises(renderer.PublicResultError, match="does not match the .* release form"):
+        renderer._bounded_claim(manifest, successor)
