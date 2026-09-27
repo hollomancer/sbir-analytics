@@ -18,14 +18,15 @@ the sibling folder. `study.yaml` pins them there by path and hash.
 
 ## Status
 
-**Validated. Not approved evidence. Release pending.** No annotated tag binds
-this study in `studies/releases.yaml`. Cite the unchanged result only from
-release v0.18.0, never from the page or a moving branch.
+**Validated. Not approved evidence.** `studies/releases.yaml` says whether an
+annotated tag binds this study. If none does, its release is pending. Cite the
+unchanged result only from release v0.18.0, never from the page or a moving
+branch. After a tag binds this study, cite from that release.
 
 ## Reproduce
 
-Use a checkout that contains this folder and the selector-aware `Makefile`.
-Then run:
+Use a checkout that contains this folder and the selector-aware `Makefile`: the
+release whose tag binds this study, or the moving branch. Then run:
 
 ```bash
 make install-core

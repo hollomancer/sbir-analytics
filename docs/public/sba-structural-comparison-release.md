@@ -6,9 +6,11 @@
 
 This page reports the same validated structural comparison that release v0.18.0
 froze. Nothing was re-analyzed. Under the repository citation rule, that result
-may be cited as a validated result from that immutable release, with its
-evidence status attached. Successor release pending: no annotated tag binds this
-study, and no release is scheduled. Its substantive claims are not approved evidence.
+may be cited as a validated result from an immutable release, with its evidence
+status attached. `studies/releases.yaml` says whether an annotated tag binds this
+study. If none does, its release is pending: cite the unchanged result only from
+release v0.18.0, never from this page or a moving branch. The result is not
+approved evidence.
 
 ## Bounded claim
 
@@ -84,10 +86,10 @@ It cannot detect a rule error shared by both separate implementations.
 
 ## Reproduce
 
-No release tag contains this study yet. A v0.18.0 checkout can reproduce the
-identical predecessor result, but it cannot select this successor. Run the
-selector below only from a checkout containing this successor study and its
-selector-aware Makefile:
+A v0.18.0 checkout can reproduce the identical predecessor result, but it
+cannot select this successor. Run the selector below from a checkout that
+contains this study and its selector-aware Makefile: the release whose tag binds
+this study in `studies/releases.yaml`, or the moving branch:
 
 ```bash
 make install-core
@@ -111,8 +113,8 @@ uv run python scripts/data/render_sba_structural_comparison.py --study-id sba-an
 | Count producer | `packages/sbir-analytics/sbir_analytics/assets/sba_annual_report_structural_comparison/producer.py` | `d20dc0d31bb680f723c1f0120ef72c4d6a31560026fea9b06236a5fa02b6ab96` |
 | Count reproduction command | `scripts/data/run_sba_structural_comparison.py` | `8e68a12d42c79379a99bffcf2345e438706cd52b5c7c0b86831519fe7dda8dcb` |
 | Public reproduction command | `scripts/data/reproduce_sba_structural_comparison.py` | `d5453a049b84ffc55762af47cac10e519b74c47103594168c206e317cd28cebc` |
-| Public result renderer | `scripts/data/render_sba_structural_comparison.py` | `d638774669356c2f65047c32a0d610ce4b346d18f07d173850da12178c42c593` |
-| Environment lock | `uv.lock` | `9bf69d3ded9a412aa2a566162e009af3e1da9142f65c67cfd27667cb27ca390f` |
+| Public result renderer | `scripts/data/render_sba_structural_comparison.py` | `4870f5ab468fdb12047a9d9a8b70b84cfcd2998717b6ee51140b21fcd805ca14` |
+| Environment lock | `uv.lock` | `10dc596d64d96a067a4ffbd051ac61a5a9c04a98c6334cd38b7e0d46422af642` |
 | 632-cell count comparison | `studies/sba-annual-report-structural-comparison/results/count-comparison.csv` | `e86ab66905f65adaa7fdb721ced6bcbc7b3991a288ba37156f1efe9b4bed7381` |
 | Confirmatory packet manifest | `studies/sba-annual-report-structural-comparison/validation/blind-packet-manifest-v5.json` | `51033aca620e71f71fc18d6ae398d27fe238fbf7c7d6cda4e748ba7db3299314` |
 | Independent validation values | `studies/sba-annual-report-structural-comparison/validation/confirmatory/validation-values.csv` | `66827a11e860da48a9da215ab982722fa182ceb2726a9ef05a182922c61bae2a` |
@@ -122,12 +124,12 @@ uv run python scripts/data/render_sba_structural_comparison.py --study-id sba-an
 | Sealed-component hashes | `studies/sba-annual-report-structural-comparison/validation/confirmatory/sealed-components.sha256` | `c452750aa2b717c4c5781cc758b19ef6566cb98421aa64e39d11554844c302b0` |
 | Post-result evidence audit | `studies/sba-annual-report-structural-comparison/reviews/post-result-evidence-audit.md` | `ac05b2e6d888b0b60e1ea57e0b5a32b9a4f70b6bc4d7dcb118af399975411b4a` |
 
-Public sidecar content SHA-256: `232fd6750e9dbc10f658350611165fc10b315cdc67d6736953bc30c822071748`.
+Public sidecar content SHA-256: `3a811cbb966d47a161597d5f59bcc276b487153ba8e43d647488546dc6d4f6dd`.
 This content digest is SHA-256 over the sidecar's `content` object encoded as
 canonical JSON with sorted keys and compact separators. It differs from the
 whole-file SHA-256 because the file also stores this digest and schema version.
 
 ## Release status and limits
 
-- Release pending: no annotated release tag binds this study in studies/releases.yaml. Until one does, cite the unchanged result only from release v0.18.0, never from this page or a moving branch.
+- Release binding: this page was frozen before any tag bound this study. `studies/releases.yaml` is the authority. If no annotated tag binds this study there, its release is pending; cite the unchanged result only from release v0.18.0, never from this page or a moving branch.
 - The published-sample reproduction blocker is permanent. The publication-era SBIR.gov export is unavailable, so no study in this repository can reproduce the counts the SBA tables were computed from. This study compares the printed counts with a current-vintage export.

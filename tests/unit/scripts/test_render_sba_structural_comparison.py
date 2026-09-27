@@ -310,13 +310,13 @@ def test_successor_page_states_the_citation_rule_and_the_permanent_blocker() -> 
     markdown = SUCCESSOR_MARKDOWN.read_text(encoding="utf-8")
 
     assert "> **Status: Validated; cite from release v0.18.0, not this page.**" in markdown
-    assert "may be cited as a validated result from that immutable release" in markdown
+    assert "may be cited as a validated result from an immutable release" in markdown
     assert "## Release status and limits" in markdown
     assert "published-sample reproduction blocker is permanent" in markdown
     assert "make reproduce-sba-structural SBA_STUDY_ID=" in markdown
-    assert "No release tag contains this study yet." in markdown
-    assert "Successor release pending" in markdown
-    assert "Release pending: no annotated release tag binds this study" in markdown
+    assert "If none does, its release is pending" in markdown
+    assert "Release binding: this page was frozen before any tag bound this study" in markdown
+    assert "`studies/releases.yaml` is the authority" in markdown
     assert "No Dagster asset, schedule, service database" not in markdown
     assert "Do not quote this result as a released finding" not in markdown
     assert "not citable" not in markdown

@@ -104,15 +104,18 @@ PROFILES: dict[str, StudyProfile] = {
         status_lines=(
             "This page reports the same validated structural comparison that release v0.18.0",
             "froze. Nothing was re-analyzed. Under the repository citation rule, that result",
-            "may be cited as a validated result from that immutable release, with its",
-            "evidence status attached. Successor release pending: no annotated tag binds this",
-            "study, and no release is scheduled. Its substantive claims are not approved evidence.",
+            "may be cited as a validated result from an immutable release, with its evidence",
+            "status attached. `studies/releases.yaml` says whether an annotated tag binds this",
+            "study. If none does, its release is pending: cite the unchanged result only from",
+            "release v0.18.0, never from this page or a moving branch. The result is not",
+            "approved evidence.",
         ),
         release_heading="## Release status and limits",
         release_limits=(
-            "Release pending: no annotated release tag binds this study in "
-            "studies/releases.yaml. Until one does, cite the unchanged result only from "
-            "release v0.18.0, never from this page or a moving branch.",
+            "Release binding: this page was frozen before any tag bound this study. "
+            "`studies/releases.yaml` is the authority. If no annotated tag binds this study "
+            "there, its release is pending; cite the unchanged result only from release "
+            "v0.18.0, never from this page or a moving branch.",
             "The published-sample reproduction blocker is permanent. The publication-era "
             "SBIR.gov export is unavailable, so no study in this repository can reproduce "
             "the counts the SBA tables were computed from. This study compares the printed "
@@ -121,10 +124,10 @@ PROFILES: dict[str, StudyProfile] = {
         reproduction_command=f"{REPRODUCTION_COMMAND} SBA_STUDY_ID={SUCCESSOR_STUDY_ID}",
         renderer_command=f"{RENDER_COMMAND} --study-id {SUCCESSOR_STUDY_ID}",
         reproduction_lines=(
-            "No release tag contains this study yet. A v0.18.0 checkout can reproduce the",
-            "identical predecessor result, but it cannot select this successor. Run the",
-            "selector below only from a checkout containing this successor study and its",
-            "selector-aware Makefile:",
+            "A v0.18.0 checkout can reproduce the identical predecessor result, but it",
+            "cannot select this successor. Run the selector below from a checkout that",
+            "contains this study and its selector-aware Makefile: the release whose tag binds",
+            "this study in `studies/releases.yaml`, or the moving branch:",
         ),
     ),
 }

@@ -113,3 +113,21 @@ Rules for the successor:
 
 The released `v0.18.0` study folder and page are not modified. CI keeps
 them byte-identical to the tag.
+
+## Revision 5 — 2026-09-27 — rule 5 stated as a condition
+
+Rule 5 of Revision 4 asks the successor page to say that its release is
+pending until an annotated tag binds the study. After the binding, CI freezes
+the study folder byte for byte, so a dated status sentence would become false
+and could never be corrected. That is the defect issue #796 was opened for.
+
+Rule 5 now reads: the page must state the condition, not the date. It must
+say that if no annotated tag binds this study in `studies/releases.yaml`,
+the release is pending and the reader must cite the unchanged result from
+release `v0.18.0`. It must name `studies/releases.yaml` as the authority.
+The sentence must contain the words "release is pending". The same rule
+applies to every prose file inside the successor folder.
+
+This revision authorizes one presentation re-freeze before the 0.20.0 tag
+and no other change. It does not authorize `approved` or a `claim_approval`
+block.
