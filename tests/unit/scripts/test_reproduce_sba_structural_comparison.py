@@ -33,3 +33,10 @@ def test_confirmatory_seal_rejects_changed_component(tmp_path: Path) -> None:
 
     with pytest.raises(reproduction.ReproductionFailure, match="hash differs"):
         reproduction.verify_confirmatory_seal(tmp_path, STUDY_MANIFEST)
+
+
+def test_reproduce_rejects_an_unknown_study_before_touching_sources(tmp_path: Path) -> None:
+    from scripts.data.render_sba_structural_comparison import PublicResultError
+
+    with pytest.raises(PublicResultError, match="no renderer profile"):
+        reproduction.reproduce(tmp_path, tmp_path, acquire=False, study_id="no-such-study")
