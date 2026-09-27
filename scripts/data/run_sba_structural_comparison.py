@@ -111,10 +111,19 @@ def _pdf_page_count(path: Path) -> int:
     return len(PdfReader(path).pages)
 
 
-def build_production_inputs(repository_root: Path, source_root: Path) -> ProductionInputs:
-    """Construct production inputs from the two checked-in manifests."""
+def build_production_inputs(
+    repository_root: Path,
+    source_root: Path,
+    *,
+    study_manifest_path: Path | None = None,
+) -> ProductionInputs:
+    """Construct production inputs from the two checked-in manifests.
 
-    study_manifest_path = repository_root / STUDY_MANIFEST
+    ``study_manifest_path`` selects which study's frozen hashes the inputs are
+    pinned against. It defaults to the released study manifest.
+    """
+
+    study_manifest_path = study_manifest_path or repository_root / STUDY_MANIFEST
     study_manifest = load_study_manifest(study_manifest_path)
     source_manifest_path = repository_root / SOURCE_MANIFEST
     source_manifest = _load_json(source_manifest_path)
@@ -190,6 +199,11 @@ def _parse_args() -> argparse.Namespace:
         type=Path,
         help="Root containing the manifest-declared downloaded source paths.",
     )
+    parser.add_argument(
+        "--study-manifest",
+        type=Path,
+        help="Study manifest whose frozen hashes pin the inputs (default: released study).",
+    )
     parser.add_argument("--output", type=Path, required=True)
     return parser.parse_args()
 
@@ -200,7 +214,11 @@ def main() -> int:
     args = _parse_args()
     repository_root = args.repository_root.resolve()
     source_root = (args.source_root or repository_root).resolve()
-    inputs = build_production_inputs(repository_root, source_root)
+    inputs = build_production_inputs(
+        repository_root,
+        source_root,
+        study_manifest_path=args.study_manifest.resolve() if args.study_manifest else None,
+    )
     product = produce_count_sidecar(
         inputs,
         args.output,

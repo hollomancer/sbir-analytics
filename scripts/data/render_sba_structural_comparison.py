@@ -15,6 +15,7 @@ import json
 import re
 from collections import Counter
 from collections.abc import Mapping, Sequence
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
@@ -25,6 +26,8 @@ from sbir_etl.utils.data.file_io import file_sha256
 EPISTEMIC_TIER = "evidence"
 REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
 STUDY_ID = "sba-annual-report-structural-comparison"
+SUCCESSOR_STUDY_ID = "sba-annual-report-structural-comparison-release"
+# Every profile renders the same frozen result artifacts from the released study folder.
 STUDY_DIRECTORY = Path("studies") / STUDY_ID
 COMPARISON_REFERENCE = (STUDY_DIRECTORY / "results/count-comparison.csv").as_posix()
 STUDY_MANIFEST_REFERENCE = (STUDY_DIRECTORY / "study.yaml").as_posix()
@@ -41,6 +44,98 @@ PREPARED_FOR = (
 )
 REPRODUCTION_COMMAND = "make reproduce-sba-structural"
 RENDER_COMMAND = "uv run python scripts/data/render_sba_structural_comparison.py"
+
+
+@dataclass(frozen=True)
+class StudyProfile:
+    """The pieces of the public page that differ between the released study and a successor.
+
+    The result artifacts, expected counts, and validation checks do not vary. A profile
+    only changes where the manifest, sidecar, and page live and how the status is worded.
+    """
+
+    study_id: str
+    manifest_reference: str
+    sidecar_reference: str
+    markdown_reference: str
+    release_status: str
+    claim_prefix: str
+    claim_suffix: str
+    status_lines: tuple[str, ...]
+    release_heading: str
+    release_limits: tuple[str, ...]
+    reproduction_command: str
+    renderer_command: str
+    reproduction_lines: tuple[str, ...]
+
+
+PROFILES: dict[str, StudyProfile] = {
+    STUDY_ID: StudyProfile(
+        study_id=STUDY_ID,
+        manifest_reference=STUDY_MANIFEST_REFERENCE,
+        sidecar_reference=SIDECAR_REFERENCE,
+        markdown_reference=MARKDOWN_REFERENCE,
+        release_status=RELEASE_STATUS,
+        claim_prefix="Validated, not citable: ",
+        claim_suffix=" This statement is not citable until",
+        status_lines=(
+            "This page reports a validated current-vintage structural comparison. The release",
+            "gates are still closed. Do not quote this result as a released finding.",
+        ),
+        release_heading="## Release gates still open",
+        release_limits=(
+            "Release governance requires explicit owner approval before merge, an immutable "
+            "annotated version 0.18.0 tag, tag-bound citation metadata, and a "
+            "citable-promotion evidence audit. Every claim-facing revision also requires an "
+            "evidence audit and a cold named-reader review of its exact bytes.",
+        ),
+        reproduction_command=REPRODUCTION_COMMAND,
+        renderer_command=RENDER_COMMAND,
+        reproduction_lines=("From the repository root in a tagged release checkout, run:",),
+    ),
+    SUCCESSOR_STUDY_ID: StudyProfile(
+        study_id=SUCCESSOR_STUDY_ID,
+        manifest_reference=f"studies/{SUCCESSOR_STUDY_ID}/study.yaml",
+        sidecar_reference=f"studies/{SUCCESSOR_STUDY_ID}/release/public-result.json",
+        markdown_reference="docs/public/sba-structural-comparison-release.md",
+        release_status="Validated; cite from release v0.18.0, not this page",
+        claim_prefix="Validated: ",
+        claim_suffix=" Cite this statement only from",
+        status_lines=(
+            "This page reports the same validated structural comparison that release v0.18.0",
+            "froze. Nothing was re-analyzed. Under the repository citation rule, that result",
+            "may be cited as a validated result from that immutable release, with its",
+            "evidence status attached. Successor release pending: no annotated tag binds this",
+            "study, and no release is scheduled. Its substantive claims are not approved evidence.",
+        ),
+        release_heading="## Release status and limits",
+        release_limits=(
+            "Release pending: no annotated release tag binds this study in "
+            "studies/releases.yaml. Until one does, cite the unchanged result only from "
+            "release v0.18.0, never from this page or a moving branch.",
+            "The published-sample reproduction blocker is permanent. The publication-era "
+            "SBIR.gov export is unavailable, so no study in this repository can reproduce "
+            "the counts the SBA tables were computed from. This study compares the printed "
+            "counts with a current-vintage export.",
+        ),
+        reproduction_command=f"{REPRODUCTION_COMMAND} SBA_STUDY_ID={SUCCESSOR_STUDY_ID}",
+        renderer_command=f"{RENDER_COMMAND} --study-id {SUCCESSOR_STUDY_ID}",
+        reproduction_lines=(
+            "No release tag contains this study yet. A v0.18.0 checkout can reproduce the",
+            "identical predecessor result, but it cannot select this successor. Run the",
+            "selector below only from a checkout containing this successor study and its",
+            "selector-aware Makefile:",
+        ),
+    ),
+}
+
+
+def _profile_for(study_id: object) -> StudyProfile:
+    profile = PROFILES.get(study_id) if isinstance(study_id, str) else None
+    if profile is None:
+        raise PublicResultError(f"no renderer profile for study_id {study_id!r}")
+    return profile
+
 
 COMPARISON_COLUMNS = (
     "report_year",
@@ -420,14 +515,16 @@ def _read_json_object(path: Path, label: str) -> Mapping[str, Any]:
     return value
 
 
-def _bounded_claim(manifest: StudyManifest) -> str:
+def _bounded_claim(manifest: StudyManifest, profile: StudyProfile) -> str:
     if len(manifest.permitted_claims) != 2:
         raise PublicResultError("study manifest must contain two permitted result claims")
     source = manifest.permitted_claims[0]
-    prefix = "Validated, not citable: "
-    suffix = " This statement is not citable until"
+    prefix = profile.claim_prefix
+    suffix = profile.claim_suffix
     if not source.startswith(prefix) or suffix not in source:
-        raise PublicResultError("study permitted claim does not match the validated release form")
+        raise PublicResultError(
+            f"study permitted claim does not match the {profile.study_id} release form"
+        )
     claim = source.removeprefix(prefix).split(suffix, 1)[0]
     # The folded YAML prose breaks the compound adjective across a source line.
     # Use the separately validated result field as the canonical interval wording.
@@ -500,8 +597,8 @@ def _export_row_handling(
     }
 
 
-def _validate_manifest(manifest: StudyManifest) -> None:
-    if manifest.study_id != STUDY_ID:
+def _validate_manifest(manifest: StudyManifest, profile: StudyProfile) -> None:
+    if manifest.study_id != profile.study_id:
         raise PublicResultError(f"unexpected study_id: {manifest.study_id!r}")
     if manifest.evidence_status is not EvidenceStatus.VALIDATED:
         raise PublicResultError(
@@ -525,7 +622,7 @@ def _validate_manifest(manifest: StudyManifest) -> None:
         raise PublicResultError("validation result differs from the frozen 1,264/1,264 result")
     if design.threshold_value != EXPECTED_VALIDATION_COUNT:
         raise PublicResultError("validation threshold is not 1,264 frozen operands")
-    _bounded_claim(manifest)
+    _bounded_claim(manifest, profile)
     _summary_claim(manifest)
 
 
@@ -607,20 +704,22 @@ def _artifact_records(root: Path, frozen_hashes: Mapping[str, str]) -> list[dict
 def build_payload(
     repository_root: Path = REPOSITORY_ROOT,
     *,
+    study_id: str = STUDY_ID,
     comparison_path: Path | None = None,
     study_manifest_path: Path | None = None,
     source_manifest_path: Path | None = None,
     run_diagnostics_path: Path | None = None,
 ) -> dict[str, Any]:
-    """Build the public sidecar from the three declared study inputs."""
+    """Build the public sidecar for one study profile from the declared study inputs."""
 
+    profile = _profile_for(study_id)
     root = repository_root.resolve()
     comparison_path = comparison_path or root / COMPARISON_REFERENCE
-    study_manifest_path = study_manifest_path or root / STUDY_MANIFEST_REFERENCE
+    study_manifest_path = study_manifest_path or root / profile.manifest_reference
     source_manifest_path = source_manifest_path or root / SOURCE_MANIFEST_REFERENCE
     run_diagnostics_path = run_diagnostics_path or root / RUN_DIAGNOSTICS_REFERENCE
     manifest = load_study_manifest(study_manifest_path)
-    _validate_manifest(manifest)
+    _validate_manifest(manifest, profile)
     frozen_hashes = _frozen_hashes(manifest)
 
     expected_comparison_sha = frozen_hashes.get(COMPARISON_REFERENCE)
@@ -661,9 +760,9 @@ def build_payload(
     content: dict[str, Any] = {
         "study_id": manifest.study_id,
         "title": manifest.title,
-        "release_status": RELEASE_STATUS,
+        "release_status": profile.release_status,
         "prepared_for": PREPARED_FOR,
-        "bounded_claim": _bounded_claim(manifest),
+        "bounded_claim": _bounded_claim(manifest, profile),
         "result_summary_claim": _summary_claim(manifest),
         "rules_plain_language": (
             "Count each parsed export row once, use Award Year as the year, and do not deduplicate."
@@ -700,12 +799,12 @@ def build_payload(
         },
         "sources": _source_records(source_manifest, frozen_hashes),
         "non_claims": list(manifest.limitations),
-        "release_blockers": list(manifest.materialization.blockers),
+        "release_blockers": list(profile.release_limits),
         "artifact_hashes": _artifact_records(root, frozen_hashes),
         "reproduction": {
             "setup_command": "make install-core",
-            "one_command": REPRODUCTION_COMMAND,
-            "renderer_command": RENDER_COMMAND,
+            "one_command": profile.reproduction_command,
+            "renderer_command": profile.renderer_command,
         },
     }
     payload = {
@@ -751,10 +850,11 @@ def _validate_payload(payload: Mapping[str, Any]) -> Mapping[str, Any]:
         "reproduction",
     }
     _expect_keys(content, expected_content_keys, "public sidecar content")
+    profile = _profile_for(content["study_id"])
     if (
-        content["study_id"] != STUDY_ID
-        or content["release_status"] != RELEASE_STATUS
+        content["release_status"] != profile.release_status
         or content["prepared_for"] != PREPARED_FOR
+        or content["release_blockers"] != list(profile.release_limits)
     ):
         raise PublicResultError("public sidecar has the wrong study or release status")
     comparison = content["comparison"]
@@ -862,6 +962,7 @@ def render_markdown(payload: Mapping[str, Any]) -> str:
     """Render the public page from one validated sidecar without file access."""
 
     content = _validate_payload(payload)
+    profile = _profile_for(content["study_id"])
     comparison = content["comparison"]
     aggregate = comparison["aggregate_summary"]
     export_rows = content["export_row_handling"]
@@ -873,8 +974,7 @@ def render_markdown(payload: Mapping[str, Any]) -> str:
         "",
         f"> **Status: {content['release_status']}.**",
         "",
-        "This page reports a validated current-vintage structural comparison. The release",
-        "gates are still closed. Do not quote this result as a released finding.",
+        *profile.status_lines,
         "",
         "## Bounded claim",
         "",
@@ -969,7 +1069,7 @@ def render_markdown(payload: Mapping[str, Any]) -> str:
             "",
             "## Reproduce",
             "",
-            "From the repository root in a tagged release checkout, run:",
+            *profile.reproduction_lines,
             "",
             "```bash",
             content["reproduction"]["setup_command"],
@@ -999,7 +1099,7 @@ def render_markdown(payload: Mapping[str, Any]) -> str:
             "canonical JSON with sorted keys and compact separators. It differs from the",
             "whole-file SHA-256 because the file also stores this digest and schema version.",
             "",
-            "## Release gates still open",
+            profile.release_heading,
             "",
         ]
     )
@@ -1017,15 +1117,17 @@ def serialize_payload(payload: Mapping[str, Any]) -> str:
 def generate_public_artifacts(
     repository_root: Path = REPOSITORY_ROOT,
     *,
+    study_id: str = STUDY_ID,
     sidecar_path: Path | None = None,
     markdown_path: Path | None = None,
 ) -> tuple[Path, Path]:
     """Regenerate the sidecar and page together after all checks pass."""
 
+    profile = _profile_for(study_id)
     root = repository_root.resolve()
-    payload = build_payload(root)
-    sidecar_path = sidecar_path or root / SIDECAR_REFERENCE
-    markdown_path = markdown_path or root / MARKDOWN_REFERENCE
+    payload = build_payload(root, study_id=study_id)
+    sidecar_path = sidecar_path or root / profile.sidecar_reference
+    markdown_path = markdown_path or root / profile.markdown_reference
     sidecar_text = serialize_payload(payload)
     markdown_text = render_markdown(payload)
     sidecar_path.parent.mkdir(parents=True, exist_ok=True)
@@ -1038,6 +1140,7 @@ def generate_public_artifacts(
 def _parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--repository-root", type=Path, default=REPOSITORY_ROOT)
+    parser.add_argument("--study-id", choices=sorted(PROFILES), default=STUDY_ID)
     parser.add_argument("--sidecar", type=Path)
     parser.add_argument("--markdown", type=Path)
     return parser.parse_args()
@@ -1047,6 +1150,7 @@ def main() -> int:
     args = _parse_args()
     sidecar_path, markdown_path = generate_public_artifacts(
         args.repository_root,
+        study_id=args.study_id,
         sidecar_path=args.sidecar,
         markdown_path=args.markdown,
     )

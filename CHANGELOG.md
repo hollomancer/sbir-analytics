@@ -32,6 +32,12 @@ version.
   `statistical_reporting` block still loads, because `PipelineConfig` allows
   extra keys.
 
+### Added
+
+- Successor study `sba-annual-report-structural-comparison-release` whose
+  generated public page states the v0.18.0 result's status under the
+  citation rule (#796).
+
 ### Changed
 
 - A study result may be cited from an immutable release only when the study is
