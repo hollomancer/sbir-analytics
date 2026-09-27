@@ -2805,7 +2805,7 @@ wheels = [
 
 [[package]]
 name = "sbir-analytics"
-version = "0.19.0"
+version = "0.20.0"
 source = { editable = "packages/sbir-analytics" }
 dependencies = [
     { name = "dagster" },
@@ -2827,7 +2827,7 @@ provides-extras = ["modernbert-local", "dev"]
 
 [[package]]
 name = "sbir-etl"
-version = "0.19.0"
+version = "0.20.0"
 source = { editable = "." }
 dependencies = [
     { name = "duckdb" },
@@ -2978,7 +2978,7 @@ notebooks = [
 
 [[package]]
 name = "sbir-ml"
-version = "0.19.0"
+version = "0.20.0"
 source = { editable = "packages/sbir-ml" }
 dependencies = [
     { name = "sbir-etl" },
