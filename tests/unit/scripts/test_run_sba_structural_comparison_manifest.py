@@ -6,6 +6,7 @@ import shutil
 from pathlib import Path
 
 import pytest
+import yaml
 
 from scripts.data import run_sba_structural_comparison as count_stage
 from sbir_etl.exceptions import ConfigurationError
@@ -45,18 +46,20 @@ def test_build_production_inputs_pins_against_the_given_manifest(tmp_path: Path)
     _copy_repository_pins(tmp_path)
     successor = tmp_path / "studies/successor/study.yaml"
     successor.parent.mkdir(parents=True)
-    text = (tmp_path / OLD_STUDY / "study.yaml").read_text(encoding="utf-8")
-    successor.write_text(
-        text.replace(
-            "study_id: sba-annual-report-structural-comparison\n",
-            "study_id: successor\n",
-        ),
-        encoding="utf-8",
+    raw = yaml.safe_load((tmp_path / OLD_STUDY / "study.yaml").read_text(encoding="utf-8"))
+    raw["study_id"] = "successor"
+    sentinel_sha256 = "f" * 64
+    producer_reference = count_stage.PRODUCER.as_posix()
+    producer_pin = next(
+        artifact for artifact in raw["frozen_artifacts"] if artifact["path"] == producer_reference
     )
+    producer_pin["sha256"] = sentinel_sha256
+    successor.write_text(yaml.safe_dump(raw, sort_keys=False), encoding="utf-8")
 
     inputs = count_stage.build_production_inputs(tmp_path, tmp_path, study_manifest_path=successor)
 
     assert inputs.implementation.reference == count_stage.PRODUCER.as_posix()
+    assert inputs.implementation.sha256 == sentinel_sha256
 
 
 def test_build_production_inputs_rejects_a_missing_manifest(tmp_path: Path) -> None:

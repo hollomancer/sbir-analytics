@@ -55,5 +55,11 @@ claim, comparison summary, validation meaning, and adjacent non-claims.
 
 The [release page](sba-structural-comparison-release.md) restates the same
 result under the citation rule. The older page's "not citable" wording predates
-that rule and is frozen at v0.18.0. Reproduce the release page with
+that rule and is frozen at v0.18.0.
+
+To reproduce the successor page, use a checkout containing
+`studies/sba-annual-report-structural-comparison-release/study.yaml` and the
+selector-aware `Makefile`, then run
 `make reproduce-sba-structural SBA_STUDY_ID=sba-annual-report-structural-comparison-release`.
+Do not run that selector from a `v0.18.0` checkout: that tag does not contain
+the successor and its Make target reproduces the predecessor.

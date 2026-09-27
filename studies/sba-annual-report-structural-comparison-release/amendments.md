@@ -12,10 +12,11 @@ under the citation rule from #792. Nothing is re-analyzed.
 The manifest pins the same result artifacts as `v0.18.0` by path and hash:
 `results/count-comparison.csv`
 `e86ab66905f65adaa7fdb721ced6bcbc7b3991a288ba37156f1efe9b4bed7381`, the
-confirmatory validation values, the sealed components, and the reviews. It
-re-pins five files at their HEAD hashes because they changed after `v0.18.0`:
-`producer.py` (rename of `citable` to `approved`, no count logic change),
-`uv.lock`, and the three study scripts that now take a study parameter.
+confirmatory validation values, the sealed components, and the predecessor's
+supporting reviews. It re-pins six files at their HEAD hashes because they
+changed after `v0.18.0`: `producer.py` (rename of `citable` to `approved`, no
+count logic change), `uv.lock`, the three study scripts that now take a study
+parameter, and the `Makefile` wrapper that forwards the selected study ID.
 
 The count stage ran at HEAD against this manifest with the four pinned
 sources. It reproduced `results/count-comparison.csv` byte for byte. On that
@@ -24,50 +25,42 @@ basis the manifest records `validated`, restating the `v0.18.0` result of
 
 The manifest does not record `approved` and carries no `claim_approval`.
 
-## Revision 1 — 2026-09-26 — presentation re-freeze and exact-byte reviews recorded
+## Revision 1 — 2026-09-27 — governance and reproduction wiring reconciled
 
-After Revision 0, the page wording changed twice. Both changes were made in
-the renderer profile only. Nothing in the result, the estimand, the permitted
-claims, the limitations, or the validation record changed.
+Revision 4 now follows Revision 3 and #792: a wording-only successor relies on
+the existing validation, a byte-identical replay of the frozen result, and the
+registered artifact round trips. It does not create a second evidence-audit or
+named-reader gate. The two draft successor review records and their manifest
+pins were removed. One final pinned claim-boundary review remains required only
+for a future promotion to `approved`.
 
-1. The status paragraph now states the citation status under the #792 rule
-   plainly. The first blocker was reworded to match.
-2. A cold named-reader review of the page then returned `OVERCLAIMS`: the
-   reproduce lead-in said "in a tagged release checkout", but no tag contains
-   this study, and the `SBA_STUDY_ID` selector is ignored at `v0.18.0`. The
-   renderer profile gained a `reproduction_lines` field that states this. The
-   badge became "Validated; cite from release v0.18.0, not this page". The
-   heading became "Release status and limits".
+Release and citation limits now come from the successor renderer profile rather
+than `materialization.blockers`. The closed materialization gate names the
+actual operational condition: no Dagster asset, schedule, service database, or
+other production destination is defined or authorized for this
+presentation-only successor. The generated page says "Successor release
+pending" and also says that no release is scheduled, while directing citation
+only to the unchanged result in `v0.18.0`.
 
-Re-frozen bytes at commit `7bc22b9dcd46da5a116746ff66c047aac90dbd46`:
-`scripts/data/render_sba_structural_comparison.py`
-`df6f65410e761b9f60b092abc599965b80a3ab68b5460f0c59fff729581ef142`,
-`release/public-result.json`
-`46aed9913753ad3059dbf0fb6b77f3241721af9c57ba5b7f00e63cafeed83003`
-(content digest
-`7ccf34ee0ab5e96d4f533c1711552b1e0425665f6eacb57e84f1b08798aaa473`),
-and `docs/public/sba-structural-comparison-release.md`
-`09b5b1f0617067028cfba228f7f0aa2ddebe0d6ed5e33fe2c7cd3bc9c756de7d`.
-The audited manifest was
-`ff48975e20bee5473dd6f77859734df997c836bc43505a8d71ce5c2795a0cd4d`. The only
-later change to the manifest is the two review pins added by this revision.
+The reproduction guide and generated page require a checkout containing the
+successor study and selector-aware `Makefile`. The wrapper is now frozen, a
+dry-run test proves that `SBA_STUDY_ID` expands to the Python `--study-id`
+argument, and a sentinel-hash test proves that the count stage uses the
+supplied study manifest.
 
-The evidence audit of those exact bytes is recorded in
-`reviews/successor-evidence-audit.md`. Every contract check passed. The
-auditor reproduced the count stage byte for byte and verified that no replay
-input changed afterwards. The audit's only `BLOCK` was that this record did
-not yet exist.
+Re-frozen bytes:
 
-The cold named-reader review of the exact page bytes is recorded in
-`reviews/named-reader-review-1.md`. It returned `BRIEF` with no remediation.
+- `Makefile`:
+  `91ab000fbe6a2a173ea8c6db8f7be01a6c706d84080cb4d3f0a112888db8f46a`
+- `scripts/data/render_sba_structural_comparison.py`:
+  `d638774669356c2f65047c32a0d610ce4b346d18f07d173850da12178c42c593`
+- `release/public-result.json`:
+  `b905f85492301fdd0f06741126e1fd4132d15e00ebd82c7d11bf0fe08ede657d`
+  (content digest
+  `232fd6750e9dbc10f658350611165fc10b315cdc67d6736953bc30c822071748`)
+- `docs/public/sba-structural-comparison-release.md`:
+  `d54684cc9763a49d238b8f6a1f16ac1c6ba3e3aa4b04d29737ce598902758726`
 
-With both records pinned, the page's statement that the result may be cited
-as a validated result from release `v0.18.0` is licensed under Revision 4
-rule 4. No release binds this study yet. Neither review authorizes a tag,
-`approved`, a `claim_approval` block, or a Start-here edit.
-
-Revision 4 rule 5 asks the page to say that its release is pending. The page
-does not use that word. It says the study is not bound to a release, that no
-release tag contains it, and that the result is cited from release v0.18.0,
-not from the page. The evidence audit judged that this meets rule 5 in
-substance. This revision records that reading as deliberate.
+Nothing in the result, estimand, permitted claims, limitations, validation
+record, or frozen predecessor packet changed. This revision does not authorize
+a tag, `approved`, a `claim_approval` block, or operational materialization.

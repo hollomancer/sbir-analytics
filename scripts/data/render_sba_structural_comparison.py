@@ -63,6 +63,7 @@ class StudyProfile:
     claim_suffix: str
     status_lines: tuple[str, ...]
     release_heading: str
+    release_limits: tuple[str, ...]
     reproduction_command: str
     renderer_command: str
     reproduction_lines: tuple[str, ...]
@@ -82,6 +83,12 @@ PROFILES: dict[str, StudyProfile] = {
             "gates are still closed. Do not quote this result as a released finding.",
         ),
         release_heading="## Release gates still open",
+        release_limits=(
+            "Release governance requires explicit owner approval before merge, an immutable "
+            "annotated version 0.18.0 tag, tag-bound citation metadata, and a "
+            "citable-promotion evidence audit. Every claim-facing revision also requires an "
+            "evidence audit and a cold named-reader review of its exact bytes.",
+        ),
         reproduction_command=REPRODUCTION_COMMAND,
         renderer_command=RENDER_COMMAND,
         reproduction_lines=("From the repository root in a tagged release checkout, run:",),
@@ -98,17 +105,26 @@ PROFILES: dict[str, StudyProfile] = {
             "This page reports the same validated structural comparison that release v0.18.0",
             "froze. Nothing was re-analyzed. Under the repository citation rule, that result",
             "may be cited as a validated result from that immutable release, with its",
-            "evidence status attached. This successor study is not bound to a release yet.",
-            "Its substantive claims are not approved evidence.",
+            "evidence status attached. Successor release pending: no annotated tag binds this",
+            "study, and no release is scheduled. Its substantive claims are not approved evidence.",
         ),
         release_heading="## Release status and limits",
+        release_limits=(
+            "Release pending: no annotated release tag binds this study in "
+            "studies/releases.yaml. Until one does, cite the unchanged result only from "
+            "release v0.18.0, never from this page or a moving branch.",
+            "The published-sample reproduction blocker is permanent. The publication-era "
+            "SBIR.gov export is unavailable, so no study in this repository can reproduce "
+            "the counts the SBA tables were computed from. This study compares the printed "
+            "counts with a current-vintage export.",
+        ),
         reproduction_command=f"{REPRODUCTION_COMMAND} SBA_STUDY_ID={SUCCESSOR_STUDY_ID}",
         renderer_command=f"{RENDER_COMMAND} --study-id {SUCCESSOR_STUDY_ID}",
         reproduction_lines=(
-            "No release tag contains this study yet. From a v0.18.0 checkout, the default",
-            "`make reproduce-sba-structural` reproduces the identical frozen result. The",
-            "successor selector below works only from a checkout of the moving branch that",
-            "contains this study:",
+            "No release tag contains this study yet. A v0.18.0 checkout can reproduce the",
+            "identical predecessor result, but it cannot select this successor. Run the",
+            "selector below only from a checkout containing this successor study and its",
+            "selector-aware Makefile:",
         ),
     ),
 }
@@ -783,7 +799,7 @@ def build_payload(
         },
         "sources": _source_records(source_manifest, frozen_hashes),
         "non_claims": list(manifest.limitations),
-        "release_blockers": list(manifest.materialization.blockers),
+        "release_blockers": list(profile.release_limits),
         "artifact_hashes": _artifact_records(root, frozen_hashes),
         "reproduction": {
             "setup_command": "make install-core",
@@ -838,6 +854,7 @@ def _validate_payload(payload: Mapping[str, Any]) -> Mapping[str, Any]:
     if (
         content["release_status"] != profile.release_status
         or content["prepared_for"] != PREPARED_FOR
+        or content["release_blockers"] != list(profile.release_limits)
     ):
         raise PublicResultError("public sidecar has the wrong study or release status")
     comparison = content["comparison"]

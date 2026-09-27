@@ -2,15 +2,20 @@
 
 from __future__ import annotations
 
+import subprocess
 from pathlib import Path
 
 import pytest
 
+from scripts.data import render_sba_structural_comparison as renderer
 from scripts.data import reproduce_sba_structural_comparison as reproduction
+from sbir_etl.quality.study_manifest import load_study_manifest
+from sbir_etl.utils.data.file_io import file_sha256
 
 
 ROOT = Path(__file__).resolve().parents[3]
 STUDY_MANIFEST = ROOT / "studies/sba-annual-report-structural-comparison/study.yaml"
+SUCCESSOR_MANIFEST = ROOT / "studies/sba-annual-report-structural-comparison-release/study.yaml"
 
 
 def test_confirmatory_seal_verifies_archived_extractor_name() -> None:
@@ -40,3 +45,26 @@ def test_reproduce_rejects_an_unknown_study_before_touching_sources(tmp_path: Pa
 
     with pytest.raises(PublicResultError, match="no renderer profile"):
         reproduction.reproduce(tmp_path, tmp_path, acquire=False, study_id="no-such-study")
+
+
+def test_successor_make_wrapper_is_frozen_and_forwards_the_study_selector() -> None:
+    manifest = load_study_manifest(SUCCESSOR_MANIFEST)
+    frozen_hashes = {artifact.path: artifact.sha256 for artifact in manifest.frozen_artifacts}
+
+    assert frozen_hashes["Makefile"] == file_sha256(ROOT / "Makefile")
+
+    result = subprocess.run(
+        [
+            "make",
+            "--no-print-directory",
+            "-n",
+            f"SBA_STUDY_ID={renderer.SUCCESSOR_STUDY_ID}",
+            "reproduce-sba-structural",
+        ],
+        cwd=ROOT,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+
+    assert f"--study-id {renderer.SUCCESSOR_STUDY_ID}" in result.stdout

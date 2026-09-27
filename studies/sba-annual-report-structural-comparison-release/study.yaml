@@ -128,18 +128,16 @@ frozen_artifacts:
     sha256: 4cfd4ae3c88a13197bb7b9071b420f78b1899bfbec0b6066a900a5933ed78e24
   - path: studies/sba-annual-report-structural-comparison/reviews/revision-11-evidence-audit.md
     sha256: f60888d4ddcaf5485f783bd11dd045e9095745c38c8798f14729ceb3b9733407
+  - path: Makefile
+    sha256: 91ab000fbe6a2a173ea8c6db8f7be01a6c706d84080cb4d3f0a112888db8f46a
   - path: scripts/data/render_sba_structural_comparison.py
-    sha256: df6f65410e761b9f60b092abc599965b80a3ab68b5460f0c59fff729581ef142
+    sha256: d638774669356c2f65047c32a0d610ce4b346d18f07d173850da12178c42c593
   - path: scripts/data/reproduce_sba_structural_comparison.py
     sha256: d5453a049b84ffc55762af47cac10e519b74c47103594168c206e317cd28cebc
   - path: studies/sba-annual-report-structural-comparison-release/release/public-result.json
-    sha256: 46aed9913753ad3059dbf0fb6b77f3241721af9c57ba5b7f00e63cafeed83003
+    sha256: b905f85492301fdd0f06741126e1fd4132d15e00ebd82c7d11bf0fe08ede657d
   - path: docs/public/sba-structural-comparison-release.md
-    sha256: 09b5b1f0617067028cfba228f7f0aa2ddebe0d6ed5e33fe2c7cd3bc9c756de7d
-  - path: studies/sba-annual-report-structural-comparison-release/reviews/successor-evidence-audit.md
-    sha256: 2db3d16355c8cd8fff8f006a6e71978f0e70cfd85b2e30f5d3107c8d28d668b8
-  - path: studies/sba-annual-report-structural-comparison-release/reviews/named-reader-review-1.md
-    sha256: e9691154f8fbf98afda41e489287036e48c5ff2e8769ccdc7f28562074ad75b6
+    sha256: d54684cc9763a49d238b8f6a1f16ac1c6ba3e3aa4b04d29737ce598902758726
 implementation:
   - path: packages/sbir-analytics/sbir_analytics/assets/sba_annual_report_structural_comparison/producer.py
     symbol: produce_count_sidecar
@@ -165,14 +163,9 @@ materialization:
   allowed: false
   blockers:
     - >-
-      No annotated release tag binds this study in studies/releases.yaml.
-      Until one does, cite the result only from release v0.18.0, never from
-      this page or a moving branch.
-    - >-
-      The published-sample reproduction blocker is permanent. The
-      publication-era SBIR.gov export is unavailable, so no study in this
-      repository can reproduce the counts the SBA tables were computed from.
-      This study compares the printed counts with a current-vintage export.
+      No Dagster asset, schedule, service database, or other operational
+      destination is defined or authorized for this presentation-only
+      successor. Only its checked-in packet may be reproduced offline.
 permitted_claims:
   - >-
     Validated: for all 632 award-count cells printed in FY2020

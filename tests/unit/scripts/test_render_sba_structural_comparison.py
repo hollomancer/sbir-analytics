@@ -287,6 +287,7 @@ def test_successor_artifacts_regenerate_byte_for_byte_at_head(
 ) -> None:
     payload = renderer.build_payload(ROOT, study_id=renderer.SUCCESSOR_STUDY_ID)
     released = renderer.build_payload(reviewed_release_root)
+    manifest = load_study_manifest(ROOT / SUCCESSOR.manifest_reference)
 
     assert renderer.serialize_payload(payload) == SUCCESSOR_SIDECAR.read_text(encoding="utf-8")
     assert renderer.render_markdown(payload) == SUCCESSOR_MARKDOWN.read_text(encoding="utf-8")
@@ -301,6 +302,8 @@ def test_successor_artifacts_regenerate_byte_for_byte_at_head(
     assert payload["content"]["non_claims"] == released["content"]["non_claims"]
     assert payload["content"]["result_summary_claim"] == released["content"]["result_summary_claim"]
     assert payload["content"]["bounded_claim"] == released["content"]["bounded_claim"]
+    assert payload["content"]["release_blockers"] == list(SUCCESSOR.release_limits)
+    assert payload["content"]["release_blockers"] != manifest.materialization.blockers
 
 
 def test_successor_page_states_the_citation_rule_and_the_permanent_blocker() -> None:
@@ -312,6 +315,9 @@ def test_successor_page_states_the_citation_rule_and_the_permanent_blocker() -> 
     assert "published-sample reproduction blocker is permanent" in markdown
     assert "make reproduce-sba-structural SBA_STUDY_ID=" in markdown
     assert "No release tag contains this study yet." in markdown
+    assert "Successor release pending" in markdown
+    assert "Release pending: no annotated release tag binds this study" in markdown
+    assert "No Dagster asset, schedule, service database" not in markdown
     assert "Do not quote this result as a released finding" not in markdown
     assert "not citable" not in markdown
     assert "claim_approval" not in markdown
