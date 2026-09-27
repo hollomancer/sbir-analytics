@@ -80,10 +80,6 @@ duckdb:
   enable_query_profiler: false
 
 # Disable heavy features for faster CI
-statistical_reporting:
-  generation:
-    enabled: false
-
 company_categorization:
   batch_size: 50
   parallel_workers: 2

@@ -22,6 +22,15 @@ version.
   study's estimand, permitted claims, and limitations. CI also requires the
   review text to contain the study ID and that digest, and rejects a future
   approval date.
+- Removed code that nothing called outside its own tests:
+  `sbir_etl.utils.statistical_reporter.StatisticalReporter`,
+  `sbir_etl.utils.metrics`, the HTML, JSON, and Markdown report processors in
+  `sbir_etl.utils.reporting.formats`, `sbir_etl.models.statistical_reports`,
+  `StatisticalReportingConfig` and the `statistical_reporting` config block,
+  `sbir_etl.utils.error_handling`, `sbir_etl.utils.path_validator`, and the
+  `sbir_analytics.clients` package. A config file that still has a
+  `statistical_reporting` block still loads, because `PipelineConfig` allows
+  extra keys.
 
 ### Changed
 
