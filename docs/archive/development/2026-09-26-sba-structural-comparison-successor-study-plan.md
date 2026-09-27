@@ -1139,7 +1139,7 @@ The research-question guard requires the `### D1` section to link `studies/<stud
 After the existing SBA row in the "Validated, not approved" table add:
 
 ```markdown
-| [SBA annual-report structural comparison, release page](docs/public/sba-structural-comparison-release.md) | The same 1,264/1,264 result, restated under the citation rule; release pending | One final pinned review must approve the exact manifest claim boundary |
+| [SBA annual-report structural comparison, release page](../../public/sba-structural-comparison-release.md) | The same 1,264/1,264 result, restated under the citation rule; release pending | One final pinned review must approve the exact manifest claim boundary |
 ```
 
 - [ ] **Step 2: docs/public/reproducibility.md**
@@ -1147,7 +1147,7 @@ After the existing SBA row in the "Validated, not approved" table add:
 After the last paragraph add:
 
 ```markdown
-The [release page](sba-structural-comparison-release.md) restates the same
+The [release page](../../public/sba-structural-comparison-release.md) restates the same
 result under the citation rule. Reproduce it with
 `make reproduce-sba-structural SBA_STUDY_ID=sba-annual-report-structural-comparison-release`.
 ```
@@ -1157,8 +1157,8 @@ result under the citation rule. Reproduce it with
 Change the `Studies:` list in D1 so its last two entries read:
 
 ```markdown
-  [prospective structural comparison](../studies/sba-annual-report-structural-comparison/study.yaml),
-  [release page study](../studies/sba-annual-report-structural-comparison-release/study.yaml)*
+  [prospective structural comparison](../../../studies/sba-annual-report-structural-comparison/study.yaml),
+  [release page study](../../../studies/sba-annual-report-structural-comparison-release/study.yaml)*
 ```
 
 - [ ] **Step 4: CHANGELOG.md**
@@ -1392,3 +1392,9 @@ were added); release limits come from the profile, not from
 `materialization.blockers`; `Makefile` is pinned in the successor manifest; the
 round-trip loader registers renderers in `sys.modules`. Eight HEAD files are
 pinned until the successor is tag-bound (issue step 9, version 0.20.0).
+
+Record note: the four link targets in Task 8's snippets were rewritten to
+resolve from this file's location, because the docs link checker scans every
+tracked Markdown file under `docs/`. The paths as inserted into `STATUS.md`,
+`docs/public/reproducibility.md`, and `docs/research-questions.md` are in
+commit 74cd92a1.
