@@ -13,7 +13,6 @@ import csv
 import hashlib
 import json
 import re
-import sys
 from collections import Counter
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
@@ -23,15 +22,6 @@ from typing import Any
 from sbir_etl.quality.study_manifest import EvidenceStatus, StudyManifest, load_study_manifest
 from sbir_etl.utils.data.file_io import file_sha256
 
-
-# The round-trip guard (scripts/ci/check_study_artifact_roundtrip.py) loads this module with
-# importlib.util.module_from_spec() under a synthetic name and never registers it in
-# sys.modules before exec_module() runs. On Python 3.12, the dataclass decorator below
-# resolves postponed (string) field annotations against sys.modules[cls.__module__].__dict__
-# to detect the KW_ONLY sentinel, and crashes with AttributeError when that module was never
-# registered. A normal `import` already registers the real module first, so this is a no-op
-# there; it only matters for the guard's unregistered dynamic load.
-sys.modules.setdefault(__name__, sys)
 
 EPISTEMIC_TIER = "evidence"
 REPOSITORY_ROOT = Path(__file__).resolve().parents[2]

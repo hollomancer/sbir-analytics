@@ -133,3 +133,27 @@ def test_repository_registry_is_consistent() -> None:
     violations = guard.validate_repository()
 
     assert violations == [], "\n".join(violation.format() for violation in violations)
+
+
+def test_validate_pair_loads_a_renderer_that_defines_a_dataclass(tmp_path: Path) -> None:
+    """The loader must register the module before exec_module, or Python 3.12's
+    postponed-annotation handling for dataclasses crashes with AttributeError
+    on `sys.modules[cls.__module__].__dict__` when the module was never registered.
+    """
+    renderer = (
+        "from __future__ import annotations\n"
+        "\n"
+        "from dataclasses import dataclass\n"
+        "\n"
+        "\n"
+        "@dataclass(frozen=True)\n"
+        "class Profile:\n"
+        "    label: str\n"
+        "\n"
+        "\n"
+        "def render_markdown(payload):\n"
+        '    return "# Readout\\n\\nFixed.\\n"\n'
+    )
+    pair = _build_study(tmp_path, "# Readout\n\nFixed.\n", renderer=renderer)
+
+    assert guard.validate_pair(pair, root=tmp_path) == []

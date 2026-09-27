@@ -29,6 +29,7 @@ import ast
 import difflib
 import importlib.util
 import json
+import sys
 from collections.abc import Iterator
 from dataclasses import dataclass
 from pathlib import Path
@@ -104,6 +105,7 @@ def _load_renderer(root: Path, pair: RoundTripPair) -> Any:
     if spec is None or spec.loader is None:
         raise ImportError(f"cannot load {pair.renderer_path}")
     module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
     spec.loader.exec_module(module)
     return getattr(module, pair.renderer_function)
 
