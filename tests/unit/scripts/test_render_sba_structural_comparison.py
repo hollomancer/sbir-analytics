@@ -290,7 +290,10 @@ def test_successor_artifacts_regenerate_byte_for_byte_at_head(
 
     assert renderer.serialize_payload(payload) == SUCCESSOR_SIDECAR.read_text(encoding="utf-8")
     assert renderer.render_markdown(payload) == SUCCESSOR_MARKDOWN.read_text(encoding="utf-8")
-    assert payload["content"]["release_status"] == "Validated; release pending"
+    assert (
+        payload["content"]["release_status"]
+        == "Validated; cite from release v0.18.0, not this page"
+    )
     assert payload["content"]["study_id"] == renderer.SUCCESSOR_STUDY_ID
     # Same result, same validation, same non-claims as v0.18.0.
     assert payload["content"]["comparison"] == released["content"]["comparison"]
@@ -303,11 +306,12 @@ def test_successor_artifacts_regenerate_byte_for_byte_at_head(
 def test_successor_page_states_the_citation_rule_and_the_permanent_blocker() -> None:
     markdown = SUCCESSOR_MARKDOWN.read_text(encoding="utf-8")
 
-    assert "> **Status: Validated; release pending.**" in markdown
+    assert "> **Status: Validated; cite from release v0.18.0, not this page.**" in markdown
     assert "may be cited as a validated result from that immutable release" in markdown
-    assert "## Release pending" in markdown
+    assert "## Release status and limits" in markdown
     assert "published-sample reproduction blocker is permanent" in markdown
     assert "make reproduce-sba-structural SBA_STUDY_ID=" in markdown
+    assert "No release tag contains this study yet." in markdown
     assert "Do not quote this result as a released finding" not in markdown
     assert "not citable" not in markdown
     assert "claim_approval" not in markdown

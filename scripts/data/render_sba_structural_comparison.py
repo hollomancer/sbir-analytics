@@ -65,6 +65,7 @@ class StudyProfile:
     release_heading: str
     reproduction_command: str
     renderer_command: str
+    reproduction_lines: tuple[str, ...]
 
 
 PROFILES: dict[str, StudyProfile] = {
@@ -83,13 +84,14 @@ PROFILES: dict[str, StudyProfile] = {
         release_heading="## Release gates still open",
         reproduction_command=REPRODUCTION_COMMAND,
         renderer_command=RENDER_COMMAND,
+        reproduction_lines=("From the repository root in a tagged release checkout, run:",),
     ),
     SUCCESSOR_STUDY_ID: StudyProfile(
         study_id=SUCCESSOR_STUDY_ID,
         manifest_reference=f"studies/{SUCCESSOR_STUDY_ID}/study.yaml",
         sidecar_reference=f"studies/{SUCCESSOR_STUDY_ID}/release/public-result.json",
         markdown_reference="docs/public/sba-structural-comparison-release.md",
-        release_status="Validated; release pending",
+        release_status="Validated; cite from release v0.18.0, not this page",
         claim_prefix="Validated: ",
         claim_suffix=" Cite this statement only from",
         status_lines=(
@@ -99,9 +101,15 @@ PROFILES: dict[str, StudyProfile] = {
             "evidence status attached. This successor study is not bound to a release yet.",
             "Its substantive claims are not approved evidence.",
         ),
-        release_heading="## Release pending",
+        release_heading="## Release status and limits",
         reproduction_command=f"{REPRODUCTION_COMMAND} SBA_STUDY_ID={SUCCESSOR_STUDY_ID}",
         renderer_command=f"{RENDER_COMMAND} --study-id {SUCCESSOR_STUDY_ID}",
+        reproduction_lines=(
+            "No release tag contains this study yet. From a v0.18.0 checkout, the default",
+            "`make reproduce-sba-structural` reproduces the identical frozen result. The",
+            "successor selector below works only from a checkout of the moving branch that",
+            "contains this study:",
+        ),
     ),
 }
 
@@ -1044,7 +1052,7 @@ def render_markdown(payload: Mapping[str, Any]) -> str:
             "",
             "## Reproduce",
             "",
-            "From the repository root in a tagged release checkout, run:",
+            *profile.reproduction_lines,
             "",
             "```bash",
             content["reproduction"]["setup_command"],
