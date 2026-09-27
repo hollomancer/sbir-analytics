@@ -45,7 +45,7 @@ frozen_artifacts:
   - path: scripts/data/run_sba_structural_comparison.py
     sha256: 8e68a12d42c79379a99bffcf2345e438706cd52b5c7c0b86831519fe7dda8dcb
   - path: uv.lock
-    sha256: 9bf69d3ded9a412aa2a566162e009af3e1da9142f65c67cfd27667cb27ca390f
+    sha256: 10dc596d64d96a067a4ffbd051ac61a5a9c04a98c6334cd38b7e0d46422af642
   - path: studies/sba-annual-report-structural-comparison/results/count-comparison.csv
     sha256: e86ab66905f65adaa7fdb721ced6bcbc7b3991a288ba37156f1efe9b4bed7381
   - path: studies/sba-annual-report-structural-comparison/validation/blind-packet-manifest-v1.json
@@ -131,15 +131,15 @@ frozen_artifacts:
   - path: Makefile
     sha256: 91ab000fbe6a2a173ea8c6db8f7be01a6c706d84080cb4d3f0a112888db8f46a
   - path: scripts/data/render_sba_structural_comparison.py
-    sha256: d638774669356c2f65047c32a0d610ce4b346d18f07d173850da12178c42c593
+    sha256: 4870f5ab468fdb12047a9d9a8b70b84cfcd2998717b6ee51140b21fcd805ca14
   - path: scripts/data/reproduce_sba_structural_comparison.py
     sha256: d5453a049b84ffc55762af47cac10e519b74c47103594168c206e317cd28cebc
   - path: studies/sba-annual-report-structural-comparison-release/release/public-result.json
-    sha256: b905f85492301fdd0f06741126e1fd4132d15e00ebd82c7d11bf0fe08ede657d
+    sha256: 25921e23a0badd7e231694f0f91b6680d287e2ff01e377394a565e71791d76fe
   - path: docs/public/sba-structural-comparison-release.md
-    sha256: d54684cc9763a49d238b8f6a1f16ac1c6ba3e3aa4b04d29737ce598902758726
+    sha256: 1eeca99417696d24cf4e6dd9b5dc21011babc2504035790943852000d00c7c63
   - path: studies/sba-annual-report-structural-comparison-release/amendments.md
-    sha256: 1e5045cc0f7ec9590faf687713f87e2899a04fdcf4e313ea4bdb73d9f55ac8eb
+    sha256: b4a0e194cf75faa928d282910957b4aa40db97ad87c1ed3976d08b43b8d860f3
 implementation:
   - path: packages/sbir-analytics/sbir_analytics/assets/sba_annual_report_structural_comparison/producer.py
     symbol: produce_count_sidecar

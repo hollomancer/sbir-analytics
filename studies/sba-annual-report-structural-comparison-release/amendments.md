@@ -83,3 +83,36 @@ No renderer input changed. The sidecar and page are unchanged:
 `d54684cc9763a49d238b8f6a1f16ac1c6ba3e3aa4b04d29737ce598902758726`. This
 revision does not authorize a tag, `approved`, a `claim_approval` block, or
 operational materialization.
+
+## Revision 3 — 2026-09-27 — release re-freeze before the 0.20.0 tag
+
+Spec Revision 5 authorizes this re-freeze. The page, the folder `README.md`,
+and the release limits now state the binding condition instead of a dated
+status, so they stay true after `studies/releases.yaml` binds this study and
+CI freezes this folder. The version bump to 0.20.0 changed `uv.lock`, which
+this manifest pins, so `uv.lock` was re-pinned in the same revision.
+
+Re-frozen bytes:
+
+- `uv.lock`:
+  `10dc596d64d96a067a4ffbd051ac61a5a9c04a98c6334cd38b7e0d46422af642`
+- `scripts/data/render_sba_structural_comparison.py`:
+  `4870f5ab468fdb12047a9d9a8b70b84cfcd2998717b6ee51140b21fcd805ca14`
+- `release/public-result.json`:
+  `25921e23a0badd7e231694f0f91b6680d287e2ff01e377394a565e71791d76fe`
+  (content digest
+  `3a811cbb966d47a161597d5f59bcc276b487153ba8e43d647488546dc6d4f6dd`)
+- `docs/public/sba-structural-comparison-release.md`:
+  `1eeca99417696d24cf4e6dd9b5dc21011babc2504035790943852000d00c7c63`
+
+Nothing in the result, estimand, permitted claims, limitations, or validation
+record changed. This revision does not authorize `approved`, a
+`claim_approval` block, or operational materialization. The tag and the
+`studies/releases.yaml` binding are separate steps after this revision.
+
+Every status sentence and every hash list in Revisions 0, 1, and 2 records
+the folder as it stood at that revision. This revision replaced that wording
+and re-pinned those bytes. The list in this revision is the current pinned
+state. Read the earlier revisions as dated history, not as the current state.
+If no annotated tag binds this study in `studies/releases.yaml`, its release
+is pending; cite the unchanged result only from release v0.18.0.

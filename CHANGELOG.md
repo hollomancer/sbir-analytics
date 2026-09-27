@@ -10,6 +10,8 @@ version.
 
 ## [Unreleased]
 
+## [0.20.0] — 2026-09-27
+
 ### Breaking
 
 - Replaced the highest study status `citable` with `approved`. A
@@ -37,6 +39,9 @@ version.
 - Successor study `sba-annual-report-structural-comparison-release` whose
   generated public page states the v0.18.0 result's status under the
   citation rule (#796).
+- Release checksum inventory for the successor study at
+  `studies/sba-annual-report-structural-comparison-release/release/checksums.sha256`,
+  so a later `studies/releases.yaml` binding can verify the tagged tree.
 
 ### Changed
 
@@ -866,7 +871,8 @@ across the root project and the three packages under `packages/`.
 `vMAJOR.MINOR.PATCH` form it requires. Per that policy published tags are never
 moved or reused, so they remain as historical markers.
 
-[Unreleased]: https://github.com/hollomancer/sbir-analytics/compare/v0.19.0...HEAD
+[Unreleased]: https://github.com/hollomancer/sbir-analytics/compare/v0.20.0...HEAD
+[0.20.0]: https://github.com/hollomancer/sbir-analytics/compare/v0.19.0...v0.20.0
 [0.19.0]: https://github.com/hollomancer/sbir-analytics/compare/v0.18.0...v0.19.0
 [0.18.0]: https://github.com/hollomancer/sbir-analytics/compare/v0.17.0...v0.18.0
 [0.17.0]: https://github.com/hollomancer/sbir-analytics/compare/v0.16.0...v0.17.0

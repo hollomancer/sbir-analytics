@@ -34,12 +34,12 @@
       {
         "label": "Public result renderer",
         "path": "scripts/data/render_sba_structural_comparison.py",
-        "sha256": "d638774669356c2f65047c32a0d610ce4b346d18f07d173850da12178c42c593"
+        "sha256": "4870f5ab468fdb12047a9d9a8b70b84cfcd2998717b6ee51140b21fcd805ca14"
       },
       {
         "label": "Environment lock",
         "path": "uv.lock",
-        "sha256": "9bf69d3ded9a412aa2a566162e009af3e1da9142f65c67cfd27667cb27ca390f"
+        "sha256": "10dc596d64d96a067a4ffbd051ac61a5a9c04a98c6334cd38b7e0d46422af642"
       },
       {
         "label": "632-cell count comparison",
@@ -7758,7 +7758,7 @@
     ],
     "prepared_for": "SBIR program managers and policy analysts in Treasury, OMB, JCT, and state economic-development offices",
     "release_blockers": [
-      "Release pending: no annotated release tag binds this study in studies/releases.yaml. Until one does, cite the unchanged result only from release v0.18.0, never from this page or a moving branch.",
+      "Release binding: this page was frozen before any tag bound this study. `studies/releases.yaml` is the authority. If no annotated tag binds this study there, its release is pending; cite the unchanged result only from release v0.18.0, never from this page or a moving branch.",
       "The published-sample reproduction blocker is permanent. The publication-era SBIR.gov export is unavailable, so no study in this repository can reproduce the counts the SBA tables were computed from. This study compares the printed counts with a current-vintage export."
     ],
     "release_status": "Validated; cite from release v0.18.0, not this page",
@@ -7827,6 +7827,6 @@
       "threshold_met": true
     }
   },
-  "content_sha256": "232fd6750e9dbc10f658350611165fc10b315cdc67d6736953bc30c822071748",
+  "content_sha256": "3a811cbb966d47a161597d5f59bcc276b487153ba8e43d647488546dc6d4f6dd",
   "schema_version": 2
 }
