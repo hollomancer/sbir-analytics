@@ -45,7 +45,6 @@ _LAZY_BY_MODULE: dict[str, tuple[str, ...]] = {
         "FilingType",
         "MAAcquisitionType",
     ),
-    "sbir_etl.models.solicitation": ("Solicitation",),
 }
 
 _LAZY_MAP: dict[str, str] = {
