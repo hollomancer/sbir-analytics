@@ -10,6 +10,8 @@ version.
 
 ## [Unreleased]
 
+## [0.20.0] — 2026-09-27
+
 ### Breaking
 
 - Replaced the highest study status `citable` with `approved`. A
@@ -37,6 +39,9 @@ version.
 - Successor study `sba-annual-report-structural-comparison-release` whose
   generated public page states the v0.18.0 result's status under the
   citation rule (#796).
+- Release checksum inventory for the successor study at
+  `studies/sba-annual-report-structural-comparison-release/release/checksums.sha256`,
+  so a later `studies/releases.yaml` binding can verify the tagged tree.
 
 ### Changed
 
