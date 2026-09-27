@@ -68,6 +68,13 @@ REGISTERED_PAIRS: tuple[RoundTripPair, ...] = (
         sidecar="studies/sba-annual-report-structural-comparison/release/public-result.json",
         renderer="scripts/data/render_sba_structural_comparison.py:render_markdown",
     ),
+    RoundTripPair(
+        markdown="docs/public/sba-structural-comparison-release.md",
+        sidecar=(
+            "studies/sba-annual-report-structural-comparison-release/release/public-result.json"
+        ),
+        renderer="scripts/data/render_sba_structural_comparison.py:render_markdown",
+    ),
 )
 
 # Renderers deliberately outside the round trip, with the reason they are exempt.

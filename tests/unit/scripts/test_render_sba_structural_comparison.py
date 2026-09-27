@@ -208,19 +208,25 @@ def test_summary_claim_cannot_revert_to_signed_only_framing() -> None:
         renderer._summary_claim(signed_only)
 
 
-def test_registry_names_the_public_result_pair() -> None:
+def test_registry_names_both_public_result_pairs() -> None:
     matching = [
         pair
         for pair in roundtrip.REGISTERED_PAIRS
         if pair.renderer_path == "scripts/data/render_sba_structural_comparison.py"
     ]
+    successor = renderer.PROFILES[renderer.SUCCESSOR_STUDY_ID]
 
     assert matching == [
         roundtrip.RoundTripPair(
             markdown=renderer.MARKDOWN_REFERENCE,
             sidecar=renderer.SIDECAR_REFERENCE,
             renderer="scripts/data/render_sba_structural_comparison.py:render_markdown",
-        )
+        ),
+        roundtrip.RoundTripPair(
+            markdown=successor.markdown_reference,
+            sidecar=successor.sidecar_reference,
+            renderer="scripts/data/render_sba_structural_comparison.py:render_markdown",
+        ),
     ]
 
 
@@ -269,3 +275,39 @@ def test_bounded_claim_uses_the_profile_prefix_and_suffix() -> None:
 
     with pytest.raises(renderer.PublicResultError, match="does not match the .* release form"):
         renderer._bounded_claim(manifest, successor)
+
+
+SUCCESSOR = renderer.PROFILES[renderer.SUCCESSOR_STUDY_ID]
+SUCCESSOR_SIDECAR = ROOT / SUCCESSOR.sidecar_reference
+SUCCESSOR_MARKDOWN = ROOT / SUCCESSOR.markdown_reference
+
+
+def test_successor_artifacts_regenerate_byte_for_byte_at_head(
+    reviewed_release_root: Path,
+) -> None:
+    payload = renderer.build_payload(ROOT, study_id=renderer.SUCCESSOR_STUDY_ID)
+    released = renderer.build_payload(reviewed_release_root)
+
+    assert renderer.serialize_payload(payload) == SUCCESSOR_SIDECAR.read_text(encoding="utf-8")
+    assert renderer.render_markdown(payload) == SUCCESSOR_MARKDOWN.read_text(encoding="utf-8")
+    assert payload["content"]["release_status"] == "Validated; release pending"
+    assert payload["content"]["study_id"] == renderer.SUCCESSOR_STUDY_ID
+    # Same result, same validation, same non-claims as v0.18.0.
+    assert payload["content"]["comparison"] == released["content"]["comparison"]
+    assert payload["content"]["validation"] == released["content"]["validation"]
+    assert payload["content"]["non_claims"] == released["content"]["non_claims"]
+    assert payload["content"]["result_summary_claim"] == released["content"]["result_summary_claim"]
+    assert payload["content"]["bounded_claim"] == released["content"]["bounded_claim"]
+
+
+def test_successor_page_states_the_citation_rule_and_the_permanent_blocker() -> None:
+    markdown = SUCCESSOR_MARKDOWN.read_text(encoding="utf-8")
+
+    assert "> **Status: Validated; release pending.**" in markdown
+    assert "may be cited as a validated result from that immutable release" in markdown
+    assert "## Release pending" in markdown
+    assert "published-sample reproduction blocker is permanent" in markdown
+    assert "make reproduce-sba-structural SBA_STUDY_ID=" in markdown
+    assert "Do not quote this result as a released finding" not in markdown
+    assert "not citable" not in markdown
+    assert "claim_approval" not in markdown
