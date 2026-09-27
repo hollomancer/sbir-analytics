@@ -1,7 +1,7 @@
 ---
 Type: Overview
 Maintainer: Conrad Hollomon
-Last-Reviewed: 2026-08-18
+Last-Reviewed: 2026-09-27
 Status: active
 ---
 
@@ -54,6 +54,7 @@ brief count as maintainer-facing.
 | [DoD industrial-base concentration](dod_supply_chain_initial_analysis.md) | A1–A3 | Early descriptive starting point | FY2012–FY2025; main results use FY2021–FY2025 |
 | [GSA and OTSB Phase III analysis](sbir-phase3-gsa-otsb-analysis.md) | B2, B3 | Working keyword analysis; known to miss some award codes | FY2008–FY2026 sources assembled 2026-06-28 |
 | [Phase II→III latency method](../phase-transition-latency.md) | B3 | Method works in the pipeline; not an approved finding | Uses the data selected for each pipeline run |
+| [STTR partner-effect feasibility](sttr-partner-effect-feasibility.md) | A4, B1–B3, E3, E5, F1, F3 | Exploratory Phase 0 availability and sample-size audit; non-citable; no model run | Public SBIR.gov snapshot retrieved 2026-09-07 plus local outcome-artifact gate checks |
 | [Follow-on multiplier method](../follow-on-multiplier-analysis.md) | A3 | Method works; testing against real outcomes is still open | Uses the selected SBIR and USAspending inputs |
 | [Multiplier repeatability test](../follow-on-multiplier-reproducibility.md) | A3 | Automated test with made-up edge cases; not a program estimate | Test data only |
 | [Commercialization benchmark method](../commercialization-benchmark-methodology.md) | B3 | Method is documented; this repository cannot recreate the local audit | FY2026 local audit described in the document |
