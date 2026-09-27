@@ -136,6 +136,10 @@ frozen_artifacts:
     sha256: 46aed9913753ad3059dbf0fb6b77f3241721af9c57ba5b7f00e63cafeed83003
   - path: docs/public/sba-structural-comparison-release.md
     sha256: 09b5b1f0617067028cfba228f7f0aa2ddebe0d6ed5e33fe2c7cd3bc9c756de7d
+  - path: studies/sba-annual-report-structural-comparison-release/reviews/successor-evidence-audit.md
+    sha256: 2db3d16355c8cd8fff8f006a6e71978f0e70cfd85b2e30f5d3107c8d28d668b8
+  - path: studies/sba-annual-report-structural-comparison-release/reviews/named-reader-review-1.md
+    sha256: e9691154f8fbf98afda41e489287036e48c5ff2e8769ccdc7f28562074ad75b6
 implementation:
   - path: packages/sbir-analytics/sbir_analytics/assets/sba_annual_report_structural_comparison/producer.py
     symbol: produce_count_sidecar
