@@ -5,10 +5,10 @@
 > **Status: Validated; release pending.**
 
 This page reports the same validated structural comparison that release v0.18.0
-froze. Nothing was re-analysed. Under the repository citation rule, a validated
-result may be cited from an immutable release with its evidence status attached.
-No release binds this study yet, so there is nothing to cite yet. The result is
-validated. It is not approved evidence.
+froze. Nothing was re-analyzed. Under the repository citation rule, that result
+may be cited as a validated result from that immutable release, with its
+evidence status attached. This successor study is not bound to a release yet.
+Its substantive claims are not approved evidence.
 
 ## Bounded claim
 
@@ -95,7 +95,7 @@ To regenerate this JSON sidecar and Markdown page together from the committed
 comparison and manifests, run:
 
 ```bash
-uv run python scripts/data/render_sba_structural_comparison.py
+uv run python scripts/data/render_sba_structural_comparison.py --study-id sba-annual-report-structural-comparison-release
 ```
 
 ## Run and artifact hashes
@@ -108,7 +108,7 @@ uv run python scripts/data/render_sba_structural_comparison.py
 | Count producer | `packages/sbir-analytics/sbir_analytics/assets/sba_annual_report_structural_comparison/producer.py` | `d20dc0d31bb680f723c1f0120ef72c4d6a31560026fea9b06236a5fa02b6ab96` |
 | Count reproduction command | `scripts/data/run_sba_structural_comparison.py` | `8e68a12d42c79379a99bffcf2345e438706cd52b5c7c0b86831519fe7dda8dcb` |
 | Public reproduction command | `scripts/data/reproduce_sba_structural_comparison.py` | `d5453a049b84ffc55762af47cac10e519b74c47103594168c206e317cd28cebc` |
-| Public result renderer | `scripts/data/render_sba_structural_comparison.py` | `366c4fb8791d92f4d60970e45d02cb8710c9ba5c165ba804f1c71ec6a3dc4930` |
+| Public result renderer | `scripts/data/render_sba_structural_comparison.py` | `be7572861bb6dfc08d95c2284436eb9ff7746399cc72310d25f58851d3a68230` |
 | Environment lock | `uv.lock` | `9bf69d3ded9a412aa2a566162e009af3e1da9142f65c67cfd27667cb27ca390f` |
 | 632-cell count comparison | `studies/sba-annual-report-structural-comparison/results/count-comparison.csv` | `e86ab66905f65adaa7fdb721ced6bcbc7b3991a288ba37156f1efe9b4bed7381` |
 | Confirmatory packet manifest | `studies/sba-annual-report-structural-comparison/validation/blind-packet-manifest-v5.json` | `51033aca620e71f71fc18d6ae398d27fe238fbf7c7d6cda4e748ba7db3299314` |
@@ -119,12 +119,12 @@ uv run python scripts/data/render_sba_structural_comparison.py
 | Sealed-component hashes | `studies/sba-annual-report-structural-comparison/validation/confirmatory/sealed-components.sha256` | `c452750aa2b717c4c5781cc758b19ef6566cb98421aa64e39d11554844c302b0` |
 | Post-result evidence audit | `studies/sba-annual-report-structural-comparison/reviews/post-result-evidence-audit.md` | `ac05b2e6d888b0b60e1ea57e0b5a32b9a4f70b6bc4d7dcb118af399975411b4a` |
 
-Public sidecar content SHA-256: `d0f320768a9ff23c3254856935d5aeea6a0fff6fbc8ae28a52b343df2db77bcc`.
+Public sidecar content SHA-256: `af83109581684ddfaa3bce182c3aa1dab6dbce270bada98edda80a1915d3fceb`.
 This content digest is SHA-256 over the sidecar's `content` object encoded as
 canonical JSON with sorted keys and compact separators. It differs from the
 whole-file SHA-256 because the file also stores this digest and schema version.
 
 ## Release pending
 
-- No annotated release tag binds this study in studies/releases.yaml. Until one does, there is no immutable object to cite.
+- No annotated release tag binds this study in studies/releases.yaml. Until one does, cite the result only from release v0.18.0, never from this page or a moving branch.
 - The published-sample reproduction blocker is permanent. The publication-era SBIR.gov export is unavailable, so no study in this repository can reproduce the counts the SBA tables were computed from. This study compares the printed counts with a current-vintage export.

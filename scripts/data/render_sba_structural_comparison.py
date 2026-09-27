@@ -64,6 +64,7 @@ class StudyProfile:
     status_lines: tuple[str, ...]
     release_heading: str
     reproduction_command: str
+    renderer_command: str
 
 
 PROFILES: dict[str, StudyProfile] = {
@@ -81,6 +82,7 @@ PROFILES: dict[str, StudyProfile] = {
         ),
         release_heading="## Release gates still open",
         reproduction_command=REPRODUCTION_COMMAND,
+        renderer_command=RENDER_COMMAND,
     ),
     SUCCESSOR_STUDY_ID: StudyProfile(
         study_id=SUCCESSOR_STUDY_ID,
@@ -92,13 +94,14 @@ PROFILES: dict[str, StudyProfile] = {
         claim_suffix=" Cite this statement only from",
         status_lines=(
             "This page reports the same validated structural comparison that release v0.18.0",
-            "froze. Nothing was re-analysed. Under the repository citation rule, a validated",
-            "result may be cited from an immutable release with its evidence status attached.",
-            "No release binds this study yet, so there is nothing to cite yet. The result is",
-            "validated. It is not approved evidence.",
+            "froze. Nothing was re-analyzed. Under the repository citation rule, that result",
+            "may be cited as a validated result from that immutable release, with its",
+            "evidence status attached. This successor study is not bound to a release yet.",
+            "Its substantive claims are not approved evidence.",
         ),
         release_heading="## Release pending",
         reproduction_command=f"{REPRODUCTION_COMMAND} SBA_STUDY_ID={SUCCESSOR_STUDY_ID}",
+        renderer_command=f"{RENDER_COMMAND} --study-id {SUCCESSOR_STUDY_ID}",
     ),
 }
 
@@ -777,7 +780,7 @@ def build_payload(
         "reproduction": {
             "setup_command": "make install-core",
             "one_command": profile.reproduction_command,
-            "renderer_command": RENDER_COMMAND,
+            "renderer_command": profile.renderer_command,
         },
     }
     payload = {

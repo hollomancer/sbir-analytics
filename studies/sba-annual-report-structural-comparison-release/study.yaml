@@ -129,13 +129,13 @@ frozen_artifacts:
   - path: studies/sba-annual-report-structural-comparison/reviews/revision-11-evidence-audit.md
     sha256: f60888d4ddcaf5485f783bd11dd045e9095745c38c8798f14729ceb3b9733407
   - path: scripts/data/render_sba_structural_comparison.py
-    sha256: 366c4fb8791d92f4d60970e45d02cb8710c9ba5c165ba804f1c71ec6a3dc4930
+    sha256: be7572861bb6dfc08d95c2284436eb9ff7746399cc72310d25f58851d3a68230
   - path: scripts/data/reproduce_sba_structural_comparison.py
     sha256: d5453a049b84ffc55762af47cac10e519b74c47103594168c206e317cd28cebc
   - path: studies/sba-annual-report-structural-comparison-release/release/public-result.json
-    sha256: 4d5b67caa05cefadd88de2d4e89944f647101a8daadc9c22ef65546dd1463785
+    sha256: 73900826aeae0d5c70457daf02fd568fddafe422802de7da664ec2c7ae9b2c77
   - path: docs/public/sba-structural-comparison-release.md
-    sha256: b81746c87b8ff7d199e8e5485756787900cdde06240c00bad14b5abe7a3fa6ef
+    sha256: d6470ea378c64500d5713f3b93ca77d8fcd7f5d12837bbd51afdde1973e610dc
 implementation:
   - path: packages/sbir-analytics/sbir_analytics/assets/sba_annual_report_structural_comparison/producer.py
     symbol: produce_count_sidecar
@@ -162,7 +162,8 @@ materialization:
   blockers:
     - >-
       No annotated release tag binds this study in studies/releases.yaml.
-      Until one does, there is no immutable object to cite.
+      Until one does, cite the result only from release v0.18.0, never from
+      this page or a moving branch.
     - >-
       The published-sample reproduction blocker is permanent. The
       publication-era SBIR.gov export is unavailable, so no study in this

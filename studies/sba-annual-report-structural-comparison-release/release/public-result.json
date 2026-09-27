@@ -34,7 +34,7 @@
       {
         "label": "Public result renderer",
         "path": "scripts/data/render_sba_structural_comparison.py",
-        "sha256": "366c4fb8791d92f4d60970e45d02cb8710c9ba5c165ba804f1c71ec6a3dc4930"
+        "sha256": "be7572861bb6dfc08d95c2284436eb9ff7746399cc72310d25f58851d3a68230"
       },
       {
         "label": "Environment lock",
@@ -7758,13 +7758,13 @@
     ],
     "prepared_for": "SBIR program managers and policy analysts in Treasury, OMB, JCT, and state economic-development offices",
     "release_blockers": [
-      "No annotated release tag binds this study in studies/releases.yaml. Until one does, there is no immutable object to cite.",
+      "No annotated release tag binds this study in studies/releases.yaml. Until one does, cite the result only from release v0.18.0, never from this page or a moving branch.",
       "The published-sample reproduction blocker is permanent. The publication-era SBIR.gov export is unavailable, so no study in this repository can reproduce the counts the SBA tables were computed from. This study compares the printed counts with a current-vintage export."
     ],
     "release_status": "Validated; release pending",
     "reproduction": {
       "one_command": "make reproduce-sba-structural SBA_STUDY_ID=sba-annual-report-structural-comparison-release",
-      "renderer_command": "uv run python scripts/data/render_sba_structural_comparison.py",
+      "renderer_command": "uv run python scripts/data/render_sba_structural_comparison.py --study-id sba-annual-report-structural-comparison-release",
       "setup_command": "make install-core"
     },
     "result_summary_claim": "The comparison contains 632 count cells: 276 are exact and 356 are unresolved. Recomputed minus published counts sum to +333, while absolute cell differences sum to 869. Of the 276 exact cells, 57 are zero versus zero. Among the 575 cells where either source reports a nonzero count, 219 are exact. The unresolved cells comprise 208 positive and 148 negative recomputed-minus-published differences. These summaries are not an omitted-award estimate, a source-correctness verdict, or a causal explanation.",
@@ -7827,6 +7827,6 @@
       "threshold_met": true
     }
   },
-  "content_sha256": "d0f320768a9ff23c3254856935d5aeea6a0fff6fbc8ae28a52b343df2db77bcc",
+  "content_sha256": "af83109581684ddfaa3bce182c3aa1dab6dbce270bada98edda80a1915d3fceb",
   "schema_version": 2
 }
