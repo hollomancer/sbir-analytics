@@ -86,11 +86,11 @@ operational materialization.
 
 ## Revision 3 — 2026-09-27 — release re-freeze before the 0.20.0 tag
 
-Spec Revision 5 authorizes this re-freeze. The page, this README, and the
-release limits now state the binding condition instead of a dated status, so
-they stay true after `studies/releases.yaml` binds this study and CI freezes
-this folder. The version bump to 0.20.0 changed `uv.lock`, which this manifest
-pins, so `uv.lock` was re-pinned in the same revision.
+Spec Revision 5 authorizes this re-freeze. The page, the folder `README.md`,
+and the release limits now state the binding condition instead of a dated
+status, so they stay true after `studies/releases.yaml` binds this study and
+CI freezes this folder. The version bump to 0.20.0 changed `uv.lock`, which
+this manifest pins, so `uv.lock` was re-pinned in the same revision.
 
 Re-frozen bytes:
 
@@ -109,3 +109,7 @@ Nothing in the result, estimand, permitted claims, limitations, or validation
 record changed. This revision does not authorize `approved`, a
 `claim_approval` block, or operational materialization. The tag and the
 `studies/releases.yaml` binding are separate steps after this revision.
+
+Revision 0's status line and Revision 1's description of the page wording
+record the folder as it stood at those revisions. This revision replaced
+that wording. Read them as dated history, not as the current state.
