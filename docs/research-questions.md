@@ -869,7 +869,8 @@ dollar return on the SBIR program?*
   publication-era export.
   *Deps: none · Refs: [L18] · Studies:
   [historical work](../studies/sba-annual-report-tables/study.yaml),
-  [prospective structural comparison](../studies/sba-annual-report-structural-comparison/study.yaml)*
+  [prospective structural comparison](../studies/sba-annual-report-structural-comparison/study.yaml),
+  [release page study](../studies/sba-annual-report-structural-comparison-release/study.yaml)*
 
 - **NAICS coverage and fallback usage**
   What is NAICS-sector coverage across awards, and how often is the fallback
