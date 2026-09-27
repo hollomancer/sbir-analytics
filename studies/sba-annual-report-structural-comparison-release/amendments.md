@@ -110,6 +110,9 @@ record changed. This revision does not authorize `approved`, a
 `claim_approval` block, or operational materialization. The tag and the
 `studies/releases.yaml` binding are separate steps after this revision.
 
-Revision 0's status line and Revision 1's description of the page wording
-record the folder as it stood at those revisions. This revision replaced
-that wording. Read them as dated history, not as the current state.
+Every status sentence and every hash list in Revisions 0, 1, and 2 records
+the folder as it stood at that revision. This revision replaced that wording
+and re-pinned those bytes. The list in this revision is the current pinned
+state. Read the earlier revisions as dated history, not as the current state.
+If no annotated tag binds this study in `studies/releases.yaml`, its release
+is pending; cite the unchanged result only from release v0.18.0.
