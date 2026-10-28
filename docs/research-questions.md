@@ -579,6 +579,16 @@ statutory goal is Phase III commercialization.*
   classification criteria are not frozen.
   *Deps: ER · Refs: [L7] · Spec: [../specs/sttr-spinout-linkage/](../specs/sttr-spinout-linkage/)*
 
+- <a id="b1-sttr-collaboration-network"></a>**Funded STTR collaboration network**
+  Across canonical funded STTR awards observed in one pinned raw SBIR.gov export,
+  what does the firm–research-institution collaboration network look like:
+  first-observed and repeated dyads, concentration, partner reuse, agency and year
+  variation, and missing research-institution names?
+  **Status:** Exploratory and non-citable. The current work is a one-pinned-export,
+  surface-name atlas of the funded portfolio, not an identity-resolved federal census,
+  an applicant-pool analysis, or an estimate of access, equity, or program effects.
+  *Deps: ER for identity-resolved promotion · Refs: [L7]*
+
 ### B2. Relational (Tier 2)
 
 - **Award-to-contract transition**
