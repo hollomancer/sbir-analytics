@@ -120,6 +120,7 @@ def _source_manifest(
     annual_reports: tuple[study.AnnualReportSource, ...],
     captured_tables: tuple[study.CapturedTableSource, ...],
     allowed: bool = True,
+    award_export_row_count: int = 3,
 ) -> dict[str, object]:
     sources: list[dict[str, object]] = [
         {
@@ -128,7 +129,7 @@ def _source_manifest(
             "metadata_path": award_export_metadata.reference,
             "sha256": award_export.sha256,
             "size_bytes": award_export.size_bytes,
-            "row_count": 3,
+            "row_count": award_export_row_count,
             "column_count": len(SBIR_GOV_SOURCE_COLUMNS),
             "ordered_header_sha256": ordered_columns_sha256(SBIR_GOV_SOURCE_COLUMNS),
             "durable_uri": "https://example.test/award-export.csv?version=fixture",
@@ -173,7 +174,7 @@ def _source_manifest(
     }
 
 
-def _fixture_bundle(tmp_path: Path) -> FixtureBundle:
+def _fixture_bundle(tmp_path: Path, extra_award_rows: tuple[list[str], ...] = ()) -> FixtureBundle:
     root = tmp_path / "repo"
     source_dir = root / "sources"
     study_dir = root / "studies" / study.STUDY_ID
@@ -185,6 +186,7 @@ def _fixture_bundle(tmp_path: Path) -> FixtureBundle:
         _award_row(),
         _award_row(Company="Fixture Co 2"),
         _award_row(Company="Blank State", State=""),
+        *extra_award_rows,
     ]
     with export_path.open("w", encoding="utf-8", newline="") as handle:
         writer = csv.writer(handle)
@@ -253,6 +255,7 @@ def _fixture_bundle(tmp_path: Path) -> FixtureBundle:
                 award_export_metadata=metadata_pin,
                 annual_reports=reports_tuple,
                 captured_tables=captured_tuple,
+                award_export_row_count=len(rows),
             ),
             indent=2,
             sort_keys=True,
@@ -360,6 +363,47 @@ def test_builds_all_632_count_cells_with_only_exact_or_unresolved_status(
     assert set(product.frame["comparison_status"]) == {"exact", "unresolved"}
     assert not any("usd" in column.lower() for column in product.frame)
     assert "structural_check_passed" not in product.frame
+
+
+def test_direct_to_phase_ii_rows_count_as_phase_ii(tmp_path: Path) -> None:
+    """The direct-to-Phase-II label must aggregate with plain Phase II.
+
+    SBIR.gov introduced ``Phase II - Direct to Phase II`` (en dash upstream) in
+    the 2026-10-21 export by relabelling rows earlier vintages carried as plain
+    ``Phase II``. Before the shared counting policy the phase guard rejected the
+    whole export, so this is a regression test for a hard failure.
+    """
+
+    fixture = _fixture_bundle(
+        tmp_path,
+        extra_award_rows=(
+            _award_row(
+                Company="Direct To Phase II Co",
+                Phase="Phase II \u2013 Direct to Phase II",
+            ),
+        ),
+    )
+
+    product = study.build_count_comparison(fixture.inputs, pdf_page_counter=_page_count)
+
+    phase_ii = product.frame.query(
+        "report_year == 2020 and jurisdiction == 'AK' and program == 'SBIR' and phase == 'Phase II'"
+    ).iloc[0]
+    assert int(phase_ii["recomputed_count"]) == 1
+    # The source spelling never reaches the sidecar; only counted phases do.
+    assert set(product.frame["phase"]) == {"Phase I", "Phase II"}
+
+
+def test_unclassified_phase_value_fails_closed(tmp_path: Path) -> None:
+    """An unclassified Phase spelling must fail loudly, not be counted or dropped."""
+
+    fixture = _fixture_bundle(
+        tmp_path,
+        extra_award_rows=(_award_row(Company="Odd Phase Co", Phase="Phase IIB"),),
+    )
+
+    with pytest.raises(study.StructuralComparisonError, match="classified vocabulary"):
+        study.build_count_comparison(fixture.inputs, pdf_page_counter=_page_count)
 
 
 @pytest.mark.parametrize("target", ["award_export", "award_export_metadata"])

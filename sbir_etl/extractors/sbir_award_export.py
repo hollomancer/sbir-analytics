@@ -10,9 +10,10 @@ from __future__ import annotations
 import csv
 import hashlib
 import json
-from collections.abc import Iterator
+from collections.abc import Iterable, Iterator, Mapping
 from dataclasses import dataclass
 from pathlib import Path
+from types import MappingProxyType
 
 import pandas as pd
 from pydantic import ValidationError as PydanticValidationError
@@ -67,6 +68,119 @@ SBIR_GOV_SOURCE_COLUMNS: tuple[str, ...] = (
     "RI POC Name",
     "RI POC Phone",
 )
+
+
+_NULL_PHASE_TOKENS = frozenset({"", "<NA>", "NAN", "NONE", "NULL", r"\N"})
+_PHASE_LABELS = frozenset({"I", "II", "III"})
+
+# The literal ``Phase`` spellings the public export is known to emit. SBIR.gov
+# added the direct-to-Phase-II value in the 2026-10-21 vintage by relabelling
+# 3,303 rows that the 2026-09-17 vintage carried as plain ``Phase II``; the
+# award rows themselves are unchanged, so this is a vocabulary change rather
+# than new awards. The live export emits an en dash (U+2013); the ASCII hyphen
+# is accepted so an upstream punctuation change is not an outage.
+DIRECT_TO_PHASE_II_LABELS: frozenset[str] = frozenset(
+    {
+        "PHASE II \u2013 DIRECT TO PHASE II",
+        "PHASE II - DIRECT TO PHASE II",
+    }
+)
+
+# Source label -> the phase it COUNTS AS. A direct-to-Phase-II award is a
+# Phase II award for counting purposes: it skips Phase I rather than being a
+# different instrument, and SBA's published tables count it under Phase II.
+SBIR_PHASE_VOCABULARY: Mapping[str, str] = MappingProxyType(
+    {
+        "PHASE I": "I",
+        "PHASE II": "II",
+        "PHASE III": "III",
+        **dict.fromkeys(sorted(DIRECT_TO_PHASE_II_LABELS), "II"),
+    }
+)
+
+
+def _phase_text(value: object) -> str | None:
+    """Return the whitespace-collapsed, upper-cased label, or None if absent."""
+
+    if value is None or (isinstance(value, float) and pd.isna(value)):
+        return None
+    text = " ".join(str(value).split()).upper()
+    return None if text in _NULL_PHASE_TOKENS else text
+
+
+def normalize_sbir_phase(value: object) -> str | None:
+    """Return the exact SBIR.gov ``Phase`` label as ``"I"``, ``"II"``, ``"III"``, or None.
+
+    Accepts the bare numeral or the ``Phase <numeral>`` form after trimming
+    surrounding whitespace and folding case. Any other value is None: digits
+    (``"2"``), suffix-coded labels (``"Phase II - Direct to Phase II"``), and
+    ranges (``"Phase I/II"``) are not silently mapped to a base phase.
+
+    This answers *what the source field literally says*. For any population
+    count, table reconciliation, or phase filter use
+    :func:`sbir_phase_for_counting`, which applies the program policy that a
+    direct-to-Phase-II award counts as Phase II.
+    """
+
+    if value is None or (isinstance(value, float) and pd.isna(value)):
+        return None
+    text = str(value).strip().upper()
+    if text in _NULL_PHASE_TOKENS:
+        return None
+    if text.startswith("PHASE "):
+        text = text.removeprefix("PHASE ").strip()
+    return text if text in _PHASE_LABELS else None
+
+
+def sbir_phase_for_counting(value: object) -> str | None:
+    """Return the phase a source label counts as, or None when unrecognized.
+
+    This is the program-policy rule and the one to use for counting. It differs
+    from :func:`normalize_sbir_phase` on exactly one known spelling: the
+    direct-to-Phase-II label returns ``"II"`` here and None there.
+
+    None means the label is outside the classified vocabulary, which callers
+    should treat as a loud failure rather than as "no phase" — see
+    :func:`unknown_sbir_phase_values`.
+    """
+
+    text = _phase_text(value)
+    if text is None:
+        return None
+    if (phase := SBIR_PHASE_VOCABULARY.get(text)) is not None:
+        return phase
+    return normalize_sbir_phase(text)
+
+
+def is_direct_to_phase_ii(value: object) -> bool:
+    """Return True when the label is the direct-to-Phase-II spelling.
+
+    Lets a consumer report these rows separately while still counting them as
+    Phase II.
+    """
+
+    text = _phase_text(value)
+    return text is not None and text in DIRECT_TO_PHASE_II_LABELS
+
+
+def unknown_sbir_phase_values(values: Iterable[object]) -> list[str]:
+    """Return the sorted distinct labels outside the classified vocabulary.
+
+    Blank and sentinel values are not reported. A non-empty result means the
+    export introduced a ``Phase`` spelling this repository has not classified;
+    the caller should fail loudly rather than guess which phase it counts as,
+    because guessing silently moves award populations.
+    """
+
+    unknown: set[str] = set()
+    for value in values:
+        text = _phase_text(value)
+        if text is None:
+            continue
+        if text in SBIR_PHASE_VOCABULARY or normalize_sbir_phase(text) is not None:
+            continue
+        unknown.add(text)
+    return sorted(unknown)
 
 
 class SbirGovSourceError(ValueError):
@@ -203,14 +317,20 @@ def load_verified_award_export(
 
 __all__ = [
     "AwardExportInspection",
+    "DIRECT_TO_PHASE_II_LABELS",
     "EPISTEMIC_TIER",
     "SBIR_GOV_SOURCE_COLUMNS",
+    "SBIR_PHASE_VOCABULARY",
     "SbirGovSourceError",
     "VerifiedAwardExport",
     "inspect_sbir_gov_csv",
+    "is_direct_to_phase_ii",
     "iter_sbir_gov_rows",
     "load_verified_award_export",
+    "normalize_sbir_phase",
     "ordered_columns_sha256",
     "read_award_export_metadata",
     "read_sbir_gov_csv",
+    "sbir_phase_for_counting",
+    "unknown_sbir_phase_values",
 ]

@@ -6,12 +6,18 @@ from pathlib import Path
 import pytest
 
 from sbir_etl.extractors.sbir_award_export import (
+    DIRECT_TO_PHASE_II_LABELS,
     SBIR_GOV_SOURCE_COLUMNS,
+    SBIR_PHASE_VOCABULARY,
     SbirGovSourceError,
     inspect_sbir_gov_csv,
+    is_direct_to_phase_ii,
     load_verified_award_export,
+    normalize_sbir_phase,
     ordered_columns_sha256,
     read_sbir_gov_csv,
+    sbir_phase_for_counting,
+    unknown_sbir_phase_values,
 )
 from sbir_etl.models.award_export import AwardExportSourceMetadata
 from sbir_etl.utils.data.file_io import file_sha256
@@ -176,3 +182,105 @@ def test_verified_loader_rejects_incomplete_metadata(tmp_path: Path) -> None:
 
     with pytest.raises(SbirGovSourceError, match="metadata is invalid"):
         load_verified_award_export(source, sidecar)
+
+
+DIRECT_TO_PHASE_II_EN_DASH = "Phase II \u2013 Direct to Phase II"
+
+
+@pytest.mark.parametrize(
+    ("value", "expected"),
+    [
+        ("Phase I", "I"),
+        ("  phase ii ", "II"),
+        ("PHASE III", "III"),
+        ("II", "II"),
+        (None, None),
+        ("", None),
+        ("<NA>", None),
+        (float("nan"), None),
+        # Adversarial: a looser rule would map each of these to a base phase.
+        (DIRECT_TO_PHASE_II_EN_DASH, None),
+        ("Phase II - Direct to Phase II", None),
+        ("Phase II Sequential", None),
+        ("Phase IIB", None),
+        ("Phase I/II", None),
+        ("Phase 2", None),
+        ("Phase IV", None),
+        ("Phase", None),
+    ],
+)
+def test_normalize_sbir_phase_accepts_exact_labels_only(
+    value: object, expected: str | None
+) -> None:
+    assert normalize_sbir_phase(value) == expected
+
+
+@pytest.mark.parametrize(
+    ("value", "expected"),
+    [
+        ("Phase I", "I"),
+        ("Phase II", "II"),
+        ("PHASE III", "III"),
+        ("II", "II"),
+        # Program policy: a direct-to-Phase-II award counts as Phase II.
+        (DIRECT_TO_PHASE_II_EN_DASH, "II"),
+        ("Phase II - Direct to Phase II", "II"),
+        ("  phase ii  \u2013  direct to phase ii ", "II"),
+        (None, None),
+        ("", None),
+        ("<NA>", None),
+        (float("nan"), None),
+        # Still unclassified: these must not be guessed into a phase.
+        ("Phase IIB", None),
+        ("Phase I/II", None),
+        ("Phase 2", None),
+    ],
+)
+def test_sbir_phase_for_counting_applies_the_program_policy(
+    value: object, expected: str | None
+) -> None:
+    assert sbir_phase_for_counting(value) == expected
+
+
+def test_counting_and_exact_rules_differ_only_on_direct_to_phase_ii() -> None:
+    """Pin the one intentional divergence between the two phase rules."""
+
+    for label in DIRECT_TO_PHASE_II_LABELS:
+        assert normalize_sbir_phase(label) is None
+        assert sbir_phase_for_counting(label) == "II"
+    for label in ("Phase I", "Phase II", "Phase III", "I", "II", "III"):
+        assert normalize_sbir_phase(label) == sbir_phase_for_counting(label)
+
+
+def test_the_live_export_spelling_uses_an_en_dash() -> None:
+    """The export emits U+2013; the ASCII hyphen is accepted as a fallback."""
+
+    assert "\u2013" in DIRECT_TO_PHASE_II_EN_DASH
+    assert is_direct_to_phase_ii(DIRECT_TO_PHASE_II_EN_DASH)
+    assert is_direct_to_phase_ii("phase ii - direct to phase ii")
+    assert not is_direct_to_phase_ii("Phase II")
+    assert not is_direct_to_phase_ii(None)
+
+
+def test_every_vocabulary_entry_resolves_to_a_counted_phase() -> None:
+    for label, phase in SBIR_PHASE_VOCABULARY.items():
+        assert phase in {"I", "II", "III"}
+        assert sbir_phase_for_counting(label) == phase
+
+
+def test_unknown_sbir_phase_values_reports_only_unclassified_labels() -> None:
+    observed = [
+        "Phase I",
+        "Phase II",
+        DIRECT_TO_PHASE_II_EN_DASH,
+        "",
+        None,
+        "<NA>",
+        "Phase IIB",
+        "phase iib",
+        "Phase I/II",
+    ]
+
+    # Blank and sentinel values are not reported; case/whitespace variants collapse.
+    assert unknown_sbir_phase_values(observed) == ["PHASE I/II", "PHASE IIB"]
+    assert unknown_sbir_phase_values(["Phase I", "Phase II"]) == []
