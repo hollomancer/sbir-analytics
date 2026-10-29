@@ -13,6 +13,20 @@ These contracts define the row-level shape of the four phase-transition assets:
   "any-within-5-years" are derived downstream.
 - ``PhaseTransitionSurvival``: one row per Phase II award with a
   time-to-event-or-censor frame suitable for Kaplan-Meier fitting.
+
+Program provenance (SBIR vs. STTR) is carried on all four contracts as a
+nullable ``program``, because a research question about STTR specifically
+cannot be answered from an outcome table that has dropped it. Program is only
+ever recorded when a source states it directly, and ``None`` means "no source
+stated it" — not "not SBIR", and not "assume the majority program". Unknown-
+program records are excluded from both the numerator and the denominator of
+any program-specific measure and reported as their own stratum; see
+``sbir_etl.models.sbir_program.program_specific_measure``, which implements
+that policy so callers do not each reimplement it.
+
+Task-order inheritance does **not** confer program. A ``parent_declared`` row
+keeps ``program=None`` even when its parent IDV is ST3-coded; the reasoning is
+recorded on ``PhaseIIIContract.program``.
 """
 
 from __future__ import annotations
@@ -22,6 +36,8 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
+from sbir_etl.models.sbir_program import SbirProgram
+
 PhaseIISource = Literal["fpds_contract", "usaspending_assistance", "sbir_gov"]
 IdentifierBasis = Literal["uei", "duns_crosswalk", "name_fallback"]
 PhaseIIIEvidence = Literal[
@@ -30,6 +46,18 @@ PhaseIIIEvidence = Literal[
     "direct_research",
     "parent_declared",
 ]
+
+# How a Phase III row's SBIR/STTR program was established. Mirrors
+# ``PhaseIIIEvidence``: it names the source of the claim, not its content.
+#
+# Only one value exists, and that is the finding rather than an oversight.
+# FPDS Element 10Q is the single mechanism that states the program on a
+# Phase III contract row: ``SR3`` means SBIR and ``ST3`` means STTR. The other
+# three ``PhaseIIIEvidence`` paths establish the *phase* and say nothing about
+# the program, so rows identified by them carry ``program=None``. Should a
+# future path state the program directly, add its value here; do not reuse
+# ``direct_10q`` for a claim 10Q did not make.
+PhaseIIIProgramEvidence = Literal["direct_10q"]
 
 
 class PhaseIIAward(BaseModel):
@@ -79,6 +107,16 @@ class PhaseIIAward(BaseModel):
             "used for latency: `Phase III action_date - this field`."
         ),
     )
+    program: SbirProgram | None = Field(
+        None,
+        description=(
+            "SBIR or STTR, when a source states it directly: the canonical "
+            "SBIR.gov `Program` column for `sbir_gov` rows, or the FPDS "
+            "Element 10Q `research` code (SR2/ST2) for federal rows. Null "
+            "whenever neither is present — never inferred from firm, agency, "
+            "or any other correlate."
+        ),
+    )
     source: PhaseIISource = Field(
         ..., description="Federal source system this Phase II row came from."
     )
@@ -95,7 +133,33 @@ class PhaseIIAward(BaseModel):
 
 
 class PhaseIIIContract(BaseModel):
-    """A single FPDS Phase III contract row."""
+    """A single FPDS Phase III contract row.
+
+    Program inheritance is deliberately not implemented. A ``parent_declared``
+    row is Phase III because its parent IDV declares SBIR/STTR Phase III, and
+    the program is **not** inherited along that edge, for three reasons:
+
+    1. An IDV is a contract vehicle, not a program membership. Task orders
+       placed under one vehicle need not share the program of whatever coding
+       or description qualified the vehicle.
+    2. The parent qualifies through either a 10Q code or the Phase III
+       description regex, and that regex matches SBIR *or* STTR by
+       construction (``\\b(?:SBIR|STTR)\\b``, and likewise the spelled-out
+       form). A description reading "SBIR/STTR Phase III" names both, so for
+       description-qualified parents there is frequently no program to inherit
+       even in principle.
+    3. The error is asymmetric. STTR is the minority program — in the FPDS 10Q
+       Phase III population it is roughly 7-12% of coded awards depending on
+       agency — so a wrong inheritance pollutes the small stratum far more than
+       the large one, which is exactly the stratum an STTR research question
+       depends on.
+
+    Inheriting would also be the same class of operation the unknown-program
+    policy forbids elsewhere: taking the program from a *different* award
+    record. If a future revision does implement it, it must be recorded as its
+    own ``PhaseIIIProgramEvidence`` value naming inheritance — never as
+    ``direct_10q``, which asserts the row's own 10Q code stated the program.
+    """
 
     contract_id: str = Field(..., description="PIID or generated_unique_award_id.")
     parent_contract_id: str | None = Field(
@@ -122,6 +186,25 @@ class PhaseIIIContract(BaseModel):
             "agree so a consumer can filter on either."
         ),
     )
+    program: SbirProgram | None = Field(
+        None,
+        description=(
+            "SBIR or STTR, when the row's own FPDS Element 10Q `research` code "
+            "states it: SR3 -> SBIR, ST3 -> STTR. Null on every other "
+            "identification path, because those establish the phase and say "
+            "nothing about the program. Never inferred from firm, agency, a "
+            "paired Phase II award, the parent IDV, or the match method."
+        ),
+    )
+    program_evidence: PhaseIIIProgramEvidence | None = Field(
+        None,
+        description=(
+            "How `program` was established. Null exactly when `program` is "
+            "null; the two are validated to agree so a consumer can filter on "
+            "either. Mirrors `phase_iii_evidence`, which records how the "
+            "*phase* was established — the two are independent."
+        ),
+    )
     recipient_uei: str | None = Field(None, description="12-char UEI, if known.")
     recipient_duns: str | None = Field(None, description="9-digit DUNS, if known.")
     recipient_name: str | None = Field(None, description="Vendor name at time of award.")
@@ -146,6 +229,22 @@ class PhaseIIIContract(BaseModel):
             )
         return self
 
+    @model_validator(mode="after")
+    def _program_matches_program_evidence(self) -> PhaseIIIContract:
+        """Reject a program without evidence, or evidence without a program.
+
+        A program with no recorded evidence is an unattributed claim, and
+        evidence with no program is a claim that was never made. Both are
+        rejected so that `program is None` means exactly "no source stated it".
+        """
+
+        if (self.program is None) != (self.program_evidence is None):
+            raise ValueError(
+                f"program={self.program!r} and program_evidence="
+                f"{self.program_evidence!r} must both be set or both be null"
+            )
+        return self
+
 
 class PhaseTransitionPair(BaseModel):
     """One row per (Phase II, subsequent Phase III) candidate pair."""
@@ -158,11 +257,25 @@ class PhaseTransitionPair(BaseModel):
     phase_ii_award_id: str = Field(..., description="Phase II award_id.")
     phase_ii_source: PhaseIISource
     phase_ii_agency: str | None = Field(None)
+    phase_ii_program: SbirProgram | None = Field(
+        None,
+        description="`PhaseIIAward.program`, carried through unchanged. Null if unknown.",
+    )
     phase_ii_end_date: date = Field(
         ..., description="Phase II period_of_performance end — latency anchor."
     )
     phase_iii_contract_id: str = Field(...)
     phase_iii_agency: str | None = Field(None)
+    phase_iii_program: SbirProgram | None = Field(
+        None,
+        description=(
+            "`PhaseIIIContract.program`, carried through unchanged. Null if "
+            "unknown. Deliberately independent of `phase_ii_program`: the two "
+            "sides are not reconciled and neither fills the other, so a pair "
+            "with a known Phase II program and an unknown Phase III program "
+            "stays unknown on the Phase III side."
+        ),
+    )
     phase_iii_action_date: date = Field(..., description="Phase III action date — latency anchor.")
     latency_days: int = Field(
         ...,
@@ -189,6 +302,16 @@ class PhaseTransitionSurvival(BaseModel):
     recipient_uei: str | None = Field(None)
     recipient_duns: str | None = Field(None)
     phase_ii_agency: str | None = Field(None)
+    phase_ii_program: SbirProgram | None = Field(
+        None,
+        description=(
+            "`PhaseIIAward.program`, carried through unchanged, so a survival "
+            "frame can be stratified by program. Null if unknown; an "
+            "unknown-program row must be dropped from a program-specific fit "
+            "rather than pooled into one — see "
+            "`sbir_etl.models.sbir_program.program_specific_measure`."
+        ),
+    )
     phase_ii_end_date: date = Field(...)
     event_observed: bool = Field(
         ..., description="True iff a matched Phase III was observed before the data cut."
@@ -217,6 +340,7 @@ __all__ = [
     "PhaseIISource",
     "PhaseIIIContract",
     "PhaseIIIEvidence",
+    "PhaseIIIProgramEvidence",
     "PhaseTransitionPair",
     "PhaseTransitionSurvival",
 ]

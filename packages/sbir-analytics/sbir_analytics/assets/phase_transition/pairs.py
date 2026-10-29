@@ -30,6 +30,7 @@ from .utils import (
     env_str,
     logger,
     now_utc_iso,
+    nullable_str_series,
     parse_data_cut_date,
     write_json,
 )
@@ -46,9 +47,11 @@ PAIR_COLUMNS: list[str] = [
     "phase_ii_award_id",
     "phase_ii_source",
     "phase_ii_agency",
+    "phase_ii_program",
     "phase_ii_end_date",
     "phase_iii_contract_id",
     "phase_iii_agency",
+    "phase_iii_program",
     "phase_iii_action_date",
     "latency_days",
     "same_agency",
@@ -60,11 +63,33 @@ SURVIVAL_COLUMNS: list[str] = [
     "recipient_uei",
     "recipient_duns",
     "phase_ii_agency",
+    "phase_ii_program",
     "phase_ii_end_date",
     "event_observed",
     "event_date",
     "time_days",
 ]
+
+
+def _with_program_column(frame: pd.DataFrame) -> pd.DataFrame:
+    """Return ``frame`` with a ``program`` column whose nulls read as ``None``.
+
+    Two jobs, both about absence rather than content:
+
+    - A mart parquet written before program provenance existed has no such
+      column at all. Materializing it as all-null lets the pair and survival
+      builders run against a stale upstream table, and is not an imputation:
+      those rows genuinely have no program on record, which is exactly what
+      null means here.
+    - Where the column exists, its missing entries are normalized to ``None``.
+      A parquet round-trip or a caller-built frame can arrive carrying ``NaN``,
+      which is a float rather than a missing string and which the row contracts
+      reject.
+    """
+
+    if "program" not in frame.columns:
+        return frame.assign(program=nullable_str_series([None] * len(frame), frame.index))
+    return frame.assign(program=nullable_str_series(frame["program"].tolist(), frame.index))
 
 
 def _join_on(
@@ -83,6 +108,9 @@ def _join_on(
     if phase_ii.empty or phase_iii.empty:
         return pd.DataFrame(columns=PAIR_COLUMNS)
 
+    phase_ii = _with_program_column(phase_ii)
+    phase_iii = _with_program_column(phase_iii)
+
     # Narrow each side to only the columns we need and rename up-front to
     # avoid pandas' merge-suffix gymnastics.
     ii = (
@@ -93,6 +121,7 @@ def _join_on(
                 "award_id",
                 "source",
                 "agency",
+                "program",
                 "period_of_performance_end",
                 "recipient_uei",
                 "recipient_duns",
@@ -103,6 +132,7 @@ def _join_on(
                 "award_id": "phase_ii_award_id",
                 "source": "phase_ii_source",
                 "agency": "phase_ii_agency",
+                "program": "phase_ii_program",
                 "period_of_performance_end": "phase_ii_end_date",
             }
         )
@@ -110,11 +140,22 @@ def _join_on(
     )
     iii = (
         phase_iii.loc[phase_iii[key].notna()]
-        .loc[:, ["contract_id", "agency", "action_date", "recipient_uei", "recipient_duns"]]
+        .loc[
+            :,
+            [
+                "contract_id",
+                "agency",
+                "program",
+                "action_date",
+                "recipient_uei",
+                "recipient_duns",
+            ],
+        ]
         .rename(
             columns={
                 "contract_id": "phase_iii_contract_id",
                 "agency": "phase_iii_agency",
+                "program": "phase_iii_program",
                 "action_date": "phase_iii_action_date",
             }
         )
@@ -141,9 +182,14 @@ def _join_on(
             "phase_ii_award_id": merged["phase_ii_award_id"],
             "phase_ii_source": merged["phase_ii_source"],
             "phase_ii_agency": merged["phase_ii_agency"],
+            # Both sides are carried as stated by their own source and are
+            # never reconciled against each other: an unknown Phase III
+            # program stays unknown even when the paired Phase II names one.
+            "phase_ii_program": merged["phase_ii_program"],
             "phase_ii_end_date": merged["phase_ii_end_date"],
             "phase_iii_contract_id": merged["phase_iii_contract_id"],
             "phase_iii_agency": merged["phase_iii_agency"],
+            "phase_iii_program": merged["phase_iii_program"],
             "phase_iii_action_date": merged["phase_iii_action_date"],
         }
     )
@@ -207,6 +253,8 @@ def _build_survival(
     if phase_ii.empty:
         return pd.DataFrame(columns=SURVIVAL_COLUMNS)
 
+    phase_ii = _with_program_column(phase_ii)
+
     # Earliest event per Phase II award.
     if not pairs.empty:
         earliest = (
@@ -223,12 +271,14 @@ def _build_survival(
             "recipient_uei",
             "recipient_duns",
             "agency",
+            "program",
             "period_of_performance_end",
         ]
     ].rename(
         columns={
             "award_id": "phase_ii_award_id",
             "agency": "phase_ii_agency",
+            "program": "phase_ii_program",
             "period_of_performance_end": "phase_ii_end_date",
         }
     )
