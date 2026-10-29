@@ -80,9 +80,13 @@ def _normalize_source_rows(raw: pd.DataFrame) -> pd.DataFrame:
     out["branch"] = _pick(raw, "Branch", "branch", "sub_agency")
     out["phase"] = _pick(raw, "Phase", "phase")
     out["program"] = _pick(raw, "Program", "program")
+    # ``format="mixed"`` parses each value on its own. Without it, pandas >= 2
+    # infers one format from the first value and coerces every other format to
+    # NaT, so an export mixing ISO and MM/DD/YYYY dates loses rows silently.
     out["award_date"] = pd.to_datetime(
         _pick(raw, "Proposal Award Date", "award_date", "proposal_award_date"),
         errors="coerce",
+        format="mixed",
     ).dt.date
     out["recorded_end_date"] = pd.to_datetime(
         _pick(
@@ -93,6 +97,7 @@ def _normalize_source_rows(raw: pd.DataFrame) -> pd.DataFrame:
             "contract_end_date",
         ),
         errors="coerce",
+        format="mixed",
     ).dt.date
     out["uei"] = _pick(raw, "UEI", "uei", "recipient_uei")
     out["amount"] = pd.to_numeric(
