@@ -73,9 +73,11 @@ python scripts/data/awards_refresh_validation.py \
   --previous-metadata reports/awards_data_refresh/latest.json
 ```
 
-The script streams the CSV, enforces the column schema, and writes JSON +
-Markdown summaries. Use `--allow-schema-drift` only when schema changes have
-been reviewed.
+The script streams the CSV, enforces the column schema and the `Phase` value
+vocabulary (see below), and writes JSON + Markdown summaries. Use
+`--allow-schema-drift` only when schema changes have been reviewed, and
+`--allow-unclassified-phase` only to inspect a vintage whose new `Phase`
+spelling has not been classified yet.
 
 ## Troubleshooting
 
@@ -105,16 +107,35 @@ skips Phase I rather than being a different instrument, and SBA's published
 tables count it under Phase II.
 
 The vocabulary lives in `SBIR_PHASE_VOCABULARY` in
-`sbir_etl/extractors/sbir_award_export.py`, with two rules over it:
+`sbir_etl/models/sbir_phase.py` (primitives tier; re-exported by
+`sbir_etl/extractors/sbir_award_export.py`), with two rules over it:
 
 - `sbir_phase_for_counting()` — **use this for counting.** Applies the policy
   above, so the direct-to-Phase-II label returns `"II"`.
 - `normalize_sbir_phase()` — exact-label reader; answers only what the source
   field literally says, and returns `None` for the direct-to-Phase-II label.
 
-`unknown_sbir_phase_values()` reports labels outside the vocabulary. Callers
-should raise on a non-empty result rather than treat an unclassified label as
-"no phase": silently dropping or misfiling it moves award populations.
+`unknown_sbir_phase_values()` reports labels that neither rule classifies.
+`awards_refresh_validation.py` exits non-zero on a non-empty result; other
+callers should do the same rather than treat an unclassified label as "no
+phase", because silently dropping or misfiling it moves award populations.
+
+The ingestion validator (`sbir_etl/validators/sbir_awards.py`), the award
+model, the Phase II mart, the agency private-capital cohort, and the DoD
+supply-chain baseline all read the vocabulary. The canonical source
+materializer (`phase_transition/sbir_gov_source.py`) keeps the exact-label
+rule on purpose: `Phase` is part of the `sbir-source-v2` key and the profile
+is immutable.
+
+### Released studies do not fold the new label
+
+The two released SBA structural-comparison studies pin the 2026-09-17 export
+and the exact bytes of their count producer. That vintage has no
+direct-to-Phase-II rows, so the released result is unaffected, and the
+producer is left byte-identical so the pinned reproduction still runs from the
+moving branch. A count on a later vintage is a successor study: a new manifest,
+a revised validation design (rule 10 would admit the direct-to-Phase-II label
+as Phase II), a re-pinned producer, and a replay against the new export.
 
 ### The 2026-10-21 change
 

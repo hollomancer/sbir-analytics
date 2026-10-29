@@ -11,7 +11,6 @@ from sbir_etl.extractors.sbir_award_export import (
     SBIR_PHASE_VOCABULARY,
     SbirGovSourceError,
     inspect_sbir_gov_csv,
-    is_direct_to_phase_ii,
     load_verified_award_export,
     normalize_sbir_phase,
     ordered_columns_sha256,
@@ -250,16 +249,24 @@ def test_counting_and_exact_rules_differ_only_on_direct_to_phase_ii() -> None:
         assert sbir_phase_for_counting(label) == "II"
     for label in ("Phase I", "Phase II", "Phase III", "I", "II", "III"):
         assert normalize_sbir_phase(label) == sbir_phase_for_counting(label)
+    for label in ("Phase IIB", "Phase I/II", "Phase 2", "Phase IV", "II-B"):
+        assert normalize_sbir_phase(label) is None
+        assert sbir_phase_for_counting(label) is None
 
 
 def test_the_live_export_spelling_uses_an_en_dash() -> None:
     """The export emits U+2013; the ASCII hyphen is accepted as a fallback."""
 
     assert "\u2013" in DIRECT_TO_PHASE_II_EN_DASH
-    assert is_direct_to_phase_ii(DIRECT_TO_PHASE_II_EN_DASH)
-    assert is_direct_to_phase_ii("phase ii - direct to phase ii")
-    assert not is_direct_to_phase_ii("Phase II")
-    assert not is_direct_to_phase_ii(None)
+    assert DIRECT_TO_PHASE_II_EN_DASH in DIRECT_TO_PHASE_II_LABELS
+    assert "Phase II - Direct to Phase II" in DIRECT_TO_PHASE_II_LABELS
+    assert set(DIRECT_TO_PHASE_II_LABELS) <= set(SBIR_PHASE_VOCABULARY)
+
+
+@pytest.mark.parametrize("label", ["Phase\tII", "Phase\u00a0II", " phase   ii "])
+def test_both_phase_rules_fold_whitespace_the_same_way(label: str) -> None:
+    assert normalize_sbir_phase(label) == "II"
+    assert sbir_phase_for_counting(label) == "II"
 
 
 def test_every_vocabulary_entry_resolves_to_a_counted_phase() -> None:

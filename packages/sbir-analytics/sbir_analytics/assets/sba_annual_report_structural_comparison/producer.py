@@ -25,8 +25,6 @@ from sbir_etl.extractors.sbir_award_export import (
     SBIR_GOV_SOURCE_COLUMNS,
     load_verified_award_export,
     ordered_columns_sha256,
-    sbir_phase_for_counting,
-    unknown_sbir_phase_values,
 )
 from sbir_etl.models.award_export import AwardGrain, FiscalYearBasis
 from sbir_etl.quality.study_manifest import (
@@ -44,14 +42,6 @@ REPORT_TABLES = {2020: "Table 18", 2021: "Table 18", 2022: "Table 20"}
 TABLE_NUMBERS = {2020: 18, 2021: 18, 2022: 20}
 PROGRAMS = ("SBIR", "STTR")
 PHASES = ("Phase I", "Phase II")
-# Canonical display label per counted phase. Source spellings are folded onto
-# these before aggregation so the recomputed cells stay comparable with SBA's
-# published Phase I / Phase II columns regardless of export vintage.
-COUNTED_PHASE_LABELS: Mapping[str, str] = {
-    "I": "Phase I",
-    "II": "Phase II",
-    "III": "Phase III",
-}
 EXPECTED_CELL_COUNT = 632
 EXPECTED_VALIDATION_VALUE_COUNT = EXPECTED_CELL_COUNT * 2
 EXACT_INTERVAL_METHOD = "exact complete-population point interval; no sampling"
@@ -700,23 +690,11 @@ def _recomputed_counts(
         raise StructuralComparisonError(
             f"retained award-export rows contain unexpected Program values: {invalid_programs}"
         )
-    unclassified_phases = unknown_sbir_phase_values(frame["Phase"])
-    if unclassified_phases:
-        raise StructuralComparisonError(
-            "retained award-export rows contain Phase values outside the classified "
-            f"vocabulary: {unclassified_phases}; classify them in "
-            "sbir_etl.extractors.sbir_award_export.SBIR_PHASE_VOCABULARY before counting"
-        )
-    # Fold each source spelling onto the phase it counts as. A direct-to-Phase-II
-    # award counts as Phase II, so the label SBIR.gov introduced in the 2026-10-21
-    # vintage aggregates with plain Phase II instead of failing the guard below.
-    counted_phase = frame["Phase"].map(sbir_phase_for_counting).map(COUNTED_PHASE_LABELS)
-    invalid_phases = sorted(set(frame.loc[~counted_phase.isin(PHASES), "Phase"]))
+    invalid_phases = sorted(set(frame.loc[~frame["Phase"].isin(PHASES), "Phase"]))
     if invalid_phases:
         raise StructuralComparisonError(
             f"retained award-export rows contain unexpected Phase values: {invalid_phases}"
         )
-    frame["Phase"] = counted_phase
     frame["report_year"] = frame["report_year"].astype("int64")
     blank_state = frame["State"].astype(str).str.strip().eq("")
     dropped_blank = int(blank_state.sum())
