@@ -849,6 +849,24 @@ spending produce measurable new knowledge?*
   · Study:
   [allocation-transaction-costs](../studies/allocation-transaction-costs/study.yaml)*
 
+- <a id="c4-sttr-award-timing-friction"></a>**STTR award-record timing and administrative friction**
+  Within observed agency × solicitation × phase × solicitation-year strata,
+  do awarded STTR records show different proposal-receipt-to-notification or
+  proposal-receipt-to-award intervals than awarded SBIR records, and where is
+  date coverage sufficient for that descriptive comparison?
+  Public award records omit unsuccessful applicants and do not expose a
+  consistent submission, review, revision, or selection clock. Shared
+  solicitation identifiers can also span different topics and review paths.
+  The comparison can map recorded timing and data readiness; it cannot measure
+  administrative burden, identify a causal STTR effect, or support a pooled
+  faster/slower claim. This is distinct from B3 Phase II→III latency after an
+  award ends.
+  **Status:** Exploratory and non-citable. The notebook uses only source-labeled
+  dates, keeps SBIR and STTR separate, and refuses administrative-friction
+  inference.
+  *Deps: none (SBIR.gov public award export) · Notebook:
+  [c4_sttr_award_timing_friction.ipynb](../notebooks/explorations/c4_sttr_award_timing_friction.ipynb)*
+
 ## D. Economic & fiscal impact
 
 *Audience: Treasury, OMB, JCT, state economic-development offices. What is the
