@@ -30,6 +30,7 @@ from typing import Any
 
 import pandas as pd
 
+from sbir_etl.extractors.sbir_award_export import sbir_phase_for_counting
 from sbir_etl.utils.data.file_io import write_json_atomic
 
 from .sbir_gov_source import (
@@ -129,17 +130,20 @@ def _coalesce_columns(df: pd.DataFrame, *names: str) -> pd.Series:
 
 
 def _normalize_phase_label(v: Any) -> str | None:
-    """Coerce a phase label to "I" | "II" | "III" | None (lenient)."""
+    """Coerce a phase label to "I" | "II" | "III" | None (lenient).
+
+    Known SBIR.gov ``Phase`` spellings resolve through the shared counting
+    policy, so a direct-to-Phase-II award is Phase II here by rule rather than
+    by regex coincidence. The regex fallback stays for the contract- and
+    description-derived phase text this module also receives, which is not
+    drawn from the export's classified vocabulary.
+    """
 
     if v is None or (isinstance(v, float) and pd.isna(v)):
         return None
+    if (counted := sbir_phase_for_counting(v)) is not None:
+        return counted
     s = str(v).strip().upper()
-    if s.startswith("PHASE "):
-        compact = s.removeprefix("PHASE ").strip()
-        if compact in {"I", "II", "III"}:
-            return compact
-    if s in {"I", "II", "III"}:
-        return s
     match = re.search(r"\bPHASE\s+(III|II|I)\b", s)
     return match.group(1) if match else None
 

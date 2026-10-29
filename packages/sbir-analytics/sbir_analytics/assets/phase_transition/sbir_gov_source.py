@@ -14,6 +14,7 @@ import pandas as pd
 from sbir_etl.extractors.sbir_award_export import (
     SBIR_GOV_SOURCE_COLUMNS,
     SbirGovSourceError,
+    normalize_sbir_phase,
     ordered_columns_sha256,
     read_sbir_gov_csv,
 )
@@ -77,10 +78,8 @@ def _normalize_key(value: Any) -> str:
 
 
 def _normalize_phase(value: Any) -> str:
-    normalized = _normalize_key(value)
-    if normalized.startswith("PHASE "):
-        normalized = normalized.removeprefix("PHASE ").strip()
-    return normalized if normalized in {"I", "II", "III"} else ""
+    # The exact-label rule lives in sbir_etl; this keeps the frozen "" sentinel.
+    return normalize_sbir_phase(value) or ""
 
 
 def _row_json(values: list[str | None]) -> str:

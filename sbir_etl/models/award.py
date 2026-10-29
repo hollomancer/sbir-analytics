@@ -13,6 +13,7 @@ from pydantic import (
     model_validator,
 )
 
+from sbir_etl.models.sbir_phase import sbir_phase_for_counting
 from sbir_etl.utils.date_utils import parse_date
 
 _PHASE_NORMALIZE = {
@@ -247,6 +248,9 @@ class Award(BaseModel):
         """Validate phase if provided; normalize to roman I/II/III (lenient)."""
         if v is None:
             return v
+        # Classified export spellings (including direct-to-Phase-II) first.
+        if (counted := sbir_phase_for_counting(v)) is not None:
+            return counted
         sv = str(v).strip().upper().removeprefix("PHASE ").strip()
         if normalized := _PHASE_NORMALIZE.get(sv):
             if sv in ("4", "IV"):

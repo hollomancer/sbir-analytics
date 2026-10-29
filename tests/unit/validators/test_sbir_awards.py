@@ -106,8 +106,8 @@ class TestValidatePhase:
 
     @pytest.mark.parametrize(
         "phase",
-        ["Phase I", "Phase II", "Phase III"],
-        ids=["phase_i", "phase_ii", "phase_iii"],
+        ["Phase I", "Phase II", "Phase III", "Phase II \u2013 Direct to Phase II"],
+        ids=["phase_i", "phase_ii", "phase_iii", "direct_to_phase_ii"],
     )
     def test_valid_phase_values(self, phase):
         """Test validation passes for valid phase values (exact case)."""

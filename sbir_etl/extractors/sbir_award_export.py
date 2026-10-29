@@ -69,6 +69,17 @@ SBIR_GOV_SOURCE_COLUMNS: tuple[str, ...] = (
 )
 
 
+# The ``Phase`` vocabulary is a primitives-tier module; it is re-exported here
+# because this module is where readers of the export already look for it.
+from sbir_etl.models.sbir_phase import (  # noqa: E402
+    DIRECT_TO_PHASE_II_LABELS,
+    SBIR_PHASE_VOCABULARY,
+    normalize_sbir_phase,
+    sbir_phase_for_counting,
+    unknown_sbir_phase_values,
+)
+
+
 class SbirGovSourceError(ValueError):
     """Raised when an SBIR.gov source row violates the exact export contract."""
 
@@ -203,14 +214,19 @@ def load_verified_award_export(
 
 __all__ = [
     "AwardExportInspection",
+    "DIRECT_TO_PHASE_II_LABELS",
     "EPISTEMIC_TIER",
     "SBIR_GOV_SOURCE_COLUMNS",
+    "SBIR_PHASE_VOCABULARY",
     "SbirGovSourceError",
     "VerifiedAwardExport",
     "inspect_sbir_gov_csv",
     "iter_sbir_gov_rows",
     "load_verified_award_export",
+    "normalize_sbir_phase",
     "ordered_columns_sha256",
     "read_award_export_metadata",
     "read_sbir_gov_csv",
+    "sbir_phase_for_counting",
+    "unknown_sbir_phase_values",
 ]
