@@ -7,8 +7,22 @@ raises SBIR participation.
 **Tier:** `exploratory` — non-citable. No number in this document may be quoted
 as a finding about FAST, and no research question becomes answerable on it.
 
-**Window:** FY2010–FY2024. **Status:** design implemented and run; the estimand
-was **not** identified at usable precision. See the verdict.
+**Window:** FY2010–FY2024. **Status:** design implemented and run. It produces a
+stable, robust, nominally significant negative coefficient that is **not** a
+FAST effect: a placebo using *future* treatment recovers most of it, so the
+design's parallel-trends assumption fails.
+
+> **Correction notice.** The first revision of this document reported −14.6%
+> (40 km) and −45.5% (60 km) with randomization-inference p-values of 0.41 and
+> 0.17, and attributed the instability to a handful of high-volume border
+> metros. Those numbers came from two implementation defects, both now fixed:
+> every unordered county pair nominated reciprocally appeared **twice** in
+> mirrored orientations while sharing one pair fixed effect, and the design
+> matrix dropped a dummy column without adding an intercept, constraining the
+> reference pair to an exact 50/50 split. The corrected estimates are stable
+> across bandwidth and robust to dropping the largest pairs. The verdict — that
+> no credible FAST effect is identified here — is unchanged, but the reason is
+> different and better supported.
 
 ---
 
@@ -60,70 +74,93 @@ different state; the pair is kept if either side has SBIR activity.
 
 ## 3. Results
 
-Outcome: Phase I award counts. Estimation sample requires a non-zero pair-year
-total and within-pair variation in `dF`.
+Outcome `p1` is Phase I award counts; `ftw` is first-time Phase I winners. The
+estimation sample requires a non-zero pair-year total, within-pair variation in
+`dF`, and a non-separated pair.
 
-| Band | Pairs | Pair-years | Awards | Point estimate | Model SE | RI p-value | RI MDE |
-|---|---|---|---|---|---|---|---|
-| ≤40 km | 157 | 2,051 | 19,228 | **−14.6%** | 0.0245 | **0.41** | 49.1% |
-| ≤60 km | 309 | 3,814 | 40,113 | **−45.5%** | 0.0192 | **0.17** | 121.7% |
+| Outcome | Band | Pairs | Pair-years | Awards | Estimate | RI p | RI MDE | Drop top-5 pairs |
+|---|---|---|---|---|---|---|---|---|
+| Phase I | ≤40 km | 71 | 810 | 10,967 | **−25.8%** | 0.015 | 38.0% | −25.2% |
+| Phase I | ≤60 km | 122 | 1,408 | 20,402 | **−25.8%** | 0.028 | 39.7% | −25.8% |
+| First-time | ≤40 km | 62 | 590 | 3,331 | **−29.1%** | 0.020 | 44.3% | −28.1% |
+| First-time | ≤60 km | 103 | 979 | 5,401 | **−26.5%** | 0.025 | 39.4% | −26.5% |
 
-Three things to read off this table.
+The estimate is stable across bandwidth and outcome (−26% to −29%), survives
+dropping the five highest-volume pairs almost unchanged (they carry 34–39% of
+awards), and clears conventional significance under randomization inference.
+On its face this looks like a well-behaved result saying FAST availability is
+associated with about a quarter fewer Phase I awards on the funded side of a
+state line.
 
-1. **Nothing is distinguishable from zero.** Randomization-inference p-values are
-   0.41 and 0.17. The MDEs — 49% and 122% — are far larger than any effect a
-   $125k–$180k annual grant could produce.
-2. **Model standard errors are catastrophically wrong here.** At the 60 km band
-   the model SE of 0.019 against a coefficient of −0.607 implies a t-statistic
-   above 30. Reported naively this would read as overwhelming evidence that FAST
-   *reduces* SBIR activity by 45%. Randomization inference puts the same estimate
-   at p = 0.17. Any future FAST specification that reports clustered or
-   model-based SEs without a permutation check should be treated as wrong.
-3. **The estimate is not stable.** Widening the band from 40 km to 60 km moves
-   the point estimate from −15% to −46%. A design returning an effect that
-   triples with a bandwidth change is not measuring the policy.
+It is not a FAST effect.
 
-### Why it is unstable
+### The pre-trend placebo
 
-Five county pairs carry **36.8%** of all awards in the 60 km sample:
+FAST status *in the future* cannot cause awards *today*. Re-estimating with the
+treatment indicator led by one, two and three years:
 
-| Pair | Awards |
-|---|---|
-| MA–NH (two distinct county pairs) | 8,748 and 1,486 |
-| AL–TN | 2,078 |
-| DC–MD | 1,386 |
-| NH–VT | 1,050 |
+| Outcome | Band | Lead | Current-year estimate | **Future-treatment estimate** |
+|---|---|---|---|---|
+| Phase I | 40 km | t+1 | −24.8% | **−24.3%** |
+| Phase I | 40 km | t+2 | −29.4% | **−20.4%** |
+| Phase I | 40 km | t+3 | −31.4% | **−23.0%** |
+| Phase I | 60 km | t+1 | −25.0% | **−23.3%** |
+| Phase I | 60 km | t+2 | −28.9% | **−18.9%** |
+| Phase I | 60 km | t+3 | −31.0% | **−20.4%** |
+| First-time | 60 km | t+2 | −25.3% | **−12.0%** |
 
-Dropping those five pairs moves the estimate from **−45.5% to −3.7%** — a swing
-of 42 percentage points. The same check at the 40 km band moves the estimate from
-**−14.6% to +1.6%**, with the top five pairs carrying 30.3% of that sample's
-awards. In both bands the estimate collapses to approximately zero once the
-highest-volume border metros are removed, and even changes sign at 40 km.
+At a one-year lead the placebo coefficient is almost identical to the
+contemporaneous one. At two and three years it remains large and negative. A
+state's SBIR activity relative to its cross-border neighbour is already
+depressed well before FAST arrives.
 
-The dominant pair is Massachusetts–New Hampshire, and
-**Massachusetts is one of only two states (with Rhode Island) never FAST-funded
-in FY2010–2024**. The headline "effect" is therefore close to a comparison of
-the densest SBIR cluster in the country against its neighbour, loaded onto the
-FAST indicator because Massachusetts is permanently untreated. That is a
-structural feature of using SBIR award counts on a border design, not a
-correctable outlier.
+### What that means
+
+The negative coefficient measures **selection into treatment**, not the effect
+of treatment. FAST is allocated toward states with weak or deteriorating SBIR
+activity — which is what a capacity-building program is supposed to do — and
+states plausibly apply when their pipeline is thin. The border design controls
+for shocks common to a *region*; it does nothing about a state being selected
+into FAST on the basis of its own SBIR trajectory. Parallel trends fails, and
+with it the identifying assumption.
+
+Descriptively, across the 719 discordant pair-years at the 60 km band, the
+FAST-funded side averages 6.16 Phase I awards against 6.93 on the unfunded
+side — the same gap, visible without any model.
 
 ## 4. Verdict
 
 **The design is implementable on public data and does not identify a FAST
-effect.** Report as *not assessed at this power* — not as evidence that FAST has
-no effect, and emphatically not as evidence of a negative effect.
+effect.** Report as *not assessed* — not as evidence that FAST has no effect,
+and emphatically not as evidence that FAST reduces SBIR activity by a quarter.
+The coefficient is stable and nominally significant, and it is still
+uninterpretable, because a placebo on future treatment reproduces most of it.
 
-The border design's value was always bias reduction — holding regional shocks
-fixed — rather than added power. Power is governed by the number of
-independently treated units, and that is still ~51 states however finely the
-outcome is sliced. The county-pair machinery sharpens the comparison without
-changing that arithmetic.
+Two further cautions that survive the correction:
+
+- **Model-based standard errors remain invalid here.** Treatment is assigned at
+  state x fiscal year while observations are county pairs. Any future FAST
+  specification reporting model or clustered SEs without a permutation check
+  should be treated as wrong.
+- **The point estimate sits below its own minimum detectable effect** (−26%
+  against an MDE near 39%). Even setting selection aside, an estimate that
+  significant in a design this underpowered is the regime where magnitudes are
+  inflated, not a regime for reading effect sizes.
+
+The border design's value was always bias reduction relative to a state-level
+panel — holding regional shocks fixed — rather than added power. Power is
+governed by the number of independently treated units, still ~51 states however
+finely the outcome is sliced. This run shows that the bias it removes is not
+the bias that matters: the binding confound is selection of states into FAST,
+which operates at exactly the level the border cannot see.
 
 ### What this run rules in and out
 
 - **Out:** state-level and border-level designs on public award counts, as a
-  route to a citable FAST effect.
+  route to a citable FAST effect. Any design whose treatment varies only at
+  state x year inherits the selection problem demonstrated above; a credible
+  estimate needs either variation within state-year or an explicit model of
+  how SBA allocates FAST.
 - **In, and now higher priority:** the voluntary referral-election design, if
   SBIR submitters elect referral to a FAST site and that field is recoverable —
   it moves treatment to the firm level, where 3,804 firms are observed in both a
@@ -166,6 +203,12 @@ outside the window by construction.
   shared-boundary test.
 - Massachusetts and Rhode Island are never treated in the window, so they
   contribute only as control mass.
+- The pre-trend placebo demonstrates that parallel trends fails; it does not
+  quantify how much of the coefficient is selection. Decomposing that needs a
+  model of FAST allocation, which this study does not build.
+- Pairs whose `dF` never changes, and pairs with all-or-nothing outcomes, are
+  dropped as uninformative under the pair fixed effect. At the 60 km band this
+  leaves 122 of 1,298 unordered pairs.
 
 ## 7. References
 
