@@ -80,3 +80,20 @@ def test_csv_edition_collapse_is_independent_of_chunk_boundaries(tmp_path: Path)
     assert awards.loc[0, "amount"] == 2_000_000
     assert awards.loc[0, "source_edition_count"] == 2
     assert awards.loc[0, "source_edition_variants"] == 2
+
+
+def test_normalizer_parses_each_date_format_independently() -> None:
+    normalized = normalize_sbir_awards(
+        pd.DataFrame(
+            [
+                _award(**{"Proposal Award Date": "2026-06-12", "Contract": "A"}),
+                _award(**{"Proposal Award Date": "06/12/2025", "Contract": "B", "Award Year": ""}),
+            ]
+        ).sort_values("Contract")
+    )
+
+    by_contract = normalized.set_index("contract_number")
+    assert str(by_contract.loc["A", "award_date"]) == "2026-06-12"
+    # pandas infers one format from the first row; the second format must not become NaT.
+    assert str(by_contract.loc["B", "award_date"]) == "2025-06-12"
+    assert by_contract.loc["B", "award_year"] == 2025
