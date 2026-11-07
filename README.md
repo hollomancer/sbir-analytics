@@ -18,6 +18,39 @@ builds and tests narrow claims about U.S. Small Business Innovation Research
   implementation was written and iterated with AI coding agents.
 - This is a side project. Nothing here represents the position of any agency.
 
+If you only read one other thing, make it
+[docs/research-questions.md](docs/research-questions.md). That is the real heart
+of the project. The pipeline is mostly scaffolding for chipping away at those
+questions.
+
+## Questions I'm trying to answer
+
+SBIR/STTR is a roughly $4 billion-per-year federal program whose statutory goal
+is *commercialization*—turning early-stage R&D into products, contracts, and
+companies. Tracking what happens after Phase II is notoriously difficult, and
+GAO has flagged the quality of Phase III data for years.
+
+A few of the things I'm exploring:
+
+- **Follow-on private investment.** Do SBIR awardees go on to raise private
+  capital, and how much? SEC Form D filings provide one imperfect window into
+  that question.
+- **Mergers and acquisitions.** Which SBIR firms get acquired, by whom, and how
+  long after their first award? This work looks for signals in SEC EDGAR filings.
+- **Phase II to Phase III transition time.** How long does it take an awardee to
+  land a follow-on federal contract, and how does that differ by agency or
+  technology area?
+- **Technology and patent links.** Which awards map to Critical and Emerging
+  Technology areas, and which ones appear to have produced patents?
+- **Economic and fiscal effects.** What can public input-output data tell us
+  about the economic activity associated with award spending? This part is
+  especially exploratory.
+
+The [full list](docs/research-questions.md) is sourced and organized by policy
+area. Some questions are much more answerable than others. These are open
+questions, not findings. [STATUS.md](STATUS.md) says which ones have evidence
+behind them.
+
 [STATUS.md](STATUS.md) states which studies are approved evidence, validated,
 reproducible, exploratory, or archived. Status comes from a versioned study
 contract. A working pipeline, chart, citation, or large test suite does not make
