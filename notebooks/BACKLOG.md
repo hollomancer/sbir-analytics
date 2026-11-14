@@ -48,6 +48,19 @@ message when an artifact is absent.
 The supplier-share companion keeps missing venture-search coverage visible, reviews the frozen
 sensitivity grid, and never substitutes notebook calculations for the canonical producer.
 
+## Wave 3 — policy-response companion notebooks
+
+| Investigation | Canonical computation | Notebook |
+|---|---|---|
+| SBIR registration and procurement evidence in SBA's defense-critical NAICS codes | `defense_critical_naics_sbir.py` | `explorations/a_defense_critical_naics_sbir.ipynb` |
+
+This policy-response analysis remains exploratory and non-citable. Registration, procurement,
+positive post-Phase-II transactions, clean-pre-index qualifying awards, and literal first-observed
+target entry are maintained as separate estimands. Its identity-review workstream also keeps a
+generated low-name-continuity queue separate from a tracked, evidence-backed corporate-history
+crosswalk. Corporate events, federal contract novations, and dollar-attribution treatments remain
+separate review axes; missing reviews stay `unreviewed`.
+
 ## Active explorations
 
 Question-driven work under `notebooks/explorations/`. These are not companions to a
