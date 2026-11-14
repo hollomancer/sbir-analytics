@@ -20,16 +20,13 @@ from pathlib import Path
 
 
 # CodeQL's py/clear-text-logging-sensitive-data flags the status messages below
-# because SECRET_PATTERNS entries ("NEO4J_PASSWORD", "AWS_SECRET_ACCESS_KEY", ...)
+# because SECRET_PATTERNS entries ("AWS_SECRET_ACCESS_KEY", ...)
 # reach a print(). Those are pattern *names* declared in this file, not values, so
 # the matching sites carry an inline suppression. Matched content is never printed
 # — see _match_locations.
 
 # Patterns to scan for (common secret patterns)
 SECRET_PATTERNS = [
-    "NEO4J_PASSWORD",
-    "NEO4J_AUTH",
-    "NEO4J_ADMIN_PASSWORD",
     "AWS_ACCESS_KEY_ID",
     "AWS_SECRET_ACCESS_KEY",
     r"AKIA[0-9A-Z]{16}",  # AWS Access Key ID pattern

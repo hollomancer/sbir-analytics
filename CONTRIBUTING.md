@@ -25,7 +25,7 @@ make test-smoke
 ```
 
 See the full [getting-started guide](docs/getting-started/README.md) to generate
-sample data, start Dagster, or run Neo4j. The synthetic sample workflow does not
+sample data or start Dagster. The synthetic sample workflow does not
 require external API credentials.
 
 ## Find the Right Place to Make a Change
@@ -34,7 +34,6 @@ require external API credentials.
 |---|---|
 | Reusable extraction, enrichment, validation, and models | `sbir_etl/` |
 | Dagster assets, jobs, and sensors | `packages/sbir-analytics/` |
-| Neo4j loaders and queries | `packages/sbir-graph/` |
 | CET and transition ML or heuristics | `packages/sbir-ml/` |
 | Focused operational and analysis entry points | `scripts/` |
 | Architecture and methodology | `docs/` |

@@ -35,7 +35,7 @@ connector), covering 2019–2026.
 
 Pooled ~989 OpenAlex works via thematic A–F keyword searches, direct SBIR/STTR searches, and
 forward-citation pulls from two anchor papers (Howell 2017, Myers & Lanahan 2022), then
-machine-classified each for relevance and policy area. The weekly refresh also pulls National
+machine-classified each for relevance and policy area. The manual refresh also pulls National
 Academies Press books from OpenAlex (source `S4306463641`) and recent GAO / NAP / CRS / ITIF
 items from public RSS/Atom feeds, filtered to SBIR/STTR and a short industrial-base/FOCI
 keyword list. CSIS web analysis is still thin in both OpenAlex and CSIS's public RSS (the
@@ -63,8 +63,8 @@ backfilled. CRS is read from the unofficial EveryCRSReport mirror. One failed fe
 not abort the OpenAlex half of the run. An unresolved OpenAlex anchor DOI skips only its
 forward-citation query and does not block the grey-literature feeds.
 
-`.github/workflows/literature-map.yml` runs the same command weekly (Monday 09:17 UTC) and
-opens `chore/literature-map-refresh` when those two files change. Optional secret:
+`.github/workflows/literature-map.yml` runs the same command by manual dispatch and opens
+`chore/literature-map-refresh` when those two files change. Optional secret:
 `OPENALEX_MAILTO` (OpenAlex polite pool). No API key is required.
 
 The workflow is not a study promotion and does not edit `[L#]` entries.

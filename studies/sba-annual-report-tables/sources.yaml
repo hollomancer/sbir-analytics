@@ -1,0 +1,591 @@
+schema_version: 1
+
+# Capture manifest for Study 1 (SBA SBIR/STTR annual-report tables, [L18]).
+#
+# STATUS: the start gate IS satisfied as of 2026-09-17 — the FY20/FY21/FY22 reports
+# are pinned and all nine required definitions are accounted for. They are NOT
+# accounted for at equal evidence levels; see definition_decisions.evidence_ladder
+# before quoting any of them. No definition is paraphrased here: `definition_verbatim`
+# points only at a record of verbatim quotes, and is null for a report year whose text
+# does not state the rules.
+
+capture_status: partial  # FY20/FY21/FY22 state tables captured
+gate_satisfied: true   # all nine definitions accounted for; see definition_decisions.evidence_ladder
+
+# Maintainer decision 2026-09-17: the exact-vintage constraint is relaxed for bulk
+# upstream sources such as SBIR.gov, which publish only a current snapshot.
+#
+# The outcome vocabulary frozen in design.md is `reproduced` / `diverged with
+# explanation` / `blocked`, and design.md already settled this case in advance: with
+# no report-era vintage the published-sample outcome is `blocked`, and a comparison
+# against the current snapshot is admissible only when labelled a structural check.
+# The verdict below therefore stays `blocked` and is not a run result. The method
+# field records how comparison proceeds anyway; passing its bands does not promote
+# the outcome. An earlier revision of this file set the verdict to
+# `vintage_tolerant_reproduction`, which was not one of the frozen values.
+published_sample_verdict: blocked
+published_sample_method: vintage_tolerant_structural_check
+exact_vintage_reproduction: impossible_no_surviving_vintage
+published_sample_verdict_evidence: studies/sba-annual-report-tables/vintage-drift-2026-09-17.md
+
+# The nine definitions design.md requires verbatim before comparison. Named here so
+# capture is checkable against a list rather than a scalar per report.
+definitions_required:
+  - fiscal_year_rule
+  - dollar_basis
+  - sttr_treatment
+  - phase_label_rollup
+  - agency_attribution
+  - amendment_handling
+  - first_time_winner_lookback
+  - zero_dollar_records
+  - state_attribution
+
+# Deliverables the study must reproduce. Applies to every report-year the selection
+# rule can choose, not only FY22 — it was previously stated on the FY22 target alone,
+# which left two valid selections without a required table set.
+tables_needed:
+  - award dollars and counts by agency
+  - award dollars and counts by state
+  - award dollars and counts by phase
+  - award dollars and counts by fiscal year
+  - first-time-winner counts and shares
+
+# Where those deliverables are read from in the source PDFs. The table NUMBER differs
+# by report-year, verified against each report's own caption, so a replication must
+# not key on a fixed number.
+source_tables_to_extract:
+  - name: Awards by U.S. State and Territory
+    numbered: {FY22: "Table 20", FY21: "Table 18", FY20: "Table 18"}
+  - name: Distribution of total SBIR/STTR dollars obligated by agency
+    numbered: {FY22: "Charts 1 and 2"}
+  - name: Agency submission date and days early or late
+    numbered: {FY22: "unnumbered, p9-10", FY21: "unnumbered, p9-10", FY20: "unnumbered, p9-10"}
+  - name: First-time-winner share
+    numbered: {FY22: "narrative, p47-48"}
+
+selection_rule: >-
+  Select the most recent annual report whose underlying source export can be
+  recovered. Recoverability governs, not recency. Record the chosen report and the
+  reason here once capture succeeds.
+
+# ---------------------------------------------------------------------------
+# Targets: the published tables to be reproduced. FY20/FY21/FY22 are retrieved and
+# extracted; FY16 and FY12 are pinned as methodology evidence, not as targets to
+# reproduce. Every selected report-year needs the shared `tables_needed` set below.
+# ---------------------------------------------------------------------------
+targets:
+  - source_id: sba_annual_report_fy22
+    publisher: U.S. Small Business Administration
+    title: SBIR/STTR Annual Report, FY22
+    url: https://www.sbir.gov/sites/default/files/SBA_FY22_SBIR_STTR_Annual_Report.pdf
+    cited_as: L18
+    capture_status: retrieved
+    retrieval_note: >-
+      sbir.gov returned HTTP 403 to non-browser clients from the analysis
+      environment (plain nginx 403 on www.sbir.gov and on the /impact/ path of
+      data.www.sbir.gov, which serves award_data.csv normally; the request
+      reached the host and was refused). The user agent was not altered to evade
+      the refusal. The maintainer supplied the file directly on 2026-09-17.
+    path: data/raw/sba_annual_reports/FY22/SBA_FY22_SBIR_STTR_Annual_Report.pdf
+    committed: false
+    gitignore_rule: "/data/*"
+    sha256: 5ba60852f1cc44b23afdbf810ecf0cff77d714d10ffc786a9b73416d7c000fd1
+    pages: 94
+    text_layer: true
+    definition_verbatim: studies/sba-annual-report-tables/definitions-fy22.md
+    definitions_recovered: 3      # fiscal-year rule, dollar basis, STTR treatment
+    definitions_partial: 2        # phase labels, agency attribution
+    definitions_absent: 4         # state attribution, first-time window, amendments, zero-dollar
+    tables_needed: see the shared `tables_needed` list above  # deliverables are report-year independent
+
+  - source_id: sba_annual_report_fy21
+    publisher: U.S. Small Business Administration
+    title: SBIR/STTR Annual Report, FY21
+    cited_as: L18
+    capture_status: retrieved_and_extracted
+    retrieval_note: Supplied by the maintainer on 2026-09-17, same route as FY22.
+    path: data/raw/sba_annual_reports/FY21/SBA_SBIR_STTR_FY21_Annual_Report.pdf
+    committed: false
+    gitignore_rule: "/data/*"
+    sha256: 30b4dfa9b4c2c2220fc15938d5bd1a44bee92d5aa746b8756dc7d66217c6df55
+    definition_verbatim: null  # this report states none of the nine rules
+    definitions_absent: 4  # same four as FY22; the earlier years do not state them either
+    definitions_absent_record: studies/sba-annual-report-tables/cross-year-fy20-fy22.md
+    first_time_winner_statistic_published: false  # FY22 only
+
+  - source_id: sba_annual_report_fy20
+    publisher: U.S. Small Business Administration
+    title: SBIR/STTR Annual Report, FY20
+    cited_as: L18
+    capture_status: retrieved_and_extracted
+    retrieval_note: Supplied by the maintainer on 2026-09-17, same route as FY22.
+    path: data/raw/sba_annual_reports/FY20/SBA_SBIR_STTR_FY20_Annual_Report.pdf
+    committed: false
+    gitignore_rule: "/data/*"
+    sha256: f1f51abb29c71d631451868f31babf2f6f1fe3845df91e534052f1d40dece3d3
+    definition_verbatim: null  # this report states none of the nine rules
+    definitions_absent: 4  # same four as FY22; the earlier years do not state them either
+    definitions_absent_record: studies/sba-annual-report-tables/cross-year-fy20-fy22.md
+    first_time_winner_statistic_published: false  # FY22 only
+
+  # --- Methodology evidence, not reproduction targets ---------------------
+  # The amendment-handling closure rests on these two volumes, so they are pinned
+  # here rather than cited loosely. Neither is a table this study reproduces.
+  - source_id: sba_annual_report_fy16
+    publisher: U.S. Small Business Administration
+    title: SBIR/STTR Annual Report, FY16
+    cited_as: L18 (series)
+    role: methodology_evidence
+    capture_status: retrieved_and_extracted
+    retrieval_note: Part of the 51-document corpus supplied by the maintainer on 2026-09-17.
+    path: data/raw/sba_annual_reports/corpus/vd82511f7_FY16SBIRAnnualReport04082019.pdf
+    committed: false
+    gitignore_rule: "/data/*"
+    sha256: ac82797e2798df9f6a6ceaae6c3134eac720e070d8bf3c5f0d98ac17d30c6e7d
+    size_bytes: 2317980
+    pages: 96
+    cited_pages: [39]
+    supports: >-
+      The assembly rule and the post-publication correction mechanism. p39 states the
+      report data is "a summation of the individual awards uploaded to SBA" so that it
+      matches SBIR.gov, that DoD's submission was 177 days late and incomplete, that
+      SBA received additional uploads for over a year, and that corrections are pushed
+      to SBIR.gov while the report is not revised. Also the source of the caveat that
+      SBA cannot separate obligation year from appropriation year for DoD.
+    evidence_record: studies/sba-annual-report-tables/assembly-methodology.md
+
+  - source_id: sba_annual_report_fy12
+    publisher: U.S. Small Business Administration
+    title: SBIR/STTR Annual Report, FY12
+    cited_as: L18 (series)
+    role: methodology_evidence
+    capture_status: retrieved_and_extracted
+    retrieval_note: Part of the 51-document corpus supplied by the maintainer on 2026-09-17.
+    path: data/raw/sba_annual_reports/corpus/v04e5c92a_SBIR-STTR_FY_2012_Report_Final.pdf
+    committed: false
+    gitignore_rule: "/data/*"
+    sha256: 97bef3362a2d119211c280e69d8b724c9b28c619cab7b67ce416596080b8305b
+    size_bytes: 1214410
+    pages: 44
+    cited_pages: [24, 34]
+    supports: >-
+      Corroborates the resubmission mechanism in table form. The Reporting Agency
+      Scorecard shows DoD "Original 04/24/2013, Resubmission 04/23/2014" against a
+      03/15/2013 deadline.
+    evidence_record: studies/sba-annual-report-tables/assembly-methodology.md
+
+# ---------------------------------------------------------------------------
+# Inputs: the award records the tables are recomputed from.
+# All three vintages below are cited by vintage-drift-2026-09-17.md, so all three
+# are pinned. Parsed record counts, not line counts: this CSV embeds newlines in
+# abstract fields, so wc -l overstates it roughly 2.5x.
+# ---------------------------------------------------------------------------
+inputs:
+  - source_id: sbir_gov_award_export_2026_08
+    publisher: SBIR.gov (SBA)
+    title: SBIR/STTR award data export
+    path: data/studies/sbir_ma_dated_signal_study/2026-08-30/award_data.csv
+    committed: false
+    gitignore_rule: "/data/*"
+    sha256: efdf7ca5a398703002ebb33345275b0f68e50af3c5db361d48a2456266a23628
+    size_bytes: 394398849
+    parsed_records: 219503
+    retrieved_on: "2026-08-30"
+    source_url: https://data.www.sbir.gov/mod_awarddatapublic/award_data.csv
+    source_url_evidence: inferred_from_schema  # 42 columns including UEI
+    evidence_class: administrative_record
+    identity_grain: one row per award action as published by SBIR.gov
+    role: >-
+      Intermediate vintage. It is what shows the drift is episodic rather than
+      gradual: +2 records over the 3.6 months to 2026-08-30, then +87 in the
+      following 18 days.
+  - source_id: sbir_gov_award_export_2026_05
+    publisher: SBIR.gov (SBA)
+    title: SBIR/STTR award data export
+    path: data/raw/sbir/award_data.csv
+    committed: false
+    gitignore_rule: "/data/*"
+    sha256: 7511930b16dfa5c3aeff57bc4349c44b0d0efa04862433b7310401d3a4198c6c
+    size_bytes: 394410138
+    retrieved_on: "2026-05-11"
+    source_url: https://data.www.sbir.gov/mod_awarddatapublic/award_data.csv
+    source_url_evidence: inferred_from_schema
+    source_url_caveat: >-
+      The URL was not recorded at retrieval, so the hash and date do not by
+      themselves prove which endpoint produced this file. It is inferred: this
+      export carries 42 columns including UEI, matching the mod_awarddatapublic
+      product, whereas the legacy data.www.sbir.gov/awarddatapublic/ endpoint on
+      the same host serves 41 columns without UEI. Treat as inference, not
+      recorded provenance.
+    data_last_updated: null
+    evidence_class: administrative_record
+    identity_grain: one row per award action as published by SBIR.gov
+    vintage_warning: >-
+      This export post-dates every report named in [L18]. It is NOT the
+      report-era vintage and must not be substituted for one in a
+      published-sample replication. See the source-vintage risk section of
+      design.md.
+    fields_available_for_the_target_grain:
+      agency: Agency (with Branch for component roll-up)
+      state: State (firm address of record)
+      phase: Phase
+      program: Program (SBIR vs STTR)
+      fiscal_year_candidates: ["Award Year", "Proposal Award Date"]
+      firm_identity: ["UEI", "Duns", "Company"]
+    field_hazards:
+      fiscal_year: >-
+        Two candidate fields exist (Award Year, Proposal Award Date) and they need
+        not agree. The report's own fiscal-year rule decides which is correct;
+        until it is recovered, neither may be assumed.
+      state: >-
+        State is the firm's address of record in this snapshot, which SBIR.gov
+        refreshes in place. It may reflect the firm's present address rather than
+        its address at award time, which would shift state-level cells in a way
+        that is not a pipeline defect.
+      firm_identity: >-
+        UEI coverage is incomplete for older awards (DUNS-era records), which
+        bears directly on the first-time-winner history window.
+
+
+  - source_id: sbir_gov_award_export_2026_09_17
+    publisher: SBIR.gov (SBA)
+    title: SBIR/STTR award data export
+    path: data/raw/sbir/history/2026-09-17/award_data.csv
+    committed: false
+    gitignore_rule: "/data/*"
+    sha256: aed146eab56f370c9f3fe7f562475e3eedfc61cca2eba112c830fac6f73bf38a
+    size_bytes: 394636989
+    source_url: https://data.www.sbir.gov/mod_awarddatapublic/award_data.csv
+    retrieved_on: "2026-09-17"
+    evidence_class: administrative_record
+    identity_grain: one row per award action as published by SBIR.gov
+    columns: 42
+    schema_matches_2026_05_11: true
+    role: pinned_comparison_vintage
+    endpoint_caution: >-
+      Pin this exact URL. The same host also serves
+      data.www.sbir.gov/awarddatapublic/award_data.csv (no mod_ prefix), a legacy
+      41-column product without UEI, with 'Women Owned' instead of 'Woman Owned'
+      and USPS state abbreviations. It appears in
+      docs/archive/deployment/actions-migration-plan.md. Comparing the two
+      endpoints produces large spurious differences; see the drift report.
+
+# ---------------------------------------------------------------------------
+# What unblocks this study.
+# ---------------------------------------------------------------------------
+# ---------------------------------------------------------------------------
+# Target tables captured from the FY22 report. Extraction and validation are
+# described in definitions-fy22.md.
+# ---------------------------------------------------------------------------
+# Filenames deliberately carry no table number: the same table is Table 20 in FY22
+# and Table 18 in FY20/FY21. The earlier names (table20_fy20..., table20_fy21...)
+# misstated the source for two of the three years and were corrected on 2026-09-17.
+captured_tables:
+  - table_id: fy22_awards_by_state
+    source_table: "Table 20: SBIR/STTR Awards by U.S. State and Territory"
+    source_pages: [53, 54]
+    path: studies/sba-annual-report-tables/data/awards_by_state_fy22.csv
+    sha256: 64533444bb4b6aa5468c35d5649bc0256d412592f7a46893549b951c61d07649
+    rows: 52
+    grain: one row per U.S. state, DC, or territory
+    scope: Phase I and Phase II awards only (see definitions-fy22.md, quote 3)
+    internal_checks: >-
+      Five of six within-row identities hold exactly for all 52 rows. The sixth
+      (combined dollars = SBIR + STTR) is off by exactly +/-$1 on 14 rows,
+      consistent with sub-dollar amounts presented as whole dollars.
+    totals: {sbir_usd: 3814888304, sttr_usd: 614232137, awards: 6583}
+  - table_id: fy22_obligations_by_agency
+    source_table: "Chart 1 and Chart 2: Distribution of Total SBIR/STTR Dollars Obligated"
+    source_pages: [10]
+    path: studies/sba-annual-report-tables/data/chart1_2_fy22_obligations_by_agency.csv
+    sha256: 4ce99c86318eccb9d78db902cc68fa3478eba8dff509a63a61ee209a7a1ce8d5
+    rows: 16
+    grain: one row per participating agency per program
+    scope: all program obligations (NOT restricted to Phase I and Phase II)
+    internal_checks: >-
+      Reconciles to the report narrative: SBIR sums to $4,115,812,862 against a
+      stated $4,115,812,863 (-$1); STTR sums exactly; both DoD+HHS concentration
+      figures match to the dollar.
+
+  - table_id: fy20_awards_by_state
+    source_table: "Table 18: SBIR/STTR Awards by U.S. State and Territory"  # FY20 numbers it 18, not 20
+    source_pages: [53, 54, 55, 56]
+    path: studies/sba-annual-report-tables/data/awards_by_state_fy20.csv
+    sha256: 0c8465c210f122a75b42b5afef147f688e73cec6a82a230f0d33f377def3403c
+    rows: 53
+    jurisdictions_extra_vs_fy22: [MH]
+    scope: Phase I and Phase II awards only
+    totals: {sbir_usd: 3429157542, sttr_usd: 454766126, awards: 7136}
+  - table_id: fy21_awards_by_state
+    source_table: "Table 18: SBIR/STTR Awards by U.S. State and Territory"  # FY21 numbers it 18, not 20
+    source_pages: [51, 52, 53, 54]
+    path: studies/sba-annual-report-tables/data/awards_by_state_fy21.csv
+    sha256: cb43a8ec5de2b70a97f240f329a3a19a749b0f85910b5229593a5267dc1c1cde
+    rows: 53
+    jurisdictions_extra_vs_fy22: [MH]
+    scope: Phase I and Phase II awards only
+    totals: {sbir_usd: 3365675990, sttr_usd: 523097227, awards: 6783}
+
+# Cross-year findings in cross-year-fy20-fy22.md. Three notes bear on the contract:
+#  - the +/-$1 total-column residual recurs in all three years, so it is a per-cell
+#    allowance the contract should carry separately from the vintage bands;
+#  - the jurisdiction set is not constant (53 rows in FY20/FY21, 52 in FY22: MH);
+#  - the Phase I+II shortfall against program totals moves a lot by year
+#    (-2.95%, -2.67%, -7.31% on SBIR), so a Table 20 panel is not
+#    a program-obligations panel and the wedge between them must not be ignored.
+
+# Table 20 does not sum to the program totals, by design rather than by error:
+# it covers Phase I and Phase II awards while the program totals cover all
+# obligations. Shortfall -300,924,559 SBIR (-7.31%) and
+# -4,040,026 STTR (-0.65%). Do not reconcile the two.
+
+# ---------------------------------------------------------------------------
+# Decisions for the four definitions absent from every source year.
+# Full basis and measurements: studies/sba-annual-report-tables/definition-decisions.md
+# ---------------------------------------------------------------------------
+definition_decisions:
+  record: studies/sba-annual-report-tables/definition-decisions.md
+  measured_against: data/raw/sbir/history/2026-09-17/award_data.csv   # mod_awarddatapublic endpoint
+  window: FY2020-FY2022
+  rows_measured: 20836
+  closed: 4
+  open: 0
+  # How each of the nine required definitions is satisfied, and at what evidence
+  # level. These are NOT equivalent; do not describe an inferred rule as recovered.
+  evidence_ladder:
+    recovered_verbatim: [fiscal_year_rule, dollar_basis, sttr_treatment]
+    recovered_from_source_methodology: [amendment_handling]
+    partial_with_documented_limits: [phase_label_rollup, agency_attribution]
+    inferred_by_reproducing_published_figure: [first_time_winner_lookback]
+    closed_as_not_applicable: [zero_dollar_records]
+    closed_as_tolerance: [state_attribution]
+  caveats:
+    fiscal_year_rule: >-
+      FY2016 p39 records that SBA cannot distinguish obligation year from
+      appropriation year for DoD and would like to report both. The recovered rule
+      stands, but for the largest agency the obligation-year basis is not cleanly
+      separable.
+
+  amendments_modifications:
+    status: closed
+    closed_how: recovered_from_source      # SBA's own methodology statement, FY2016 p39
+    record: studies/sba-annual-report-tables/assembly-methodology.md
+    finding: >-
+      There is no amendment-counting rule to recover. SBA states the report tables
+      are "a summation of the individual awards uploaded to SBA", explicitly so the
+      report matches SBIR.gov. Post-publication corrections are pushed to the
+      database and the published report is not revised (FY2016 p39), so the surplus
+      is a vintage phenomenon rather than a definitional one.
+    blocking: false
+    decides_share_of_published_counts: "0.36%-1.99%"
+    evidence:
+      export_rows_exceed_published: {fy2020: 180, fy2021: 98, fy2022: 56}
+      duplicate_award_keys: {fy2020: 38, fy2021: 44, fy2022: 32}
+      residual_after_dedup: {fy2020: 142, fy2021: 54, fy2022: 24}
+      rows_outside_published_jurisdictions: 1
+    reframed_as: vintage_tolerance          # see published_table_tolerances below
+    supporting_measurements:
+      distinct_contract_phase_exceeds_published: {fy2020: 144, fy2021: 81, fy2022: 45}
+      tracking_number_dedup_undershoots: {fy2020: -42, fy2021: -105, fy2022: -123}
+      contract_is_project_not_award: >-
+        421 duplicate-contract groups: 89.5% differ in amount, 19.5% stay within one
+        phase, 67.5% span >1 award year; DOE is 703 of 853 rows (82%).
+      dod_submission_days_late: {fy2020: 150, fy2021: 149, fy2022: 0}
+      extraction_caution: >-
+        The FY20/FY21 submission tables print 1501 and 1491 in the days column.
+        Those are 150 and 149 with a footnote marker flattened into the digits by
+        text extraction; verified against the stated 03/15 deadlines. Do not read
+        those cells literally.
+    unresolvable: >-
+      The publication-era figure cannot be reconstructed. SBIR.gov serves only the
+      current snapshot, so no report-era export survives to compare against.
+
+  first_time_winner_lookback:
+    status: closed
+    closed_how: empirical_recovery   # inferred by reproducing the published statistic, NOT read from source
+    epistemic_status: weaker than a verbatim definition; do not describe as recovered from the source
+    basis: distinct_awardee_firms          # awards basis yields 28.2%; published figure is 39%
+    window: all_program_history            # 5-year window yields 40.2%-43.2%
+    identity_key: uei_with_normalized_name_fallback
+    name_profile: ENTITY_RESOLUTION_V1     # sbir_etl.identity.company_names, imported not reimplemented
+    prior_means: any_prior_sbir_or_sttr_award
+    prior_means_status: signed_off_by_maintainer_2026_09_17
+    prior_means_alternative_rejected: prior_phase_i_only   # 39.39% vs 38.65%; ~19 of 2,559 firms
+    prior_means_basis: >-
+      Decided on the report's own internal evidence, not on proximity to the published
+      figure. A published 39% implies a true value in [38.5%, 39.5%) and BOTH candidates
+      fall inside it (38.65% is 0.35pp from 39, 39.39% is 0.39pp), so the published
+      statistic cannot discriminate and an argument from closeness to 39% is invalid.
+      The report scopes explicitly when it means to, since the Multiple Award Winner
+      chart reads ">15 Phase IIs FY17-FY21", both phase-specific and window-specific,
+      while the first-time-winner sentence specifies neither. That chart's five-year
+      convention is also already known not to carry over here, because a five-year
+      window yields 40.2%-43.2% rather than 39%. The unscoped phrase therefore reads as
+      program-wide. The contrary reading, that first-time elides first-time Phase I
+      because the subject is Phase I winners, is reasonable but unsupported by the
+      document. Signing this off does NOT make the rule recovered; epistemic_status is
+      unchanged and cross_validation remains impossible.
+    recomputed_fy22_rate: 0.3865
+    published_fy22_rate: 0.39
+    distinct_firms: 2559
+    cross_validation: impossible           # FY2020 and FY2021 publish no comparable statistic
+
+  zero_dollar_records:
+    status: closed
+    decision: not_applicable_in_scope
+    evidence: 0 of 20836 FY20-FY22 export rows have award amount <= 0 or missing
+    revisit_if: panel extends beyond FY2020-FY2022
+
+  published_count_basis:
+    status: recorded_2026_09_17
+    discovered_by: extending the structural check to earlier report-years
+    record: studies/sba-annual-report-tables/extension-to-eight-years.md
+    finding: >-
+      The reports state the basis of their award-count columns only from FY2016 onward.
+      FY2016 through FY2022 each carry the sentence "The number of awards are only for
+      new awards during FYxx. The dollars obligated includes funding for both new and
+      prior year awards." FY2013, FY2014 and FY2015 carry no such statement; their state
+      tables are introduced only as showing "the total dollar amount and number of SBIR
+      and STTR Phase I and Phase II awards", while their narratives say "new". The count
+      basis of the pre-FY2016 tables is therefore unstated, not merely undocumented by
+      this study.
+    evidence: >-
+      In FY2014 the state table exceeds the report's own narrative count by 2.47%, and the
+      divergence is phase-aligned rather than confined to one cell. Both Phase I cells agree
+      with the narrative to within 0.4% (SBIR +0.38%, STTR -0.20%) and both Phase II cells
+      run high (SBIR +7.60%, STTR +3.29%). That alignment with the phase split, rather than
+      a single stray cell, is what rules out a whole-table offset or a transcription fault. Phase II is where a new-versus-continuing distinction would
+      show, since the same report names 41.2 million dollars of prior-year Phase I
+      obligations against 596.7 million for prior-year Phase II, 14.5 times as much.
+      FY2013 diverges the other way, its table sitting 1.22% below its narrative, which is
+      what an unsettled rather than systematic basis looks like.
+    eliminated: >-
+      A localised database gap (no agency shows an anomalous FY2014 dip); second or
+      sequential Phase II awards (only 15 FY2014 SBIR Phase II awards carry a tracking
+      number that already held a Phase II, against 23 in FY2015 and 22 in FY2016); a
+      total-obligations basis for the whole table (the table's dollars match neither the
+      narrative's new-award nor its total figure); and a restatement in a later volume
+      (FY2015 through FY2017 contain none).
+    epistemic_status: >-
+      Best-supported explanation, not established. What is established is the confinement
+      to SBIR Phase II and the absence of a basis statement before FY2016. Settling the
+      cause would need SBA's table-construction methodology for those years, which the
+      supplied corpus does not contain.
+    consequence: >-
+      Report-years before FY2016 must not enter a tolerance envelope for award counts. A
+      comparison target whose counting basis is unstated cannot size a band, and for FY2014
+      the one divergent cell is consistent with a basis the later reports explicitly
+      exclude. The usable panel is FY2016 onward.
+    panel_effect: >-
+      Six report-years are usable on a stated basis and extractable now - FY2016, FY2017,
+      FY2018, FY2020, FY2021, FY2022 - doubling the three currently in the study. FY2019
+      states the basis but prints its table as an image, so OCR would make seven. FY2013
+      and FY2014 are extractable but excluded on basis grounds; FY2015 is excluded on both
+      basis and extraction grounds.
+  state_attribution:
+    status: closed
+    decision: tolerance_not_rule           # award-time address is unrecoverable from this export
+    use: export current State value, mapped from full name to USPS code
+    four_month_drift: {state: 0.00155, city: 0.01200, zip: 0.01637, address1: 0.02230}
+    drift_is_a_floor: true                 # FY22 published 2023; band must reflect elapsed time
+    do_not_go_finer_than_state: true       # zip drifts 11x as often as state over the same interval
+
+next_actions:
+  # CLOSED 2026-09-17. Both prior actions are answered; what replaces them is a
+  # band revision implied by the eight-year extension, which is a maintainer call.
+  - >-
+    Dollar banding is resolved and the answer is do not band. The reason is now
+    definitional rather than unquantified. The reports state that award counts cover
+    new awards only while obligated dollars include prior-year funding, so the export
+    and the published dollar column are not measuring the same quantity. The obvious
+    reconciliation, export new-award dollars plus stated prior-year obligations
+    against the published column, is not testable on this panel: FY2016, FY2017,
+    FY2019, FY2021 and FY2022 disclose no prior-year total, FY2018 mentions it only
+    qualitatively and FY2020 gives a single agency-level figure. Only FY2013 and
+    FY2014 publish the split, and both are excluded on count-basis grounds. The
+    dollar columns therefore carry no verdict and cannot acquire one from this corpus.
+  - >-
+    Materialization blocker scoping is resolved. The two mis-scoped blockers were
+    replaced with the one permanent constraint, that no report-era copy of the
+    database survives. The gate remains closed and cannot be opened by further work.
+  - >-
+    OPEN, maintainer decision. The eight-year extension implies two band revisions
+    that are deliberately not applied here. The per-cell band of max(6 rows, 20%) is
+    breached by 3 of 1470 non-zero cells once FY2013-FY2018 are included, and the
+    tightest covering band on the tested grid is max(8 rows, 20%). The one-sided
+    total-count band survives on the six stated-basis years with 0.08pp headroom at
+    FY2016. See extension-to-eight-years.md; study.yaml is unchanged.
+proposed_reproduction_contract:
+  live_sources:
+    - name: SBIR.gov award export (mod_awarddatapublic)
+      # Gitignored original, kept here as the derivation record. The live contract
+      # in study.yaml pins the tracked copy: award-export-2026-09-17.meta.json.
+      retrieval_manifest: data/raw/sbir/history/2026-09-17/award_data.meta.json
+      upstream_measure: total record count in the export
+      identity_grain: one row per award action as published by SBIR.gov
+  tolerances:
+    - quantity: FY2020-FY2022 total award dollars (USD)
+      absolute_band: 30000000
+      derivation: >-
+        Measured movement over 4.2 months was +$5,669,026 (+0.0465%) on a
+        $12.2040B base, and the largest single award-amount correction observed was
+        $1,928,322. The band is $30M, about 0.25% of the total and roughly five
+        times the observed four-month move, leaving room for accumulation across a
+        multi-year gap and several large corrections. It is deliberately not
+        time-scaled from a single observation window.
+    - quantity: FY2020-FY2022 unique award count
+      absolute_band: 200
+      derivation: >-
+        Over 4.2 months, 135 window records were removed and 136 added, for a net
+        change of +1 unique award. The band covers observed churn with headroom.
+    - quantity: FY2020-FY2022 records whose state attribution differs from the pinned vintage
+      absolute_band: 150
+      derivation: >-
+        32 state re-attributions were measured over 4.2 months (0.16% of matched
+        records). Compare like endpoints only: the legacy feed reports states as
+        USPS abbreviations, which makes an unnormalised comparison report 100%.
+
+# Tolerances for reproducing the PUBLISHED tables from the export. Distinct from
+# `tolerances` above, which covers vintage drift between two exports. Basis:
+# 569 published cells (state x program x phase) across FY2020-FY2022, compared
+# against the pinned 2026-09-17 export. Full derivation in assembly-methodology.md.
+published_table_tolerances:
+  - quantity: per-row residual between a published total column and the sum of its published parts
+    band: "$1"
+    derivation: >-
+      Not an agreement band between published and recomputed values: this is an
+      allowance on the published table's own internal arithmetic, checked before any
+      comparison because design.md makes denominator integrity blocking. Measured
+      across FY2020-FY2022: 38 row-identity residuals, every one at most $1 —
+      all_tot=sbir+sttr on 22 rows (4 FY20, 4 FY21, 14 FY22), sbir_tot=p1+p2 on 15
+      (6 FY20, 9 FY21), sttr_tot=p1+p2 on 1 (FY21). All three award-count identities
+      hold exactly in all three years. Consistent with the source summing amounts
+      carrying cents and printing whole dollars. A residual above $1 is a capture
+      defect and raises. Implemented as verify_published_identities().
+  - quantity: total award count, per report-year
+    band: "+3% one-sided"
+    derivation: >-
+      Observed export surplus over published: +0.85% (FY2022), +1.44% (FY2021),
+      +2.51% (FY2020). One-sided because post-publication correction only adds
+      records; the export should never fall below the published count. The band
+      covers the observed maximum with headroom and is not time-scaled from three
+      observations.
+  - quantity: per-cell award count (state x program x phase)
+    band: "max(6 rows, 20%)"
+    derivation: >-
+      Tightest band on the tested grid covering 100% of 569 cells;
+      max(4 rows, 20%) covers 99.82%. A hybrid is required because the two failure
+      modes sit at opposite ends of the size distribution (three-year bins in
+      assembly-methodology.md): 1-5-count cells move at most 4 rows but up to 200%
+      relatively, while 101+ cells move up to 23 rows but at most 13% relatively.
+      Largest single deviation: FY2020 CA SBIR Phase II, 466 published against 489
+      in the export (+23, +4.9%) — a 101+ cell the 20% arm covers.
+    warning: >-
+      This band absorbs TWO superimposed effects and must not be read as a count
+      tolerance alone. Only 41.5-46.6% of cells match exactly and cells run under as
+      often as over (FY2022: 62 over, 49 under, net +56). The under-cells are firm
+      relocation, i.e. the state-attribution tolerance: FL +16, CO +15, NC +12,
+      TX +8 gaining against PA -7, DE -7, VA -6, WA -5 losing. At least 83-97 rows
+      per year sit in the wrong cell. Validate totals against the count band and
+      cells against the combined band; never attribute cell displacement to counting.

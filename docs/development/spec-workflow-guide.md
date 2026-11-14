@@ -66,7 +66,7 @@ orchestration, persistence, security, or deployment. Cover only what the impleme
 - configuration and failure behavior;
 - data provenance and identity assumptions;
 - testing and migration strategy;
-- consequences for evidence or citability.
+- consequences for validation or evidence approval.
 
 Follow the [architecture overview](../architecture/detailed-overview.md) and steering contracts.
 Record difficult-to-reverse technology choices as an [ADR](../decisions/README.md), not only in a
@@ -111,7 +111,12 @@ Question statuses should distinguish:
 
 - **computable:** the repository can produce a bounded result;
 - **validated:** a study contract and checks support the interpretation;
-- **citable:** the manifest explicitly permits external claims.
+- **approved evidence:** the manifest explicitly permits its bounded external claims.
+
+Bibliographic citation is not an evidence rank. A study result may be cited
+from an immutable release only at `reproducible` or higher, with its actual
+status attached; exploratory and retired work may not be cited. `approved`
+records repository authorization for the manifest's substantive claims.
 
 ## Historical OpenSpec content
 

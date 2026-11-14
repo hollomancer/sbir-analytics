@@ -64,9 +64,6 @@ ALLOWED_TIER_IMPORTS = {
 # Each entry: importer path -> imported module names, with a reason and a
 # removal condition. Stale entries (edge no longer present) fail the run.
 TIER_IMPORT_ALLOWLIST: dict[str, frozenset[str]] = {
-    "packages/sbir-analytics/sbir_analytics/assets/sbir_neo4j_loading.py": frozenset(
-        {"sbir_etl.utils.company_canonicalizer"}  # removed by R2
-    ),
     "sbir_etl/supply_chain/defense_release.py": frozenset(
         {"sbir_etl.supply_chain.nsf_screen"}  # removed by R3.1
     ),
@@ -77,7 +74,8 @@ TIER_IMPORT_ALLOWLIST: dict[str, frozenset[str]] = {
 ```
 
 The seed list is written by T1.2's full-repository triage run, not copied from this
-design; the three edges above are the ones known in advance. Triage rules: a hit caused
+design; the two surviving edges above are the ones known in advance. The former loading
+edge was removed with its retired asset. Triage rules: a hit caused
 by a mislabeled module is fixed by correcting the label (with a one-line justification
 in the PR); a real cross-tier edge is either fixed in place or allowlisted with a
 removal condition. No silent third option.

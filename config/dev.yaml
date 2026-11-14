@@ -1,8 +1,6 @@
 # Development environment overrides
 # This file contains settings specific to development environment
 # These override values from base.yaml
-#
-# Start Neo4j locally with: docker compose --profile dev up neo4j
 
 pipeline:
   environment: "development"
@@ -35,11 +33,6 @@ enrichment:
   sam_gov:
     rate_limit_per_minute: 30  # Lower rate limit for dev
     timeout_seconds: 60        # Longer timeout for dev debugging
-
-loading:
-  neo4j:
-    batch_size: 100           # Smaller batches for dev
-    parallel_threads: 1       # Single thread for easier debugging
 
 logging:
   level: "DEBUG"

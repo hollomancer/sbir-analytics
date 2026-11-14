@@ -11,8 +11,8 @@ This page shows which questions each research note or report helps answer, how
 much confidence to place in it, and which data it covers. See
 [research-questions.md](../research-questions.md) for the full list of questions.
 
-Do not cite an output as a validated finding unless its linked
-`studies/<study-id>/study.yaml` file says `citable`. A working pipeline or a dated
+Do not present an output's substantive claim as approved evidence unless its linked
+`studies/<study-id>/study.yaml` file says `approved`. A working pipeline or a dated
 report may still be early research. See [evidence levels](../steering/epistemic-tiers.md)
 and [study requirements](../../studies/README.md) for the review rules.
 
@@ -52,6 +52,7 @@ brief count as maintainer-facing.
 | Output | Questions | Evidence status | Data covered |
 | --- | --- | --- | --- |
 | [DoD industrial-base concentration](dod_supply_chain_initial_analysis.md) | A1–A3 | Early descriptive starting point | FY2012–FY2025; main results use FY2021–FY2025 |
+| [SBIR entities in defense-critical NAICS codes](defense_critical_naics_sbir_analysis.md) | A1, A2, B2, B3, D1, E2, E3 | Exploratory public-data screening; non-citable | Public procurement Oct 2008–Jul 2026; SAM extract 2026-09-07; SBIR archive 2026-09-07 |
 | [GSA and OTSB Phase III analysis](sbir-phase3-gsa-otsb-analysis.md) | B2, B3 | Working keyword analysis; known to miss some award codes | FY2008–FY2026 sources assembled 2026-06-28 |
 | [Phase II→III latency method](../phase-transition-latency.md) | B3 | Method works in the pipeline; not an approved finding | Uses the data selected for each pipeline run |
 | [Follow-on multiplier method](../follow-on-multiplier-analysis.md) | A3 | Method works; testing against real outcomes is still open | Uses the selected SBIR and USAspending inputs |
@@ -105,9 +106,18 @@ explain how firms were selected and what the results cannot show.
 
 ## Research planning and communication
 
+- [Literature replication roadmap](literature-replication-roadmap.md) — exact published-sample
+  replications followed by separately reported current-data extensions, ordered from public-data
+  descriptive studies through restricted-data causal studies. Several orders route into specs that
+  are gated or de-tiered in the [status registry](../../specs/status.md); check it before starting.
+- [Literature corpus triage](literature-corpus-triage.md) and
+  [inventory CSV](literature-corpus-inventory.csv) — the 51 report PDFs supplied 2026-09-17,
+  mapped to roadmap orders with per-document text-layer quality and SHA-256. The corpus is deep on
+  Order 1 and contributes benchmark context only to Orders 3 and 5. Read this before staging any
+  historical source cuts: the files are already inventoried.
 - [Literature map and citation audit](literature-map/README.md) — research published
   from 2019–2026 and missing coverage across question areas A–F. The CSV is
-  refreshed weekly from OpenAlex (`make literature-map`); authored memos are not.
+  refreshed manually from OpenAlex (`make literature-map`); authored memos are not.
 - [Solicitation document and requirement evidence plan](solicitation_document_evidence_plan.md) —
   bounded acquisition, linkage, attachment parsing, and classifier gates for A1 and E5; Phase 1 is
   implemented, but this remains a plan rather than research evidence.

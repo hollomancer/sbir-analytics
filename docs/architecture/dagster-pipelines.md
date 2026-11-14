@@ -39,18 +39,18 @@ import, its job is replaced by an empty **placeholder** job (name suffixed
 |---|---|---|
 | `core_refresh_job` | all currently-loaded non-heavy assets | Weekly refresh of core (non-heavy) assets |
 | `cet_drift_job` | `["ml","validated_cet_drift_detection"]` | CET drift detection (only created if that ML asset is loaded) |
-| `sbir_weekly_refresh_job` | raw→validated→enriched SBIR + `neo4j_sbir_awards` | Weekly refresh subset; uses `in_process_executor` to fit 7 GB CI runners |
+| `sbir_weekly_refresh_job` | raw→validated→enriched SBIR | Weekly refresh subset; uses `in_process_executor` to fit 7 GB CI runners |
 | `uspto_validation_job` | `raw`/`validated_uspto_assignments` | Lightweight USPTO validation (CI) |
-| `sec_edgar_pipeline_job` | validated awards → SEC EDGAR enrichment → Neo4j | Opt-in; enable with `SBIR_ETL__ENRICHMENT_REFRESH__SEC_EDGAR__ENABLED=true` |
+| `sec_edgar_pipeline_job` | validated awards → SEC EDGAR enrichment | Opt-in; enable with `SBIR_ETL__ENRICHMENT_REFRESH__SEC_EDGAR__ENABLED=true` |
 | `usaspending_iterative_enrichment_job` | `usaspending_freshness_ledger`, `stale_usaspending_awards` | Identify & refresh stale USASpending awards (kicked by the sensor below) |
 | `phase_transition_latency_job` | Phase II/III pairs + survival | Phase-transition latency analysis |
-| `transition_mvp_job` / `transition_full_job` / `transition_analytics_job` | vendor resolution → scoring → evidence (→ detections/analytics → Neo4j) | Transition detection at MVP / full / analytics-only scope |
+| `transition_mvp_job` / `transition_full_job` / `transition_analytics_job` | vendor resolution → scoring → evidence (→ detections/analytics) | Transition detection at MVP / full / analytics-only scope |
 
 ### Heavy (loaded only when `DAGSTER_LOAD_HEAVY_ASSETS=true`)
 
 | Job (`name`) | Selection | Notes |
 |---|---|---|
-| `cet_full_pipeline_job` | 8 CET keys (classifications, profiles, Neo4j CET nodes/edges) | Ships run config (parquet/json paths, `batch_size: 1000`, create constraints/indexes) |
+| `cet_full_pipeline_job` | CET classifications, profiles, analytics, and validation | Ships run config for governed tabular outputs |
 | `fiscal_returns_mvp_job` | 9 fiscal keys (NAICS→BEA, inflation, economic/tax) | Exploratory Python/BEA model; memory requirement is not yet measured |
 | `fiscal_returns_full_job` | asset groups `fiscal_data_prep`, `economic_modeling`, `tax_calculation`, `sensitivity_analysis` | Full fiscal run incl. sensitivity sweep |
 | `modernbert_job` | ModernBERT award/patent embeddings + similarity | Requires ML extras |

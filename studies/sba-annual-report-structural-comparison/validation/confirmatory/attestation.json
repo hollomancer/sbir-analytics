@@ -1,0 +1,171 @@
+{
+  "schema_version": 1,
+  "status": "complete",
+  "packet_id": "sba-structural-fidelity-v5",
+  "extractor_identity": "/root/sba_blind_extractor_5",
+  "coordinator_identity": "/root (Codex primary agent)",
+  "overall_started_at_utc": "2026-09-21T22:56:35Z",
+  "overall_finished_at_utc": "2026-09-21T23:03:22Z",
+  "first_complete_extraction_started_at_utc": "2026-09-21T23:01:28Z",
+  "first_complete_extraction_finished_at_utc": "2026-09-21T23:01:38Z",
+  "first_complete_submission_preserved_without_repair_or_rerun": true,
+  "validation_values_scored": false,
+  "production_comparison_inspected": false,
+  "packet_checks": {
+    "manifest_valid_json": true,
+    "manifest_sha256_expected": "51033aca620e71f71fc18d6ae398d27fe238fbf7c7d6cda4e748ba7db3299314",
+    "manifest_sha256_actual": "51033aca620e71f71fc18d6ae398d27fe238fbf7c7d6cda4e748ba7db3299314",
+    "declared_file_count": 7,
+    "declared_files_all_exist": true,
+    "declared_byte_counts_all_match": true,
+    "declared_sha256_all_64_character_lowercase_hex": true,
+    "declared_sha256_all_match": true
+  },
+  "source_checks": {
+    "fresh_retrieval_user_agent": "Mozilla/5.0 independent-validation/1.0",
+    "all_durable_uris_retrieved_independently": true,
+    "all_fresh_retrievals_match_declared_bytes_and_sha256": true,
+    "sources": [
+      {
+        "source_id": "sbir-gov-award-export-2026-09-17",
+        "durable_uri": "https://data.www.sbir.gov/mod_awarddatapublic/award_data.csv?versionId=Jm_ZxEbD5MStDhkSNjahwgKY8QAYoJlm",
+        "size_bytes": 394636989,
+        "sha256": "aed146eab56f370c9f3fe7f562475e3eedfc61cca2eba112c830fac6f73bf38a",
+        "packet_copy_verified": true,
+        "fresh_retrieval_verified": true
+      },
+      {
+        "source_id": "sba-annual-report-fy2020",
+        "durable_uri": "https://www.sbir.gov/sites/default/files/documents/SBA_SBIR_STTR_FY20_Annual_Report.pdf",
+        "size_bytes": 2505195,
+        "sha256": "f1f51abb29c71d631451868f31babf2f6f1fe3845df91e534052f1d40dece3d3",
+        "packet_copy_verified": true,
+        "fresh_retrieval_verified": true
+      },
+      {
+        "source_id": "sba-annual-report-fy2021",
+        "durable_uri": "https://www.sbir.gov/sites/default/files/documents/SBA_SBIR_STTR_FY21_Annual_Report.pdf",
+        "size_bytes": 2444751,
+        "sha256": "30b4dfa9b4c2c2220fc15938d5bd1a44bee92d5aa746b8756dc7d66217c6df55",
+        "packet_copy_verified": true,
+        "fresh_retrieval_verified": true
+      },
+      {
+        "source_id": "sba-annual-report-fy2022",
+        "durable_uri": "https://www.sbir.gov/sites/default/files/SBA_FY22_SBIR_STTR_Annual_Report.pdf",
+        "size_bytes": 2038536,
+        "sha256": "5ba60852f1cc44b23afdbf810ecf0cff77d714d10ffc786a9b73416d7c000fd1",
+        "packet_copy_verified": true,
+        "fresh_retrieval_verified": true
+      }
+    ],
+    "pdf_page_counts": {
+      "2020": 99,
+      "2021": 95,
+      "2022": 94
+    },
+    "export_ordered_header_verified": true,
+    "export_column_count": 42,
+    "export_ordered_header_sha256": "9f4ddf95992ccfb3a641d0f98bcf3ed591b9f3d5972cfd186d3d91708cc65127"
+  },
+  "pdf_extraction_diagnostics": {
+    "2020": {
+      "table_number": 18,
+      "table_pdf_pages": [53, 54],
+      "printed_jurisdiction_rows": 53,
+      "eligible_count_columns_per_row": 4,
+      "published_count_cells": 212,
+      "duplicate_printed_keys": 0,
+      "omitted_printed_keys": 0,
+      "ambiguous_or_unreadable_cells": 0
+    },
+    "2021": {
+      "table_number": 18,
+      "table_pdf_pages": [51, 52],
+      "printed_jurisdiction_rows": 53,
+      "eligible_count_columns_per_row": 4,
+      "published_count_cells": 212,
+      "duplicate_printed_keys": 0,
+      "omitted_printed_keys": 0,
+      "ambiguous_or_unreadable_cells": 0
+    },
+    "2022": {
+      "table_number": 20,
+      "table_pdf_pages": [53, 54],
+      "printed_jurisdiction_rows": 52,
+      "eligible_count_columns_per_row": 4,
+      "published_count_cells": 208,
+      "duplicate_printed_keys": 0,
+      "omitted_printed_keys": 0,
+      "ambiguous_or_unreadable_cells": 0
+    }
+  },
+  "export_extraction_diagnostics": {
+    "parsed_source_rows": 219590,
+    "retained_fy2020_fy2022_rows_before_blank_state_drop": 20836,
+    "dropped_blank_state_rows": 1,
+    "retained_counted_rows_after_blank_state_drop": 20835,
+    "blank_award_year_rows": 0,
+    "deduplicated_rows": 0,
+    "zero_filled_eligible_groups": 60,
+    "unmapped_retained_state_rows": 0,
+    "mapped_keys_outside_population": 0,
+    "blocking_retained_program_or_phase_rows": 0
+  },
+  "submission_diagnostics": {
+    "ordered_column_count": 12,
+    "unit_count": 1264,
+    "unique_unit_id_count": 1264,
+    "population_key_order_match": true,
+    "observed_count": 1264,
+    "missing_count": 0,
+    "source_locator_missing_count": 0,
+    "rfc4180_crlf_record_count_including_header": 1265,
+    "extra_columns_or_keys": 0
+  },
+  "pre_seal_invocation_record": {
+    "occurred_before_first_complete_extraction": true,
+    "sealed_submission_created": false,
+    "validation_values_file_created": false,
+    "run_diagnostics_file_created": false,
+    "validation_cell_values_emitted_or_human_observed_from_invocation": false,
+    "requested_extraction_diagnostic_counts_emitted_or_human_observed_from_invocation": false,
+    "stop_reason": "The locator treated a table-of-contents title mention as a second table title and stopped before row/cell extraction and before any submission artifact was written.",
+    "exact_correction": "The locator was narrowed from title-only matching to the frozen design's title-plus-count-column-geometry rule by requiring both the exact table title and the normalized full header 'State SBIR Phase I STTR Phase I SBIR Phase II STTR Phase II'. This excludes the table-of-contents mention and does not alter any extraction rule or value.",
+    "design_changed": false
+  },
+  "blinding_and_exposure_attestation": {
+    "prohibited_material_exposure": false,
+    "repository_checkout_inspected": false,
+    "git_history_inspected": false,
+    "captured_table_csvs_inspected": false,
+    "production_code_inspected": false,
+    "production_tests_inspected": false,
+    "production_sidecars_inspected": false,
+    "rendered_results_inspected": false,
+    "earlier_packet_directories_inspected": false,
+    "earlier_submission_directories_inspected": false,
+    "prior_extractor_artifacts_inspected": false,
+    "filled_output_inspected": false,
+    "prior_extractors_contacted": false
+  },
+  "tools": {
+    "python": "3.9.6",
+    "pypdf": "5.9.0",
+    "typing_extensions": "4.15.0",
+    "curl": "8.7.1 (x86_64-apple-darwin25.0; SecureTransport; LibreSSL/3.3.6)",
+    "jq": "1.7.1-apple",
+    "shasum": "6.02",
+    "csv_parser": "Python 3.9.6 standard-library csv module with utf-8-sig and newline=''"
+  },
+  "sealed_component_sha256": {
+    "extract_validation.py": "a01fce83292576642a89dd077b671a4c67b7e572cfc5b08bf4494526cb9ca670",
+    "jurisdiction-mapping.json": "fd09990902369d81cdd5619b636b833a1f61e90370929106b9ebd0a12046aaae",
+    "requirements.lock": "90ecaef1ce778fa9556cdb7b55b08459b8f80296fb31af53922c87a5ea9d6694",
+    "dependencies/pypdf-5.9.0-py3-none-any.whl": "be10a4c54202f46d9daceaa8788be07aa8cd5ea8c25c529c50dd509206382c35",
+    "dependencies/typing_extensions-4.15.0-py3-none-any.whl": "f0fa19c6845758ab08074a0cfa8b7aecb71c999ca73d62883bc25cc018c4e548",
+    "run-diagnostics.json": "bf8c932dd8725f2f3e66309c0318987d4a1eed485e6651d064f2037e9f68dbb8",
+    "validation-values.csv": "66827a11e860da48a9da215ab982722fa182ceb2726a9ef05a182922c61bae2a"
+  },
+  "attestation_self_hash_location": "sealed-components.sha256"
+}

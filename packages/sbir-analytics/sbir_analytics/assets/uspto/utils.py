@@ -12,7 +12,7 @@ from __future__ import annotations
 import json
 import os
 from collections.abc import Iterable
-from datetime import date, datetime
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
@@ -31,14 +31,6 @@ __all__ = [
     "MetadataValue",
 ]
 
-
-# Statistical reporting imports
-try:  # pragma: no cover - defensive import
-    from sbir_etl.models.quality import ModuleReport  # type: ignore
-    from sbir_etl.utils.reporting.analyzers.patent_analyzer import PatentAnalysisAnalyzer  # type: ignore
-except Exception:
-    ModuleReport = None  # type: ignore[assignment,misc]
-    PatentAnalysisAnalyzer = None  # type: ignore[assignment,misc]
 
 # ============================================================================
 # Optional imports - degrade gracefully when dependencies are unavailable
@@ -75,23 +67,6 @@ try:  # pragma: no cover - defensive import
 except Exception:
     PatentAssignment = None  # type: ignore[assignment,misc]
 
-# Neo4j loaders
-try:  # pragma: no cover - defensive import
-    from sbir_graph.loaders.neo4j import LoadMetrics, Neo4jClient, Neo4jConfig  # type: ignore
-except Exception:
-    Neo4jClient = None
-    Neo4jConfig = None
-    LoadMetrics = None
-
-try:  # pragma: no cover - defensive import
-    from sbir_graph.loaders.neo4j import PatentLoader, PatentLoaderConfig
-except Exception:
-    PatentLoader = None
-    PatentLoaderConfig = None
-
-# Note: Neo4jClient and Neo4jConfig are already imported above from sbir_graph.loaders.neo4j
-# They are used by _get_neo4j_client() function below
-
 # ============================================================================
 # Configuration Constants
 # ============================================================================
@@ -106,16 +81,6 @@ DEFAULT_VALIDATION_FAIL_DIR = Path(
 DEFAULT_VALIDATION_REPORT_DIR = Path(
     os.environ.get("SBIR_ETL__USPTO__VALIDATION_REPORT_DIR", "reports/uspto-validation")
 )
-DEFAULT_NEO4J_OUTPUT_DIR = Path(
-    os.environ.get("SBIR_ETL__USPTO__NEO4J_OUTPUT_DIR", "data/loaded/neo4j")
-)
-
-# Neo4j defaults
-DEFAULT_NEO4J_URI = os.environ.get("NEO4J_URI", "bolt://localhost:7687")
-DEFAULT_NEO4J_USER = os.environ.get("NEO4J_USER", "neo4j")
-DEFAULT_NEO4J_PASSWORD = os.environ.get("NEO4J_PASSWORD", "neo4j")
-DEFAULT_NEO4J_DATABASE = os.environ.get("NEO4J_DATABASE", "neo4j")
-
 # AI extraction defaults
 DEFAULT_AI_RAW_DIR = Path(os.environ.get("SBIR_ETL__USPTO_AI__RAW_DIR", "data/raw/USPTO"))
 DEFAULT_AI_CHECKPOINT_DIR = Path(
@@ -140,8 +105,6 @@ TRANSFORM_SUCCESS_THRESHOLD = float(
     os.environ.get("SBIR_ETL__USPTO__TRANSFORM_SUCCESS_THRESHOLD", "0.98")
 )
 LINKAGE_TARGET = float(os.environ.get("SBIR_ETL__USPTO__LINKAGE_TARGET", "0.60"))
-LOAD_SUCCESS_THRESHOLD = float(os.environ.get("SBIR_ETL__USPTO__LOAD_SUCCESS_THRESHOLD", "0.99"))
-
 _SUPPORTED_EXTS = [".csv", ".dta", ".parquet"]
 
 
@@ -448,104 +411,8 @@ def _load_assignments_file(path: str | None) -> Iterable[dict[str, Any]]:
                 continue
 
 
-def _ensure_output_dir() -> Path:
-    """Ensure output directory exists."""
-    DEFAULT_NEO4J_OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
-    return DEFAULT_NEO4J_OUTPUT_DIR
-
-
-def _load_transformed_file(file_path: Path) -> list[dict[str, Any]]:
-    """Load JSONL file of transformed records."""
-    records: list[Any] = []
-    if not file_path.exists():
-        logger.warning(f"Transformed file not found: {file_path}")
-        return records
-
-    try:
-        with file_path.open("r", encoding="utf-8") as fh:
-            for line_num, line in enumerate(fh, 1):
-                line = line.strip()
-                if not line:
-                    continue
-                try:
-                    record = json.loads(line)
-                    records.append(record)
-                except json.JSONDecodeError as e:
-                    logger.warning(f"Failed to parse JSON at line {line_num}: {e}")
-        logger.info(f"Loaded {len(records)} records from {file_path}")
-    except Exception as e:
-        logger.error(f"Failed to load transformed file {file_path}: {e}")
-
-    return records
-
-
-def _convert_dates_to_iso(obj: Any) -> Any:
-    """Recursively convert date/datetime objects to ISO format strings."""
-    if isinstance(obj, date | datetime):
-        return obj.isoformat()
-    elif isinstance(obj, dict):
-        return {k: _convert_dates_to_iso(v) for k, v in obj.items()}
-    elif isinstance(obj, list | tuple):
-        return [_convert_dates_to_iso(item) for item in obj]
-    return obj
-
-
-def _serialize_metrics(metrics: LoadMetrics | None) -> dict[str, Any]:
-    """Serialize LoadMetrics to dict for output."""
-    if metrics is None:
-        return {
-            "nodes_created": {},
-            "nodes_updated": {},
-            "relationships_created": {},
-            "errors": 0,
-        }
-
-    return {
-        "nodes_created": metrics.nodes_created,
-        "nodes_updated": metrics.nodes_updated,
-        "relationships_created": metrics.relationships_created,
-        "errors": metrics.errors,
-    }
-
-
-def _get_neo4j_client() -> Neo4jClient | None:
-    """Create and return a Neo4j client, or None if unavailable."""
-    import os
-
-    # Check if Neo4j loading is explicitly skipped
-    skip_neo4j = os.getenv("SKIP_NEO4J_LOADING", "false").lower() in ("true", "1", "yes")
-
-    if Neo4jClient is None or Neo4jConfig is None:
-        if skip_neo4j:
-            logger.warning("Neo4jClient unavailable but skipping Neo4j operations")
-            return None
-        else:
-            raise RuntimeError(
-                "Neo4jClient unavailable but Neo4j loading not skipped. Set SKIP_NEO4J_LOADING=true to skip."
-            )
-
-    try:
-        config = Neo4jConfig(
-            uri=DEFAULT_NEO4J_URI,
-            username=DEFAULT_NEO4J_USER,
-            password=DEFAULT_NEO4J_PASSWORD,
-            database=DEFAULT_NEO4J_DATABASE,
-        )
-        client = Neo4jClient(config)
-        logger.info(f"Created Neo4j client for {DEFAULT_NEO4J_URI}")
-        return client
-    except Exception as e:
-        if skip_neo4j:
-            logger.warning(f"Failed to create Neo4j client but skipping: {e}")
-            return None
-        else:
-            raise RuntimeError(
-                f"Failed to create Neo4j client but Neo4j loading not skipped: {e}. Set SKIP_NEO4J_LOADING=true to skip."
-            )
-
-
 # ============================================================================
-# Phase 1: Load Patents and PatentAssignments
+# AI helpers
 # ============================================================================
 
 

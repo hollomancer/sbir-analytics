@@ -18,18 +18,16 @@ from pathlib import Path
 
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
-FIRST_PARTY_PACKAGES = frozenset({"sbir_etl", "sbir_ml", "sbir_graph", "sbir_analytics"})
+FIRST_PARTY_PACKAGES = frozenset({"sbir_etl", "sbir_ml", "sbir_analytics"})
 PACKAGE_ROOTS = {
     "sbir_etl": Path("sbir_etl"),
     "sbir_ml": Path("packages/sbir-ml/sbir_ml"),
-    "sbir_graph": Path("packages/sbir-graph/sbir_graph"),
     "sbir_analytics": Path("packages/sbir-analytics/sbir_analytics"),
 }
 ALLOWED_FIRST_PARTY_IMPORTS = {
     "sbir_etl": frozenset(),
     "sbir_ml": frozenset({"sbir_etl"}),
-    "sbir_graph": frozenset(),
-    "sbir_analytics": frozenset({"sbir_etl", "sbir_ml", "sbir_graph"}),
+    "sbir_analytics": frozenset({"sbir_etl", "sbir_ml"}),
 }
 
 TRANSITIONAL_SCRIPT_IMPORTS: dict[str, frozenset[str]] = {}

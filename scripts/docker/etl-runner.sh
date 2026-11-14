@@ -6,7 +6,7 @@
 # This script is a small service wrapper intended to be used as an entrypoint
 # for ad-hoc ETL runs inside the container. It:
 #  - loads environment (.env, /app/config/.env, /run/secrets/*)
-#  - waits for Neo4j and optionally the Dagster webserver to be reachable
+#  - optionally waits for the Dagster webserver to be reachable
 #  - drops privileges to a non-root 'sbir' user when possible
 #  - executes the provided command
 #
@@ -17,7 +17,7 @@
 # Exit codes:
 #   0  - command executed successfully
 #   2  - usage / wrong invocation
-#   3  - dependency check failed (Neo4j / Dagster)
+#   3  - optional Dagster dependency check failed
 #
 set -eu
 
@@ -77,51 +77,7 @@ _make_exec_prefix() {
   printf '%s' "$exec_prefix"
 }
 
-# ---------- dependency waits ----------
-wait_for_neo4j() {
-  HOST="${SBIR_ETL__NEO4J__HOST:-${NEO4J_HOST:-neo4j}}"
-  PORT="${SBIR_ETL__NEO4J__PORT:-${NEO4J_PORT:-7687}}"
-  TIMEOUT="${SERVICE_STARTUP_TIMEOUT:-120}"
-  WAIT_SCRIPT="/app/sbir-analytics/scripts/docker/wait-for-service.sh"
-
-  if [ -x "$WAIT_SCRIPT" ]; then
-    log "Waiting for Neo4j at ${HOST}:${PORT} (timeout=${TIMEOUT}s)..."
-    if "$WAIT_SCRIPT" --host "$HOST" --port "$PORT" --proto tcp --timeout "$TIMEOUT" --interval 5; then
-      log "Neo4j is available"
-      return 0
-    else
-      err "Timeout waiting for Neo4j"
-      return 1
-    fi
-  fi
-
-  # Fallback: attempt nc or /dev/tcp
-  log "No wait-for helper; performing simple TCP probe for Neo4j ${HOST}:${PORT}"
-  start_ts=$(date +%s)
-  deadline=$((start_ts + TIMEOUT))
-  while [ "$(date +%s)" -le "$deadline" ]; do
-    if command -v nc >/dev/null 2>&1; then
-      if nc -z "$HOST" "$PORT" >/dev/null 2>&1; then
-        log "Neo4j reachable (nc)"
-        return 0
-      fi
-    else
-      # Try /dev/tcp if shell supports it
-      if (exec 3<>"/dev/tcp/$HOST/$PORT") >/dev/null 2>&1; then
-        exec 3<&- || true
-        exec 3>&- || true
-        log "Neo4j reachable (/dev/tcp)"
-        return 0
-      fi
-    fi
-    log "Neo4j not ready; retrying in 5s..."
-    sleep 5
-  done
-
-  err "Timed out waiting for Neo4j"
-  return 1
-}
-
+# ---------- optional dependency wait ----------
 wait_for_dagster_web() {
   # Optional webserver wait; only used if DAGSTER_HEALTH_CHECK is set to true
   enable="${ETL_RUNNER_WAIT_DAGSTER:-${DAGSTER_WAIT:-false}}"
@@ -180,9 +136,9 @@ Examples:
   $0 -- python -m scripts.materialize
   $0 -- dbt run
 Notes:
-  - Ensure you have a local .env file (copy from .env.example) or the environment
-    is populated with the required variables (NEO4J credentials, etc.).
-  - Set ETL_RUNNER_WAIT_DAGSTER=true to wait for the Dagster webserver in addition to Neo4j.
+  - Ensure you have a local .env file (copy from .env.example) or provide the
+    environment variables required by the command.
+  - Set ETL_RUNNER_WAIT_DAGSTER=true to wait for the Dagster webserver.
 EOF
 }
 
@@ -209,12 +165,7 @@ main() {
   load_env
 
   log "ETL Runner invoked. Command: ${CMD_ARGS}"
-  log "Loading dependency checks (Neo4j, optional Dagster)..."
-
-  if ! wait_for_neo4j; then
-    err "Neo4j did not become available; aborting ETL runner"
-    exit 3
-  fi
+  log "Checking the optional Dagster dependency..."
 
   if ! wait_for_dagster_web; then
     err "Dagster webserver did not become healthy (if required); aborting"

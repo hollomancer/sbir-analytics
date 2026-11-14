@@ -236,7 +236,7 @@ def sbir_relevant_usaspending_transactions(
     1. Loads the USAspending database dump from local disk
     2. Filters transactions for SBIR-relevant agencies and programs
     3. Extracts transaction details for SBIR companies
-    4. Returns enriched transaction data for Neo4j loading
+    4. Returns enriched transaction data for governed analytical use
 
     Filtering criteria:
     - Federal agencies with SBIR programs (DOD, NASA, NSF, NIH, DOE, etc.)
@@ -490,7 +490,7 @@ def sbir_company_usaspending_recipients(
     This asset:
     1. Loads the recipient_lookup table from the dump
     2. Matches recipients to SBIR companies using UEI/DUNS
-    3. Returns recipient details for Neo4j enrichment
+    3. Returns recipient details for governed analytical use
 
     Args:
         enriched_sbir_awards: SBIR awards with company identifiers

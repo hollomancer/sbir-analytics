@@ -17,7 +17,7 @@ commercialization, causation, or private-market success.
 | --- | --- | --- |
 | Transition asset pipeline | Which award/contract pairs are plausible follow-on candidates? | Vendor resolution plus bounded rule-based scoring |
 | `sbir_ml.transition` library | How could multiple evidence signals score a candidate? | Configurable scorer, feature extractors, detector, evidence generator |
-| [Phase III census](../../studies/phase-iii-census/study.yaml) | How many uncoded follow-on candidates pass frozen criteria? | Reproducible, non-citable study contract |
+| [Phase III census](../../studies/phase-iii-census/study.yaml) | How many uncoded follow-on candidates pass frozen criteria? | Reproducible, unapproved study contract |
 | [Phase-transition latency](../phase-transition-latency.md) | How long to an explicitly coded Phase III contract? | Survival analysis on coded records |
 
 ## Materialized Dagster path
@@ -31,8 +31,7 @@ validated contract sample
         ▼
 vendor resolution ──▶ rule-based candidate scores ──▶ evidence and detections
                                                         │
-                                                        ├──▶ analytics
-                                                        └──▶ Neo4j loading
+                                                        └──▶ governed analytics tables
 ```
 
 The current `transformed_transition_scores` asset starts from the vendor match method and applies
@@ -46,8 +45,7 @@ Run locally after preparing the declared inputs:
 uv run dagster job execute -m sbir_analytics.definitions -j transition_mvp_job
 ```
 
-Use `transition_full_job` only when Neo4j and the downstream assets are configured. These heavy
-jobs are not scheduled on the live self-hosted server by default.
+These heavy jobs are not scheduled on the live self-hosted server by default.
 
 ## Library path
 
@@ -67,13 +65,11 @@ identifier match establishes a candidate relationship, not topical equivalence. 
 must retain the match method, score inputs, source identifiers, and limitations.
 
 Transition-scoring changes must maintain the repository's ≥85% precision benchmark. A benchmark
-result is citable only when a study manifest names the data cut, validation design, and permitted
+result is approved evidence only when a study manifest names the data cut, validation design, and permitted
 claim.
 
 ## Canonical references
 
 - Configuration: `config/transition/detection.yaml` and the implementing asset/module
 - Fields: [transition dictionary](../data/dictionaries/transition-fields-dictionary.md)
-- Queries: [transition queries](../queries/transition-queries.md)
-- Graph: [Neo4j schema](../schemas/neo4j.md)
 - Evidence maturity: [epistemic tiers](../steering/epistemic-tiers.md)

@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import csv
 import hashlib
 import json
 import os
@@ -12,53 +11,15 @@ from pathlib import Path
 from typing import Any
 
 import pandas as pd
+from sbir_etl.extractors.sbir_award_export import (
+    SBIR_GOV_SOURCE_COLUMNS,
+    SbirGovSourceError,
+    normalize_sbir_phase,
+    ordered_columns_sha256,
+    read_sbir_gov_csv,
+)
 from sbir_etl.utils.data.file_io import file_sha256
 
-
-SBIR_GOV_SOURCE_COLUMNS: tuple[str, ...] = (
-    "Company",
-    "Award Title",
-    "Agency",
-    "Branch",
-    "Phase",
-    "Program",
-    "Agency Tracking Number",
-    "Contract",
-    "Proposal Award Date",
-    "Contract End Date",
-    "Solicitation Number",
-    "Solicitation Year",
-    "Solicitation Close Date",
-    "Proposal Receipt Date",
-    "Date of Notification",
-    "Topic Code",
-    "Award Year",
-    "Award Amount",
-    "UEI",
-    "Duns",
-    "HUBZone Owned",
-    "Socially and Economically Disadvantaged",
-    "Woman Owned",
-    "Number Employees",
-    "Company Website",
-    "Address1",
-    "Address2",
-    "City",
-    "State",
-    "Zip",
-    "Abstract",
-    "Contact Name",
-    "Contact Title",
-    "Contact Phone",
-    "Contact Email",
-    "PI Name",
-    "PI Title",
-    "PI Phone",
-    "PI Email",
-    "RI Name",
-    "RI POC Name",
-    "RI POC Phone",
-)
 
 SBIR_GOV_SOURCE_URL = "https://data.www.sbir.gov/mod_awarddatapublic/award_data.csv"
 SBIR_GOV_PROVENANCE_VERSION = 1
@@ -95,10 +56,6 @@ _OUTPUT_NAMES: dict[str, str] = {
 }
 
 
-class SbirGovSourceError(ValueError):
-    """Raised when the SBIR.gov source-row contract is not reproducible."""
-
-
 def _source_value(value: Any) -> str | None:
     """Return one parsed source value without case or whitespace normalization."""
 
@@ -121,10 +78,8 @@ def _normalize_key(value: Any) -> str:
 
 
 def _normalize_phase(value: Any) -> str:
-    normalized = _normalize_key(value)
-    if normalized.startswith("PHASE "):
-        normalized = normalized.removeprefix("PHASE ").strip()
-    return normalized if normalized in {"I", "II", "III"} else ""
+    # The exact-label rule lives in sbir_etl; this keeps the frozen "" sentinel.
+    return normalize_sbir_phase(value) or ""
 
 
 def _row_json(values: list[str | None]) -> str:
@@ -138,35 +93,6 @@ def _row_sha256(values: list[str | None]) -> str:
 def sha256_file(path: Path) -> str:
     """Return the SHA-256 hex digest of ``path``."""
     return file_sha256(path)
-
-
-def ordered_columns_sha256(columns: tuple[str, ...] | list[str]) -> str:
-    payload = json.dumps(list(columns), ensure_ascii=False, separators=(",", ":"))
-    return hashlib.sha256(payload.encode("utf-8")).hexdigest()
-
-
-def read_sbir_gov_csv(path: Path) -> pd.DataFrame:
-    """Read the exact 42-field SBIR.gov CSV as strings in declared order."""
-
-    rows: list[list[str]] = []
-    with path.open("r", encoding="utf-8-sig", newline="") as file:
-        reader = csv.reader(file)
-        try:
-            header = next(reader)
-        except StopIteration as exc:
-            raise SbirGovSourceError("SBIR.gov CSV is empty") from exc
-        if tuple(header) != SBIR_GOV_SOURCE_COLUMNS:
-            raise SbirGovSourceError(
-                "SBIR.gov CSV header does not match the required ordered 42-column schema"
-            )
-        for record_number, row in enumerate(reader, start=2):
-            if len(row) != len(SBIR_GOV_SOURCE_COLUMNS):
-                raise SbirGovSourceError(
-                    f"SBIR.gov CSV record {record_number} has {len(row)} fields; "
-                    f"expected {len(SBIR_GOV_SOURCE_COLUMNS)}"
-                )
-            rows.append(row)
-    return pd.DataFrame(rows, columns=SBIR_GOV_SOURCE_COLUMNS, dtype="object")
 
 
 def canonicalize_sbir_gov_rows(raw: pd.DataFrame) -> tuple[pd.DataFrame, dict[str, int]]:

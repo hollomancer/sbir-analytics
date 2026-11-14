@@ -1,0 +1,28 @@
+{
+  "status": "aborted",
+  "extractor_identity": "/root/sba_blind_extractor_4",
+  "coordinator": "/root (Codex primary agent)",
+  "aborted_at_utc": "2026-09-21T22:52:19Z",
+  "packet_manifest_valid_json": true,
+  "packet_manifest_sha256": "7ed7733028bd0a56a76ca966d25f65a2b3954324a7a193de4e61b72155aef76d",
+  "packet_manifest_expected_sha256": "7ed7733028bd0a56a76ca966d25f65a2b3954324a7a193de4e61b72155aef76d",
+  "declared_file_count": 7,
+  "verified_file_count": 6,
+  "failed_file_count": 1,
+  "failure_gate": "declared_source_sha256",
+  "failed_path": "data/raw/sba_annual_reports/FY22/SBA_FY22_SBIR_STTR_Annual_Report.pdf",
+  "declared_size_bytes": 2038536,
+  "actual_size_bytes": 2038536,
+  "declared_sha256": "5ba60852f1cc44b23afdb810ecf0cff77d714d10ffc786a9b73416d7c000fd1",
+  "actual_sha256": "5ba60852f1cc44b23afdbf810ecf0cff77d714d10ffc786a9b73416d7c000fd1",
+  "declared_sha256_character_count": 63,
+  "actual_sha256_character_count": 64,
+  "validation_design_read": false,
+  "extraction_started": false,
+  "submission_created": false,
+  "no_exposure_attestation": "I did not inspect captured tables, production code, production tests, sidecars, rendered results, historical comparisons, prior extractor workspaces, prior results, or any filled output. I inspected only packet-manifest.json and packet files as bytes for the required integrity gate; I did not read the validation design or source content after the gate failed.",
+  "tools": {
+    "python": "Python 3.9.6",
+    "shasum": "6.02"
+  }
+}

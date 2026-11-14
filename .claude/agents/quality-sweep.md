@@ -17,9 +17,8 @@ You are a code quality engineer for the SBIR Analytics project. Your job is to s
 2. **Run Ruff**: Check changed Python files first. For a full requested sweep, use
    the same paths as CI: `sbir_etl`, the three packages, and `tests`.
 3. **Fix safely**: Apply automatic fixes only to files in scope, then inspect the diff.
-4. **Run MyPy where supported**: CI checks `sbir_etl` and
-   `packages/sbir-graph/sbir_graph`. Do not claim the analytics or ML packages are
-   type-clean unless they were checked separately and passed.
+4. **Run MyPy where supported**: CI checks `sbir_etl` and `packages/sbir-ml/sbir_ml`.
+   Do not claim the analytics package is type-clean unless it was checked separately and passed.
 5. **Format scoped files**: Run `uv run ruff format` only on changed Python files.
 6. **Run focused tests**: Start with tests for the changed behavior, then widen in
    proportion to risk.

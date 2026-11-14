@@ -26,7 +26,7 @@ config/
 ├── docker.yaml            # Compose overrides
 ├── prod.yaml              # Live/server profile
 ├── test.yaml              # Test profile
-└── <subsystem>/           # CET, transition, fiscal, Neo4j, and report config
+└── <subsystem>/           # CET, transition, fiscal, and report config
 ```
 
 ### Data Organization
@@ -57,7 +57,7 @@ docs/
 ├── architecture/          # System design documents
 ├── data/                  # Sources, refreshes, and data dictionaries
 ├── deployment/            # Deployment guides and runbooks
-├── schemas/               # Neo4j schema documentation
+├── schemas/               # Historical graph mappings and source field references
 ├── steering/              # Durable engineering and evidence rules
 └── archive/               # Historical, non-operational documents
 ```
@@ -96,8 +96,8 @@ source keys, but they share the same versioned resolver and recovery-status cont
 
 ### Study Evidence Contracts
 
-Externally citable studies declare a versioned contract in `studies/<study-id>/study.yaml`.
-The evidence status records epistemic maturity (`exploratory` through `citable`), while the
+Studies approved for external claims declare a versioned contract in `studies/<study-id>/study.yaml`.
+The evidence status records epistemic maturity (`exploratory` through `approved`), while the
 materialization gate independently records whether production outputs may currently run.
 A reproducible study may therefore have either an open or closed gate. Operational assets
 must enforce their gate before reading sources or writing outputs; CI separately verifies

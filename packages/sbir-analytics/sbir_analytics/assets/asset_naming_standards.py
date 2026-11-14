@@ -107,11 +107,6 @@ ASSET_RENAMING_MAP = {
     "transformed_patent_assignments": "transformed_patent_assignments",  # Already correct
     "transformed_patents": "transformed_patents",  # Already correct
     "transformed_patent_entities": "transformed_patent_entities",  # Already correct
-    # USPTO assets - Neo4j loading
-    "neo4j_patents": "loaded_patents",
-    "neo4j_patent_assignments": "loaded_patent_assignments",
-    "neo4j_patent_entities": "loaded_patent_entities",
-    "neo4j_patent_relationships": "loaded_patent_relationships",
     # CET assets
     "cet_taxonomy": "raw_cet_taxonomy",
     "cet_award_classifications": "enriched_cet_award_classifications",
@@ -122,12 +117,6 @@ ASSET_RENAMING_MAP = {
     "cet_iaa_report": "validated_cet_iaa_report",
     "cet_analytics_aggregates": "transformed_cet_analytics_aggregates",
     "cet_drift_detection": "validated_cet_drift_detection",
-    # CET Neo4j loading
-    "neo4j_cetarea_nodes": "loaded_cet_areas",
-    "neo4j_award_cet_enrichment": "loaded_award_cet_enrichment",
-    "neo4j_company_cet_enrichment": "loaded_company_cet_enrichment",
-    "neo4j_award_cet_relationships": "loaded_award_cet_relationships",
-    "neo4j_company_cet_relationships": "loaded_company_cet_relationships",
     # Transition assets
     "contracts_ingestion": "raw_contracts",
     "contracts_sample": "validated_contracts_sample",
@@ -136,10 +125,6 @@ ASSET_RENAMING_MAP = {
     "transition_evidence_v1": "transformed_transition_evidence",
     "transition_detections": "transformed_transition_detections",
     "transition_analytics": "transformed_transition_analytics",
-    # Transition Neo4j loading
-    "neo4j_transitions": "loaded_transitions",
-    "neo4j_transition_relationships": "loaded_transition_relationships",
-    "neo4j_transition_profiles": "loaded_transition_profiles",
     # USPTO AI assets
     "uspto_ai_ingest": "raw_uspto_ai_predictions",
     "uspto_ai_cache_stats": "validated_uspto_ai_cache_stats",

@@ -14,7 +14,8 @@ Status: accepted
 > moved to a multi-package workspace under `packages/` (`sbir-analytics` for Dagster
 > assets, `sbir-graph` for Neo4j loaders, `sbir-ml` for models), with the core library
 > remaining as `sbir_etl/`. The proposed `sbir-models` package was not created. This
-> note is informational; the decision record itself is left unchanged.
+> note is informational; the decision record itself is left unchanged. ADR-006 later
+> retired the graph package and service, so the graph package names below are historical.
 
 ## Context
 

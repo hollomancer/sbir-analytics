@@ -22,18 +22,9 @@ make docker-up-dev
 make docker-verify
 ```
 
-At minimum, set local Neo4j credentials in `.env`:
-
-```dotenv
-NEO4J_USER=neo4j
-NEO4J_PASSWORD=test
-```
-
-Local services expose:
+Local development exposes:
 
 - Dagster UI: <http://localhost:3000>
-- Neo4j Browser: <http://localhost:7474>
-- Neo4j Bolt: `bolt://localhost:7687`
 
 ## Compose profiles
 
@@ -41,8 +32,8 @@ The root compose file has two profiles:
 
 | Profile | Purpose | Primary command |
 | --- | --- | --- |
-| `dev` | Dagster, Neo4j, and tools for interactive development | `make docker-up-dev` |
-| `ci` | Ephemeral Neo4j and application test runner | `make docker-test` |
+| `dev` | Dagster and tools for interactive development | `make docker-up-dev` |
+| `ci` | Ephemeral application test runner | `make docker-test` |
 
 The live deployment does not use a root `prod` profile. It uses
 `docker-compose.server.yml --profile server` from the dedicated deployment checkout.
@@ -59,13 +50,12 @@ Prefer these targets over hand-written Compose commands:
 | `make docker-up-tools` | Start the utility container |
 | `make docker-down` | Stop local services and remove local volumes |
 | `make docker-rebuild` | Rebuild and restart the development stack |
-| `make docker-logs SERVICE=neo4j` | Follow service logs |
+| `make docker-logs SERVICE=dagster-webserver` | Follow service logs |
 | `make docker-exec SERVICE=dagster-webserver CMD=sh` | Run a command in a service |
 | `make docker-test` | Run containerized tests through the `ci` profile |
 | `make docker-e2e-minimal` | Run the minimal E2E scenario |
 | `make docker-e2e-standard` | Run the hermetic E2E scenario |
 | `make docker-e2e-clean` | Remove the E2E environment and volumes |
-| `make neo4j-up` / `make neo4j-down` | Start or stop local Neo4j |
 | `make validate-config` | Validate the root compose and environment files |
 
 `make docker-down` and `make docker-e2e-clean` remove local Compose volumes. They are development
@@ -78,7 +68,6 @@ View logs and service state:
 ```bash
 docker compose --profile dev ps
 make docker-logs
-make docker-logs SERVICE=neo4j
 ```
 
 List or execute Dagster jobs:
@@ -89,12 +78,6 @@ docker compose --profile dev exec dagster-webserver \
 
 docker compose --profile dev exec dagster-webserver \
   dagster job execute -m sbir_analytics.definitions -j sbir_weekly_refresh_job
-```
-
-Open a Neo4j shell:
-
-```bash
-make db-shell
 ```
 
 Run tests inside the app image:
@@ -113,9 +96,6 @@ Compose passes normal process variables into the containers. Common values inclu
 
 | Variable | Purpose |
 | --- | --- |
-| `NEO4J_URI` | Bolt connection URI |
-| `NEO4J_USER` / `NEO4J_PASSWORD` | Graph credentials |
-| `NEO4J_DATABASE` | Graph database name |
 | `SBIR_ETL__PIPELINE__ENVIRONMENT` | Select `dev`, `test`, or `prod` YAML profile |
 | `SBIR_ETL__PATHS__DATA_ROOT` | Data root visible inside the process |
 | `E2E_TEST_SCENARIO` / `E2E_TEST_TIMEOUT` | E2E runner selection and timeout |
@@ -128,7 +108,7 @@ uncommitted; `.env.server` belongs only to the deployment checkout.
 
 | Dockerfile | Purpose |
 | --- | --- |
-| `Dockerfile` | Locked ETL, Dagster, graph, ML/NLP, fiscal, and browser-automation image |
+| `Dockerfile` | Locked ETL, Dagster, ML/NLP, fiscal, and browser-automation image |
 
 Build locally:
 
@@ -164,9 +144,6 @@ Local development uses named volumes and bind mounts declared in `docker-compose
 server uses the bind mounts configured by `SERVER_*_DIR` plus the Docker
 `dagster_home` volume. Never point a development compose command at those live paths.
 
-Back up data before intentionally resetting a local graph. `make neo4j-reset` is destructive to the
-local Neo4j volume.
-
 ## Troubleshooting
 
 Validate the resolved configuration:
@@ -181,10 +158,9 @@ If a service is unhealthy:
 ```bash
 docker compose --profile dev ps
 make docker-logs SERVICE=dagster-webserver
-make docker-logs SERVICE=neo4j
 ```
 
-If ports 3000, 7474, or 7687 are occupied, stop the conflicting local service or change the
+If port 3000 is occupied, stop the conflicting local service or change the
 published port in `.env`. If a bind mount is empty, verify the host path and Docker Desktop file
 sharing permissions.
 

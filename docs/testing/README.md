@@ -58,7 +58,7 @@ make docker-e2e-standard
 make docker-e2e-clean
 ```
 
-See [End-to-End Testing](e2e-testing.md) for scenarios, required Neo4j variables, artifacts, and
+See [End-to-End Testing](e2e-testing.md) for scenarios, artifacts, and
 troubleshooting.
 
 ## GitHub Actions
@@ -66,8 +66,7 @@ troubleshooting.
 `.github/workflows/ci.yml` is the only workflow:
 
 - Pull requests run quality, security, four fast unit-test shards, and hermetic E2E tests.
-- Pushes to `main`, manual runs, and the weekly schedule execute the full suite with Neo4j and
-  coverage.
+- Pushes to `main`, manual runs, and the weekly schedule execute the full suite with coverage.
 - Docker and setup-script checks are conditional on relevant file changes.
 - GitHub Actions never performs extraction, enrichment, reporting, or live Dagster materialization.
 
@@ -86,7 +85,7 @@ tests/validation/    numerical/reference checks and operator programs
 ```
 
 Prefer the narrowest layer that proves a behavior. Unit tests should not call public APIs. Tests
-that need Neo4j, credentials, external data, or a real API must state and enforce that prerequisite.
+that need credentials, external data, or a real API must state and enforce that prerequisite.
 
 ## Related guides
 

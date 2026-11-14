@@ -16,7 +16,7 @@ An **evidence bundle** is a comprehensive audit trail that documents how and why
 
 **Purpose**: Enable stakeholders to understand, validate, and trust individual transition detections.
 
-**Usage**: Evidence bundles are stored as JSON on Neo4j relationships, exported to NDJSON files, and presented in reports.
+**Usage**: Evidence bundles are stored in governed NDJSON/Parquet artifacts and presented in reports.
 
 ## Why Evidence Bundles Matter
 
@@ -822,23 +822,11 @@ Evidence bundles are persisted as newline-delimited JSON:
 - Efficient for large datasets
 - Easy to parse line-by-line
 
-### Neo4j Storage
+### Governed table storage
 
-Evidence bundles are stored as JSON on relationship properties:
-
-```cypher
-MATCH (a:FinancialTransaction {transaction_type: "AWARD"})-[t:TRANSITIONED_TO]->(trans:Transition)
-WHERE t.transition_id = "trans_a1b2c3d4e5f6"
-RETURN t.evidence_bundle
-```
-
-**Storage Location**: `TRANSITIONED_TO.evidence_bundle` (JSON string)
-
-### Advantages
-
-- Queryable as relationship properties
-- Linked to both award and contract nodes
-- Supports graph traversal
+Persist the bundle with its transition identifier, award identifier, contract identifier,
+method version, and source vintage. DuckDB can query the resulting NDJSON or Parquet artifact
+without changing its evidence status.
 
 ## Validation & Quality
 
@@ -963,5 +951,4 @@ bundle['validation']['signal_scores_detail']
 
 - **Implementation**: `packages/sbir-ml/sbir_ml/transition/detection/evidence.py`
 - **Storage**: `data/processed/transitions_evidence.ndjson`
-- **Neo4j**: `TRANSITIONED_TO.evidence_bundle`
 - **Tests**: `tests/unit/test_evidence_generator.py`

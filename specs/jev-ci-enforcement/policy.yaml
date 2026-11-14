@@ -1,0 +1,10 @@
+schema_version: 1
+ruleset_version: preflight-rules-v1
+application: annual-report
+claims:
+  - case_id: annual-report-published-reproduction
+    expected_status: NARROW
+    expected_first_blocker: source_outcome_impossible
+  - case_id: annual-report-structural-check
+    expected_status: GO
+    expected_first_blocker: null

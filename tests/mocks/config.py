@@ -18,7 +18,6 @@ class ConfigMocks:
 
         config.data_quality = ConfigMocks.data_quality_config(**overrides.get("data_quality", {}))
         config.enrichment = ConfigMocks.enrichment_config(**overrides.get("enrichment", {}))
-        config.neo4j = ConfigMocks.neo4j_config(**overrides.get("neo4j", {}))
 
         return config
 
@@ -39,15 +38,4 @@ class ConfigMocks:
         config.max_retries = overrides.get("max_retries", 3)
         config.timeout_seconds = overrides.get("timeout_seconds", 30)
         config.rate_limit_per_second = overrides.get("rate_limit_per_second", 10.0)
-        return config
-
-    @staticmethod
-    def neo4j_config(**overrides) -> Mock:
-        """Create a mock Neo4j configuration."""
-        config = Mock()
-        config.uri = overrides.get("uri", "bolt://localhost:7687")
-        config.username = overrides.get("username", "neo4j")
-        config.password = overrides.get("password", "password")
-        config.database = overrides.get("database", "neo4j")
-        config.batch_size = overrides.get("batch_size", 1000)
         return config

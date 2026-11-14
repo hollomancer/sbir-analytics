@@ -1,0 +1,335 @@
+"""Tests for the public SBA structural-comparison renderer."""
+
+from __future__ import annotations
+
+import copy
+import csv
+import json
+from collections.abc import Callable, Iterator
+from pathlib import Path
+
+import pytest
+
+from scripts.ci import check_study_artifact_roundtrip as roundtrip
+from scripts.ci.released_studies import load_released_studies, released_study_root
+from scripts.data import render_sba_structural_comparison as renderer
+from sbir_etl.quality.study_manifest import load_study_manifest
+
+
+ROOT = Path(__file__).resolve().parents[3]
+COMPARISON = ROOT / renderer.COMPARISON_REFERENCE
+SIDECAR = ROOT / renderer.SIDECAR_REFERENCE
+MARKDOWN = ROOT / renderer.MARKDOWN_REFERENCE
+
+
+@pytest.fixture(scope="module")
+def reviewed_release_root() -> Iterator[Path]:
+    binding = load_released_studies(ROOT)["sba-annual-report-structural-comparison"]
+    with released_study_root(ROOT, binding) as root:
+        yield root
+
+
+@pytest.fixture(scope="module")
+def successor_release_root() -> Iterator[Path]:
+    binding = load_released_studies(ROOT)[renderer.SUCCESSOR_STUDY_ID]
+    with released_study_root(ROOT, binding) as root:
+        yield root
+
+
+def _write_mutated_comparison(destination: Path, mutate: Callable[[dict[str, str]], None]) -> None:
+    with COMPARISON.open(encoding="utf-8", newline="") as handle:
+        reader = csv.DictReader(handle)
+        rows = list(reader)
+        fieldnames = reader.fieldnames
+    assert fieldnames is not None
+    mutate(rows[0])
+    with destination.open("w", encoding="utf-8", newline="") as handle:
+        writer = csv.DictWriter(handle, fieldnames=fieldnames, lineterminator="\n")
+        writer.writeheader()
+        writer.writerows(rows)
+
+
+def test_committed_public_artifacts_regenerate_byte_for_byte(
+    reviewed_release_root: Path,
+) -> None:
+    payload = renderer.build_payload(reviewed_release_root)
+
+    assert renderer.serialize_payload(payload) == SIDECAR.read_text(encoding="utf-8")
+    assert renderer.render_markdown(payload) == MARKDOWN.read_text(encoding="utf-8")
+    assert payload["schema_version"] == 2
+    assert payload["content"]["release_status"] == "Validated, not citable"
+    assert payload["content"]["comparison"]["aggregate_summary"] == {
+        "signed_difference": 333,
+        "absolute_difference": 869,
+        "positive_difference_cells": 208,
+        "negative_difference_cells": 148,
+        "zero_vs_zero_cells": 57,
+        "nonzero_union_cells": 575,
+        "nonzero_union_exact_cells": 219,
+    }
+    assert payload["content"]["export_row_handling"] == {
+        "retained_rows_before_blank_state_exclusion": 20836,
+        "blank_state_rows_excluded": 1,
+        "counted_rows": 20835,
+        "zero_filled_eligible_groups": 60,
+        "countable_unit": "one parsed export row",
+        "artifact_path": renderer.RUN_DIAGNOSTICS_REFERENCE,
+        "artifact_sha256": "bf8c932dd8725f2f3e66309c0318987d4a1eed485e6651d064f2037e9f68dbb8",
+    }
+    assert payload["content"]["reproduction"] == {
+        "setup_command": "make install-core",
+        "one_command": "make reproduce-sba-structural",
+        "renderer_command": "uv run python scripts/data/render_sba_structural_comparison.py",
+    }
+    markdown = MARKDOWN.read_text(encoding="utf-8")
+    for disclosure in (
+        "absolute cell differences sum to 869",
+        "208 positive and 148 negative recomputed-minus-published differences",
+        "cell differences cannot cancel each other",
+        "57 are zero versus zero",
+        "575 cells where either source reports a nonzero count",
+        "1 had blank `State` and was excluded",
+        "60 eligible jurisdiction/program/phase groups",
+        "case and whitespace preserved",
+        "study-only code MH",
+    ):
+        assert disclosure in markdown
+    assert markdown.count("57 are zero versus zero") == 1
+
+
+def test_registered_pair_rejects_a_manual_markdown_edit(tmp_path: Path) -> None:
+    sidecar = tmp_path / "public-result.json"
+    markdown = tmp_path / "first-citable-study.md"
+    script = tmp_path / "scripts/data/render_sba_structural_comparison.py"
+    sidecar.parent.mkdir(parents=True, exist_ok=True)
+    script.parent.mkdir(parents=True)
+    sidecar.write_bytes(SIDECAR.read_bytes())
+    markdown.write_text(MARKDOWN.read_text(encoding="utf-8") + "Manual edit.\n", encoding="utf-8")
+    script.write_bytes((ROOT / "scripts/data/render_sba_structural_comparison.py").read_bytes())
+    pair = roundtrip.RoundTripPair(
+        markdown=markdown.relative_to(tmp_path).as_posix(),
+        sidecar=sidecar.relative_to(tmp_path).as_posix(),
+        renderer=script.relative_to(tmp_path).as_posix() + ":render_markdown",
+    )
+
+    violations = roundtrip.validate_pair(pair, root=tmp_path)
+
+    assert len(violations) == 1
+    assert "does not reproduce" in violations[0].message
+
+
+def test_render_rejects_a_manual_sidecar_edit() -> None:
+    payload = json.loads(SIDECAR.read_text(encoding="utf-8"))
+    payload["content"]["comparison"]["cells"][0]["published_count"] += 1
+
+    with pytest.raises(renderer.PublicResultError, match="content hash differs"):
+        renderer.render_markdown(payload)
+
+
+def test_comparison_reader_rejects_changed_arithmetic(tmp_path: Path) -> None:
+    comparison = tmp_path / "changed-arithmetic.csv"
+
+    def mutate(row: dict[str, str]) -> None:
+        row["signed_difference"] = "1"
+        row["absolute_difference"] = "1"
+        row["comparison_status"] = "unresolved"
+
+    _write_mutated_comparison(comparison, mutate)
+
+    with pytest.raises(renderer.PublicResultError, match="incorrect signed arithmetic"):
+        renderer.load_comparison_cells(comparison)
+
+
+def test_payload_rejects_a_coherent_changed_count_by_frozen_hash(
+    tmp_path: Path,
+    reviewed_release_root: Path,
+) -> None:
+    comparison = tmp_path / "changed-count.csv"
+
+    def mutate(row: dict[str, str]) -> None:
+        row["published_count"] = "4"
+        row["recomputed_count"] = "4"
+
+    _write_mutated_comparison(comparison, mutate)
+
+    with pytest.raises(renderer.PublicResultError, match="count comparison hash differs"):
+        renderer.build_payload(reviewed_release_root, comparison_path=comparison)
+
+
+def test_render_rejects_internally_drifted_summary_even_when_rehashed(
+    reviewed_release_root: Path,
+) -> None:
+    payload = copy.deepcopy(renderer.build_payload(reviewed_release_root))
+    payload["content"]["comparison"]["yearly_summaries"][0]["published_total"] += 1
+    payload["content_sha256"] = renderer._canonical_sha256(payload["content"])
+
+    with pytest.raises(renderer.PublicResultError, match="yearly summaries do not match"):
+        renderer.render_markdown(payload)
+
+
+def test_render_rejects_drifted_aggregate_even_when_rehashed(
+    reviewed_release_root: Path,
+) -> None:
+    payload = copy.deepcopy(renderer.build_payload(reviewed_release_root))
+    payload["content"]["comparison"]["aggregate_summary"]["absolute_difference"] = 333
+    payload["content_sha256"] = renderer._canonical_sha256(payload["content"])
+
+    with pytest.raises(renderer.PublicResultError, match="aggregate summary does not match"):
+        renderer.render_markdown(payload)
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [("blank_state_rows_excluded", 40), ("zero_filled_eligible_groups", 59)],
+)
+def test_render_rejects_drifted_export_diagnostics_even_when_rehashed(
+    field: str,
+    value: int,
+    reviewed_release_root: Path,
+) -> None:
+    payload = copy.deepcopy(renderer.build_payload(reviewed_release_root))
+    payload["content"]["export_row_handling"][field] = value
+    payload["content_sha256"] = renderer._canonical_sha256(payload["content"])
+
+    with pytest.raises(renderer.PublicResultError, match="diagnostics differ from the frozen run"):
+        renderer.render_markdown(payload)
+
+
+def test_summary_claim_cannot_revert_to_signed_only_framing() -> None:
+    manifest = load_study_manifest(ROOT / renderer.STUDY_MANIFEST_REFERENCE)
+    signed_only = manifest.model_copy(
+        update={
+            "permitted_claims": [
+                manifest.permitted_claims[0],
+                (
+                    "The comparison contains 632 count cells: 276 are exact and 356 are "
+                    "unresolved. Across the same cells, recomputed minus published counts "
+                    "sum to +333. This total is not an omitted-award estimate, a "
+                    "source-correctness verdict, or a causal explanation."
+                ),
+            ]
+        }
+    )
+
+    with pytest.raises(renderer.PublicResultError, match="summary claim is missing"):
+        renderer._summary_claim(signed_only)
+
+
+def test_registry_names_both_public_result_pairs() -> None:
+    matching = [
+        pair
+        for pair in roundtrip.REGISTERED_PAIRS
+        if pair.renderer_path == "scripts/data/render_sba_structural_comparison.py"
+    ]
+    successor = renderer.PROFILES[renderer.SUCCESSOR_STUDY_ID]
+
+    assert matching == [
+        roundtrip.RoundTripPair(
+            markdown=renderer.MARKDOWN_REFERENCE,
+            sidecar=renderer.SIDECAR_REFERENCE,
+            renderer="scripts/data/render_sba_structural_comparison.py:render_markdown",
+        ),
+        roundtrip.RoundTripPair(
+            markdown=successor.markdown_reference,
+            sidecar=successor.sidecar_reference,
+            renderer="scripts/data/render_sba_structural_comparison.py:render_markdown",
+        ),
+    ]
+
+
+def test_profiles_default_to_the_released_study() -> None:
+    default = renderer.PROFILES[renderer.STUDY_ID]
+    successor = renderer.PROFILES[renderer.SUCCESSOR_STUDY_ID]
+
+    assert default.sidecar_reference == renderer.SIDECAR_REFERENCE
+    assert default.markdown_reference == renderer.MARKDOWN_REFERENCE
+    assert default.release_status == "Validated, not citable"
+    assert default.reproduction_command == "make reproduce-sba-structural"
+    assert successor.study_id == "sba-annual-report-structural-comparison-release"
+    assert successor.sidecar_reference != default.sidecar_reference
+    assert successor.markdown_reference != default.markdown_reference
+    assert successor.release_status != default.release_status
+    assert successor.reproduction_command != default.reproduction_command
+
+
+def test_render_rejects_a_sidecar_whose_study_has_no_profile() -> None:
+    payload = json.loads(SIDECAR.read_text(encoding="utf-8"))
+    payload["content"]["study_id"] = "no-such-study"
+    payload["content_sha256"] = renderer._canonical_sha256(payload["content"])
+
+    with pytest.raises(renderer.PublicResultError, match="no renderer profile"):
+        renderer.render_markdown(payload)
+
+
+def test_render_rejects_a_release_status_borrowed_from_another_profile() -> None:
+    payload = json.loads(SIDECAR.read_text(encoding="utf-8"))
+    successor = renderer.PROFILES[renderer.SUCCESSOR_STUDY_ID]
+    payload["content"]["release_status"] = successor.release_status
+    payload["content_sha256"] = renderer._canonical_sha256(payload["content"])
+
+    with pytest.raises(renderer.PublicResultError, match="wrong study or release status"):
+        renderer.render_markdown(payload)
+
+
+def test_build_payload_rejects_an_unknown_study_id(reviewed_release_root: Path) -> None:
+    with pytest.raises(renderer.PublicResultError, match="no renderer profile"):
+        renderer.build_payload(reviewed_release_root, study_id="no-such-study")
+
+
+def test_bounded_claim_uses_the_profile_prefix_and_suffix() -> None:
+    manifest = load_study_manifest(ROOT / renderer.STUDY_MANIFEST_REFERENCE)
+    successor = renderer.PROFILES[renderer.SUCCESSOR_STUDY_ID]
+
+    with pytest.raises(renderer.PublicResultError, match="does not match the .* release form"):
+        renderer._bounded_claim(manifest, successor)
+
+
+SUCCESSOR = renderer.PROFILES[renderer.SUCCESSOR_STUDY_ID]
+SUCCESSOR_SIDECAR = ROOT / SUCCESSOR.sidecar_reference
+SUCCESSOR_MARKDOWN = ROOT / SUCCESSOR.markdown_reference
+
+
+def test_successor_artifacts_regenerate_byte_for_byte_from_release(
+    reviewed_release_root: Path,
+    successor_release_root: Path,
+) -> None:
+    payload = renderer.build_payload(successor_release_root, study_id=renderer.SUCCESSOR_STUDY_ID)
+    released = renderer.build_payload(reviewed_release_root)
+    manifest = load_study_manifest(ROOT / SUCCESSOR.manifest_reference)
+
+    assert renderer.serialize_payload(payload) == (
+        successor_release_root / SUCCESSOR.sidecar_reference
+    ).read_text(encoding="utf-8")
+    assert renderer.render_markdown(payload) == (
+        successor_release_root / SUCCESSOR.markdown_reference
+    ).read_text(encoding="utf-8")
+    assert (
+        payload["content"]["release_status"]
+        == "Validated; cite from release v0.18.0, not this page"
+    )
+    assert payload["content"]["study_id"] == renderer.SUCCESSOR_STUDY_ID
+    # Same result, same validation, same non-claims as v0.18.0.
+    assert payload["content"]["comparison"] == released["content"]["comparison"]
+    assert payload["content"]["validation"] == released["content"]["validation"]
+    assert payload["content"]["non_claims"] == released["content"]["non_claims"]
+    assert payload["content"]["result_summary_claim"] == released["content"]["result_summary_claim"]
+    assert payload["content"]["bounded_claim"] == released["content"]["bounded_claim"]
+    assert payload["content"]["release_blockers"] == list(SUCCESSOR.release_limits)
+    assert payload["content"]["release_blockers"] != manifest.materialization.blockers
+
+
+def test_successor_page_states_the_citation_rule_and_the_permanent_blocker() -> None:
+    markdown = SUCCESSOR_MARKDOWN.read_text(encoding="utf-8")
+
+    assert "> **Status: Validated; cite from release v0.18.0, not this page.**" in markdown
+    assert "may be cited as a validated result from an immutable release" in markdown
+    assert "## Release status and limits" in markdown
+    assert "published-sample reproduction blocker is permanent" in markdown
+    assert "make reproduce-sba-structural SBA_STUDY_ID=" in markdown
+    assert "If none does, its release is pending" in markdown
+    assert "Release binding: this page was frozen before any tag bound this study" in markdown
+    assert "`studies/releases.yaml` is the authority" in markdown
+    assert "No Dagster asset, schedule, service database" not in markdown
+    assert "Do not quote this result as a released finding" not in markdown
+    assert "not citable" not in markdown
+    assert "claim_approval" not in markdown

@@ -4,8 +4,7 @@
 
 > **Status:** 77% complete. Retiered from evidence on 2026-08-07: the
 > Product/Service/Mixed classifier is keyword heuristics, matching the
-> transformer's exploratory label; the Neo4j load path is separately
-> pipelines-tier. Citable categories would require a labeled-accuracy
+> transformer's exploratory label. Citable categories would require a labeled-accuracy
 > study contract.
 > Anchors inventory question **B1** in [docs/research-questions.md](../../docs/research-questions.md).
 

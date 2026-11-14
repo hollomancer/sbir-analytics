@@ -12,6 +12,186 @@ version.
 
 ### Changed
 
+- Bound `sba-annual-report-structural-comparison-release` to tag v0.20.0 in
+  `studies/releases.yaml`; its page may now be cited from that release with
+  status `validated`.
+
+## [0.20.0] — 2026-09-27
+
+### Breaking
+
+- Replaced the highest study status `citable` with `approved`. A
+  `study.yaml` that still says `evidence_status: citable` no longer loads, and
+  `EvidenceStatus.CITABLE` and `verify_citable_materialization` are renamed to
+  `EvidenceStatus.APPROVED` and `verify_approved_materialization`. No current
+  study used `citable`.
+- `approved` now also requires a `claim_approval` block. It pins one review
+  file in `frozen_artifacts`, and its `claim_boundary_sha256` must match the
+  study's estimand, permitted claims, and limitations. CI also requires the
+  review text to contain the study ID and that digest, and rejects a future
+  approval date.
+- Removed code that nothing called outside its own tests:
+  `sbir_etl.utils.statistical_reporter.StatisticalReporter`,
+  `sbir_etl.utils.metrics`, the HTML, JSON, and Markdown report processors in
+  `sbir_etl.utils.reporting.formats`, `sbir_etl.models.statistical_reports`,
+  `StatisticalReportingConfig` and the `statistical_reporting` config block,
+  `sbir_etl.utils.error_handling`, `sbir_etl.utils.path_validator`, and the
+  `sbir_analytics.clients` package. A config file that still has a
+  `statistical_reporting` block still loads, because `PipelineConfig` allows
+  extra keys.
+
+### Added
+
+- Successor study `sba-annual-report-structural-comparison-release` whose
+  generated public page states the v0.18.0 result's status under the
+  citation rule (#796).
+- Release checksum inventory for the successor study at
+  `studies/sba-annual-report-structural-comparison-release/release/checksums.sha256`,
+  so a later `studies/releases.yaml` binding can verify the tagged tree.
+
+### Changed
+
+- A study result may be cited from an immutable release only when the study is
+  `reproducible` or higher, and only with its actual evidence status attached.
+  Exploratory and retired studies may not be cited. Approval, operational
+  materialization, and repository-owner merge authority remain separate
+  controls. The released v0.18.0 SBA structural comparison is unchanged.
+
+## [0.19.0] — 2026-09-24
+
+### Breaking
+
+- Retired the Neo4j service and the `sbir-graph` workspace package. Governed
+  Parquet and DuckDB artifacts remain the analytical authority. The annotated
+  `v0.18.0` tag is the last supported graph implementation.
+- Removed the public Python names `Neo4jConfig`, `ModernBertNeo4jConfig`,
+  `persist_to_neo4j`, `PatentAnalysisAnalyzer`, `ErrorCode.NEO4J_CONNECTION_FAILED`,
+  and `ErrorCode.NEO4J_QUERY_FAILED`. `sbir_analytics.clients` no longer
+  re-exports `Neo4jClient`, `Neo4jConfig`, `Neo4jHealthStatus`, or
+  `Neo4jStatistics`, and `PipelineConfig` no longer has a typed `neo4j` field.
+- Removed the graph-loading Dagster assets and their groups: every `neo4j_*`
+  asset (for example `neo4j_sbir_awards`, `neo4j_company_categorization`, and
+  `neo4j_sec_edgar_enrichment`), every `loaded_*` asset (for example
+  `loaded_transitions`, `loaded_cet_areas`, and `loaded_patents`), and the
+  `neo4j_cet` and `neo4j_loading` groups. Saved asset selections that name them
+  no longer resolve.
+- Removed the `SKIP_NEO4J_LOADING` switch, the `SBIR_ETL__NEO4J__*` overrides,
+  and the legacy `loading.neo4j` configuration mapping. Stale values do not
+  cause a configuration error, and nothing reads them:
+  - `SKIP_NEO4J_LOADING` is ignored.
+  - `SBIR_ETL__NEO4J__*` values become an untyped `neo4j` extra on the config.
+  - A YAML `loading.neo4j` section stays under an untyped `loading` extra; it is
+    no longer mapped to `neo4j`.
+- Removed the Make targets `neo4j-up`, `neo4j-down`, `neo4j-reset`,
+  `neo4j-check`, `db-shell`, and `server-backup`. The server Tailscale helper
+  no longer manages the graph Bolt route. Complete the
+  [Neo4j retirement cutover](https://github.com/hollomancer/sbir-analytics/blob/v0.19.0/docs/deployment/neo4j-retirement-cutover.md)
+  before you deploy this release.
+
+### Added
+
+- Added `CITATION.cff` describing the software at the `v0.19.0` tag. It
+  declares no preferred research citation, because no study has its claims
+  approved as evidence.
+- Added the `check_retired_neo4j_references.py` guard to `make lint-boundaries`,
+  `make docs-check`, and the CI guard step. It rejects operational references to
+  the retired graph service.
+
+### Changed
+
+- Dagster jobs now stop at their table and report artifacts instead of writing
+  a second graph projection.
+- Development, CI, Docker, and server profiles no longer require graph
+  credentials, ports, health checks, or service startup.
+- Released-study validation now checks the SBA packet in its immutable release
+  tree, which lets the moving repository update its dependency lock without
+  changing frozen study bytes. It also records the immutable tag's one exact
+  checksum erratum: the squash-merged `Makefile` contains the already-merged
+  Jev targets while the detached inventory records the reviewed branch hash.
+- Released-study validation no longer re-hashes a released study's frozen
+  artifacts outside its study folder at HEAD. It needs a full clone with tags,
+  so the CI jobs that run it now check out with `fetch-depth: 0`.
+- Renamed the CI job "Neo4j Integration Tests" to "Service-free Integration
+  Tests".
+- Re-froze the `sttr-spinout-linkage` design as Revision 2 with a new
+  SHA-256 (`5ffb2c28…`). The amendment removes graph-projection wording and
+  does not change any criteria.
+
+### Removed
+
+- Removed graph-only loaders, migrations, queries, scripts, configuration,
+  tests, and CI actions. No host data, Docker volume, or historical dump is
+  deleted by this change.
+- Removed the `neo4j` and `requires_neo4j` pytest markers and the `NEO4J_*`
+  keys from `.env.example` and `.env.server.example`.
+
+## [0.18.0] — 2026-09-22
+
+### Added
+
+- Added a source-faithful, 42-column SBIR.gov award-export reader with explicit
+  export-row and award-year profiles. The reader verifies the exact source and
+  its metadata sidecar before parsing.
+- Added a separate SBA annual-report structural-comparison study. Its evidence
+  producer emits only the 632 declared FY2020-FY2022 count cells, classifies
+  unequal values as unresolved, and blocks on changed sources, rules, keys,
+  arithmetic, validation values, or rendered output.
+- Added durable, exact-byte acquisition for the September 17, 2026 SBIR.gov
+  export and the three official SBA annual reports.
+- Added a deterministic study-readiness preflight
+  (`python -m scripts.jev_preflight.cli`). It applies fixed claim and evidence
+  rules to `studies/sba-annual-report-tables` and writes a decision report to
+  `reports/ci/jev-preflight.json`. Jev is evaluated only in private shadow mode
+  against a frozen synthetic matrix; it makes no authoritative decision.
+  Evidence promotion and publication approval stay out of scope. (#782)
+- Added the `Deterministic Study Preflight` CI job, invoked through
+  `make check-jev-preflight`. The job runs on pull requests that touch the
+  preflight surface, fails closed when its dependencies are missing rather than
+  skipping, and uploads the decision report as an artifact. Preflight
+  configuration now goes through the shared YAML reader. (#784)
+- Added an exploratory, non-blocking CI failure-triage pilot
+  (`scripts/ci/jev_triage`) with typed contracts, log sanitization,
+  deterministic policy and rendering, a fake transport, and hermetic tests. The
+  `Experimental Jev Triage Contract` job is `continue-on-error` and runs only on
+  internal pull requests. Triage output cannot change check conclusions, skip
+  tests, suppress security findings, or control merges. Live Jev calls remain
+  gated on API documentation, data-retention review, disclosure terms,
+  credentials, and an approved shadow-evaluation protocol. (#780)
+
+### Changed
+
+- New SBIR.gov captures use dated vintage directories. The historical SBA
+  study now refuses an unpinned export or a missing metadata sidecar.
+- The exploratory literature-map refresh is manual-only. It no longer runs on
+  a weekly schedule.
+
+### Removed
+
+- Removed five archived operator scripts that had no live consumers and were
+  superseded by maintained jobs or assets.
+
+## [0.17.0] — 2026-09-17
+
+### Breaking
+
+- `detect_sbir_ma_events.py` no longer writes acquirer-side Form D rows to the
+  exit artifact. Form D Item 10 marks a Rule 145 deemed offer and sale by the
+  issuer — the filer is the acquirer — so a row whose only transaction evidence
+  is that flag is written to `--non-exit-output` (`data/sbir_ma_non_exit.jsonl`)
+  with `non_exit_reason='acquirer_side'` instead of to the exit file. Demoting
+  the row was not enough because several consumers treat row presence as an
+  exit. Only target-side EFTS evidence keeps such a row: `efts_subsidiary`,
+  `efts_ma_definitive`, or `efts_acquisition_text`. The low-graded
+  `efts_ma_proxy` and `efts_ownership_active` mentions do not rescue one.
+- The same script now drops Form D records whose identity match did not reach
+  `KEEP_MATCH_TIER` (`high`) before event detection and prints the count it
+  removes, and `assign_confidence` no longer grants `high` on a Form D
+  business-combination flag alone. The two output paths must differ; equal
+  resolved paths exit before either file opens. Tests pin the routing and the
+  bridge-grading guards so neither can be relaxed silently.
+
+### Changed
+
 - The cross-enrichment test that asserted raw press hits are not independent
   corroboration now uses `press_evidence`, the key `_has_confirmed_press`
   actually reads, instead of `press_wire_signals`, which #709 removed along
@@ -77,8 +257,26 @@ version.
   `match_rationale == "exact_form_d_join_v1_name_key"` reproduces the frozen cut
   exactly.
 
+- The R16 run fingerprint for `phase-iii-census` now also carries the SHA-256
+  of `permutation.py` and of the runner script, so a resumed batch must agree
+  with the batch that opened the store on the execution code as well as on the
+  data. `design_revision` in the run manifest is read from
+  `FROZEN_SPEC_REVISION` rather than written as a literal. Revision 17: no
+  criterion, cell, population, seed, statistic, interval or threshold changes,
+  and no draw is taken.
+
 ### Added
 
+- `docs/data/ma-events-refresh.md`, an operator guide for the four-script chain
+  that produces the M&A exit artifacts. It records the required order, the
+  exact error each fail-closed guard raises, measured step-3 throughput
+  (16 events/minute sustained at concurrency 2 — a short sample overstates it),
+  the known defects of the legacy refinement corpus, and the consumers to
+  re-run after a rebuild.
+- `build_phase_iii_placebo_permutation.py --check-inputs` reports each Phase 1
+  input against the digest recorded in `materialization-2026-02-06.md` without
+  taking a draw, so a recovered or re-materialised file can be verified before
+  a multi-hour R16 run rather than after its first draw.
 - `check_identity_boundaries.py` rejects a company-name normalizer that does not
   reach `sbir_etl.identity.company_names`. Person-name and state-name
   normalizers are listed as reviewed exceptions; `scripts/archive/` stays
@@ -112,6 +310,12 @@ version.
   `sbir_exact_key_count` / `sbir_exact_keys` when
   several SBIR spellings collapse onto one widened key. A widened row is a
   candidate, not a resolution.
+
+### Fixed
+
+- The literature-map refresh no longer aborts when an anchor DOI does not
+  resolve in OpenAlex. The unresolved DOI is recorded with zero hits in
+  `refresh_status.md` and the run continues with the remaining anchors.
 
 ## [0.16.0] — 2026-09-15
 
@@ -673,7 +877,11 @@ across the root project and the three packages under `packages/`.
 `vMAJOR.MINOR.PATCH` form it requires. Per that policy published tags are never
 moved or reused, so they remain as historical markers.
 
-[Unreleased]: https://github.com/hollomancer/sbir-analytics/compare/v0.16.0...HEAD
+[Unreleased]: https://github.com/hollomancer/sbir-analytics/compare/v0.20.0...HEAD
+[0.20.0]: https://github.com/hollomancer/sbir-analytics/compare/v0.19.0...v0.20.0
+[0.19.0]: https://github.com/hollomancer/sbir-analytics/compare/v0.18.0...v0.19.0
+[0.18.0]: https://github.com/hollomancer/sbir-analytics/compare/v0.17.0...v0.18.0
+[0.17.0]: https://github.com/hollomancer/sbir-analytics/compare/v0.16.0...v0.17.0
 [0.16.0]: https://github.com/hollomancer/sbir-analytics/compare/v0.15.0...v0.16.0
 [0.15.0]: https://github.com/hollomancer/sbir-analytics/compare/v0.14.0...v0.15.0
 [0.14.0]: https://github.com/hollomancer/sbir-analytics/compare/v0.13.0...v0.14.0

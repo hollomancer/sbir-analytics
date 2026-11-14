@@ -277,7 +277,7 @@ class PerformanceMonitor:
         """Export metrics in standard format for reporting modules.
 
         Returns:
-            Dictionary with metrics formatted for performance_reporting and statistical_reporter
+            Dictionary with metrics formatted for performance reporting
         """
         summary = self.get_metrics_summary()
         aggregates = self._aggregate_metrics(summary)

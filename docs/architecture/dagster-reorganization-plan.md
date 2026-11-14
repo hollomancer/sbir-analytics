@@ -8,6 +8,11 @@
 
 **Canonical research inventory:** [Research Questions Inventory](../research-questions.md)
 
+> **ADR-006 amendment (2026-09-23):** Neo4j and `sbir-graph` are retired. Every
+> graph-publication, graph-migration, graph-backup, and graph-parity proposal below is
+> superseded and must not be implemented. The source, lineage, product-boundary, and Dagster
+> registry analysis remains proposed.
+
 ## Decision
 
 Reorganize Dagster around stable data contracts and the research products they support,
@@ -409,5 +414,5 @@ This effort does not:
 - [Enrichment Patterns](../steering/enrichment-patterns.md)
 - [Company Identity Contract](../steering/company-identity.md)
 - [Epistemic Tiers](../steering/epistemic-tiers.md)
-- [Neo4j Graph Database Patterns](../steering/neo4j-patterns.md)
+- [ADR-006: Retire Neo4j](../decisions/ADR-006-retire-neo4j.md)
 - [Self-hosted server runbook](../deployment/self-hosted-server.md)

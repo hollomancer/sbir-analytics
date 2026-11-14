@@ -17,7 +17,7 @@ The expected conclusion, given the size gap between R01-equivalent awards (~$600
 
 This question is **not in the inventory today**. The PR adds it as a new C4 question, a lean exploratory spec, and a study modeled on `form-d-fundraising` (frozen design + script + research note), not on `phase-iii-census` (Dagster + SHA-gated materialization).
 
-**Target epistemic tier:** exploratory analysis over committed public tables. Study `evidence_status`: `reproducible` if NIH Data Book extracts are committed and hashed; otherwise `exploratory`. Inventory Status: `Partially computable` only if the study is `reproducible`; never `Validated` or `Citable`. Permitted claims will not include a directional efficiency ranking.
+**Target epistemic tier:** exploratory analysis over committed public tables. Study `evidence_status`: `reproducible` if NIH Data Book extracts are committed and hashed; otherwise `exploratory`. Inventory Status: `Partially computable` only if the study is `reproducible`; never `Validated` or `Approved evidence`. Permitted claims will not include a directional efficiency ranking.
 
 ---
 
@@ -28,11 +28,11 @@ This question is **not in the inventory today**. The PR adds it as a new C4 ques
 Do **not**:
 
 - Put this in `sbir_etl/` or the modular analysis platform (`analysis_kind` is only `tech_census` / `transition_cohort`).
-- Add Dagster assets, Neo4j loaders, or live NIH RePORTER R01 harvest as a run dependency.
+- Add Dagster assets, database loaders, or live NIH RePORTER R01 harvest as a run dependency.
 - Treat PRA burden hours, university F&A rates, or the SBIR administrative-funding allowance as observed total cost.
 - Combine SBIR and STTR, or Phase I and Phase II.
 - Collapse the three outcomes into one efficiency score.
-- Promote to `evidence` / `citable`.
+- Promote to `evidence` / `approved`.
 
 Reuse the form-d pattern: `studies/<id>/{study.yaml,design.md}` + `scripts/data/` calculator + `docs/research/` findings note + unit tests of the algebra.
 
@@ -312,7 +312,7 @@ Do not add integration tests that hit NIH or SBA.
 
 - NSF/DOE/NASA/DoD normalized series
 - Live RePORTER R01 ingest or expanding `NIH_ACTIVITY_CODES`
-- Dagster, Neo4j, weekly report, analysis-profile registry
+- Dagster, database services, weekly report, analysis-profile registry
 - Causal identification, research quality, or welfare
 - Post-award compliance burden (FDP post-award shares are recorded as *not* in `TC`)
 - Scraping FOAs at scale

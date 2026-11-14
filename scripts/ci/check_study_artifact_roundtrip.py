@@ -16,8 +16,8 @@ Coverage is checked both ways, following the spec-registry pattern in
 ``specs/status.md``: a module that exposes a ``render_markdown`` entry point
 must appear in ``REGISTERED_PAIRS`` or in ``WAIVED_RENDERERS`` with a non-blank
 reason, so a new readout cannot ship unchecked. A blank reason waives nothing:
-it is reported, and the renderer still counts as unregistered. The coverage half is what keeps ``REGISTERED_PAIRS`` from
-staying empty by accident.
+it is reported, and the renderer still counts as unregistered. The coverage
+half keeps the registry complete as new pure renderers land.
 
 This proves a deliverable matches the artifact it was rendered from. It does not
 prove the artifact's numbers are right, and it does not read private inputs.
@@ -29,6 +29,7 @@ import ast
 import difflib
 import importlib.util
 import json
+import sys
 from collections.abc import Iterator
 from dataclasses import dataclass
 from pathlib import Path
@@ -67,6 +68,18 @@ REGISTERED_PAIRS: tuple[RoundTripPair, ...] = (
         sidecar="docs/readouts/navy-transition-v1.summary.json",
         renderer="scripts/data/build_navy_transition_readout.py:render_markdown",
     ),
+    RoundTripPair(
+        markdown="docs/public/sba-structural-comparison.md",
+        sidecar="studies/sba-annual-report-structural-comparison/release/public-result.json",
+        renderer="scripts/data/render_sba_structural_comparison.py:render_markdown",
+    ),
+    RoundTripPair(
+        markdown="docs/public/sba-structural-comparison-release.md",
+        sidecar=(
+            "studies/sba-annual-report-structural-comparison-release/release/public-result.json"
+        ),
+        renderer="scripts/data/render_sba_structural_comparison.py:render_markdown",
+    ),
 )
 
 # Renderers deliberately outside the round trip, with the reason they are exempt.
@@ -100,13 +113,17 @@ class Violation:
 
 def _load_renderer(root: Path, pair: RoundTripPair) -> Any:
     module_path = root / pair.renderer_path
-    spec = importlib.util.spec_from_file_location(
-        f"_roundtrip_{module_path.stem}", module_path
-    )
+    module_name = "_roundtrip_" + pair.renderer_path.replace("/", "_").removesuffix(".py")
+    spec = importlib.util.spec_from_file_location(module_name, module_path)
     if spec is None or spec.loader is None:
         raise ImportError(f"cannot load {pair.renderer_path}")
     module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
+    sys.modules[spec.name] = module
+    try:
+        spec.loader.exec_module(module)
+    except BaseException:
+        sys.modules.pop(spec.name, None)
+        raise
     return getattr(module, pair.renderer_function)
 
 
@@ -133,11 +150,7 @@ def validate_pair(pair: RoundTripPair, root: Path = REPOSITORY_ROOT) -> list[Vio
     sidecar_path = root / pair.sidecar
     for label, path in (("markdown", markdown_path), ("sidecar", sidecar_path)):
         if not path.exists():
-            return [
-                Violation(
-                    path=pair.markdown, message=f"registered {label} is missing: {path}"
-                )
-            ]
+            return [Violation(path=pair.markdown, message=f"registered {label} is missing: {path}")]
     if not (root / pair.renderer_path).exists():
         return [
             Violation(

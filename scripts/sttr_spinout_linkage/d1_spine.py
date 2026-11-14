@@ -14,9 +14,9 @@ a third, differently-written copy of the same filter never exists. The two
 notebooks are not rewritten to import this module in this PR (out of scope
 per the task brief); a follow-on housekeeping change can do that.
 
-No Neo4j, no CANDIDATE-assertion emission, no Parquet write. Per design.md,
-"Parquet is authoritative; Neo4j is a disposable investigative projection" --
-this loader only needs to hand a population to the D2-D5 scorers that follow,
+No service-database write, no CANDIDATE-assertion emission, no Parquet write.
+Governed tables remain authoritative. This loader only needs to hand a
+population to the D2-D5 scorers that follow,
 so it returns a `pandas.DataFrame`, matching what both precedent notebooks
 already produce.
 

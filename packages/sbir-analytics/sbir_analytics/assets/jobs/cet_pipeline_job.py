@@ -6,11 +6,6 @@ Pipeline (intended order; actual execution enforced by asset dependencies):
   1) cet_taxonomy                    — produce CET taxonomy artifact
   2) cet_award_classifications       — classify awards using CET classifier (with evidence)
   3) cet_company_profiles            — aggregate award-level CETs into company profiles
-  4) neo4j_cetarea_nodes             — upsert CETArea nodes into Neo4j
-  5) neo4j_award_cet_enrichment      — MERGE award-level CET enrichment properties
-  6) neo4j_company_cet_enrichment    — MERGE company-level CET enrichment properties
-  7) neo4j_award_cet_relationships   — create (Award)-[:APPLICABLE_TO]->(CETArea)
-  8) neo4j_company_cet_relationships — create (Company)-[:SPECIALIZES_IN]->(CETArea)
 
 Notes:
 - Execution order is captured by the asset dependencies defined in their modules.
@@ -40,23 +35,6 @@ except Exception:  # pragma: no cover - defensive import for repository load-tim
     cet_award_classifications = None  # type: ignore
     cet_company_profiles = None  # type: ignore
 
-# Import CET Neo4j loading/enrichment assets (consolidated)
-try:
-    from ..cet import (
-        neo4j_award_cet_enrichment,
-        neo4j_award_cet_relationships,
-        neo4j_cetarea_nodes,
-        neo4j_company_cet_enrichment,
-        neo4j_company_cet_relationships,
-    )
-except Exception:  # pragma: no cover - defensive import for repository load-time
-    neo4j_cetarea_nodes = None  # type: ignore
-    neo4j_award_cet_enrichment = None  # type: ignore
-    neo4j_company_cet_enrichment = None  # type: ignore
-    neo4j_award_cet_relationships = None  # type: ignore
-    neo4j_company_cet_relationships = None  # type: ignore
-
-
 EPISTEMIC_TIER = "exploratory"
 
 
@@ -65,11 +43,6 @@ if (
     cet_taxonomy is not None
     and cet_award_classifications is not None
     and cet_company_profiles is not None
-    and neo4j_cetarea_nodes is not None
-    and neo4j_award_cet_enrichment is not None
-    and neo4j_company_cet_enrichment is not None
-    and neo4j_award_cet_relationships is not None
-    and neo4j_company_cet_relationships is not None
 ):
     cet_full_pipeline_job = define_asset_job(
         name="cet_full_pipeline_job",
@@ -77,57 +50,11 @@ if (
             cet_taxonomy.key,
             cet_award_classifications.key,
             cet_company_profiles.key,
-            neo4j_cetarea_nodes.key,
-            neo4j_award_cet_enrichment.key,
-            neo4j_company_cet_enrichment.key,
-            neo4j_award_cet_relationships.key,
-            neo4j_company_cet_relationships.key,
         ),
         description=(
             "Materialize the CET pipeline end-to-end: taxonomy -> award classification -> "
-            "company aggregation -> Neo4j nodes/enrichment -> relationships."
+            "company aggregation."
         ),
-        config={
-            "ops": {
-                "loaded_cet_areas": {
-                    "config": {
-                        "taxonomy_parquet": "data/processed/cet_taxonomy.parquet",
-                        "taxonomy_json": "data/processed/cet_taxonomy.json",
-                        "create_constraints": True,
-                        "create_indexes": True,
-                        "batch_size": 1000,
-                    }
-                },
-                "loaded_award_cet_enrichment": {
-                    "config": {
-                        "award_class_parquet": "data/processed/cet_award_classifications.parquet",
-                        "award_class_json": "data/processed/cet_award_classifications.json",
-                        "batch_size": 1000,
-                    }
-                },
-                "loaded_award_cet_relationships": {
-                    "config": {
-                        "award_class_parquet": "data/processed/cet_award_classifications.parquet",
-                        "award_class_json": "data/processed/cet_award_classifications.json",
-                        "batch_size": 1000,
-                    }
-                },
-                "loaded_company_cet_enrichment": {
-                    "config": {
-                        "company_profiles_parquet": "data/processed/cet_company_profiles.parquet",
-                        "company_profiles_json": "data/processed/cet_company_profiles.json",
-                        "batch_size": 1000,
-                    }
-                },
-                "loaded_company_cet_relationships": {
-                    "config": {
-                        "company_profiles_parquet": "data/processed/cet_company_profiles.parquet",
-                        "company_profiles_json": "data/processed/cet_company_profiles.json",
-                        "batch_size": 1000,
-                    }
-                },
-            }
-        },
     )
 else:
     # This branch is reachable when assets fail to import at module load time

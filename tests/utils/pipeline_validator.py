@@ -1,7 +1,6 @@
 """Test-support pipeline validator.
 
-This module provides comprehensive validation of the SBIR ETL pipeline stages,
-including extraction, enrichment, and Neo4j graph validation.
+This module validates extraction and enrichment stages in the SBIR ETL pipeline.
 """
 
 from dataclasses import dataclass, field
@@ -10,10 +9,6 @@ from enum import StrEnum
 from typing import Any
 
 import pandas as pd
-from loguru import logger
-from neo4j import Session
-
-from sbir_graph.loaders import Neo4jClient
 from sbir_etl.models.quality import QualitySeverity
 
 
@@ -78,15 +73,6 @@ class StageValidationResult:
 
 class PipelineValidator:
     """Comprehensive pipeline validator for E2E testing."""
-
-    def __init__(self, neo4j_client: Neo4jClient | None = None):
-        """Initialize pipeline validator.
-
-        Args:
-            neo4j_client: Optional Neo4j client for graph validation
-        """
-        self.neo4j_client = neo4j_client
-        self.logger = logger.bind(component="pipeline_validator")
 
     def validate_extraction_stage(
         self,
@@ -340,178 +326,6 @@ class PipelineValidator:
             },
         )
 
-    def validate_neo4j_graph(
-        self,
-        expected_node_types: list[str] | None = None,
-        expected_relationships: list[str] | None = None,
-        min_nodes: int = 1,
-        min_relationships: int = 0,
-    ) -> StageValidationResult:
-        """Validate Neo4j graph structure and content.
-
-        Args:
-            expected_node_types: Expected node labels
-            expected_relationships: Expected relationship types
-            min_nodes: Minimum expected node count
-            min_relationships: Minimum expected relationship count
-
-        Returns:
-            StageValidationResult with Neo4j validation results
-        """
-        start_time = datetime.now()
-        checks = []
-
-        if not self.neo4j_client:
-            checks.append(
-                ValidationCheck(
-                    name="neo4j_client",
-                    status=ValidationStatus.SKIPPED,
-                    message="Neo4j client not available for validation",
-                    severity=QualitySeverity.LOW,
-                )
-            )
-            return StageValidationResult(
-                stage=ValidationStage.LOADING,
-                status=ValidationStatus.SKIPPED,
-                duration_seconds=0,
-                checks=checks,
-            )
-
-        try:
-            with self.neo4j_client.session() as session:
-                # Node count validation
-                node_count = self._get_total_node_count(session)
-                if node_count < min_nodes:
-                    checks.append(
-                        ValidationCheck(
-                            name="minimum_node_count",
-                            status=ValidationStatus.FAILED,
-                            message=f"Node count {node_count} below minimum {min_nodes}",
-                            expected=min_nodes,
-                            actual=node_count,
-                            severity=QualitySeverity.CRITICAL,
-                        )
-                    )
-                else:
-                    checks.append(
-                        ValidationCheck(
-                            name="minimum_node_count",
-                            status=ValidationStatus.PASSED,
-                            message=f"Node count {node_count} meets minimum requirement",
-                            expected=min_nodes,
-                            actual=node_count,
-                        )
-                    )
-
-                # Relationship count validation
-                rel_count = self._get_total_relationship_count(session)
-                if rel_count < min_relationships:
-                    checks.append(
-                        ValidationCheck(
-                            name="minimum_relationship_count",
-                            status=ValidationStatus.FAILED,
-                            message=f"Relationship count {rel_count} below minimum {min_relationships}",
-                            expected=min_relationships,
-                            actual=rel_count,
-                            severity=QualitySeverity.HIGH,
-                        )
-                    )
-                else:
-                    checks.append(
-                        ValidationCheck(
-                            name="minimum_relationship_count",
-                            status=ValidationStatus.PASSED,
-                            message=f"Relationship count {rel_count} meets minimum requirement",
-                            expected=min_relationships,
-                            actual=rel_count,
-                        )
-                    )
-
-                # Node type validation
-                if expected_node_types:
-                    actual_node_types = self._get_node_types(session)
-                    missing_types = set(expected_node_types) - set(actual_node_types)
-                    if missing_types:
-                        checks.append(
-                            ValidationCheck(
-                                name="expected_node_types",
-                                status=ValidationStatus.FAILED,
-                                message=f"Missing expected node types: {list(missing_types)}",
-                                expected=expected_node_types,
-                                actual=actual_node_types,
-                                severity=QualitySeverity.HIGH,
-                            )
-                        )
-                    else:
-                        checks.append(
-                            ValidationCheck(
-                                name="expected_node_types",
-                                status=ValidationStatus.PASSED,
-                                message="All expected node types present",
-                                expected=expected_node_types,
-                                actual=actual_node_types,
-                            )
-                        )
-
-                # Relationship type validation
-                if expected_relationships:
-                    actual_rel_types = self._get_relationship_types(session)
-                    missing_rel_types = set(expected_relationships) - set(actual_rel_types)
-                    if missing_rel_types:
-                        checks.append(
-                            ValidationCheck(
-                                name="expected_relationship_types",
-                                status=ValidationStatus.FAILED,
-                                message=f"Missing expected relationship types: {list(missing_rel_types)}",
-                                expected=expected_relationships,
-                                actual=actual_rel_types,
-                                severity=QualitySeverity.HIGH,
-                            )
-                        )
-                    else:
-                        checks.append(
-                            ValidationCheck(
-                                name="expected_relationship_types",
-                                status=ValidationStatus.PASSED,
-                                message="All expected relationship types present",
-                                expected=expected_relationships,
-                                actual=actual_rel_types,
-                            )
-                        )
-
-                # Graph connectivity validation
-                connectivity_check = self._validate_graph_connectivity(session)
-                checks.append(connectivity_check)
-
-        except Exception as e:
-            checks.append(
-                ValidationCheck(
-                    name="neo4j_connection",
-                    status=ValidationStatus.FAILED,
-                    message=f"Failed to connect to Neo4j: {str(e)}",
-                    severity=QualitySeverity.CRITICAL,
-                )
-            )
-
-        duration = (datetime.now() - start_time).total_seconds()
-
-        # Determine overall status
-        failed_checks = [c for c in checks if c.status == ValidationStatus.FAILED]
-        overall_status = ValidationStatus.FAILED if failed_checks else ValidationStatus.PASSED
-
-        return StageValidationResult(
-            stage=ValidationStage.LOADING,
-            status=overall_status,
-            duration_seconds=duration,
-            checks=checks,
-            metadata={
-                "node_count": node_count if "node_count" in locals() else 0,
-                "relationship_count": rel_count if "rel_count" in locals() else 0,
-                "node_types": actual_node_types if "actual_node_types" in locals() else [],
-                "relationship_types": actual_rel_types if "actual_rel_types" in locals() else [],
-            },
-        )
-
     def _calculate_match_rate(self, enriched_data: pd.DataFrame) -> float:
         """Calculate enrichment match rate from enriched data."""
         if len(enriched_data) == 0:
@@ -561,74 +375,3 @@ class PipelineValidator:
                 }
 
         return metrics
-
-    def _get_total_node_count(self, session: Session) -> int:
-        """Get total node count from Neo4j."""
-        result = session.run("MATCH (n) RETURN count(n) as count")
-        return result.single()["count"]
-
-    def _get_total_relationship_count(self, session: Session) -> int:
-        """Get total relationship count from Neo4j."""
-        result = session.run("MATCH ()-[r]->() RETURN count(r) as count")
-        return result.single()["count"]
-
-    def _get_node_types(self, session: Session) -> list[str]:
-        """Get all node types (labels) from Neo4j."""
-        result = session.run("CALL db.labels()")
-        try:
-            return [record["label"] for record in result]
-        except (TypeError, AttributeError):
-            # Handle mock objects that might not have proper record structure
-            return [getattr(record, "label", str(record)) for record in result]
-
-    def _get_relationship_types(self, session: Session) -> list[str]:
-        """Get all relationship types from Neo4j."""
-        result = session.run("CALL db.relationshipTypes()")
-        try:
-            return [record["relationshipType"] for record in result]
-        except (TypeError, AttributeError):
-            # Handle mock objects that might not have proper record structure
-            return [getattr(record, "relationshipType", str(record)) for record in result]
-
-    def _validate_graph_connectivity(self, session: Session) -> ValidationCheck:
-        """Validate basic graph connectivity."""
-        try:
-            # Check for isolated nodes (nodes with no relationships)
-            result = session.run("""
-                MATCH (n)
-                WHERE NOT (n)--()
-                RETURN count(n) as isolated_count
-            """)
-            record = result.single()
-            isolated_count = record["isolated_count"]
-
-            if isolated_count > 0:
-                return ValidationCheck(
-                    name="graph_connectivity",
-                    status=ValidationStatus.WARNING,
-                    message=f"Found {isolated_count} isolated nodes with no relationships",
-                    actual=isolated_count,
-                    severity=QualitySeverity.MEDIUM,
-                    details={"isolated_nodes": isolated_count},
-                )
-            else:
-                return ValidationCheck(
-                    name="graph_connectivity",
-                    status=ValidationStatus.PASSED,
-                    message="All nodes have at least one relationship",
-                    actual=isolated_count,
-                )
-        except KeyError as e:
-            return ValidationCheck(
-                name="graph_connectivity",
-                status=ValidationStatus.FAILED,
-                message=f"Failed to validate graph connectivity: missing key {str(e)}",
-                severity=QualitySeverity.MEDIUM,
-            )
-        except Exception as e:
-            return ValidationCheck(
-                name="graph_connectivity",
-                status=ValidationStatus.FAILED,
-                message=f"Failed to validate graph connectivity: {str(e)}",
-                severity=QualitySeverity.MEDIUM,
-            )

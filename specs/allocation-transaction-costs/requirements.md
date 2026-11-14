@@ -124,7 +124,7 @@ plain-language note that says what public data can and cannot establish.
 
 - NSF, DOE, NASA, or DoD normalized series
 - Live NIH RePORTER harvest
-- Dagster assets, Neo4j, or weekly-report wiring
+- Dagster assets, database services, or weekly-report wiring
 - Evidence-tier / citable promotion
 - Causal identification, research quality, or welfare
 - Post-award compliance burden

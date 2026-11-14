@@ -66,8 +66,9 @@ artifacts. The implemented core sits in **commercialization (B)** and **data inf
 - **leverage-ratio-analysis (A)** — the **DoD ~4:1 leverage-ratio** flagship (A3). Spec is
   design-only, but prerequisites (entity resolution, SBIR identification, USAspending
   enrichment) are **all live on `main`** — so this is buildable now, not blocked.
-- **patent-cost-spillover (C)** — marginal-cost-per-patent and the **Myers & Lanahan ~3×
-  spillover** reproduction (C3a–c). Design-only, **zero implementation code**.
+- **patent-cost-spillover (C)** — marginal-cost-per-patent and a descriptive citation-network
+  diffusion measure (C3a–c). Design-only, **zero implementation code**. NIH marginal-cost
+  benchmark only; the Myers & Lanahan replication is roadmap Order 7.
 
 ## Cross-reference to the literature map
 
@@ -77,8 +78,8 @@ specs (A: 4 unbuilt + UCC-1; F: 2 design-only). The unbuilt work is not lagging 
 is **at the frontier**, which is consistent with the map's finding that these questions are not
 yet covered by peer-reviewed SBIR-specific research. The two clearest "buildable now, high
 policy value, design-only" targets are **leverage-ratio-analysis (A3)** and
-**patent-cost-spillover (C3)** — both have published benchmarks (NASEM 4:1; Myers & Lanahan 3×)
-to validate against.
+**patent-cost-spillover (C3)** — both have published benchmarks (NASEM 4:1; NIH ~$1.5M marginal
+cost per patent) to compare against.
 
 *Files: `spec_status_summary.csv` (20 specs with area, status, evidence),
 `spec_status.png` (status × policy-area overview).*

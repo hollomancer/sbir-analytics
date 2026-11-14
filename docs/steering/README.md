@@ -23,7 +23,6 @@ scripts. If they diverge, CI is authoritative and the Makefile is wrong.
 |---|---|
 | [Enrichment patterns](enrichment-patterns.md) | Convention |
 | [Pipeline orchestration](pipeline-orchestration.md) | Convention |
-| [Neo4j patterns](neo4j-patterns.md) | Convention / ops guidance |
 | [ML methodology review](ml-methodology-review.md) | Recommended PR review notes |
 
 Reference: [product scope](product.md), [technology decisions](tech.md),

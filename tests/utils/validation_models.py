@@ -12,7 +12,6 @@ from typing import Any
 from tests.utils.pipeline_validator import (
     StageValidationResult,
     ValidationCheck,
-    ValidationStage,
     ValidationStatus,
 )
 
@@ -200,29 +199,6 @@ class ValidationReport:
                         "Adjust quality thresholds if appropriate",
                     ],
                     related_checks=check_names,
-                )
-            )
-
-        # Neo4j specific recommendations
-        neo4j_failures = [
-            c
-            for c in validation.failed_checks
-            if any(stage.stage == ValidationStage.LOADING for stage in validation.stage_results)
-        ]
-        if neo4j_failures:
-            recommendations.append(
-                Recommendation(
-                    title="Fix Neo4j Loading Issues",
-                    description="Neo4j graph validation failed",
-                    priority=RecommendationPriority.HIGH,
-                    category="infrastructure",
-                    actions=[
-                        "Verify Neo4j connection",
-                        "Check database constraints",
-                        "Review loading logic",
-                        "Validate graph schema",
-                    ],
-                    related_checks=[c.name for c in neo4j_failures],
                 )
             )
 

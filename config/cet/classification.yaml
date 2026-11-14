@@ -318,7 +318,6 @@ analytics:
     - "company_aggregation"
     - "portfolio_analytics"
     - "uspto_validation"
-    - "neo4j_preparation"
 
   # Operations that should stay in pandas
   disable_for:

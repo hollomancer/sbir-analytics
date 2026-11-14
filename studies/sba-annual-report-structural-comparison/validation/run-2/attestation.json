@@ -1,0 +1,178 @@
+{
+  "schema_version": 1,
+  "run_status": "aborted",
+  "invalid_or_aborted": true,
+  "error": "InvalidRun: unmapped printed jurisdiction row on PDF page 53: ''",
+  "first_submission": true,
+  "sealed_without_post_comparison_repair": false,
+  "extractor_identity": "/root/sba_blind_extractor_2",
+  "coordinator_identity": "/root (Codex primary agent)",
+  "packet_sha256": "fe77b3de60ae983624be3428d769b0fb3702b3989c5aeedd4af5f8980e6c2c8f",
+  "start_utc": "2026-09-21T22:37:50Z",
+  "finish_utc": "2026-09-21T22:37:55Z",
+  "implementation": {
+    "path": "extractor.py",
+    "sha256": "48560827f2204cc29cb7eb55855b7096d1ab1ad22eca396b80532366eeb88837",
+    "requirements_path": "requirements.txt",
+    "requirements_sha256": "9953f725dc5908a1266a6e19f1add757d2432e773f261672ce64684cee7165a7"
+  },
+  "jurisdiction_mapping": {
+    "path": "jurisdiction-mapping.json",
+    "sha256": "fd09990902369d81cdd5619b636b833a1f61e90370929106b9ebd0a12046aaae",
+    "entry_count": 53
+  },
+  "submission": {
+    "path": "validation-values.csv",
+    "sha256": null,
+    "column_count": 0,
+    "unit_count": 0,
+    "unique_unit_count": 0
+  },
+  "tools": {
+    "python": "3.9.6",
+    "python_csv": "standard library csv.reader/csv.DictWriter",
+    "hashlib": "standard library SHA-256",
+    "pdfplumber": "0.11.7",
+    "pdfminer_six": "20250506",
+    "pypdfium2": "5.13.0",
+    "preflight_curl": "8.7.1",
+    "preflight_shasum_digest_sha": "6.02",
+    "preflight_pdfinfo": "26.05.0",
+    "platform": "macOS-26.6.2-arm64-arm-64bit"
+  },
+  "source_verification": {
+    "packet_files": [
+      {
+        "path": "packet-manifest.json",
+        "expected_size_bytes": 1729,
+        "actual_size_bytes": 1729,
+        "expected_sha256": "fe77b3de60ae983624be3428d769b0fb3702b3989c5aeedd4af5f8980e6c2c8f",
+        "actual_sha256": "fe77b3de60ae983624be3428d769b0fb3702b3989c5aeedd4af5f8980e6c2c8f",
+        "size_match": true,
+        "sha256_match": true
+      },
+      {
+        "path": "data/raw/sba_annual_reports/FY20/SBA_SBIR_STTR_FY20_Annual_Report.pdf",
+        "expected_size_bytes": 2505195,
+        "actual_size_bytes": 2505195,
+        "expected_sha256": "f1f51abb29c71d631451868f31babf2f6f1fe3845df91e534052f1d40dece3d3",
+        "actual_sha256": "f1f51abb29c71d631451868f31babf2f6f1fe3845df91e534052f1d40dece3d3",
+        "size_match": true,
+        "sha256_match": true
+      },
+      {
+        "path": "data/raw/sba_annual_reports/FY21/SBA_SBIR_STTR_FY21_Annual_Report.pdf",
+        "expected_size_bytes": 2444751,
+        "actual_size_bytes": 2444751,
+        "expected_sha256": "30b4dfa9b4c2c2220fc15938d5bd1a44bee92d5aa746b8756dc7d66217c6df55",
+        "actual_sha256": "30b4dfa9b4c2c2220fc15938d5bd1a44bee92d5aa746b8756dc7d66217c6df55",
+        "size_match": true,
+        "sha256_match": true
+      },
+      {
+        "path": "data/raw/sba_annual_reports/FY22/SBA_FY22_SBIR_STTR_Annual_Report.pdf",
+        "expected_size_bytes": 2038536,
+        "actual_size_bytes": 2038536,
+        "expected_sha256": "5ba60852f1cc44b23afdbf810ecf0cff77d714d10ffc786a9b73416d7c000fd1",
+        "actual_sha256": "5ba60852f1cc44b23afdbf810ecf0cff77d714d10ffc786a9b73416d7c000fd1",
+        "size_match": true,
+        "sha256_match": true
+      },
+      {
+        "path": "data/raw/sbir/award-export/2026-09-17/award_data.csv",
+        "expected_size_bytes": 394636989,
+        "actual_size_bytes": 394636989,
+        "expected_sha256": "aed146eab56f370c9f3fe7f562475e3eedfc61cca2eba112c830fac6f73bf38a",
+        "actual_sha256": "aed146eab56f370c9f3fe7f562475e3eedfc61cca2eba112c830fac6f73bf38a",
+        "size_match": true,
+        "sha256_match": true
+      },
+      {
+        "path": "study/source-manifest.json",
+        "expected_size_bytes": 7345,
+        "actual_size_bytes": 7345,
+        "expected_sha256": "be8adfce554b2811cb612428bebab314f061b2a808b9cc957ad0311797388db3",
+        "actual_sha256": "be8adfce554b2811cb612428bebab314f061b2a808b9cc957ad0311797388db3",
+        "size_match": true,
+        "sha256_match": true
+      },
+      {
+        "path": "study/validation-design-v1.md",
+        "expected_size_bytes": 11227,
+        "actual_size_bytes": 11227,
+        "expected_sha256": "02e0fadd1f623096d20105fb4af47bba0b9c1c98d0c9ca10123da40907ec2da2",
+        "actual_sha256": "02e0fadd1f623096d20105fb4af47bba0b9c1c98d0c9ca10123da40907ec2da2",
+        "size_match": true,
+        "sha256_match": true
+      },
+      {
+        "path": "study/validation-population-v1.csv",
+        "expected_size_bytes": 96118,
+        "actual_size_bytes": 96118,
+        "expected_sha256": "48dfdf1ea70e9a74378c21a3a661795540ebd6450c77365ebdad76c6569b68c1",
+        "actual_sha256": "48dfdf1ea70e9a74378c21a3a661795540ebd6450c77365ebdad76c6569b68c1",
+        "size_match": true,
+        "sha256_match": true
+      }
+    ],
+    "source_manifest_capture_gate_allowed": true,
+    "source_manifest_capture_gate_blockers": [],
+    "live_durable_uri_checks": [
+      {
+        "durable_uri": "https://data.www.sbir.gov/mod_awarddatapublic/award_data.csv?versionId=Jm_ZxEbD5MStDhkSNjahwgKY8QAYoJlm",
+        "expected_size_bytes": 394636989,
+        "retrieved_size_bytes": 394636989,
+        "expected_sha256": "aed146eab56f370c9f3fe7f562475e3eedfc61cca2eba112c830fac6f73bf38a",
+        "retrieved_sha256": "aed146eab56f370c9f3fe7f562475e3eedfc61cca2eba112c830fac6f73bf38a",
+        "size_match": true,
+        "sha256_match": true,
+        "method": "curl read-only stream piped to Python hashlib.sha256 before extraction"
+      },
+      {
+        "durable_uri": "https://www.sbir.gov/sites/default/files/documents/SBA_SBIR_STTR_FY20_Annual_Report.pdf",
+        "expected_size_bytes": 2505195,
+        "retrieved_size_bytes": 2505195,
+        "expected_sha256": "f1f51abb29c71d631451868f31babf2f6f1fe3845df91e534052f1d40dece3d3",
+        "retrieved_sha256": "f1f51abb29c71d631451868f31babf2f6f1fe3845df91e534052f1d40dece3d3",
+        "size_match": true,
+        "sha256_match": true,
+        "method": "curl read-only stream piped to Python hashlib.sha256 before extraction"
+      },
+      {
+        "durable_uri": "https://www.sbir.gov/sites/default/files/documents/SBA_SBIR_STTR_FY21_Annual_Report.pdf",
+        "expected_size_bytes": 2444751,
+        "retrieved_size_bytes": 2444751,
+        "expected_sha256": "30b4dfa9b4c2c2220fc15938d5bd1a44bee92d5aa746b8756dc7d66217c6df55",
+        "retrieved_sha256": "30b4dfa9b4c2c2220fc15938d5bd1a44bee92d5aa746b8756dc7d66217c6df55",
+        "size_match": true,
+        "sha256_match": true,
+        "method": "curl read-only stream piped to Python hashlib.sha256 before extraction"
+      },
+      {
+        "durable_uri": "https://www.sbir.gov/sites/default/files/SBA_FY22_SBIR_STTR_Annual_Report.pdf",
+        "expected_size_bytes": 2038536,
+        "retrieved_size_bytes": 2038536,
+        "expected_sha256": "5ba60852f1cc44b23afdbf810ecf0cff77d714d10ffc786a9b73416d7c000fd1",
+        "retrieved_sha256": "5ba60852f1cc44b23afdbf810ecf0cff77d714d10ffc786a9b73416d7c000fd1",
+        "size_match": true,
+        "sha256_match": true,
+        "method": "curl read-only stream piped to Python hashlib.sha256 before extraction"
+      }
+    ],
+    "captured_table_csvs_read": false,
+    "captured_table_csvs_note": "Excluded by the blind-packet independence boundary; manifest metadata only was present."
+  },
+  "pdf_table_completeness_checks": {},
+  "export_checks": {},
+  "blinding_attestation": {
+    "saw_prohibited_material": false,
+    "read_repository_checkout": false,
+    "read_captured_table_csvs": false,
+    "read_production_code_or_tests": false,
+    "read_production_sidecars_or_rendered_results": false,
+    "read_historical_comparison_results": false,
+    "read_prior_extractor_workspace": false,
+    "read_any_prior_filled_validation_output": false,
+    "statement": "I attest that I saw no prohibited material and used only the sealed blind packet, ordinary system executables, installed/vendored Python libraries, and my new isolated output directory."
+  }
+}

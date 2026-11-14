@@ -6,7 +6,7 @@
 # Responsibilities:
 #  - Load environment variables from common locations (.env, /run/secrets)
 #  - Provide service-specific startup behavior (dagster-webserver, dagster-daemon, etl-runner)
-#  - Wait for upstream dependencies (Neo4j, webserver) to become healthy
+#  - Wait for the Dagster webserver before starting the daemon
 #  - Drop privileges to non-root user when possible
 #  - Forward signals and exec the chosen command
 #
@@ -17,12 +17,7 @@
 #
 # Environment variables:
 #   ENVIRONMENT             - dev|test|prod (affects behavior)
-#   NEO4J_USER              - Neo4j username
-#   NEO4J_PASSWORD          - Neo4j password
-#   NEO4J_DATABASE          - Neo4j database name
 #   SERVICE_STARTUP_TIMEOUT - seconds to wait for dependencies (default: 120)
-# Compose supplies SBIR_ETL__NEO4J__HOST/PORT internally for dependency probes;
-# they are not host-facing .env.example settings.
 #
 # Notes:
 # - This script is intentionally POSIX-sh compatible for maximum portability.
@@ -53,8 +48,8 @@ load_env() {
     fi
   done
 
-  # If secrets are mounted as files (e.g., /run/secrets/NEO4J_PASSWORD),
-  # allow container operator to populate env vars via file contents.
+  # If secrets are mounted as files, allow the container operator to populate
+  # environment variables from their contents.
   # Convention: if VAR is not set and /run/secrets/VAR exists, read it.
   if [ -d /run/secrets ]; then
     for secret_file in /run/secrets/*; do
@@ -125,47 +120,6 @@ prepare_runtime_directories() {
       chown sbir:sbir "$marker"
     fi
   done
-}
-
-probe_tcp() {
-  host="$1"
-  port="$2"
-
-  if command -v nc >/dev/null 2>&1; then
-    nc -z "$host" "$port" >/dev/null 2>&1
-    return $?
-  fi
-
-  # Python is guaranteed by the application image and works under /bin/sh,
-  # unlike the non-portable /dev/tcp fallback.
-  if command -v python >/dev/null 2>&1; then
-    python -c \
-      'import socket, sys; sock = socket.create_connection((sys.argv[1], int(sys.argv[2])), timeout=2); sock.close()' \
-      "$host" "$port" >/dev/null 2>&1
-    return $?
-  fi
-
-  (exec 3<>"/dev/tcp/$host/$port") >/dev/null 2>&1
-}
-
-# Wait for the Neo4j service to accept TCP connections.
-wait_for_neo4j() {
-  HOST="${SBIR_ETL__NEO4J__HOST:-${NEO4J_HOST:-neo4j}}"
-  PORT="${SBIR_ETL__NEO4J__PORT:-${NEO4J_PORT:-7687}}"
-  TIMEOUT="${SERVICE_STARTUP_TIMEOUT:-120}"
-  log "Waiting for Neo4j at ${HOST}:${PORT} (timeout=${TIMEOUT}s)..."
-  start=$(date +%s)
-  deadline=$((start + TIMEOUT))
-  while [ "$(date +%s)" -le "$deadline" ]; do
-    if probe_tcp "$HOST" "$PORT"; then
-      log "Neo4j is available"
-      return 0
-    fi
-    log "Neo4j not ready yet; sleeping 5s..."
-    sleep 5
-  done
-  log "Timed out waiting for Neo4j"
-  return 1
 }
 
 # Wait for the dagster webserver to expose /server_info (HTTP) if desired.
@@ -265,10 +219,6 @@ main() {
   case "$service" in
     dagster-code-server)
       log "Starting service: dagster-code-server"
-      if ! wait_for_neo4j; then
-        log "Failed dependency check: Neo4j not available"
-        exit 1
-      fi
       CMD="${ENV_DAGSTER_CMD:-dagster api grpc --host 0.0.0.0 --port 4000 --module-name sbir_analytics.definitions --location-name sbir-analytics-production}"
       log "Exec: ${EXEC_PREFIX} ${CMD}"
       if [ -n "$EXEC_PREFIX" ]; then
@@ -280,12 +230,6 @@ main() {
 
     dagster-webserver)
       log "Starting service: dagster-webserver"
-      # Ensure Neo4j is up before starting webserver (helps CI/flaky startup)
-      if ! wait_for_neo4j; then
-        log "Failed dependency check: Neo4j not available"
-        exit 1
-      fi
-
       # Honor explicit command overrides before falling back to defaults
       if [ -n "${ENV_DAGSTER_CMD-}" ]; then
         CMD="${ENV_DAGSTER_CMD}"
@@ -313,11 +257,6 @@ main() {
 
     dagster-daemon)
       log "Starting service: dagster-daemon"
-      # Wait for Neo4j and webserver to be healthy before starting the daemon
-      if ! wait_for_neo4j; then
-        log "Failed dependency check: Neo4j not available"
-        exit 1
-      fi
       # Wait for Dagster web to be available (use defaults)
       if ! wait_for_dagster_web; then
         log "Warning: Dagster webserver did not become healthy in time; proceeding anyway"
@@ -345,12 +284,6 @@ main() {
         show_usage
         exit 2
       fi
-      # Ensure dependencies available
-      if ! wait_for_neo4j; then
-        log "Failed dependency check: Neo4j not available"
-        exit 1
-      fi
-
       # Execute the provided command (preserve arguments)
       # If we have an exec prefix, prefix the command; do not use eval for arbitrary args
       if [ -n "$EXEC_PREFIX" ]; then

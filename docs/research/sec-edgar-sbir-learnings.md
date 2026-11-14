@@ -257,8 +257,8 @@ names matching unrelated filing text.
 | M&A definitive signals | 2,194 | 1,707 | 487 |
 
 The noise score is stored in `CompanyEdgarProfile.mention_noise_score` and
-written to JSONL as `mention_noise_score`. The Neo4j loader filters mention-only
-records with score >= 2. Raw data is preserved for analysis.
+written to JSONL as `mention_noise_score`. Analytical consumers can filter
+mention-only records with score >= 2. Raw data is preserved for analysis.
 
 ## Recommended Refinements
 
@@ -284,9 +284,9 @@ records with score >= 2. Raw data is preserved for analysis.
    analyze the tier distribution to calibrate signal weights. The current
    weights are a starting hypothesis, not empirically tuned.
 
-7. **Neo4j Person nodes**: The Form D XML gives us structured executive
-   names and titles. Future work: create Person nodes and
-   person→company relationships to enable cross-company executive tracking.
+7. **Executive linkage table**: The Form D XML gives structured executive
+   names and titles. Future work could create a governed person-to-company table
+   for cross-company executive tracking.
 
 8. **Funding round classification**: Map securities types + temporal sequence
    of Form D filings to Series A/B/C rounds.
@@ -325,7 +325,7 @@ records with score >= 2. Raw data is preserved for analysis.
 - **Deduplication by filer**: Report distinct mentioning companies, not
   duplicate filings from the same filer.
 - **Noise scoring, not filtering**: `mention_noise_score` is computed and
-  stored but the raw data is preserved. Downstream consumers (Neo4j loader)
+  stored but the raw data is preserved. Downstream analytical consumers
   apply the threshold. This keeps the scan data reusable for different
   analysis thresholds.
 

@@ -11,7 +11,7 @@
 - **Status:** active. Implementation starts after PRs #550–#552 merge, since the guard
   reads the `EPISTEMIC_TIER` declarations they introduce.
 - **Out of scope:** a fifth tier; directory reorganization; data-level lineage or
-  tier-tracking inside Neo4j; study manifests for analytics not named here; runtime
+  storage-tier tracking; study manifests for analytics not named here; runtime
   import hooks; labeling or policing `notebooks/` and the unlabeled remainder of
   `scripts/` (unstated-means-exploratory remains the design there).
 - **Verification that proves completion:** the new guard runs in `make lint-boundaries`
@@ -26,7 +26,7 @@ For notebooks the two coincide. For operated inference (fiscal, CET, transition 
 the recurring reports) they diverge, and the divergence leaks: pipelines-tier modules
 import exploratory modules today, which the exploratory contract forbids. Known edges:
 
-1. `packages/sbir-analytics/sbir_analytics/assets/sbir_neo4j_loading.py` imports
+1. The former graph-loading asset imported
    `sbir_etl.utils.company_canonicalizer` (exploratory fuzzy pre-load deduplication).
 2. `sbir_etl/supply_chain/defense_release.py` imports
    `sbir_etl.supply_chain.nsf_screen` (exploratory CET-relevance screening).
@@ -95,7 +95,7 @@ exist.
     allowlisted with that finding recorded, and R2 is re-scoped rather than silently
     weakened.
 
-2.3 WHEN the policy lands, `sbir_neo4j_loading.py` SHALL import only `sbir_etl.identity`
+2.3 WHEN the policy lands, the affected loading asset SHALL import only `sbir_etl.identity`
     for canonicalization, `company_canonicalizer` SHALL be deleted or reduced to an
     exploratory deprecation shim with no package importers, and the allowlist entry
     SHALL be removed.

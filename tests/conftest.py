@@ -5,10 +5,10 @@
 #
 # Fixture Organization:
 # - This file: Core fixtures (repo_root, config, data paths, dependency checks)
-# - tests/conftest_shared.py: Domain fixtures (Neo4j, enrichment, fiscal, transition)
+# - tests/conftest_shared.py: Domain fixtures (enrichment, fiscal, transition)
 #   Import these explicitly in subdirectory conftest.py files as needed.
 # - tests/factories.py: Test data factories (AwardFactory, DataFrameBuilder)
-# - tests/mocks/: Mock factories (Neo4jMocks, ConfigMocks, etc.)
+# - tests/mocks/: Mock factories and configuration helpers
 #
 from __future__ import annotations
 
@@ -213,63 +213,6 @@ def sbir_csv_path(
     return sbir_award_data_csv_path if use_real_sbir_data else sbir_sample_csv_path
 
 
-# Neo4j Test Fixtures
-# ===================
-
-
-@pytest.fixture(scope="session", autouse=True)
-def _neo4j_service_lifecycle():
-    """Ensure the testcontainer (if started) is stopped at session end."""
-    yield
-    from tests.neo4j_service import stop_neo4j_service
-
-    stop_neo4j_service()
-
-
-@pytest.fixture(scope="session")
-def neo4j_driver():
-    """
-    Session-scoped Neo4j driver for tests requiring real database connection.
-    Connection is reused across all tests in the session for better performance.
-
-    Tests using this fixture should be marked with @pytest.mark.neo4j
-    """
-    from neo4j import GraphDatabase
-
-    from tests.neo4j_service import connect_with_retry, get_neo4j_service
-
-    service = get_neo4j_service()
-    if service is None:
-        pytest.skip("Neo4j not available (no running instance, testcontainers unavailable)")
-
-    def _connect():
-        driver = GraphDatabase.driver(service.uri, auth=(service.username, service.password))
-        try:
-            driver.verify_connectivity()
-        except Exception:
-            driver.close()
-            raise
-        return driver
-
-    # Retry transient auth/rate-limit errors while Neo4j finishes initializing.
-    driver = connect_with_retry(_connect)
-
-    yield driver
-    driver.close()
-
-
-@pytest.fixture
-def neo4j_session(neo4j_driver):
-    """
-    Function-scoped Neo4j session that cleans up after each test.
-    Provides isolated test environment while reusing connection pool.
-    """
-    with neo4j_driver.session() as session:
-        yield session
-        # Cleanup: delete all test data
-        session.run("MATCH (n) WHERE n.test_marker = true DETACH DELETE n")
-
-
 # Configuration Fixtures
 # ======================
 
@@ -374,16 +317,6 @@ def _check_import(module_name: str) -> bool:
 
 
 @pytest.fixture
-def neo4j_available():
-    """Fixture that skips if neo4j driver not available."""
-    if not _check_import("neo4j"):
-        pytest.skip("neo4j driver not installed")
-    from neo4j import GraphDatabase
-
-    return GraphDatabase
-
-
-@pytest.fixture
 def pandas_available():
     """Fixture that skips if pandas not available."""
     if not _check_import("pandas"):
@@ -421,12 +354,7 @@ def hf_token():
 @pytest.fixture
 def mock_pipeline_config(tmp_path):
     """Provide mock configuration for asset tests."""
-    from sbir_etl.config.schemas import (
-        PipelineConfig,
-        DataQualityConfig,
-        EnrichmentConfig,
-        Neo4jConfig,
-    )
+    from sbir_etl.config.schemas import DataQualityConfig, EnrichmentConfig, PipelineConfig
 
     return PipelineConfig(
         data_quality=DataQualityConfig(
@@ -438,10 +366,5 @@ def mock_pipeline_config(tmp_path):
             batch_size=100,
             max_retries=3,
             timeout_seconds=30,
-        ),
-        neo4j=Neo4jConfig(
-            uri="bolt://localhost:7687",
-            user="neo4j",
-            password="password",  # pragma: allowlist secret
         ),
     )

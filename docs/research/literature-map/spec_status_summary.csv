@@ -18,4 +18,4 @@ weekly-awards-report-refactor,E,Weekly awards report refactor,Spec / requirement
 agency-private-capital-comparison,F,SBIR vs private-capital comparison (NSF target),Spec / design,Design doc present; agency-parameterized comparison not flagged implemented
 ot-consortium-subaward-attribution,A,OT consortium sub-award attribution (FFATA/FSRS),Spec only,'spec only' banner
 leverage-ratio-analysis,A,"DoD leverage ratio (A3, ~4:1 NASEM target)",Not started,"Spec design-only; prerequisites (ER, ID, USAspending) live on main"
-patent-cost-spillover,C,Marginal cost per patent + spillover (C3a–c),Not started,"Design-only, zero code; targets Myers & Lanahan ~3×"
+patent-cost-spillover,C,Marginal cost per patent + descriptive citation-network diffusion (C3a–c),Not started,"Design-only, zero code; NIH marginal-cost benchmark only; Myers-Lanahan replication is roadmap Order 7"

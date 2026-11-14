@@ -51,7 +51,7 @@ uv run pytest \
 ## Dataset-scale validation
 
 Use `scripts/validation/categorization_validation.py` when evaluating real company inputs,
-contract retrieval, report quality, or Neo4j loading. It is a CLI, not a test file:
+contract retrieval, or report quality. It is a CLI, not a test file:
 
 ```bash
 uv run python scripts/validation/categorization_validation.py \

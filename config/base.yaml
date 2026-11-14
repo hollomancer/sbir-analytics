@@ -4,7 +4,7 @@
 
 pipeline:
   name: "sbir-analytics"
-  version: "0.16.0"
+  version: "0.20.0"
   environment: "development" # overridden by environment
 
 # File system paths configuration
@@ -381,33 +381,6 @@ transformation:
       "STTR": "STTR"
       "SBIR/STTR": "SBIR/STTR"
 
-  graph_preparation:
-    # Node and relationship preparation
-    batch_size: 1000
-    relationship_types:
-      - "AWARDED_TO"
-      - "FUNDED_BY"
-      - "SUBMITTED_BY"
-
-# Organization deduplication configuration
-organization_deduplication:
-  # Pre-loading fuzzy matching thresholds
-  high_threshold: 90  # Auto-merge matches >= 90%
-  low_threshold: 75   # Flag for review matches >= 75%
-
-  # Multi-key MERGE settings
-  merge_on_uei: true   # Merge nodes with same UEI
-  merge_on_duns: true  # Merge nodes with same DUNS
-
-  # Merge history tracking
-  track_merge_history: true  # Enable merge history tracking for reversibility
-
-  # Enhanced matching (passed to company_fuzzy_matcher)
-  enhanced_matching:
-    enable_phonetic_matching: true
-    enable_jaro_winkler: false
-    enable_enhanced_abbreviations: true
-
 # Company categorization configuration
 company_categorization:
   # Classification thresholds
@@ -433,27 +406,6 @@ company_categorization:
   # Output options
   include_contract_details: true
   include_metadata: true
-
-loading:
-  neo4j:
-    # Neo4j connection configuration
-    uri_env_var: "NEO4J_URI"
-    user_env_var: "NEO4J_USER"
-    password_env_var: "NEO4J_PASSWORD" # pragma: allowlist secret
-    output_dir: "data/loaded/uspto"
-    load_success_threshold: 0.99 # 99% success rate required
-    create_indexes: true
-    create_constraints: true
-    batch_operations: true
-
-    # Batch loading configuration
-    batch_size: 1000
-    parallel_threads: 4
-
-    # Transaction settings
-    transaction_timeout_seconds: 300
-    retry_on_deadlock: true
-    max_deadlock_retries: 3
 
 logging:
   # Logging configuration
@@ -519,83 +471,6 @@ transition:
     # Vendor resolution quality thresholds and fuzzy config
     min_rate: 0.60 # Minimum resolution rate (uei/duns/fuzzy)
     fuzzy_threshold: 0.85 # RapidFuzz token_sort_ratio threshold for name_fuzzy
-
-statistical_reporting:
-  # Report generation settings
-  generation:
-    enabled: true
-    formats: ["html", "json", "markdown", "executive"]
-    output_directory: "reports/statistical"
-    template_directory: "templates/reports"
-
-  # Module-specific reporting
-  modules:
-    sbir_enrichment:
-      enabled: true
-      include_coverage_analysis: true
-      include_source_breakdown: true
-    patent_analysis:
-      enabled: true
-      include_validation_details: true
-      include_loading_statistics: true
-    cet_classification:
-      enabled: true
-      include_confidence_distribution: true
-      include_taxonomy_breakdown: true
-    transition_detection:
-      enabled: true
-      include_success_stories: true
-      include_trend_analysis: true
-
-  # Insight generation
-  insights:
-    anomaly_detection:
-      enabled: true
-      sensitivity: "medium"  # low, medium, high
-      lookback_periods: 5
-    recommendations:
-      enabled: true
-      include_actionable_steps: true
-    success_stories:
-      enabled: true
-      min_impact_threshold: 0.8
-
-  # Output format configuration
-  formats:
-    html:
-      include_interactive_charts: true
-      chart_library: "plotly"
-      theme: "default"
-    json:
-      include_raw_data: false
-      pretty_print: true
-    markdown:
-      max_length: 2000
-      include_links: true
-    executive:
-      include_visualizations: true
-      focus_areas: ["impact", "quality", "trends"]
-
-  # CI/CD integration
-  cicd:
-    github_actions:
-      enabled: true
-      upload_artifacts: true
-      post_pr_comments: true
-      artifact_retention_days: 30
-    report_comparison:
-      enabled: true
-      baseline_comparison: true
-      trend_analysis_periods: [7, 30, 90]
-
-  # Quality thresholds for reporting
-  quality_thresholds:
-    data_completeness_warning: 0.90
-    data_completeness_error: 0.80
-    enrichment_success_warning: 0.85
-    enrichment_success_error: 0.70
-    performance_degradation_warning: 1.5  # 50% slower
-    performance_degradation_error: 2.0    # 100% slower
 
 fiscal_analysis:
   # Base analysis parameters
@@ -744,14 +619,6 @@ ml:
       max_length: 512  # Maximum token length (truncation)
       award_fields: ["solicitation_title", "abstract", "award_title"]
       patent_fields: ["title", "abstract"]
-
-    # Neo4j similarity edge loading (disabled by default)
-    # When enabled, loads (Award)-[:SIMILAR_TO]->(Patent) edges into Neo4j
-    neo4j:
-      enabled: false  # Set to true to enable similarity edge loading
-      batch_size: 1000  # Batch size for Neo4j MERGE operations
-      dry_run: false  # When true, validate without committing changes
-      prune_previous: false  # Remove previous SIMILAR_TO edges before loading
 
     # Similarity computation
     similarity_threshold: 0.80  # Minimum similarity score to include in results

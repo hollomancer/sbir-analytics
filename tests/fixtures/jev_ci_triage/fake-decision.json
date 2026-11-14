@@ -1,0 +1,10 @@
+{
+  "failure_class": "unknown",
+  "failure_class_confidence": 0.2,
+  "owner_area": "general",
+  "owner_area_confidence": 0.2,
+  "changed_code_implicated_probability": 0.5,
+  "external_service_implicated_probability": 0.5,
+  "known_flake_probability": 0.0,
+  "retry_success_probability": 0.0
+}

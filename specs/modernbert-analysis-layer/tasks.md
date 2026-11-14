@@ -2,7 +2,7 @@
 
 ## Status (2026-07-02)
 
-**Phase 1 is fully implemented; Phase 2/3 are partially done.** The client lives at `packages/sbir-ml/sbir_ml/ml/modernbert_client.py`, the Dagster assets at `packages/sbir-analytics/sbir_analytics/assets/modernbert/embeddings.py`, and config schemas at `sbir_etl/config/schemas/domain.py` (earlier `src/...` path notes have been corrected). Verified done since the last update: performance monitoring for embedding generation and similarity computation (`performance_monitor.monitor_block` in the assets), and most documentation (`docs/ml/modernbert.md`, `docs/configuration.md`) — individual sub-items ticked below. Still open: the Neo4j `SIMILAR_TO` edge-loading asset (2.1 — the `ml.modernbert.neo4j` config block exists in `config/base.yaml` but no loading asset or `ModernBertNeo4jConfig` schema class exists), quality metrics/cohesion asset (2.3), similarity-distribution/regression asset checks (2.4 — only the two coverage checks exist), Dagster-asset-level integration tests (3.2 — client-level integration tests exist in `tests/integration/test_modernbert_client.py` and one asset materialization in `tests/functional/test_pipelines.py`), Neo4j schema documentation (3.3), and dashboards/alerting (3.4). Related history: PR #365 renamed PaECTER → ModernBERT across the pipeline; PR #413 wired ModernBERT text similarity into the transition scorer (separate from this spec's assets).
+**Phase 1 is fully implemented; Phase 2/3 are partially done.** The client lives at `packages/sbir-ml/sbir_ml/ml/modernbert_client.py`, the Dagster assets at `packages/sbir-analytics/sbir_analytics/assets/modernbert/embeddings.py`, and config schemas at `sbir_etl/config/schemas/domain.py` (earlier `src/...` path notes have been corrected). Verified done since the last update: performance monitoring for embedding generation and similarity computation (`performance_monitor.monitor_block` in the assets), and most documentation (`docs/ml/modernbert.md`, `docs/configuration.md`) — individual sub-items ticked below. Still open: quality metrics/cohesion asset (2.3), similarity-distribution/regression asset checks (2.4 — only the two coverage checks exist), Dagster-asset-level integration tests (3.2 — client-level integration tests exist in `tests/integration/test_modernbert_client.py` and one asset materialization in `tests/functional/test_pipelines.py`), and dashboards/alerting (3.4). Graph-service integration was removed from scope when that service was retired. Related history: PR #365 renamed PaECTER → ModernBERT across the pipeline; PR #413 wired ModernBERT text similarity into the transition scorer (separate from this spec's assets).
 
 ## Phase 1: Core ModernBert Infrastructure
 
@@ -48,24 +48,7 @@
   - _Requirements: 1.1, 1.2, 1.3, 1.4_
   - _Status: Config exists in `config/base.yaml`. Validated Pydantic schema lives in `sbir_etl/config/schemas/domain.py` with `MLConfig` and `ModernBertConfig` models wired into `PipelineConfig`._
 
-## Phase 2: Neo4j Integration and Quality Validation
-
-- [ ] 2.1 Implement Neo4j similarity edge loading asset
-  - [ ] Create `neo4j_modernbert_similarity_edges` Dagster asset (optional, disabled by default)
-  - [ ] Load similarity pairs as (Award)-[:SIMILAR_TO {score, method:"modernbert", rank, computed_at}]->(Patent)
-  - [ ] Use MERGE for idempotent relationship creation
-  - [ ] Include configurable batch size and transaction management
-  - [ ] Add dry-run mode for testing without committing changes
-  - _Requirements: 4.1, 4.2, 4.3_
-  - _Status (2026-07-02): Not implemented — no `neo4j_modernbert_similarity_edges` asset or `SIMILAR_TO` loader exists in `packages/`. Only the config block (task 2.2) exists._
-
-- [x] 2.2 Add Neo4j configuration to config/base.yaml
-  - [x] ml.modernbert.neo4j.enabled: false (disabled by default)
-  - [x] ml.modernbert.neo4j.batch_size: 1000
-  - [x] ml.modernbert.neo4j.dry_run: false
-  - [x] ml.modernbert.neo4j.prune_previous: false (optional cleanup of old edges)
-  - _Requirements: 4.1, 4.2, 4.3_
-  - _Status: Config added to `config/base.yaml` under `ml.modernbert.neo4j` (enabled/batch_size/dry_run/prune_previous, verified 2026-07-02). Drift note: no `ModernBertNeo4jConfig` schema class exists anymore — `ModernBertConfig` in `sbir_etl/config/schemas/domain.py` has no `neo4j` field, so the YAML block is currently unvalidated._
+## Phase 2: Quality Validation
 
 - [ ] 2.3 Implement quality metrics and performance baselines
   - [ ] Create `modernbert_quality_metrics` asset for tracking embedding quality
@@ -97,17 +80,15 @@
   - [ ] Test complete embedding generation pipeline (awards → patents → similarity)
   - [ ] Test asset dependency resolution and execution order
   - [ ] Test asset checks trigger correctly on quality threshold violations
-  - [ ] Test Neo4j loading with mock data (if enabled)
   - _Requirements: All requirements_
-  - _Status (2026-07-02): Partial but below the bar — `tests/integration/test_modernbert_client.py` covers the awards→patents→similarity flow at the client level, and `tests/functional/test_pipelines.py` materializes the `modernbert_embeddings_awards` asset only. No multi-asset dependency/asset-check/Neo4j integration tests exist, so left unchecked._
+  - _Status (2026-07-02): Partial but below the bar — `tests/integration/test_modernbert_client.py` covers the awards→patents→similarity flow at the client level, and `tests/functional/test_pipelines.py` materializes the `modernbert_embeddings_awards` asset only. No multi-asset dependency or asset-check integration tests exist, so left unchecked._
 
 - [ ] 3.3 Create comprehensive documentation
   - [x] Document ModernBert configuration options in config/base.yaml — implemented: `docs/ml/modernbert.md` (Configuration section) and `docs/configuration.md` (ModernBert Configuration section)
   - [x] Document Dagster asset usage and dependencies — implemented: `docs/ml/modernbert.md` (Architecture / Dagster Assets sections)
-  - [ ] Document Neo4j schema for SIMILAR_TO relationships
   - [x] Create usage examples for common workflows — implemented: `docs/ml/modernbert.md` (Usage: Dagster UI, CLI, programmatic examples)
   - _Requirements: All requirements_
-  - _Status (2026-07-02): Docs are comprehensive except the Neo4j `SIMILAR_TO` schema, which is undocumented (the loading asset itself — task 2.1 — is also unimplemented)._
+  - _Status (2026-07-02): Core usage and configuration documentation exists._
 
 - [ ] 3.4 Add monitoring and observability
   - [x] Implement performance metrics collection for embedding generation — implemented: `performance_monitor.monitor_block(...)` in `packages/sbir-analytics/sbir_analytics/assets/modernbert/embeddings.py` (documented in `docs/ml/modernbert.md`, Monitoring section)

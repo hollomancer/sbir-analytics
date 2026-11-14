@@ -12,7 +12,6 @@
 #   mount volumes to persist data/artifacts (e.g., /app/data, /app/artifacts, /app/reports).
 # - CET assets primarily use config in config/cet/taxonomy.yaml and config/cet/classification.yaml.
 #   This file centralizes environment and runtime overrides (paths, batch sizes, schedules).
-# - Neo4j credentials are read from environment variables to avoid storing secrets in git.
 
 pipeline:
   name: "sbir-analytics"
@@ -141,35 +140,6 @@ transformation:
       "SBIR": "SBIR"
       "STTR": "STTR"
       "SBIR/STTR": "SBIR/STTR"
-  graph_preparation:
-    batch_size: 2000
-    relationship_types:
-      - "AWARDED_TO"
-      - "FUNDED_BY"
-      - "SUBMITTED_BY"
-
-loading:
-  neo4j:
-    # Secrets configured via environment variables; do NOT hard-code here.
-    # Expected env vars:
-    #   NEO4J_URI=bolt://host:7687
-    #   NEO4J_USER=neo4j
-    #   NEO4J_PASSWORD=********
-    #   NEO4J_DATABASE=neo4j                 (optional, defaults to 'neo4j')
-    uri_env_var: "NEO4J_URI"
-    user_env_var: "NEO4J_USER"
-    password_env_var: "NEO4J_PASSWORD"  # pragma: allowlist secret
-    output_dir: "data/loaded/neo4j"
-    load_success_threshold: 0.995
-    create_indexes: true
-    create_constraints: true
-    batch_operations: true
-    batch_size: 2000
-    parallel_threads: 8
-    transaction_timeout_seconds: 300
-    retry_on_deadlock: true
-    max_deadlock_retries: 5
-
 # CET-specific operational settings (environment/runtime oriented).
 # Core model hyperparameters are defined in config/cet/classification.yaml.
 cet:
@@ -202,39 +172,6 @@ dagster:
   jobs:
     - name: "cet_full_pipeline_job"
       enabled: true
-      # Asset-level config overrides (optional). Copy into run config as needed.
-      assets:
-        neo4j_cetarea_nodes:
-          config:
-            taxonomy_parquet: "data/processed/cet_taxonomy.parquet"
-            taxonomy_json: "data/processed/cet_taxonomy.json"
-            create_constraints: true
-            create_indexes: true
-            batch_size: 2000
-        neo4j_award_cet_enrichment:
-          config:
-            classifications_parquet: "data/processed/cet_award_classifications.parquet"
-            classifications_json: "data/processed/cet_award_classifications.json"
-            batch_size: 2000
-        neo4j_company_cet_enrichment:
-          config:
-            profiles_parquet: "data/processed/cet_company_profiles.parquet"
-            profiles_json: "data/processed/cet_company_profiles.json"
-            key_property: "uei"     # can be "company_id" if that matches your graph keys
-            batch_size: 2000
-        neo4j_award_cet_relationships:
-          config:
-            classifications_parquet: "data/processed/cet_award_classifications.parquet"
-            classifications_json: "data/processed/cet_award_classifications.json"
-            rel_type: "APPLICABLE_TO"
-            batch_size: 2000
-        neo4j_company_cet_relationships:
-          config:
-            profiles_parquet: "data/processed/cet_company_profiles.parquet"
-            profiles_json: "data/processed/cet_company_profiles.json"
-            key_property: "uei"
-            rel_type: "SPECIALIZES_IN"
-            batch_size: 2000
 
 # Environment variable hints (documenting, not applied by YAML):
 # - CET_MODEL_PATH: override path to the trained CET classifier artifact
@@ -242,7 +179,6 @@ dagster:
 # - SBIR_ETL__CET__SAMPLE_SEED: RNG seed for reproducible sampling (default 42)
 #
 # Deployment checklist (high level, see docs/deployment for full procedure):
-# - Ensure NEO4J_* environment variables are set and reachable from the runtime
 # - Mount persistent volumes for data/, reports/, artifacts/, and logs/
 # - Verify config/cet/taxonomy.yaml and classification.yaml are present and versioned
 # - Bake or mount the model artifact into artifacts/models/ (or set CET_MODEL_PATH)

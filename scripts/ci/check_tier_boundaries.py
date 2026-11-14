@@ -23,7 +23,6 @@ REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
 PACKAGE_ROOTS = {
     "sbir_etl": Path("sbir_etl"),
     "sbir_ml": Path("packages/sbir-ml/sbir_ml"),
-    "sbir_graph": Path("packages/sbir-graph/sbir_graph"),
     "sbir_analytics": Path("packages/sbir-analytics/sbir_analytics"),
     "scripts": Path("scripts"),
 }
@@ -255,8 +254,7 @@ def scan_repository(
                 TierViolation(
                     relative,
                     line_number,
-                    f"{importer_tier} module may not import "
-                    f"{imported_tier} module {target_module}",
+                    f"{importer_tier} module may not import {imported_tier} module {target_module}",
                 )
             )
 

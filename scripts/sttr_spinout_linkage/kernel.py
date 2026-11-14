@@ -25,9 +25,9 @@ normalization, given/family splitting, and generic-token stripping built on
 the same `generic_token_guard` used for organization names.
 
 Every emitted assertion this kernel supports is a `CANDIDATE` assertion only
-(`docs/architecture/neo4j-epistemic-assertions-plan.md`, ADR-005): no
+(`docs/decisions/ADR-005-transition-candidates-as-assertions.md`): no
 `SPUN_OUT_OF` edge type, no `ACCEPTED`/`REJECTED` claim status. This module
-does not touch Neo4j or any graph writer; it returns plain Python values.
+does not touch persistence writers; it returns plain Python values.
 
 Epistemic tier: exploratory. This is new, spec-local code per the O-0
 resolution ("(a) build the four kernel functions as new exploratory-tier code
@@ -43,6 +43,8 @@ import unicodedata
 from collections.abc import Iterable
 from dataclasses import dataclass
 from enum import StrEnum
+
+from sbir_etl.assertions.enums import DimensionStatus as _AssertionDimensionStatus
 
 from sbir_etl.identity import (
     SUFFIX_TOKENS,
@@ -310,20 +312,12 @@ def identity_similarity(left: ResolvedIdentity | None, right: ResolvedIdentity |
 # ---------------------------------------------------------------------------
 
 
-class DimensionStatus(StrEnum):
-    """Per-dimension epistemic state, mirroring ADR-005's `DimensionStatus`.
-
-    `MEASURED` requires a bounded, finite score -- zero is a measured
-    no-signal, not an absence. Every other status means the dimension was
-    not, or could not be, measured. Missing or null data never stands in for
-    one of these states (`design.md`, "Evidence dimensions").
-    """
-
-    MEASURED = "measured"
-    NOT_MEASURABLE = "not_measurable"
-    NOT_APPLICABLE = "not_applicable"
-    NOT_EVALUATED = "not_evaluated"
-    EVALUATION_FAILED = "evaluation_failed"
+# Per-dimension epistemic state. Re-exported from the ADR-005 contract rather
+# than redefined here: `sbir_etl.assertions.enums` is the single definition.
+# `MEASURED` requires a bounded, finite score -- zero is a measured no-signal,
+# not an absence. Missing or null data never stands in for one of these states
+# (`design.md`, "Evidence dimensions").
+DimensionStatus = _AssertionDimensionStatus
 
 
 class SignalAbsentReason(StrEnum):

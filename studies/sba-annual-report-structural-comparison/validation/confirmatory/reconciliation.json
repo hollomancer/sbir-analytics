@@ -1,0 +1,50 @@
+{
+  "schema_version": 1,
+  "run_id": "sba-structural-fidelity-v5",
+  "reconciled_at_utc": "2026-09-21T23:04:36Z",
+  "coordinator": "/root (Codex primary agent)",
+  "extractor": "/root/sba_blind_extractor_5",
+  "git_anchor_before_run": "c4874c0082454662f4eaf30b72b90ede29395408",
+  "packet_manifest_sha256": "51033aca620e71f71fc18d6ae398d27fe238fbf7c7d6cda4e748ba7db3299314",
+  "production_sidecar_sha256": "e86ab66905f65adaa7fdb721ced6bcbc7b3991a288ba37156f1efe9b4bed7381",
+  "validation_values_sha256": "66827a11e860da48a9da215ab982722fa182ceb2726a9ef05a182922c61bae2a",
+  "metric": "exact independently extracted count operands",
+  "numerator": 1264,
+  "denominator": 1264,
+  "interval_low": 1.0,
+  "interval_high": 1.0,
+  "interval_method": "exact complete-population point interval; no sampling",
+  "threshold_met": true,
+  "confirmatory": true,
+  "first_complete_submission": true,
+  "missing_values": 0,
+  "prohibited_material_exposure": false,
+  "pre_seal_correction": {
+    "submission_created": false,
+    "values_or_diagnostics_observed": false,
+    "design_changed": false,
+    "description": "The locator was corrected before extraction to enforce the frozen title-plus-count-column-geometry rule and exclude a table-of-contents title mention."
+  },
+  "prior_runs": [
+    {
+      "run_id": "sba-structural-fidelity-v1",
+      "confirmatory": false,
+      "reason": "Stopped before submission after the release version changed the environment lock."
+    },
+    {
+      "run_id": "sba-structural-fidelity-v2",
+      "confirmatory": false,
+      "reason": "Aborted at the PDF parsing gate without a submission."
+    },
+    {
+      "run_id": "sba-structural-fidelity-v3",
+      "confirmatory": false,
+      "reason": "Matched 1,264 of 1,264 values, but the packet manifest was not valid JSON."
+    },
+    {
+      "run_id": "sba-structural-fidelity-v4",
+      "confirmatory": false,
+      "reason": "Aborted before reading the design because one declared source digest had 63 characters."
+    }
+  ]
+}

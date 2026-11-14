@@ -16,7 +16,6 @@ testing, configuration, or deployment commands; use the linked operational refer
 - pandas, DuckDB, and PyArrow for tabular processing and interchange.
 - Pydantic plus YAML for typed configuration.
 - Dagster for assets, jobs, schedules, sensors, and run metadata.
-- Neo4j 5 for the linked analytical graph.
 - scikit-learn and, only where justified, PyTorch/Transformers for ML.
 - Docker Compose for local development, tests, and the self-hosted server data plane.
 - pytest, Ruff, and MyPy for verification.
@@ -30,8 +29,7 @@ CI—not in prose.
 1. Start from an active [research question](../research-questions.md) or a demonstrated operational
    need.
 2. Prefer an existing dependency and package boundary over a parallel framework.
-3. Put reusable logic in `sbir_etl`; keep orchestration, graph, and ML adapters in their workspace
-   packages.
+3. Put reusable logic in `sbir_etl`; keep orchestration and ML adapters in their workspace packages.
 4. Require a current consumer before adding an abstraction, service, or persistence layer.
 5. Record consequential or difficult-to-reverse choices as an [ADR](../decisions/README.md).
 

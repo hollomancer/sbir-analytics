@@ -42,27 +42,11 @@ in the same image. Override the host path with `E2E_ARTIFACT_DIR` when needed.
 
 ## Running the scenario runner directly
 
-A direct host run requires these variables because the runner validates them before pytest starts:
+Run the scenario runner from the installed workspace:
 
 ```bash
-export NEO4J_USERNAME=neo4j
-export NEO4J_PASSWORD=password
-export SBIR_ETL__NEO4J__BOLT_URL=bolt://localhost:7687
-
-uv run python scripts/run_e2e_tests.py --scenario minimal --timeout 120
+ENVIRONMENT=test uv run python scripts/run_e2e_tests.py --scenario minimal --timeout 120
 ```
-
-For host-based development, start the repository's `dev` Neo4j service first:
-
-```bash
-make neo4j-up
-make neo4j-check
-```
-
-This instance uses the credentials in `.env` and persists its development volume. The Compose
-`ci` profile used by the Docker E2E targets is isolated and disposable. GitHub Actions starts its
-own authenticated Neo4j service for the full post-merge suite; pull-request unit shards do not
-start Neo4j. None of these test environments use the live self-hosted server graph.
 
 Supported scenarios are:
 
@@ -82,10 +66,10 @@ The current hermetic scenarios are:
 - `test_enrichment_job.py`: persisted freshness records and enriched awards through the production
   USAspending freshness-selection job and asset check, with API construction prohibited.
 - `test_nsf_defense_lineage.py`: pinned CSV, JSON, and Parquet sources through the production
-  lineage job, release validation, static graph publication, and deterministic replay.
+  lineage job, release validation, static network-file publication, and deterministic replay.
 
 Synthetic fiscal, multi-source enrichment, and transition chains live under `tests/integration/`.
-Mocked pipeline-validator and graph-query contracts live under `tests/unit/`.
+Mocked pipeline-validator contracts live under `tests/unit/`.
 
 List the current tests rather than relying on a static count:
 
@@ -97,7 +81,7 @@ uv run pytest tests/e2e/ --collect-only -q
 
 `.github/workflows/ci.yml` is the only workflow. Pull requests run the hermetic E2E selection in
 addition to fast unit-test shards. Pushes to `main`, weekly scheduled runs, and manual workflow runs
-execute the whole `tests/` tree with Neo4j, subject to the explicit deselections documented in the
+execute the whole `tests/` tree, subject to the explicit deselections documented in the
 workflow.
 
 CI does not currently invoke the Docker E2E Make targets. GitHub Actions is test-only and never
@@ -105,14 +89,12 @@ runs extraction, enrichment, reporting, or live Dagster materializations.
 
 ## Troubleshooting
 
-If the runner stops before pytest, check the three required Neo4j variables above. If Compose
-fails, inspect service logs and configuration:
+If Compose fails, inspect service logs and configuration:
 
 ```bash
 docker compose --profile ci config -q
 make docker-logs SERVICE=app
-make docker-logs SERVICE=neo4j
 ```
 
-Clean volumes between incompatible graph states with `make docker-e2e-clean`. This removes only the
+Clean test volumes with `make docker-e2e-clean`. This removes only the
 test Compose environment; never use the development checkout for live-stack operations.

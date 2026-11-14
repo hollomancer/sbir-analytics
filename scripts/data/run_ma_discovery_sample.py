@@ -114,7 +114,7 @@ def _code_version() -> str:
     return f"{sha}{'-dirty' if dirty else ''}"
 
 
-PROMOTION_RANKS = frozenset({"reproducible", "validated", "citable"})
+PROMOTION_RANKS = frozenset({"reproducible", "validated", "approved"})
 
 
 def _working_tree_is_dirty() -> bool | None:

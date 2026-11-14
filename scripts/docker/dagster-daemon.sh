@@ -5,7 +5,7 @@
 #
 # Responsibilities:
 #  - Load environment variables from common locations (.env, /run/secrets)
-#  - Wait for upstream dependencies (Neo4j Bolt, Dagster webserver) to be healthy
+#  - Wait for the Dagster webserver to be healthy
 #  - Start `dagster-daemon run` with graceful privilege drop and signal forwarding
 #  - Provide an `etl-runner` mode to run arbitrary ad-hoc commands inside the image
 #  - Provide a lightweight healthcheck mode for container HEALTHCHECK
@@ -78,51 +78,7 @@ _make_exec_prefix() {
   printf '%s' "$exec_prefix"
 }
 
-# ---------- dependency waits ----------
-wait_for_neo4j() {
-  HOST="${SBIR_ETL__NEO4J__HOST:-${NEO4J_HOST:-neo4j}}"
-  PORT="${SBIR_ETL__NEO4J__PORT:-${NEO4J_PORT:-7687}}"
-  TIMEOUT="${SERVICE_STARTUP_TIMEOUT:-120}"
-  WAIT_SCRIPT="/app/sbir-analytics/scripts/docker/wait-for-service.sh"
-
-  if [ -x "$WAIT_SCRIPT" ]; then
-    log "Waiting for Neo4j at ${HOST}:${PORT} (timeout=${TIMEOUT}s)..."
-    if "$WAIT_SCRIPT" --host "$HOST" --port "$PORT" --proto tcp --timeout "$TIMEOUT" --interval 5; then
-      log "Neo4j is available"
-      return 0
-    else
-      err "Timeout waiting for Neo4j"
-      return 1
-    fi
-  fi
-
-  # Fallback: basic TCP loop
-  log "No wait-for helper; performing simple TCP probe for Neo4j ${HOST}:${PORT}"
-  start_ts=$(date +%s)
-  deadline=$((start_ts + TIMEOUT))
-  while [ "$(date +%s)" -le "$deadline" ]; do
-    if command -v nc >/dev/null 2>&1; then
-      if nc -z "$HOST" "$PORT" >/dev/null 2>&1; then
-        log "Neo4j reachable (nc)"
-        return 0
-      fi
-    else
-      # try /dev/tcp if shell supports it
-      if (exec 3<>"/dev/tcp/$HOST/$PORT") >/dev/null 2>&1; then
-        exec 3<&- || true
-        exec 3>&- || true
-        log "Neo4j reachable (/dev/tcp)"
-        return 0
-      fi
-    fi
-    log "Neo4j not ready; retrying in 5s..."
-    sleep 5
-  done
-
-  err "Timed out waiting for Neo4j"
-  return 1
-}
-
+# ---------- dependency wait ----------
 wait_for_dagster_web() {
   WEB_HOST="${DAGSTER_HOST:-127.0.0.1}"
   WEB_PORT="${DAGSTER_PORT:-3000}"
@@ -206,12 +162,6 @@ start_daemon() {
 
   log "ENVIRONMENT=${ENV}; preparing to start Dagster daemon"
 
-  # Wait for dependencies: Neo4j required; Dagster webserver recommended
-  if ! wait_for_neo4j; then
-    err "Dependency check failed: Neo4j not available"
-    exit 1
-  fi
-
   # Attempt to wait for webserver, but do not fail hard if it times out; daemon may still start
   if ! wait_for_dagster_web; then
     log "Warning: dagster webserver not proven healthy before daemon start (continuing)"
@@ -236,12 +186,6 @@ etl_runner() {
   if [ "$#" -eq 0 ]; then
     err "etl-runner requires a command to execute. Example: etl-runner -- python -m scripts.job"
     exit 2
-  fi
-
-  # Ensure dependencies available
-  if ! wait_for_neo4j; then
-    err "Dependency check failed: Neo4j not available"
-    exit 1
   fi
 
   if ! wait_for_dagster_web; then

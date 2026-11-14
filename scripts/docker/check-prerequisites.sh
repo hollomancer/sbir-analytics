@@ -71,7 +71,7 @@ fi
 
 # Check ports (macOS and Linux compatible)
 info "Checking port availability..."
-for port in 3000 7474 7687; do
+for port in 3000; do
   if command -v lsof >/dev/null 2>&1; then
     # macOS/Linux with lsof
     if lsof -Pi :$port -sTCP:LISTEN -t >/dev/null 2>&1; then

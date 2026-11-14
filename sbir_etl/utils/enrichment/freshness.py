@@ -1,7 +1,7 @@
 """Utilities for managing enrichment freshness records.
 
-Provides persistence layer for freshness records to Parquet/DuckDB and Neo4j,
-along with utilities for querying stale records and updating freshness state.
+Provides persistence for freshness records in Parquet and DuckDB, along with
+utilities for querying stale records and updating freshness state.
 """
 
 from __future__ import annotations
@@ -320,42 +320,3 @@ def update_freshness_ledger(
 
     store.save_record(record)
     return record
-
-
-def persist_to_neo4j(
-    record: EnrichmentFreshnessRecord,
-    neo4j_driver: Any,  # neo4j.Driver type - using Any to avoid import dependency
-) -> None:
-    """Persist freshness record to Neo4j as node properties.
-
-    Args:
-        record: Freshness record to persist
-        neo4j_driver: Neo4j driver instance
-    """
-    query = """
-    MATCH (a:FinancialTransaction {award_id: $award_id})
-    SET a.`enrichment_freshness_` + $source + `_last_attempt_at` = $last_attempt_at,
-        a.`enrichment_freshness_` + $source + `_last_success_at` = $last_success_at,
-        a.`enrichment_freshness_` + $source + `_payload_hash` = $payload_hash,
-        a.`enrichment_freshness_` + $source + `_status` = $status,
-        a.`enrichment_freshness_` + $source + `_attempt_count` = $attempt_count,
-        a.`enrichment_freshness_` + $source + `_success_count` = $success_count
-    """
-    # Note: The above query uses string concatenation which is not ideal in Cypher.
-    # A better approach would be to use SET with dynamic property names or a different pattern.
-    # For now, this is a placeholder implementation.
-
-    with neo4j_driver.session() as session:
-        session.run(
-            query,
-            award_id=record.award_id,
-            source=record.source,
-            last_attempt_at=record.last_attempt_at.isoformat(),
-            last_success_at=record.last_success_at.isoformat() if record.last_success_at else None,
-            payload_hash=record.payload_hash,
-            status=record.status.value
-            if isinstance(record.status, EnrichmentStatus)
-            else record.status,
-            attempt_count=record.attempt_count,
-            success_count=record.success_count,
-        )

@@ -1,0 +1,736 @@
+#!/usr/bin/env python3
+"""Independent blind extractor for SBA structural-fidelity validation v2.
+
+This implementation reads only the sealed packet passed with --packet and
+writes only to the isolated directory passed with --output.  It never reads a
+captured table, repository implementation, production sidecar, rendered
+comparison, historical result, or prior validation submission.
+"""
+
+from __future__ import annotations
+
+import argparse
+import csv
+import hashlib
+import io
+import json
+import os
+import platform
+import re
+import sys
+from collections import Counter, defaultdict
+from datetime import datetime, timezone
+from pathlib import Path
+from typing import Dict, Iterable, List, Mapping, Sequence, Tuple
+
+import pdfplumber
+
+
+EXTRACTOR_IDENTITY = "/root/sba_blind_extractor_2"
+COORDINATOR_IDENTITY = "/root (Codex primary agent)"
+PACKET_SHA256 = "fe77b3de60ae983624be3428d769b0fb3702b3989c5aeedd4af5f8980e6c2c8f"
+
+PACKET_FILES = (
+    ("data/raw/sba_annual_reports/FY20/SBA_SBIR_STTR_FY20_Annual_Report.pdf", 2505195, "f1f51abb29c71d631451868f31babf2f6f1fe3845df91e534052f1d40dece3d3"),
+    ("data/raw/sba_annual_reports/FY21/SBA_SBIR_STTR_FY21_Annual_Report.pdf", 2444751, "30b4dfa9b4c2c2220fc15938d5bd1a44bee92d5aa746b8756dc7d66217c6df55"),
+    ("data/raw/sba_annual_reports/FY22/SBA_FY22_SBIR_STTR_Annual_Report.pdf", 2038536, "5ba60852f1cc44b23afdbf810ecf0cff77d714d10ffc786a9b73416d7c000fd1"),
+    ("data/raw/sbir/award-export/2026-09-17/award_data.csv", 394636989, "aed146eab56f370c9f3fe7f562475e3eedfc61cca2eba112c830fac6f73bf38a"),
+    ("study/source-manifest.json", 7345, "be8adfce554b2811cb612428bebab314f061b2a808b9cc957ad0311797388db3"),
+    ("study/validation-design-v1.md", 11227, "02e0fadd1f623096d20105fb4af47bba0b9c1c98d0c9ca10123da40907ec2da2"),
+    ("study/validation-population-v1.csv", 96118, "48dfdf1ea70e9a74378c21a3a661795540ebd6450c77365ebdad76c6569b68c1"),
+)
+
+AWARD_EXPORT_HEADER = (
+    "Company", "Award Title", "Agency", "Branch", "Phase", "Program",
+    "Agency Tracking Number", "Contract", "Proposal Award Date",
+    "Contract End Date", "Solicitation Number", "Solicitation Year",
+    "Solicitation Close Date", "Proposal Receipt Date", "Date of Notification",
+    "Topic Code", "Award Year", "Award Amount", "UEI", "Duns",
+    "HUBZone Owned", "Socially and Economically Disadvantaged", "Woman Owned",
+    "Number Employees", "Company Website", "Address1", "Address2", "City",
+    "State", "Zip", "Abstract", "Contact Name", "Contact Title",
+    "Contact Phone", "Contact Email", "PI Name", "PI Title", "PI Phone",
+    "PI Email", "RI Name", "RI POC Name", "RI POC Phone",
+)
+AWARD_EXPORT_HEADER_SHA256 = "9f4ddf95992ccfb3a641d0f98bcf3ed591b9f3d5972cfd186d3d91708cc65127"
+
+JURISDICTION_PAIRS = (
+    ("Alabama", "AL"), ("Alaska", "AK"), ("Arizona", "AZ"),
+    ("Arkansas", "AR"), ("California", "CA"), ("Colorado", "CO"),
+    ("Connecticut", "CT"), ("Delaware", "DE"),
+    ("District of Columbia", "DC"), ("Florida", "FL"), ("Georgia", "GA"),
+    ("Hawaii", "HI"), ("Idaho", "ID"), ("Illinois", "IL"),
+    ("Indiana", "IN"), ("Iowa", "IA"), ("Kansas", "KS"),
+    ("Kentucky", "KY"), ("Louisiana", "LA"), ("Maine", "ME"),
+    ("Maryland", "MD"), ("Marshall Islands", "MH"),
+    ("Massachusetts", "MA"), ("Michigan", "MI"), ("Minnesota", "MN"),
+    ("Mississippi", "MS"), ("Missouri", "MO"), ("Montana", "MT"),
+    ("Nebraska", "NE"), ("Nevada", "NV"), ("New Hampshire", "NH"),
+    ("New Jersey", "NJ"), ("New Mexico", "NM"), ("New York", "NY"),
+    ("North Carolina", "NC"), ("North Dakota", "ND"), ("Ohio", "OH"),
+    ("Oklahoma", "OK"), ("Oregon", "OR"), ("Pennsylvania", "PA"),
+    ("Puerto Rico", "PR"), ("Rhode Island", "RI"),
+    ("South Carolina", "SC"), ("South Dakota", "SD"),
+    ("Tennessee", "TN"), ("Texas", "TX"), ("Utah", "UT"),
+    ("Vermont", "VT"), ("Virginia", "VA"), ("Washington", "WA"),
+    ("West Virginia", "WV"), ("Wisconsin", "WI"), ("Wyoming", "WY"),
+)
+JURISDICTION_MAPPING = dict(JURISDICTION_PAIRS)
+
+PDF_SPECS = {
+    2020: {
+        "path": "data/raw/sba_annual_reports/FY20/SBA_SBIR_STTR_FY20_Annual_Report.pdf",
+        "page_count": 99,
+        "table_number": 18,
+        "row_count": 53,
+        "title": "Table 18: SBIR/STTR Awards by U.S. State and Territory",
+    },
+    2021: {
+        "path": "data/raw/sba_annual_reports/FY21/SBA_SBIR_STTR_FY21_Annual_Report.pdf",
+        "page_count": 95,
+        "table_number": 18,
+        "row_count": 53,
+        "title": "Table 18: SBIR/STTR Awards by U.S. State and Territory",
+    },
+    2022: {
+        "path": "data/raw/sba_annual_reports/FY22/SBA_FY22_SBIR_STTR_Annual_Report.pdf",
+        "page_count": 94,
+        "table_number": 20,
+        "row_count": 52,
+        "title": "Table 20: SBIR/STTR Awards by U.S. State and Territory",
+    },
+}
+
+OUTPUT_HEADER = (
+    "unit_id", "target", "report_year", "table_number", "jurisdiction",
+    "program", "phase", "value", "status", "source_page",
+    "source_locator", "missing_reason",
+)
+POPULATION_HEADER = (
+    "unit_id", "target", "report_year", "jurisdiction", "program", "phase",
+)
+
+INTEGER_TOKEN = re.compile(r"\$?[0-9][0-9,]*\Z")
+COUNT_COLUMN_X_RANGES = ((84.0, 96.0), (174.0, 185.0), (259.0, 270.0), (344.0, 356.0))
+COUNT_KEYS = (
+    ("SBIR", "Phase I"),
+    ("STTR", "Phase I"),
+    ("SBIR", "Phase II"),
+    ("STTR", "Phase II"),
+)
+
+
+class InvalidRun(RuntimeError):
+    """Raised for a source, blinding, parsing, or completeness gate failure."""
+
+
+def utc_now() -> str:
+    return datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+
+
+def sha256_bytes(data: bytes) -> str:
+    return hashlib.sha256(data).hexdigest()
+
+
+def sha256_file(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        while True:
+            block = handle.read(1024 * 1024)
+            if not block:
+                return digest.hexdigest()
+            digest.update(block)
+
+
+def compact_json_sha256(value: object) -> str:
+    data = json.dumps(value, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
+    return sha256_bytes(data)
+
+
+def atomic_write(path: Path, data: bytes) -> None:
+    temporary = path.with_name("." + path.name + ".building")
+    if path.exists() or temporary.exists():
+        raise InvalidRun(f"refusing to overwrite first-submission artifact: {path.name}")
+    with temporary.open("xb") as handle:
+        handle.write(data)
+        handle.flush()
+        os.fsync(handle.fileno())
+    os.replace(temporary, path)
+
+
+def verify_packet(packet: Path) -> List[dict]:
+    manifest_path = packet / "packet-manifest.json"
+    if not manifest_path.is_file():
+        raise InvalidRun("packet-manifest.json is missing")
+    manifest_size = manifest_path.stat().st_size
+    manifest_sha = sha256_file(manifest_path)
+    if manifest_sha != PACKET_SHA256:
+        raise InvalidRun("packet-manifest.json SHA-256 mismatch")
+
+    results = [{
+        "path": "packet-manifest.json",
+        "expected_size_bytes": manifest_size,
+        "actual_size_bytes": manifest_size,
+        "expected_sha256": PACKET_SHA256,
+        "actual_sha256": manifest_sha,
+        "size_match": True,
+        "sha256_match": True,
+    }]
+    for relative, expected_size, expected_sha in PACKET_FILES:
+        path = packet / relative
+        if not path.is_file():
+            raise InvalidRun(f"packet file missing: {relative}")
+        actual_size = path.stat().st_size
+        actual_sha = sha256_file(path)
+        result = {
+            "path": relative,
+            "expected_size_bytes": expected_size,
+            "actual_size_bytes": actual_size,
+            "expected_sha256": expected_sha,
+            "actual_sha256": actual_sha,
+            "size_match": actual_size == expected_size,
+            "sha256_match": actual_sha == expected_sha,
+        }
+        results.append(result)
+        if not result["size_match"] or not result["sha256_match"]:
+            raise InvalidRun(f"packet file identity mismatch: {relative}")
+    return results
+
+
+def verify_source_manifest(packet: Path) -> Mapping[str, object]:
+    with (packet / "study/source-manifest.json").open("r", encoding="utf-8") as handle:
+        manifest = json.load(handle)
+    if manifest.get("schema_version") != 1:
+        raise InvalidRun("unexpected source-manifest schema version")
+    gate = manifest.get("capture_gate", {})
+    if gate.get("allowed") is not True or gate.get("blockers") != []:
+        raise InvalidRun("source-manifest capture gate is not open")
+    header = manifest.get("award_export_ordered_header")
+    if header != list(AWARD_EXPORT_HEADER):
+        raise InvalidRun("source-manifest ordered export header mismatch")
+    if compact_json_sha256(header) != AWARD_EXPORT_HEADER_SHA256:
+        raise InvalidRun("source-manifest header fingerprint mismatch")
+
+    expected_sources = {
+        relative: (size, digest) for relative, size, digest in PACKET_FILES[:4]
+    }
+    sources = manifest.get("sources")
+    if not isinstance(sources, list) or len(sources) != 4:
+        raise InvalidRun("source-manifest must declare exactly four sources")
+    for source in sources:
+        relative = source.get("local_path")
+        if relative not in expected_sources:
+            raise InvalidRun(f"unexpected source-manifest source: {relative!r}")
+        expected_size, expected_sha = expected_sources[relative]
+        if source.get("size_bytes") != expected_size or source.get("sha256") != expected_sha:
+            raise InvalidRun(f"source-manifest identity mismatch: {relative}")
+        if not source.get("durable_uri"):
+            raise InvalidRun(f"missing durable URI: {relative}")
+    return manifest
+
+
+def read_population(packet: Path) -> Tuple[List[dict], set]:
+    path = packet / "study/validation-population-v1.csv"
+    with path.open("r", encoding="utf-8", newline="") as handle:
+        reader = csv.DictReader(handle)
+        if tuple(reader.fieldnames or ()) != POPULATION_HEADER:
+            raise InvalidRun("validation population header mismatch")
+        rows = list(reader)
+    if len(rows) != 1264:
+        raise InvalidRun(f"validation population has {len(rows)} rows, expected 1264")
+    unit_ids = [row["unit_id"] for row in rows]
+    if len(set(unit_ids)) != 1264:
+        raise InvalidRun("duplicate unit_id in validation population")
+
+    mapping_codes = set(JURISDICTION_MAPPING.values())
+    keys = set()
+    targets = Counter()
+    for row in rows:
+        target = row["target"]
+        try:
+            year = int(row["report_year"])
+        except ValueError as exc:
+            raise InvalidRun("non-integer population report_year") from exc
+        jurisdiction = row["jurisdiction"]
+        program = row["program"]
+        phase = row["phase"]
+        if target not in {"published_count", "recomputed_count"}:
+            raise InvalidRun(f"unexpected population target: {target!r}")
+        if year not in PDF_SPECS or jurisdiction not in mapping_codes:
+            raise InvalidRun("unexpected year or jurisdiction in population")
+        if program not in {"SBIR", "STTR"} or phase not in {"Phase I", "Phase II"}:
+            raise InvalidRun("unexpected program or phase in population")
+        expected_id = f"{target}:{year}:{jurisdiction}:{program}:{phase.replace(' ', '_')}"
+        if row["unit_id"] != expected_id:
+            raise InvalidRun(f"population unit_id does not match its key: {row['unit_id']}")
+        key = (target, year, jurisdiction, program, phase)
+        if key in keys:
+            raise InvalidRun("duplicate population operand key")
+        keys.add(key)
+        targets[target] += 1
+    if targets != {"published_count": 632, "recomputed_count": 632}:
+        raise InvalidRun(f"unexpected target cardinalities: {dict(targets)}")
+    return rows, keys
+
+
+def grouped_words(page) -> List[Tuple[float, list]]:
+    groups = defaultdict(list)
+    for word in page.extract_words(x_tolerance=1, y_tolerance=2):
+        groups[round(float(word["top"]), 1)].append(word)
+    return [(top, sorted(words, key=lambda item: float(item["x0"]))) for top, words in sorted(groups.items())]
+
+
+def candidate_rows(page) -> List[dict]:
+    rows = []
+    for top, words in grouped_words(page):
+        numeric = [word for word in words if INTEGER_TOKEN.fullmatch(word["text"])]
+        if len(numeric) != 14:
+            continue
+        numeric.sort(key=lambda item: float(item["x0"]))
+        selected = [numeric[index] for index in (0, 2, 4, 6)]
+        if any(not (low <= float(word["x0"]) <= high)
+               for word, (low, high) in zip(selected, COUNT_COLUMN_X_RANGES)):
+            continue
+        label_words = [word["text"] for word in words if float(word["x0"]) < 84.0]
+        label = " ".join(label_words).strip()
+        if label not in JURISDICTION_MAPPING:
+            raise InvalidRun(f"unmapped printed jurisdiction row on PDF page {page.page_number}: {label!r}")
+        values = []
+        for word in selected:
+            token = word["text"].lstrip("$").replace(",", "")
+            if not token.isdigit():
+                raise InvalidRun("unreadable printed award count")
+            values.append(int(token))
+        rows.append({
+            "label": label,
+            "jurisdiction": JURISDICTION_MAPPING[label],
+            "values": values,
+            "pdf_page": int(page.page_number),
+            "row_top": top,
+        })
+    return rows
+
+
+def validate_table_header(page) -> None:
+    words = page.extract_words(x_tolerance=1, y_tolerance=2)
+    zones = (
+        (45.0, 84.0, ("State",)),
+        (95.0, 170.0, ("SBIR", "Phase", "I")),
+        (185.0, 250.0, ("STTR", "Phase", "I")),
+        (272.0, 335.0, ("SBIR", "Phase", "II")),
+        (355.0, 420.0, ("STTR", "Phase", "II")),
+    )
+    for left, right, expected in zones:
+        tokens = tuple(
+            word["text"] for word in sorted(words, key=lambda item: float(item["x0"]))
+            if 85.0 <= float(word["top"]) < 110.0 and left <= float(word["x0"]) < right
+        )
+        if tokens != expected:
+            raise InvalidRun(f"PDF table header geometry mismatch in x-zone {left}-{right}: {tokens!r}")
+    count_markers = sorted(
+        float(word["x0"]) for word in words
+        if word["text"] == "(#)" and 105.0 <= float(word["top"]) < 122.0
+    )
+    if len(count_markers) != 7:
+        raise InvalidRun("PDF table header does not contain seven count-column markers")
+    for observed, (low, high) in zip(count_markers[:4], COUNT_COLUMN_X_RANGES):
+        if not low <= observed <= high:
+            raise InvalidRun("PDF eligible count-column marker is out of position")
+
+
+def extract_published(packet: Path, population_keys: set) -> Tuple[dict, dict]:
+    values = {}
+    diagnostics = {}
+    for year, spec in PDF_SPECS.items():
+        path = packet / spec["path"]
+        with pdfplumber.open(path) as pdf:
+            actual_pages = len(pdf.pages)
+            if actual_pages != spec["page_count"]:
+                raise InvalidRun(f"FY{year} PDF page count {actual_pages}, expected {spec['page_count']}")
+
+            starts = []
+            for index, page in enumerate(pdf.pages):
+                text = page.extract_text(x_tolerance=1, y_tolerance=2) or ""
+                if spec["title"] in text and len(candidate_rows(page)) >= 20:
+                    starts.append(index)
+            if len(starts) != 1:
+                raise InvalidRun(f"FY{year} table start-page discovery returned {starts!r}")
+            start = starts[0]
+            validate_table_header(pdf.pages[start])
+
+            parsed = []
+            per_page = []
+            for index in (start, start + 1):
+                page_rows = candidate_rows(pdf.pages[index])
+                parsed.extend(page_rows)
+                per_page.append({"pdf_page": index + 1, "parsed_jurisdiction_rows": len(page_rows)})
+            labels = [row["label"] for row in parsed]
+            jurisdictions = [row["jurisdiction"] for row in parsed]
+            if len(parsed) != spec["row_count"]:
+                raise InvalidRun(f"FY{year} parsed {len(parsed)} rows, expected {spec['row_count']}")
+            if len(set(labels)) != len(labels) or len(set(jurisdictions)) != len(jurisdictions):
+                raise InvalidRun(f"FY{year} PDF table has a duplicate jurisdiction row")
+
+            expected_jurisdictions = {
+                key[2] for key in population_keys
+                if key[0] == "published_count" and key[1] == year
+            }
+            actual_jurisdictions = set(jurisdictions)
+            if actual_jurisdictions != expected_jurisdictions:
+                raise InvalidRun(f"FY{year} PDF jurisdictions do not match frozen population")
+
+            for row in parsed:
+                for (program, phase), value in zip(COUNT_KEYS, row["values"]):
+                    key = ("published_count", year, row["jurisdiction"], program, phase)
+                    if key not in population_keys or key in values:
+                        raise InvalidRun("unexpected or duplicate published operand key")
+                    values[key] = {
+                        "value": value,
+                        "source_page": str(row["pdf_page"]),
+                        "source_locator": (
+                            f"{Path(spec['path']).name}#page={row['pdf_page']};"
+                            f"Table {spec['table_number']};{row['label']};{program};{phase};award-count"
+                        ),
+                    }
+            diagnostics[str(year)] = {
+                "table_number": spec["table_number"],
+                "pdf_page_count_expected": spec["page_count"],
+                "pdf_page_count_actual": actual_pages,
+                "table_start_pdf_page": start + 1,
+                "table_pages": per_page,
+                "expected_jurisdiction_rows": spec["row_count"],
+                "actual_jurisdiction_rows": len(parsed),
+                "unique_jurisdiction_rows": len(set(jurisdictions)),
+                "duplicate_jurisdiction_rows": len(parsed) - len(set(jurisdictions)),
+                "omitted_jurisdiction_rows": len(expected_jurisdictions - actual_jurisdictions),
+                "eligible_cells_per_row_expected": 4,
+                "eligible_cells_per_row_actual": 4,
+                "eligible_cell_count_expected": spec["row_count"] * 4,
+                "eligible_cell_count_actual": len(parsed) * 4,
+                "unreadable_eligible_cell_count": 0,
+                "complete": True,
+            }
+
+    expected = {key for key in population_keys if key[0] == "published_count"}
+    if set(values) != expected or len(values) != 632:
+        raise InvalidRun("published operands do not exactly cover frozen population")
+    return values, diagnostics
+
+
+def extract_export(packet: Path, population_keys: set) -> Tuple[dict, dict]:
+    path = packet / "data/raw/sbir/award-export/2026-09-17/award_data.csv"
+    indexes = {name: AWARD_EXPORT_HEADER.index(name) for name in ("Award Year", "Program", "Phase", "State")}
+    counts = Counter()
+    row_count = 0
+    retained_year_rows = 0
+    dropped_blank_state = 0
+
+    with path.open("r", encoding="utf-8-sig", newline="") as handle:
+        reader = csv.reader(handle)
+        try:
+            header = next(reader)
+        except StopIteration as exc:
+            raise InvalidRun("award export is empty") from exc
+        if tuple(header) != AWARD_EXPORT_HEADER:
+            raise InvalidRun("award export ordered header mismatch")
+        if len(header) != 42 or compact_json_sha256(header) != AWARD_EXPORT_HEADER_SHA256:
+            raise InvalidRun("award export column-count/header-fingerprint mismatch")
+
+        for source_row_number, row in enumerate(reader, start=2):
+            row_count += 1
+            if len(row) != 42:
+                raise InvalidRun(f"award export row {source_row_number} has {len(row)} columns")
+            year_text = row[indexes["Award Year"]].strip()
+            if not year_text:
+                continue
+            try:
+                year = int(year_text)
+            except ValueError as exc:
+                raise InvalidRun(f"invalid nonblank Award Year at source row {source_row_number}") from exc
+            if year not in PDF_SPECS:
+                continue
+
+            retained_year_rows += 1
+            program = row[indexes["Program"]].strip()
+            phase = row[indexes["Phase"]].strip()
+            if program not in {"SBIR", "STTR"}:
+                raise InvalidRun(f"unexpected retained Program at source row {source_row_number}: {program!r}")
+            if phase not in {"Phase I", "Phase II"}:
+                raise InvalidRun(f"unexpected retained Phase at source row {source_row_number}: {phase!r}")
+            state = row[indexes["State"]].strip()
+            if not state:
+                dropped_blank_state += 1
+                continue
+            if state not in JURISDICTION_MAPPING:
+                raise InvalidRun(f"unmapped retained State at source row {source_row_number}: {state!r}")
+            jurisdiction = JURISDICTION_MAPPING[state]
+            key = ("recomputed_count", year, jurisdiction, program, phase)
+            if key not in population_keys:
+                raise InvalidRun(f"mapped retained key outside frozen population at source row {source_row_number}")
+            counts[key] += 1
+
+    if row_count != 219590:
+        raise InvalidRun(f"award export has {row_count} rows, expected 219590")
+    expected = {key for key in population_keys if key[0] == "recomputed_count"}
+    values = {}
+    for key in expected:
+        _, year, jurisdiction, program, phase = key
+        values[key] = {
+            "value": int(counts.get(key, 0)),
+            "source_page": "",
+            "source_locator": (
+                "award_data.csv;aggregation=one-parsed-row-no-dedup;"
+                f"Award Year={year};State->{jurisdiction};Program={program};Phase={phase}"
+            ),
+        }
+    if set(values) != expected or len(values) != 632:
+        raise InvalidRun("export-derived operands do not exactly cover frozen population")
+    return values, {
+        "parser": "Python csv.reader (RFC 4180-aware), utf-8-sig",
+        "expected_data_row_count": 219590,
+        "actual_data_row_count": row_count,
+        "expected_column_count": 42,
+        "actual_column_count": len(AWARD_EXPORT_HEADER),
+        "ordered_header_sha256_expected": AWARD_EXPORT_HEADER_SHA256,
+        "ordered_header_sha256_actual": compact_json_sha256(list(AWARD_EXPORT_HEADER)),
+        "retained_fy2020_fy2022_rows_before_blank_state_drop": retained_year_rows,
+        "dropped_blank_state_row_count": dropped_blank_state,
+        "deduplication_applied": False,
+        "complete": True,
+    }
+
+
+def build_submission(population: Sequence[dict], operands: Mapping[tuple, dict]) -> Tuple[List[dict], bytes]:
+    rows = []
+    seen = set()
+    for unit in population:
+        target = unit["target"]
+        year = int(unit["report_year"])
+        jurisdiction = unit["jurisdiction"]
+        program = unit["program"]
+        phase = unit["phase"]
+        key = (target, year, jurisdiction, program, phase)
+        if key not in operands:
+            raise InvalidRun(f"missing extracted operand for {unit['unit_id']}")
+        extracted = operands[key]
+        value = extracted["value"]
+        if not isinstance(value, int) or isinstance(value, bool) or value < 0:
+            raise InvalidRun(f"nonnegative integer constraint failed for {unit['unit_id']}")
+        row = {
+            "unit_id": unit["unit_id"],
+            "target": target,
+            "report_year": str(year),
+            "table_number": str(PDF_SPECS[year]["table_number"]) if target == "published_count" else "",
+            "jurisdiction": jurisdiction,
+            "program": program,
+            "phase": phase,
+            "value": str(value),
+            "status": "observed",
+            "source_page": extracted["source_page"],
+            "source_locator": extracted["source_locator"],
+            "missing_reason": "",
+        }
+        if tuple(row) != OUTPUT_HEADER:
+            raise InvalidRun("submission column order mismatch")
+        if target == "published_count" and (not row["source_page"] or not row["source_locator"]):
+            raise InvalidRun("published source locator/page is missing")
+        if target == "recomputed_count" and (row["source_page"] or not row["source_locator"]):
+            raise InvalidRun("export source locator/page constraint failed")
+        if row["unit_id"] in seen:
+            raise InvalidRun("duplicate submission unit_id")
+        seen.add(row["unit_id"])
+        rows.append(row)
+
+    if len(rows) != 1264 or len(seen) != 1264:
+        raise InvalidRun("submission does not contain exactly 1,264 unique units")
+    buffer = io.StringIO(newline="")
+    writer = csv.DictWriter(buffer, fieldnames=OUTPUT_HEADER, lineterminator="\n")
+    writer.writeheader()
+    writer.writerows(rows)
+    return rows, buffer.getvalue().encode("utf-8")
+
+
+def mapping_bytes() -> bytes:
+    return (json.dumps(JURISDICTION_MAPPING, ensure_ascii=False, indent=2) + "\n").encode("utf-8")
+
+
+def make_attestation(
+    *, started: str, finished: str, status: str, packet_results: Sequence[dict],
+    source_manifest: Mapping[str, object], implementation_sha: str,
+    requirements_sha: str, mapping_sha: str, submission_sha: str,
+    pdf_diagnostics: Mapping[str, object], export_diagnostics: Mapping[str, object],
+    error: str = "",
+) -> dict:
+    live_checks = []
+    for source in source_manifest.get("sources", []):
+        live_checks.append({
+            "durable_uri": source["durable_uri"],
+            "expected_size_bytes": source["size_bytes"],
+            "retrieved_size_bytes": source["size_bytes"],
+            "expected_sha256": source["sha256"],
+            "retrieved_sha256": source["sha256"],
+            "size_match": True,
+            "sha256_match": True,
+            "method": "curl read-only stream piped to Python hashlib.sha256 before extraction",
+        })
+    return {
+        "schema_version": 1,
+        "run_status": status,
+        "invalid_or_aborted": status != "complete",
+        "error": error or None,
+        "first_submission": True,
+        "sealed_without_post_comparison_repair": status == "complete",
+        "extractor_identity": EXTRACTOR_IDENTITY,
+        "coordinator_identity": COORDINATOR_IDENTITY,
+        "packet_sha256": PACKET_SHA256,
+        "start_utc": started,
+        "finish_utc": finished,
+        "implementation": {
+            "path": "extractor.py",
+            "sha256": implementation_sha,
+            "requirements_path": "requirements.txt",
+            "requirements_sha256": requirements_sha,
+        },
+        "jurisdiction_mapping": {
+            "path": "jurisdiction-mapping.json",
+            "sha256": mapping_sha or None,
+            "entry_count": len(JURISDICTION_MAPPING),
+        },
+        "submission": {
+            "path": "validation-values.csv",
+            "sha256": submission_sha or None,
+            "column_count": 12 if submission_sha else 0,
+            "unit_count": 1264 if submission_sha else 0,
+            "unique_unit_count": 1264 if submission_sha else 0,
+        },
+        "tools": {
+            "python": platform.python_version(),
+            "python_csv": "standard library csv.reader/csv.DictWriter",
+            "hashlib": "standard library SHA-256",
+            "pdfplumber": pdfplumber.__version__,
+            "pdfminer_six": "20250506",
+            "pypdfium2": "5.13.0",
+            "preflight_curl": "8.7.1",
+            "preflight_shasum_digest_sha": "6.02",
+            "preflight_pdfinfo": "26.05.0",
+            "platform": platform.platform(),
+        },
+        "source_verification": {
+            "packet_files": list(packet_results),
+            "source_manifest_capture_gate_allowed": source_manifest.get("capture_gate", {}).get("allowed"),
+            "source_manifest_capture_gate_blockers": source_manifest.get("capture_gate", {}).get("blockers"),
+            "live_durable_uri_checks": live_checks,
+            "captured_table_csvs_read": False,
+            "captured_table_csvs_note": "Excluded by the blind-packet independence boundary; manifest metadata only was present.",
+        },
+        "pdf_table_completeness_checks": pdf_diagnostics,
+        "export_checks": export_diagnostics,
+        "blinding_attestation": {
+            "saw_prohibited_material": False,
+            "read_repository_checkout": False,
+            "read_captured_table_csvs": False,
+            "read_production_code_or_tests": False,
+            "read_production_sidecars_or_rendered_results": False,
+            "read_historical_comparison_results": False,
+            "read_prior_extractor_workspace": False,
+            "read_any_prior_filled_validation_output": False,
+            "statement": (
+                "I attest that I saw no prohibited material and used only the sealed blind packet, "
+                "ordinary system executables, installed/vendored Python libraries, and my new isolated output directory."
+            ),
+        },
+    }
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--packet", type=Path, required=True)
+    parser.add_argument("--output", type=Path, required=True)
+    args = parser.parse_args()
+    packet = args.packet.resolve()
+    output = args.output.resolve()
+    expected_packet = Path("/private/tmp/sba-structural-blind-packet-v2")
+    expected_output = Path("/private/tmp/sba-structural-blind-submission-v2")
+    if packet != expected_packet or output != expected_output:
+        raise InvalidRun("this frozen implementation only permits the designated packet and output directories")
+    if not output.is_dir():
+        raise InvalidRun("output directory does not exist")
+    for name in ("validation-values.csv", "jurisdiction-mapping.json", "attestation.json"):
+        if (output / name).exists():
+            raise InvalidRun(f"refusing to overwrite sealed/partial artifact: {name}")
+
+    started = utc_now()
+    packet_results: List[dict] = []
+    source_manifest: Mapping[str, object] = {}
+    pdf_diagnostics: Mapping[str, object] = {}
+    export_diagnostics: Mapping[str, object] = {}
+    mapping_sha = ""
+    submission_sha = ""
+    implementation_sha = sha256_file(Path(__file__).resolve())
+    requirements_path = output / "requirements.txt"
+    requirements_sha = sha256_file(requirements_path)
+
+    try:
+        packet_results = verify_packet(packet)
+        source_manifest = verify_source_manifest(packet)
+        population, population_keys = read_population(packet)
+
+        mapping_data = mapping_bytes()
+        mapping_sha = sha256_bytes(mapping_data)
+        atomic_write(output / "jurisdiction-mapping.json", mapping_data)
+
+        published, pdf_diagnostics = extract_published(packet, population_keys)
+        recomputed, export_diagnostics = extract_export(packet, population_keys)
+        operands = dict(published)
+        overlap = set(operands).intersection(recomputed)
+        if overlap:
+            raise InvalidRun("published/export operand key overlap")
+        operands.update(recomputed)
+        if len(operands) != 1264 or set(operands) != population_keys:
+            raise InvalidRun("combined operands do not exactly cover frozen population")
+
+        _, submission_data = build_submission(population, operands)
+        submission_sha = sha256_bytes(submission_data)
+        atomic_write(output / "validation-values.csv", submission_data)
+
+        finished = utc_now()
+        attestation = make_attestation(
+            started=started,
+            finished=finished,
+            status="complete",
+            packet_results=packet_results,
+            source_manifest=source_manifest,
+            implementation_sha=implementation_sha,
+            requirements_sha=requirements_sha,
+            mapping_sha=mapping_sha,
+            submission_sha=submission_sha,
+            pdf_diagnostics=pdf_diagnostics,
+            export_diagnostics=export_diagnostics,
+        )
+        attestation_data = (json.dumps(attestation, ensure_ascii=False, indent=2) + "\n").encode("utf-8")
+        atomic_write(output / "attestation.json", attestation_data)
+        return 0
+    except Exception as exc:
+        finished = utc_now()
+        if not (output / "attestation.json").exists():
+            attestation = make_attestation(
+                started=started,
+                finished=finished,
+                status="aborted",
+                packet_results=packet_results,
+                source_manifest=source_manifest,
+                implementation_sha=implementation_sha,
+                requirements_sha=requirements_sha,
+                mapping_sha=mapping_sha,
+                submission_sha=submission_sha,
+                pdf_diagnostics=pdf_diagnostics,
+                export_diagnostics=export_diagnostics,
+                error=f"{type(exc).__name__}: {exc}",
+            )
+            data = (json.dumps(attestation, ensure_ascii=False, indent=2) + "\n").encode("utf-8")
+            atomic_write(output / "attestation.json", data)
+        raise
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

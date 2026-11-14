@@ -48,6 +48,19 @@ message when an artifact is absent.
 The supplier-share companion keeps missing venture-search coverage visible, reviews the frozen
 sensitivity grid, and never substitutes notebook calculations for the canonical producer.
 
+## Wave 3 — policy-response companion notebooks
+
+| Investigation | Canonical computation | Notebook |
+|---|---|---|
+| SBIR registration and procurement evidence in SBA's defense-critical NAICS codes | `defense_critical_naics_sbir.py` | `explorations/a_defense_critical_naics_sbir.ipynb` |
+
+This policy-response analysis remains exploratory and non-citable. Registration, procurement,
+positive post-Phase-II transactions, clean-pre-index qualifying awards, and literal first-observed
+target entry are maintained as separate estimands. Its identity-review workstream also keeps a
+generated low-name-continuity queue separate from a tracked, evidence-backed corporate-history
+crosswalk. Corporate events, federal contract novations, and dollar-attribution treatments remain
+separate review axes; missing reviews stay `unreviewed`.
+
 ## Active explorations
 
 Question-driven work under `notebooks/explorations/`. These are not companions to a
@@ -57,9 +70,12 @@ canonical generator; they stay `exploratory` and non-citable until explicitly pr
 |---|---|---|---|
 | Negative-control screen coverage | B2 — do identifier-poor SAM candidates pass the Phase III negative-control screen unscreened? | `explorations/b2_control_screen_unscreenable_candidates.ipynb` | Active. Feeds a possible amendment to the frozen `phase-iii-census` spec; not itself a census number. |
 | STTR partner-type × commercialization channels | B1 / B3 — among STTR Phase II firms, do observed Phase III / Form D / M&A rates differ by a coarse RI partner-type heuristic? | `explorations/b1_sttr_partner_type_commercialization.ipynb` | Active. Not RQ2; not the frozen partner-type classifier. |
+| Funded STTR collaboration-network atlas | B1 — across canonical funded STTR awards in one pinned raw export, what do first-observed and repeated firm–RI dyads, concentration, partner reuse, agency/year variation, and RI-name missingness look like? | `explorations/b1_sttr_collaboration_network.ipynb` | Active. One-pinned-export funded-portfolio description using unresolved surface names; not a federal census, applicant analysis, partner-type classification, or causal estimate. |
 | STTR spinout-vs-subcontract (RQ1) data availability | B2/RQ1 (spec-local anchor, distinct from the canonical B2) — is the public data the frozen classification cascade would consume actually present locally, independent of the `open-questions.md` freeze gate? | `explorations/sttr_rq1_data_availability.ipynb` | Active. Input-availability probe only; does not implement or run the cascade. |
+| STTR vs. SBIR award-record timing readiness | C4 / B3 boundary — within observed agency × solicitation × phase × solicitation-year strata, where do source-labeled award-record intervals differ and where is date coverage sufficient to compare them? | `explorations/c4_sttr_award_timing_friction.ipynb` | Active. Awardee-only readiness and within-stratum diagnostics; no submission/review clock, pooled faster/slower claim, causal effect, or administrative-friction estimate. |
 | Top-10 incumbent repeat-winner displacement exposure | A-CP7 — how much Phase I capacity do the ten highest *prior*-award-count firms absorb, and what is the mechanical reallocation capacity toward first-time and low-volume incumbents? | `explorations/a_cp7_top10_repeat_winner_displacement.ipynb` | Active. Exploratory crowd-out **proxies** only; no applicant file, not causal, not a Status upgrade. |
 | NASA–Air Force–DOE post-Phase-II commercialization outcomes | B2 / B3 / F1–F3 — how do observed federal-contract, Form D, and public M&A signals compare after first Phase II? | `explorations/b2_three_agency_commercialization_outcomes.ipynb` | Active. Canonical generator-backed analysis; exploratory and non-citable. |
+| STTR program-preserved translational outcomes | B3 — which STTR-specific outcomes survive program stratification, and what same-firm Phase I→II patterns are observable now? | `explorations/b3_sttr_translational_outcomes.ipynb` | Active. Program-preservation audit plus right-censored award-history description; Phase II→III and effectiveness claims withheld where current marts drop program. |
 | Prospective SBIR M&A dated signal study | F1 — what dated observed M&A signals are present in a newly reviewed SBIR firm frame with inclusive Proposal Award Date selection through 2026-08-29 UTC (source-row cutoff in one pinned provider object, not an as-of firm universe)? | `explorations/sbir_ma_dated_signal_study.ipynb` | Blocked pre-run protocol. Sources acquired privately under operator authorization (amendments 1, 3, 5, 6) and a source-field predicate observed (amendment 7), and a private filing-level identity review queue prepared (amendment 8); automated identity decisions, aggregation, numerical output, and April-result reproduction all remain blocked. Exploratory and non-citable pending human source/privacy/license approval and blinded validation design. |
 | M&A snippet extractor eval | F1 M&A exit / F2 acquirer-type (inventory) — does the keyword verifier miss suffix-stripped names and confirm talks-only, and is a structured LLM prompt worth an opt-in next PR? | `explorations/ma_discovery_extractor_eval.ipynb` | Active. Exploratory / non-citable. Default path is fixtures + keyword + gold-replay mock; live OpenAI is env-flagged and off. |
 | M&A discovery sample-run review | F2 / A4 — Form-D-missing web-search confirmation under `studies/ma-discovery-recall`. | (CLI: `scripts/data/run_ma_discovery_sample.py`) | Blocked on a licensed snippet cut and a 20-row human medium-row review. Exploratory; not Computable. |
@@ -70,8 +86,6 @@ canonical generator; they stay `exploratory` and non-citable until explicitly pr
   `download_uspto.py`, `download_uspto_browser.py`, `extract_b82_patents.py`.
 - Refresh and pipeline checks: `profile_sbir_inputs.py`, `awards_refresh_validation.py`,
   `run_sbir_ingestion_checks.py`, `run_sbir_enrichment_check.py`.
-- Neo4j operations: `reset_neo4j_sbir.py`, `run_neo4j_sbir_load.py`,
-  `run_neo4j_smoke_checks.py`.
 - Recurring products and migrations: `weekly_awards_report.py`,
   `build_phase3_prospect_digest.py`, `migrate_nano_report_artifacts.py`.
 - Publication verification: `nano_verify_report_figures.py`, `verify_tech_area_figures.py`.

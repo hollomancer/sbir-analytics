@@ -39,7 +39,7 @@ def _populate_base_recipient(ot_award: OTAward, by_piid: dict[str, dict[str, Any
 
 
 def assignments_to_records(assignments: list[TierAssignment]) -> list[dict[str, Any]]:
-    """Flatten assignments into row dicts for parquet / the Neo4j loader.
+    """Flatten assignments into row dictionaries for the persisted Parquet table.
 
     Evidence is serialized to a compact list so the per-record audit trail
     survives into the persisted table.

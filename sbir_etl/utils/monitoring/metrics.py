@@ -11,7 +11,6 @@ class PerformanceMetrics:
     """Container for performance metrics from a benchmark or asset run.
 
     This dataclass is used for benchmarking and comparison purposes.
-    For pipeline execution metrics, see src.models.statistical_reports.PerformanceMetrics.
     """
 
     total_duration_seconds: float

@@ -67,17 +67,10 @@ the CLI recommends three to five workers at most.
 | `--detailed` | Print contract-level justifications |
 | `--use-api` | Disable DuckDB and retrieve from USAspending API only |
 | `--max-workers N` | Parallel API workers; defaults to one |
-| `--load-neo4j` | Load completed categorizations into Neo4j |
 | `--verbose` | Enable debug logging |
 
 Run `uv run python scripts/validation/categorization_validation.py --help` for the authoritative
 option list.
-
-## Neo4j loading
-
-`--load-neo4j` is write-producing and requires a reachable Neo4j instance and valid credentials.
-Do not point an exploratory validation run at the live database. Before any live operation, use the
-[self-hosted server runbook](../deployment/self-hosted-server.md#live-instance-on-the-server-host).
 
 ## Automated coverage
 

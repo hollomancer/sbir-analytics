@@ -36,12 +36,11 @@ classification and rule adjustment
           │
           ├──▶ quality checks and human-validation samples
           ├──▶ Parquet classification outputs and aggregates
-          ├──▶ company profiles
-          └──▶ Neo4j CETArea nodes and relationships
+          └──▶ company profiles
 ```
 
 The main Dagster assets are exported from `assets/cet/__init__.py`, including taxonomy,
-award/patent classifications, analytics, validation, company profiles, and Neo4j loading. Inspect
+award/patent classifications, analytics, validation, and company profiles. Inspect
 the definitions in Dagster rather than relying on a copied asset list when changing selections.
 
 Run the complete job only after installing the full stack and providing its local inputs:

@@ -11,7 +11,7 @@ The audit harness is committed
 `scripts/data/audit_one_firm.py`), but the FY2026 cohort and the evaluation
 output it produced are not. The numerical results below therefore cannot be
 independently reproduced from this repository and must not be treated as
-validated or citable outputs.
+validated or approved outputs.
 
 The shippable counterpart on `main` is `scripts/run_benchmark.py` + `sbir_etl/models/benchmark_models.py`, which implements the same statutory framework (§638(qq) tier thresholds, 10-FY window, cohort selection) via a different CLI shape (`evaluate` / `sensitivity` / `company` subcommands). It does not currently produce per-firm audit JSON files or do the USAspending + Form D proxy substitution the harness does.
 

@@ -284,7 +284,7 @@ separate PR where practical.
 - Do not change the scheduled weekly workflow during offline evaluation.
 - Do not compile an optimizer in CI or at report runtime.
 - Do not include PI/diligence data in the first corpus.
-- Do not add retrieval, web tools, database tools, raw Cypher, Dagster control,
+- Do not add retrieval, web tools, database tools, arbitrary database queries, Dagster control,
   or MCP exposure.
 - Do not expand this prototype to entity resolution, topic clustering, agency
   mission alignment, or NAICS-to-BEA mapping.

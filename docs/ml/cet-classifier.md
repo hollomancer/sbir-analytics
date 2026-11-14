@@ -3,7 +3,7 @@
 This document covers the **patent** CET classifier: feature extraction,
 training and inference, evaluation, and Dagster assets.
 
-For the **award** CET classifier (`ApplicabilityModel`) — including architecture, hyperparameters, Neo4j schema, quality checks, and integration scenarios — see [cet-integration.md](cet-integration.md).
+For the **award** CET classifier (`ApplicabilityModel`) — including architecture, hyperparameters, quality checks, and integration scenarios — see [cet-integration.md](cet-integration.md).
 
 **Taxonomy**: Both classifiers target the 21 Critical and Emerging Technology areas in [`config/cet/taxonomy.yaml`](../../config/cet/taxonomy.yaml) (NSTC-2025Q1). Read from the YAML — do not hardcode the area list.
 
@@ -211,4 +211,4 @@ Replace `DummyPipeline` with your real sklearn pipelines when ready.
 - Load keyword maps from `config/cet/patent_keywords.yaml`
 - Add richer vectorizers and calibration
 - Cross-validation and train-test split utilities
-- Neo4j loaders for patent → CET relationships (MERGE-based, idempotent)
+- Versioned patent-to-CET analytical relationship tables

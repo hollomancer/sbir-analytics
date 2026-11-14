@@ -4,8 +4,6 @@ This module tests the pipeline validator functionality to ensure
 comprehensive validation of ETL pipeline stages.
 """
 
-from unittest.mock import Mock
-
 import pandas as pd
 
 
@@ -153,92 +151,6 @@ class TestPipelineValidator:
         assert match_rate_check is not None
         assert match_rate_check.status == ValidationStatus.FAILED
         assert match_rate_check.actual < 0.7
-
-    def test_validate_neo4j_graph_success(self):
-        """Test successful Neo4j graph validation."""
-        # Mock Neo4j client
-        mock_client = Mock()
-        mock_session = Mock()
-
-        # Properly mock the context manager
-        mock_client.session.return_value = mock_session
-        mock_session.__enter__ = Mock(return_value=mock_session)
-        mock_session.__exit__ = Mock(return_value=None)
-
-        # Create a list to track call order
-        call_results = []
-
-        def mock_run(query, **kwargs):
-            """Mock run method that returns appropriate results based on query."""
-            result = Mock()
-
-            if "isolated_count" in query:
-                # Connectivity query - check this first since it also contains "count(n)"
-                result.single.return_value = {"isolated_count": 0}
-                call_results.append("connectivity")
-            elif "count(n)" in query:
-                # Node count query
-                result.single.return_value = {"count": 100}
-                call_results.append("node_count")
-            elif "count(r)" in query:
-                # Relationship count query
-                result.single.return_value = {"count": 50}
-                call_results.append("rel_count")
-            elif "db.labels()" in query:
-                # Node types query
-                result.__iter__ = Mock(
-                    return_value=iter([{"label": "Company"}, {"label": "Award"}])
-                )
-                call_results.append("node_types")
-            elif "db.relationshipTypes()" in query:
-                # Relationship types query
-                result.__iter__ = Mock(return_value=iter([{"relationshipType": "RECEIVED"}]))
-                call_results.append("rel_types")
-
-            return result
-
-        mock_session.run.side_effect = mock_run
-
-        validator = PipelineValidator(neo4j_client=mock_client)
-
-        result = validator.validate_neo4j_graph(
-            expected_node_types=["Company", "Award"],
-            expected_relationships=["RECEIVED"],
-            min_nodes=10,
-            min_relationships=5,
-        )
-
-        assert result.stage == ValidationStage.LOADING
-        assert result.status == ValidationStatus.PASSED
-        assert result.metadata["node_count"] == 100
-        assert result.metadata["relationship_count"] == 50
-
-    def test_validate_neo4j_graph_no_client(self):
-        """Test Neo4j validation when no client is provided."""
-        validator = PipelineValidator()  # No Neo4j client
-
-        result = validator.validate_neo4j_graph()
-
-        assert result.stage == ValidationStage.LOADING
-        assert result.status == ValidationStatus.SKIPPED
-        assert len(result.checks) == 1
-        assert result.checks[0].name == "neo4j_client"
-
-    def test_validate_neo4j_graph_connection_failure(self):
-        """Test Neo4j validation with connection failure."""
-        mock_client = Mock()
-        mock_client.session.side_effect = Exception("Connection failed")
-
-        validator = PipelineValidator(neo4j_client=mock_client)
-
-        result = validator.validate_neo4j_graph()
-
-        assert result.status == ValidationStatus.FAILED
-
-        connection_check = next((c for c in result.checks if c.name == "neo4j_connection"), None)
-        assert connection_check is not None
-        assert connection_check.status == ValidationStatus.FAILED
-        assert connection_check.severity == QualitySeverity.CRITICAL
 
 
 class TestValidationModels:

@@ -16,7 +16,6 @@ from .data import (
     ExtractionConfig,
     LoggingConfig,
     MetricsConfig,
-    Neo4jConfig,
     PathsConfig,
     SbirDuckDBConfig,
     SbirValidationConfig,
@@ -30,7 +29,6 @@ from .domain import (
     MADiscoveryConfig,
     MLConfig,
     OTConsortiumConfig,
-    StatisticalReportingConfig,
 )
 
 
@@ -87,16 +85,12 @@ class PipelineConfig(BaseModel):
         default_factory=EnrichmentRefreshConfig,
         description="Iterative enrichment refresh configuration",
     )
-    neo4j: Neo4jConfig = Field(default_factory=Neo4jConfig)
     extraction: ExtractionConfig = Field(default_factory=ExtractionConfig)
     validation: ValidationConfig = Field(default_factory=ValidationConfig)
     transformation: TransformationConfig = Field(default_factory=TransformationConfig)
     logging: LoggingConfig = Field(default_factory=LoggingConfig)
     metrics: MetricsConfig = Field(default_factory=MetricsConfig)
     duckdb: DuckDBConfig = Field(default_factory=DuckDBConfig)
-    statistical_reporting: StatisticalReportingConfig = Field(
-        default_factory=StatisticalReportingConfig
-    )
     fiscal_analysis: FiscalAnalysisConfig = Field(default_factory=FiscalAnalysisConfig)
     cli: CLIConfig = Field(default_factory=CLIConfig, description="CLI interface configuration")
     company_categorization: CompanyCategorizationConfig = Field(
@@ -135,14 +129,12 @@ __all__ = [
     "MADiscoveryConfig",
     "MetricsConfig",
     "MLConfig",
-    "Neo4jConfig",
     "OTConsortiumConfig",
     "PathsConfig",
     "PipelineConfig",
     "PipelineMetadata",
     "SbirDuckDBConfig",
     "SbirValidationConfig",
-    "StatisticalReportingConfig",
     "TransformationConfig",
     "ValidationConfig",
 ]

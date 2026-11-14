@@ -1,0 +1,46 @@
+{
+  "schema_version": 1,
+  "packet_id": "sba-structural-fidelity-v4",
+  "sealed_at": "2026-09-21T22:50:51Z",
+  "coordinator": "/root (Codex primary agent)",
+  "independent_extractor": "/root/sba_blind_extractor_4",
+  "supersedes_packet_sha256": "79eaa57a4834b5056c1e4ddd5522dbdb2ee26bc57fcef1a5944dd5ae37511e67",
+  "prohibited_material_attestation_required": true,
+  "files": [
+    {
+      "path": "data/raw/sba_annual_reports/FY20/SBA_SBIR_STTR_FY20_Annual_Report.pdf",
+      "sha256": "f1f51abb29c71d631451868f31babf2f6f1fe3845df91e534052f1d40dece3d3",
+      "size_bytes": 2505195
+    },
+    {
+      "path": "data/raw/sba_annual_reports/FY21/SBA_SBIR_STTR_FY21_Annual_Report.pdf",
+      "sha256": "30b4dfa9b4c2c2220fc15938d5bd1a44bee92d5aa746b8756dc7d66217c6df55",
+      "size_bytes": 2444751
+    },
+    {
+      "path": "data/raw/sba_annual_reports/FY22/SBA_FY22_SBIR_STTR_Annual_Report.pdf",
+      "sha256": "5ba60852f1cc44b23afdb810ecf0cff77d714d10ffc786a9b73416d7c000fd1",
+      "size_bytes": 2038536
+    },
+    {
+      "path": "data/raw/sbir/award-export/2026-09-17/award_data.csv",
+      "sha256": "aed146eab56f370c9f3fe7f562475e3eedfc61cca2eba112c830fac6f73bf38a",
+      "size_bytes": 394636989
+    },
+    {
+      "path": "study/source-manifest.json",
+      "sha256": "be8adfce554b2811cb612428bebab314f061b2a808b9cc957ad0311797388db3",
+      "size_bytes": 7345
+    },
+    {
+      "path": "study/validation-design-v1.md",
+      "sha256": "7373d7e189bf8dce3ec4611064f698571053b3fb397e213e1bf8873424839fa3",
+      "size_bytes": 11708
+    },
+    {
+      "path": "study/validation-population-v1.csv",
+      "sha256": "48dfdf1ea70e9a74378c21a3a661795540ebd6450c77365ebdad76c6569b68c1",
+      "size_bytes": 96118
+    }
+  ]
+}

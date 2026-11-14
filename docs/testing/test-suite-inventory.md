@@ -34,7 +34,7 @@ the event matrix.
 | Class | Rule |
 | --- | --- |
 | Fixture-based | Deterministic local fixtures; no live external API or restricted dataset |
-| Service-backed | Declares its Neo4j or other service prerequisite and skips clearly when unavailable |
+| Service-backed | Declares its service prerequisite and skips clearly when unavailable |
 | External API | Marked `requires_api`; not executed by normal CI |
 | Real-data validation | Explicitly skipped unless approved reference data is mounted |
 | Operator program | May live under `tests/validation/` but is not necessarily a collectable pytest suite |
@@ -45,17 +45,14 @@ suites. Run them explicitly as scripts when their prerequisites are available.
 
 ## Important suites
 
-- `tests/integration/neo4j/` and `tests/integration/test_neo4j_client.py` exercise graph service
-  behavior.
 - `tests/integration/test_company_categorization_client_injection.py` covers categorization client
   boundaries.
 - `tests/integration/test_patent_etl_integration.py` covers the patent ETL chain with fixtures.
 - `tests/integration/fiscal/` covers fiscal calculations and reference checks.
 - `tests/integration/transition/` covers transition analytics, detection, and quality metrics.
 - `tests/e2e/test_enrichment_job.py` executes USAspending freshness selection through Dagster.
-- `tests/e2e/test_nsf_defense_lineage.py` replays pinned sources through release and graph products.
-- `tests/unit/test_pipeline_validator.py` and `tests/unit/transition/test_graph_queries.py` cover
-  test-support validation and mocked query contracts.
+- `tests/e2e/test_nsf_defense_lineage.py` replays pinned sources through release and static network products.
+- `tests/unit/test_pipeline_validator.py` covers test-support validation.
 
 This list is navigational, not exhaustive; collection is authoritative.
 
@@ -73,6 +70,6 @@ can execute it. A skip is not a substitute for a removed implementation or an ob
 
 ## CI relationship
 
-On pushes to `main`, weekly schedules, and manual runs, `.github/workflows/ci.yml` starts Neo4j and
-runs the complete discoverable `tests/` tree except `requires_api` cases. GitHub Actions does not
+On pushes to `main`, weekly schedules, and manual runs, `.github/workflows/ci.yml` runs the complete
+discoverable `tests/` tree except `requires_api` cases. GitHub Actions does not
 mount production data or run live pipeline work.

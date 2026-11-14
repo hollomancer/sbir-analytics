@@ -41,20 +41,6 @@ def test_transition_asset_checks_registered():
         assert callable(check)
 
 
-def test_transition_neo4j_assets_registered():
-    """Ensure Neo4j loader assets are registered."""
-    neo4j_assets = [
-        transition_assets.loaded_transitions,
-        transition_assets.transition_node_count_check,
-        transition_assets.loaded_transition_relationships,
-        transition_assets.transition_relationships_check,
-        transition_assets.loaded_transition_profiles,
-    ]
-
-    for asset in neo4j_assets:
-        assert callable(asset)
-
-
 def test_asset_import_dependencies_ordered():
     """Minimal dependency smoke test to catch refactoring regressions."""
     assert transition_assets.raw_contracts is not None

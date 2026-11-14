@@ -4,17 +4,17 @@
 # Preflight checks for the Tailscale-only self-hosted server profile.
 #
 # Validates, before `make server-up`:
-#   * .env.server present and required secrets set (not placeholders)
+#   * .env.server present
 #   * host bindings are loopback-only (127.0.0.1 / ::1 / localhost)
 #   * Docker daemon reachable and has enough memory for the stack
 #   * storage directories (external SSD) exist and are writable
-#   * host ports for Neo4j / Dagster are free
+#   * the Dagster host port is free
 #   * Tailscale is up and logged in
 #   * Tailscale Serve does not already map managed ports (no clobber)
 #
 # Modes:
 #   (default)          run every check
-#   --bindings-only    only validate loopback bindings + required env
+#   --bindings-only    only validate loopback bindings
 #                      (no Docker/Tailscale needed; used by unit tests)
 #
 # Env file: reads .env.server from the repo root unless SERVER_ENV_FILE is set.
@@ -56,10 +56,9 @@ SCRIPT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 if [ -f "$ENV_FILE" ]; then
   info "Loading environment from $ENV_FILE"
   for key in \
-    SERVER_LOOPBACK NEO4J_PASSWORD \
+    SERVER_LOOPBACK \
     SERVER_DATA_DIR SERVER_REPORTS_DIR SERVER_LOGS_DIR \
-    SERVER_ARTIFACTS_DIR SERVER_NEO4J_DIR SERVER_BACKUP_DIR \
-    NEO4J_HTTP_PORT NEO4J_BOLT_PORT DAGSTER_PORT; do
+    SERVER_ARTIFACTS_DIR DAGSTER_PORT; do
     load_env_key "$key"
   done
 elif [ "$MODE" = "all" ]; then
@@ -86,17 +85,6 @@ check_bindings() {
   fi
 }
 
-check_required_secrets() {
-  # NEO4J_PASSWORD
-  if [ -z "${NEO4J_PASSWORD:-}" ]; then
-    error "NEO4J_PASSWORD is not set."
-  elif [ "${NEO4J_PASSWORD}" = "change_me" ]; then
-    error "NEO4J_PASSWORD is still the placeholder 'change_me'."
-  else
-    success "NEO4J_PASSWORD is set."
-  fi
-}
-
 # ---------------------------------------------------------------------------
 # Docker capacity
 # ---------------------------------------------------------------------------
@@ -111,8 +99,8 @@ check_docker() {
   fi
   success "Docker daemon is reachable."
 
-  # Total memory available to the Docker VM (bytes). Stack has several GiB of
-  # limits across Neo4j and Dagster; warn under 8 GiB.
+  # Total memory available to the Docker VM (bytes). Heavy Dagster assets need
+  # several GiB; warn under 8 GiB.
   total_mem=$(docker info --format '{{.MemTotal}}' 2>/dev/null || echo 0)
   if [ "${total_mem:-0}" -gt 0 ]; then
     min_bytes=$((8 * 1024 * 1024 * 1024))
@@ -132,9 +120,7 @@ check_storage() {
     "SERVER_DATA_DIR:${SERVER_DATA_DIR:-./data}" \
     "SERVER_REPORTS_DIR:${SERVER_REPORTS_DIR:-./reports}" \
     "SERVER_LOGS_DIR:${SERVER_LOGS_DIR:-./logs}" \
-    "SERVER_ARTIFACTS_DIR:${SERVER_ARTIFACTS_DIR:-./artifacts}" \
-    "SERVER_NEO4J_DIR:${SERVER_NEO4J_DIR:-./data/neo4j}" \
-    "SERVER_BACKUP_DIR:${SERVER_BACKUP_DIR:-./backups}"; do
+    "SERVER_ARTIFACTS_DIR:${SERVER_ARTIFACTS_DIR:-./artifacts}"; do
     name="${pair%%:*}"
     dir="${pair#*:}"
     if ! path_has_active_external_volume "$dir"; then
@@ -192,8 +178,6 @@ valid_port() {
 
 check_ports() {
   for pair in \
-    "Neo4j HTTP|neo4j|7474|${NEO4J_HTTP_PORT:-7474}" \
-    "Neo4j Bolt|neo4j|7687|${NEO4J_BOLT_PORT:-7687}" \
     "Dagster|dagster-webserver|3000|${DAGSTER_PORT:-3000}"; do
     label=${pair%%|*}; rest=${pair#*|}
     service=${rest%%|*}; rest=${rest#*|}
@@ -264,7 +248,6 @@ check_tailscale() {
 # ---------------------------------------------------------------------------
 info "Checking Tailscale-only server prerequisites (mode: $MODE)..."
 check_bindings
-check_required_secrets
 
 if [ "$MODE" = "all" ]; then
   check_docker

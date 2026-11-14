@@ -4,7 +4,6 @@
 # Service wrapper for starting the Dagster webserver inside the container.
 # Provides:
 #  - env loading (.env, /run/secrets)
-#  - waiting for Neo4j dependency
 #  - start command that adapts for dev vs prod
 #  - a lightweight healthcheck mode suitable for Docker HEALTHCHECK
 #
@@ -51,51 +50,6 @@ load_env() {
       fi
     done
   fi
-}
-
-# ---------- dependency waits ----------
-wait_for_neo4j() {
-  HOST="${SBIR_ETL__NEO4J__HOST:-${NEO4J_HOST:-neo4j}}"
-  PORT="${SBIR_ETL__NEO4J__PORT:-${NEO4J_PORT:-7687}}"
-  TIMEOUT="${SERVICE_STARTUP_TIMEOUT:-120}"
-  WAIT_SCRIPT="/app/sbir-analytics/scripts/docker/wait-for-service.sh"
-
-  if [ -x "$WAIT_SCRIPT" ]; then
-    log "Waiting for Neo4j at ${HOST}:${PORT} (timeout=${TIMEOUT}s)..."
-    if "$WAIT_SCRIPT" --host "$HOST" --port "$PORT" --proto tcp --timeout "$TIMEOUT" --interval 5; then
-      log "Neo4j is available"
-      return 0
-    else
-      err "Timeout waiting for Neo4j"
-      return 1
-    fi
-  fi
-
-  # Fallback: try nc or /dev/tcp
-  log "No wait-for script; performing basic TCP check for Neo4j ${HOST}:${PORT}"
-  start_ts=$(date +%s)
-  deadline=$((start_ts + TIMEOUT))
-  while [ "$(date +%s)" -le "$deadline" ]; do
-    if command -v nc >/dev/null 2>&1; then
-      if nc -z "$HOST" "$PORT" >/dev/null 2>&1; then
-        log "Neo4j reachable (nc)"
-        return 0
-      fi
-    else
-      # try /dev/tcp if shell supports it
-      if (exec 3<>"/dev/tcp/$HOST/$PORT") >/dev/null 2>&1; then
-        exec 3<&- || true
-        exec 3>&- || true
-        log "Neo4j reachable (/dev/tcp)"
-        return 0
-      fi
-    fi
-    log "Neo4j not ready; retrying in 5s..."
-    sleep 5
-  done
-
-  err "Timed out waiting for Neo4j"
-  return 1
 }
 
 # ---------- healthcheck ----------
@@ -145,12 +99,6 @@ start_server() {
   fi
 
   log "Using environment: ${ENV}"
-  log "Ensuring Neo4j is available before starting Dagster webserver..."
-  if ! wait_for_neo4j; then
-    err "Missing dependency: Neo4j not available; aborting startup"
-    exit 1
-  fi
-
   log "Starting Dagster webserver with command: ${CMD}"
   # exec to replace shell so signals reach the process directly
   # If gosu is provided and running as root, prefer running as sbir user for security.

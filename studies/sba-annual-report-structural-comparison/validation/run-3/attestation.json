@@ -1,0 +1,87 @@
+{
+  "coordinator": "/root (Codex primary agent)",
+  "export_diagnostics": {
+    "counted_retained_rows": 20835,
+    "dropped_blank_state_rows": 1,
+    "eligible_groups_including_zero_fill": 632,
+    "parsed_source_rows": 219590,
+    "retained_fy2020_fy2022_rows_before_blank_state_drop": 20836
+  },
+  "finished_at_utc": "2026-09-21T22:49:03Z",
+  "first_submission_sealed_without_comparison_or_repair": true,
+  "implementation_component_sha256": {
+    "dump_pdf_chars.m": "6975d0e39190d1ab0b2b18d60eca60c96d85fb404208e28b1cc9c2c81650f8a6",
+    "dump_pdf_lines.m": "87cc0b6e42aa80999cc36377d6cbd5052b152d3714725b2010561b1a5c071f6c",
+    "extract_pdf_text.m": "b28a944d2076a9b7e4ea6586f6bed49a4be9ffbcf467a1222bb170c1d10228f1"
+  },
+  "implementation_sha256": "6b9fdb4c42b471118ababf98060b2080a679850bc913d50b16427c2ee8c0aafd",
+  "independent_extractor": "/root/sba_blind_extractor_3",
+  "jurisdiction_mapping_sha256": "6a8f1eda25bc4136edb89fda962a1c7338a909117593475f0a67468a4acf2a88",
+  "mapped_pdf_rows_total": 158,
+  "missing_units": 0,
+  "no_prohibited_material_attestation": "I did not inspect, search, list, read, or import captured table CSVs, production code/tests/sidecars/rendered results, historical comparison results, prior extractor workspaces, repository content, or any filled validation output. I did not compare this submission with production values.",
+  "observed_units": 1264,
+  "other_numeric_pdf_lines_not_classified_as_jurisdiction_rows": 6,
+  "packet_manifest_decode_note": "The checksummed manifest has one leading '+' byte; stripped in memory only for JSON decoding.",
+  "packet_manifest_sha256": "79eaa57a4834b5056c1e4ddd5522dbdb2ee26bc57fcef1a5944dd5ae37511e67",
+  "pdf_completeness": {
+    "2020": {
+      "complete": true,
+      "eligible_count_cells": 212,
+      "expected_eligible_count_cells": 212,
+      "expected_mapped_jurisdiction_rows": 53,
+      "mapped_jurisdiction_rows": 53
+    },
+    "2021": {
+      "complete": true,
+      "eligible_count_cells": 212,
+      "expected_eligible_count_cells": 212,
+      "expected_mapped_jurisdiction_rows": 53,
+      "mapped_jurisdiction_rows": 53
+    },
+    "2022": {
+      "complete": true,
+      "eligible_count_cells": 208,
+      "expected_eligible_count_cells": 208,
+      "expected_mapped_jurisdiction_rows": 52,
+      "mapped_jurisdiction_rows": 52
+    }
+  },
+  "prohibited_material_exposure": false,
+  "published_cells_total": 632,
+  "schema_version": 1,
+  "source_verification": {
+    "all_packet_declared_files_verified": true,
+    "captured_table_csvs": "not accessed; prohibited and intentionally absent from blind packet",
+    "durable_uri_verification_complete": true,
+    "durable_uris_retrieved_and_sha256_matched": {
+      "sba-annual-report-fy2020": "f1f51abb29c71d631451868f31babf2f6f1fe3845df91e534052f1d40dece3d3",
+      "sba-annual-report-fy2021": "30b4dfa9b4c2c2220fc15938d5bd1a44bee92d5aa746b8756dc7d66217c6df55",
+      "sba-annual-report-fy2022": "5ba60852f1cc44b23afdbf810ecf0cff77d714d10ffc786a9b73416d7c000fd1",
+      "sbir-gov-award-export-2026-09-17": "aed146eab56f370c9f3fe7f562475e3eedfc61cca2eba112c830fac6f73bf38a"
+    },
+    "export_column_count": 42,
+    "export_ordered_header_verified": true,
+    "export_parsed_row_count": 219590,
+    "packet_declared_files_verified_by_size_and_sha256": 7,
+    "pdf_page_counts": {
+      "data/raw/sba_annual_reports/FY20/SBA_SBIR_STTR_FY20_Annual_Report.pdf": 99,
+      "data/raw/sba_annual_reports/FY21/SBA_SBIR_STTR_FY21_Annual_Report.pdf": 95,
+      "data/raw/sba_annual_reports/FY22/SBA_FY22_SBIR_STTR_Annual_Report.pdf": 94
+    }
+  },
+  "started_at_utc": "2026-09-21T22:41:33Z",
+  "status": "sealed_complete_first_submission",
+  "submission_file": "validation-values.csv",
+  "submission_sha256": "3f2d9aee873a2c828194cce562b944c617794983fc96d89deea6c2cfd006ef18",
+  "submission_units": 1264,
+  "tool_names_versions": {
+    "clang": "Apple clang version 21.0.0 (clang-2100.1.1.101)",
+    "csv_parser": "Python csv module, utf-8-sig, newline='', RFC 4180-aware",
+    "curl": "curl 8.7.1 (x86_64-apple-darwin25.0) libcurl/8.7.1 (SecureTransport) LibreSSL/3.3.6 zlib/1.2.12 nghttp2/1.68.1",
+    "hash_tool": "Python hashlib.sha256 and system shasum -a 256",
+    "pdf_extraction": "independent Objective-C PDFKit glyph-coordinate dumper",
+    "pdfinfo": "pdfinfo version 26.05.0",
+    "python": "3.9.6"
+  }
+}

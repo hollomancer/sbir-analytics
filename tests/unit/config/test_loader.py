@@ -28,18 +28,8 @@ pytestmark = pytest.mark.fast
 
 @pytest.fixture(autouse=True)
 def clear_config_cache(monkeypatch):
-    """Clear config cache and runtime env overrides before each test.
-
-    CI sets NEO4J_URI / NEO4J_USER / NEO4J_PASSWORD on test jobs, which
-    the loader picks up and uses to override the configured defaults.
-    These tests assert on the configured defaults, so the env vars need
-    to be cleared for the assertions to be meaningful.
-    """
+    """Clear config cache and environment selectors before each test."""
     for var in (
-        "NEO4J_URI",
-        "NEO4J_USER",
-        "NEO4J_USERNAME",
-        "NEO4J_PASSWORD",
         "SBIR_ETL_ENV",
         "SBIR_ETL__PIPELINE__ENVIRONMENT",
     ):
@@ -190,7 +180,7 @@ class TestConvertEnvValue:
     def test_convert_string(self):
         """Test strings that cannot be converted remain strings."""
         assert _convert_env_value("hello") == "hello"
-        assert _convert_env_value("bolt://localhost:7687") == "bolt://localhost:7687"
+        assert _convert_env_value("https://example.test/path") == "https://example.test/path"
         assert _convert_env_value("") == ""
 
     def test_convert_numeric_string_prefers_int(self):
@@ -212,10 +202,10 @@ class TestApplyEnvOverrides:
 
     def test_apply_multi_level_override(self):
         """Test applying multi-level environment override."""
-        config = {"neo4j": {"connection": {"timeout": 30}}}
-        with patch.dict(os.environ, {"SBIR_ETL__NEO4J__CONNECTION__TIMEOUT": "60"}):
+        config = {"enrichment": {"connection": {"timeout": 30}}}
+        with patch.dict(os.environ, {"SBIR_ETL__ENRICHMENT__CONNECTION__TIMEOUT": "60"}):
             result = _apply_env_overrides(config)
-        assert result["neo4j"]["connection"]["timeout"] == 60
+        assert result["enrichment"]["connection"]["timeout"] == 60
 
     def test_apply_creates_missing_keys(self):
         """Test environment override creates missing nested keys."""
@@ -283,7 +273,7 @@ class TestLoadConfigFromFiles:
 
     def test_load_base_config_only(self):
         """Test loading base configuration without environment override."""
-        base_content = {"logging": {"level": "INFO"}, "neo4j": {"uri": "bolt://localhost:7687"}}
+        base_content = {"logging": {"level": "INFO"}}
 
         with tempfile.TemporaryDirectory() as tmpdir:
             config_dir = Path(tmpdir)
@@ -298,7 +288,6 @@ class TestLoadConfigFromFiles:
             )
 
             assert result["logging"]["level"] == "INFO"
-            assert result["neo4j"]["uri"] == "bolt://localhost:7687"
 
     def test_load_with_environment_override(self):
         """Test loading with environment-specific override."""
@@ -431,15 +420,15 @@ class TestLoadConfigFromFiles:
     def test_load_merges_nested_configs(self):
         """Test loading merges nested configurations correctly."""
         base_content = {
-            "neo4j": {
-                "uri": "bolt://localhost:7687",
+            "service": {
+                "url": "https://localhost",
                 "batch_size": 1000,
                 "timeout": 30,
             }
         }
         env_content = {
-            "neo4j": {
-                "uri": "bolt://prod:7687",
+            "service": {
+                "url": "https://production",
                 "batch_size": 5000,
             }
         }
@@ -461,10 +450,10 @@ class TestLoadConfigFromFiles:
             )
 
             # Override values should be updated
-            assert result["neo4j"]["uri"] == "bolt://prod:7687"
-            assert result["neo4j"]["batch_size"] == 5000
+            assert result["service"]["url"] == "https://production"
+            assert result["service"]["batch_size"] == 5000
             # Non-overridden values should be preserved
-            assert result["neo4j"]["timeout"] == 30
+            assert result["service"]["timeout"] == 30
 
 
 class TestGetConfig:
@@ -531,108 +520,6 @@ class TestGetConfig:
 
             # Should use base config level, not env override
             assert config.logging.level == "INFO"
-
-    def test_get_config_applies_neo4j_defaults(self):
-        """Test get_config applies Neo4j runtime defaults."""
-        base_content = {}
-
-        with tempfile.TemporaryDirectory() as tmpdir:
-            config_dir = Path(tmpdir)
-            base_file = config_dir / "base.yaml"
-
-            with open(base_file, "w") as f:
-                yaml.dump(base_content, f)
-
-            reload_config()  # Clear cache
-            config = get_config(environment="development", config_dir=config_dir)
-
-            # Should have default Neo4j settings
-            assert config.neo4j.uri == "bolt://localhost:7687"
-            assert config.neo4j.batch_size == 1000
-
-    def test_get_config_uses_production_defaults(self):
-        """Test get_config uses production defaults for prod environment."""
-        base_content = {}
-
-        with tempfile.TemporaryDirectory() as tmpdir:
-            config_dir = Path(tmpdir)
-            base_file = config_dir / "base.yaml"
-
-            with open(base_file, "w") as f:
-                yaml.dump(base_content, f)
-
-            reload_config()  # Clear cache
-            config = get_config(environment="production", config_dir=config_dir)
-
-            # Production uses prod-neo4j by default (can be overridden via env vars)
-            assert config.neo4j.uri == "bolt://prod-neo4j:7687"
-
-    def test_get_config_respects_direct_neo4j_environment(self):
-        """Direct Neo4j variables populate every connection field in the schema."""
-        base_content = {}
-
-        with tempfile.TemporaryDirectory() as tmpdir:
-            config_dir = Path(tmpdir)
-            base_file = config_dir / "base.yaml"
-
-            with open(base_file, "w") as f:
-                yaml.dump(base_content, f)
-
-            neo4j_environment = {
-                "NEO4J_URI": "bolt://custom:7687",
-                "NEO4J_USER": "custom-user",
-                "NEO4J_PASSWORD": "custom-password",
-                "NEO4J_DATABASE": "analytics",
-            }
-            with patch.dict(os.environ, neo4j_environment, clear=True):
-                reload_config()  # Clear cache
-                config = get_config(environment="development", config_dir=config_dir)
-
-            assert config.neo4j.uri == "bolt://custom:7687"
-            assert config.neo4j.username == "custom-user"
-            assert config.neo4j.password == "custom-password"
-            assert config.neo4j.database == "analytics"
-
-    def test_nested_neo4j_environment_overrides_direct_compatibility_values(self):
-        """Nested compatibility values retain their documented precedence."""
-        environment = {
-            "NEO4J_USER": "direct-user",
-            "NEO4J_PASSWORD": "direct-password",
-            "SBIR_ETL__NEO4J__USERNAME": "nested-user",
-            "SBIR_ETL__NEO4J__PASSWORD": "nested-password",
-        }
-
-        with patch.dict(os.environ, environment, clear=True):
-            reload_config()
-            config = get_config(environment="development")
-
-        assert config.neo4j.username == "nested-user"
-        assert config.neo4j.password == "nested-password"
-
-    def test_get_config_handles_legacy_loading_neo4j(self):
-        """Test get_config handles legacy 'loading.neo4j' structure."""
-        base_content = {
-            "loading": {
-                "neo4j": {
-                    "uri": "bolt://legacy:7687",
-                    "batch_size": 2000,
-                }
-            }
-        }
-
-        with tempfile.TemporaryDirectory() as tmpdir:
-            config_dir = Path(tmpdir)
-            base_file = config_dir / "base.yaml"
-
-            with open(base_file, "w") as f:
-                yaml.dump(base_content, f)
-
-            reload_config()  # Clear cache
-            config = get_config(environment=None, config_dir=config_dir)
-
-            # Legacy structure should be mapped to top-level neo4j
-            assert config.neo4j.uri == "bolt://legacy:7687"
-            assert config.neo4j.batch_size == 2000
 
     def test_get_config_is_cached(self):
         """Test get_config caches results."""

@@ -32,17 +32,7 @@ NSF_DEFENSE_LINEAGE_ASSET = (
 def test_server_ports_are_unconditionally_loopback_only():
     compose = SERVER_COMPOSE.read_text()
     assert "${SERVER_LOOPBACK" not in compose
-    assert '"127.0.0.1:${NEO4J_HTTP_PORT:-7474}:7474"' in compose
-    assert '"127.0.0.1:${NEO4J_BOLT_PORT:-7687}:7687"' in compose
     assert '"127.0.0.1:${DAGSTER_PORT:-3000}:3000"' in compose
-
-
-def test_neo4j_runtime_uses_valid_plugin_and_neutral_health_variables():
-    compose = SERVER_COMPOSE.read_text()
-    assert "'NEO4J_PLUGINS=${NEO4J_PLUGINS:-[\"apoc\"]}'" in compose
-    assert "SBIR_SERVER_NEO4J_USER=${NEO4J_USER:-neo4j}" in compose
-    assert "SBIR_SERVER_NEO4J_PASSWORD=${NEO4J_PASSWORD:?NEO4J_PASSWORD is required}" in compose
-    assert "$${NEO4J_PASSWORD}" not in compose
 
 
 def test_dagster_daemon_waits_on_webserver_container():
@@ -224,14 +214,6 @@ def test_dagster_healthcheck_preserves_path_and_calls_configured_url(tmp_path):
 
     assert result.returncode == 0, result.stdout + result.stderr
     assert "http://dagster.test:4321/ready" in calls.read_text()
-
-
-def test_entrypoint_has_python_tcp_probe_fallback():
-    entrypoint = ENTRYPOINT.read_text()
-    neo4j_wait = entrypoint.split("wait_for_neo4j()", 1)[1].split("wait_for_dagster_web()", 1)[0]
-    assert "socket.create_connection" in entrypoint
-    assert 'probe_tcp "$HOST" "$PORT"' in neo4j_wait
-    assert "WAIT_SCRIPT=" not in neo4j_wait
 
 
 def test_entrypoint_only_drops_privileges_when_sbir_user_exists():

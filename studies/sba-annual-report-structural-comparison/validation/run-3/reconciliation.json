@@ -1,0 +1,17 @@
+{
+  "schema_version": 1,
+  "run": 3,
+  "evaluated_on": "2026-09-21",
+  "production_sidecar_sha256": "e86ab66905f65adaa7fdb721ced6bcbc7b3991a288ba37156f1efe9b4bed7381",
+  "independent_submission_sha256": "3f2d9aee873a2c828194cce562b944c617794983fc96d89deea6c2cfd006ef18",
+  "numerator": 1264,
+  "denominator": 1264,
+  "interval_low": 1.0,
+  "interval_high": 1.0,
+  "interval_method": "exact complete-population point interval; no sampling",
+  "threshold_met_numerically": true,
+  "confirmatory": false,
+  "valid_run": false,
+  "invalid_reason": "The checksummed Packet v3 manifest was not valid JSON because it began with an accidental plus byte. The extractor stripped that byte in memory before decoding.",
+  "promotion_allowed": false
+}

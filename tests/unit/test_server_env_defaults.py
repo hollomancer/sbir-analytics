@@ -75,25 +75,8 @@ def test_storage_defaults_are_repo_local():
         "SERVER_REPORTS_DIR",
         "SERVER_LOGS_DIR",
         "SERVER_ARTIFACTS_DIR",
-        "SERVER_NEO4J_DIR",
-        "SERVER_BACKUP_DIR",
     ):
         assert env[key].startswith("./"), f"{key} default should be repository-local"
-
-
-def test_secret_placeholders_are_not_real_values():
-    env = _parse_env(ENV_EXAMPLE)
-    # The template must ship placeholders, never real credentials.
-    assert env["NEO4J_PASSWORD"] == "change_me"
-
-
-def test_neo4j_healthcheck_receives_credentials_and_valid_plugin_json():
-    compose = SERVER_COMPOSE.read_text()
-
-    assert "SBIR_SERVER_NEO4J_USER=${NEO4J_USER:-neo4j}" in compose
-    assert "SBIR_SERVER_NEO4J_PASSWORD=${NEO4J_PASSWORD:?NEO4J_PASSWORD is required}" in compose
-    assert "$${SBIR_SERVER_NEO4J_PASSWORD}" in compose
-    assert "'NEO4J_PLUGINS=${NEO4J_PLUGINS:-[\"apoc\"]}'" in compose
 
 
 def test_dependency_wait_contract_matches_slim_server_image():

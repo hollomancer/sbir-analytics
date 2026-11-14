@@ -10,24 +10,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 def test_mock_factories():
     """Test that mock factories work correctly."""
-    from tests.mocks import Neo4jMocks, EnrichmentMocks, ConfigMocks
-
-    # Test Neo4j mocks
-    driver = Neo4jMocks.driver()
-    assert driver.verify_connectivity() is True
-    print("✓ Neo4jMocks.driver() works")
-
-    session = Neo4jMocks.session()
-    assert session.run() == []
-    print("✓ Neo4jMocks.session() works")
-
-    tx = Neo4jMocks.transaction()
-    assert tx.commit() is True
-    print("✓ Neo4jMocks.transaction() works")
-
-    config = Neo4jMocks.config()
-    assert config.uri == "bolt://localhost:7687"
-    print("✓ Neo4jMocks.config() works")
+    from tests.mocks import ConfigMocks, EnrichmentMocks
 
     # Test Enrichment mocks
     sam_client = EnrichmentMocks.sam_gov_client()

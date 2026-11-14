@@ -90,11 +90,6 @@ def create_mock_pipeline_config(**overrides: Any) -> PipelineConfig:
                 "state_file": "data/state/enrichment_refresh_state.json",
             },
         },
-        "neo4j": {
-            "uri": "bolt://localhost:7687",
-            "database": "neo4j",
-            "batch_size": 1000,
-        },
         "duckdb": {
             "database_path": ":memory:",
         },
@@ -170,37 +165,6 @@ def create_mock_usaspending_config(
     }
     if state_file:
         config["state_file"] = str(state_file)
-    return config
-
-
-def create_mock_neo4j_config(
-    uri: str = "bolt://localhost:7687",
-    database: str = "neo4j",
-    batch_size: int = 1000,
-    username: str | None = None,
-    password: str | None = None,
-) -> dict[str, Any]:
-    """Create a mock Neo4j configuration dictionary.
-
-    Args:
-        uri: Neo4j connection URI
-        database: Database name
-        batch_size: Batch size for operations
-        username: Username (optional)
-        password: Password (optional)
-
-    Returns:
-        Dictionary with Neo4j config structure.
-    """
-    config: dict[str, Any] = {
-        "uri": uri,
-        "database": database,
-        "batch_size": batch_size,
-    }
-    if username:
-        config["username"] = username
-    if password:
-        config["password"] = password
     return config
 
 
@@ -286,11 +250,6 @@ if pytest is not None:
     def mock_usaspending_config(tmp_path: Path) -> dict[str, Any]:
         """Pytest fixture providing mock USAspending configuration."""
         return create_mock_usaspending_config(state_file=tmp_path / "state.json")
-
-    @pytest.fixture
-    def mock_neo4j_config() -> dict[str, Any]:
-        """Pytest fixture providing mock Neo4j configuration."""
-        return create_mock_neo4j_config()
 
     @pytest.fixture
     def mock_get_config_patch(monkeypatch):

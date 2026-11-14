@@ -1,0 +1,38 @@
+#import <Foundation/Foundation.h>
+#import <PDFKit/PDFKit.h>
+
+static NSString *escaped(NSString *value) {
+    NSString *result = [value stringByReplacingOccurrencesOfString:@"\\" withString:@"\\\\"];
+    result = [result stringByReplacingOccurrencesOfString:@"\t" withString:@"\\t"];
+    result = [result stringByReplacingOccurrencesOfString:@"\n" withString:@"\\n"];
+    return result;
+}
+
+int main(int argc, const char *argv[]) {
+    @autoreleasepool {
+        if (argc < 4) {
+            fprintf(stderr, "usage: dump_pdf_lines INPUT.pdf OUTPUT.tsv PAGE...\n");
+            return 2;
+        }
+        PDFDocument *document = [[PDFDocument alloc] initWithURL:[NSURL fileURLWithPath:[NSString stringWithUTF8String:argv[1]]]];
+        if (document == nil) return 3;
+        NSMutableString *out = [NSMutableString stringWithString:@"page\tx\ty\twidth\theight\ttext\n"];
+        for (int arg = 3; arg < argc; arg++) {
+            NSInteger pageNumber = [[NSString stringWithUTF8String:argv[arg]] integerValue];
+            if (pageNumber < 1 || pageNumber > document.pageCount) return 4;
+            PDFPage *page = [document pageAtIndex:pageNumber - 1];
+            PDFSelection *selection = [page selectionForRect:[page boundsForBox:kPDFDisplayBoxMediaBox]];
+            for (PDFSelection *line in selection.selectionsByLine) {
+                NSRect box = [line boundsForPage:page];
+                [out appendFormat:@"%ld\t%.3f\t%.3f\t%.3f\t%.3f\t%@\n", (long)pageNumber,
+                    box.origin.x, box.origin.y, box.size.width, box.size.height, escaped(line.string ?: @"")];
+            }
+        }
+        NSError *error = nil;
+        if (![out writeToFile:[NSString stringWithUTF8String:argv[2]] atomically:YES encoding:NSUTF8StringEncoding error:&error]) {
+            fprintf(stderr, "%s\n", error.localizedDescription.UTF8String);
+            return 5;
+        }
+    }
+    return 0;
+}

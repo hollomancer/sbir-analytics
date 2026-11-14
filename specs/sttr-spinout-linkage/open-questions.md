@@ -19,7 +19,9 @@ module, exist in the repository** (verified by repo-wide search). The real reusa
 - `sbir_etl.identity` (primitives tier): `normalize_company_name`, `company_name_similarity`,
   versioned `CompanyNameProfile` / `CompanyNameMetric`, and `RecoveryStatus` (the typed-absence
   `StrEnum` template) — org-name only; **no person-name primitive exists**.
-- The graph-governance `DimensionStatus` enum and `CANDIDATE` assertion contract (ADR-005).
+- The graph-governance `DimensionStatus` enum and `CANDIDATE` assertion contract
+  ([ADR-005](../../docs/decisions/ADR-005-transition-candidates-as-assertions.md), accepted
+  2026-09-19; no production implementation).
 
 **Decision:** (a) build the four kernel functions as **new `exploratory`-tier code in this spec**,
 grounded in the primitives above (`signal_absent_reason` modeled on `RecoveryStatus`;

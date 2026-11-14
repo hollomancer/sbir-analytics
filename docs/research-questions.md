@@ -42,15 +42,16 @@ matching `evidence_status` (or higher). CI enforces the pairing
 
 | Status rank | Required study `evidence_status` | Meaning |
 |---|---|---|
-| `Computable` (including `Partially computable`) | `reproducible`, `validated`, or `citable` | The repository can emit a bounded result from the named study. |
-| `Validated` | `validated` with `validation_result.threshold_met: true`, or `citable` | The study's stated validation design has passed. |
-| `Citable` | `citable` | Approved for the claims listed in that study's manifest. |
+| `Computable` (including `Partially computable`) | `reproducible`, `validated`, or `approved` | The repository can emit a bounded result from the named study. |
+| `Validated` | `validated` with `validation_result.threshold_met: true`, or `approved` | The study's stated validation design has passed. |
+| `Approved evidence` | `approved` | Approved for the claims listed in that study's manifest. |
 
 `Computable` is not a finding. An exploratory study does not authorize it.
 Negations are refusals, not ranks, and do not need a study — but the negation
-has to lead: `Not computable`, `not yet validated`, `no citable claim`,
-`non-citable`. A rank word with nothing negating it in front of it reads as a
-claim, so `Citable claim: …` is a claim.
+has to lead: `Not computable`, `not yet validated`, `no approved evidence`.
+A rank phrase with nothing negating it in front of it reads as a claim, so
+`Approved evidence: …` is a claim. `Citable` is not an evidence rank; citation
+identifies an immutable artifact and does not imply claim approval.
 
 Free-prose Status is still allowed when it avoids those three ranks:
 `Research target`, `Inventory target`, `Exploratory`, `Partial`,
@@ -97,7 +98,7 @@ treated as current specs; retain them in git history or a dated research note.
 
 ## Where to start, by audience
 
-Reserved ranks (`Computable`, `Validated`, `Citable`) are trustworthy for an
+Reserved ranks (`Computable`, `Validated`, `Approved evidence`) are trustworthy for an
 outside reader only when a study contract stands behind them. The start-here
 lists below may name only those ranks or an explicit refusal.
 
@@ -107,14 +108,22 @@ lists below may name only those ranks or an explicit refusal.
   committees. Unlabeled follow-on contracts
   ([B2](#b2-unlabeled-follow-on)) and unrecorded Phase III
   ([B3](#b3-unrecorded-phase-iii)) are `Computable` under a `reproducible`
-  study, not validated or citable. Private-to-SBIR Form D leverage
+  study, not validated or approved evidence. Private-to-SBIR Form D leverage
   ([F3](#f3-form-d-leverage)) is **Not computable** after retirement
   of its stale identity-rule materialization.
 - **SBIR program managers** — NSF, NIH, DoD, DOE, SBA program offices. The
   same [B2](#b2-unlabeled-follow-on) and [B3](#b3-unrecorded-phase-iii)
-  census proxies. STTR partner type ([B1](#b1-sttr-partner-types)) and
+  census proxies. The current-vintage award-count comparison
+  ([D1](#d1-award-totals)) is **Validated, not approved**; it supports
+  inspection of bounded count differences, not source equivalence. STTR
+  partner type ([B1](#b1-sttr-partner-types)) and
   spinout vs. subcontract ([B2](#b2-sttr-spinout)) are **Not computable**
   (Phase 0 design only).
+- **Fiscal-policy and state economic-development analysts** — Treasury, OMB,
+  JCT, and state economic-development offices. The current-vintage award-count
+  comparison ([D1](#d1-award-totals)) is **Validated, not approved**; it
+  supports inspection of bounded count differences, not source equivalence or
+  an estimate of economic return.
 - **Investors** — VC, PE, angels, family offices, corporate VC.
   Private-to-SBIR leverage ([F3](#f3-form-d-leverage)) is **Not
   computable**. Crowd-in vs. crowd-out ([F3](#f3-crowd-in-vs-crowd-out))
@@ -559,7 +568,7 @@ statutory goal is Phase III commercialization.*
   Which SBIR companies show the highest transition success rate, and which are
   consistent repeat performers?
   Lerner [L10] found growth concentrated in high-VC zip codes.
-  *Deps: ER · Refs: [L10] · Spec: [queries/transition-queries.md](queries/transition-queries.md)*
+  *Deps: ER · Refs: [L10] · Method: [transition overview](transition/overview.md)*
 
 - <a id="b1-sttr-partner-types"></a>**STTR research-institution partner types**
   Of STTR awards, what types of research institutions appear as partners —
@@ -569,6 +578,16 @@ statutory goal is Phase III commercialization.*
   **Status:** Not computable. Phase 0 design only (`exploratory`, non-citable);
   classification criteria are not frozen.
   *Deps: ER · Refs: [L7] · Spec: [../specs/sttr-spinout-linkage/](../specs/sttr-spinout-linkage/)*
+
+- <a id="b1-sttr-collaboration-network"></a>**Funded STTR collaboration network**
+  Across canonical funded STTR awards observed in one pinned raw SBIR.gov export,
+  what does the firm–research-institution collaboration network look like:
+  first-observed and repeated dyads, concentration, partner reuse, agency and year
+  variation, and missing research-institution names?
+  **Status:** Exploratory and non-citable. The current work is a one-pinned-export,
+  surface-name atlas of the funded portfolio, not an identity-resolved federal census,
+  an applicant-pool analysis, or an estimate of access, equity, or program effects.
+  *Deps: ER for identity-resolved promotion · Refs: [L7]*
 
 ### B2. Relational (Tier 2)
 
@@ -584,7 +603,7 @@ statutory goal is Phase III commercialization.*
   prevalence. The PI employer election and the allocation-of-rights agreement
   live in non-public agency award files.
   **Status:** Not computable. Phase 0 design only (`exploratory`, non-citable).
-  Implementation is blocked until open questions are resolved; no citable claim
+  Implementation is blocked until open questions are resolved; no approved evidence claim
   is authorized until negative-control and blind-adjudication gates pass. This
   split has not been measured before.
   *Deps: ER, PATLINK, SEC EDGAR · Refs: [L7], [L36], [L38] · Spec: [../specs/sttr-spinout-linkage/](../specs/sttr-spinout-linkage/)*
@@ -597,7 +616,7 @@ statutory goal is Phase III commercialization.*
   *Method:* the matching rules were written down and frozen before the counts
   were run, so the result cannot be tuned after the fact.
   **Status:** Computable as a follow-on proxy under the `phase-iii-census`
-  study (`reproducible`, not validated, not citable). The count holds up under
+  study (`reproducible`, not validated or approved). The count holds up under
   a scrambled-dates check designed before the counts were run, though matched
   control firms still look substantially similar — and no one has yet
   hand-verified a sample of the matches, so the result is not proof of
@@ -625,6 +644,31 @@ statutory goal is Phase III commercialization.*
   *Deps: ER, ID, PATLINK · Refs: [L10], [L11]*
 
 ### B3. Inferential (Tier 3)
+
+- **Agency-internal mission adoption contrast**
+  Within one agency, do SBIR awards reach mission adoption and follow-on
+  procurement at a different rate than comparable external research bought
+  under the same instrument?
+  Compare SBIR contracts against NASA external research procurement only.
+  Grants and cooperative agreements are a different instrument and cannot carry
+  this contrast.
+  **Status:** Exploratory and non-citable. No comparator cohort is materialized.
+  *Deps: agency project data, ER, ID, procurement · Spec:
+  [../specs/sbir-roi-comparative-tests/](../specs/sbir-roi-comparative-tests/)
+  · Study: [nasa-sbir-vs-external-rd](../studies/nasa-sbir-vs-external-rd/study.yaml)*
+
+- **Marginal award effect at the selection boundary**
+  For scored applicants near an agency selection boundary, what is the local
+  effect of receiving an SBIR award on operating status, survival, licensing,
+  non-SBIR revenue, productivity, and procurement?
+  The estimand is local to applicants whose funding changed at that boundary and
+  can differ from the average effect across all awards.
+  **Status:** Exploratory and non-citable. The manifest authorizes no numerical
+  result. No agency has supplied pinned scores, ranks, or cutoff rules, so the
+  required population does not exist yet.
+  *Deps: agency application scores and cutoffs, ER, ID, operating status,
+  licensing, procurement · Spec: [../specs/sbir-roi-comparative-tests/](../specs/sbir-roi-comparative-tests/)
+  · Study: [sbir-marginal-award-identification](../studies/sbir-marginal-award-identification/study.yaml)*
 
 - **Phase II → III latency**
   What is the elapsed time between Phase II completion and the first Phase III
@@ -753,16 +797,41 @@ spending produce measurable new knowledge?*
 
 ### C3. Inferential (Tier 3)
 
+- **Comparative federal research performance**
+  How does SBIR compare with mechanism-matched federal research programs on a
+  common outcome vector per lifecycle dollar?
+  The vector prioritizes operating firms, licensing, mission adoption, revenue,
+  productivity, private capital, and exits. Publications and patents remain
+  intermediate outputs. NIH SBIR versus R01 and NASA SBIR versus other external
+  research are the first planned studies. Performer type, research stage, award
+  architecture, and selection prevent a causal ranking without stronger design.
+  **Status:** Exploratory and non-citable. Four manifests and a shared contract
+  bundle define the work. No comparator cohort has been materialized.
+  *Deps: agency project data, ER, operating status, licensing, SEC EDGAR, M&A,
+  procurement, productivity · Spec: [../specs/sbir-roi-comparative-tests/](../specs/sbir-roi-comparative-tests/)
+  · Studies: [NIH](../studies/nih-sbir-vs-r01-outcomes/study.yaml),
+  [NASA](../studies/nasa-sbir-vs-external-rd/study.yaml)*
+
 - **Marginal cost per patent**
   What is the marginal cost per patent by agency (award dollars ÷ linked
   patents)?
   Compare against the NIH/NSF figures in NASEM reviews.
   *Deps: ER, PATLINK · Refs: [L3], [L4], [L6] · Spec: [../specs/patent-cost-spillover/](../specs/patent-cost-spillover/)*
 
-- **Spillover multiplier**
-  What is the spillover multiplier — non-SBIR patent citations to SBIR patents?
-  **Target:** reproduce Myers & Lanahan's ~3× for DOE, with ~60% U.S.-retained.
-  *Deps: PATLINK · Refs: [L9], [L5]*
+- **Citation-network diffusion**
+  How many inbound non-SBIR citations are observed per SBIR-linked patent? This is a descriptive
+  network measure, not the Myers-Lanahan spillover estimand, and it must not be compared with that
+  paper's ~3× or ~60% estimates.
+  *Deps: PATLINK · Spec: [../specs/patent-cost-spillover/](../specs/patent-cost-spillover/)*
+
+- **Myers-Lanahan DOE spillovers**
+  What spillover effect is identified from DOE funding, using the paper's state matching-policy
+  variation and technology-space similarity design?
+  **Target:** reproduce Myers & Lanahan's ~3× estimate and ~60% U.S.-retained result in roadmap
+  Order 7. This inferential replication has no implementation spec yet; a citable result needs a
+  spec at the `evidence` epistemic tier.
+  *Deps: full patent universe, DOE opportunity text, state policy data · Refs: [L9], [L5] · Plan:
+  [literature-replication-roadmap.md](research/literature-replication-roadmap.md#7-myers-lanahan-doe-spillovers)*
 
 - **Cost and spillover variation**
   How do patent cost and spillover vary by technology area, firm size, and award
@@ -781,7 +850,7 @@ spending produce measurable new knowledge?*
   success rates can offset any reduction in hours per proposal.
   **Status:** Partially computable for NIH SBIR Phase I versus R01-equivalent
   grants under the `allocation-transaction-costs` study (`reproducible`, not
-  validated, not citable), as a break-even condition over declared hour and
+  validated, not approved), as a break-even condition over declared hour and
   duration assumptions. Directional ranking is underidentified. Other
   agencies are inventory-only in this study.
   *Deps: none (published mechanism-year tables) · Refs: [L3], [L6], [L18],
@@ -790,16 +859,46 @@ spending produce measurable new knowledge?*
   · Study:
   [allocation-transaction-costs](../studies/allocation-transaction-costs/study.yaml)*
 
+- <a id="c4-sttr-award-timing-friction"></a>**STTR award-record timing and administrative friction**
+  Within observed agency × solicitation × phase × solicitation-year strata,
+  do awarded STTR records show different proposal-receipt-to-notification or
+  proposal-receipt-to-award intervals than awarded SBIR records, and where is
+  date coverage sufficient for that descriptive comparison?
+  Public award records omit unsuccessful applicants and do not expose a
+  consistent submission, review, revision, or selection clock. Shared
+  solicitation identifiers can also span different topics and review paths.
+  The comparison can map recorded timing and data readiness; it cannot measure
+  administrative burden, identify a causal STTR effect, or support a pooled
+  faster/slower claim. This is distinct from B3 Phase II→III latency after an
+  award ends.
+  **Status:** Exploratory and non-citable. The notebook uses only source-labeled
+  dates, keeps SBIR and STTR separate, and refuses administrative-friction
+  inference.
+  *Deps: none (SBIR.gov public award export) · Notebook:
+  [c4_sttr_award_timing_friction.ipynb](../notebooks/explorations/c4_sttr_award_timing_friction.ipynb)*
+
 ## D. Economic & fiscal impact
 
 *Audience: Treasury, OMB, JCT, state economic-development offices. What is the
 dollar return on the SBIR program?*
 
+<a id="d1-descriptive-tier-1"></a>
+
 ### D1. Descriptive (Tier 1)
 
-- **Award totals**
+- <a id="d1-award-totals"></a>**Award totals**
   What are award totals by state, agency, and phase?
-  *Deps: none · Refs: [L18]*
+  **Status:** A reproducible historical study that is not approved evidence records the first
+  structural check. A separate current-vintage comparison is Validated, not
+  approved evidence. A separate blinded-role implementation reproduced 1,264
+  of 1,264 operands with an exact complete-population point interval of
+  `[1.0, 1.0]`; this validates capture and transformation fidelity, not
+  agreement between sources. Neither study reproduces the unavailable
+  publication-era export.
+  *Deps: none · Refs: [L18] · Studies:
+  [historical work](../studies/sba-annual-report-tables/study.yaml),
+  [prospective structural comparison](../studies/sba-annual-report-structural-comparison/study.yaml),
+  [release page study](../studies/sba-annual-report-structural-comparison-release/study.yaml)*
 
 - **NAICS coverage and fallback usage**
   What is NAICS-sector coverage across awards, and how often is the fallback
@@ -841,6 +940,22 @@ dollar return on the SBIR program?*
   *Deps: fiscal model with state rates*
 
 ### D3. Uncertainty & reconciliation (Tier 3)
+
+- **Domestic social-return break-even**
+  What share of monetized awardee-linked benefits must SBIR cause for domestic
+  social benefits to equal taxpayer costs?
+  Calculate fiscal and domestic-social ledgers separately. Include opportunity
+  cost against the strongest feasible alternative federal mechanism. Treat
+  private capital and exits as validation signals. Convert revenue to
+  incremental value added or surplus before counting benefits.
+  **Status:** Exploratory and non-citable. The frozen design defines a break-even
+  threshold, not an estimated causal return. No benefit or cost cohort is materialized.
+  *Deps: B3, C3, F3, fiscal inputs, mission valuation, spillovers · Spec:
+  [../specs/sbir-roi-comparative-tests/](../specs/sbir-roi-comparative-tests/)
+  · Studies: [sbir-social-return-break-even](../studies/sbir-social-return-break-even/study.yaml),
+  [NIH](../studies/nih-sbir-vs-r01-outcomes/study.yaml),
+  [NASA](../studies/nasa-sbir-vs-external-rd/study.yaml)
+  — the two comparator studies supply the benefit vector this threshold divides.*
 
 - **Sensitivity of fiscal estimates**
   How robust are fiscal return estimates to parameter uncertainty (sensitivity
@@ -976,7 +1091,7 @@ non-destructively when a current A–D question needs them. The
   *Deps: IMP + transition detection*
 
 - **Raw vs. effective values downstream**
-  Which downstream consumers (Neo4j, CET, transition detection) should use raw
+  Which downstream consumers (governed tables, CET, transition detection) should use raw
   versus effective values?
   *Deps: IMP*
 
@@ -1164,6 +1279,20 @@ currently support a result, and it never identified who would have raised
 capital without an SBIR award. The Howell [L11] and Lerner [L10] questions
 remain outside that design.
 
+#### Marginal-award capital effect
+
+- **Capital raised because of the award**
+  For applicants near a selection boundary, how much follow-on private capital
+  is raised because of the award rather than alongside it?
+  This is the identification the retired leverage ratio never had: a ratio
+  describes disclosed capital, while a boundary comparison can attribute it.
+  **Status:** Exploratory and non-citable. Blocked on the same missing agency
+  scores and cutoff rules as the B3 entry. Private capital is a validation
+  signal, not a taxpayer benefit by itself.
+  *Deps: agency application scores and cutoffs, SEC EDGAR, ER, ID · Refs: [L10], [L11]
+  · Spec: [../specs/sbir-roi-comparative-tests/](../specs/sbir-roi-comparative-tests/)
+  · Study: [sbir-marginal-award-identification](../studies/sbir-marginal-award-identification/study.yaml)*
+
 #### Disclosed Form D leverage
 
 - <a id="f3-form-d-leverage"></a>**Private-to-SBIR leverage ratio**
@@ -1251,7 +1380,7 @@ M&A). Classified-work exposure remains a manual political-sensitivity vetting
 factor, not an automated pipeline screen — there is no vulnerability signal for
 it.
 
-### Allocation transaction costs (reproducible study, not citable)
+### Allocation transaction costs (reproducible study, not approved)
 
 **Audience:** OSTP, agency R&D directors, SBIR program managers, GAO/OMB staff
 comparing SBIR to conventional research grants.
@@ -1260,7 +1389,7 @@ comparing SBIR to conventional research grants.
 
 - `docs/research/allocation-transaction-costs.md` — findings record.
 - [`studies/allocation-transaction-costs/study.yaml`](../studies/allocation-transaction-costs/study.yaml)
-  — study contract (`reproducible`, not citable).
+  — study contract (`reproducible`, not approved).
 - [`specs/allocation-transaction-costs/`](../specs/allocation-transaction-costs/)
   — exploratory spec.
 
@@ -1296,7 +1425,7 @@ and SBIR.gov FABS grants), and per-firm audit protocol.
 
 The methodology document refers to an audit harness and FY2026 cohort that are
 not committed and therefore cannot be independently reviewed or reproduced.
-Its numerical results are historical context, not citable repository outputs.
+Its numerical results are historical context, not approved repository evidence.
 The maintained counterpart is `scripts/run_benchmark.py` plus
 `sbir_etl/models/benchmark_models.py`, which implements the same statutory
 framework through a different CLI shape.

@@ -94,7 +94,7 @@ def _apply_env_overrides(config_dict: dict[str, Any], prefix: str = "SBIR_ETL") 
     """Apply environment variable overrides to configuration dictionary.
 
     Example:
-      SBIR_ETL__NEO4J__URI=bolt://... -> config_dict["neo4j"]["uri"] = "bolt://..."
+      SBIR_ETL__LOGGING__LEVEL=DEBUG -> config_dict["logging"]["level"] = "DEBUG"
     """
     result = config_dict.copy()
 
@@ -182,16 +182,13 @@ def get_config(
     Responsibility:
     - Load merged file config via `load_config_from_files`
     - Apply environment variable overrides (if requested)
-    - Map legacy keys (e.g., `loading.neo4j`) into expected top-level keys
-    - Inject runtime defaults (neo4j URI defaults, logging flags, monitoring)
+    - Inject runtime defaults for logging and monitoring
     - Validate and return a PipelineConfig instance
     """
     try:
         # Resolve the requested name once, then use its normalized profile for
         # both file selection and environment-dependent runtime defaults.
         environment = _selected_environment(environment)
-        environment_profile = _normalize_environment_profile(environment)
-
         # Load merged files
         config_dict = load_config_from_files(
             base_path=Path.cwd(), environment=environment, config_dir=config_dir
@@ -199,37 +196,6 @@ def get_config(
         config_dict.setdefault("pipeline", {})["environment"] = _canonical_environment_name(
             environment
         )
-
-        # Backwards-compatibility: if config uses `loading: { neo4j: ... }` map it
-        # to top-level `neo4j` but do not otherwise alter non-neo4j keys here.
-        if isinstance(config_dict.get("loading"), dict) and "neo4j" in config_dict.get(
-            "loading", {}
-        ):
-            loading = config_dict.get("loading", {}) or {}
-            neo_from_loading = loading.get("neo4j", {})
-            existing_neo = config_dict.get("neo4j", {}) or {}
-            config_dict["neo4j"] = _deep_merge_dicts(existing_neo, neo_from_loading)
-
-        # Ensure top-level neo4j dict exists and set sensible runtime defaults.
-        config_dict.setdefault("neo4j", {})
-        neo = config_dict["neo4j"]
-
-        # Prioritize explicit environment variable NE04J_URI; else choose default by env
-        explicit_uri = os.getenv("NEO4J_URI")
-        if explicit_uri:
-            default_uri = explicit_uri
-        else:
-            if environment_profile == "prod":
-                default_uri = "bolt://prod-neo4j:7687"
-            else:
-                default_uri = "bolt://localhost:7687"
-
-        neo.setdefault("uri", default_uri)
-        neo.setdefault("username", os.getenv("NEO4J_USER", "neo4j"))
-        neo.setdefault("password", os.getenv("NEO4J_PASSWORD", "neo4j"))
-        neo.setdefault("database", os.getenv("NEO4J_DATABASE", "neo4j"))
-        neo.setdefault("batch_size", neo.get("batch_size", 1000))
-        neo.setdefault("parallel_threads", neo.get("parallel_threads", 4))
 
         # Logging defaults
         config_dict.setdefault("logging", {})

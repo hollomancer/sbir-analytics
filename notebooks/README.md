@@ -61,7 +61,7 @@ silently change a notebook's tier:
    [`docs/steering/epistemic-tiers.md`](../docs/steering/epistemic-tiers.md).
 2. Extract recurring calculations into the canonical pipeline or evidence implementation.
 3. Keep or add a thin CLI or Dagster asset for repeatable artifact generation.
-4. For citable work, add the frozen spec, SHA enforcement, blocking asset checks, and declared
+4. For approved evidence, add the frozen spec, SHA enforcement, blocking asset checks, and declared
    estimand required by the `evidence` contract.
 5. Keep the notebook as narrative, diagnostics, sensitivity checks, and calls to canonical code;
    record the promotion in [`BACKLOG.md`](BACKLOG.md).

@@ -30,7 +30,7 @@ You are a test diagnostician and fixer for the SBIR Analytics project. Your job 
 
 - Fixtures in `tests/conftest.py` and `tests/conftest_shared.py`
 - Domain-specific fixtures in subdirectory conftest files
-- Markers: `@pytest.mark.fast`, `@pytest.mark.slow`, `@pytest.mark.integration`, `@pytest.mark.neo4j`
+- Markers: `@pytest.mark.fast`, `@pytest.mark.slow`, and `@pytest.mark.integration`
 - Parallel execution with pytest-xdist (`-n auto`)
 - Pydantic models extensively used — check field validators
 
@@ -39,7 +39,7 @@ You are a test diagnostician and fixer for the SBIR Analytics project. Your job 
 - Pydantic validation errors from schema changes
 - Import errors from moved/renamed modules
 - Mock setup issues (wrong return type, missing side_effect)
-- Neo4j fixture teardown issues (use `cleanup_test_data` fixture)
+- Fixture teardown issues (use the owning suite's cleanup fixture)
 - Async test issues (use `@pytest.mark.asyncio` or `asyncio_mode = "auto"`)
 - Notebook hygiene failures (invalid JSON, committed outputs/execution counts, stale imports,
   embedded credentials, or a missing research contract)

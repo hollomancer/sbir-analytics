@@ -13,7 +13,7 @@ and a successful Dagster materialization using generated sample data.
 - Python 3.11 or 3.12
 - [`uv`](https://docs.astral.sh/uv/getting-started/installation/)
 - `make`
-- Docker with Compose V2 if you want Neo4j or the containerized stack
+- Docker with Compose V2 if you want the containerized stack
 
 ## Local Python Quick Start
 
@@ -23,7 +23,7 @@ From a fresh clone:
 git clone https://github.com/hollomancer/sbir-analytics.git
 cd sbir-analytics
 
-# Install the ETL library, Dagster application, graph and ML packages, and dev tools.
+# Install the ETL library, Dagster application, ML package, and dev tools.
 make install
 
 # Create and verify local configuration.
@@ -43,28 +43,12 @@ make dev
 
 In the Dagster UI, materialize `raw_sbir_awards`. A successful sample run reads
 10 awards from `data/raw/sbir/award_data.csv` and reports them in the asset
-materialization metadata. This asset does not require Neo4j.
+materialization metadata.
 
 `make install` is equivalent to `uv sync --extra stack-dev`. Consumers who only
 need the reusable `sbir_etl` library can use `make install-core` instead.
 
-## Neo4j
-
-Start only Neo4j while running Dagster locally on the host:
-
-```bash
-make neo4j-up
-```
-
-- Browser: <http://localhost:7474>
-- Bolt: `bolt://localhost:7687`
-- Default local credentials: `neo4j` / `test`
-
-The checked-in `.env.example` uses host-local addresses. Docker Compose
-overrides those addresses inside containers so services connect to the `neo4j`
-service hostname.
-
-To run the complete development stack in containers instead:
+To run the development stack in containers:
 
 ```bash
 make docker-check-prerequisites
@@ -108,9 +92,6 @@ and [data documentation](../data/README.md) before running larger materializatio
   excludes Python 3.13.
 - **`raw_sbir_awards` cannot find its CSV:** run `make sample-data` and confirm
   `data/raw/sbir/award_data.csv` exists.
-- **Neo4j connection fails from host Python:** use `bolt://localhost:7687`.
-- **Neo4j connection fails in Compose:** inspect `make docker-logs SERVICE=neo4j`;
-  containers use `bolt://neo4j:7687` automatically.
 - **Memory pressure:** reduce `SBIR_ETL__ENRICHMENT__PERFORMANCE__CHUNK_SIZE` and
   confirm the setting in the [configuration reference](../configuration.md).
 

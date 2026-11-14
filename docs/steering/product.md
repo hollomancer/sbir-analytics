@@ -27,7 +27,7 @@ those change with data cuts and belong in the question inventory and study manif
 
 1. Build from a research question backward to the minimum data and machinery needed.
 2. Preserve source provenance, entity-resolution evidence, and uncertainty.
-3. Separate what is computable from what is validated and externally citable.
+3. Separate what is computable from what is validated and approved evidence.
 4. Prefer reproducible datasets and study contracts over one-off dashboards or claims.
 5. Treat missing public signals as measurement limits, not proof that an outcome did not occur.
 

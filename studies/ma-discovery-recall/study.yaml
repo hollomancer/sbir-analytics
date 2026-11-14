@@ -58,7 +58,7 @@ identity_policy:
 materialization:
   allowed: false
   blockers:
-    - Discovery output is not wired into capital_events or Neo4j
+    - Discovery output is not wired into capital_events or any service database
     - >-
       Preregistered validation design did not pass: 200-pair recall 9<10;
       500-pair enlarge and cost restatement were post-hoc (evidence-auditor

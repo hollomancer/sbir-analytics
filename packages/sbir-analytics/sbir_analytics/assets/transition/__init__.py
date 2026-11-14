@@ -16,7 +16,6 @@ Module Structure:
 - detections: High-confidence transition flagging
 - analytics: Transition analytics and insights
 - checks: Quality checks for all transition assets
-- loading: Neo4j graph database loading
 
 Pipeline Stages:
 1. Contracts: Load and sample federal contracts
@@ -25,7 +24,6 @@ Pipeline Stages:
 4. Evidence: Extract structured evidence
 5. Detections: Flag high-confidence transitions
 6. Analytics: Compute insights and metrics
-7. Loading: Load into Neo4j graph database
 
 Exported Assets:
 - raw_contracts, validated_contracts_sample
@@ -34,7 +32,6 @@ Exported Assets:
 - transformed_transition_evidence
 - transformed_transition_detections
 - transformed_transition_analytics
-- loaded_transitions, loaded_transition_relationships, loaded_transition_profiles
 """
 
 from __future__ import annotations
@@ -60,15 +57,6 @@ from .detections import transformed_transition_detections
 
 # Evidence module
 from .evidence import transformed_transition_evidence
-
-# Loading module
-from .loading import (
-    loaded_transition_profiles,
-    loaded_transition_relationships,
-    loaded_transitions,
-    transition_node_count_check,
-    transition_relationships_check,
-)
 
 # OT consortium verification tiering
 from .ot_tiering import (
@@ -121,12 +109,6 @@ __all__ = [
     "transition_evidence_quality_check",
     "transition_detections_quality_check",
     "transition_analytics_quality_check",
-    # Loading
-    "loaded_transitions",
-    "loaded_transition_relationships",
-    "loaded_transition_profiles",
-    "transition_node_count_check",
-    "transition_relationships_check",
     # Utility functions
     "asset",
     "asset_check",

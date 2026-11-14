@@ -36,81 +36,6 @@ costs far more than the 0.2s rebuild, and `uv sync` had to run afterwards
 regardless. There is also no separate pyreadstat install — `uv sync --extra
 stack-dev` already resolves it through the `uspto` extra.
 
----
-
-### `start-neo4j`
-
-Starts a Neo4j Docker container and waits for it to be ready.
-
-**Usage:**
-
-```yaml
-- name: Start Neo4j
-  uses: ./.github/actions/start-neo4j
-  with:
-    container-name: "test-neo4j"    # Optional, default: "test-neo4j"
-    neo4j-image: "neo4j:5"          # Optional, default: "neo4j:5"
-    neo4j-user: "neo4j"             # Optional, default: "neo4j"
-    neo4j-password: "password"      # Optional, default: "password"  # pragma: allowlist secret
-    timeout: "60"                   # Optional, default: "60"
-```
-
-**Outputs:**
-
-- `neo4j-uri`: Neo4j bolt URI (bolt://localhost:7687)
-
-**Features:**
-
-- Starts Neo4j container with specified credentials
-- Waits for Neo4j to be ready using TCP health check (via `wait-for-neo4j`)
-- Sets NEO4J_URI, NEO4J_USER, NEO4J_PASSWORD environment variables
-
-**Note:** Use `stop-neo4j` action for cleanup (see below).
-
----
-
-### `stop-neo4j`
-
-Stops and removes a Neo4j Docker container.
-
-**Usage:**
-
-```yaml
-- name: Stop Neo4j
-  if: always()
-  uses: ./.github/actions/stop-neo4j
-  with:
-    container-name: "test-neo4j"    # Optional, default: "test-neo4j"
-```
-
----
-
-### `wait-for-neo4j`
-
-Waits for a Neo4j container to be ready. Called by `start-neo4j`; use it
-directly only when starting Neo4j some other way.
-
-**Usage:**
-
-```yaml
-- name: Wait for Neo4j
-  uses: ./.github/actions/wait-for-neo4j
-  with:
-    method: "tcp"                   # Optional, default: "http"
-    uri: "http://localhost:7474"    # Optional (for http method)
-    port: "7687"                    # Optional (for tcp method), default: "7687"
-    timeout: "120"                  # Optional, default: "120"
-    check-interval: "5"             # Optional, default: "5"
-```
-
-**Features:**
-
-- Supports HTTP and TCP health checks
-- Automatic retry with configurable timeout
-- Installs netcat for TCP checks if needed
-
----
-
 ## Best Practices
 
 1. **Use composite actions for repeated patterns** - If you find yourself copying the same steps across workflows, create a composite action.
@@ -144,5 +69,4 @@ directly only when starting Neo4j some other way.
 
 ## Examples
 
-`ci.yml` uses `setup-python-uv` in every job, and `start-neo4j` / `stop-neo4j`
-around the full test run on `main`.
+`ci.yml` uses `setup-python-uv` in every Python job.

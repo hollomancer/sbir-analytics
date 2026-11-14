@@ -416,24 +416,6 @@ class ModernBertTextConfig(BaseModel):
     )
 
 
-class ModernBertNeo4jConfig(BaseModel):
-    """Configuration for loading ModernBert similarity edges into Neo4j.
-
-    Validates the pre-authored config/base.yaml block ahead of the
-    (Award)-[:SIMILAR_TO]->(Patent) loading asset landing (specs/modernbert-analysis-layer,
-    task 2.1) — currently inert since nothing reads it yet.
-    """
-
-    enabled: bool = Field(
-        default=False, description="Enable (Award)-[:SIMILAR_TO]->(Patent) edge loading"
-    )
-    batch_size: int = Field(default=1000, ge=1, description="Batch size for Neo4j MERGE operations")
-    dry_run: bool = Field(default=False, description="Validate without committing changes")
-    prune_previous: bool = Field(
-        default=False, description="Remove previous SIMILAR_TO edges before loading"
-    )
-
-
 class ModernBertConfig(BaseModel):
     """Configuration for ModernBert patent-award similarity embeddings."""
 
@@ -445,8 +427,6 @@ class ModernBertConfig(BaseModel):
     api: ModernBertApiConfig = Field(default_factory=ModernBertApiConfig)
     local: ModernBertLocalConfig = Field(default_factory=ModernBertLocalConfig)
     text: ModernBertTextConfig = Field(default_factory=ModernBertTextConfig)
-    neo4j: ModernBertNeo4jConfig = Field(default_factory=ModernBertNeo4jConfig)
-
     similarity_threshold: float = Field(
         default=0.80,
         ge=0.0,
@@ -476,139 +456,6 @@ class MLConfig(BaseModel):
         default_factory=ModernBertConfig,
         description="ModernBert patent-award similarity configuration",
     )
-
-
-# ---------------------------------------------------------------------------
-# Reporting schemas
-# ---------------------------------------------------------------------------
-
-
-class StatisticalReportingConfig(BaseModel):
-    """Configuration for statistical reporting and automated insights."""
-
-    enabled: bool = True
-    output_directory: str = Field(default="reports/statistics")
-    report_types: list[str] = Field(
-        default_factory=lambda: [
-            "data_quality",
-            "enrichment_performance",
-            "pipeline_performance",
-            "anomaly_detection",
-            "success_metrics",
-        ]
-    )
-    schedules: dict[str, Any] = Field(
-        default_factory=lambda: {
-            "daily": {"enabled": True, "hour": 2, "minute": 0, "include_summary": True},
-            "weekly": {
-                "enabled": True,
-                "weekday": "monday",
-                "hour": 6,
-                "minute": 0,
-                "include_trends": True,
-            },
-        }
-    )
-    distribution: dict[str, Any] = Field(
-        default_factory=lambda: {
-            "email": {
-                "enabled": True,
-                "recipients": ["analytics_team@example.com"],
-                "attach_reports": True,
-            },
-            "slack": {
-                "enabled": True,
-                "channel": "#analytics-updates",
-                "include_summary": True,
-            },
-        }
-    )
-    sections: dict[str, Any] = Field(
-        default_factory=lambda: {
-            "pipeline_health": {
-                "enabled": True,
-                "include_validation_details": True,
-                "include_loading_statistics": True,
-            },
-            "cet_classification": {
-                "enabled": True,
-                "include_confidence_distribution": True,
-                "include_taxonomy_breakdown": True,
-            },
-            "transition_detection": {
-                "enabled": True,
-                "include_success_stories": True,
-                "include_trend_analysis": True,
-            },
-        }
-    )
-    insights: dict[str, Any] = Field(
-        default_factory=lambda: {
-            "anomaly_detection": {"enabled": True, "sensitivity": "medium", "lookback_periods": 5},
-            "recommendations": {"enabled": True, "include_actionable_steps": True},
-            "success_stories": {"enabled": True, "min_impact_threshold": 0.8},
-        }
-    )
-    formats: dict[str, Any] = Field(
-        default_factory=lambda: {
-            "html": {
-                "include_interactive_charts": True,
-                "chart_library": "plotly",
-                "theme": "default",
-            },
-            "json": {"include_raw_data": False, "pretty_print": True},
-            "markdown": {"max_length": 2000, "include_links": True},
-            "executive": {
-                "include_visualizations": True,
-                "focus_areas": ["impact", "quality", "trends"],
-            },
-        }
-    )
-    cicd: dict[str, Any] = Field(
-        default_factory=lambda: {
-            "github_actions": {
-                "enabled": True,
-                "upload_artifacts": True,
-                "post_pr_comments": True,
-                "artifact_retention_days": 30,
-            },
-            "report_comparison": {
-                "enabled": True,
-                "baseline_comparison": True,
-                "trend_analysis_periods": [7, 30, 90],
-            },
-        }
-    )
-    quality_thresholds: dict[str, Any] = Field(
-        default_factory=lambda: {
-            "data_completeness_warning": 0.90,
-            "data_completeness_error": 0.80,
-            "enrichment_success_warning": 0.85,
-            "enrichment_success_error": 0.70,
-            "performance_degradation_warning": 1.5,
-            "performance_degradation_error": 2.0,
-        }
-    )
-
-    @field_validator("quality_thresholds")
-    @classmethod
-    def validate_quality_thresholds(cls, value: Mapping[str, Any]) -> dict[str, float]:
-        if not isinstance(value, Mapping):
-            raise TypeError("Expected a mapping for quality thresholds")
-        normalized: dict[str, float] = {}
-        for key, raw in value.items():
-            try:
-                number = float(raw)
-            except (TypeError, ValueError) as exc:
-                raise ValueError(f"{key} must be a number, got {raw!r}") from exc
-            if "warning" in key or "error" in key:
-                if key.startswith(("data_completeness", "enrichment_success")):
-                    if not (0.0 <= number <= 1.0):
-                        raise ValueError(f"{key} must be between 0.0 and 1.0, got {number}")
-                elif key.startswith("performance_degradation") and number < 1.0:
-                    raise ValueError(f"{key} must be >= 1.0 (1.0 = no degradation), got {number}")
-            normalized[key] = number
-        return normalized
 
 
 MA_DISCOVERY_SEARCH_BACKENDS = frozenset({"none", "mock", "snippets", "tavily", "brave"})
@@ -704,10 +551,8 @@ __all__ = [
     "ModernBertApiConfig",
     "ModernBertConfig",
     "ModernBertLocalConfig",
-    "ModernBertNeo4jConfig",
     "ModernBertTextConfig",
     "OTConsortiumConfig",
     "SensitivityConfig",
-    "StatisticalReportingConfig",
     "TaxParameterConfig",
 ]

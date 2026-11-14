@@ -4,37 +4,24 @@ This module contains fixtures for specific domains that require explicit imports
 Import these in subdirectory conftest.py files as needed:
 
     from tests.conftest_shared import (
-        neo4j_config, neo4j_client, neo4j_helper,
         sample_sbir_df, sample_recipient_df,
         sample_award, sample_contract,
         default_config, default_transition_config,
     )
 
 Fixture Categories:
-- Neo4j: neo4j_config, neo4j_client, neo4j_helper
-- Mocks: mock_driver, mock_session, mock_transaction
-- Enrichment: mock_enrichment_config, sample_sbir_df, sample_recipient_df
+- Enrichment: sample_sbir_df, sample_recipient_df
 - Transition: default_transition_config, sample_award, sample_contract, mock_scorer
 - DataFrame Builders: builder_awards_df, builder_contracts_df, builder_companies_df
 """
 
-import os
 from datetime import date, datetime
 from unittest.mock import Mock
 
 import pandas as pd
 import pytest
 
-# Neo4j fixtures (optional - skip if neo4j not installed)
-try:
-    from sbir_graph.loaders.neo4j.client import LoadMetrics, Neo4jClient, Neo4jConfig
-except ImportError:
-    LoadMetrics = None  # type: ignore[assignment, misc]
-    Neo4jClient = None  # type: ignore[assignment, misc]
-    Neo4jConfig = None  # type: ignore[assignment, misc]
 from tests.factories import DataFrameBuilder
-from tests.mocks import Neo4jMocks
-from tests.utils.config_mocks import create_mock_neo4j_config
 from tests.utils.fixtures import (
     create_sample_award_dict,
     create_sample_sbir_data,
@@ -43,116 +30,8 @@ from tests.utils.fixtures import (
 
 
 # ============================================================================
-# Neo4j Fixtures
-# ============================================================================
-
-
-@pytest.fixture(scope="module")
-def neo4j_config():
-    """Create Neo4j configuration for testing."""
-    config = create_mock_neo4j_config(
-        uri=os.getenv("NEO4J_URI", "bolt://localhost:7687"),
-        username=os.getenv("NEO4J_USERNAME", "neo4j"),
-        password=os.getenv("NEO4J_PASSWORD", "password"),
-        database=os.getenv("NEO4J_DATABASE", "neo4j"),
-    )
-    # Don't eagerly connect/migrate on construction: it breaks the lazy-init
-    # contract (test_create_client) and adds auth attempts that can trip Neo4j's
-    # auth rate limiter during startup.
-    config["auto_migrate"] = False
-    return Neo4jConfig(**config)
-
-
-@pytest.fixture(scope="module")
-def neo4j_client(neo4j_config):
-    """Create Neo4j client for testing."""
-    client = Neo4jClient(neo4j_config)
-    yield client
-    client.close()
-
-
-class Neo4jTestHelper:
-    """Helper class for Neo4j integration tests."""
-
-    def __init__(self, client: Neo4jClient):
-        self.client = client
-
-    def create_company(self, uei: str, name: str = "Test Company", **kwargs):
-        """Create a TestCompany node."""
-        props = {"uei": uei, "name": name, **kwargs}
-        query = "CREATE (c:TestCompany $props)"
-        with self.client.session() as session:
-            session.run(query, props=props)
-
-    def create_award(self, award_id: str, **kwargs):
-        """Create a TestAward node."""
-        props = {"award_id": award_id, **kwargs}
-        query = "CREATE (a:TestAward $props)"
-        with self.client.session() as session:
-            session.run(query, props=props)
-
-    def create_relationship(
-        self,
-        source_label: str,
-        source_key: str,
-        source_val: str,
-        target_label: str,
-        target_key: str,
-        target_val: str,
-        rel_type: str,
-        props: dict | None = None,
-    ):
-        """Create a relationship between two nodes."""
-        props = props or {}
-        query = f"""
-        MATCH (s:{source_label} {{{source_key}: $source_val}})
-        MATCH (t:{target_label} {{{target_key}: $target_val}})
-        CREATE (s)-[r:{rel_type} $props]->(t)
-        RETURN r
-        """
-        with self.client.session() as session:
-            session.run(
-                query,
-                source_val=source_val,
-                target_val=target_val,
-                props=props,
-            )
-
-
-@pytest.fixture
-def neo4j_helper(neo4j_client):
-    """Fixture providing Neo4jTestHelper."""
-    return Neo4jTestHelper(neo4j_client)
-
-
-@pytest.fixture
-def mock_driver():
-    """Mock Neo4j driver."""
-    return Neo4jMocks.driver()
-
-
-@pytest.fixture
-def mock_session():
-    """Mock Neo4j session."""
-    return Neo4jMocks.session()
-
-
-@pytest.fixture
-def mock_transaction():
-    """Mock Neo4j transaction."""
-    return Neo4jMocks.transaction()
-
-
-# ============================================================================
 # Enrichment Fixtures
 # ============================================================================
-
-
-@pytest.fixture
-def mock_enrichment_config():
-    """Mock enrichment configuration for testing."""
-    config = create_mock_neo4j_config()  # placeholder, adjust as needed
-    return config
 
 
 @pytest.fixture

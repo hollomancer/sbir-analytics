@@ -15,13 +15,13 @@ repos:
     rev: v0.14.4
     hooks:
       - id: ruff
-        files: ^(sbir_etl|packages/sbir-(analytics/sbir_analytics|ml/sbir_ml|graph/sbir_graph)|tests)/
+        files: ^(sbir_etl|packages/sbir-(analytics/sbir_analytics|ml/sbir_ml)|tests)/
         args: [--fix, --exit-non-zero-on-fix]
       - id: ruff-format
-        files: ^(sbir_etl|packages/sbir-(analytics/sbir_analytics|ml/sbir_ml|graph/sbir_graph)|tests)/
+        files: ^(sbir_etl|packages/sbir-(analytics/sbir_analytics|ml/sbir_ml)|tests)/
 
   # Type checking (local subset of the blocking CI scope: sbir_etl only)
-  # CI equivalent: mypy sbir_etl packages/sbir-graph/sbir_graph packages/sbir-ml/sbir_ml
+  # CI equivalent: mypy sbir_etl packages/sbir-ml/sbir_ml
   # The files filter keeps the local hook narrower than CI by design.
   - repo: https://github.com/pre-commit/mirrors-mypy
     rev: v1.18.2
@@ -67,7 +67,7 @@ repos:
 #
 #   Tool Scope Mapping:
 #   - Ruff (lint/format): production package roots + tests  [CI: whole repo]
-#   - MyPy (type check):  sbir_etl/      [CI also checks sbir-graph, sbir-ml]
+#   - MyPy (type check):  sbir_etl/      [CI also checks sbir-ml]
 #   - Bandit (security):  no local hook  [CI checks sbir_etl/ and packages/]
 #   - Standard hooks:     all files       [good practice, not in CI]
 #   - Detect-secrets:     no local hook  [CI scans the working tree against the baseline]

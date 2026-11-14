@@ -6,8 +6,8 @@
 > embedding similarity is unvalidated model inference, matching the
 > modules' own exploratory labels; promotion returns via a study contract
 > if a question needs citable similarity results. Core ModernBert client, embedding assets,
-> similarity output, config, and client-level tests exist. Neo4j `SIMILAR_TO`
-> loading, quality/cohesion metrics, fuller asset checks, and Dagster integration
+> similarity output, config, and client-level tests exist. Quality/cohesion
+> metrics, fuller asset checks, and Dagster integration
 > tests remain open. Requirements 5–7 (Bayesian MoE routing) are deferred pending
 > explicit scope review.
 > Supports inventory question **C2** (patent–award semantic similarity) in [docs/research-questions.md](../../docs/research-questions.md).
@@ -20,7 +20,7 @@
 
 ## Done when
 
-> A pipeline engineer can state: "Querying `SIMILAR_TO` edges in Neo4j returns the top-N SBIR awards most semantically similar to a given patent. Embedding coverage is ≥95% for awards and ≥98% for patents. The CET cohesion check passes. Requirements 5–7 (Bayesian MoE routing) are deferred pending scope review."
+> A pipeline engineer can state: "The governed similarity table returns the top-N SBIR awards most semantically similar to a given patent. Embedding coverage is ≥95% for awards and ≥98% for patents. The CET cohesion check passes. Requirements 5–7 (Bayesian MoE routing) are deferred pending scope review."
 
 ---
 
@@ -84,18 +84,6 @@ classifier-calibration for this layer — not the steering enrichment bands
 3. THE system SHALL implement Quality_Gates that block downstream processing when validation fails
 4. THE system SHALL generate performance baselines and alert on significant drift in embedding quality
 5. THE system SHALL provide detailed error reporting and recovery guidance when validation thresholds are not met
-
-### Requirement 4
-
-**User Story:** As a defense industrial base analyst, I want semantic similarity relationships loaded into Neo4j, so that I can query award-patent connections alongside transition and CET graph data to surface technology transfer signals.
-
-#### Acceptance Criteria
-
-1. WHERE Neo4j loading is enabled, THE system SHALL create SIMILAR_TO relationships between Award and Patent nodes
-2. THE system SHALL include similarity scores, ranking, and metadata on Neo4j_Similarity_Edge relationships
-3. THE system SHALL support incremental updates with options to prune previous relationships or mark current runs
-4. THE system SHALL validate that referenced Award and Patent nodes exist before creating relationships
-5. THE system SHALL provide dry-run capabilities for testing relationship creation without committing changes
 
 ### Requirement 5
 

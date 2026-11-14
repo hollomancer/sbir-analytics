@@ -9,7 +9,6 @@ This package provides:
 
 from .config_mocks import (
     create_mock_enrichment_refresh_config,
-    create_mock_neo4j_config,
     create_mock_pipeline_config,
     create_mock_usaspending_config,
 )
@@ -63,6 +62,5 @@ __all__ = [
     # Config mocks
     "create_mock_pipeline_config",
     "create_mock_usaspending_config",
-    "create_mock_neo4j_config",
     "create_mock_enrichment_refresh_config",
 ]

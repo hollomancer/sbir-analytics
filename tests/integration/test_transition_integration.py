@@ -6,7 +6,7 @@ with realistic data and verify that scoring behaves correctly across scenarios.
 Unlike unit tests that check individual signals, these validate the composite
 behavior: signal interactions, confidence classification, and ordering.
 
-No external services (Neo4j, APIs) required.
+No external services or APIs are required.
 """
 
 from __future__ import annotations
