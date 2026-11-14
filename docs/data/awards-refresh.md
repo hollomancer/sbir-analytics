@@ -73,9 +73,11 @@ python scripts/data/awards_refresh_validation.py \
   --previous-metadata reports/awards_data_refresh/latest.json
 ```
 
-The script streams the CSV, enforces the column schema, and writes JSON +
-Markdown summaries. Use `--allow-schema-drift` only when schema changes have
-been reviewed.
+The script streams the CSV, enforces the column schema and the `Phase` value
+vocabulary (see below), and writes JSON + Markdown summaries. Use
+`--allow-schema-drift` only when schema changes have been reviewed, and
+`--allow-unclassified-phase` only to inspect a vintage whose new `Phase`
+spelling has not been classified yet.
 
 ## Troubleshooting
 
@@ -87,11 +89,92 @@ been reviewed.
 | HTTP errors from SBIR.gov | Upstream outage | The script retries 3 times with exponential backoff; re-run later. |
 | Schema drift suspected | Upstream column changes | Run `awards_refresh_validation.py` against the new CSV; update `docs/data/sbir_awards_columns.json` if intended. |
 
+## `Phase` value vocabulary
+
+Schema drift is not only columns. The export's `Phase` **values** are a closed
+vocabulary that upstream can change without touching the 42-column header, so
+the column-level checks above will not catch it.
+
+| Literal `Phase` value | Counts as | Notes |
+|---|---|---|
+| `Phase I` | Phase I | |
+| `Phase II` | Phase II | |
+| `Phase III` | Phase III | Not observed in any export vintage to date |
+| `Phase II – Direct to Phase II` | **Phase II** | En dash (U+2013). Added in the 2026-10-21 vintage |
+
+A direct-to-Phase-II award **is a Phase II award for counting purposes**: it
+skips Phase I rather than being a different instrument, and SBA's published
+tables count it under Phase II.
+
+The vocabulary lives in `SBIR_PHASE_VOCABULARY` in
+`sbir_etl/models/sbir_phase.py` (primitives tier; re-exported by
+`sbir_etl/extractors/sbir_award_export.py`), with two rules over it:
+
+- `sbir_phase_for_counting()` — **use this for counting.** Applies the policy
+  above, so the direct-to-Phase-II label returns `"II"`.
+- `normalize_sbir_phase()` — exact-label reader; answers only what the source
+  field literally says, and returns `None` for the direct-to-Phase-II label.
+
+`unknown_sbir_phase_values()` reports labels that neither rule classifies.
+`awards_refresh_validation.py` exits non-zero on a non-empty result; other
+callers should do the same rather than treat an unclassified label as "no
+phase", because silently dropping or misfiling it moves award populations.
+
+The ingestion validator (`sbir_etl/validators/sbir_awards.py`), the award
+model, the Phase II mart, the agency private-capital cohort, and the DoD
+supply-chain baseline all read the vocabulary. The canonical source
+materializer (`phase_transition/sbir_gov_source.py`) keeps the exact-label
+rule on purpose: `Phase` is part of the `sbir-source-v2` key and the profile
+is immutable.
+
+### Released studies do not fold the new label
+
+The two released SBA structural-comparison studies pin the 2026-09-17 export
+and the exact bytes of their count producer. That vintage has no
+direct-to-Phase-II rows, so the released result is unaffected, and the
+producer is left byte-identical so the pinned reproduction still runs from the
+moving branch. A count on a later vintage is a successor study: a new manifest,
+a revised validation design (rule 10 would admit the direct-to-Phase-II label
+as Phase II), a re-pinned producer, and a replay against the new export.
+
+### The 2026-10-21 change
+
+Between the 2026-09-17 and 2026-10-21 vintages SBIR.gov relabelled 3,303 SBIR
+rows to `Phase II – Direct to Phase II`. These are **not new awards**: every one
+matches a row present in the previous vintage, matched on the award-grain key
+minus `Phase`. The composition matters if you build on it:
+
+- **3,302** were previously labelled `Phase II` — a label refinement. (3,293
+  matched on the full key; 9 matched on tracking number plus contract, with
+  only a changed `Company` string.)
+- **1** was previously labelled `Phase I` — a genuine phase correction, not a
+  refinement. Treat it separately from the other 3,302.
+
+The program totals agree to within that one row: 59,013 plain + 3,303
+relabelled = 62,316, the prior vintage's SBIR Phase II total, with the
+Phase I → Phase II correction accounting for the single-row residual against
+the 3,302 that moved out of plain `Phase II`.
+
+Two consequences worth remembering:
+
+- Any consumer filtering on the literal `"Phase II"` loses 3,303 SBIR Phase II
+  awards (5.30%) from this vintage onward.
+- `Phase` is a component of `SBIR_AWARD_KEY_FIELDS`, so each relabelled row
+  mints a new `sbir-source-v2` key and retires its old one. Across vintages
+  these awards appear as deletions plus insertions, not as editions of an
+  existing key — a cross-vintage key diff will not show them as relabels.
+
+When a refresh introduces an unseen `Phase` value, classify it in
+`SBIR_PHASE_VOCABULARY` and record it in the table above before counting
+anything from that vintage.
+
 ## Verify a refresh
 
 - Confirm `award_data.csv` and a new dated directory under `history/`, with
   matching sizes and a fresh `downloaded_at` in the sidecar.
 - Review the Dagster run logs for HTTP or transfer errors.
+- Check for unclassified `Phase` values (see above); a new spelling is a
+  vocabulary change that must be classified before any count is trusted.
 
 ## Related
 

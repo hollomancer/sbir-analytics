@@ -18,6 +18,7 @@ from dataclasses import dataclass
 
 import pandas as pd
 
+from sbir_etl.models.sbir_phase import sbir_phase_for_counting
 from sbir_etl.models.sbir_identification import SBIR_ASSISTANCE_LISTING_NUMBERS
 
 
@@ -59,18 +60,16 @@ def vintage_bucket(year: int, *, size: int = DEFAULT_VINTAGE_BUCKET_SIZE) -> str
 
 
 def _normalize_phase(value: object) -> str | None:
+    # Export spellings go through the shared counting rule; the digit forms
+    # below come from non-export cohort inputs and stay as a local fallback.
+    if (counted := sbir_phase_for_counting(value)) is not None:
+        return counted
     if value is None or (isinstance(value, float) and pd.isna(value)):
         return None
     s = str(value).strip().upper()
     if s.startswith("PHASE "):
         s = s[len("PHASE ") :].strip()
-    if s in {"I", "1"}:
-        return "I"
-    if s in {"II", "2"}:
-        return "II"
-    if s in {"III", "3"}:
-        return "III"
-    return None
+    return {"1": "I", "2": "II", "3": "III"}.get(s)
 
 
 def _first_nonempty(row: pd.Series, *keys: str) -> object | None:

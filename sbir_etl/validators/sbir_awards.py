@@ -10,6 +10,7 @@ from typing import Any
 import pandas as pd
 from loguru import logger
 
+from ..models.sbir_phase import SBIR_PHASE_VOCABULARY
 from ..identity.geography import VALID_US_JURISDICTION_CODES_V1
 from ..models.quality import QualityIssue, QualitySeverity
 
@@ -56,11 +57,13 @@ def validate_phase(phase: Any, row_index: int) -> QualityIssue | None:
             row_index=row_index,
         )
 
-    if phase not in ["Phase I", "Phase II", "Phase III"]:
+    # Exact source spellings only; the classified vocabulary is the closed set.
+    if phase not in SBIR_PHASE_VOCABULARY:
+        allowed = ", ".join(f"'{label}'" for label in SBIR_PHASE_VOCABULARY)
         return QualityIssue(
             severity=QualitySeverity.ERROR,
             field="Phase",
-            message=f"Invalid phase '{phase}'. Must be 'Phase I', 'Phase II', or 'Phase III'",
+            message=f"Invalid phase '{phase}'. Must be one of: {allowed}",
             row_index=row_index,
         )
     return None
@@ -338,8 +341,8 @@ def validate_phase_program_consistency(
         return None  # type: ignore[unreachable]
 
     valid_phases = {
-        "SBIR": ["Phase I", "Phase II", "Phase III"],
-        "STTR": ["Phase I", "Phase II", "Phase III"],
+        "SBIR": list(SBIR_PHASE_VOCABULARY),
+        "STTR": list(SBIR_PHASE_VOCABULARY),
     }
 
     if phase not in valid_phases.get(program.upper(), []):
