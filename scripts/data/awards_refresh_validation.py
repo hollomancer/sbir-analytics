@@ -13,6 +13,7 @@ from pathlib import Path
 from typing import Any
 from collections.abc import Iterable, Sequence
 
+from sbir_etl.models.sbir_phase import unknown_sbir_phase_values
 from sbir_etl.utils.reporting import render_metric_table, write_gha_outputs
 
 
@@ -48,6 +49,14 @@ def parse_args() -> argparse.Namespace:
         "--allow-schema-drift",
         action="store_true",
         help="Warn instead of exiting when the header does not match the expected schema.",
+    )
+    parser.add_argument(
+        "--allow-unclassified-phase",
+        action="store_true",
+        help=(
+            "Warn instead of exiting when a Phase value is outside the classified "
+            "vocabulary in sbir_etl.models.sbir_phase.SBIR_PHASE_VOCABULARY."
+        ),
     )
     parser.add_argument(
         "--gha-output",
@@ -104,15 +113,23 @@ def validate_header(header: Sequence[str], expected: Sequence[str]) -> dict[str,
     }
 
 
-def count_rows(csv_path: Path) -> tuple[int, list[str]]:
+def count_rows(csv_path: Path) -> tuple[int, list[str], list[str]]:
+    """Return the data row count, the header, and the distinct ``Phase`` values."""
+
     with csv_path.open("r", encoding="utf-8", newline="") as fp:
         reader = csv.reader(fp)
         try:
             header = next(reader)
         except StopIteration:
             raise ValueError(f"{csv_path} is empty.")
-        row_count = sum(1 for _ in reader)
-    return row_count, header
+        phase_index = header.index("Phase") if "Phase" in header else None
+        phase_values: set[str] = set()
+        row_count = 0
+        for row in reader:
+            row_count += 1
+            if phase_index is not None and phase_index < len(row):
+                phase_values.add(row[phase_index])
+    return row_count, header, sorted(phase_values)
 
 
 def render_summary_markdown(metadata: dict[str, Any], warnings: Iterable[str]) -> str:
@@ -161,12 +178,20 @@ def main() -> int:
     metadata_dir.mkdir(parents=True, exist_ok=True)
     expected_columns = load_schema(args.schema_path)
 
-    row_count, header = count_rows(csv_path)
+    row_count, header, phase_values = count_rows(csv_path)
     schema_report = validate_header(header, expected_columns)
     if not schema_report["matches_expected"] and not args.allow_schema_drift:
         raise SystemExit(
             "Schema drift detected. Use --allow-schema-drift to continue. "
             f"Missing: {schema_report['missing_columns']} Extra: {schema_report['extra_columns']}"
+        )
+    unclassified_phases = unknown_sbir_phase_values(phase_values)
+    if unclassified_phases and not args.allow_unclassified_phase:
+        raise SystemExit(
+            "Unclassified Phase values detected: "
+            f"{unclassified_phases}. Classify them in "
+            "sbir_etl.models.sbir_phase.SBIR_PHASE_VOCABULARY and document "
+            "them in docs/data/awards-refresh.md, or use --allow-unclassified-phase."
         )
 
     size_bytes = csv_path.stat().st_size
@@ -193,6 +218,10 @@ def main() -> int:
         "row_delta_pct": row_delta_pct,
         "column_count": len(header),
         "schema": schema_report,
+        "phase": {
+            "observed_values": phase_values,
+            "unclassified_values": unclassified_phases,
+        },
     }
     if previous_metadata:
         metadata["previous_metadata_path"] = str(args.previous_metadata)
@@ -219,6 +248,11 @@ def main() -> int:
     if not schema_report["matches_expected"]:
         warnings.append(
             "Observed header does not match expected schema; inspect metadata before merging."
+        )
+    if unclassified_phases:
+        warnings.append(
+            f"Unclassified Phase values {unclassified_phases}; classify them before counting "
+            "anything from this vintage."
         )
 
     summary_markdown = render_summary_markdown(metadata, warnings)

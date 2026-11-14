@@ -16,6 +16,7 @@ from typing import Any
 
 import pandas as pd
 
+from sbir_etl.models.sbir_phase import sbir_phase_for_counting
 from sbir_etl.reporting.defense_taxonomy_crosswalk import (
     DefenseTaxonomyCrosswalk,
     load_defense_crosswalk,
@@ -174,8 +175,12 @@ def _identity_frame(awards: pd.DataFrame) -> pd.DataFrame:
 def _normalize_phase(value: object) -> str | None:
     if _is_missing_scalar(value):
         return None
+    # Export spellings go through the shared counting rule; digit forms from
+    # non-export cohort inputs stay as a local fallback.
+    if (counted := sbir_phase_for_counting(value)) is not None:
+        return counted
     text = str(value).strip().upper().removeprefix("PHASE ").strip()
-    return {"1": "I", "I": "I", "2": "II", "II": "II", "3": "III", "III": "III"}.get(text)
+    return {"1": "I", "2": "II", "3": "III"}.get(text)
 
 
 def _parse_boolean(value: object) -> bool | None:

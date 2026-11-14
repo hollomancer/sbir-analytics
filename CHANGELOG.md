@@ -10,6 +10,14 @@ version.
 
 ## [Unreleased]
 
+### Changed
+
+- Bound `sba-annual-report-structural-comparison-release` to tag v0.20.0 in
+  `studies/releases.yaml`; its page may now be cited from that release with
+  status `validated`.
+
+## [0.20.0] — 2026-09-27
+
 ### Breaking
 
 - Replaced the highest study status `citable` with `approved`. A
@@ -31,6 +39,15 @@ version.
   `sbir_analytics.clients` package. A config file that still has a
   `statistical_reporting` block still loads, because `PipelineConfig` allows
   extra keys.
+
+### Added
+
+- Successor study `sba-annual-report-structural-comparison-release` whose
+  generated public page states the v0.18.0 result's status under the
+  citation rule (#796).
+- Release checksum inventory for the successor study at
+  `studies/sba-annual-report-structural-comparison-release/release/checksums.sha256`,
+  so a later `studies/releases.yaml` binding can verify the tagged tree.
 
 ### Changed
 
@@ -860,7 +877,8 @@ across the root project and the three packages under `packages/`.
 `vMAJOR.MINOR.PATCH` form it requires. Per that policy published tags are never
 moved or reused, so they remain as historical markers.
 
-[Unreleased]: https://github.com/hollomancer/sbir-analytics/compare/v0.19.0...HEAD
+[Unreleased]: https://github.com/hollomancer/sbir-analytics/compare/v0.20.0...HEAD
+[0.20.0]: https://github.com/hollomancer/sbir-analytics/compare/v0.19.0...v0.20.0
 [0.19.0]: https://github.com/hollomancer/sbir-analytics/compare/v0.18.0...v0.19.0
 [0.18.0]: https://github.com/hollomancer/sbir-analytics/compare/v0.17.0...v0.18.0
 [0.17.0]: https://github.com/hollomancer/sbir-analytics/compare/v0.16.0...v0.17.0

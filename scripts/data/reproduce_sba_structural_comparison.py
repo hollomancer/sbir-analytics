@@ -26,15 +26,14 @@ from sbir_etl.quality.study_manifest import load_study_manifest
 from sbir_etl.utils.data.file_io import file_sha256
 from scripts.data.acquire_sba_structural_sources import acquire_sources
 from scripts.data.render_sba_structural_comparison import (
-    MARKDOWN_REFERENCE,
-    SIDECAR_REFERENCE,
+    STUDY_ID,
+    _profile_for,
     build_payload,
     render_markdown,
     serialize_payload,
 )
 from scripts.data.run_sba_structural_comparison import (
     SOURCE_MANIFEST,
-    STUDY_MANIFEST,
     build_production_inputs,
 )
 
@@ -125,17 +124,21 @@ def reproduce(
     source_root: Path,
     *,
     acquire: bool,
+    study_id: str = STUDY_ID,
 ) -> ReproductionRecord:
     """Acquire sources when requested and verify every released count value."""
 
+    profile = _profile_for(study_id)
     repository_root = repository_root.resolve()
     source_root = source_root.resolve()
     source_manifest = repository_root / SOURCE_MANIFEST
-    study_manifest_path = repository_root / STUDY_MANIFEST
+    study_manifest_path = repository_root / profile.manifest_reference
     if acquire:
         acquire_sources(source_manifest, source_root)
 
-    inputs = build_production_inputs(repository_root, source_root)
+    inputs = build_production_inputs(
+        repository_root, source_root, study_manifest_path=study_manifest_path
+    )
     committed_comparison = repository_root / COMMITTED_COMPARISON
     if not committed_comparison.is_file():
         raise ReproductionFailure(f"released count sidecar is missing: {committed_comparison}")
@@ -193,24 +196,26 @@ def reproduce(
                 "study validation result does not match the reconciled confirmatory submission"
             )
 
-    public_sidecar = repository_root / SIDECAR_REFERENCE
-    public_markdown = repository_root / MARKDOWN_REFERENCE
+    public_sidecar = repository_root / profile.sidecar_reference
+    public_markdown = repository_root / profile.markdown_reference
     for label, path in (
         ("public result sidecar", public_sidecar),
         ("public result Markdown", public_markdown),
     ):
         if not path.is_file():
             raise ReproductionFailure(f"{label} is missing: {path}")
-    payload = build_payload(repository_root)
+    payload = build_payload(repository_root, study_id=study_id)
     if serialize_payload(payload).encode("utf-8") != public_sidecar.read_bytes():
         raise ReproductionFailure("public result sidecar does not reproduce byte-for-byte")
     if render_markdown(payload).encode("utf-8") != public_markdown.read_bytes():
         raise ReproductionFailure("public result Markdown does not reproduce byte-for-byte")
     public_sidecar_sha256 = file_sha256(public_sidecar)
     public_markdown_sha256 = file_sha256(public_markdown)
-    if public_sidecar_sha256 != _frozen_sha256(study_manifest_path, SIDECAR_REFERENCE):
+    if public_sidecar_sha256 != _frozen_sha256(study_manifest_path, profile.sidecar_reference):
         raise ReproductionFailure("public result sidecar does not match its frozen digest")
-    if public_markdown_sha256 != _frozen_sha256(study_manifest_path, MARKDOWN_REFERENCE):
+    if public_markdown_sha256 != _frozen_sha256(
+        study_manifest_path, profile.markdown_reference
+    ):
         raise ReproductionFailure("public result Markdown does not match its frozen digest")
 
     return ReproductionRecord(
@@ -233,6 +238,11 @@ def _parse_args() -> argparse.Namespace:
         action="store_true",
         help="Use an already acquired source root. Every source is still verified.",
     )
+    parser.add_argument(
+        "--study-id",
+        default=STUDY_ID,
+        help="Study profile to reproduce (default: the released study).",
+    )
     return parser.parse_args()
 
 
@@ -246,6 +256,7 @@ def main() -> int:
         repository_root,
         source_root,
         acquire=not args.skip_acquire,
+        study_id=args.study_id,
     )
     message = f"Verified {result.comparison_cells} comparison cells ({result.comparison_sha256})."
     if result.validation_values is None:

@@ -18,5 +18,6 @@ a claim.
 Use [STATUS.md](../../STATUS.md) to find the current public evidence boundary.
 Use [the evidence-status guide](evidence-status.md) to interpret the labels.
 Use [the repository map](repository-map.md) to identify each top-level path.
-Read the [validated SBA structural comparison](sba-structural-comparison.md) for
-the current reader-facing release candidate.
+Read the [validated SBA structural comparison](sba-structural-comparison.md),
+frozen at v0.18.0, and its [release page](sba-structural-comparison-release.md),
+which states the current citation status.

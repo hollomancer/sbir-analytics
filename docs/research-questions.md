@@ -579,6 +579,16 @@ statutory goal is Phase III commercialization.*
   classification criteria are not frozen.
   *Deps: ER · Refs: [L7] · Spec: [../specs/sttr-spinout-linkage/](../specs/sttr-spinout-linkage/)*
 
+- <a id="b1-sttr-collaboration-network"></a>**Funded STTR collaboration network**
+  Across canonical funded STTR awards observed in one pinned raw SBIR.gov export,
+  what does the firm–research-institution collaboration network look like:
+  first-observed and repeated dyads, concentration, partner reuse, agency and year
+  variation, and missing research-institution names?
+  **Status:** Exploratory and non-citable. The current work is a one-pinned-export,
+  surface-name atlas of the funded portfolio, not an identity-resolved federal census,
+  an applicant-pool analysis, or an estimate of access, equity, or program effects.
+  *Deps: ER for identity-resolved promotion · Refs: [L7]*
+
 ### B2. Relational (Tier 2)
 
 - **Award-to-contract transition**
@@ -849,6 +859,24 @@ spending produce measurable new knowledge?*
   · Study:
   [allocation-transaction-costs](../studies/allocation-transaction-costs/study.yaml)*
 
+- <a id="c4-sttr-award-timing-friction"></a>**STTR award-record timing and administrative friction**
+  Within observed agency × solicitation × phase × solicitation-year strata,
+  do awarded STTR records show different proposal-receipt-to-notification or
+  proposal-receipt-to-award intervals than awarded SBIR records, and where is
+  date coverage sufficient for that descriptive comparison?
+  Public award records omit unsuccessful applicants and do not expose a
+  consistent submission, review, revision, or selection clock. Shared
+  solicitation identifiers can also span different topics and review paths.
+  The comparison can map recorded timing and data readiness; it cannot measure
+  administrative burden, identify a causal STTR effect, or support a pooled
+  faster/slower claim. This is distinct from B3 Phase II→III latency after an
+  award ends.
+  **Status:** Exploratory and non-citable. The notebook uses only source-labeled
+  dates, keeps SBIR and STTR separate, and refuses administrative-friction
+  inference.
+  *Deps: none (SBIR.gov public award export) · Notebook:
+  [c4_sttr_award_timing_friction.ipynb](../notebooks/explorations/c4_sttr_award_timing_friction.ipynb)*
+
 ## D. Economic & fiscal impact
 
 *Audience: Treasury, OMB, JCT, state economic-development offices. What is the
@@ -869,7 +897,8 @@ dollar return on the SBIR program?*
   publication-era export.
   *Deps: none · Refs: [L18] · Studies:
   [historical work](../studies/sba-annual-report-tables/study.yaml),
-  [prospective structural comparison](../studies/sba-annual-report-structural-comparison/study.yaml)*
+  [prospective structural comparison](../studies/sba-annual-report-structural-comparison/study.yaml),
+  [release page study](../studies/sba-annual-report-structural-comparison-release/study.yaml)*
 
 - **NAICS coverage and fallback usage**
   What is NAICS-sector coverage across awards, and how often is the fallback
