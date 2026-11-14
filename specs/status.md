@@ -137,9 +137,11 @@ bypassing lifecycle review; the status and rationale still require human judgmen
   YAML-only (issue #441). HTTP is out of scope per ADR-004. Weekly awards
   stay on their existing builder. Census and cohort classifiers remain
   exploratory.
-- **`modernbert-analysis-layer` — Maintenance.** Core embeddings and similarity
-  are implemented. Quality metrics and Bayesian routing remain scoped
-  follow-ups; graph-service integration was removed from scope.
+- **`modernbert-analysis-layer` — Maintenance.** Core embeddings and brute-force
+  similarity are implemented for exploratory question C2. Remaining work is a
+  deterministic multi-asset integration test and bounded similarity-output
+  checks. Bayesian/LoRA routing, FAISS, and dedicated dashboards/alerts were
+  removed from active scope and require a new scope review to return.
 - **`neo4j-retirement` — Maintenance.** Pipelines-tier operational retirement of the unused
   Neo4j projection, `sbir-graph` package, graph-only Dagster paths, and graph service.
   Governed Parquet and DuckDB records remain authoritative. PR #788 is merged and the
