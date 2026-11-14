@@ -55,6 +55,70 @@ def test_apply_sam_enrichment_separates_fallback_from_naics_only() -> None:
     assert "_sam_gov_match_idx" not in result.columns
 
 
+def test_apply_sam_enrichment_covers_duns_conflicts_and_unmatched_rows() -> None:
+    enriched_awards = pd.DataFrame(
+        {
+            "_usaspending_match_method": [
+                pd.NA,
+                pd.NA,
+                pd.NA,
+                "uei-exact",
+                "uei-exact",
+                "name-fuzzy",
+            ],
+            # Lowercase columns drive SAM fallback for USAspending misses.
+            "uei": ["U1", "", "", "unused", "unused", "unused"],
+            "duns": ["222", "222", "", "", "", ""],
+            # Source-style columns drive NAICS-only enrichment for existing matches.
+            "UEI": ["unused", "unused", "unused", "U1", "", ""],
+            "Duns": ["", "", "", "222", "222", ""],
+        }
+    )
+    sam_entities = pd.DataFrame(
+        {
+            "unique_entity_id": ["U1", "U2"],
+            "duns_number": ["111", "222"],
+            "legal_business_name": ["UEI Corp", "DUNS Corp"],
+            "primary_naics": ["541715", "334511"],
+        }
+    )
+
+    result = enrichment._apply_sam_enrichment(
+        enriched_awards,
+        sam_entities,
+        build_asset_context(),
+    )
+
+    methods = result["_sam_gov_match_method"]
+    assert methods.iloc[:2].tolist() == ["sam-uei-exact", "sam-duns-exact"]
+    assert pd.isna(methods.iloc[2])
+    assert methods.iloc[3:5].tolist() == ["sam-naics-uei", "sam-naics-duns"]
+    assert pd.isna(methods.iloc[5])
+
+    # UEI has precedence when a different DUNS also matches.
+    assert result.loc[0, "sam_gov_legal_business_name"] == "UEI Corp"
+    assert result.loc[3, "sam_gov_legal_business_name"] == "UEI Corp"
+    assert result.loc[1, "sam_gov_legal_business_name"] == "DUNS Corp"
+    assert result.loc[4, "sam_gov_legal_business_name"] == "DUNS Corp"
+
+    assert result["_enrichment_source"].tolist() == [
+        "sam_gov",
+        "sam_gov",
+        None,
+        "usaspending",
+        "usaspending",
+        "usaspending",
+    ]
+    assert result["_naics_source"].tolist()[:5] == [
+        "sam_gov",
+        "sam_gov",
+        None,
+        "sam_gov",
+        "sam_gov",
+    ]
+    assert result["_naics_source"].iloc[5] is None
+
+
 def test_filter_recipients_handles_empty_input() -> None:
     recipients = pd.DataFrame(columns=["uei", "duns"])
     result = enrichment._filter_recipients_by_sbir(
