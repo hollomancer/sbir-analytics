@@ -82,6 +82,67 @@ def test_iter_public_sensors_returns_sensor_definitions():
     assert all(isinstance(sensor, SensorDefinition) for sensor in sensors)
 
 
+def test_asset_import_failures_propagate(monkeypatch):
+    """A broken asset module must fail code-location loading."""
+
+    module_name = "sbir_analytics.assets.broken_asset"
+    monkeypatch.setattr(assets_pkg, "_asset_module_names", lambda: (module_name,))
+
+    def fail_import(name):
+        raise RuntimeError(f"broken import: {name}")
+
+    monkeypatch.setattr(assets_pkg.importlib, "import_module", fail_import)
+
+    with pytest.raises(RuntimeError, match=module_name):
+        assets_pkg.iter_asset_modules(load_heavy=True)
+
+
+def test_job_import_failures_propagate(monkeypatch):
+    """A broken job module must fail code-location loading."""
+
+    module_name = "sbir_analytics.assets.jobs.broken_job"
+    monkeypatch.setattr(assets_pkg, "_job_module_names", lambda: (module_name,))
+
+    def fail_import(name):
+        raise RuntimeError(f"broken import: {name}")
+
+    monkeypatch.setattr(assets_pkg.importlib, "import_module", fail_import)
+
+    with pytest.raises(RuntimeError, match=module_name):
+        assets_pkg.iter_job_modules(load_heavy=True)
+
+
+def test_missing_sensor_package_is_optional(monkeypatch):
+    """A repository without a sensors package can still load definitions."""
+
+    package_name = "sbir_analytics.assets.sensors"
+    assets_pkg._sensor_module_names.cache_clear()
+
+    def missing_package(name):
+        raise ModuleNotFoundError(name=package_name)
+
+    monkeypatch.setattr(assets_pkg.importlib, "import_module", missing_package)
+
+    assert assets_pkg._sensor_module_names() == ()
+
+
+def test_missing_sensor_dependency_propagates(monkeypatch):
+    """A missing transitive sensor dependency is an import failure."""
+
+    missing_dependency = "sensor_runtime_dependency"
+    assets_pkg._sensor_module_names.cache_clear()
+
+    def missing_transitive_dependency(name):
+        raise ModuleNotFoundError(name=missing_dependency)
+
+    monkeypatch.setattr(assets_pkg.importlib, "import_module", missing_transitive_dependency)
+
+    with pytest.raises(ModuleNotFoundError) as exc_info:
+        assets_pkg._sensor_module_names()
+
+    assert exc_info.value.name == missing_dependency
+
+
 def test_light_mode_does_not_import_heavy_asset_families():
     code = """
 import sys
