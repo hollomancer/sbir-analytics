@@ -32,7 +32,7 @@ def test_iter_asset_modules_discovers_expected_packages():
 
 
 def test_iter_job_modules_discovers_job_packages():
-    """Job discovery should import every module under src.assets.jobs."""
+    """Job discovery should import every module under sbir_analytics.assets.jobs."""
 
     modules = assets_pkg.iter_job_modules()
     assert modules, "Expected job modules to be discovered"
@@ -45,6 +45,21 @@ def test_iter_job_modules_discovers_job_packages():
     assert "sbir_analytics.assets.jobs.fiscal_returns_job" in module_names
     assert "sbir_analytics.assets.jobs.nsf_defense_lineage_job" in module_names
     assert "sbir_analytics.assets.jobs.nih_reporter_iterative_job" in module_names
+
+
+def test_iter_job_modules_propagates_import_failures(monkeypatch):
+    """A broken job module must fail discovery instead of disappearing."""
+    broken_module = "sbir_analytics.assets.jobs.broken_for_test"
+    monkeypatch.setattr(assets_pkg, "_job_module_names", lambda: (broken_module,))
+
+    def fail_import(module_name):
+        assert module_name == broken_module
+        raise RuntimeError("broken job definition")
+
+    monkeypatch.setattr(assets_pkg.importlib, "import_module", fail_import)
+
+    with pytest.raises(RuntimeError, match="broken job definition"):
+        assets_pkg.iter_job_modules()
 
 
 def test_iter_job_modules_skips_heavy_jobs_when_disabled(monkeypatch):
@@ -73,6 +88,7 @@ def test_iter_public_jobs_returns_job_definitions():
     assert any(job.name == "transition_full_job" for job in jobs)
     assert any(job.name == "nsf_defense_lineage_refresh_job" for job in jobs)
     assert any(job.name == "nih_reporter_iterative_enrichment_job" for job in jobs)
+    assert all(not job.name.endswith("_placeholder") for job in jobs)
 
 
 def test_iter_public_sensors_returns_sensor_definitions():

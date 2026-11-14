@@ -16,4 +16,4 @@ schedules = _bundle.schedules
 cet_full_pipeline_job = _bundle.cet_full_pipeline_job
 fiscal_returns_mvp_job = auto_jobs.get("fiscal_returns_mvp_job")
 modernbert_job = auto_jobs.get("modernbert_job")
-uspto_ai_job = auto_jobs.get("uspto_ai_job")
+uspto_ai_job = auto_jobs.get("uspto_ai_extraction_job")

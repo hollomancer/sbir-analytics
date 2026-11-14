@@ -120,6 +120,8 @@ def iter_job_modules(*, load_heavy: bool | None = None) -> list[ModuleType]:
                 module_name,
             )
             continue
+        # Job definitions are operational entry points. Import failures must
+        # fail the code location instead of silently removing a job.
         modules.append(importlib.import_module(module_name))
     return modules
 

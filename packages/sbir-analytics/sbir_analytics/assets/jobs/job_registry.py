@@ -85,15 +85,3 @@ def build_job_from_spec_with_executor(
         description=spec.description,
         executor_def=executor,
     )
-
-
-def build_placeholder_job(
-    name: str, description: str
-) -> JobDefinition | UnresolvedAssetJobDefinition:
-    """Create a placeholder job when assets cannot be imported."""
-
-    return define_asset_job(
-        name=f"{name}_placeholder",
-        selection=AssetSelection.keys(),
-        description=description,
-    )
