@@ -61,7 +61,7 @@ class TestBEAIOAdapterInitialization:
         ).ConfigurationError("BEA_API_KEY not set", component="test", operation="test"),
     )
     def test_init_no_api_key(self, mock_client_cls, mock_config):
-        """Test initialization falls back when BEA_API_KEY not set."""
+        """Test initialization records that BEA computation is unavailable."""
         from sbir_etl.transformers.bea_io_adapter import BEAIOAdapter
 
         adapter = BEAIOAdapter(config=mock_config)
@@ -132,8 +132,8 @@ class TestBEAIOAdapterImpactComputation:
     """Test impact computation logic."""
 
     @patch("sbir_etl.transformers.bea_io_adapter.BEAApiClient")
-    def test_compute_placeholder_impacts(self, mock_client_cls, mock_config, sample_shocks):
-        """Test placeholder computation when API unavailable."""
+    def test_compute_impacts_requires_api(self, mock_client_cls, mock_config, sample_shocks):
+        """The adapter must not synthesize impacts when the API is unavailable."""
         from sbir_etl.exceptions import ConfigurationError
 
         mock_client_cls.side_effect = ConfigurationError(
@@ -143,12 +143,25 @@ class TestBEAIOAdapterImpactComputation:
         from sbir_etl.transformers.bea_io_adapter import BEAIOAdapter
 
         adapter = BEAIOAdapter(config=mock_config, cache_enabled=False)
-        result = adapter._compute_impacts_bea(sample_shocks)
+        with pytest.raises(ConfigurationError, match="requires BEA_API_KEY"):
+            adapter._compute_impacts_bea(sample_shocks)
 
-        assert len(result) == 3
-        assert "wage_impact" in result.columns
-        assert result["quality_flags"].iloc[0] == "placeholder_computation"
-        assert "confidence" not in result.columns
+    @patch("sbir_etl.transformers.bea_io_adapter.BEAApiClient")
+    def test_compute_impacts_rejects_legacy_placeholder_cache(
+        self, mock_client_cls, mock_config, sample_shocks, tmp_path
+    ):
+        """A cached placeholder must not bypass the fail-closed computation path."""
+        from sbir_etl.exceptions import TransformationError
+        from sbir_etl.transformers.bea_io_adapter import BEAIOAdapter
+
+        mock_client_cls.return_value = MagicMock()
+        adapter = BEAIOAdapter(config=mock_config, cache_enabled=True, cache_dir=str(tmp_path))
+        cached = sample_shocks.copy()
+        cached["quality_flags"] = "placeholder_computation"
+        adapter._save_to_cache(adapter._get_cache_key(sample_shocks), cached)
+
+        with pytest.raises(TransformationError, match="non-BEA fallback rows"):
+            adapter.compute_impacts(sample_shocks)
 
     @patch("sbir_etl.transformers.bea_io_adapter.BEAApiClient")
     @patch("sbir_etl.transformers.bea_io_adapter.fetch_use_table")

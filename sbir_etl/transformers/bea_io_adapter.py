@@ -18,7 +18,7 @@ import pandas as pd
 from loguru import logger
 
 from ..config.loader import get_config
-from ..exceptions import ConfigurationError
+from ..exceptions import ConfigurationError, TransformationError
 from .bea_api_client import BEAApiClient
 from .bea_io_functions import (
     apply_demand_shocks,
@@ -75,7 +75,7 @@ class BEAIOAdapter:
             self._api_available = True
         except ConfigurationError:
             logger.warning(
-                "BEA_API_KEY not set. Adapter will use placeholder computation. "
+                "BEA_API_KEY not set. BEA I-O computation is unavailable. "
                 "Register at https://apps.bea.gov/API/signup/"
             )
             self._client = None  # type: ignore[assignment]
@@ -219,43 +219,31 @@ class BEAIOAdapter:
     def _compute_impacts_bea(
         self, shocks_df: pd.DataFrame, model_version: str | None = None
     ) -> pd.DataFrame:
-        """Compute impacts using BEA I-O tables.
-
-        Falls back to placeholder computation if the BEA API is unavailable.
-        """
+        """Compute impacts using BEA I-O tables."""
         if not self._api_available:
-            logger.warning(
-                "BEA API not available (BEA_API_KEY not set) — using placeholder computation. "
-                "Set BEA_API_KEY for real I-O analysis. "
-                "Register at https://apps.bea.gov/API/signup/"
+            raise ConfigurationError(
+                "BEA I-O computation requires BEA_API_KEY",
+                component="transformers.bea_io_adapter",
+                operation="compute_impacts",
             )
-            return self._compute_placeholder_impacts(shocks_df, model_version or self.model_version)
 
         self._validate_bea_sectors(shocks_df)
         model_ver = model_version or self.model_version
 
         try:
-            result = self._compute_impacts_via_bea(shocks_df, model_ver)
-            # Check if the result actually used real BEA data or fell back
-            if "quality_flags" in result.columns:
-                placeholder_count = (
-                    result["quality_flags"].str.contains("placeholder|failed", na=False).sum()
-                )
-                if placeholder_count > 0:
-                    logger.warning(
-                        f"BEA I-O computation: {placeholder_count}/{len(result)} "
-                        f"rows used fallback/placeholder values"
-                    )
-            return result
-        except Exception as e:
-            logger.error(
-                f"BEA I-O computation failed with {type(e).__name__}: {e}. "
-                f"Shocks: {len(shocks_df)} rows, "
-                f"sectors: {shocks_df['bea_sector'].unique().tolist()[:10]}. "
-                "Falling back to placeholder multipliers.",
-                exc_info=True,
+            return self._compute_impacts_via_bea(shocks_df, model_ver)
+        except Exception as error:
+            raise TransformationError(
+                "BEA I-O computation failed",
+                component="transformers.bea_io_adapter",
+                operation="compute_impacts",
+                details={
+                    "shock_rows": len(shocks_df),
+                    "sectors": shocks_df["bea_sector"].unique().tolist()[:10],
+                    "model_version": model_ver,
+                },
+                cause=error,
             )
-            return self._compute_placeholder_impacts(shocks_df, model_ver)
 
     def _compute_impacts_via_bea(self, shocks_df: pd.DataFrame, model_version: str) -> pd.DataFrame:
         """Core Leontief computation using BEA Use tables."""
@@ -449,33 +437,6 @@ class BEAIOAdapter:
         return result_df
 
     # ------------------------------------------------------------------
-    # Placeholder fallback
-    # ------------------------------------------------------------------
-
-    def _compute_placeholder_impacts(
-        self, shocks_df: pd.DataFrame, model_version: str
-    ) -> pd.DataFrame:
-        """Fallback for exploratory/local use, not a validated fiscal-impact model."""
-        result_df = shocks_df.copy()
-        multiplier = Decimal("2.0")
-
-        result_df["wage_impact"] = result_df["shock_amount"] * Decimal("0.4") * multiplier  # type: ignore[operator]
-        result_df["proprietor_income_impact"] = (
-            result_df["shock_amount"] * Decimal("0.1") * multiplier  # type: ignore[operator]
-        )
-        result_df["gross_operating_surplus"] = (
-            result_df["shock_amount"] * Decimal("0.3") * multiplier  # type: ignore[operator]
-        )
-        result_df["consumption_impact"] = result_df["shock_amount"] * Decimal("0.2") * multiplier  # type: ignore[operator]
-        result_df["tax_impact"] = result_df["shock_amount"] * Decimal("0.15") * multiplier  # type: ignore[operator]
-        result_df["production_impact"] = result_df["shock_amount"] * multiplier
-        result_df["employment_impact"] = result_df["wage_impact"].astype(float) / 100_000
-        result_df["model_version"] = model_version
-        result_df["quality_flags"] = "placeholder_computation"
-
-        return result_df
-
-    # ------------------------------------------------------------------
     # Public interface
     # ------------------------------------------------------------------
 
@@ -498,14 +459,34 @@ class BEAIOAdapter:
         cache_key = self._get_cache_key(shocks_df, model_version)
         cached_result = self._load_from_cache(cache_key)
         if cached_result is not None:
+            self._reject_non_bea_result(cached_result, source="cache")
             logger.info(f"Using cached results for {cache_key}")
             return cached_result
 
         logger.info(f"Computing impacts for {len(shocks_df)} shocks using BEA I-O tables")
         result_df = self._compute_impacts_bea(shocks_df, model_version)
+        self._reject_non_bea_result(result_df, source="computation")
 
         self._save_to_cache(cache_key, result_df)
         return result_df
+
+    @staticmethod
+    def _reject_non_bea_result(result_df: pd.DataFrame, *, source: str) -> None:
+        """Reject legacy or accidental fallback rows before downstream use."""
+        if "quality_flags" not in result_df.columns:
+            return
+        rejected = (
+            result_df["quality_flags"]
+            .astype("string")
+            .str.contains("placeholder|failed|fallback|unavailable", case=False, na=False)
+        )
+        if rejected.any():
+            raise TransformationError(
+                "BEA I-O result contains non-BEA fallback rows",
+                component="transformers.bea_io_adapter",
+                operation="validate_result_provenance",
+                details={"source": source, "rejected_rows": int(rejected.sum())},
+            )
 
     def get_model_version(self) -> str:
         return self.model_version

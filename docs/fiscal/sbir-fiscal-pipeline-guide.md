@@ -312,10 +312,12 @@ bea_backed = impacts[
 ### BEA API Key Not Set
 
 ```console
-Warning: BEA_API_KEY not set. Adapter will use placeholder computation.
+Warning: BEA_API_KEY not set. BEA I-O computation is unavailable.
 ```
 
-**Solution**: Register for a free BEA API key and set the environment variable
+The economic-impact asset fails without an API key. It does not emit estimated fallback rows.
+
+**Solution**: Register for a free BEA API key. Set the environment variable.
 
 ```bash
 # Register at https://apps.bea.gov/API/signup/
@@ -330,16 +332,15 @@ Warning: No BEA mapping found for NAICS 999999
 
 **Solution**: Check NAICS code validity or provide custom concordance
 
-### Placeholder Computation
+### Failed BEA Computation
 
 ```console
-Warning: BEA_API_KEY not set. Adapter will use placeholder computation.
+BEA I-O computation failed; no impacts were materialized.
 ```
 
-`confidence` is not emitted: the prior fixed values were not calibrated quality
-scores. Use `quality_flags` to distinguish BEA-backed rows from placeholders.
+The pipeline rejects placeholder and fallback rows. This includes legacy rows in the local cache.
 
-**Causes of placeholder output**:
+**Causes**:
 
 - BEA data unavailable for the requested year
 - BEA request failure
@@ -349,7 +350,7 @@ scores. Use `quality_flags` to distinguish BEA-backed rows from placeholders.
 
 - Set BEA_API_KEY environment variable
 - Use a year with available BEA I-O tables (2017-2022 typically available)
-- Exclude `placeholder_computation` rows from analytical use
+- Remove legacy cached results with fallback quality flags. Run the asset again.
 
 ## References
 

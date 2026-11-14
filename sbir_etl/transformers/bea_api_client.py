@@ -168,10 +168,7 @@ class BEAApiClient:
             )
 
         if not rows:
-            logger.warning(
-                "BEA API returned 0 data rows — downstream computations will "
-                "use placeholder/fallback values"
-            )
+            logger.warning("BEA API returned 0 data rows; downstream BEA computations will fail")
             return pd.DataFrame()
 
         df = pd.DataFrame(rows)

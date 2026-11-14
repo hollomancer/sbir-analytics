@@ -7,6 +7,7 @@ from unittest.mock import Mock, patch
 
 import pandas as pd
 import pytest
+from dagster import AssetCheckSeverity
 
 from sbir_analytics.assets.fiscal_assets import (
     economic_impacts,
@@ -174,6 +175,22 @@ class TestEconomicImpacts:
             result = economic_impacts_quality_check(sample_economic_impacts)
 
         assert result.passed
+
+    @pytest.mark.parametrize(
+        "quality_flag",
+        ["placeholder_computation", "bea_api_failed", "default_fallback", "api_unavailable"],
+    )
+    def test_economic_impacts_quality_check_rejects_fallback_rows(
+        self, sample_economic_impacts, quality_flag
+    ):
+        """Fallback provenance fails even when the model version looks authoritative."""
+        sample_economic_impacts["quality_flags"] = quality_flag
+
+        result = economic_impacts_quality_check(sample_economic_impacts)
+
+        assert result.passed is False
+        assert result.severity == AssetCheckSeverity.ERROR
+        assert result.metadata["rejected_rows"].value == 3
 
     def test_economic_impacts_has_required_columns(self, sample_economic_impacts):
         """Test economic impacts has required output columns."""
