@@ -33,7 +33,9 @@ not a roadmap for a larger ML platform.
 - [ ] Materialize award embeddings, patent embeddings, and similarity in one
   deterministic test with a stubbed `ModernBertClient`.
 - [ ] Assert asset dependency ordering and output schemas.
-- [ ] Exercise both coverage checks, including a threshold failure.
+- [ ] Set both coverage checks to `blocking=True`.
+- [ ] Exercise both coverage checks, including a threshold failure, and verify
+  that a failed check prevents downstream similarity execution.
 - [ ] Avoid network, model downloads, local archives, and wall-clock-dependent
   assertions.
 
@@ -42,6 +44,11 @@ behavior.
 
 ### 2. Similarity-output validation
 
+- [ ] Pass supported client settings explicitly, including the configured model,
+  token source, local device, and cache policy; remove any schema fields that
+  remain intentionally unsupported.
+- [ ] Read batch size from the selected API/local configuration rather than an
+  undeclared flat key.
 - [ ] Read `top_k` from the maintained configuration rather than duplicating a
   literal in the asset.
 - [ ] Validate that scores are finite and within `[-1, 1]`.

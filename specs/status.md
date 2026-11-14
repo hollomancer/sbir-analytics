@@ -139,9 +139,10 @@ bypassing lifecycle review; the status and rationale still require human judgmen
   exploratory.
 - **`modernbert-analysis-layer` — Maintenance.** Core embeddings and brute-force
   similarity are implemented for exploratory question C2. Remaining work is a
-  deterministic multi-asset integration test and bounded similarity-output
-  checks. Bayesian/LoRA routing, FAISS, and dedicated dashboards/alerts were
-  removed from active scope and require a new scope review to return.
+  deterministic multi-asset integration test, effective configuration wiring,
+  blocking coverage checks, and bounded similarity-output checks. Bayesian/LoRA
+  routing, FAISS, and dedicated dashboards/alerts were removed from active scope
+  and require a new scope review to return.
 - **`neo4j-retirement` — Maintenance.** Pipelines-tier operational retirement of the unused
   Neo4j projection, `sbir-graph` package, graph-only Dagster paths, and graph service.
   Governed Parquet and DuckDB records remain authoritative. PR #788 is merged and the

@@ -93,10 +93,20 @@ scope.
 
 ## Configuration
 
-The maintained configuration is under `ml.modernbert` in `config/base.yaml`.
-It controls provider mode, API behavior, local model settings, text limits,
-batching, similarity threshold, top-k, and coverage thresholds. The client
-model default is also declared by `ModernBertClientConfig` in
+The configuration schema under `ml.modernbert` in `config/base.yaml` is broader
+than the current asset wiring. The assets consume `use_local`,
+`similarity_threshold`, and both coverage thresholds. They construct
+`ModernBertClientConfig` with only `use_local`, so the client uses its own
+defaults for model name, token lookup, device, cache folder, and caching.
+
+The assets currently request a flat `ml.modernbert.batch_size`, which is not
+declared by the nested API/local schema and therefore falls back to 32. The
+similarity asset hard-codes a top-k of 10. Provider, API throttle/retry, nested
+batch-size, local-model/device, and text-limit settings are not forwarded by
+these assets. They must not be presented as effective operator overrides until
+they are wired and tested.
+
+The client model default is declared by `ModernBertClientConfig` in
 `packages/sbir-ml/sbir_ml/ml/config/__init__.py`.
 
 Configuration and implementation must use the same model identifier. A model
@@ -105,19 +115,25 @@ previous similarity output.
 
 ## Validation and failure behavior
 
-Two Dagster checks enforce embedding coverage:
+Two Dagster checks report embedding coverage:
 
 - `modernbert_awards_coverage_check`: at least 95% valid vectors;
 - `modernbert_patents_coverage_check`: at least 98% valid vectors.
 
 Both checks treat a vector as valid only when it is present and has 768
-dimensions. Failures use error severity.
+dimensions. Failures use error severity, but the decorators do not currently
+set `blocking=True`; a failed check therefore does not stop downstream
+similarity execution.
 
 The remaining maintenance work is intentionally small:
 
 1. exercise all three assets and the coverage checks together with a
-   deterministic stubbed client; and
-2. enforce score bounds, uniqueness, threshold, and per-award top-k limits on
+   deterministic stubbed client;
+2. reconcile the public configuration schema with settings actually passed to
+   the client and assets;
+3. make coverage checks blocking and verify that failure prevents downstream
+   similarity execution; and
+4. enforce score bounds, uniqueness, threshold, and per-award top-k limits on
    similarity output.
 
 Client unit tests cover configuration, text preparation, caching, error

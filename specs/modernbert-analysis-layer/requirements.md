@@ -70,7 +70,8 @@ per award. The maintained default is 10 candidates.
 The award and patent embedding assets must expose blocking coverage checks.
 The maintained thresholds are 95% valid award embeddings and 98% valid patent
 embeddings. An embedding is valid only when it is present and has the expected
-dimension.
+dimension. The current checks report error severity but are not yet blocking;
+closing that gap is active maintenance work.
 
 Similarity output must be structurally valid:
 
@@ -93,7 +94,10 @@ The current maintenance backlog is complete when:
 1. a deterministic multi-asset test exercises award embeddings, patent
    embeddings, similarity, dependency ordering, and coverage-check failure
    behavior with a stubbed client; and
-2. automated validation enforces the similarity-output invariants in R3.
+2. configured client, batch-size, threshold, top-k, and coverage settings are
+   either wired to execution or removed from the public schema;
+3. coverage failures block downstream similarity execution; and
+4. automated validation enforces the similarity-output invariants in R3.
 
 These criteria improve reliability of the implemented exploratory path. They
 do not promote its evidence status.

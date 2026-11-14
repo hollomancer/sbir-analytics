@@ -64,6 +64,12 @@ This guide covers the integration of ModernBERT-Embed into the SBIR analytics pi
 
 Embedding configuration is located in `config/base.yaml` under the `ml.modernbert` section:
 
+Only `use_local`, `similarity_threshold`, and the two coverage thresholds are
+currently consumed by the Dagster assets. The nested batch-size, API behavior,
+local-model/device, text-limit, and `top_k` fields shown below are schema values
+but are not yet wired to asset execution; the assets use batch size 32 and top-k
+10. Do not rely on overrides for those unwired fields.
+
 ```yaml
 ml:
   modernbert:
@@ -101,9 +107,6 @@ Override configuration using environment variables:
 ```bash
 # Use local mode instead of API
 export SBIR_ETL__ML__MODERNBERT__USE_LOCAL=true
-
-# Adjust batch size
-export SBIR_ETL__ML__MODERNBERT__API__BATCH_SIZE=64
 
 # Change similarity threshold
 export SBIR_ETL__ML__MODERNBERT__SIMILARITY_THRESHOLD=0.85
@@ -232,7 +235,7 @@ ml:
 
 ### Asset Checks
 
-Two asset checks enforce quality thresholds:
+Two non-blocking asset checks report quality thresholds:
 
 1. **`modernbert_awards_coverage_check`**
    - Validates that >=95% of awards have valid embeddings
@@ -243,6 +246,10 @@ Two asset checks enforce quality thresholds:
    - Validates that >=98% of patents have valid embeddings
    - Checks embedding dimension (768)
    - Severity: ERROR if threshold not met
+
+The checks do not currently set `blocking=True`, so an ERROR result is visible
+in Dagster but does not prevent downstream similarity execution. Making the
+checks blocking is tracked in the active maintenance spec.
 
 ### Monitoring
 
