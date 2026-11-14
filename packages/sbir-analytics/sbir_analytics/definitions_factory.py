@@ -91,6 +91,7 @@ class DefinitionBundle:
     schedules: list[ScheduleDefinition]
     source_download_schedules: list[ScheduleDefinition]
     research_release_schedules: list[ScheduleDefinition]
+    heavy_asset_keys: set[Any]
     core_refresh_job: DiscoveredJob | None
     cet_drift_job: DiscoveredJob | None
     cet_full_pipeline_job: DiscoveredJob | None
@@ -266,6 +267,7 @@ def _build_primary_bundle(*, load_heavy: bool) -> DefinitionBundle:
         schedules=schedules,
         source_download_schedules=source_download_schedules,
         research_release_schedules=research_release_schedules,
+        heavy_asset_keys=heavy_keys,
         core_refresh_job=core_refresh_job,
         cet_drift_job=cet_drift_job,
         cet_full_pipeline_job=cet_full_pipeline_job,
@@ -329,6 +331,7 @@ def _build_heavy_bundle() -> DefinitionBundle:
         schedules=schedules,
         source_download_schedules=[],
         research_release_schedules=[],
+        heavy_asset_keys=_heavy_asset_keys(asset_modules),
         core_refresh_job=None,
         cet_drift_job=auto_jobs.get("cet_drift_job"),
         cet_full_pipeline_job=cet_full_pipeline_job,

@@ -123,7 +123,10 @@ def test_missing_sensor_package_is_optional(monkeypatch):
 
     monkeypatch.setattr(assets_pkg.importlib, "import_module", missing_package)
 
-    assert assets_pkg._sensor_module_names() == ()
+    try:
+        assert assets_pkg._sensor_module_names() == ()
+    finally:
+        assets_pkg._sensor_module_names.cache_clear()
 
 
 def test_missing_sensor_dependency_propagates(monkeypatch):
