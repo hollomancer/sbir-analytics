@@ -305,7 +305,10 @@ def _prepare_match_columns(
     enhanced_config: dict[str, Any],
 ) -> None:
     """Add normalized inputs and empty audit columns in place."""
-    companies["_norm_name"] = _normalize_company_series(companies["company"], enhanced_config)
+    if "_norm_name" not in companies.columns:
+        companies["_norm_name"] = _normalize_company_series(
+            companies["company"], enhanced_config
+        )
     awards["_norm_name"] = _normalize_company_series(awards[award_company_col], enhanced_config)
     awards["_block"] = awards["_norm_name"].map(lambda name: build_block_key(name, prefix_len))
     awards["_matched_company_idx"] = pd.NA

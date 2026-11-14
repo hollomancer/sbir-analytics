@@ -48,6 +48,24 @@ def test_enrich_exact_uei_match():
     assert enriched["company_industry"].iloc[0] == "Aerospace"
 
 
+def test_enrich_preserves_existing_company_normalized_name() -> None:
+    companies = pd.DataFrame(
+        [
+            {
+                "company": "Acme Innovations",
+                "UEI": "U1",
+                "Duns": "",
+                "_norm_name": "curated-acme-name",
+            }
+        ]
+    )
+    awards = pd.DataFrame([{"company": "Acme Innovations", "UEI": "U1", "Duns": ""}])
+
+    enriched = enrich_awards_with_companies(awards, companies)
+
+    assert enriched["company__norm_name"].iloc[0] == "curated-acme-name"
+
+
 def test_enrich_exact_duns_match_with_hyphens():
     companies = DataFrameBuilder.companies(1).build()
     companies["company"] = "BioTech Labs"
