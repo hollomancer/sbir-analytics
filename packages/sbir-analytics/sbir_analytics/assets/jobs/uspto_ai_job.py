@@ -18,10 +18,11 @@ Notes:
 from dagster import AssetSelection, define_asset_job
 
 
-# Import the USPTO AI asset definitions. These are expected to be defined in:
-#   src.assets.uspto (consolidated module)
+# Import the heavy asset module directly. The definitions profile decides
+# whether this job module is imported, so the package-level environment gate
+# must not change the job's selection.
 try:
-    from sbir_analytics.assets.uspto import (
+    from sbir_analytics.assets.uspto.ai_extraction import (
         raw_uspto_ai_extract,
         raw_uspto_ai_human_sample_extraction,
         uspto_ai_deduplicate,

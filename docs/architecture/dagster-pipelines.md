@@ -10,7 +10,11 @@ code-verified against `packages/sbir-analytics/sbir_analytics/`.
 - **Primary code location:** `sbir_analytics.definitions` — declared in
   `workspace.yaml`. This is what `dagster dev` loads by default.
 - **Secondary (heavy ML/fiscal):** `sbir_analytics.definitions_ml` — *not* in
-  `workspace.yaml`; invoked directly (it forces `DAGSTER_LOAD_HEAVY_ASSETS=true`).
+  `workspace.yaml`; invoked directly with the explicit heavy definition profile.
+
+Both entry points use `sbir_analytics.definitions_factory.build_definitions`.
+The primary profile honors `DAGSTER_LOAD_HEAVY_ASSETS`. The heavy profile loads
+the heavy modules without changing the process environment.
 
 ```bash
 # Launch the Dagster UI (dev) — primary location
@@ -24,12 +28,14 @@ uv run dagster job execute -m sbir_analytics.definitions_ml -j fiscal_returns_mv
 ### Heavy-asset gating
 
 `DAGSTER_LOAD_HEAVY_ASSETS` (default `"true"`) controls whether memory-hungry
-modules load. When it is `false` (the self-hosted server profile), the four heavy
-jobs — `cet_full_pipeline_job`, `fiscal_returns_*`, `modernbert_job`,
-`uspto_ai_extraction_job` — and their assets are skipped in the primary location;
-run them from `definitions_ml` instead. If an upstream asset module fails to
-import, its job is replaced by an empty **placeholder** job (name suffixed
-`_placeholder`) so the code location still loads.
+modules load in the primary location. When it is `false`, the four heavy jobs —
+`cet_full_pipeline_job`, `fiscal_returns_*`, `modernbert_job`, and
+`uspto_ai_extraction_job` — and their assets are skipped there. Run them from
+`definitions_ml` instead. Intentional profile exclusions occur before import.
+The discovery layer propagates unexpected asset and job import failures. A
+missing sensors package remains optional, but import failures from an existing
+sensor module propagate. Existing job-local compatibility placeholders remain
+unchanged.
 
 ## Jobs
 
@@ -87,10 +93,10 @@ Cron overrides use `SBIR_ETL__DAGSTER__SCHEDULES__<JOB>` env vars (for example,
 
 ## Registration
 
-`Definitions(...)` in `definitions.py` registers: all assets/checks
-(auto-loaded), `job_definitions` (`core_refresh_job` + `cet_drift_job` if present
-+ all auto-discovered public jobs under `assets/jobs/`), `schedules`, and the
-sensor. See `packages/sbir-analytics/sbir_analytics/definitions.py` and
+The shared definitions factory registers all assets and checks, the jobs for the
+selected profile, its schedules, and its sensors. `definitions.py` and
+`definitions_ml.py` are stable, thin Dagster entry points. See
+`packages/sbir-analytics/sbir_analytics/definitions_factory.py` and
 `assets/jobs/job_registry.py`.
 
 Fourteen heavy asset keys currently belong to no named job: the four USPTO AI

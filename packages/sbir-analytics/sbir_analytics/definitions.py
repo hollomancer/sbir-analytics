@@ -1,266 +1,30 @@
-"""Dagster definitions for SBIR ETL pipeline."""
+"""Primary Dagster code-location entry point for the SBIR pipeline."""
 
-import logging
-import os
-
-from dagster import (
-    AssetSelection,
-    Definitions,
-    DefaultScheduleStatus,
-    JobDefinition,
-    ScheduleDefinition,
-    SensorDefinition,
-    define_asset_job,
-    load_asset_checks_from_modules,
-    load_assets_from_modules,
-)
-from dagster._core.definitions.unresolved_asset_job_definition import (
-    UnresolvedAssetJobDefinition,
-)
-from dagster._core.errors import DagsterInvalidSubsetError
-
-from . import assets as assets_pkg
-
-
-LOG = logging.getLogger(__name__)
-DiscoveredJob = JobDefinition | UnresolvedAssetJobDefinition
-
-
-def _schedule_status(env_var: str, *, default_running: bool) -> DefaultScheduleStatus:
-    """Resolve a schedule's default status from an environment toggle.
-
-    Server deployments gate schedules off by default so the always-on stack
-    never launches expensive materializations without an explicit opt-in.
-    """
-    raw = os.getenv(env_var, "true" if default_running else "false").strip().lower()
-    enabled = raw in ("true", "1", "yes", "on")
-    return DefaultScheduleStatus.RUNNING if enabled else DefaultScheduleStatus.STOPPED
-
-
-# Load all assets and checks from modules
-asset_modules = assets_pkg.iter_asset_modules()
-all_assets = load_assets_from_modules(asset_modules)
-all_asset_checks = load_asset_checks_from_modules(asset_modules)
-
-
-def _discover_jobs() -> dict[str, DiscoveredJob]:
-    """Discover job definitions exposed under src.assets.jobs."""
-
-    jobs: dict[str, DiscoveredJob] = {}
-    load_heavy = assets_pkg.should_load_heavy_assets()
-    for job in assets_pkg.iter_public_jobs():
-        if not load_heavy and isinstance(job, UnresolvedAssetJobDefinition):
-            try:
-                job.selection.resolve(all_assets)
-            except DagsterInvalidSubsetError as exc:
-                LOG.info("Skipping job %s because its assets are not loaded: %s", job.name, exc)
-                continue
-        jobs[job.name] = job
-    return jobs
-
-
-def _discover_sensors() -> list[SensorDefinition]:
-    """Discover sensors exposed under src.assets.sensors."""
-
-    return list(assets_pkg.iter_public_sensors())
-
-
-auto_jobs = _discover_jobs()
-
-
-def _get_job(name: str) -> DiscoveredJob | None:
-    """Retrieve a named job or return None if it is missing."""
-    return auto_jobs.get(name)
-
-
-# Try to get CET jobs (may not be available if heavy assets are skipped)
-cet_full_pipeline_job = _get_job("cet_full_pipeline_job")
-
-
-# Opt-in weekly core refresh for the server profile. It materializes the core
-# (non-heavy) assets. The selection excludes heavy modules explicitly rather
-# than relying on DAGSTER_LOAD_HEAVY_ASSETS=false to keep them unloaded: heavy
-# assets are now loaded so they can be run by hand, so an AssetSelection.all()
-# here would quietly make "core" mean everything. It stays STOPPED until an
-# operator confirms a manual run succeeds and flips the env toggle on.
-def _heavy_asset_keys() -> set:
-    """Asset keys belonging to the heavy ML/fiscal/NLP modules."""
-    heavy_modules = [
-        module
-        for module in asset_modules
-        if module.__name__.startswith(assets_pkg.HEAVY_ASSET_PREFIXES)
-    ]
-    if not heavy_modules:
-        return set()
-    return {asset.key for asset in load_assets_from_modules(heavy_modules) if hasattr(asset, "key")}
-
-
-_heavy_keys = _heavy_asset_keys()
-core_refresh_job = define_asset_job(
-    name="core_refresh_job",
-    selection=(
-        AssetSelection.all() - AssetSelection.assets(*_heavy_keys)
-        if _heavy_keys
-        else AssetSelection.all()
-    ),
-    description="Weekly refresh of core (non-heavy) SBIR assets",
+from .definitions_factory import (
+    _HOST_SCHEDULES as FACTORY_HOST_SCHEDULES,
+    build_definitions,
+    schedule_status,
 )
 
-weekly_core_refresh_schedule = ScheduleDefinition(
-    job=core_refresh_job,
-    cron_schedule=os.getenv(
-        "SBIR_ETL__DAGSTER__SCHEDULES__WEEKLY_CORE_REFRESH_JOB", "0 3 * * 0"
-    ),  # Default Sundays 03:00 UTC
-    name="weekly_core_refresh",
-    description="Weekly core asset refresh (server profile; disabled by default)",
-    default_status=_schedule_status(
-        "SBIR_ETL__DAGSTER__SCHEDULES__WEEKLY_CORE_REFRESH_ENABLED",
-        default_running=False,
-    ),
-)
 
-# Define CET drift job only if ML assets are available
-cet_drift_job = None
-# Check if the drift detection asset exists before creating job
-drift_asset_exists = any(
-    hasattr(asset, "key") and asset.key.path == ["ml", "validated_cet_drift_detection"]
-    for asset in all_assets
-)
-if drift_asset_exists:
-    cet_drift_job = define_asset_job(
-        name="cet_drift_job",
-        selection=AssetSelection.keys(["ml", "validated_cet_drift_detection"]),
-        description="Run CET drift detection asset",
-    )
+_bundle = build_definitions("primary")
+_HOST_SCHEDULES = FACTORY_HOST_SCHEDULES
 
-# Source-data download schedules. These replace data-refresh.yml, whose cron
-# times they inherit, now that the server fetches upstream data itself rather
-# than consuming a copy staged by GitHub Actions.
-#
-# All four default to STOPPED: the runbook requires an operator to confirm a
-# manual run succeeds on the host before enabling a schedule, and SAM.gov and
-# USAspending additionally need credentials and disk headroom in place.
-_HOST_SCHEDULES = (
-    (
-        "sbir_awards_download_job",
-        "weekly_sbir_awards_download",
-        "0 9 * * 1",
-        "SBIR awards download",
-    ),
-    ("sam_gov_download_job", "monthly_sam_gov_download", "0 3 15 * *", "SAM.gov entities download"),
-    (
-        "usaspending_download_job",
-        "monthly_usaspending_download",
-        "0 2 6 * *",
-        "USAspending dump download",
-    ),
-    ("uspto_download_job", "monthly_uspto_download", "0 9 1 * *", "USPTO datasets download"),
-    # Carried from the retired monthly-analysis.yml phase-transition job.
-    (
-        "phase_transition_latency_job",
-        "monthly_phase_transition",
-        "0 14 1 * *",
-        "Phase II->III transition latency analysis",
-    ),
-    # Carried from the retired weekly.yml weekly-awards-report job, keeping its
-    # Monday 12:00 UTC slot. Needs OPENAI_API_KEY and SAM_GOV_API_KEY in
-    # .env.server; without them the script degrades to a non-AI report rather
-    # than failing.
-    (
-        "weekly_awards_report_job",
-        "weekly_awards_report",
-        "0 12 * * 1",
-        "Weekly SBIR awards report",
-    ),
-)
+# Keep the existing module-level operator and test surface stable.
+defs = _bundle.defs
+asset_modules = _bundle.asset_modules
+all_assets = _bundle.all_assets
+all_asset_checks = _bundle.all_asset_checks
+auto_jobs = _bundle.auto_jobs
+all_sensors = _bundle.all_sensors
+job_definitions = _bundle.job_definitions
+schedules = _bundle.schedules
+source_download_schedules = _bundle.source_download_schedules
+research_release_schedules = _bundle.research_release_schedules
+_heavy_keys = _bundle.heavy_asset_keys
+core_refresh_job = _bundle.core_refresh_job
+cet_drift_job = _bundle.cet_drift_job
+cet_full_pipeline_job = _bundle.cet_full_pipeline_job
 
-source_download_schedules = []
-for _job_name, _schedule_name, _default_cron, _label in _HOST_SCHEDULES:
-    _discovered = _get_job(_job_name)
-    if _discovered is None:
-        LOG.warning("Job %s not discovered; skipping schedule", _job_name)
-        continue
-    _env_suffix = _schedule_name.upper()
-    source_download_schedules.append(
-        ScheduleDefinition(
-            job=_discovered,
-            cron_schedule=os.getenv(
-                f"SBIR_ETL__DAGSTER__SCHEDULES__{_env_suffix}_CRON", _default_cron
-            ),
-            name=_schedule_name,
-            description=f"Scheduled {_label} on this host",
-            default_status=_schedule_status(
-                f"SBIR_ETL__DAGSTER__SCHEDULES__{_env_suffix}_ENABLED",
-                default_running=False,
-            ),
-        )
-    )
-
-# The lineage refresh produces a derived research release rather than downloading
-# a source dataset, so keep it outside the source-download schedule contract.
-research_release_schedules = []
-_lineage_job = _get_job("nsf_defense_lineage_refresh_job")
-if _lineage_job is None:
-    LOG.warning("Job nsf_defense_lineage_refresh_job not discovered; skipping schedule")
-else:
-    research_release_schedules.append(
-        ScheduleDefinition(
-            job=_lineage_job,
-            cron_schedule=os.getenv(
-                "SBIR_ETL__DAGSTER__SCHEDULES__MONTHLY_NSF_DEFENSE_LINEAGE_REFRESH_CRON",
-                "0 5 8 * *",
-            ),
-            name="monthly_nsf_defense_lineage_refresh",
-            description="Scheduled NSF SBIR to DoD funding-lineage research release",
-            default_status=_schedule_status(
-                "SBIR_ETL__DAGSTER__SCHEDULES__MONTHLY_NSF_DEFENSE_LINEAGE_REFRESH_ENABLED",
-                default_running=False,
-            ),
-        )
-    )
-
-# Create schedules only for available jobs
-schedules = [
-    weekly_core_refresh_schedule,
-    *source_download_schedules,
-    *research_release_schedules,
-]
-
-if cet_full_pipeline_job is not None:
-    cet_full_pipeline_schedule = ScheduleDefinition(
-        job=cet_full_pipeline_job,
-        cron_schedule=os.getenv("SBIR_ETL__DAGSTER__SCHEDULES__CET_FULL_PIPELINE_JOB", "0 2 * * *"),
-        name="daily_cet_full_pipeline",
-        description="Daily CET full pipeline end-to-end execution",
-    )
-    schedules.append(cet_full_pipeline_schedule)
-
-if cet_drift_job is not None:
-    cet_drift_schedule = ScheduleDefinition(
-        job=cet_drift_job,
-        cron_schedule=os.getenv("SBIR_ETL__DAGSTER__SCHEDULES__CET_DRIFT_JOB", "0 6 * * *"),
-        name="daily_cet_drift_detection",
-        description="Daily CET drift detection and alerting",
-    )
-    schedules.append(cet_drift_schedule)
-
-# Load sensors automatically
-all_sensors = _discover_sensors()
-
-# Aggregate jobs for repository registration
-job_definitions: list[DiscoveredJob] = [core_refresh_job]
-# Add conditional jobs if they exist
-if cet_drift_job is not None:
-    job_definitions.append(cet_drift_job)
-
-# Add auto-discovered jobs that aren't already in the list
-job_definitions.extend(job for job in auto_jobs.values() if job not in job_definitions)
-
-# Create the definitions object
-defs = Definitions(
-    assets=all_assets,
-    asset_checks=all_asset_checks,
-    jobs=job_definitions,
-    schedules=schedules,  # Use conditional schedules list
-    sensors=all_sensors,
-)
+# Backward-compatible private name used by focused schedule tests.
+_schedule_status = schedule_status
