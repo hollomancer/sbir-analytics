@@ -50,23 +50,16 @@ import pandas as pd
 from scipy.optimize import minimize, minimize_scalar
 from scipy.spatial import cKDTree
 
+from sbir_etl.identity.geography import (
+    USJurisdictionProfile,
+    VALID_US_JURISDICTION_CODES_V1,
+    normalize_us_jurisdiction,
+)
+
 EARTH_KM = 6371.0088
 FY_MIN, FY_MAX = 2010, 2024
 
-STATE_ABBR = {
-    "Alabama": "AL", "Alaska": "AK", "Arizona": "AZ", "Arkansas": "AR", "California": "CA",
-    "Colorado": "CO", "Connecticut": "CT", "Delaware": "DE", "District of Columbia": "DC",
-    "Florida": "FL", "Georgia": "GA", "Hawaii": "HI", "Idaho": "ID", "Illinois": "IL",
-    "Indiana": "IN", "Iowa": "IA", "Kansas": "KS", "Kentucky": "KY", "Louisiana": "LA",
-    "Maine": "ME", "Maryland": "MD", "Massachusetts": "MA", "Michigan": "MI", "Minnesota": "MN",
-    "Mississippi": "MS", "Missouri": "MO", "Montana": "MT", "Nebraska": "NE", "Nevada": "NV",
-    "New Hampshire": "NH", "New Jersey": "NJ", "New Mexico": "NM", "New York": "NY",
-    "North Carolina": "NC", "North Dakota": "ND", "Ohio": "OH", "Oklahoma": "OK", "Oregon": "OR",
-    "Pennsylvania": "PA", "Rhode Island": "RI", "South Carolina": "SC", "South Dakota": "SD",
-    "Tennessee": "TN", "Texas": "TX", "Utah": "UT", "Vermont": "VT", "Virginia": "VA",
-    "Washington": "WA", "West Virginia": "WV", "Wisconsin": "WI", "Wyoming": "WY",
-}
-CONTIGUOUS = {v for v in STATE_ABBR.values() if v not in {"AK", "HI"}}
+CONTIGUOUS = VALID_US_JURISDICTION_CODES_V1 - {"AK", "HI", "PR", "VI", "GU", "AS", "MP"}
 
 
 def _unit_sphere(lat: np.ndarray, lon: np.ndarray) -> np.ndarray:
@@ -83,21 +76,40 @@ def load_locations(path: Path) -> pd.DataFrame:
     with zipfile.ZipFile(path) as zf:
         with zf.open(zf.namelist()[0]) as fh:
             loc = pd.read_csv(
-                io.TextIOWrapper(fh, "utf-8"), sep="\t", quotechar='"',
-                usecols=["disambig_city", "disambig_state", "disambig_country",
-                         "latitude", "longitude", "state_fips", "county_fips"],
+                io.TextIOWrapper(fh, "utf-8"),
+                sep="\t",
+                quotechar='"',
+                usecols=[
+                    "disambig_city",
+                    "disambig_state",
+                    "disambig_country",
+                    "latitude",
+                    "longitude",
+                    "state_fips",
+                    "county_fips",
+                ],
                 low_memory=False,
             )
-    loc = loc[(loc.disambig_country == "US") & loc.latitude.notna()
-              & loc.state_fips.notna() & loc.county_fips.notna()].copy()
+    loc = loc[
+        (loc.disambig_country == "US")
+        & loc.latitude.notna()
+        & loc.state_fips.notna()
+        & loc.county_fips.notna()
+    ].copy()
     loc["city_k"] = loc.disambig_city.astype(str).str.upper().str.strip()
     loc["st"] = loc.disambig_state.astype(str).str.upper().str.strip()
-    loc["fips"] = (loc.state_fips.astype(int).astype(str).str.zfill(2)
-                   + loc.county_fips.astype(int).astype(str).str.zfill(3))
-    return (loc.groupby(["city_k", "st"])
-               .agg(lat=("latitude", "mean"), lon=("longitude", "mean"),
-                    fips=("fips", lambda s: s.mode().iat[0]))
-               .reset_index())
+    loc["fips"] = loc.state_fips.astype(int).astype(str).str.zfill(2) + loc.county_fips.astype(
+        int
+    ).astype(str).str.zfill(3)
+    return (
+        loc.groupby(["city_k", "st"])
+        .agg(
+            lat=("latitude", "mean"),
+            lon=("longitude", "mean"),
+            fips=("fips", lambda s: s.mode().iat[0]),
+        )
+        .reset_index()
+    )
 
 
 def load_awards(path: Path) -> pd.DataFrame:
@@ -113,7 +125,12 @@ def load_awards(path: Path) -> pd.DataFrame:
     phase1["firm"] = firm
     first_year = phase1.groupby("firm").yr.min()
     window = phase1[(phase1.yr >= FY_MIN) & (phase1.yr <= FY_MAX)].copy()
-    window["st"] = window.State.map(STATE_ABBR)
+    window["st"] = window.State.map(
+        lambda value: normalize_us_jurisdiction(
+            value,
+            profile=USJurisdictionProfile.STRICT_V1,
+        )
+    )
     window["city_k"] = window.City.astype(str).str.upper().str.strip()
     window = window[window.st.notna()].copy()
     window["is_ftw"] = (window.yr == window.firm.map(first_year)).astype(int)
@@ -122,9 +139,9 @@ def load_awards(path: Path) -> pd.DataFrame:
 
 def build_counties(xwalk: pd.DataFrame) -> pd.DataFrame:
     """County centroids plus nearest out-of-state county and distance."""
-    counties = (xwalk.groupby(["fips", "st"])
-                     .agg(lat=("lat", "mean"), lon=("lon", "mean"))
-                     .reset_index())
+    counties = (
+        xwalk.groupby(["fips", "st"]).agg(lat=("lat", "mean"), lon=("lon", "mean")).reset_index()
+    )
     counties = counties[counties.st.isin(CONTIGUOUS)].reset_index(drop=True)
     pts = _unit_sphere(counties.lat.values, counties.lon.values)
     nbr_idx = np.full(len(counties), -1)
@@ -146,12 +163,15 @@ def build_counties(xwalk: pd.DataFrame) -> pd.DataFrame:
 def fast_lookup(fast_csv: Path) -> tuple[set[tuple[str, int]], dict[str, set[int]]]:
     panel = pd.read_csv(fast_csv)
     funded = {(r.state, int(r.fiscal_year)) for r in panel.itertuples()}
-    profiles = {s: set(panel[panel.state == s].fiscal_year.astype(int)) for s in panel.state.unique()}
+    profiles = {
+        s: set(panel[panel.state == s].fiscal_year.astype(int)) for s in panel.state.unique()
+    }
     return funded, profiles
 
 
-def build_pairs(awards: pd.DataFrame, xwalk: pd.DataFrame, counties: pd.DataFrame,
-                funded: set[tuple[str, int]]) -> pd.DataFrame:
+def build_pairs(
+    awards: pd.DataFrame, xwalk: pd.DataFrame, counties: pd.DataFrame, funded: set[tuple[str, int]]
+) -> pd.DataFrame:
     """One row per (cross-border county pair, year) with counts on both sides."""
     geo = awards.merge(xwalk, on=["city_k", "st"], how="left")
     geo = geo[geo.fips.notna()]
@@ -166,14 +186,39 @@ def build_pairs(awards: pd.DataFrame, xwalk: pd.DataFrame, counties: pd.DataFram
             continue
         pair = "_".join(sorted([c.fips, c.nbr_fips]))
         for year in range(FY_MIN, FY_MAX + 1):
-            rows.append((pair, c.fips, c.nbr_fips, c.st, state_of.get(c.nbr_fips), year,
-                         p1.get((c.fips, year), 0), p1.get((c.nbr_fips, year), 0),
-                         ftw.get((c.fips, year), 0), ftw.get((c.nbr_fips, year), 0),
-                         c.pair_km))
-    pairs = pd.DataFrame(rows, columns=["pair", "fipsA", "fipsB", "stA", "stB", "yr",
-                                        "yA", "yB", "ftwA", "ftwB", "pair_km"])
-    pairs["fA"] = [1 if (s, y) in funded else 0 for s, y in zip(pairs.stA, pairs.yr)]
-    pairs["fB"] = [1 if (s, y) in funded else 0 for s, y in zip(pairs.stB, pairs.yr)]
+            rows.append(
+                (
+                    pair,
+                    c.fips,
+                    c.nbr_fips,
+                    c.st,
+                    state_of.get(c.nbr_fips),
+                    year,
+                    p1.get((c.fips, year), 0),
+                    p1.get((c.nbr_fips, year), 0),
+                    ftw.get((c.fips, year), 0),
+                    ftw.get((c.nbr_fips, year), 0),
+                    c.pair_km,
+                )
+            )
+    pairs = pd.DataFrame(
+        rows,
+        columns=[
+            "pair",
+            "fipsA",
+            "fipsB",
+            "stA",
+            "stB",
+            "yr",
+            "yA",
+            "yB",
+            "ftwA",
+            "ftwB",
+            "pair_km",
+        ],
+    )
+    pairs["fA"] = [1 if (s, y) in funded else 0 for s, y in zip(pairs.stA, pairs.yr, strict=True)]
+    pairs["fB"] = [1 if (s, y) in funded else 0 for s, y in zip(pairs.stB, pairs.yr, strict=True)]
     pairs["dF"] = pairs.fA - pairs.fB
     return canonicalize(pairs)
 
@@ -202,8 +247,7 @@ def canonicalize(pairs: pd.DataFrame) -> pd.DataFrame:
     return out
 
 
-def estimation_sample(pairs: pd.DataFrame, band_km: float,
-                      outcome: str = "p1") -> pd.DataFrame:
+def estimation_sample(pairs: pd.DataFrame, band_km: float, outcome: str = "p1") -> pd.DataFrame:
     """Pair-years that carry information about the treatment coefficient."""
     a, b = ("yA", "yB") if outcome == "p1" else ("ftwA", "ftwB")
     s = pairs[pairs.pair_km <= band_km].copy()
@@ -252,17 +296,26 @@ def _fit(sample: pd.DataFrame, regressors: np.ndarray) -> np.ndarray:
         return float(-np.sum(y * eta - n * np.logaddexp(0.0, eta)))
 
     if x.shape[1] == 1:
-        best = minimize_scalar(nll, bounds=(-5, 5), method="bounded",
-                               options={"xatol": 1e-7})
+        best = minimize_scalar(nll, bounds=(-5, 5), method="bounded", options={"xatol": 1e-7})
         return np.array([best.x])
-    best = minimize(nll, np.zeros(x.shape[1]), method="Nelder-Mead",
-                    options={"xatol": 1e-6, "fatol": 1e-6, "maxiter": 4000})
+    best = minimize(
+        nll,
+        np.zeros(x.shape[1]),
+        method="Nelder-Mead",
+        options={"xatol": 1e-6, "fatol": 1e-6, "maxiter": 4000},
+    )
     return best.x
 
 
-def randomization_inference(pairs: pd.DataFrame, profiles: dict[str, set[int]],
-                            band_km: float, outcome: str, observed: float,
-                            draws: int, seed: int = 5) -> dict:
+def randomization_inference(
+    pairs: pd.DataFrame,
+    profiles: dict[str, set[int]],
+    band_km: float,
+    outcome: str,
+    observed: float,
+    draws: int,
+    seed: int = 5,
+) -> dict:
     """Permute observed FAST year-profiles across states and refit.
 
     Treatment is assigned at state x fiscal year while observations are county
@@ -277,9 +330,10 @@ def randomization_inference(pairs: pd.DataFrame, profiles: dict[str, set[int]],
         perm = rng.permutation(len(states))
         mapped = {states[i]: profile_list[perm[i]] for i in range(len(states))}
         draw = pairs.copy()
-        draw["dF"] = [(1 if y in mapped.get(sa, set()) else 0)
-                      - (1 if y in mapped.get(sb, set()) else 0)
-                      for sa, sb, y in zip(draw.stA, draw.stB, draw.yr)]
+        draw["dF"] = [
+            (1 if y in mapped.get(sa, set()) else 0) - (1 if y in mapped.get(sb, set()) else 0)
+            for sa, sb, y in zip(draw.stA, draw.stB, draw.yr, strict=True)
+        ]
         sample = estimation_sample(draw, band_km, outcome)
         if sample.empty or sample.dF.nunique() < 2:
             continue
@@ -295,8 +349,7 @@ def randomization_inference(pairs: pd.DataFrame, profiles: dict[str, set[int]],
     }
 
 
-def pretrend_test(pairs: pd.DataFrame, band_km: float, outcome: str,
-                  lead: int) -> dict:
+def pretrend_test(pairs: pd.DataFrame, band_km: float, outcome: str, lead: int) -> dict:
     """Placebo: can FAST status `lead` years in the future move today's awards?
 
     Future treatment cannot cause past outcomes. A large negative coefficient
@@ -306,8 +359,9 @@ def pretrend_test(pairs: pd.DataFrame, band_km: float, outcome: str,
     """
     future = pairs.set_index(["pair", "yr"]).dF
     framed = pairs.copy()
-    framed["lead"] = [future.get((p, y + lead), np.nan)
-                      for p, y in zip(framed.pair, framed.yr)]
+    framed["lead"] = [
+        future.get((p, y + lead), np.nan) for p, y in zip(framed.pair, framed.yr, strict=True)
+    ]
     framed = framed[framed["lead"].notna()]
     sample = estimation_sample(framed, band_km, outcome)
     if sample.empty or sample["lead"].nunique() < 2:
@@ -322,8 +376,9 @@ def pretrend_test(pairs: pd.DataFrame, band_km: float, outcome: str,
     }
 
 
-def run_band(pairs: pd.DataFrame, profiles: dict[str, set[int]], band_km: float,
-             outcome: str, draws: int) -> dict:
+def run_band(
+    pairs: pd.DataFrame, profiles: dict[str, set[int]], band_km: float, outcome: str, draws: int
+) -> dict:
     sample = estimation_sample(pairs, band_km, outcome)
     beta = float(_fit(sample, sample.dF.values)[0])
     row = {
@@ -364,8 +419,11 @@ def main() -> None:
     funded, profiles = fast_lookup(args.fast)
     pairs = build_pairs(awards, xwalk, counties, funded)
 
-    results = [run_band(pairs, profiles, band, outcome, args.draws)
-               for outcome in args.outcomes for band in args.bands]
+    results = [
+        run_band(pairs, profiles, band, outcome, args.draws)
+        for outcome in args.outcomes
+        for band in args.bands
+    ]
     table = pd.DataFrame(results)
     pre_rows = []
     for outcome in args.outcomes:
