@@ -299,7 +299,7 @@ class TestFiscalPipelineIntegration:
                         "production_impact": shock_amt * Decimal("2.0"),
                         "model_version": "v2.1",
                         "confidence": Decimal("0.85"),
-                        "quality_flags": "r_computation",
+                        "quality_flags": "bea_api_with_ratios",
                     }
                 )
             return pd.DataFrame(impacts_data)

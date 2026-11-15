@@ -37,6 +37,12 @@ from .economic_model_interface import validate_shocks_input
 
 EPISTEMIC_TIER = "exploratory"
 
+# The only row provenance accepted downstream: production, value-added ratios,
+# and employment all came from BEA tables. Any other value (default ratios,
+# zero-production or default-employment fallbacks, legacy placeholders, or a
+# missing flag) is rejected.
+BEA_COMPUTED_QUALITY_FLAG = "bea_api_with_ratios"
+
 
 class BEAIOAdapter:
     """BEA I-O adapter for economic impact computation.
@@ -275,6 +281,9 @@ class BEAIOAdapter:
 
         # Fetch employment coefficients for computing employment impacts
         emp_coeff_df = self._get_employment_coefficients(year)
+        emp_coeff_sectors = (
+            set(emp_coeff_df["sector"].astype(str)) if not emp_coeff_df.empty else set()
+        )
 
         # Process each state's shocks
         # NOTE: BEA national tables are used for all states; state-level
@@ -305,6 +314,7 @@ class BEAIOAdapter:
 
                 for _, shock_row in state_shocks.iterrows():
                     sector = shock_row["bea_sector"]
+                    fallback_flags: list[str] = []
 
                     if sector in production_by_sector.index:
                         production_impact = Decimal(
@@ -313,6 +323,7 @@ class BEAIOAdapter:
                     else:
                         logger.warning(f"Sector {sector} not in production results, using zero")
                         production_impact = Decimal("0")
+                        fallback_flags.append("bea_zero_production_fallback")
 
                     # Value-added breakdown
                     wage_ratio = Decimal("0.4")
@@ -337,9 +348,16 @@ class BEAIOAdapter:
                     tax_impact = production_impact * tax_ratio
                     proprietor_impact = production_impact * proprietor_ratio
 
+                    if not used_actual_ratios:
+                        fallback_flags.append("bea_api_default_ratios")
+
                     # Employment impact (jobs created).
                     # employment_by_sector was computed from production in
-                    # millions, using coefficients in jobs-per-$1M.
+                    # millions, using coefficients in jobs-per-$1M. A sector
+                    # without a BEA coefficient got ~10 jobs per $1M inside
+                    # calculate_employment_from_production, so flag it here.
+                    if str(sector) not in emp_coeff_sectors:
+                        fallback_flags.append("bea_default_employment_fallback")
                     if sector in employment_by_sector.index:
                         employment_impact = float(employment_by_sector[sector])
                     else:
@@ -348,7 +366,7 @@ class BEAIOAdapter:
                         employment_impact = production_millions * 10.0
 
                     quality_flags = (
-                        "bea_api_with_ratios" if used_actual_ratios else "bea_api_default_ratios"
+                        ";".join(fallback_flags) if fallback_flags else BEA_COMPUTED_QUALITY_FLAG
                     )
 
                     all_results.append(
@@ -457,36 +475,41 @@ class BEAIOAdapter:
         self.validate_input(shocks_df)
 
         cache_key = self._get_cache_key(shocks_df, model_version)
+        cache_file = self.cache_dir / f"{cache_key}.parquet"
         cached_result = self._load_from_cache(cache_key)
         if cached_result is not None:
-            self._reject_non_bea_result(cached_result, source="cache")
-            logger.info(f"Using cached results for {cache_key}")
-            return cached_result
+            if self._count_non_bea_rows(cached_result) == 0:
+                logger.info(f"Using cached results for {cache_key}")
+                return cached_result
+            logger.warning(f"Discarding cached result with non-BEA rows: {cache_file}")
+            self._cache.pop(cache_key, None)
+            cache_file.unlink(missing_ok=True)
 
         logger.info(f"Computing impacts for {len(shocks_df)} shocks using BEA I-O tables")
         result_df = self._compute_impacts_bea(shocks_df, model_version)
-        self._reject_non_bea_result(result_df, source="computation")
+        rejected_rows = self._count_non_bea_rows(result_df)
+        if rejected_rows:
+            flags = result_df.get("quality_flags", pd.Series(dtype="string"))
+            raise TransformationError(
+                "BEA I-O result contains non-BEA fallback rows",
+                component="transformers.bea_io_adapter",
+                operation="validate_result_provenance",
+                details={
+                    "rejected_rows": rejected_rows,
+                    "quality_flags": sorted(flags.astype("string").fillna("<missing>").unique()),
+                    "cache_file": str(cache_file),
+                },
+            )
 
         self._save_to_cache(cache_key, result_df)
         return result_df
 
     @staticmethod
-    def _reject_non_bea_result(result_df: pd.DataFrame, *, source: str) -> None:
-        """Reject legacy or accidental fallback rows before downstream use."""
+    def _count_non_bea_rows(result_df: pd.DataFrame) -> int:
+        """Count rows whose provenance flag is not the fully BEA-computed flag."""
         if "quality_flags" not in result_df.columns:
-            return
-        rejected = (
-            result_df["quality_flags"]
-            .astype("string")
-            .str.contains("placeholder|failed|fallback|unavailable", case=False, na=False)
-        )
-        if rejected.any():
-            raise TransformationError(
-                "BEA I-O result contains non-BEA fallback rows",
-                component="transformers.bea_io_adapter",
-                operation="validate_result_provenance",
-                details={"source": source, "rejected_rows": int(rejected.sum())},
-            )
+            return len(result_df)
+        return int((result_df["quality_flags"] != BEA_COMPUTED_QUALITY_FLAG).sum())
 
     def get_model_version(self) -> str:
         return self.model_version

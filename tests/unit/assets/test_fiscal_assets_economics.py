@@ -7,7 +7,7 @@ from unittest.mock import Mock, patch
 
 import pandas as pd
 import pytest
-from dagster import AssetCheckSeverity
+from dagster import AssetCheckSeverity, Failure
 
 from sbir_analytics.assets.fiscal_assets import (
     economic_impacts,
@@ -101,8 +101,37 @@ def sample_economic_impacts():
             "production_impact": [150000, 225000, 300000],
             "model_version": ["stateior_1.0"] * 3,
             "confidence": [0.90, 0.85, 0.95],
+            "quality_flags": ["bea_api_with_ratios"] * 3,
         }
     )
+
+
+def _impacts_for(shocks: pd.DataFrame) -> pd.DataFrame:
+    """Fully BEA-flagged adapter output with one row per shock key."""
+    impacts = shocks[["state", "bea_sector", "fiscal_year"]].copy()
+    for col in [
+        "wage_impact",
+        "proprietor_income_impact",
+        "gross_operating_surplus",
+        "consumption_impact",
+        "tax_impact",
+        "production_impact",
+    ]:
+        impacts[col] = 1000.0
+    impacts["model_version"] = "test-1.0"
+    impacts["quality_flags"] = "bea_api_with_ratios"
+    return impacts
+
+
+def _run_economic_impacts(mock_context, mock_config, shocks, impacts):
+    with patch("sbir_analytics.assets.fiscal_assets.get_config", return_value=mock_config):
+        with patch("sbir_analytics.assets.fiscal_assets.BEAIOAdapter") as mock_adapter_class:
+            mock_adapter = Mock()
+            mock_adapter.is_available.return_value = True
+            mock_adapter.get_model_version.return_value = "test-1.0"
+            mock_adapter.compute_impacts.return_value = impacts
+            mock_adapter_class.return_value = mock_adapter
+            return economic_impacts(mock_context, shocks)
 
 
 class TestEconomicShocks:
@@ -145,29 +174,49 @@ class TestEconomicImpacts:
         self, mock_context, mock_config, sample_economic_shocks
     ):
         """Test economic impacts returns Output type."""
-        with patch("sbir_analytics.assets.fiscal_assets.get_config", return_value=mock_config):
-            with patch("sbir_analytics.assets.fiscal_assets.BEAIOAdapter") as mock_adapter_class:
-                mock_adapter = Mock()
-                mock_adapter.is_available.return_value = True
-                mock_adapter.get_model_version.return_value = "test-1.0"
-                mock_adapter.compute_impacts.return_value = pd.DataFrame(
-                    {
-                        "state": ["CA"],
-                        "bea_sector": ["11"],
-                        "fiscal_year": [2023],
-                        "wage_impact": [50000.0],
-                        "proprietor_income_impact": [10000.0],
-                        "gross_operating_surplus": [20000.0],
-                        "consumption_impact": [30000.0],
-                        "tax_impact": [5000.0],
-                        "production_impact": [100000.0],
-                    }
-                )
-                mock_adapter_class.return_value = mock_adapter
-                result = economic_impacts(mock_context, sample_economic_shocks)
+        result = _run_economic_impacts(
+            mock_context, mock_config, sample_economic_shocks, _impacts_for(sample_economic_shocks)
+        )
 
         assert hasattr(result, "value")
         assert isinstance(result.value, pd.DataFrame)
+        assert economic_impacts_quality_check(result.value).passed
+
+    def test_economic_impacts_fails_on_shock_without_impact_row(
+        self, mock_context, mock_config, sample_economic_shocks
+    ):
+        """Multi-year path: a shock with no fiscal_year gets no impact row and must fail."""
+        shocks = sample_economic_shocks.copy()
+        shocks["fiscal_year"] = shocks["fiscal_year"].astype(float)
+        shocks.loc[0, "fiscal_year"] = float("nan")
+        # The adapter groups by fiscal_year, which drops the NaN-year shock.
+        impacts = _impacts_for(shocks.dropna(subset=["fiscal_year"]))
+
+        with pytest.raises(Failure, match="no impact row for 1 shock"):
+            _run_economic_impacts(mock_context, mock_config, shocks, impacts)
+
+    @pytest.mark.parametrize("quality_flag", [None, float("nan")])
+    def test_economic_impacts_quality_check_rejects_missing_flag(
+        self, sample_economic_impacts, quality_flag
+    ):
+        """A row without a provenance flag (an unmatched shock) fails the check."""
+        sample_economic_impacts.loc[0, "quality_flags"] = quality_flag
+
+        result = economic_impacts_quality_check(sample_economic_impacts)
+
+        assert result.passed is False
+        assert result.metadata["rejected_rows"].value == 1
+
+    def test_economic_impacts_quality_check_rejects_missing_flag_column(
+        self, sample_economic_impacts
+    ):
+        """Impacts with no provenance column at all fail the check."""
+        result = economic_impacts_quality_check(
+            sample_economic_impacts.drop(columns=["quality_flags"])
+        )
+
+        assert result.passed is False
+        assert result.metadata["rejected_rows"].value == 3
 
     def test_economic_impacts_quality_check_passes(self, sample_economic_impacts, mock_config):
         """Test economic impacts quality check passes with good data."""
@@ -178,7 +227,17 @@ class TestEconomicImpacts:
 
     @pytest.mark.parametrize(
         "quality_flag",
-        ["placeholder_computation", "bea_api_failed", "default_fallback", "api_unavailable"],
+        [
+            "placeholder_computation",
+            "bea_api_failed",
+            "default_fallback",
+            "api_unavailable",
+            "bea_api_default_ratios",
+            "bea_zero_production_fallback",
+            "bea_default_employment_fallback",
+            "bea_api_default_ratios;bea_default_employment_fallback",
+            "bea_api_computation",
+        ],
     )
     def test_economic_impacts_quality_check_rejects_fallback_rows(
         self, sample_economic_impacts, quality_flag

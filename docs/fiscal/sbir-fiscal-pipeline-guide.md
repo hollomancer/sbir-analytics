@@ -107,12 +107,19 @@ sector_summary = calculator.calculate_summary_by_sector(impacts)
 
 ### Quality Flags
 
-Indicates computation method and data quality:
+Records where each row's inputs came from. The pipeline accepts only one value:
 
-- **bea_api_with_ratios**: Highest quality (BEA I-O tables + actual VA ratios)
-- **bea_api_default_ratios**: Medium quality (BEA I-O tables + default ratios)
-- **bea_api_failed**: Computation failure (contains error details)
-- **placeholder_computation**: BEA API key not set (lowest quality)
+- **bea_api_with_ratios**: Production, value-added ratios, and employment all came from BEA tables.
+
+Any other value fails the computation and the `economic_impacts` asset check.
+These values mark fallback rows:
+
+- **bea_api_default_ratios**: The value-added table lacked the sector. Fixed ratios were used.
+- **bea_zero_production_fallback**: The sector was missing from the production results.
+- **bea_default_employment_fallback**: No employment coefficient. About 10 jobs per $1M was used.
+- **bea_api_failed**, **placeholder_computation**: Legacy failure and placeholder rows.
+
+A row can carry more than one fallback flag, separated by `;`.
 
 ## NAICS to BEA Mapping
 
@@ -302,9 +309,7 @@ high_quality = impacts[
 ]
 
 # Keep only rows backed by a successful BEA computation
-bea_backed = impacts[
-    impacts["quality_flags"].isin(["bea_api_with_ratios", "bea_api_default_ratios"])
-]
+bea_backed = impacts[impacts["quality_flags"] == "bea_api_with_ratios"]
 ```
 
 ## Troubleshooting
@@ -350,7 +355,7 @@ The pipeline rejects placeholder and fallback rows. This includes legacy rows in
 
 - Set BEA_API_KEY environment variable
 - Use a year with available BEA I-O tables (2017-2022 typically available)
-- Remove legacy cached results with fallback quality flags. Run the asset again.
+- The adapter discards a cached result with fallback rows and computes again.
 
 ## References
 

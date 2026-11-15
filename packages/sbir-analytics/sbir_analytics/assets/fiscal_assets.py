@@ -27,7 +27,7 @@ from sbir_etl.enrichers.naics import enrich_sbir_awards_with_fiscal_naics
 from sbir_etl.enrichers.naics.fiscal.exploratory_strategies import (
     fiscal_strategies_with_text_inference,
 )
-from sbir_etl.transformers.bea_io_adapter import BEAIOAdapter
+from sbir_etl.transformers.bea_io_adapter import BEA_COMPUTED_QUALITY_FLAG, BEAIOAdapter
 from sbir_etl.transformers.fiscal import (
     FiscalComponentCalculator,
     FiscalParameterSweep,
@@ -494,7 +494,19 @@ def economic_impacts(
         on=["state", "bea_sector", "fiscal_year"],
         how="left",
         suffixes=("_shock", "_impact"),
+        indicator=True,
     )
+    # A shock with no impact row (for example, a missing fiscal_year that the
+    # multi-year path drops when it groups by year) must not become zero impacts.
+    unmatched = int((result.pop("_merge") == "left_only").sum())
+    if unmatched:
+        raise Failure(
+            description=(
+                f"BEA I-O computation returned no impact row for {unmatched} shock(s); "
+                "no impacts were materialized"
+            ),
+            metadata={"unmatched_shocks": unmatched},
+        )
     for col in _IMPACT_COLS:
         if col not in result.columns:
             result[col] = 0.0
@@ -545,13 +557,11 @@ def economic_impacts_quality_check(economic_impacts: pd.DataFrame) -> AssetCheck
             metadata={"model_version": "placeholder"},
         )
 
-    rejected_flags = pd.Series(False, index=economic_impacts.index)
+    # Allow only fully BEA-computed rows. A missing column or a missing flag
+    # (an unmatched shock) counts as rejected.
+    rejected_flags = pd.Series(True, index=economic_impacts.index)
     if "quality_flags" in economic_impacts.columns:
-        rejected_flags = (
-            economic_impacts["quality_flags"]
-            .astype("string")
-            .str.contains("placeholder|failed|fallback|unavailable", case=False, na=False)
-        )
+        rejected_flags = economic_impacts["quality_flags"] != BEA_COMPUTED_QUALITY_FLAG
     if rejected_flags.any():
         return AssetCheckResult(
             passed=False,
