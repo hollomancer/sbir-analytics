@@ -8,9 +8,12 @@ raises SBIR participation.
 as a finding about FAST, and no research question becomes answerable on it.
 
 **Window:** FY2010–FY2024. **Status:** design implemented and run. It produces a
-stable, robust, nominally significant negative coefficient that is **not** a
-FAST effect: a placebo using *future* treatment recovers most of it, so the
-design's parallel-trends assumption fails.
+stable, robust, nominally significant negative coefficient (about −25%) that
+cannot be read as a FAST effect. A placebo on *future* FAST status, fitted
+jointly with current status, gives lead coefficients of similar size (−17% to
+−22% for Phase I). Most of those lead coefficients are not distinguishable from
+zero under randomization inference. The placebo therefore neither shows that
+parallel trends holds nor shows that it fails.
 
 > **Correction notice.** The first revision of this document reported −14.6%
 > (40 km) and −45.5% (60 km) with randomization-inference p-values of 0.41 and
@@ -23,6 +26,19 @@ design's parallel-trends assumption fails.
 > across bandwidth and robust to dropping the largest pairs. The verdict — that
 > no credible FAST effect is identified here — is unchanged, but the reason is
 > different and better supported.
+>
+> **Second correction (review of PR #817).** The second revision fitted the
+> future-treatment placebo on the lead alone. FAST status is persistent from
+> year to year, so a lead fitted alone mostly reproduces the current-year
+> coefficient (it reported −24.3% at t+1 against −24.8% current). That
+> revision read the match as proof that parallel trends fails and that the
+> coefficient measures selection into treatment. The test could not show
+> that. The placebo now fits current and lead status together, keeps pairs
+> where either one changes, and gives the lead a permutation p-value. Zero
+> and negative obligation rows are also no longer counted as treatment
+> (section 2). The "selection into treatment" claim is withdrawn: the
+> corrected placebo is consistent with a pre-trend but does not establish
+> one.
 
 ---
 
@@ -41,7 +57,10 @@ regional shocks, so the state line isolates the policy.
 
 The variation exists. Across the 108 adjacent state pairs among the contiguous
 48 plus DC, the number with **discordant** FAST status averages 47.3 per year
-(44%), never falling below 29 across FY2010–2024.
+(44%), never falling below 29 across FY2010–2024. (This count was computed
+before the treatment rule in section 2 dropped zero and negative obligation
+rows, and was not recomputed: the state-adjacency list behind it is not in the
+repo.)
 
 ### Estimator
 
@@ -64,7 +83,7 @@ effect (MDE, 80% power, 5% two-sided).
 
 | Input | Source | Note |
 |---|---|---|
-| FAST treatment panel | USAspending assistance listing 59.058 | 339 awards, FY2010–2024, 50 states. `data/reference/fast/fast_awards_fy2010_2024.csv`, built by `scripts/usaspending/fetch_fast_awards.py`. USAspending holds no FAST records before FY2010. |
+| FAST treatment panel | USAspending assistance listing 59.058 | 330 state-year rows (339 awards), FY2010–2024, 50 states. `data/reference/fast/fast_awards_fy2010_2024.csv`, built by `scripts/usaspending/fetch_fast_awards.py`. USAspending holds no FAST records before FY2010. **Treatment rule:** a state-year counts as funded only when its net `obligated_usd` is above zero. This keeps 314 state-years (322 awards). The 16 dropped rows have zero or negative obligations (13 in FY2016, plus OH 2015, TX 2011, GA 2024); they are most likely deobligation or closeout actions on earlier agreements, not new agreements. They were not checked award by award. |
 | SBIR Phase I awards | `data/raw/sbir/award_data.csv` | 59,904 Phase I awards FY2010–2024 in the 50 states plus DC. |
 | County + coordinates | PatentsView `g_location_disambiguated.tsv.zip` | Already in-repo; joined on upper-cased city + state. No external crosswalk needed. |
 
@@ -80,52 +99,74 @@ estimation sample requires a non-zero pair-year total, within-pair variation in
 
 | Outcome | Band | Pairs | Pair-years | Awards | Estimate | RI p | RI MDE | Drop top-5 pairs |
 |---|---|---|---|---|---|---|---|---|
-| Phase I | ≤40 km | 71 | 810 | 10,967 | **−25.8%** | 0.015 | 38.0% | −25.2% |
-| Phase I | ≤60 km | 122 | 1,408 | 20,402 | **−25.8%** | 0.028 | 39.7% | −25.8% |
-| First-time | ≤40 km | 62 | 590 | 3,331 | **−29.1%** | 0.020 | 44.3% | −28.1% |
-| First-time | ≤60 km | 103 | 979 | 5,401 | **−26.5%** | 0.025 | 39.4% | −26.5% |
+| Phase I | ≤40 km | 72 | 812 | 10,969 | **−25.2%** | 0.04 | 40.7% | −25.3% |
+| Phase I | ≤60 km | 125 | 1,416 | 20,410 | **−25.3%** | 0.04 | 42.4% | −25.7% |
+| First-time | ≤40 km | 63 | 592 | 3,333 | **−28.9%** | 0.02 | 47.0% | −27.9% |
+| First-time | ≤60 km | 105 | 984 | 5,406 | **−27.1%** | 0.03 | 41.8% | −27.8% |
 
-The estimate is stable across bandwidth and outcome (−26% to −29%), survives
+The estimate is stable across bandwidth and outcome (−25% to −29%), survives
 dropping the five highest-volume pairs almost unchanged (they carry 34–39% of
-awards), and clears conventional significance under randomization inference.
+awards), and clears conventional significance under randomization inference
+(p = 0.02 to 0.04 over 300 draws).
 On its face this looks like a well-behaved result saying FAST availability is
 associated with about a quarter fewer Phase I awards on the funded side of a
 state line.
 
-It is not a FAST effect.
+It cannot be read as a FAST effect, for the reasons below.
 
 ### The pre-trend placebo
 
-FAST status *in the future* cannot cause awards *today*. Re-estimating with the
-treatment indicator led by one, two and three years:
+FAST status *in the future* cannot cause awards *today*. The placebo adds FAST
+status led by one, two or three years and fits it **together with** current
+status. The lead coefficient is read conditional on current status. A pair
+enters the sample when either its current or its lead status changes. The lead
+coefficient gets a randomization-inference p-value from the same permutation
+of state FAST profiles as the main estimate (300 draws).
 
-| Outcome | Band | Lead | Current-year estimate | **Future-treatment estimate** |
-|---|---|---|---|---|
-| Phase I | 40 km | t+1 | −24.8% | **−24.3%** |
-| Phase I | 40 km | t+2 | −29.4% | **−20.4%** |
-| Phase I | 40 km | t+3 | −31.4% | **−23.0%** |
-| Phase I | 60 km | t+1 | −25.0% | **−23.3%** |
-| Phase I | 60 km | t+2 | −28.9% | **−18.9%** |
-| Phase I | 60 km | t+3 | −31.0% | **−20.4%** |
-| First-time | 60 km | t+2 | −25.3% | **−12.0%** |
+| Outcome | Band | Lead | Pair-years | Current status (joint) | **Lead status (joint)** | Lead RI p |
+|---|---|---|---|---|---|---|
+| Phase I | 40 km | t+1 | 731 | −15.5% | **−21.2%** | 0.047 |
+| Phase I | 40 km | t+2 | 657 | −24.4% | **−18.6%** | 0.17 |
+| Phase I | 40 km | t+3 | 610 | −28.1% | **−21.7%** | 0.15 |
+| Phase I | 60 km | t+1 | 1,290 | −16.9% | **−19.6%** | 0.07 |
+| Phase I | 60 km | t+2 | 1,167 | −24.4% | **−17.0%** | 0.22 |
+| Phase I | 60 km | t+3 | 1,086 | −28.4% | **−19.9%** | 0.19 |
+| First-time | 40 km | t+1 | 531 | −22.7% | **−14.3%** | 0.37 |
+| First-time | 40 km | t+2 | 481 | −25.2% | **−14.4%** | 0.44 |
+| First-time | 40 km | t+3 | 441 | −28.2% | **−15.9%** | 0.38 |
+| First-time | 60 km | t+1 | 898 | −19.2% | **−15.7%** | 0.31 |
+| First-time | 60 km | t+2 | 819 | −24.0% | **−7.7%** | 0.67 |
+| First-time | 60 km | t+3 | 755 | −26.8% | **−15.9%** | 0.35 |
 
-At a one-year lead the placebo coefficient is almost identical to the
-contemporaneous one. At two and three years it remains large and negative. A
-state's SBIR activity relative to its cross-border neighbour is already
-depressed well before FAST arrives.
+For comparison, the earlier lead-only fit reported −24.3% (Phase I, 40 km,
+t+1) against a current-year −24.8%. That match came from the persistence of
+FAST status, not from a pre-trend.
 
 ### What that means
 
-The negative coefficient measures **selection into treatment**, not the effect
-of treatment. FAST is allocated toward states with weak or deteriorating SBIR
-activity — which is what a capacity-building program is supposed to do — and
-states plausibly apply when their pipeline is thin. The border design controls
-for shocks common to a *region*; it does nothing about a state being selected
-into FAST on the basis of its own SBIR trajectory. Parallel trends fails, and
-with it the identifying assumption.
+- **The lead point estimates are still negative and not small.** For Phase I
+  they sit between −17% and −22%, close to the size of the main estimate. That
+  is the pattern a pre-trend or selection into FAST would produce.
+- **They are mostly not distinguishable from zero.** One of 12 lead
+  coefficients has a permutation p-value below 0.05 (Phase I, 40 km, t+1,
+  p = 0.047), and one more is below 0.10 (60 km, t+1, p = 0.07). The other 10
+  range from 0.15 to 0.67. With 12 tests, one result near 0.05 is about what
+  chance alone gives.
+- **At a one-year lead the two regressors share the effect.** Adding the t+1
+  lead cuts the current-year coefficient from about −25% to −15% to −17%.
+  Year-to-year persistence of FAST status makes current and next-year status
+  hard to separate, so this split is imprecise.
 
-Descriptively, across the 719 discordant pair-years at the 60 km band, the
-FAST-funded side averages 6.16 Phase I awards against 6.93 on the unfunded
+So the corrected placebo does **not** show that parallel trends fails, and it
+does not show that FAST is allocated toward states with weakening SBIR
+activity. It also does not clear the design: the test is underpowered (the main
+estimate's MDE is about 41% to 47%) and the lead point estimates are the same
+sign and similar size as the main estimate. Selection of states into FAST
+remains a plausible explanation for the negative coefficient, but this study
+does not establish it.
+
+Descriptively, across the 682 discordant pair-years at the 60 km band, the
+FAST-funded side averages 6.11 Phase I awards against 6.99 on the unfunded
 side — the same gap, visible without any model.
 
 ## 4. Verdict
@@ -134,7 +175,8 @@ side — the same gap, visible without any model.
 effect.** Report as *not assessed* — not as evidence that FAST has no effect,
 and emphatically not as evidence that FAST reduces SBIR activity by a quarter.
 The coefficient is stable and nominally significant, and it is still
-uninterpretable, because a placebo on future treatment reproduces most of it.
+uninterpretable: the placebo leads are of similar size and sign, and the
+placebo is too weak either to confirm or to rule out a pre-trend.
 
 Two further cautions that survive the correction:
 
@@ -143,27 +185,29 @@ Two further cautions that survive the correction:
   specification reporting model or clustered SEs without a permutation check
   should be treated as wrong.
 - **The point estimate sits below its own minimum detectable effect** (−26%
-  against an MDE near 39%). Even setting selection aside, an estimate that
+  against an MDE of 41% to 47%). Even setting selection aside, an estimate that
   significant in a design this underpowered is the regime where magnitudes are
   inflated, not a regime for reading effect sizes.
 
 The border design's value was always bias reduction relative to a state-level
 panel — holding regional shocks fixed — rather than added power. Power is
 governed by the number of independently treated units, still ~51 states however
-finely the outcome is sliced. This run shows that the bias it removes is not
-the bias that matters: the binding confound is selection of states into FAST,
-which operates at exactly the level the border cannot see.
+finely the outcome is sliced. The confound this run cannot exclude is
+selection of states into FAST, which operates at exactly the level the border
+cannot see. The corrected placebo leaves that confound open; it neither
+confirms nor rules it out.
 
 ### What this run rules in and out
 
 - **Out:** state-level and border-level designs on public award counts, as a
   route to a citable FAST effect. Any design whose treatment varies only at
-  state x year inherits the selection problem demonstrated above; a credible
+  state x year is exposed to the selection problem described above, and has
+  too few treated units to test for it with useful power; a credible
   estimate needs either variation within state-year or an explicit model of
   how SBA allocates FAST.
 - **In, and now higher priority:** the voluntary referral-election design, if
   SBIR submitters elect referral to a FAST site and that field is recoverable —
-  it moves treatment to the firm level, where 3,804 firms are observed in both a
+  it moves treatment to the firm level, where 3,703 firms are observed in both a
   FAST-funded and an unfunded state-year. The decisive question is whether the
   election is recorded at registration, at proposal submission, or only on
   awards; only the submission case yields a frame including non-winners.
@@ -183,11 +227,12 @@ python scripts/research/fast_border_study.py \
     --awards data/raw/sbir/award_data.csv \
     --locations data/raw/uspto/patentsview/g_location_disambiguated.tsv.zip \
     --fast data/reference/fast/fast_awards_fy2010_2024.csv \
-    --bands 40 60 --outcomes p1 --draws 300 --out reports/fast-border/
+    --bands 40 60 --outcomes p1 ftw --draws 300 --out reports/fast-border/
 ```
 
-Randomization inference is seeded (`seed=3`); permutation draws are
-reproducible. Award year 2025 is a partial vintage in the award file and is
+Randomization inference is seeded (`seed=5`); permutation draws are
+reproducible. The run takes about 7 minutes on a laptop; most of it is the
+permutation draws for the 12 placebo fits. Award year 2025 is a partial vintage in the award file and is
 outside the window by construction.
 
 ## 6. Limitations
@@ -203,12 +248,14 @@ outside the window by construction.
   shared-boundary test.
 - Massachusetts and Rhode Island are never treated in the window, so they
   contribute only as control mass.
-- The pre-trend placebo demonstrates that parallel trends fails; it does not
-  quantify how much of the coefficient is selection. Decomposing that needs a
-  model of FAST allocation, which this study does not build.
+- The pre-trend placebo is underpowered. It can neither confirm nor rule out
+  a pre-trend, and it does not say how much of the coefficient is selection.
+  Decomposing that needs a model of FAST allocation, which this study does not
+  build.
 - Pairs whose `dF` never changes, and pairs with all-or-nothing outcomes, are
   dropped as uninformative under the pair fixed effect. At the 60 km band this
-  leaves 122 of 1,298 unordered pairs.
+  leaves 125 of the 439 unordered pairs within the band (1,273 pairs at any
+  distance).
 
 ## 7. References
 

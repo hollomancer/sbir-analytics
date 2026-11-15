@@ -161,7 +161,14 @@ def build_counties(xwalk: pd.DataFrame) -> pd.DataFrame:
 
 
 def fast_lookup(fast_csv: Path) -> tuple[set[tuple[str, int]], dict[str, set[int]]]:
+    """Funded state-years. Only a positive net obligation counts as treatment.
+
+    Rows with obligated_usd <= 0 are most likely deobligation or closeout
+    actions on an earlier agreement, not a new cooperative agreement in that
+    fiscal year.
+    """
     panel = pd.read_csv(fast_csv)
+    panel = panel[panel.obligated_usd > 0]
     funded = {(r.state, int(r.fiscal_year)) for r in panel.itertuples()}
     profiles = {
         s: set(panel[panel.state == s].fiscal_year.astype(int)) for s in panel.state.unique()
@@ -247,15 +254,20 @@ def canonicalize(pairs: pd.DataFrame) -> pd.DataFrame:
     return out
 
 
-def estimation_sample(pairs: pd.DataFrame, band_km: float, outcome: str = "p1") -> pd.DataFrame:
-    """Pair-years that carry information about the treatment coefficient."""
+def estimation_sample(
+    pairs: pd.DataFrame,
+    band_km: float,
+    outcome: str = "p1",
+    vary: tuple[str, ...] = ("dF",),
+) -> pd.DataFrame:
+    """Pair-years that carry information about the coefficients on `vary`."""
     a, b = ("yA", "yB") if outcome == "p1" else ("ftwA", "ftwB")
     s = pairs[pairs.pair_km <= band_km].copy()
     s["y"] = s[a].values
     s["n"] = s[a].values + s[b].values
     s = s[s.n > 0]
-    # the pair fixed effect absorbs any pair whose dF never changes
-    varies = s.groupby("pair").dF.nunique()
+    # the pair fixed effect absorbs any pair whose regressors never change
+    varies = s.groupby("pair")[list(vary)].nunique().max(axis=1)
     s = s[s.pair.isin(varies[varies > 1].index)]
     # a pair with all-or-nothing outcomes is separated; its FE diverges
     totals = s.groupby("pair").agg(sy=("y", "sum"), sn=("n", "sum"))
@@ -307,6 +319,28 @@ def _fit(sample: pd.DataFrame, regressors: np.ndarray) -> np.ndarray:
     return best.x
 
 
+def _status_diff(pairs: pd.DataFrame, profiles: dict[str, set[int]], offset: int = 0) -> list:
+    """fast_A - fast_B in fiscal year yr + offset, from per-state funded years."""
+    return [
+        (1 if y + offset in profiles.get(sa, set()) else 0)
+        - (1 if y + offset in profiles.get(sb, set()) else 0)
+        for sa, sb, y in zip(pairs.stA, pairs.stB, pairs.yr, strict=True)
+    ]
+
+
+def _lead_frame(pairs: pd.DataFrame, profiles: dict[str, set[int]], lead: int) -> pd.DataFrame:
+    """Pair-years whose year yr + lead is in the window, with dF and its lead."""
+    framed = pairs[pairs.yr + lead <= FY_MAX].copy()
+    framed["dF"] = _status_diff(framed, profiles)
+    framed["lead"] = _status_diff(framed, profiles, lead)
+    return framed
+
+
+def _fit_lead(sample: pd.DataFrame) -> np.ndarray:
+    """Joint fit of current status and lead status: returns [beta_now, beta_lead]."""
+    return _fit(sample, np.column_stack([sample.dF.values, sample["lead"].values]))
+
+
 def randomization_inference(
     pairs: pd.DataFrame,
     profiles: dict[str, set[int]],
@@ -315,12 +349,16 @@ def randomization_inference(
     observed: float,
     draws: int,
     seed: int = 5,
+    lead: int = 0,
 ) -> dict:
     """Permute observed FAST year-profiles across states and refit.
 
     Treatment is assigned at state x fiscal year while observations are county
     pairs, so model-based standard errors are invalid. The sample filters are
     part of the estimator and are therefore re-applied inside every draw.
+
+    With lead > 0 the statistic is the lead coefficient of the joint
+    current-plus-lead fit used by `pretrend_test`.
     """
     rng = np.random.default_rng(seed)
     states = sorted(set(pairs.stA) | set(pairs.stB))
@@ -329,16 +367,20 @@ def randomization_inference(
     for _ in range(draws):
         perm = rng.permutation(len(states))
         mapped = {states[i]: profile_list[perm[i]] for i in range(len(states))}
-        draw = pairs.copy()
-        draw["dF"] = [
-            (1 if y in mapped.get(sa, set()) else 0) - (1 if y in mapped.get(sb, set()) else 0)
-            for sa, sb, y in zip(draw.stA, draw.stB, draw.yr, strict=True)
-        ]
-        sample = estimation_sample(draw, band_km, outcome)
-        if sample.empty or sample.dF.nunique() < 2:
-            continue
+        if lead:
+            draw = _lead_frame(pairs, mapped, lead)
+            sample = estimation_sample(draw, band_km, outcome, vary=("dF", "lead"))
+            if sample.empty or sample["lead"].nunique() < 2:
+                continue
+        else:
+            draw = pairs.copy()
+            draw["dF"] = _status_diff(draw, mapped)
+            sample = estimation_sample(draw, band_km, outcome)
+            if sample.empty or sample.dF.nunique() < 2:
+                continue
         try:
-            out.append(float(_fit(sample, sample.dF.values)[0]))
+            beta = _fit_lead(sample)[1] if lead else _fit(sample, sample.dF.values)[0]
+            out.append(float(beta))
         except Exception:  # pragma: no cover - singular permutation
             continue
     arr = np.array(out)
@@ -349,30 +391,36 @@ def randomization_inference(
     }
 
 
-def pretrend_test(pairs: pd.DataFrame, band_km: float, outcome: str, lead: int) -> dict:
-    """Placebo: can FAST status `lead` years in the future move today's awards?
+def pretrend_test(
+    pairs: pd.DataFrame,
+    profiles: dict[str, set[int]],
+    band_km: float,
+    outcome: str,
+    lead: int,
+    draws: int,
+) -> dict:
+    """Placebo: does FAST status `lead` years ahead move today's awards?
 
-    Future treatment cannot cause past outcomes. A large negative coefficient
-    here means treated states were already diverging downward from their
-    cross-border neighbours before FAST arrived, which falsifies the parallel
-    trends assumption the design rests on.
+    Future treatment cannot cause past outcomes. FAST status is persistent, so
+    a lead fitted alone mostly reproduces the current-year coefficient. The
+    lead is therefore fitted jointly with current status, and its coefficient
+    is read conditional on current status. A pair enters the sample when
+    either regressor varies. The lead coefficient gets a permutation p-value
+    from the same randomization machinery as the main estimate.
     """
-    future = pairs.set_index(["pair", "yr"]).dF
-    framed = pairs.copy()
-    framed["lead"] = [
-        future.get((p, y + lead), np.nan) for p, y in zip(framed.pair, framed.yr, strict=True)
-    ]
-    framed = framed[framed["lead"].notna()]
-    sample = estimation_sample(framed, band_km, outcome)
+    framed = _lead_frame(pairs, profiles, lead)
+    sample = estimation_sample(framed, band_km, outcome, vary=("dF", "lead"))
     if sample.empty or sample["lead"].nunique() < 2:
         return {}
-    now = float(_fit(sample, sample.dF.values)[0])
-    fut = float(_fit(sample, sample["lead"].values)[0])
+    now, fut = (float(b) for b in _fit_lead(sample))
+    ri = randomization_inference(pairs, profiles, band_km, outcome, fut, draws, lead=lead)
     return {
         "lead_years": lead,
         "pair_years": int(len(sample)),
         "current_pct": round(100 * (np.exp(now) - 1), 2),
-        "future_pct": round(100 * (np.exp(fut) - 1), 2),
+        "lead_pct": round(100 * (np.exp(fut) - 1), 2),
+        "lead_ri_p": ri["ri_p"],
+        "lead_ri_draws": ri["ri_draws"],
     }
 
 
@@ -429,7 +477,7 @@ def main() -> None:
     for outcome in args.outcomes:
         for band in args.bands:
             for k in args.leads:
-                row = pretrend_test(pairs, band, outcome, k)
+                row = pretrend_test(pairs, profiles, band, outcome, k, args.draws)
                 if row:
                     pre_rows.append(dict(band_km=band, outcome=outcome, **row))
     pre = pd.DataFrame(pre_rows)
@@ -439,7 +487,7 @@ def main() -> None:
     print(table.to_string(index=False))
     if not pre.empty:
         pre.to_csv(args.out / "fast_border_pretrend.csv", index=False)
-        print("\npre-trend placebo (future treatment on today's awards):")
+        print("\npre-trend placebo (joint fit: current status + lead status):")
         print(pre.to_string(index=False))
 
 
