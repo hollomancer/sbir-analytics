@@ -190,7 +190,9 @@ print(f"Similarity score: {similarities[0, 0]:.3f}")
 
 - HuggingFace API token (set `HF_TOKEN` environment variable)
 - Internet connectivity
-- Respects rate limits (configurable)
+- The client supports rate-limit configuration when instantiated directly. The
+  Dagster assets currently use the client defaults because the nested API
+  throttle and retry fields are not wired to asset execution.
 
 **Configuration:**
 
@@ -198,11 +200,10 @@ print(f"Similarity score: {similarities[0, 0]:.3f}")
 ml:
   modernbert:
     use_local: false
-    api:
-      token_env: "HF_TOKEN"
-      batch_size: 32
-      max_qps: 10
 ```
+
+`use_local` is effective here. The nested `api` fields in `config/base.yaml`
+are schema values only and changing them does not alter a Dagster asset run.
 
 ### Local Mode
 
@@ -225,11 +226,11 @@ ml:
 ml:
   modernbert:
     use_local: true
-    local:
-      model_name: "nomic-ai/modernbert-embed-base"
-      device: "auto"  # or "cuda" for GPU
-      batch_size: 32
 ```
+
+`use_local` is effective here. The nested local model, device, and batch-size
+fields are not yet forwarded by the Dagster assets; changing them does not
+alter an asset run.
 
 ## Quality Assurance
 
@@ -346,23 +347,14 @@ Approximate times for 10,000 documents:
    config = ModernBertClientConfig(use_local=False, enable_cache=True)
    ```
 
-2. **Increase batch size** for local mode with GPU:
+2. **Do not tune local batch size or device through pipeline YAML yet.** Those
+   nested fields are not forwarded by the Dagster assets. Direct client callers
+   can pass `batch_size` to `generate_embeddings`; pipeline tuning remains
+   tracked maintenance work.
 
-   ```yaml
-   ml:
-     modernbert:
-       local:
-         batch_size: 64
-   ```
-
-3. **Adjust rate limits** for API mode:
-
-   ```yaml
-   ml:
-     modernbert:
-       api:
-         max_qps: 20  # Increase if you have higher tier
-   ```
+3. **Do not tune API throttling through pipeline YAML yet.** The nested QPS,
+   retry, and backoff fields are not forwarded by the Dagster assets. Direct
+   client callers can construct `ModernBertClientConfig` explicitly.
 
 ## Troubleshooting
 
@@ -372,30 +364,21 @@ Approximate times for 10,000 documents:
 
 **Symptom:** `429 Too Many Requests` errors
 
-**Solution:**
-
-```yaml
-ml:
-  modernbert:
-    api:
-      max_qps: 5  # Reduce queries per second
-      max_retries: 10  # Increase retries
-      retry_backoff_seconds: 5.0  # Longer backoff
-```
+**Current response:** The Dagster assets do not forward `api.max_qps`,
+`api.max_retries`, or `api.retry_backoff_seconds`; changing those YAML values
+will not fix the run. Retry after the provider rate-limit window, or use the
+client directly with an explicit `ModernBertClientConfig`. Pipeline-level
+throttle tuning requires the configuration-wiring maintenance item.
 
 #### Local Mode: Out of Memory
 
 **Symptom:** `RuntimeError: CUDA out of memory`
 
-**Solution:**
-
-```yaml
-ml:
-  modernbert:
-    local:
-      batch_size: 16  # Reduce batch size
-      device: "cpu"   # Use CPU instead of GPU
-```
+**Current response:** The Dagster assets do not forward `local.batch_size` or
+`local.device`; changing those YAML values will not fix the run. For an asset
+run, use a host that can support the fixed local defaults or set the effective
+`use_local: false` option and use API mode. Direct client callers can select a
+device and pass a smaller batch size explicitly.
 
 #### Missing HuggingFace Token
 

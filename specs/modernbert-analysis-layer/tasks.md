@@ -3,7 +3,7 @@
 ## Status
 
 The core exploratory C2 path is implemented and in maintenance. This list
-records what exists and the two bounded reliability gaps that remain. It is
+records what exists and the four bounded reliability gaps that remain. It is
 not a roadmap for a larger ML platform.
 
 ## Implemented
@@ -33,16 +33,13 @@ not a roadmap for a larger ML platform.
 - [ ] Materialize award embeddings, patent embeddings, and similarity in one
   deterministic test with a stubbed `ModernBertClient`.
 - [ ] Assert asset dependency ordering and output schemas.
-- [ ] Set both coverage checks to `blocking=True`.
-- [ ] Exercise both coverage checks, including a threshold failure, and verify
-  that a failed check prevents downstream similarity execution.
 - [ ] Avoid network, model downloads, local archives, and wall-clock-dependent
   assertions.
 
 This closes the gap between client integration tests and Dagster asset
 behavior.
 
-### 2. Similarity-output validation
+### 2. Effective configuration wiring
 
 - [ ] Pass supported client settings explicitly, including the configured model,
   token source, local device, and cache policy; remove any schema fields that
@@ -51,6 +48,15 @@ behavior.
   undeclared flat key.
 - [ ] Read `top_k` from the maintained configuration rather than duplicating a
   literal in the asset.
+
+### 3. Blocking coverage checks
+
+- [ ] Set both coverage checks to `blocking=True`.
+- [ ] Exercise both coverage checks, including a threshold failure, and verify
+  that a failed check prevents downstream similarity execution.
+
+### 4. Similarity-output validation
+
 - [ ] Validate that scores are finite and within `[-1, 1]`.
 - [ ] Validate that each pair is unique and every emitted score meets the
   configured threshold.

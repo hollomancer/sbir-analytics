@@ -14,7 +14,7 @@ that did not exist.
 
 The active spec now covers the implemented exploratory C2 path: ModernBERT
 award and patent embeddings, brute-force cosine similarity, coverage checks,
-and two bounded reliability follow-ups. Git history preserves the detailed
+and four bounded reliability follow-ups. Git history preserves the detailed
 proposal before this supersession record.
 
 Reactivation requires a new spec with:
