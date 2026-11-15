@@ -337,6 +337,130 @@ def test_phase_ii_contract_rows_take_program_from_the_10q_code():
     }
 
 
+def _phase_ii_transaction(transaction_id: str, action_date: str, **overrides) -> dict:
+    row = {
+        "contract_id": "C_II_MULTI",
+        "piid": "C_II_MULTI",
+        "generated_unique_award_id": "C_II_MULTI",
+        "transaction_unique_id": transaction_id,
+        "awarding_agency_name": "DOD",
+        "action_date": action_date,
+        "period_of_performance_current_end_date": "2022-06-30",
+    }
+    row.update(overrides)
+    return row
+
+
+@pytest.mark.parametrize(
+    "later_overrides",
+    [
+        {"research": "SR2"},
+        {"sbir_phase": "Phase II"},
+        {"research": "PHASE II"},
+    ],
+    ids=["later-sr2", "later-sbir-phase-only", "later-text-only"],
+)
+def test_phase_ii_award_program_is_agreed_across_all_transactions(later_overrides):
+    from sbir_analytics.assets.phase_transition.phase_ii import _prepare_contract_rows
+
+    out = _prepare_contract_rows(
+        pd.DataFrame(
+            [
+                _phase_ii_transaction("TX1", "2020-01-15", research="SR2"),
+                _phase_ii_transaction("TX2", "2021-01-15", **later_overrides),
+            ]
+        )
+    )
+
+    assert len(out) == 1
+    assert out.iloc[0]["source_transaction_count"] == 2
+    assert out.iloc[0]["program"] == "SBIR"
+
+
+def test_phase_ii_award_with_sr2_and_st2_transactions_raises():
+    from sbir_analytics.assets.phase_transition.phase_ii import (
+        PhaseIIInputError,
+        _prepare_contract_rows,
+    )
+
+    with pytest.raises(PhaseIIInputError, match="conflicting programs"):
+        _prepare_contract_rows(
+            pd.DataFrame(
+                [
+                    _phase_ii_transaction("TX1", "2020-01-15", research="SR2"),
+                    _phase_ii_transaction("TX2", "2021-01-15", research="ST2"),
+                ]
+            )
+        )
+
+
+def _phase_ii_grant() -> pd.DataFrame:
+    return pd.DataFrame(
+        [
+            {
+                "contract_id": "GRANT-1",
+                "piid": "GRANT-1",
+                "generated_unique_award_id": "ASST_NON_GRANT-1",
+                "transaction_unique_id": "TX-GRANT-1",
+                "type": "D",
+                "sbir_phase": "Phase II",
+                "awarding_agency_name": "NSF",
+                "action_date": "2020-01-15",
+                "period_of_performance_current_end_date": "2022-06-30",
+            }
+        ]
+    )
+
+
+def _sbir_gov_match(source_award_id: str, program: str) -> pd.DataFrame:
+    return pd.DataFrame(
+        [
+            {
+                "award_id": source_award_id,
+                "phase": "Phase II",
+                "program": program,
+                "company_name": "Foo Inc",
+                "agency": "NSF",
+            }
+        ]
+    )
+
+
+def test_sbir_gov_program_fills_a_matched_grant_with_no_program():
+    from sbir_analytics.assets.phase_transition.phase_ii import (
+        _prepare_contract_rows,
+        _prepare_sbir_gov_rows,
+        _unify,
+    )
+
+    federal = _prepare_contract_rows(_phase_ii_grant())
+    assert federal.iloc[0]["source"] == "usaspending_assistance"
+    assert federal.iloc[0]["program"] is None
+
+    result = _unify(federal, _prepare_sbir_gov_rows(_sbir_gov_match("GRANT-1", "STTR")))
+
+    assert len(result) == 1
+    assert result.iloc[0]["award_id"] == "ASST_NON_GRANT-1"
+    assert result.iloc[0]["program"] == "STTR"
+
+
+def test_sbir_gov_program_conflicting_with_the_federal_10q_code_raises():
+    from sbir_analytics.assets.phase_transition.phase_ii import (
+        PhaseIIInputError,
+        _prepare_contract_rows,
+        _prepare_sbir_gov_rows,
+        _unify,
+    )
+
+    federal = _prepare_contract_rows(
+        pd.DataFrame([_phase_ii_transaction("TX1", "2020-01-15", research="SR2")])
+    )
+    supplemental = _prepare_sbir_gov_rows(_sbir_gov_match("C_II_MULTI", "STTR"))
+
+    with pytest.raises(PhaseIIInputError, match="conflicting program"):
+        _unify(federal, supplemental)
+
+
 # --- pairs and survival carry both sides -----------------------------------
 
 

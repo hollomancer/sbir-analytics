@@ -110,12 +110,12 @@ def _normalize_source_key(value: Any) -> str:
 
 
 def _normalize_taxonomy_value(value: Any) -> str:
-    """Normalize a NAICS or PSC value for comparison and for exact-key fill.
+    """Normalize a NAICS, PSC, or program value for comparison and exact-key fill.
 
     Deliberately separate from `_normalize_source_key` despite the identical body:
     that function normalizes award identity, and a change made for PIID matching must
     not silently alter which taxonomy values are judged conflicting or what gets
-    persisted into `naics_code`/`psc_code`.
+    persisted into `naics_code`, `psc_code`, or `program`.
     """
 
     return _normalize_source_key(value)
@@ -335,6 +335,14 @@ def _prepare_contract_rows(contracts: pd.DataFrame) -> pd.DataFrame:
                 f"Generated Phase II award {generated_award_id} crosses source types: "
                 f"{sorted(source_types)}"
             )
+        # Program comes from every transaction, not just the representative one:
+        # a later modification may enter the Phase II mask without a 10Q code.
+        programs = set(group["program"].dropna().astype(str))
+        if len(programs) > 1:
+            raise PhaseIIInputError(
+                f"Generated Phase II award {generated_award_id} maps to conflicting programs: "
+                f"{sorted(programs)}"
+            )
 
         ordered = group.assign(
             _has_action=group["_action_timestamp"].notna().astype(int)
@@ -352,6 +360,7 @@ def _prepare_contract_rows(contracts: pd.DataFrame) -> pd.DataFrame:
         signed_total = amounts.sum(min_count=1)
         representative["award_amount"] = None if pd.isna(signed_total) else float(signed_total)
         representative["source_transaction_count"] = int(len(group))
+        representative["program"] = next(iter(programs)) if programs else None
         if source_ids:
             representative["source_award_id"] = sorted(source_ids)[0]
         awards.append(representative)
@@ -472,7 +481,7 @@ def _unify(contract_phase_ii: pd.DataFrame, sbir_gov_phase_ii: pd.DataFrame) -> 
             )
 
         federal_index = federal_indexes[0]
-        for column in ("naics_code", "psc_code"):
+        for column in ("naics_code", "psc_code", "program"):
             candidates = supplemental.loc[supplemental_indexes, column]
             supplemental_normalized = {
                 normalized
