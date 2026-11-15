@@ -147,7 +147,60 @@
     "phase_ii_award_n": 2247,
     "phase_ii_firm_n": 834,
     "post_completion_assignment_n": 271,
+    "post_completion_sensitivity": {
+      "assignment_rate": 0.28883,
+      "assignments_to_reused_contracts_n": 500,
+      "distinct_phase_iii_contract_n": 281,
+      "estimator": "event-conditional nonnegative completion-relative latency ECDF; administratively unmatched awards do not enter the distribution and no survival estimator is fitted",
+      "filter": "same completed Phase II cohort; first coded action of a same-UEI distinct SR3/ST3 award on/after the Phase II period-of-performance end and on/before the data cut",
+      "latency_deciles": {
+        "p10": {
+          "days": 26,
+          "years": 0.07
+        },
+        "p20": {
+          "days": 65,
+          "years": 0.18
+        },
+        "p30": {
+          "days": 132,
+          "years": 0.36
+        },
+        "p40": {
+          "days": 204,
+          "years": 0.56
+        },
+        "p50": {
+          "days": 300,
+          "years": 0.82
+        },
+        "p60": {
+          "days": 412,
+          "years": 1.13
+        },
+        "p70": {
+          "days": 582,
+          "years": 1.59
+        },
+        "p80": {
+          "days": 822,
+          "years": 2.25
+        },
+        "p90": {
+          "days": 1202,
+          "years": 3.29
+        }
+      },
+      "matched_phase_ii_award_n": 649,
+      "matched_phase_ii_firm_n": 137,
+      "max_phase_ii_assignments_per_phase_iii_contract": 25,
+      "no_qualifying_signal_award_n": 1598,
+      "reused_phase_iii_contract_n": 132
+    },
     "pre_completion_assignment_n": 576,
+    "pre_completion_with_later_post_completion_signal_n": 378,
+    "pre_completion_with_later_post_completion_signal_rate": 0.65625,
+    "pre_completion_without_later_post_completion_signal_n": 198,
     "reused_phase_iii_contract_n": 168,
     "signed_latency_deciles": {
       "p10": {
@@ -243,8 +296,8 @@
     },
     "fpds": [
       {
-        "file": "navy-transition-sr3-awarding.parquet",
-        "manifest_file": "navy-transition-sr3-awarding.manifest.json",
+        "file": "navy-transition-v2-sr3-awarding.parquet",
+        "manifest_file": "navy-transition-v2-sr3-awarding.manifest.json",
         "manifest_sha256": "ac0711215a084f6667c3837c7e9d406577c4f3716848f78ca5ac55a0d2a8ba48",
         "pages_retrieved": 1675,
         "query": "RESEARCH:SR3 SIGNED_DATE:[1980/10/01,2026/09/30] CONTRACT_TYPE:\"AWARD\" CONTRACTING_AGENCY_ID:\"1700\"",
@@ -258,8 +311,8 @@
         "termination_reason": "feed_exhausted"
       },
       {
-        "file": "navy-transition-sr3-funding.parquet",
-        "manifest_file": "navy-transition-sr3-funding.manifest.json",
+        "file": "navy-transition-v2-sr3-funding.parquet",
+        "manifest_file": "navy-transition-v2-sr3-funding.manifest.json",
         "manifest_sha256": "96187f9eaaa52f9e4da648f962414d1092e7e0d9f8375b876e27b23558d16e1e",
         "pages_retrieved": 1964,
         "query": "RESEARCH:SR3 SIGNED_DATE:[1980/10/01,2026/09/30] CONTRACT_TYPE:\"AWARD\" FUNDING_AGENCY_ID:\"1700\"",
@@ -273,8 +326,8 @@
         "termination_reason": "feed_exhausted"
       },
       {
-        "file": "navy-transition-st3-awarding.parquet",
-        "manifest_file": "navy-transition-st3-awarding.manifest.json",
+        "file": "navy-transition-v2-st3-awarding.parquet",
+        "manifest_file": "navy-transition-v2-st3-awarding.manifest.json",
         "manifest_sha256": "3ab8591c847398dec6882f55cb9100ce5f0e7518385322a3b4b51fc6feff57a9",
         "pages_retrieved": 169,
         "query": "RESEARCH:ST3 SIGNED_DATE:[1980/10/01,2026/09/30] CONTRACT_TYPE:\"AWARD\" CONTRACTING_AGENCY_ID:\"1700\"",
@@ -288,8 +341,8 @@
         "termination_reason": "feed_exhausted"
       },
       {
-        "file": "navy-transition-st3-funding.parquet",
-        "manifest_file": "navy-transition-st3-funding.manifest.json",
+        "file": "navy-transition-v2-st3-funding.parquet",
+        "manifest_file": "navy-transition-v2-st3-funding.manifest.json",
         "manifest_sha256": "9f9e89814792144cc4e94cf59e7afa5dbf7bf31688fb96270a69d18e7cf1a37d",
         "pages_retrieved": 175,
         "query": "RESEARCH:ST3 SIGNED_DATE:[1980/10/01,2026/09/30] CONTRACT_TYPE:\"AWARD\" FUNDING_AGENCY_ID:\"1700\"",

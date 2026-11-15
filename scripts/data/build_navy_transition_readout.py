@@ -529,9 +529,9 @@ def build_latency_panel(
     phase_iii = _phase_iii_contract_frame(first_award_actions)
     pairs = _build_pairs(phase_ii, phase_iii)
     # The reusable pair asset intentionally emits every same-firm combination.
-    # For this first-transition view, remove firm history that predates the
-    # specific Phase II award.  Actions during Phase II performance remain and
-    # can still produce valid negative completion-to-action latency.
+    # For the primary post-award screen, remove firm history that predates the
+    # specific Phase II award. Actions during Phase II performance remain. The
+    # post-completion sensitivity below applies the stricter temporal boundary.
     phase_ii_award_dates = phase_ii.set_index("award_id")["award_date"]
     pair_award_dates = pd.to_datetime(
         pairs["phase_ii_award_id"].map(phase_ii_award_dates), errors="coerce"
@@ -562,6 +562,58 @@ def build_latency_panel(
                 "years": round(days / 365.25, 2),
             }
 
+    phase_ii_end_dates = phase_ii.set_index("award_id")["period_of_performance_end"]
+    pair_end_dates = pd.to_datetime(
+        pairs["phase_ii_award_id"].map(phase_ii_end_dates), errors="coerce"
+    )
+    post_pair_action_dates = pd.to_datetime(pairs["phase_iii_action_date"], errors="coerce")
+    post_completion_pairs = pairs.loc[
+        pair_end_dates.notna() & post_pair_action_dates.ge(pair_end_dates)
+    ].reset_index(drop=True)
+    post_completion_assignments = (
+        post_completion_pairs.sort_values(
+            ["phase_iii_action_date", "phase_iii_contract_id"],
+            kind="stable",
+        )
+        .drop_duplicates("phase_ii_award_id", keep="first")
+        .reset_index(drop=True)
+    )
+    post_completion_survival = _build_survival(phase_ii, post_completion_pairs, data_cut)
+    post_completion_observed = post_completion_survival.loc[
+        post_completion_survival["event_observed"]
+    ].copy()
+    if len(post_completion_assignments) != len(post_completion_observed):
+        raise ValueError("post-completion assignment and event counts disagree")
+    post_completion_days = (
+        pd.to_numeric(post_completion_observed["time_days"], errors="coerce").dropna().astype(float)
+    )
+    if post_completion_days.lt(0).any():
+        raise ValueError("post-completion sensitivity produced a negative latency")
+    post_completion_deciles: dict[str, dict[str, float | int]] = {}
+    if not post_completion_days.empty:
+        for percentile in range(10, 100, 10):
+            days = int(np.rint(np.percentile(post_completion_days, percentile)))
+            post_completion_deciles[f"p{percentile}"] = {
+                "days": days,
+                "years": round(days / 365.25, 2),
+            }
+
+    post_completion_columns = post_completion_survival[
+        ["phase_ii_award_id", "event_observed", "event_date", "time_days"]
+    ].rename(
+        columns={
+            "event_observed": "post_completion_event_observed",
+            "event_date": "post_completion_event_date",
+            "time_days": "post_completion_time_days",
+        }
+    )
+    survival = survival.merge(
+        post_completion_columns,
+        on="phase_ii_award_id",
+        how="left",
+        validate="one_to_one",
+    )
+
     identifiers = phase_ii["recipient_uei"].fillna("").astype(str).str.strip()
     phase_ii_firms = set(identifiers[identifiers.ne("")])
     observed_awards = set(observed["phase_ii_award_id"].astype(str))
@@ -573,6 +625,35 @@ def build_latency_panel(
     ) - {""}
     contract_reuse = assignments["phase_iii_contract_id"].value_counts()
     reused_contracts = contract_reuse.loc[contract_reuse.gt(1)]
+    post_completion_contract_reuse = post_completion_assignments[
+        "phase_iii_contract_id"
+    ].value_counts()
+    post_completion_reused_contracts = post_completion_contract_reuse.loc[
+        post_completion_contract_reuse.gt(1)
+    ]
+    post_completion_awards = set(post_completion_assignments["phase_ii_award_id"].astype(str))
+    pre_completion_assignments = assignments.loc[
+        pd.to_datetime(assignments["phase_iii_action_date"], errors="coerce").lt(
+            pd.to_datetime(
+                assignments["phase_ii_award_id"].map(phase_ii_end_dates), errors="coerce"
+            )
+        )
+    ]
+    pre_completion_awards = set(pre_completion_assignments["phase_ii_award_id"].astype(str))
+    shadowed_awards = pre_completion_awards & post_completion_awards
+    primary_post_completion_n = int(observed_days.ge(0).sum())
+    if len(post_completion_assignments) != primary_post_completion_n + len(shadowed_awards):
+        raise ValueError("post-completion sensitivity does not reconcile to the primary screen")
+    post_completion_observed_awards = set(post_completion_observed["phase_ii_award_id"].astype(str))
+    post_completion_event_firms = set(
+        phase_ii.loc[
+            phase_ii["award_id"].astype(str).isin(post_completion_observed_awards),
+            "recipient_uei",
+        ]
+        .fillna("")
+        .astype(str)
+        .str.strip()
+    ) - {""}
     summary = {
         "filter": (
             "Navy Phase II award FY in scope, period-of-performance end on/before data cut; "
@@ -598,12 +679,50 @@ def build_latency_panel(
             int(contract_reuse.max()) if not contract_reuse.empty else 0
         ),
         "pre_completion_assignment_n": int(observed_days.lt(0).sum()),
-        "post_completion_assignment_n": int(observed_days.ge(0).sum()),
+        "post_completion_assignment_n": primary_post_completion_n,
+        "pre_completion_with_later_post_completion_signal_n": len(shadowed_awards),
+        "pre_completion_with_later_post_completion_signal_rate": _percent(
+            len(shadowed_awards), len(pre_completion_awards)
+        ),
+        "pre_completion_without_later_post_completion_signal_n": len(
+            pre_completion_awards - post_completion_awards
+        ),
         "signed_latency_deciles": deciles,
         "estimator": (
             "event-conditional signed completion-relative latency ECDF; administratively "
             "unmatched awards do not enter the distribution and no survival estimator is fitted"
         ),
+        "post_completion_sensitivity": {
+            "filter": (
+                "same completed Phase II cohort; first coded action of a same-UEI distinct "
+                "SR3/ST3 award on/after the Phase II period-of-performance end and on/before "
+                "the data cut"
+            ),
+            "matched_phase_ii_award_n": int(len(post_completion_assignments)),
+            "assignment_rate": _percent(
+                int(len(post_completion_assignments)), int(len(post_completion_survival))
+            ),
+            "no_qualifying_signal_award_n": int(
+                (~post_completion_survival["event_observed"]).sum()
+            ),
+            "matched_phase_ii_firm_n": len(post_completion_event_firms),
+            "distinct_phase_iii_contract_n": int(
+                post_completion_assignments["phase_iii_contract_id"].nunique()
+            ),
+            "reused_phase_iii_contract_n": int(len(post_completion_reused_contracts)),
+            "assignments_to_reused_contracts_n": int(post_completion_reused_contracts.sum()),
+            "max_phase_ii_assignments_per_phase_iii_contract": (
+                int(post_completion_contract_reuse.max())
+                if not post_completion_contract_reuse.empty
+                else 0
+            ),
+            "latency_deciles": post_completion_deciles,
+            "estimator": (
+                "event-conditional nonnegative completion-relative latency ECDF; "
+                "administratively unmatched awards do not enter the distribution and no "
+                "survival estimator is fitted"
+            ),
+        },
     }
     return summary, survival
 
@@ -742,7 +861,8 @@ def build_external_signal_panel(
 
 
 def _figure_heading(fig: Any, title: str, subtitle: str) -> None:
-    fig.subplots_adjust(left=0.15, right=0.98, bottom=0.16, top=0.81)
+    axes_top = 0.76 if "\n" in subtitle else 0.81
+    fig.subplots_adjust(left=0.15, right=0.98, bottom=0.16, top=axes_top)
     fig.text(0.10, 0.96, title, ha="left", va="top", fontsize=16, fontweight="bold")
     fig.text(0.10, 0.88, subtitle, ha="left", va="top", fontsize=9, color="#444444")
 
@@ -757,24 +877,68 @@ def _write_latency_figure(survival: pd.DataFrame, path: Path, data_cut: date) ->
         .to_numpy(dtype=float)
         / 365.25
     )
+    post_completion_observed = (
+        pd.to_numeric(
+            survival.loc[survival["post_completion_event_observed"], "post_completion_time_days"],
+            errors="coerce",
+        )
+        .dropna()
+        .sort_values()
+        .to_numpy(dtype=float)
+        / 365.25
+    )
     fig, ax = plt.subplots(figsize=(7.2, 4.2))
     if observed.size:
         probability = np.arange(1, observed.size + 1) / observed.size
-        ax.step(observed, probability, where="post", color="#0B4F6C", linewidth=2.2)
+        assignment_n = len(observed)
+        post_completion_assignment_n = len(post_completion_observed)
+        ax.step(
+            observed,
+            probability,
+            where="post",
+            color="#0B4F6C",
+            linewidth=2.2,
+            label=f"Post-award primary (n={assignment_n})",
+        )
+        if post_completion_observed.size:
+            post_probability = np.arange(1, post_completion_observed.size + 1) / len(
+                post_completion_observed
+            )
+            ax.step(
+                post_completion_observed,
+                post_probability,
+                where="post",
+                color="#D95F02",
+                linewidth=2.2,
+                label=f"Post-completion sensitivity (n={post_completion_assignment_n})",
+            )
         ax.axvline(0, color="#777777", linewidth=1, linestyle="--")
         ax.set_ylabel("Share of matched assignments")
         ax.set_xlabel("Signed years: Phase II period end → assigned coded action")
+        ax.legend(frameon=False, loc="lower right")
     else:
         ax.text(0.5, 0.5, "No coded assignments observed", ha="center", va="center")
         ax.set_axis_off()
     assignment_n = int(survival["event_observed"].sum())
-    unmatched_n = int((~survival["event_observed"]).sum())
+    post_completion_assignment_n = int(survival["post_completion_event_observed"].sum())
+    primary_times = pd.to_numeric(survival["time_days"], errors="coerce")
+    retained_n = int((survival["event_observed"] & primary_times.ge(0)).sum())
+    substituted_n = int(
+        (
+            survival["event_observed"]
+            & primary_times.lt(0)
+            & survival["post_completion_event_observed"]
+        ).sum()
+    )
+    if post_completion_assignment_n != retained_n + substituted_n:
+        raise ValueError("figure sensitivity counts do not reconcile")
     _figure_heading(
         fig,
-        "Navy same-firm coded-action assignments",
+        "Navy same-firm coded-action screens",
         (
-            "Exploratory/non-citable · not a transition rate · "
-            f"{assignment_n} matched; {unmatched_n} unmatched by {data_cut}"
+            f"Exploratory/non-citable · not a transition rate · cut {data_cut}\n"
+            f"Post-completion {post_completion_assignment_n} = {retained_n} retained + "
+            f"{substituted_n} later-event substitutions"
         ),
     )
     ax.grid(axis="y", color="#DDDDDD", linewidth=0.7)
@@ -914,6 +1078,13 @@ def render_markdown(summary: dict[str, Any]) -> str:
         f"({panel_b['signed_latency_deciles'][key]['years']:.2f})"
         for key in panel_b["signed_latency_deciles"]
     )
+    post_completion = panel_b["post_completion_sensitivity"]
+    post_decile_cells = " | ".join(post_completion["latency_deciles"])
+    post_decile_values = " | ".join(
+        f"{post_completion['latency_deciles'][key]['days']:,} "
+        f"({post_completion['latency_deciles'][key]['years']:.2f})"
+        for key in post_completion["latency_deciles"]
+    )
 
     if panel_c["status"] == "estimated":
         if panel_c["near_zero"]:
@@ -982,7 +1153,8 @@ method-matches it to Navy.
 
 ## B — Phase II award-to-coded-signal assignments
 
-Of {panel_b["phase_ii_award_n"]:,} completed Phase II awards ({panel_b["phase_ii_firm_n"]:,} firms),
+The primary **post-award screen** selects the earliest qualifying coded action after each Phase II
+award date. Of {panel_b["phase_ii_award_n"]:,} completed Phase II awards ({panel_b["phase_ii_firm_n"]:,} firms),
 {panel_b["matched_phase_ii_award_n"]:,} ({_fmt_rate(panel_b["assignment_rate"])}) map to
 {panel_b["distinct_phase_iii_contract_n"]:,} coded contracts across
 {panel_b["matched_phase_ii_firm_n"]:,} firms. {panel_b["reused_phase_iii_contract_n"]:,} contracts
@@ -992,13 +1164,39 @@ cover {panel_b["assignments_to_reused_contracts_n"]:,} assignments (maximum reus
 
 Signed quantiles are assignment-weighted/event-conditional: {panel_b["pre_completion_assignment_n"]:,}
 pre-completion, {panel_b["post_completion_assignment_n"]:,} on/after. No survival estimator is fitted.
+The earliest-action rule lets an in-performance action shadow later candidates.
+Of the {panel_b["pre_completion_assignment_n"]:,} pre-completion assignments,
+{panel_b["pre_completion_with_later_post_completion_signal_n"]:,} also have a later qualifying
+post-completion signal ({_fmt_rate(panel_b["pre_completion_with_later_post_completion_signal_rate"])});
+{panel_b["pre_completion_without_later_post_completion_signal_n"]:,} do not. The sensitivity's
+{post_completion["matched_phase_ii_award_n"]:,} matches consist of the
+{panel_b["post_completion_assignment_n"]:,} primary assignments already on/after completion plus
+those {panel_b["pre_completion_with_later_post_completion_signal_n"]:,} later candidates.
+
+| Screen | Eligible action starts | Matched awards | Rate | Distinct contracts | Matched firms | No signal |
+|:---|:---|---:|---:|---:|---:|---:|
+| Post-award primary | Phase II award date | {panel_b["matched_phase_ii_award_n"]:,} | {_fmt_rate(panel_b["assignment_rate"])} | {panel_b["distinct_phase_iii_contract_n"]:,} | {panel_b["matched_phase_ii_firm_n"]:,} | {panel_b["no_qualifying_signal_award_n"]:,} |
+| Post-completion sensitivity | Phase II period end | {post_completion["matched_phase_ii_award_n"]:,} | {_fmt_rate(post_completion["assignment_rate"])} | {post_completion["distinct_phase_iii_contract_n"]:,} | {post_completion["matched_phase_ii_firm_n"]:,} | {post_completion["no_qualifying_signal_award_n"]:,} |
+
+Neither screen identifies a project transition or statutory Phase III rate. The post-completion
+sensitivity changes the temporal eligibility rule; it does not validate the same-firm matches.
+
+**Post-award signed latency**
 
 | {decile_cells} |
 |{"".join("---:|" for _ in panel_b["signed_latency_deciles"])}
 | {decile_values} |
 
-*Cells: signed days (years) from Phase II period end; n={panel_b["matched_phase_ii_award_n"]:,}
-Phase-II-award assignments.*
+**Post-completion sensitivity latency**
+
+| {post_decile_cells} |
+|{"".join("---:|" for _ in post_completion["latency_deciles"])}
+| {post_decile_values} |
+
+*Cells: days (years) from Phase II period end. The post-award screen has
+n={panel_b["matched_phase_ii_award_n"]:,} assignments and permits negative values. The
+post-completion sensitivity has n={post_completion["matched_phase_ii_award_n"]:,} assignments
+and requires nonnegative values.*
 
 | A. Description ECDF with FPDS cap | B. Conditional signed-latency ECDF |
 |:---:|:---:|

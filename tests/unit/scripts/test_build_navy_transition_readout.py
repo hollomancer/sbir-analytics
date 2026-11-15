@@ -311,7 +311,18 @@ def _minimal_readout_summary() -> dict:
             "no_qualifying_signal_award_n": 3,
             "pre_completion_assignment_n": 0,
             "post_completion_assignment_n": 1,
+            "pre_completion_with_later_post_completion_signal_n": 0,
+            "pre_completion_with_later_post_completion_signal_rate": None,
+            "pre_completion_without_later_post_completion_signal_n": 0,
             "signed_latency_deciles": {"p50": {"days": 10, "years": 0.03}},
+            "post_completion_sensitivity": {
+                "matched_phase_ii_award_n": 1,
+                "assignment_rate": 0.25,
+                "distinct_phase_iii_contract_n": 1,
+                "matched_phase_ii_firm_n": 1,
+                "no_qualifying_signal_award_n": 3,
+                "latency_deciles": {"p50": {"days": 10, "years": 0.03}},
+            },
         },
         "panel_c": {
             "status": "blocked_constant_input",
@@ -454,10 +465,19 @@ def test_latency_excludes_pre_award_history_and_right_censors_unmatched_award() 
     assert summary["no_qualifying_signal_award_n"] == 1
     assert summary["pre_completion_assignment_n"] == 1
     assert summary["post_completion_assignment_n"] == 0
+    assert summary["pre_completion_with_later_post_completion_signal_n"] == 1
+    assert summary["pre_completion_with_later_post_completion_signal_rate"] == 1.0
+    assert summary["pre_completion_without_later_post_completion_signal_n"] == 0
     assert summary["distinct_phase_iii_contract_n"] == 1
+    sensitivity = summary["post_completion_sensitivity"]
+    assert sensitivity["matched_phase_ii_award_n"] == 1
+    assert sensitivity["distinct_phase_iii_contract_n"] == 1
+    assert sensitivity["latency_deciles"]["p50"]["days"] == 365
     assert "not an identified bound" in summary["interpretation"]
     assert "no survival estimator" in summary["estimator"]
     assert by_award.loc["II-1", "event_date"] == date(2022, 6, 1)
+    assert by_award.loc["II-1", "post_completion_event_date"] == date(2024, 1, 1)
+    assert bool(by_award.loc["II-1", "post_completion_event_observed"])
     assert bool(by_award.loc["II-1", "event_observed"])
     assert not bool(by_award.loc["II-2", "event_observed"])
 

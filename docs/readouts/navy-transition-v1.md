@@ -56,7 +56,8 @@ method-matches it to Navy.
 
 ## B — Phase II award-to-coded-signal assignments
 
-Of 2,247 completed Phase II awards (834 firms),
+The primary **post-award screen** selects the earliest qualifying coded action after each Phase II
+award date. Of 2,247 completed Phase II awards (834 firms),
 847 (37.7%) map to
 317 coded contracts across
 160 firms. 168 contracts
@@ -66,13 +67,39 @@ cover 698 assignments (maximum reuse,
 
 Signed quantiles are assignment-weighted/event-conditional: 576
 pre-completion, 271 on/after. No survival estimator is fitted.
+The earliest-action rule lets an in-performance action shadow later candidates.
+Of the 576 pre-completion assignments,
+378 also have a later qualifying
+post-completion signal (65.6%);
+198 do not. The sensitivity's
+649 matches consist of the
+271 primary assignments already on/after completion plus
+those 378 later candidates.
+
+| Screen | Eligible action starts | Matched awards | Rate | Distinct contracts | Matched firms | No signal |
+|:---|:---|---:|---:|---:|---:|---:|
+| Post-award primary | Phase II award date | 847 | 37.7% | 317 | 160 | 1,400 |
+| Post-completion sensitivity | Phase II period end | 649 | 28.9% | 281 | 137 | 1,598 |
+
+Neither screen identifies a project transition or statutory Phase III rate. The post-completion
+sensitivity changes the temporal eligibility rule; it does not validate the same-firm matches.
+
+**Post-award signed latency**
 
 | p10 | p20 | p30 | p40 | p50 | p60 | p70 | p80 | p90 |
 |---:|---:|---:|---:|---:|---:|---:|---:|---:|
 | -1,103 (-3.02) | -837 (-2.29) | -645 (-1.77) | -453 (-1.24) | -318 (-0.87) | -160 (-0.44) | 51 (0.14) | 388 (1.06) | 897 (2.46) |
 
-*Cells: signed days (years) from Phase II period end; n=847
-Phase-II-award assignments.*
+**Post-completion sensitivity latency**
+
+| p10 | p20 | p30 | p40 | p50 | p60 | p70 | p80 | p90 |
+|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| 26 (0.07) | 65 (0.18) | 132 (0.36) | 204 (0.56) | 300 (0.82) | 412 (1.13) | 582 (1.59) | 822 (2.25) | 1,202 (3.29) |
+
+*Cells: days (years) from Phase II period end. The post-award screen has
+n=847 assignments and permits negative values. The
+post-completion sensitivity has n=649 assignments
+and requires nonnegative values.*
 
 | A. Description ECDF with FPDS cap | B. Conditional signed-latency ECDF |
 |:---:|:---:|
