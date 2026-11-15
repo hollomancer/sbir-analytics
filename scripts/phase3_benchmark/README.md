@@ -46,19 +46,33 @@ either `CONTRACTING_AGENCY_ID:"1700"` or `FUNDING_AGENCY_ID:"1700"`:
 ```bash
 python scripts/phase3_benchmark/pull_fpds_10q.py SR3 \
   --pages 2000 \
-  --query-term 'SIGNED_DATE:[1980/10/01,2025/09/30]' \
+  --query-term 'SIGNED_DATE:[1980/10/01,2026/09/30]' \
   --query-term 'CONTRACT_TYPE:"AWARD"' \
   --query-term 'CONTRACTING_AGENCY_ID:"1700"' \
   --output data/derived/navy-transition-sr3-awarding.parquet \
   --manifest data/derived/navy-transition-sr3-awarding.manifest.json \
   --cache-dir data/raw/fpds/navy-transition-sr3-awarding \
-  --source-vintage 2026-08-31
+  --source-vintage 2026-11-15
 ```
 
 Pass the resulting four parquet/manifest pairs as repeated `--coded` arguments
 to `scripts/data/build_navy_transition_readout.py`. The builder rejects an
 incomplete or non-exact query matrix; the checked-in aggregate summary records
 the actual queries and content hashes.
+
+```bash
+python scripts/data/build_navy_transition_readout.py \
+  --coded data/derived/navy-transition-sr3-awarding.parquet data/derived/navy-transition-sr3-awarding.manifest.json \
+  --coded data/derived/navy-transition-sr3-funding.parquet data/derived/navy-transition-sr3-funding.manifest.json \
+  --coded data/derived/navy-transition-st3-awarding.parquet data/derived/navy-transition-st3-awarding.manifest.json \
+  --coded data/derived/navy-transition-st3-funding.parquet data/derived/navy-transition-st3-funding.manifest.json
+```
+
+The defaults produce the committed FY2017–FY2026 readout with a 2026-09-30
+data cut and 2026-11-15 as-of date. Update all three values together for a
+later ten-year refresh. The Form D and EFTS snapshots must be refreshed
+separately. The readout marks an uncovered tail as partial rather than treating
+the declared as-of date as proof of source coverage.
 
 ## Interpretation guardrails
 

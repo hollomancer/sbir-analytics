@@ -1,10 +1,15 @@
 # Navy Phase III transition readout v1
 
+**Prepared for:** SBA oversight and agency program-office analysts conducting internal method review.
+
+**Answers for:** Section B2/B3 method review of whether public Navy-coded Phase III and SBIR.gov
+records are adequate to design a hand-labeled validation study.
+
 > **Exploratory — non-citable.** Prepared independently in a personal capacity; no agency
 > affiliation. Descriptive only—no ranking, statutory undercount claim, causal interpretation,
 > or recommendation.
 
-**Frame.** SBIR.gov/FPDS through 2025-09-30; FY2016–FY2025.
+**Frame.** SBIR.gov/FPDS through 2026-09-30; FY2017–FY2026.
 “Navy” is SBIR.gov DoD/Navy or strict SR3/ST3 with awarding **or** funding sub-tier 1700.
 Compound-key-deduplicated exact-UEI linkage is a same-firm screen, not a project-transition bound.
 [Provenance and hashes](navy-transition-v1.summary.json) authenticate local inputs; untracked
@@ -12,30 +17,36 @@ snapshots prevent a clean-checkout rebuild.
 
 ## A — Coverage and description field
 
-The cohort has 4,828 Phase I, 2,780 Phase II,
-and 2,282 strict coded keys (2,000 DoN-awarded;
-2,263 DoN-funded; 1,981 both).
-1,884 first appear in-window; 398 predate it.
+The cohort has 4,470 Phase I, 2,563 Phase II,
+and 2,199 strict coded keys (1,918 DoN-awarded;
+2,183 DoN-funded; 1,902 both).
+1,819 first appear in-window; 380 predate it.
 
 | FY | Phase I award date | Phase II award date | First coded action | Latest coded action |
 |---:|---:|---:|---:|---:|
-| FY2016 | 458 | 224 | 211 | 229 |
 | FY2017 | 533 | 284 | 195 | 203 |
 | FY2018 | 433 | 280 | 143 | 139 |
 | FY2019 | 409 | 344 | 156 | 126 |
-| FY2020 | 704 | 290 | 188 | 136 |
-| FY2021 | 493 | 274 | 198 | 174 |
-| FY2022 | 382 | 243 | 213 | 200 |
-| FY2023 | 411 | 221 | 211 | 197 |
-| FY2024 | 472 | 303 | 184 | 283 |
-| FY2025 | 533 | 317 | 185 | 595 |
+| FY2020 | 704 | 286 | 188 | 135 |
+| FY2021 | 493 | 274 | 198 | 168 |
+| FY2022 | 382 | 241 | 213 | 190 |
+| FY2023 | 411 | 218 | 211 | 182 |
+| FY2024 | 472 | 303 | 184 | 244 |
+| FY2025 | 533 | 317 | 185 | 311 |
+| FY2026 | 100 | 16 | 146 | 501 |
 
-Latest-action descriptions: median 34 characters; ≥40,
-902/2,282 (39.5%); ≥150,
-177/2,282 (7.8%);
-1,740 representatives are nonzero modifications.
-FPDS [requires the field and caps newly entered text at 250 characters after 2019-06-28](https://beta.fpds.gov/downloads/Manuals/FPDS_User_Manual_V1.5.pdf);
-8 later representatives above 250
+The SBIR.gov bulk export contains 100 Phase I and
+16 Phase II records dated FY2026.
+No source-completeness test supports year-over-year trend interpretation, especially for the latest
+fiscal year.
+
+Latest-action descriptions: median 36 characters; ≥40,
+939/2,199 (42.7%); ≥150,
+225/2,199 (10.2%);
+1,718 representatives are nonzero modifications.
+FPDS [requires the field and caps newly entered text at 250 characters after 2019-06-28](https://www.fsd.gov/gsafsd_sp/en/fpds-help-data-dictionary-v1-5?id=kb_article_view&sys_kb_id=ddfe622ecf894350d1eaf2c42f851c3c);
+9 of
+9 later representatives above 250
 trace to pre-cap contracts. Thus 900 is cross-vintage-incomparable—not a zero or §638 standard.
 
 The **historical, unreproduced** DoD comparator (n=6,351) reported 53.6% ≥40
@@ -45,22 +56,22 @@ method-matches it to Navy.
 
 ## B — Phase II award-to-coded-signal assignments
 
-Of 2,012 completed Phase II awards (775 firms),
-799 (39.7%) map to
-315 coded contracts across
-157 firms. 159 contracts
-cover 643 assignments (maximum reuse,
-36). The other
-1,213 lack a signal by the cut; this does not establish no transition.
+Of 2,247 completed Phase II awards (834 firms),
+847 (37.7%) map to
+317 coded contracts across
+160 firms. 168 contracts
+cover 698 assignments (maximum reuse,
+41). The other
+1,400 lack a signal by the cut; this does not establish no transition.
 
-Signed quantiles are assignment-weighted/event-conditional: 525
-pre-completion, 274 on/after. No survival estimator is fitted.
+Signed quantiles are assignment-weighted/event-conditional: 576
+pre-completion, 271 on/after. No survival estimator is fitted.
 
 | p10 | p20 | p30 | p40 | p50 | p60 | p70 | p80 | p90 |
 |---:|---:|---:|---:|---:|---:|---:|---:|---:|
-| -1,098 (-3.01) | -854 (-2.34) | -672 (-1.84) | -487 (-1.33) | -322 (-0.88) | -134 (-0.37) | 166 (0.45) | 493 (1.35) | 971 (2.66) |
+| -1,103 (-3.02) | -837 (-2.29) | -645 (-1.77) | -453 (-1.24) | -318 (-0.87) | -160 (-0.44) | 51 (0.14) | 388 (1.06) | 897 (2.46) |
 
-*Cells: signed days (years) from Phase II period end; n=799
+*Cells: signed days (years) from Phase II period end; n=847
 Phase-II-award assignments.*
 
 | A. Description ECDF with FPDS cap | B. Conditional signed-latency ECDF |
@@ -69,19 +80,20 @@ Phase-II-award assignments.*
 
 ## C — Description emptiness versus NAICS/PSC missingness
 
-n=2,282: blank description=0, missing
+n=2,199: blank description=0, missing
 NAICS=1, missing PSC=0. Correlation was not estimable because at least one binary input was constant; Panel C is therefore blocked rather than replaced with a different outcome.
 Because FPDS requires description, zero blankness mainly reflects source validation—not narrative
 richness or an optionality mechanism.
 
 ## D — Recent external capital/acquisition signals
 
-Among 1,686 normalized Navy firms, 47
-have positive non-combination Form D filings in 2024-09-01–2026-08-31
-(43 high-confidence;
+Among 1,636 normalized Navy firms, the available Form D snapshot contains
+46 firms with positive non-combination filings in
+2024-11-16–2026-11-15
+(42 high-confidence;
 4 medium). This is filing participation—not
 verified capital or SBIR attribution. EFTS lacks acquisition-specific dates, blocking that branch
-and the union. No names are emitted.
+and the union. No names are emitted. The window above is stated through 2026-11-15, but the snapshots do not reach it: Form D (latest 2026-08-20); EFTS (latest 2026-08-21). The uncovered tail is not captured in the count.
 
 ## Quality audit and published context
 

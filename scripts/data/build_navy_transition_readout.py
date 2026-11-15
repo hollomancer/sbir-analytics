@@ -52,6 +52,10 @@ DEFAULT_MA_EVENTS = Path("data/sbir_ma_events.jsonl")
 DEFAULT_MARKDOWN = Path("docs/readouts/navy-transition-v1.md")
 DEFAULT_SUMMARY = Path("docs/readouts/navy-transition-v1.summary.json")
 DEFAULT_FIGURES = Path("docs/readouts/figures")
+DEFAULT_START_FY = 2017
+DEFAULT_END_FY = 2026
+DEFAULT_DATA_CUT = date(2026, 9, 30)
+DEFAULT_AS_OF = date(2026, 11, 15)
 
 NAVY_AGENCY = "Department of Defense"
 NAVY_BRANCH = "Navy"
@@ -231,10 +235,13 @@ def load_coded_inputs(
                 "manifest_sha256": _sha256(manifest_path),
                 "query": query,
                 "retrieved_at": manifest.get("retrieved_at"),
+                "source_vintage": manifest.get("source_vintage"),
+                "pages_retrieved": manifest.get("pages_retrieved"),
                 "reported_total_results": manifest.get("reported_total_results"),
                 "row_count": len(frame),
                 "raw_pages_sha256": manifest.get("raw_pages_sha256"),
                 "retrieval_complete": True,
+                "termination_reason": manifest.get("termination_reason"),
             }
         )
 
@@ -694,6 +701,8 @@ def build_external_signal_panel(
             "total": len(values),
         }
 
+    form_d_reaches_window_end = bool(form_d_latest >= as_of) if form_d_latest else None
+    efts_reaches_window_end = bool(efts_latest >= as_of) if efts_latest else None
     return {
         "filter": (
             "unique normalized Navy Phase I/II firms in the FY window; Form D filing date in "
@@ -704,6 +713,9 @@ def build_external_signal_panel(
         "window_end": as_of.isoformat(),
         "navy_firm_n": len(navy_firms),
         "form_d_positive_raise_firms": counts(form_d),
+        "form_d_status": (
+            "complete_snapshot" if form_d_reaches_window_end is True else "partial_snapshot"
+        ),
         "efts_acquisition_firms": {
             "status": "blocked_missing_type_specific_dates",
             "high": None,
@@ -723,18 +735,16 @@ def build_external_signal_panel(
         # ``as_of`` means the snapshot holds out-of-window records that the
         # counts above exclude.  The booleans make the direction explicit.
         "form_d_latest_observed_filing": form_d_latest.isoformat() if form_d_latest else None,
-        "form_d_snapshot_reaches_window_end": (
-            bool(form_d_latest >= as_of) if form_d_latest else None
-        ),
+        "form_d_snapshot_reaches_window_end": form_d_reaches_window_end,
         "efts_latest_observed_mention": efts_latest.isoformat() if efts_latest else None,
-        "efts_snapshot_reaches_window_end": bool(efts_latest >= as_of) if efts_latest else None,
+        "efts_snapshot_reaches_window_end": efts_reaches_window_end,
     }
 
 
 def _figure_heading(fig: Any, title: str, subtitle: str) -> None:
-    fig.subplots_adjust(left=0.13, right=0.98, bottom=0.16, top=0.81)
-    fig.text(0.02, 0.96, title, ha="left", va="top", fontsize=16, fontweight="bold")
-    fig.text(0.02, 0.88, subtitle, ha="left", va="top", fontsize=9, color="#444444")
+    fig.subplots_adjust(left=0.15, right=0.98, bottom=0.16, top=0.81)
+    fig.text(0.10, 0.96, title, ha="left", va="top", fontsize=16, fontweight="bold")
+    fig.text(0.10, 0.88, subtitle, ha="left", va="top", fontsize=9, color="#444444")
 
 
 def _write_latency_figure(survival: pd.DataFrame, path: Path, data_cut: date) -> None:
@@ -752,7 +762,7 @@ def _write_latency_figure(survival: pd.DataFrame, path: Path, data_cut: date) ->
         probability = np.arange(1, observed.size + 1) / observed.size
         ax.step(observed, probability, where="post", color="#0B4F6C", linewidth=2.2)
         ax.axvline(0, color="#777777", linewidth=1, linestyle="--")
-        ax.set_ylabel("Share of matched Phase II award assignments")
+        ax.set_ylabel("Share of matched assignments")
         ax.set_xlabel("Signed years: Phase II period end → assigned coded action")
     else:
         ax.text(0.5, 0.5, "No coded assignments observed", ha="center", va="center")
@@ -761,10 +771,10 @@ def _write_latency_figure(survival: pd.DataFrame, path: Path, data_cut: date) ->
     unmatched_n = int((~survival["event_observed"]).sum())
     _figure_heading(
         fig,
-        "Navy Phase II → assigned same-firm coded Phase III",
+        "Navy same-firm coded-action assignments",
         (
-            f"Event-conditional ECDF: n={assignment_n} award assignments; "
-            f"{unmatched_n} without a signal by {data_cut}; no survival estimator"
+            "Exploratory/non-citable · not a transition rate · "
+            f"{assignment_n} matched; {unmatched_n} unmatched by {data_cut}"
         ),
     )
     ax.grid(axis="y", color="#DDDDDD", linewidth=0.7)
@@ -796,8 +806,12 @@ def _write_description_figure(coded_awards: pd.DataFrame, path: Path) -> None:
     ax.set_ylabel("Share of coded contract awards")
     _figure_heading(
         fig,
-        "Navy coded Phase III description ECDF",
-        f"n={len(lengths):,} distinct award keys; FY2016–FY2025 retrieved-action scope",
+        "Navy coded Phase III description lengths",
+        (
+            f"Exploratory/non-citable · n={len(lengths):,} distinct award keys · "
+            f"FY{int(coded_awards['fiscal_year'].min())}–"
+            f"FY{int(coded_awards['fiscal_year'].max())}"
+        ),
     )
     ax.legend(title="Characters", frameon=False, ncols=3, loc="lower right")
     ax.grid(axis="y", color="#DDDDDD", linewidth=0.7)
@@ -857,7 +871,7 @@ def _panel_d_coverage_caveat(panel_d: dict[str, Any]) -> str:
         return ""
     return (
         f" The window above is stated through {panel_d['window_end']}, but the snapshots do not "
-        f"reach it: {'; '.join(gaps)}. Counts in the most recent days are not yet captured."
+        f"reach it: {'; '.join(gaps)}. The uncovered tail is not captured in the count."
     )
 
 
@@ -893,6 +907,7 @@ def render_markdown(summary: dict[str, Any]) -> str:
         f"{row['coded_phase_iii_latest_actions']:,} |"
         for row in panel_a["annual"]
     )
+    latest_annual = panel_a["annual"][-1]
     decile_cells = " | ".join(panel_b["signed_latency_deciles"])
     decile_values = " | ".join(
         f"{panel_b['signed_latency_deciles'][key]['days']:,} "
@@ -920,6 +935,11 @@ def render_markdown(summary: dict[str, Any]) -> str:
 
     return f"""# Navy Phase III transition readout v1
 
+**Prepared for:** SBA oversight and agency program-office analysts conducting internal method review.
+
+**Answers for:** Section B2/B3 method review of whether public Navy-coded Phase III and SBIR.gov
+records are adequate to design a hand-labeled validation study.
+
 > **Exploratory — non-citable.** Prepared independently in a personal capacity; no agency
 > affiliation. Descriptive only—no ranking, statutory undercount claim, causal interpretation,
 > or recommendation.
@@ -940,6 +960,11 @@ and {panel_a["coded_award_n"]:,} strict coded keys ({panel_a["don_awarding_award
 | FY | Phase I award date | Phase II award date | First coded action | Latest coded action |
 |---:|---:|---:|---:|---:|
 {annual_rows}
+
+The SBIR.gov bulk export contains {latest_annual["phase_i_awards"]:,} Phase I and
+{latest_annual["phase_ii_awards"]:,} Phase II records dated FY{latest_annual["fiscal_year"]}.
+No source-completeness test supports year-over-year trend interpretation, especially for the latest
+fiscal year.
 
 Latest-action descriptions: median {desc["median_chars"]:.0f} characters; ≥40,
 {desc["ge_40_count"]:,}/{desc["award_n"]:,} ({_fmt_rate(desc["ge_40_rate"])}); ≥150,
@@ -988,8 +1013,9 @@ richness or an optionality mechanism.
 
 ## D — Recent external capital/acquisition signals
 
-Among {panel_d["navy_firm_n"]:,} normalized Navy firms, {panel_d["form_d_positive_raise_firms"]["total"]:,}
-have positive non-combination Form D filings in {panel_d["window_start"]}–{panel_d["window_end"]}
+Among {panel_d["navy_firm_n"]:,} normalized Navy firms, the available Form D snapshot contains
+{panel_d["form_d_positive_raise_firms"]["total"]:,} firms with positive non-combination filings in
+{panel_d["window_start"]}–{panel_d["window_end"]}
 ({panel_d["form_d_positive_raise_firms"]["high"]:,} high-confidence;
 {panel_d["form_d_positive_raise_firms"]["medium"]:,} medium). This is filing participation—not
 verified capital or SBIR attribution. EFTS lacks acquisition-specific dates, blocking that branch
@@ -1066,6 +1092,14 @@ def build_summary(
         },
         "study": {
             "version": "navy-transition-v1",
+            "research_questions": ["B2", "B3"],
+            "audience": (
+                "SBA oversight and agency program-office analysts conducting internal method review"
+            ),
+            "decision_use": (
+                "assess whether public Navy-coded Phase III and SBIR.gov records are adequate "
+                "to design a hand-labeled validation study"
+            ),
             "start_fy": start_fy,
             "end_fy": end_fy,
             "data_cut": data_cut.isoformat(),
@@ -1080,6 +1114,7 @@ def build_summary(
                 "source_system": source_provenance.get("system"),
                 "source_url": source_provenance.get("url"),
                 "source_sha256": source_provenance.get("sha256"),
+                "materialized_at": sbir_checks.get("generated_at"),
             },
             "fpds": coded_provenance,
             "form_d": {
@@ -1145,10 +1180,10 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("--form-d", type=Path, default=DEFAULT_FORM_D)
     parser.add_argument("--ma-events", type=Path, default=DEFAULT_MA_EVENTS)
-    parser.add_argument("--start-fy", type=int, default=2016)
-    parser.add_argument("--end-fy", type=int, default=2025)
-    parser.add_argument("--data-cut", type=date.fromisoformat, default=date(2025, 9, 30))
-    parser.add_argument("--as-of", type=date.fromisoformat, default=date(2026, 8, 31))
+    parser.add_argument("--start-fy", type=int, default=DEFAULT_START_FY)
+    parser.add_argument("--end-fy", type=int, default=DEFAULT_END_FY)
+    parser.add_argument("--data-cut", type=date.fromisoformat, default=DEFAULT_DATA_CUT)
+    parser.add_argument("--as-of", type=date.fromisoformat, default=DEFAULT_AS_OF)
     parser.add_argument("--output-markdown", type=Path, default=DEFAULT_MARKDOWN)
     parser.add_argument("--output-summary", type=Path, default=DEFAULT_SUMMARY)
     parser.add_argument("--figures-dir", type=Path, default=DEFAULT_FIGURES)

@@ -16,7 +16,10 @@ EPISTEMIC_TIER = "pipelines"
 FPDS_DESCRIPTION_REQUIRED = True
 FPDS_DESCRIPTION_MAX_CHARS = 250
 FPDS_DESCRIPTION_CAP_EFFECTIVE_DATE = date(2019, 6, 28)
-FPDS_DESCRIPTION_RULE_URL = "https://beta.fpds.gov/downloads/Manuals/FPDS_User_Manual_V1.5.pdf"
+FPDS_DESCRIPTION_RULE_URL = (
+    "https://www.fsd.gov/gsafsd_sp/en/fpds-help-data-dictionary-v1-5"
+    "?id=kb_article_view&sys_kb_id=ddfe622ecf894350d1eaf2c42f851c3c"
+)
 
 # These are descriptive cut points within the current source-system range.
 # They are not statutory requirements or minimum-quality floors.

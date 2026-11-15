@@ -244,6 +244,24 @@ def test_committed_readout_artifacts_exclude_the_impossible_900_character_metric
     assert "description_ge_900_rate" not in comparator
     assert "900" in comparator["excluded_description_thresholds"]
     assert "Thus 900 is cross-vintage-incomparable" in markdown
+    assert summary["study"] == {
+        "as_of": "2026-11-15",
+        "audience": (
+            "SBA oversight and agency program-office analysts conducting internal method review"
+        ),
+        "capacity": "independent personal capacity; no agency affiliation",
+        "data_cut": "2026-09-30",
+        "decision_use": (
+            "assess whether public Navy-coded Phase III and SBIR.gov records are adequate "
+            "to design a hand-labeled validation study"
+        ),
+        "end_fy": 2026,
+        "research_questions": ["B2", "B3"],
+        "start_fy": 2017,
+        "version": "navy-transition-v1",
+    }
+    assert all(item["retrieval_complete"] for item in summary["provenance"]["fpds"])
+    assert summary["panel_d"]["form_d_status"] == "partial_snapshot"
 
 
 def _minimal_readout_summary() -> dict:
@@ -308,6 +326,7 @@ def _minimal_readout_summary() -> dict:
             "window_start": "2024-09-01",
             "window_end": "2026-08-31",
             "form_d_snapshot_reaches_window_end": True,
+            "form_d_status": "complete_snapshot",
             "efts_snapshot_reaches_window_end": True,
             "form_d_latest_observed_filing": "2026-08-31",
             "efts_latest_observed_mention": "2026-08-31",
