@@ -4,10 +4,9 @@ from unittest.mock import Mock, patch
 
 import pandas as pd
 import pytest
-from dagster import AssetCheckSeverity, Output
+from dagster import AssetCheckSeverity, Failure, Output
 
 from sbir_analytics.assets.fiscal_assets import (
-    _create_placeholder_impacts,
     bea_mapping_quality_check,
     economic_impacts,
     federal_tax_estimates,
@@ -546,7 +545,7 @@ class TestEdgeCases:
         mock_config,
         sample_economic_shocks,
     ):
-        """Test economic impacts handles computation errors."""
+        """Test economic impacts fails closed on computation errors."""
         mock_get_config.return_value = mock_config
 
         mock_adapter = Mock()
@@ -555,30 +554,8 @@ class TestEdgeCases:
         mock_adapter.get_model_version.return_value = "stateior_1.0"
         mock_adapter_class.return_value = mock_adapter
 
-        result = economic_impacts(mock_context, sample_economic_shocks)
-
-        # Should fall back to placeholder
-        assert isinstance(result, Output)
-        assert "warning" in result.metadata
-        mock_context.log.error.assert_called()
-
-    def test_create_placeholder_impacts_all_columns(self, mock_context, sample_economic_shocks):
-        """Test placeholder impacts includes all required columns."""
-        result = _create_placeholder_impacts(sample_economic_shocks, mock_context)
-
-        required_cols = [
-            "wage_impact",
-            "proprietor_income_impact",
-            "gross_operating_surplus",
-            "consumption_impact",
-            "tax_impact",
-            "production_impact",
-            "model_version",
-            "quality_flags",
-        ]
-
-        for col in required_cols:
-            assert col in result.value.columns
+        with pytest.raises(Failure, match="no impacts were materialized"):
+            economic_impacts(mock_context, sample_economic_shocks)
 
     @patch("sbir_analytics.assets.fiscal_assets.get_config")
     @patch("sbir_analytics.assets.fiscal_assets.enrich_sbir_awards_with_fiscal_naics")

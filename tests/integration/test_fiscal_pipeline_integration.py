@@ -278,7 +278,7 @@ class TestFiscalPipelineIntegration:
         # The asset calls compute_impacts with shocks_input which has columns:
         # ["state", "bea_sector", "fiscal_year", "shock_amount"]
         # The mock should return impacts matching those keys, then the asset merges them back
-        def compute_impacts_side_effect(shocks_input_df):
+        def compute_impacts_side_effect(shocks_input_df, _model_version=None):
             """Generate impacts that match the input shocks."""
             impacts_data = []
             for _, row in shocks_input_df.iterrows():
@@ -299,14 +299,13 @@ class TestFiscalPipelineIntegration:
                         "production_impact": shock_amt * Decimal("2.0"),
                         "model_version": "v2.1",
                         "confidence": Decimal("0.85"),
-                        "quality_flags": "r_computation",
+                        "quality_flags": "bea_api_with_ratios",
                     }
                 )
             return pd.DataFrame(impacts_data)
 
         # Update mock to use side_effect so it generates impacts dynamically
-        # Note: The adapter now uses _compute_impacts_bea internally, but we mock compute_impacts
-        # for the integration test since that's what the asset calls
+        # The adapter passes the optional model version through to its BEA computation helper.
         mock_compute_impacts.side_effect = compute_impacts_side_effect
 
         impacts_result = fiscal_assets.economic_impacts(context, shocks_df_result)

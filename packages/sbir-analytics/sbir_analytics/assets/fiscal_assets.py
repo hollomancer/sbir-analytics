@@ -12,6 +12,7 @@ from dagster import (
     AssetCheckResult,
     AssetCheckSeverity,
     AssetExecutionContext,
+    Failure,
     MetadataValue,
     Output,
     asset,
@@ -26,7 +27,7 @@ from sbir_etl.enrichers.naics import enrich_sbir_awards_with_fiscal_naics
 from sbir_etl.enrichers.naics.fiscal.exploratory_strategies import (
     fiscal_strategies_with_text_inference,
 )
-from sbir_etl.transformers.bea_io_adapter import BEAIOAdapter
+from sbir_etl.transformers.bea_io_adapter import BEA_COMPUTED_QUALITY_FLAG, BEAIOAdapter
 from sbir_etl.transformers.fiscal import (
     FiscalComponentCalculator,
     FiscalParameterSweep,
@@ -459,7 +460,7 @@ def economic_impacts(
     context: AssetExecutionContext,
     economic_shocks: pd.DataFrame,
 ) -> Output[pd.DataFrame]:
-    """Run BEA I-O multipliers on the aggregated shocks; placeholder when BEA unavailable."""
+    """Run BEA I-O multipliers on the aggregated shocks."""
     config = get_config()
     context.log.info(
         "Starting economic impact computation", extra={"num_shocks": len(economic_shocks)}
@@ -468,29 +469,44 @@ def economic_impacts(
     try:
         adapter = BEAIOAdapter(config=config.fiscal_analysis)
         if not adapter.is_available():
-            context.log.warning(
-                "BEA I-O adapter not available. Set BEA_API_KEY env var.\n"
-                "Register at https://apps.bea.gov/API/signup/"
+            raise Failure(
+                description=(
+                    "BEA I-O computation is unavailable. Set BEA_API_KEY; "
+                    "no fallback impacts were materialized."
+                )
             )
-            return _create_placeholder_impacts(economic_shocks, context)
     except Exception as e:
-        context.log.warning(f"BEA I-O adapter not available: {e}")
-        return _create_placeholder_impacts(economic_shocks, context)
+        if isinstance(e, Failure):
+            raise
+        raise Failure(description="BEA I-O adapter initialization failed") from e
 
     shocks_input = economic_shocks[["state", "bea_sector", "fiscal_year", "shock_amount"]].copy()
     with performance_monitor.monitor_block("economic_impact_computation"):
         try:
             impacts_df = adapter.compute_impacts(shocks_input)
         except Exception as e:
-            context.log.error(f"Failed to compute economic impacts: {e}")
-            return _create_placeholder_impacts(economic_shocks, context)
+            raise Failure(
+                description="BEA I-O computation failed; no impacts were materialized"
+            ) from e
 
     result = economic_shocks.merge(
         impacts_df,
         on=["state", "bea_sector", "fiscal_year"],
         how="left",
         suffixes=("_shock", "_impact"),
+        indicator=True,
     )
+    # A shock with no impact row (for example, a missing fiscal_year that the
+    # multi-year path drops when it groups by year) must not become zero impacts.
+    unmatched = int((result.pop("_merge") == "left_only").sum())
+    if unmatched:
+        raise Failure(
+            description=(
+                f"BEA I-O computation returned no impact row for {unmatched} shock(s); "
+                "no impacts were materialized"
+            ),
+            metadata={"unmatched_shocks": unmatched},
+        )
     for col in _IMPACT_COLS:
         if col not in result.columns:
             result[col] = 0.0
@@ -518,26 +534,6 @@ def economic_impacts(
     return Output(value=result, metadata=metadata)  # type: ignore[arg-type]
 
 
-def _create_placeholder_impacts(
-    shocks_df: pd.DataFrame, context: AssetExecutionContext
-) -> Output[pd.DataFrame]:
-    """Placeholder impacts (zero values) when the BEA I-O adapter is unavailable."""
-    context.log.warning("Creating placeholder impacts (BEA I-O adapter unavailable)")
-    df = shocks_df.copy()
-    for col in _IMPACT_COLS:
-        df[col] = 0.0
-    df["model_version"] = "placeholder"
-    df["quality_flags"] = "bea_adapter_unavailable"
-    return Output(
-        value=df,
-        metadata={
-            "num_impacts": len(df),
-            "model_version": "placeholder",
-            "warning": "BEA I-O adapter unavailable - placeholder impacts generated",
-        },
-    )  # type: ignore[arg-type]
-
-
 @asset_check(
     asset="economic_impacts",
     description="Validate economic impacts computation quality",
@@ -559,6 +555,19 @@ def economic_impacts_quality_check(economic_impacts: pd.DataFrame) -> AssetCheck
                 "✗ Economic impacts FAILED: Using placeholder model (BEA I-O adapter unavailable)"
             ),
             metadata={"model_version": "placeholder"},
+        )
+
+    # Allow only fully BEA-computed rows. A missing column or a missing flag
+    # (an unmatched shock) counts as rejected.
+    rejected_flags = pd.Series(True, index=economic_impacts.index)
+    if "quality_flags" in economic_impacts.columns:
+        rejected_flags = economic_impacts["quality_flags"] != BEA_COMPUTED_QUALITY_FLAG
+    if rejected_flags.any():
+        return AssetCheckResult(
+            passed=False,
+            severity=AssetCheckSeverity.ERROR,
+            description="✗ Economic impacts FAILED: Non-BEA fallback rows are present",
+            metadata={"rejected_rows": int(rejected_flags.sum())},
         )
 
     issues: list[str] = []
