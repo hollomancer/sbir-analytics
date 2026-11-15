@@ -1,134 +1,103 @@
-# Requirements — ModernBert Analysis Layer
+# Requirements — ModernBERT analysis layer
+
+## Context
 
 **Target epistemic tier:** `exploratory`
 
-> **Status:** Partially implemented. Retiered from evidence on 2026-08-07:
-> embedding similarity is unvalidated model inference, matching the
-> modules' own exploratory labels; promotion returns via a study contract
-> if a question needs citable similarity results. Core ModernBert client, embedding assets,
-> similarity output, config, and client-level tests exist. Quality/cohesion
-> metrics, fuller asset checks, and Dagster integration
-> tests remain open. Requirements 5–7 (Bayesian MoE routing) are deferred pending
-> explicit scope review.
-> Supports inventory question **C2** (patent–award semantic similarity) in [docs/research-questions.md](../../docs/research-questions.md).
+- **Research question:** C2 — patent–award semantic similarity
+- **Lifecycle:** Maintenance
+- **Primary users:** Pipeline engineers and analysts exploring possible semantic
+  relationships between SBIR awards and patents
 
-**Research question anchor:** C2 — patent–award semantic similarity via ModernBert embeddings
-**Answers for:** pipeline engineers, defense industrial base analysts
-**Complexity tier:** Relational (Tier 2)
+ModernBERT similarity is a discovery aid. A high score is not evidence that an
+award produced, funded, licensed, or otherwise caused a patent. Similarity rows
+must not be promoted into citable patent–award links without a separate study
+contract and validation.
 
----
+## Current scope
 
-## Done when
+The maintained layer embeds award and patent text with
+`nomic-ai/modernbert-embed-base`, computes cosine similarity, and emits a
+bounded set of candidate pairs above a configurable threshold. It is additive
+to the existing pipeline and does not change CET classification.
 
-> A pipeline engineer can state: "The governed similarity table returns the top-N SBIR awards most semantically similar to a given patent. Embedding coverage is ≥95% for awards and ≥98% for patents. The CET cohesion check passes. Requirements 5–7 (Bayesian MoE routing) are deferred pending scope review."
+The following are explicitly out of scope:
 
----
+- evidence-tier or confirmatory patent–award linkage claims;
+- Bayesian mixture-of-experts routing, LoRA adapters, uncertainty heads, or
+  dynamic expert pools;
+- FAISS or another approximate-nearest-neighbor backend;
+- ModernBERT-specific dashboards and alerting infrastructure;
+- changes to CET classification or its schemas.
 
-## Introduction
-
-This feature integrates ModernBert (Patent-specific Encoder with Examiner Citations) to create a robust, explainable, and retrieval-friendly analysis layer that complements our existing CET-based patent and award classifiers. ModernBert provides high-quality patent embeddings that enable semantic search, prior-art style similarity, cohort cohesion checks, and award↔patent cross-linking to improve discovery, validation, and downstream analytics.
-
-The system will use Hugging Face's hosted Inference API by default (no local GPU required) to accelerate adoption, with optional support for Hugging Face Inference Endpoints for dedicated capacity and tighter performance SLOs.
-
-## Glossary
-
-Feature-local terms only. Omit standard ML/storage vocabulary (embedding,
-cosine similarity, FAISS, Parquet, Dagster asset). Confidence / ECE here is
-classifier-calibration for this layer — not the steering enrichment bands
-([glossary.md](../../docs/steering/glossary.md)).
-
-- **ModernBert_System** — Patent-oriented encoder path (examiner-citation
-  fine-tune) producing award/patent embeddings via the configured Hugging Face
-  model.
-- **Bayesian_Router** — Routes inputs stochastically over an expert pool using
-  posterior weights.
-- **Expert_Pool / LoRA_Head** — Lightweight domain adapters used as experts.
-- **Uncertainty_Head** — Calibrated abstention on diffuse posteriors; reports ECE.
-- **Technology_Cluster** — Emergent groupings from routing (not preset CET labels).
-- **DP_Means** — Dirichlet Process means clustering for dynamic expert creation.
+Those features require a new scope review tied to a current research question,
+validation plan, and operating owner.
 
 ## Requirements
 
-### Requirement 1
+### R1. Embedding client
 
-**User Story:** As a pipeline engineer building the semantic similarity layer, I want to compute dense embeddings for patents and awards using ModernBert, so that downstream assets can perform semantic analysis and similarity matching across the SBIR ecosystem.
+The client must:
 
-#### Acceptance Criteria
+1. generate normalized, 768-dimensional embeddings with
+   `nomic-ai/modernbert-embed-base`;
+2. support Hugging Face API inference and optional local
+   `sentence-transformers` inference;
+3. prepare award text from the available solicitation title, award title, and
+   abstract fields;
+4. prepare patent text from the available title and abstract fields;
+5. return the model identifier, inference mode, dimension, input count, and
+   elapsed generation time with each result; and
+6. raise a clear error when configuration, model loading, or inference fails.
 
-1. THE ModernBert_System SHALL generate embeddings for patent documents using title and abstract fields
-2. THE ModernBert_System SHALL generate embeddings for SBIR awards using solicitation_title and abstract fields
-3. THE system SHALL use the Hugging_Face_API with the mpi-inno-comp/modernbert model for embedding computation
-4. THE system SHALL store embeddings in Parquet format with metadata including model version and computation timestamp
-5. THE system SHALL implement rate limiting and retry logic for API calls to ensure reliable processing
+### R2. Dagster assets and outputs
 
-### Requirement 2
+The layer must provide:
 
-**User Story:** As an R&D policy researcher, I want to identify semantic similarity between awards and patents, so that I can discover potential technology transfer relationships and prior art connections across the SBIR corpus.
+1. `modernbert_embeddings_awards`, containing `award_id`, `embedding`,
+   `model_version`, `inference_mode`, and `dimension`;
+2. `modernbert_embeddings_patents`, containing `patent_id`, `embedding`,
+   `model_version`, `inference_mode`, and `dimension`; and
+3. `modernbert_award_patent_similarity`, containing `award_id`, `patent_id`,
+   and `similarity_score`.
 
-#### Acceptance Criteria
+The similarity asset must compute cosine similarity by brute force, apply the
+configured minimum score, and emit no more than the configured top-k candidates
+per award. The maintained default is 10 candidates.
 
-1. THE system SHALL compute cosine similarity between award and patent embeddings
-2. THE system SHALL identify top-k most similar patents for each award based on configurable thresholds
-3. THE system SHALL support both brute-force and FAISS_Index backends for similarity computation
-4. THE system SHALL apply minimum similarity score thresholds to filter low-quality matches
-5. THE system SHALL limit the number of similarity pairs per award to prevent excessive relationships
+### R3. Quality boundaries
 
-### Requirement 3
+The award and patent embedding assets must expose blocking coverage checks.
+The maintained thresholds are 95% valid award embeddings and 98% valid patent
+embeddings. An embedding is valid only when it is present and has the expected
+dimension. The current checks report error severity but are not yet blocking;
+closing that gap is active maintenance work.
 
-**User Story:** As a pipeline engineer responsible for data quality, I want quality validation gates for the ModernBert analysis pipeline, so that embedding coverage and cohesion thresholds are enforced before downstream assets consume similarity data.
+Similarity output must be structurally valid:
 
-#### Acceptance Criteria
+- scores are finite and within the cosine range `[-1, 1]`;
+- an award–patent pair appears at most once;
+- each award has no more than the configured top-k rows; and
+- every emitted score meets the configured threshold.
 
-1. THE system SHALL validate embedding coverage meets minimum thresholds for patents (≥98%) and awards (≥95%)
-2. THE system SHALL compute cohesion metrics to validate that embeddings cluster appropriately within CET classifications
-3. THE system SHALL implement Quality_Gates that block downstream processing when validation fails
-4. THE system SHALL generate performance baselines and alert on significant drift in embedding quality
-5. THE system SHALL provide detailed error reporting and recovery guidance when validation thresholds are not met
+### R4. Isolation and epistemic status
 
-### Requirement 5
+ModernBERT assets must remain in the exploratory ML surface. They must not
+modify existing input assets, CET outputs, or evidence-tier tables. Downstream
+work must preserve the distinction between a semantic candidate and a
+validated relationship.
 
-**User Story:** As an R&D policy researcher, I want Bayesian MoE classification routing for CET/CPC categories, so that I can quickly categorize patents and SBIR awards into technology domains with calibrated uncertainty before detailed analysis.
+## Maintenance completion criteria
 
-#### Acceptance Criteria
+The current maintenance backlog is complete when:
 
-1. THE Bayesian_Router SHALL route documents to specialized Expert_Pool classifiers for initial CPC_Section and CET_Area predictions based on document characteristics
-2. THE system SHALL use variational inference to model uncertainty in expert selection and provide probability distributions over classification experts
-3. THE Uncertainty_Head SHALL compute calibrated confidence scores for classifications using Expected Calibration Error validation
-4. THE system SHALL maintain separate expert classifiers for different technology domains with dynamic expert pool expansion
-5. THE system SHALL flag low-confidence classifications requiring human review based on routing uncertainty thresholds
+1. a deterministic multi-asset test exercises award embeddings, patent
+   embeddings, similarity, dependency ordering, and coverage-check failure
+   behavior with a stubbed client; and
+2. configured client, batch-size, threshold, top-k, and coverage settings are
+   either wired to execution or removed from the public schema;
+3. coverage failures block downstream similarity execution; and
+4. automated validation enforces the similarity-output invariants in R3.
 
-### Requirement 6
-
-**User Story:** As an R&D policy researcher, I want Bayesian MoE similarity computation routing, so that I can get robust semantic similarity measures within and across technology categories with uncertainty quantification.
-
-#### Acceptance Criteria
-
-1. THE Bayesian_Router SHALL route document pairs to specialized Expert_Pool similarity computation methods based on their classified technology categories
-2. THE system SHALL use multiple similarity expert methods (intra-category, cross-category, domain-specific) with probabilistic routing
-3. THE system SHALL aggregate similarity scores from multiple experts using Bayesian model averaging with uncertainty propagation
-4. THE Uncertainty_Head SHALL provide confidence intervals for similarity scores and flag uncertain matches for review
-5. THE system SHALL adapt expert routing based on technology category combinations and historical performance patterns
-
-### Requirement 7
-
-**User Story:** As an R&D policy researcher, I want Bayesian MoE embedding generation routing, so that patents and SBIR awards can be processed by specialized embedding experts optimized for their identified technology domains.
-
-#### Acceptance Criteria
-
-1. THE Bayesian_Router SHALL route documents to specialized ModernBert expert models based on their classified technology categories and similarity analysis results
-2. THE system SHALL use variational inference to model uncertainty in expert selection for domain-specific embedding generation
-3. THE system SHALL provide uncertainty quantification that incorporates embedding generation uncertainty in downstream analysis
-4. THE Uncertainty_Head SHALL compute calibrated confidence scores for embedding quality using Expected Calibration Error validation
-5. THE system SHALL generate specialized embeddings that are optimized for the identified technology domains and similarity patterns
-
-### Requirement 8
-
-**User Story:** As a pipeline engineer, I want the ModernBert analysis layer to be strictly additive, so that existing CET classification and pipeline functionality remains unchanged and the feature can be enabled or disabled without affecting other assets.
-
-#### Acceptance Criteria
-
-1. THE system SHALL implement all ModernBert functionality as new Dagster_Asset components without modifying existing assets
-2. THE system SHALL not alter existing data schemas, API endpoints, or user interfaces
-3. THE system SHALL be configurable to enable or disable without affecting other pipeline operations
-4. THE system SHALL maintain backward compatibility with existing configuration and deployment processes
-5. THE system SHALL provide clear separation between ModernBert outputs and existing CET classification results
+These criteria improve reliability of the implemented exploratory path. They
+do not promote its evidence status.
