@@ -53,6 +53,7 @@ __all__ = [
     "env_str",
     "parse_data_cut_date",
     "coerce_date_series",
+    "nullable_str_series",
     "normalize_uei",
     "normalize_duns",
     "load_parquet_if_exists",
@@ -97,6 +98,21 @@ def coerce_date_series(series: pd.Series) -> pd.Series:
     """Best-effort conversion to datetime64[ns]; non-parseable -> NaT."""
 
     return pd.to_datetime(series, errors="coerce")
+
+
+def nullable_str_series(values: Any, index: Any = None) -> pd.Series:
+    """Build an object-dtype Series whose missing entries stay ``None``.
+
+    pandas infers the ``str`` dtype for a sequence of strings and rewrites the
+    missing entries to ``NaN``, which is a float: it is truthy, it is not
+    ``None``, and a pydantic contract typed ``str | None`` rejects it. Columns
+    where "absent" is a meaningful value -- an unknown program, an absent
+    parent reference -- therefore need an explicit object dtype so that absent
+    reads as absent all the way to the row contract.
+    """
+
+    series = pd.Series(values, index=index, dtype=object)
+    return series.where(series.notna(), None)
 
 
 def load_parquet_if_exists(path: str | os.PathLike[str]) -> pd.DataFrame | None:
