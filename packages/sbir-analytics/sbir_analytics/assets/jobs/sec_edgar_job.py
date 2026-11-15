@@ -14,27 +14,13 @@ from dagster._core.definitions.unresolved_asset_job_definition import (
 )
 
 
-try:
-    from ..sbir_ingestion import validated_sbir_awards
-    from ..sec_edgar_enrichment import sec_edgar_enriched_companies
-except Exception:  # pragma: no cover - handles optional Dagster deps
-    validated_sbir_awards = None  # type: ignore
-    sec_edgar_enriched_companies = None  # type: ignore
+from ..sbir_ingestion import validated_sbir_awards
+from ..sec_edgar_enrichment import sec_edgar_enriched_companies
 
-from .job_registry import JobSpec, build_job_from_spec_with_executor, build_placeholder_job
+from .job_registry import JobSpec, build_job_from_spec_with_executor
 
 
 def _build_job() -> JobDefinition | UnresolvedAssetJobDefinition:
-    assets = [
-        validated_sbir_awards,
-        sec_edgar_enriched_companies,
-    ]
-    if any(asset is None for asset in assets):  # type: ignore[arg-type]
-        return build_placeholder_job(
-            name="sec_edgar_pipeline_job",
-            description="Placeholder job (SEC EDGAR assets unavailable at import time).",
-        )
-
     return build_job_from_spec_with_executor(
         JobSpec(
             name="sec_edgar_pipeline_job",
@@ -42,7 +28,7 @@ def _build_job() -> JobDefinition | UnresolvedAssetJobDefinition:
                 "SEC EDGAR enrichment pipeline: resolve SBIR companies to SEC filings, "
                 "then extract financials and M&A signals"
             ),
-            assets=assets,  # type: ignore[arg-type]
+            assets=(validated_sbir_awards, sec_edgar_enriched_companies),
         ),
         executor=in_process_executor,
     )

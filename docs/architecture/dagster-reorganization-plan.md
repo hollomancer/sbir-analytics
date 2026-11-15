@@ -48,7 +48,7 @@ The inventory on 2026-08-03 found:
 | --- | --- | --- |
 | Definitions | 105 asset definitions representing 109 asset keys, 47 checks, 22 jobs, 10 schedules, and 5 sensors | A single code location carries unrelated operational and research workloads |
 | Grouping | 22 groups; 18 assets remain in `default` | Group names do not provide a dependable ownership or product boundary |
-| Discovery | Assets and jobs are imported by filesystem scanning; failed job imports can become placeholders | Definition-load failures can be hidden and deployed contents can vary with optional dependencies |
+| Discovery | Assets, jobs, and sensors are imported by filesystem scanning; an import failure in any asset, job, or existing sensor module stops the code location from loading, and only a missing sensors package is optional | Deployed contents vary only through profile exclusions made before import, such as `DAGSTER_LOAD_HEAVY_ASSETS` |
 | Broad jobs | `sbir_analytics_job` and its daily schedule are retired; `core_refresh_job` remains derived by excluding a dynamic list of heavy assets, while its `weekly_core_refresh` schedule is stopped by default | Enabling `weekly_core_refresh` can still bring new non-heavy assets into automation without an explicit job-selection decision |
 | Heavy profile | Disabling heavy assets still loads 64 assets and 34 checks; phase-transition classification loads optional ML dependencies | The lightweight server boundary is implicit and incomplete |
 | Lineage | Phase II and Phase III assets read files directly and declare no upstream assets | Dagster cannot determine source vintage or safely order/backfill transition analysis |
@@ -300,7 +300,7 @@ Exit gate: the repository can detect an accidental change to any production job 
 Goal: remove implicit deployment contents.
 
 - add `definitions/registry.py` with explicit asset, check, job, schedule, sensor, and resource lists;
-- eliminate placeholder jobs and broad import exception handling;
+- keep job imports fail-closed; eliminate the remaining broad import exception handling;
 - replace dynamic heavy-prefix filtering with declared profiles;
 - retire the daily all-assets and derived weekly-core schedules;
 - mark optional ML-backed transition assets as heavy until their dependency boundary is isolated.

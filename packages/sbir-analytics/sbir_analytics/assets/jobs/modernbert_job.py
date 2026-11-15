@@ -16,49 +16,29 @@ similarity assets; outputs are non-citable.
 
 from dagster import AssetSelection, define_asset_job
 
-
-try:
-    from sbir_analytics.assets.modernbert.embeddings import (
-        modernbert_award_patent_similarity,
-        modernbert_embeddings_awards,
-        modernbert_embeddings_patents,
-    )
-except Exception:  # pragma: no cover
-    modernbert_embeddings_awards = None  # type: ignore
-    modernbert_embeddings_patents = None  # type: ignore
-    modernbert_award_patent_similarity = None  # type: ignore
+from sbir_analytics.assets.modernbert.embeddings import (
+    modernbert_award_patent_similarity,
+    modernbert_embeddings_awards,
+    modernbert_embeddings_patents,
+)
 
 
 EPISTEMIC_TIER = "exploratory"
 
 
-if all(
-    asset is not None
-    for asset in [
-        modernbert_embeddings_awards,
-        modernbert_embeddings_patents,
-        modernbert_award_patent_similarity,
-    ]
-):
-    modernbert_job = define_asset_job(
-        name="modernbert_job",
-        selection=AssetSelection.keys(
-            modernbert_embeddings_awards.key,
-            modernbert_embeddings_patents.key,
-            modernbert_award_patent_similarity.key,
-        ),
-        description=(
-            "Generate ModernBert embeddings for SBIR awards and USPTO patents, "
-            "and compute similarity scores between them. "
-            "Requires validated_sbir_awards and transformed_patents to be materialized first."
-        ),
-    )
-else:
-    modernbert_job = define_asset_job(  # type: ignore[unreachable]
-        name="modernbert_job_placeholder",
-        selection=AssetSelection.keys(),
-        description="Placeholder job (ModernBert assets unavailable at import time).",
-    )
+modernbert_job = define_asset_job(
+    name="modernbert_job",
+    selection=AssetSelection.keys(
+        modernbert_embeddings_awards.key,
+        modernbert_embeddings_patents.key,
+        modernbert_award_patent_similarity.key,
+    ),
+    description=(
+        "Generate ModernBert embeddings for SBIR awards and USPTO patents, "
+        "and compute similarity scores between them. "
+        "Requires validated_sbir_awards and transformed_patents to be materialized first."
+    ),
+)
 
 
 __all__ = ["modernbert_job"]

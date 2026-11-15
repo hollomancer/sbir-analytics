@@ -21,44 +21,25 @@ from dagster import AssetSelection, define_asset_job
 # Import the heavy asset module directly. The definitions profile decides
 # whether this job module is imported, so the package-level environment gate
 # must not change the job's selection.
-try:
-    from sbir_analytics.assets.uspto.ai_extraction import (
-        raw_uspto_ai_extract,
-        raw_uspto_ai_human_sample_extraction,
-        uspto_ai_deduplicate,
-    )
-except Exception:  # pragma: no cover - defensive import for repository load-time
-    raw_uspto_ai_extract = None  # type: ignore
-    uspto_ai_deduplicate = None  # type: ignore
-    raw_uspto_ai_human_sample_extraction = None  # type: ignore
+from sbir_analytics.assets.uspto.ai_extraction import (
+    raw_uspto_ai_extract,
+    raw_uspto_ai_human_sample_extraction,
+    uspto_ai_deduplicate,
+)
 
 
-# Compose the USPTO AI extraction job.
-# When assets import successfully, expose a real job that targets the three assets.
-# Otherwise, expose a placeholder job so repository load is resilient in constrained environments.
-if (
-    raw_uspto_ai_extract is not None
-    and uspto_ai_deduplicate is not None
-    and raw_uspto_ai_human_sample_extraction is not None
-):
-    uspto_ai_extraction_job = define_asset_job(
-        name="uspto_ai_extraction_job",
-        selection=AssetSelection.keys(
-            raw_uspto_ai_extract.key,
-            uspto_ai_deduplicate.key,
-            raw_uspto_ai_human_sample_extraction.key,
-        ),
-        description=(
-            "Materialize USPTO AI extraction -> deduplication -> sampling flow. "
-            "Intended for end-to-end ingestion and human-eval preparation."
-        ),
-    )
-else:
-    uspto_ai_extraction_job = define_asset_job(  # type: ignore[unreachable]
-        name="uspto_ai_extraction_job_placeholder",
-        selection=AssetSelection.keys(),
-        description="Placeholder job (USPTO AI assets unavailable at import time).",
-    )
+uspto_ai_extraction_job = define_asset_job(
+    name="uspto_ai_extraction_job",
+    selection=AssetSelection.keys(
+        raw_uspto_ai_extract.key,
+        uspto_ai_deduplicate.key,
+        raw_uspto_ai_human_sample_extraction.key,
+    ),
+    description=(
+        "Materialize USPTO AI extraction -> deduplication -> sampling flow. "
+        "Intended for end-to-end ingestion and human-eval preparation."
+    ),
+)
 
 
 __all__ = ["uspto_ai_extraction_job"]

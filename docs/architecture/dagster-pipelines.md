@@ -34,8 +34,8 @@ modules load in the primary location. When it is `false`, the four heavy jobs â€
 `definitions_ml` instead. Intentional profile exclusions occur before import.
 The discovery layer propagates unexpected asset and job import failures. A
 missing sensors package remains optional, but import failures from an existing
-sensor module propagate. Existing job-local compatibility placeholders remain
-unchanged.
+sensor module propagate. Job modules fail the code location when their assets
+cannot import; the repository does not substitute empty jobs.
 
 ## Jobs
 
