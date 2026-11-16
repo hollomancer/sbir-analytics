@@ -1278,6 +1278,58 @@ def test_five_year_rate_excludes_immature_awards_from_denominator(tmp_path, monk
     assert checks["within_5_year_rate"] == 1.0
 
 
+def test_five_year_rate_counts_any_qualifying_pair_not_only_the_earliest(tmp_path, monkeypatch):
+    """A firm's earlier, unrelated Phase III must not hide a later transition.
+
+    All three awards end 2018-06-30 and are mature at the 2029-06-30 cut.
+    - A: Phase III in 2015 (pre-completion) and 2020 (within 5 years) -> counts.
+    - B: Phase III in 2015 only (pre-completion) -> must not count.
+    - C: Phase III in 2025 only (more than 5 years after completion) -> must not count.
+    The earliest-event rule gave 0/3; the pairs rule gives 1/3.
+    """
+
+    import json
+
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("SBIR_ETL__PHASE_TRANSITION__DATA_CUT_DATE", "2029-06-30")
+    from dagster import build_asset_context
+
+    from sbir_analytics.assets.phase_transition.pairs import transformed_phase_transition_survival
+
+    end = pd.Timestamp("2018-06-30").date()
+    phase_ii = pd.DataFrame(
+        {
+            "award_id": ["A", "B", "C"],
+            "recipient_uei": ["UEIA00000001", "UEIB00000001", "UEIC00000001"],
+            "recipient_duns": [None, None, None],
+            "agency": ["Department of Defense"] * 3,
+            "period_of_performance_end": [end, end, end],
+        }
+    )
+    events = [("A", "2015-03-01"), ("A", "2020-03-01"), ("B", "2015-03-01"), ("C", "2025-03-01")]
+    pairs = pd.DataFrame(
+        {
+            "phase_ii_award_id": [a for a, _ in events],
+            "phase_iii_action_date": [pd.Timestamp(d).date() for _, d in events],
+        }
+    )
+    pairs["latency_days"] = (
+        pd.to_datetime(pairs["phase_iii_action_date"]) - pd.Timestamp(end)
+    ).dt.days.astype("Int64")
+
+    transformed_phase_transition_survival(
+        context=build_asset_context(),
+        validated_phase_ii_awards=phase_ii,
+        transformed_phase_ii_iii_pairs=pairs,
+    )
+
+    checks_path = tmp_path / "data/processed/phase_transition_survival.checks.json"
+    checks = json.loads(checks_path.read_text())
+
+    assert checks["five_year_denominator"] == 3
+    assert checks["within_5_year_rate"] == round(1 / 3, 4)
+
+
 def test_survival_drops_awards_ending_after_the_cut(tmp_path, monkeypatch):
     """An award still in performance at the cut has no post-completion
     follow-up to observe. Keeping it would censor it at a negative time —

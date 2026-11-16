@@ -396,10 +396,11 @@ def transformed_phase_transition_survival(
 
     # 5-year transition view. The denominator is only awards mature for the
     # horizon (end_date + 5y <= data_cut): an award with months of follow-up
-    # must not be counted as a non-transition in a five-year rate. Rows with
-    # time_days < 0 are pre-completion transitions -- a mature award with one
-    # stays in the denominator but out of the numerator, because it does not
-    # satisfy "within 5 years of completion".
+    # must not be counted as a non-transition in a five-year rate. The
+    # numerator is built from all pairs, not the survival frame's earliest
+    # event: a mature award counts when any matched Phase III falls 0..5 years
+    # after completion. An earlier, pre-completion Phase III for the same firm
+    # must not hide a later qualifying one.
     horizon_days = 5 * 365
     five_year_rate: float | None = None
     mature_total = 0
@@ -409,12 +410,13 @@ def transformed_phase_transition_survival(
         )
         mature_total = int(mature.sum())
         if mature_total:
-            within = survival.loc[
-                mature
-                & survival["event_observed"]
-                & (survival["time_days"] >= 0)
-                & (survival["time_days"] <= horizon_days)
-            ]
+            if not pairs.empty:
+                latency = pairs["latency_days"].astype("Int64")
+                in_window = latency.ge(0) & latency.le(horizon_days)
+                qualifying = set(pairs.loc[in_window.fillna(False), "phase_ii_award_id"])
+            else:
+                qualifying = set()
+            within = survival.loc[mature & survival["phase_ii_award_id"].isin(qualifying)]
             five_year_rate = float(len(within) / mature_total)
 
     checks = {
