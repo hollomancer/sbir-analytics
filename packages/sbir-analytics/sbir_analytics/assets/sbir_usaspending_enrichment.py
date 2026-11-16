@@ -1,5 +1,6 @@
 """Dagster assets for SBIR-USAspending enrichment pipeline."""
 
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
@@ -20,6 +21,29 @@ from sbir_etl.enrichers.chunked_enrichment import ChunkedEnricher
 from sbir_etl.enrichers.usaspending import enrich_sbir_with_usaspending
 from sbir_etl.utils.monitoring import performance_monitor
 from sbir_etl.utils.reporting.analyzers.sbir_analyzer import SbirEnrichmentAnalyzer
+
+
+@dataclass(frozen=True)
+class EnrichmentSummary:
+    """Counts derived from the completed enrichment frame."""
+
+    total_awards: int
+    usaspending_matches: int
+    sam_gov_matches: int
+    total_matched: int
+    exact_matches: int
+    fuzzy_matches: int
+    match_rate: float
+
+
+@dataclass(frozen=True)
+class PerformanceSummary:
+    """Performance values reported in Dagster metadata and analysis."""
+
+    duration: float
+    records_per_second: float
+    max_peak_memory: float
+    avg_memory_delta: float
 
 
 def _filter_recipients_by_sbir(
@@ -66,12 +90,324 @@ def _filter_recipients_by_sbir(
     filtered_df = recipients_df[mask].copy()
     filtered_count = len(filtered_df)
 
+    retained_percent = filtered_count / original_count * 100 if original_count else 0.0
     context.log.info(
         f"Filtered recipients: {original_count:,} -> {filtered_count:,} "
-        f"({filtered_count / original_count * 100:.1f}% retained)"
+        f"({retained_percent:.1f}% retained)"
     )
 
     return filtered_df
+
+
+def _run_usaspending_enrichment(
+    sbir_df: pd.DataFrame,
+    recipients_df: pd.DataFrame,
+    config: Any,
+    context: AssetExecutionContext,
+) -> tuple[pd.DataFrame, dict[str, Any], bool]:
+    """Run the standard or chunked USAspending enrichment stage."""
+    filtered_recipients = _filter_recipients_by_sbir(sbir_df, recipients_df, context)
+    use_chunked = _should_use_chunked_processing(sbir_df, filtered_recipients, config)
+
+    if use_chunked:
+        context.log.info("Using chunked enrichment processing")
+        enriched_df, metrics = _enrich_chunked(
+            sbir_df,
+            filtered_recipients,
+            config,
+            context,
+        )
+        return enriched_df, metrics, True
+
+    context.log.info("Using standard enrichment processing")
+    with performance_monitor.monitor_block("enrichment_core"):
+        enriched_df = enrich_sbir_with_usaspending(
+            sbir_df=sbir_df,
+            recipient_df=filtered_recipients,
+            sbir_company_col="company_name",
+            sbir_uei_col="uei",
+            sbir_duns_col="duns",
+            recipient_name_col="legal_business_name",
+            recipient_uei_col="uei",
+            recipient_duns_col="duns",
+            high_threshold=90,
+            low_threshold=75,
+            return_candidates=True,
+        )
+    return enriched_df, {}, False
+
+
+def _digits(value: object) -> str:
+    """Return only the decimal digits in an identifier."""
+    return "".join(character for character in str(value) if character.isdigit())
+
+
+def _build_sam_indexes(
+    sam_entities: pd.DataFrame,
+) -> tuple[dict[str, Any], dict[str, Any]]:
+    """Index SAM rows by normalized UEI and DUNS identifiers."""
+    sam_by_uei: dict[str, Any] = {}
+    sam_by_duns: dict[str, Any] = {}
+    if sam_entities.empty:
+        return sam_by_uei, sam_by_duns
+
+    if "unique_entity_id" in sam_entities.columns:
+        for index, uei in sam_entities["unique_entity_id"].dropna().items():
+            normalized = str(uei).strip().upper()
+            if normalized:
+                sam_by_uei[normalized] = index
+
+    duns_col = next(
+        (column for column in ("duns_number", "duns", "DUNS") if column in sam_entities.columns),
+        None,
+    )
+    if duns_col:
+        for index, duns in sam_entities[duns_col].dropna().items():
+            normalized = _digits(duns)
+            if normalized:
+                sam_by_duns[normalized] = index
+
+    return sam_by_uei, sam_by_duns
+
+
+def _apply_sam_enrichment(
+    enriched_df: pd.DataFrame,
+    sam_entities: pd.DataFrame,
+    context: AssetExecutionContext,
+) -> pd.DataFrame:
+    """Apply SAM fallback and NAICS enrichment to USAspending results."""
+    sam_by_uei, sam_by_duns = _build_sam_indexes(sam_entities)
+    enriched_df["_sam_gov_match_method"] = pd.NA
+    enriched_df["_sam_gov_match_idx"] = pd.NA
+
+    unmatched_mask = enriched_df["_usaspending_match_method"].isna()
+    if unmatched_mask.any() and not sam_entities.empty:
+        context.log.info(
+            f"Attempting SAM.gov enrichment for {unmatched_mask.sum()} unmatched records"
+        )
+        if "uei" in enriched_df.columns:
+            uei_series = (
+                enriched_df.loc[unmatched_mask, "uei"]
+                .fillna("")
+                .astype(str)
+                .str.strip()
+                .str.upper()
+            )
+            uei_matches = uei_series.isin(sam_by_uei)
+            matched_indices = uei_series[uei_matches].index
+            enriched_df.loc[matched_indices, "_sam_gov_match_idx"] = (
+                uei_series[uei_matches].map(sam_by_uei).values
+            )
+            enriched_df.loc[matched_indices, "_sam_gov_match_method"] = "sam-uei-exact"
+
+        still_unmatched = unmatched_mask & enriched_df["_sam_gov_match_method"].isna()
+        if "duns" in enriched_df.columns and still_unmatched.any():
+            duns_series = (
+                enriched_df.loc[still_unmatched, "duns"].fillna("").astype(str).apply(_digits)
+            )
+            duns_matches = duns_series.isin(sam_by_duns)
+            matched_indices = duns_series[duns_matches].index
+            enriched_df.loc[matched_indices, "_sam_gov_match_idx"] = (
+                duns_series[duns_matches].map(sam_by_duns).values
+            )
+            enriched_df.loc[matched_indices, "_sam_gov_match_method"] = "sam-duns-exact"
+
+    needs_naics = (
+        enriched_df["_usaspending_match_method"].notna() & enriched_df["_sam_gov_match_idx"].isna()
+    )
+    if needs_naics.any() and not sam_entities.empty:
+        context.log.info(
+            f"Enriching NAICS from SAM.gov for {needs_naics.sum()} USAspending-matched records"
+        )
+        if "UEI" in enriched_df.columns:
+            uei_series = (
+                enriched_df.loc[needs_naics, "UEI"].fillna("").astype(str).str.strip().str.upper()
+            )
+            uei_matches = uei_series.isin(sam_by_uei)
+            matched_indices = uei_series[uei_matches].index
+            enriched_df.loc[matched_indices, "_sam_gov_match_idx"] = (
+                uei_series[uei_matches].map(sam_by_uei).values
+            )
+            enriched_df.loc[matched_indices, "_sam_gov_match_method"] = "sam-naics-uei"
+
+        still_needs_naics = needs_naics & enriched_df["_sam_gov_match_idx"].isna()
+        if "Duns" in enriched_df.columns and still_needs_naics.any():
+            duns_series = (
+                enriched_df.loc[still_needs_naics, "Duns"].fillna("").astype(str).apply(_digits)
+            )
+            duns_matches = duns_series.isin(sam_by_duns)
+            matched_indices = duns_series[duns_matches].index
+            enriched_df.loc[matched_indices, "_sam_gov_match_idx"] = (
+                duns_series[duns_matches].map(sam_by_duns).values
+            )
+            enriched_df.loc[matched_indices, "_sam_gov_match_method"] = "sam-naics-duns"
+
+    sam_matched = enriched_df["_sam_gov_match_idx"].notna()
+    sam_columns = [
+        column
+        for column in (
+            "unique_entity_id",
+            "legal_business_name",
+            "dba_name",
+            "physical_address_city",
+            "physical_address_state",
+            "cage_code",
+            "primary_naics",
+            "naics_code_string",
+        )
+        if column in sam_entities.columns
+    ]
+    if sam_matched.any():
+        for column in sam_columns:
+            enriched_df[f"sam_gov_{column}"] = pd.NA
+            matched_index = enriched_df.loc[sam_matched, "_sam_gov_match_idx"].astype(int)
+            enriched_df.loc[sam_matched, f"sam_gov_{column}"] = sam_entities.loc[
+                matched_index, column
+            ].values
+
+    sam_fallback_count = (
+        enriched_df["_sam_gov_match_method"].isin(["sam-uei-exact", "sam-duns-exact"]).sum()
+    )
+    sam_naics_count = (
+        enriched_df["_sam_gov_match_method"].str.startswith("sam-naics", na=False).sum()
+    )
+    context.log.info(
+        f"SAM.gov enrichment: {sam_fallback_count} fallback matches, "
+        f"{sam_naics_count} NAICS-only matches"
+    )
+
+    enriched_df = enriched_df.drop(columns=["_sam_gov_match_idx"])
+    enriched_df["_enrichment_source"] = None
+    enriched_df.loc[enriched_df["_usaspending_match_method"].notna(), "_enrichment_source"] = (
+        "usaspending"
+    )
+    fallback_mask = enriched_df["_sam_gov_match_method"].isin(["sam-uei-exact", "sam-duns-exact"])
+    enriched_df.loc[fallback_mask, "_enrichment_source"] = "sam_gov"
+    enriched_df["_naics_source"] = None
+    enriched_df.loc[enriched_df["_sam_gov_match_method"].notna(), "_naics_source"] = "sam_gov"
+    return enriched_df
+
+
+def _summarize_enrichment(enriched_df: pd.DataFrame) -> EnrichmentSummary:
+    """Calculate the match counts used by logs, analysis, and metadata."""
+    total_awards = len(enriched_df)
+    usaspending_matches = int(enriched_df["_usaspending_match_method"].notna().sum())
+    sam_gov_matches = int(enriched_df["_sam_gov_match_method"].notna().sum())
+    total_matched = usaspending_matches + sam_gov_matches
+    exact_matches = int(
+        enriched_df["_usaspending_match_method"].str.contains("exact", na=False).sum()
+    )
+    fuzzy_matches = int(
+        enriched_df["_usaspending_match_method"].str.contains("fuzzy", na=False).sum()
+    )
+    return EnrichmentSummary(
+        total_awards=total_awards,
+        usaspending_matches=usaspending_matches,
+        sam_gov_matches=sam_gov_matches,
+        total_matched=total_matched,
+        exact_matches=exact_matches,
+        fuzzy_matches=fuzzy_matches,
+        match_rate=total_matched / total_awards if total_awards else 0.0,
+    )
+
+
+def _performance_summary(
+    total_awards: int,
+    enrichment_metrics: dict[str, Any],
+) -> PerformanceSummary:
+    """Normalize standard and chunked performance metrics."""
+    if enrichment_metrics:
+        return PerformanceSummary(
+            duration=enrichment_metrics.get("total_duration_seconds", 0.0),
+            avg_memory_delta=enrichment_metrics.get("avg_memory_delta_mb", 0.0),
+            max_peak_memory=enrichment_metrics.get("peak_memory_mb", 0.0),
+            records_per_second=enrichment_metrics.get("records_per_second", 0.0),
+        )
+
+    metrics = performance_monitor.get_metrics_summary().get("enrichment_core", {})
+    duration = metrics.get("total_duration", 0.0)
+    return PerformanceSummary(
+        duration=duration,
+        avg_memory_delta=metrics.get("avg_memory_delta_mb", 0.0),
+        max_peak_memory=metrics.get("max_peak_memory_mb", 0.0),
+        records_per_second=(total_awards / duration) if duration > 0 else 0.0,
+    )
+
+
+def _build_output_metadata(
+    *,
+    context: AssetExecutionContext,
+    config: Any,
+    enriched_df: pd.DataFrame,
+    original_df: pd.DataFrame,
+    summary: EnrichmentSummary,
+    performance: PerformanceSummary,
+    enrichment_metrics: dict[str, Any],
+    use_chunked: bool,
+) -> dict[str, Any]:
+    """Run the analyzer and assemble Dagster output metadata."""
+    run_context = {
+        "run_id": context.run.run_id if context.run else f"run_{context.run_id}",
+        "pipeline_name": "sbir_enrichment",
+        "stage": "enrich",
+    }
+    module_data = {
+        "enriched_df": enriched_df,
+        "original_df": original_df,
+        "enrichment_metrics": {
+            "records_processed": summary.total_awards,
+            "records_failed": 0,
+            "duration_seconds": performance.duration,
+            "records_per_second": performance.records_per_second,
+            "match_rate": summary.match_rate,
+            "matched_records": summary.total_matched,
+            "exact_matches": summary.exact_matches,
+            "fuzzy_matches": summary.fuzzy_matches,
+            "processing_mode": "chunked" if use_chunked else "standard",
+        },
+        "run_context": run_context,
+    }
+    analysis_report = SbirEnrichmentAnalyzer().analyze(module_data)
+    context.log.info(
+        "SBIR enrichment analysis complete",
+        extra={
+            "insights_generated": len(analysis_report.insights)
+            if hasattr(analysis_report, "insights")
+            else 0,
+            "data_hygiene_score": analysis_report.data_hygiene.quality_score_mean
+            if analysis_report.data_hygiene
+            else None,
+        },
+    )
+
+    metadata = {
+        "num_records": len(enriched_df),
+        "match_rate": f"{summary.match_rate:.1%}",
+        "matched_awards": summary.total_matched,
+        "exact_matches": summary.exact_matches,
+        "fuzzy_matches": summary.fuzzy_matches,
+        "enrichment_columns": [
+            column for column in enriched_df.columns if column.startswith("usaspending_")
+        ],
+        "preview": MetadataValue.md(enriched_df.head(10).to_markdown()),
+        "performance_duration_seconds": round(performance.duration, 2),
+        "performance_records_per_second": round(performance.records_per_second, 2),
+        "performance_peak_memory_mb": round(performance.max_peak_memory, 2),
+        "performance_avg_memory_delta_mb": round(performance.avg_memory_delta, 2),
+        "processing_mode": "chunked" if use_chunked else "standard",
+        "chunk_size": config.enrichment.performance.chunk_size if use_chunked else None,
+        "analysis_insights_count": len(analysis_report.insights)
+        if hasattr(analysis_report, "insights")
+        else 0,
+        "analysis_data_hygiene_score": round(analysis_report.data_hygiene.quality_score_mean, 3)
+        if analysis_report.data_hygiene
+        else None,
+        "analysis_success_rate": round(analysis_report.success_rate, 3),
+        "analysis_throughput": round(analysis_report.throughput_records_per_second, 2),
+    }
+    if use_chunked and "progress" in enrichment_metrics:
+        metadata.update(enrichment_metrics["progress"])
+    return metadata
 
 
 @asset(
@@ -111,346 +447,43 @@ def enriched_sbir_awards(
         },
     )
 
-    # Filter recipients to only those matching SBIR UEIs/DUNS (reduces memory ~90%)
-    filtered_recipients = _filter_recipients_by_sbir(
-        validated_sbir_awards, raw_usaspending_recipients, context
-    )
-    # Release original DataFrame memory
-    del raw_usaspending_recipients
-
-    # Determine if chunked processing is needed (now based on filtered recipients)
-    use_chunked = _should_use_chunked_processing(
+    enriched_df, enrichment_metrics, use_chunked = _run_usaspending_enrichment(
         validated_sbir_awards,
-        filtered_recipients,
+        raw_usaspending_recipients,
         config,
+        context,
     )
-
-    if use_chunked:
-        context.log.info("Using chunked enrichment processing")
-        enriched_df, enrichment_metrics = _enrich_chunked(
-            validated_sbir_awards,
-            filtered_recipients,
-            config,
-            context,
-        )
-    else:
-        context.log.info("Using standard enrichment processing")
-        # Perform enrichment with performance monitoring
-        with performance_monitor.monitor_block("enrichment_core"):
-            enriched_df = enrich_sbir_with_usaspending(
-                sbir_df=validated_sbir_awards,
-                recipient_df=filtered_recipients,
-                sbir_company_col="company_name",
-                sbir_uei_col="uei",
-                sbir_duns_col="duns",
-                # USAspending recipient_lookup table column names
-                recipient_name_col="legal_business_name",
-                recipient_uei_col="uei",
-                recipient_duns_col="duns",
-                high_threshold=90,
-                low_threshold=75,
-                return_candidates=True,
-            )
-        enrichment_metrics = {}
 
     # Calculate USAspending enrichment statistics
     usaspending_matched = enriched_df["_usaspending_match_method"].notna().sum()
     context.log.info(f"USAspending enrichment: {usaspending_matched}/{len(enriched_df)} matched")
 
-    # --- SAM.gov Enrichment ---
-    # Build SAM.gov lookup indexes (used for both fallback and NAICS enrichment)
-    sam_by_uei = {}
-    sam_by_duns = {}
+    enriched_df = _apply_sam_enrichment(enriched_df, raw_sam_gov_entities, context)
 
-    if not raw_sam_gov_entities.empty:
-        if "unique_entity_id" in raw_sam_gov_entities.columns:
-            for idx, uei in raw_sam_gov_entities["unique_entity_id"].dropna().items():
-                if uei:
-                    sam_by_uei[str(uei).strip().upper()] = idx
-
-        # SAM.gov uses 'duns_number' or similar
-        duns_col = None
-        for col in ["duns_number", "duns", "DUNS"]:
-            if col in raw_sam_gov_entities.columns:
-                duns_col = col
-                break
-
-        if duns_col:
-            for idx, duns in raw_sam_gov_entities[duns_col].dropna().items():
-                if duns:
-                    digits = "".join(ch for ch in str(duns) if ch.isdigit())
-                    if digits:
-                        sam_by_duns[digits] = idx
-
-    # Initialize SAM.gov columns
-    enriched_df["_sam_gov_match_method"] = pd.NA
-    enriched_df["_sam_gov_match_idx"] = pd.NA
-
-    # --- Part 1: SAM.gov fallback for USAspending misses ---
-    unmatched_mask = enriched_df["_usaspending_match_method"].isna()
-    unmatched_count = unmatched_mask.sum()
-
-    if unmatched_count > 0 and not raw_sam_gov_entities.empty:
-        context.log.info(f"Attempting SAM.gov enrichment for {unmatched_count} unmatched records")
-
-        # UEI exact match against SAM.gov
-        if "uei" in enriched_df.columns:
-            uei_series = (
-                enriched_df.loc[unmatched_mask, "uei"]
-                .fillna("")
-                .astype(str)
-                .str.strip()
-                .str.upper()
-            )
-            uei_matches = uei_series.isin(sam_by_uei.keys())
-            if uei_matches.any():
-                matched_indices = uei_series[uei_matches].index
-                enriched_df.loc[matched_indices, "_sam_gov_match_idx"] = (
-                    uei_series[uei_matches].map(sam_by_uei).values
-                )
-                enriched_df.loc[matched_indices, "_sam_gov_match_method"] = "sam-uei-exact"
-
-        # DUNS exact match against SAM.gov (for remaining unmatched)
-        still_unmatched = unmatched_mask & enriched_df["_sam_gov_match_method"].isna()
-        if "duns" in enriched_df.columns and still_unmatched.any():
-            duns_series = (
-                enriched_df.loc[still_unmatched, "duns"]
-                .fillna("")
-                .astype(str)
-                .apply(lambda x: "".join(ch for ch in str(x) if ch.isdigit()))
-            )
-            duns_matches = duns_series.isin(sam_by_duns.keys())
-            if duns_matches.any():
-                matched_indices = duns_series[duns_matches].index
-                enriched_df.loc[matched_indices, "_sam_gov_match_idx"] = (
-                    duns_series[duns_matches].map(sam_by_duns).values
-                )
-                enriched_df.loc[matched_indices, "_sam_gov_match_method"] = "sam-duns-exact"
-
-    # --- Part 2: SAM.gov NAICS enrichment for USAspending-matched records ---
-    usaspending_matched_mask = enriched_df["_usaspending_match_method"].notna()
-    needs_naics_mask = usaspending_matched_mask & enriched_df["_sam_gov_match_idx"].isna()
-
-    if needs_naics_mask.any() and not raw_sam_gov_entities.empty:
-        context.log.info(
-            f"Enriching NAICS from SAM.gov for {needs_naics_mask.sum()} USAspending-matched records"
-        )
-
-        # UEI match for NAICS
-        if "UEI" in enriched_df.columns:
-            uei_series = (
-                enriched_df.loc[needs_naics_mask, "UEI"]
-                .fillna("")
-                .astype(str)
-                .str.strip()
-                .str.upper()
-            )
-            uei_matches = uei_series.isin(sam_by_uei.keys())
-            if uei_matches.any():
-                matched_indices = uei_series[uei_matches].index
-                enriched_df.loc[matched_indices, "_sam_gov_match_idx"] = (
-                    uei_series[uei_matches].map(sam_by_uei).values
-                )
-                # Mark as NAICS-only enrichment (not full SAM.gov fallback)
-                enriched_df.loc[matched_indices, "_sam_gov_match_method"] = "sam-naics-uei"
-
-        # DUNS match for remaining
-        still_needs_naics = needs_naics_mask & enriched_df["_sam_gov_match_idx"].isna()
-        if "Duns" in enriched_df.columns and still_needs_naics.any():
-            duns_series = (
-                enriched_df.loc[still_needs_naics, "Duns"]
-                .fillna("")
-                .astype(str)
-                .apply(lambda x: "".join(ch for ch in str(x) if ch.isdigit()))
-            )
-            duns_matches = duns_series.isin(sam_by_duns.keys())
-            if duns_matches.any():
-                matched_indices = duns_series[duns_matches].index
-                enriched_df.loc[matched_indices, "_sam_gov_match_idx"] = (
-                    duns_series[duns_matches].map(sam_by_duns).values
-                )
-                enriched_df.loc[matched_indices, "_sam_gov_match_method"] = "sam-naics-duns"
-
-    # --- Merge SAM.gov data for all matched records ---
-    sam_matched_mask = enriched_df["_sam_gov_match_idx"].notna()
-    sam_matched_count = sam_matched_mask.sum()
-
-    if sam_matched_count > 0:
-        # Select key SAM.gov columns to merge
-        sam_cols = [
-            "unique_entity_id",
-            "legal_business_name",
-            "dba_name",
-            "physical_address_city",
-            "physical_address_state",
-            "cage_code",
-            "primary_naics",
-            "naics_code_string",
-        ]
-        sam_cols = [c for c in sam_cols if c in raw_sam_gov_entities.columns]
-
-        for col in sam_cols:
-            enriched_df[f"sam_gov_{col}"] = pd.NA
-            matched_idx = enriched_df.loc[sam_matched_mask, "_sam_gov_match_idx"].astype(int)
-            enriched_df.loc[sam_matched_mask, f"sam_gov_{col}"] = raw_sam_gov_entities.loc[
-                matched_idx, col
-            ].values
-
-    # Count by type
-    sam_fallback_count = (
-        enriched_df["_sam_gov_match_method"].str.startswith("sam-uei-exact").sum()
-        + enriched_df["_sam_gov_match_method"].str.startswith("sam-duns-exact").sum()
-        if "_sam_gov_match_method" in enriched_df.columns
-        else 0
-    )
-    sam_naics_count = (
-        enriched_df["_sam_gov_match_method"].str.startswith("sam-naics").sum()
-        if "_sam_gov_match_method" in enriched_df.columns
-        else 0
-    )
-
-    context.log.info(
-        f"SAM.gov enrichment: {sam_fallback_count} fallback matches, {sam_naics_count} NAICS-only matches"
-    )
-
-    # Clean up temporary column
-    enriched_df = enriched_df.drop(columns=["_sam_gov_match_idx"], errors="ignore")
-
-    # Add combined enrichment source column (primary entity source)
-    enriched_df["_enrichment_source"] = None
-    enriched_df.loc[enriched_df["_usaspending_match_method"].notna(), "_enrichment_source"] = (
-        "usaspending"
-    )
-    # SAM.gov fallback (not NAICS-only) overrides as primary source
-    if "_sam_gov_match_method" in enriched_df.columns:
-        sam_fallback_mask = enriched_df["_sam_gov_match_method"].isin(
-            ["sam-uei-exact", "sam-duns-exact"]
-        )
-        enriched_df.loc[sam_fallback_mask, "_enrichment_source"] = "sam_gov"
-
-    # Add NAICS source column
-    enriched_df["_naics_source"] = None
-    if "_sam_gov_match_method" in enriched_df.columns:
-        enriched_df.loc[enriched_df["_sam_gov_match_method"].notna(), "_naics_source"] = "sam_gov"
-
-    # Calculate final enrichment statistics
-    total_awards = len(enriched_df)
-    usaspending_matches = enriched_df["_usaspending_match_method"].notna().sum()
-    sam_gov_matches = (
-        enriched_df["_sam_gov_match_method"].notna().sum()
-        if "_sam_gov_match_method" in enriched_df.columns
-        else 0
-    )
-    total_matched = usaspending_matches + sam_gov_matches
-    exact_matches = enriched_df["_usaspending_match_method"].str.contains("exact", na=False).sum()
-    fuzzy_matches = enriched_df["_usaspending_match_method"].str.contains("fuzzy", na=False).sum()
-
-    match_rate = total_matched / total_awards if total_awards > 0 else 0
-
+    summary = _summarize_enrichment(enriched_df)
     context.log.info(
         "Enrichment complete",
         extra={
-            "total_awards": total_awards,
-            "usaspending_matches": int(usaspending_matches),
-            "sam_gov_matches": int(sam_gov_matches),
-            "total_matched": int(total_matched),
-            "exact_matches": int(exact_matches),
-            "fuzzy_matches": int(fuzzy_matches),
-            "match_rate": f"{match_rate:.1%}",
+            "total_awards": summary.total_awards,
+            "usaspending_matches": summary.usaspending_matches,
+            "sam_gov_matches": summary.sam_gov_matches,
+            "total_matched": summary.total_matched,
+            "exact_matches": summary.exact_matches,
+            "fuzzy_matches": summary.fuzzy_matches,
+            "match_rate": f"{summary.match_rate:.1%}",
         },
     )
-
-    # Get performance metrics before creating module_data
-    if not enrichment_metrics:
-        perf_summary = performance_monitor.get_metrics_summary()
-        enrichment_perf = perf_summary.get("enrichment_core", {})
-        duration = enrichment_perf.get("total_duration", 0.0)
-        avg_memory_delta = enrichment_perf.get("avg_memory_delta_mb", 0.0)
-        max_peak_memory = enrichment_perf.get("max_peak_memory_mb", 0.0)
-        records_per_second = (total_awards / duration) if duration > 0 else 0
-    else:
-        # Use metrics from chunked processing
-        duration = enrichment_metrics.get("total_duration_seconds", 0.0)
-        avg_memory_delta = enrichment_metrics.get("avg_memory_delta_mb", 0.0)
-        max_peak_memory = enrichment_metrics.get("peak_memory_mb", 0.0)
-        records_per_second = enrichment_metrics.get("records_per_second", 0.0)
-
-    # Perform statistical analysis with SBIR analyzer
-    analyzer = SbirEnrichmentAnalyzer()
-    run_context = {
-        "run_id": context.run.run_id if context.run else f"run_{context.run_id}",
-        "pipeline_name": "sbir_enrichment",
-        "stage": "enrich",
-    }
-
-    # Prepare module data for analysis
-    module_data = {
-        "enriched_df": enriched_df,
-        "original_df": validated_sbir_awards,
-        "enrichment_metrics": {
-            "records_processed": total_awards,
-            "records_failed": 0,  # Enrichment doesn't typically "fail" records
-            "duration_seconds": duration,
-            "records_per_second": records_per_second,
-            "match_rate": match_rate,
-            "matched_records": int(total_matched),
-            "exact_matches": int(exact_matches),
-            "fuzzy_matches": int(fuzzy_matches),
-            "processing_mode": "chunked" if use_chunked else "standard",
-        },
-        "run_context": run_context,
-    }
-
-    # Generate analysis report
-    analysis_report = analyzer.analyze(module_data)
-
-    context.log.info(
-        "SBIR enrichment analysis complete",
-        extra={
-            "insights_generated": len(analysis_report.insights)
-            if hasattr(analysis_report, "insights")
-            else 0,
-            "data_hygiene_score": analysis_report.data_hygiene.quality_score_mean
-            if analysis_report.data_hygiene
-            else None,
-        },
+    performance = _performance_summary(summary.total_awards, enrichment_metrics)
+    metadata = _build_output_metadata(
+        context=context,
+        config=config,
+        enriched_df=enriched_df,
+        original_df=validated_sbir_awards,
+        summary=summary,
+        performance=performance,
+        enrichment_metrics=enrichment_metrics,
+        use_chunked=use_chunked,
     )
-
-    # Create metadata
-    metadata = {
-        "num_records": len(enriched_df),
-        "match_rate": f"{match_rate:.1%}",
-        "matched_awards": int(total_matched),
-        "exact_matches": int(exact_matches),
-        "fuzzy_matches": int(fuzzy_matches),
-        "enrichment_columns": [
-            col for col in enriched_df.columns if col.startswith("usaspending_")
-        ],
-        "preview": MetadataValue.md(enriched_df.head(10).to_markdown()),
-        # Performance metrics
-        "performance_duration_seconds": round(duration, 2),
-        "performance_records_per_second": round(records_per_second, 2),
-        "performance_peak_memory_mb": round(max_peak_memory, 2),
-        "performance_avg_memory_delta_mb": round(avg_memory_delta, 2),
-        # Processing metadata
-        "processing_mode": "chunked" if use_chunked else "standard",
-        "chunk_size": config.enrichment.performance.chunk_size if use_chunked else None,
-        # Statistical analysis results
-        "analysis_insights_count": len(analysis_report.insights)
-        if hasattr(analysis_report, "insights")
-        else 0,
-        "analysis_data_hygiene_score": round(analysis_report.data_hygiene.quality_score_mean, 3)
-        if analysis_report.data_hygiene
-        else None,
-        "analysis_success_rate": round(analysis_report.success_rate, 3),
-        "analysis_throughput": round(analysis_report.throughput_records_per_second, 2),
-    }
-
-    # Add progress metadata if chunked processing was used
-    if use_chunked and enrichment_metrics:
-        # Progress metadata is already included in enrichment_metrics from chunked processing
-        if "progress" in enrichment_metrics:
-            metadata.update(enrichment_metrics["progress"])
 
     # Persist to S3 for cross-job asset sharing
     _persist_enriched_awards(enriched_df, context)
@@ -462,13 +495,10 @@ def _persist_enriched_awards(df: pd.DataFrame, context: AssetExecutionContext) -
     """Write enriched awards where usaspending_iterative_enrichment reads them."""
     from sbir_etl.utils.cloud_storage import get_data_root
 
-    try:
-        dest = get_data_root() / "processed" / "enriched" / "sbir_awards.parquet"
-        dest.parent.mkdir(parents=True, exist_ok=True)
-        df.to_parquet(dest, index=False)
-        context.log.info(f"Persisted {len(df)} enriched awards to {dest}")
-    except Exception as e:
-        context.log.warning(f"Failed to persist enriched awards: {e}")
+    dest = get_data_root() / "processed" / "enriched" / "sbir_awards.parquet"
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    df.to_parquet(dest, index=False)
+    context.log.info(f"Persisted {len(df)} enriched awards to {dest}")
 
 
 def _should_use_chunked_processing(

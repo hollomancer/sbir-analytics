@@ -61,16 +61,6 @@ def _iter_modules(
     yield from sorted(module_names)
 
 
-def _safe_import(module_name: str) -> ModuleType | None:
-    """Import a module, logging and skipping failures."""
-
-    try:
-        return importlib.import_module(module_name)
-    except Exception as exc:  # pragma: no cover - defensive
-        LOG.warning("Failed to import %s: %s", module_name, exc)
-        return None
-
-
 def should_load_heavy_assets() -> bool:
     """Check if heavy assets should be loaded based on environment."""
     # Load heavy assets by default; operators can disable them for constrained hosts.
@@ -88,13 +78,14 @@ def _asset_module_names() -> tuple[str, ...]:
     return tuple(_iter_modules(package, skip_prefixes=skip))
 
 
-def iter_asset_modules() -> list[ModuleType]:
+def iter_asset_modules(*, load_heavy: bool | None = None) -> list[ModuleType]:
     """Return all asset modules (excluding jobs/sensors).
 
     Skips heavy asset modules in resource-constrained environments
     based on DAGSTER_LOAD_HEAVY_ASSETS environment variable.
     """
-    load_heavy = should_load_heavy_assets()
+    if load_heavy is None:
+        load_heavy = should_load_heavy_assets()
 
     modules: list[ModuleType] = []
     for module_name in _asset_module_names():
@@ -108,9 +99,7 @@ def iter_asset_modules() -> list[ModuleType]:
             )
             continue
 
-        module = _safe_import(module_name)
-        if module:
-            modules.append(module)
+        modules.append(importlib.import_module(module_name))
     return modules
 
 
@@ -120,8 +109,9 @@ def _job_module_names() -> tuple[str, ...]:
     return tuple(_iter_modules(package))
 
 
-def iter_job_modules() -> list[ModuleType]:
-    load_heavy = should_load_heavy_assets()
+def iter_job_modules(*, load_heavy: bool | None = None) -> list[ModuleType]:
+    if load_heavy is None:
+        load_heavy = should_load_heavy_assets()
     modules: list[ModuleType] = []
     for module_name in _job_module_names():
         if not load_heavy and module_name in HEAVY_JOB_MODULES:
@@ -130,17 +120,20 @@ def iter_job_modules() -> list[ModuleType]:
                 module_name,
             )
             continue
-        module = _safe_import(module_name)
-        if module:
-            modules.append(module)
+        # Job definitions are operational entry points. Import failures must
+        # fail the code location instead of silently removing a job.
+        modules.append(importlib.import_module(module_name))
     return modules
 
 
 @lru_cache(maxsize=1)
 def _sensor_module_names() -> tuple[str, ...]:
+    package_name = f"{__name__}.sensors"
     try:
-        package = importlib.import_module(f"{__name__}.sensors")
-    except ModuleNotFoundError:
+        package = importlib.import_module(package_name)
+    except ModuleNotFoundError as exc:
+        if exc.name != package_name:
+            raise
         return ()
     return tuple(_iter_modules(package))
 
@@ -148,20 +141,18 @@ def _sensor_module_names() -> tuple[str, ...]:
 def iter_sensor_modules() -> list[ModuleType]:
     modules: list[ModuleType] = []
     for module_name in _sensor_module_names():
-        module = _safe_import(module_name)
-        if module:
-            modules.append(module)
+        modules.append(importlib.import_module(module_name))
     return modules
 
 
-def iter_public_jobs() -> list[JobDefinition]:
+def iter_public_jobs(*, load_heavy: bool | None = None) -> list[JobDefinition]:
     from dagster import JobDefinition  # Imported lazily
     from dagster._core.definitions.unresolved_asset_job_definition import (
         UnresolvedAssetJobDefinition,
     )
 
     jobs: list[JobDefinition] = []
-    for module in iter_job_modules():
+    for module in iter_job_modules(load_heavy=load_heavy):
         for value in vars(module).values():
             if isinstance(value, JobDefinition | UnresolvedAssetJobDefinition):
                 jobs.append(value)  # type: ignore[arg-type]

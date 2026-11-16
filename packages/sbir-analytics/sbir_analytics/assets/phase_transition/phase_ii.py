@@ -31,6 +31,10 @@ from typing import Any
 import pandas as pd
 
 from sbir_etl.extractors.sbir_award_export import sbir_phase_for_counting
+from sbir_etl.models.sbir_program import (
+    normalize_sbir_program,
+    program_from_fpds_research_code,
+)
 from sbir_etl.utils.data.file_io import write_json_atomic
 
 from .sbir_gov_source import (
@@ -51,6 +55,7 @@ from .utils import (
     normalize_duns,
     normalize_uei,
     now_utc_iso,
+    nullable_str_series,
 )
 
 
@@ -86,6 +91,7 @@ PHASE_II_COLUMNS: list[str] = [
     "award_date",
     "period_of_performance_start",
     "period_of_performance_end",
+    "program",
     "source",
     "phase_coding_reconciled",
 ]
@@ -104,12 +110,12 @@ def _normalize_source_key(value: Any) -> str:
 
 
 def _normalize_taxonomy_value(value: Any) -> str:
-    """Normalize a NAICS or PSC value for comparison and for exact-key fill.
+    """Normalize a NAICS, PSC, or program value for comparison and exact-key fill.
 
     Deliberately separate from `_normalize_source_key` despite the identical body:
     that function normalizes award identity, and a change made for PIID matching must
     not silently alter which taxonomy values are judged conflicting or what gets
-    persisted into `naics_code`/`psc_code`.
+    persisted into `naics_code`, `psc_code`, or `program`.
     """
 
     return _normalize_source_key(value)
@@ -288,6 +294,12 @@ def _prepare_contract_rows(contracts: pd.DataFrame) -> pd.DataFrame:
             ).dt.date,
         }
     )
+    # FPDS Element 10Q states the program directly on the transaction:
+    # SR2 -> SBIR, ST2 -> STTR. Null for any other value, including a
+    # descriptive phase string, which names a phase and no program.
+    out["program"] = nullable_str_series(
+        [program_from_fpds_research_code(v) for v in _pick("research")], df.index
+    )
     out["source"] = df.apply(
         lambda r: "usaspending_assistance" if _is_assistance_row(r) else "fpds_contract",
         axis=1,
@@ -323,6 +335,14 @@ def _prepare_contract_rows(contracts: pd.DataFrame) -> pd.DataFrame:
                 f"Generated Phase II award {generated_award_id} crosses source types: "
                 f"{sorted(source_types)}"
             )
+        # Program comes from every transaction, not just the representative one:
+        # a later modification may enter the Phase II mask without a 10Q code.
+        programs = set(group["program"].dropna().astype(str))
+        if len(programs) > 1:
+            raise PhaseIIInputError(
+                f"Generated Phase II award {generated_award_id} maps to conflicting programs: "
+                f"{sorted(programs)}"
+            )
 
         ordered = group.assign(
             _has_action=group["_action_timestamp"].notna().astype(int)
@@ -340,11 +360,16 @@ def _prepare_contract_rows(contracts: pd.DataFrame) -> pd.DataFrame:
         signed_total = amounts.sum(min_count=1)
         representative["award_amount"] = None if pd.isna(signed_total) else float(signed_total)
         representative["source_transaction_count"] = int(len(group))
+        representative["program"] = next(iter(programs)) if programs else None
         if source_ids:
             representative["source_award_id"] = sorted(source_ids)[0]
         awards.append(representative)
 
-    return pd.DataFrame(awards).loc[:, PHASE_II_COLUMNS].reset_index(drop=True)
+    collapsed = pd.DataFrame(awards).loc[:, PHASE_II_COLUMNS].reset_index(drop=True)
+    # Rebuilding the frame from per-award dicts re-infers a string dtype and
+    # turns an absent program back into NaN; restore None.
+    collapsed["program"] = nullable_str_series(collapsed["program"].tolist(), collapsed.index)
+    return collapsed
 
 
 def _prepare_sbir_gov_rows(sbir_awards: pd.DataFrame) -> pd.DataFrame:
@@ -395,6 +420,12 @@ def _prepare_sbir_gov_rows(sbir_awards: pd.DataFrame) -> pd.DataFrame:
             "period_of_performance_end": coerce_date_series(
                 df.get("contract_end_date", pd.Series(dtype=object))
             ).dt.date,
+            # The canonical SBIR.gov `Program` column, carried losslessly.
+            # An unclassified or combined spelling normalizes to null rather
+            # than being resolved to one of the two programs.
+            "program": nullable_str_series(
+                [normalize_sbir_program(v) for v in _pick("program")], df.index
+            ),
             "source": "sbir_gov",
             "phase_coding_reconciled": True,
         }
@@ -450,7 +481,7 @@ def _unify(contract_phase_ii: pd.DataFrame, sbir_gov_phase_ii: pd.DataFrame) -> 
             )
 
         federal_index = federal_indexes[0]
-        for column in ("naics_code", "psc_code"):
+        for column in ("naics_code", "psc_code", "program"):
             candidates = supplemental.loc[supplemental_indexes, column]
             supplemental_normalized = {
                 normalized

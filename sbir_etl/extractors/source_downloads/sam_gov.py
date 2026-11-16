@@ -40,6 +40,7 @@ import hashlib
 import io
 import json
 import os
+import shutil
 import re
 import sys
 import time
@@ -83,6 +84,9 @@ EXTRACT_POLL_MAX = 40
 # Paginated fallback (strategy 3)
 PAGE_SIZE = 10
 MAX_PAGINATED_RECORDS = 10_000
+# SAM.gov has shipped the monthly extract as a ZIP inside a ZIP of the same name
+# (Nov. 2026). One level of nesting is expected; the cap stops runaway recursion.
+MAX_NESTED_ZIP_DEPTH = 2
 
 # Columns the downstream pipeline reads (SAMGovExtractor.ENRICHMENT_COLUMNS).
 REQUIRED_COLUMNS = [
@@ -549,8 +553,12 @@ def _parse_downloaded_file(buf: BinaryIO) -> pd.DataFrame | None:
         return _parse_csv(buf)
 
 
-def _parse_zip(buf: BinaryIO) -> pd.DataFrame | None:
-    """Extract and parse the first CSV/DAT file from a ZIP."""
+def _parse_zip(buf: BinaryIO, *, depth: int = 0) -> pd.DataFrame | None:
+    """Extract and parse the first CSV/DAT file from a ZIP.
+
+    When the archive holds no CSV/DAT file but does hold a ZIP, the inner ZIP is
+    opened instead, up to ``MAX_NESTED_ZIP_DEPTH`` levels.
+    """
     try:
         with zipfile.ZipFile(buf) as zf:
             names = zf.namelist()
@@ -559,6 +567,14 @@ def _parse_zip(buf: BinaryIO) -> pd.DataFrame | None:
             # Prefer .dat or .csv files
             data_files = [n for n in names if n.lower().endswith((".csv", ".dat"))]
             if not data_files:
+                nested = [n for n in names if n.lower().endswith(".zip")]
+                if len(nested) == 1 and depth < MAX_NESTED_ZIP_DEPTH:
+                    print(f"   Opening nested ZIP {nested[0]}")
+                    # Spool to disk: the inner archive is as large as the outer one.
+                    with zf.open(nested[0]) as inner, TemporaryFile() as spool:
+                        shutil.copyfileobj(inner, spool, length=4 * 1024 * 1024)
+                        spool.seek(0)
+                        return _parse_zip(spool, depth=depth + 1)
                 print(f"⚠️  No CSV/DAT files in ZIP: {names[:10]}")
                 return None
 

@@ -21,36 +21,26 @@ Notes:
     Dagster run config or environment variables consumed by the assets.
 """
 
-from .job_registry import JobSpec, build_job_from_spec, build_placeholder_job
+from sbir_analytics.assets.uspto import raw_uspto_assignments, validated_uspto_assignments
+
+from .job_registry import JobSpec, build_job_from_spec
 
 
-# Import the USPTO asset definitions. These are expected to be defined in the
-# package `src.assets.uspto` as `raw_uspto_assignments` and
-# `validated_uspto_assignments`.
-#
 # The assets module also defines an asset_check `uspto_rf_id_asset_check` which
 # will be attached to `validated_uspto_assignments` when the repository is loaded.
-try:
-    from sbir_analytics.assets.uspto import raw_uspto_assignments, validated_uspto_assignments
-except Exception:  # pragma: no cover - defensive import for repository load-time
-    uspto_validation_job = build_placeholder_job(
+uspto_validation_job = build_job_from_spec(
+    JobSpec(
         name="uspto_validation_job",
-        description="Placeholder job (USPTO assets unavailable at import time).",
+        description=(
+            "Materialize USPTO assignment assets and run basic validators (rf_id uniqueness). "
+            "This job is intended for CI and lightweight validation runs."
+        ),
+        assets=(
+            raw_uspto_assignments,
+            validated_uspto_assignments,
+        ),
     )
-else:
-    uspto_validation_job = build_job_from_spec(
-        JobSpec(
-            name="uspto_validation_job",
-            description=(
-                "Materialize USPTO assignment assets and run basic validators (rf_id uniqueness). "
-                "This job is intended for CI and lightweight validation runs."
-            ),
-            assets=(
-                raw_uspto_assignments,
-                validated_uspto_assignments,
-            ),
-        )
-    )
+)
 
 
 # For convenience, expose a stable name that repository scaffolding can import.

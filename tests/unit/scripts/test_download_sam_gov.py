@@ -286,3 +286,55 @@ def test_public_v2_parser_fails_closed_on_positional_drift() -> None:
 
     with pytest.raises(ValueError, match="malformed positional record"):
         download_module._parse_zip(archive)
+
+
+def _zip_bytes(name: str, payload: bytes | str) -> bytes:
+    archive = io.BytesIO()
+    with zipfile.ZipFile(archive, "w") as bundle:
+        bundle.writestr(name, payload)
+    return archive.getvalue()
+
+
+def test_public_v2_parser_opens_nested_zip() -> None:
+    inner = _zip_bytes(
+        "SAM_PUBLIC_UTF-8_MONTHLY_V2_20261101_abc.dat",
+        _public_v2_file(_public_v2_record()),
+    )
+    outer = io.BytesIO(_zip_bytes("SAM_PUBLIC_UTF-8_MONTHLY_V2_20261101.ZIP", inner))
+
+    result = download_module._parse_zip(outer)
+
+    assert result is not None
+    assert len(result) == 1
+    assert result.loc[0, "unique_entity_id"] == "CANDIDATE001"
+    assert result.attrs["sam_expected_row_count"] == 1
+
+
+def test_nested_zip_still_fails_closed_on_control_record_mismatch() -> None:
+    inner = _zip_bytes(
+        "SAM_PUBLIC_UTF-8_MONTHLY_V2_20261101_abc.dat",
+        _public_v2_file(_public_v2_record(), declared_rows=2),
+    )
+    outer = io.BytesIO(_zip_bytes("SAM_PUBLIC_UTF-8_MONTHLY_V2_20261101.ZIP", inner))
+
+    with pytest.raises(ValueError, match="entity count does not match"):
+        download_module._parse_zip(outer)
+
+
+def test_nested_zip_beyond_depth_limit_returns_none() -> None:
+    payload: bytes = _zip_bytes("data.dat", _public_v2_file(_public_v2_record()))
+    for level in range(download_module.MAX_NESTED_ZIP_DEPTH + 1):
+        payload = _zip_bytes(f"level{level}.zip", payload)
+
+    assert download_module._parse_zip(io.BytesIO(payload)) is None
+
+
+def test_zip_with_two_nested_zips_and_no_data_returns_none() -> None:
+    inner = _zip_bytes("data.dat", _public_v2_file(_public_v2_record()))
+    archive = io.BytesIO()
+    with zipfile.ZipFile(archive, "w") as bundle:
+        bundle.writestr("a.zip", inner)
+        bundle.writestr("b.zip", inner)
+    archive.seek(0)
+
+    assert download_module._parse_zip(archive) is None

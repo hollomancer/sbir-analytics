@@ -107,12 +107,19 @@ sector_summary = calculator.calculate_summary_by_sector(impacts)
 
 ### Quality Flags
 
-Indicates computation method and data quality:
+Records where each row's inputs came from. The pipeline accepts only one value:
 
-- **bea_api_with_ratios**: Highest quality (BEA I-O tables + actual VA ratios)
-- **bea_api_default_ratios**: Medium quality (BEA I-O tables + default ratios)
-- **bea_api_failed**: Computation failure (contains error details)
-- **placeholder_computation**: BEA API key not set (lowest quality)
+- **bea_api_with_ratios**: Production, value-added ratios, and employment all came from BEA tables.
+
+Any other value fails the computation and the `economic_impacts` asset check.
+These values mark fallback rows:
+
+- **bea_api_default_ratios**: The value-added table lacked the sector. Fixed ratios were used.
+- **bea_zero_production_fallback**: The sector was missing from the production results.
+- **bea_default_employment_fallback**: No employment coefficient. About 10 jobs per $1M was used.
+- **bea_api_failed**, **placeholder_computation**: Legacy failure and placeholder rows.
+
+A row can carry more than one fallback flag, separated by `;`.
 
 ## NAICS to BEA Mapping
 
@@ -302,9 +309,7 @@ high_quality = impacts[
 ]
 
 # Keep only rows backed by a successful BEA computation
-bea_backed = impacts[
-    impacts["quality_flags"].isin(["bea_api_with_ratios", "bea_api_default_ratios"])
-]
+bea_backed = impacts[impacts["quality_flags"] == "bea_api_with_ratios"]
 ```
 
 ## Troubleshooting
@@ -312,10 +317,12 @@ bea_backed = impacts[
 ### BEA API Key Not Set
 
 ```console
-Warning: BEA_API_KEY not set. Adapter will use placeholder computation.
+Warning: BEA_API_KEY not set. BEA I-O computation is unavailable.
 ```
 
-**Solution**: Register for a free BEA API key and set the environment variable
+The economic-impact asset fails without an API key. It does not emit estimated fallback rows.
+
+**Solution**: Register for a free BEA API key. Set the environment variable.
 
 ```bash
 # Register at https://apps.bea.gov/API/signup/
@@ -330,16 +337,15 @@ Warning: No BEA mapping found for NAICS 999999
 
 **Solution**: Check NAICS code validity or provide custom concordance
 
-### Placeholder Computation
+### Failed BEA Computation
 
 ```console
-Warning: BEA_API_KEY not set. Adapter will use placeholder computation.
+BEA I-O computation failed; no impacts were materialized.
 ```
 
-`confidence` is not emitted: the prior fixed values were not calibrated quality
-scores. Use `quality_flags` to distinguish BEA-backed rows from placeholders.
+The pipeline rejects placeholder and fallback rows. This includes legacy rows in the local cache.
 
-**Causes of placeholder output**:
+**Causes**:
 
 - BEA data unavailable for the requested year
 - BEA request failure
@@ -349,7 +355,7 @@ scores. Use `quality_flags` to distinguish BEA-backed rows from placeholders.
 
 - Set BEA_API_KEY environment variable
 - Use a year with available BEA I-O tables (2017-2022 typically available)
-- Exclude `placeholder_computation` rows from analytical use
+- The adapter discards a cached result with fallback rows and computes again.
 
 ## References
 

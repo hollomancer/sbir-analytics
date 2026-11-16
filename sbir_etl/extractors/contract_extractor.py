@@ -1380,25 +1380,28 @@ class ContractExtractor:
         ]
         metadata_type = pa.struct(
             [
-                pa.field("action_date", pa.string()),
-                pa.field("award_id", pa.string()),
-                pa.field("business_categories", pa.string()),
-                pa.field("contract_award_type", pa.string()),
-                pa.field("end_date_suppressed_before_effective_start", pa.bool_()),
-                pa.field("extent_competed", pa.string()),
-                pa.field("funding_agency", pa.string()),
-                pa.field("modification_number", pa.string()),
-                pa.field("naics_code", pa.string()),
-                pa.field("parent_idv_piid", pa.string()),
-                pa.field("parent_relationship_type", pa.string()),
-                pa.field("parent_uei", pa.string()),
-                pa.field("product_or_service_code", pa.string()),
-                pa.field("recipient_state", pa.string()),
-                pa.field("referenced_idv_agency", pa.string()),
-                pa.field("research", pa.string()),
-                pa.field("source_period_of_performance_current_end_date", pa.string()),
-                pa.field("source_period_of_performance_start_date", pa.string()),
+                # PyArrow 26 preserves mapping insertion order when Pandas infers
+                # a struct. Keep this explicit schema in the canonical model_dump
+                # order so batched output remains identical to one-shot output.
                 pa.field("transaction_id", pa.string()),
+                pa.field("award_id", pa.string()),
+                pa.field("modification_number", pa.string()),
+                pa.field("action_date", pa.string()),
+                pa.field("source_period_of_performance_start_date", pa.string()),
+                pa.field("source_period_of_performance_current_end_date", pa.string()),
+                pa.field("end_date_suppressed_before_effective_start", pa.bool_()),
+                pa.field("funding_agency", pa.string()),
+                pa.field("parent_uei", pa.string()),
+                pa.field("recipient_state", pa.string()),
+                pa.field("business_categories", pa.string()),
+                pa.field("extent_competed", pa.string()),
+                pa.field("contract_award_type", pa.string()),
+                pa.field("parent_idv_piid", pa.string()),
+                pa.field("referenced_idv_agency", pa.string()),
+                pa.field("parent_relationship_type", pa.string()),
+                pa.field("research", pa.string()),
+                pa.field("naics_code", pa.string()),
+                pa.field("product_or_service_code", pa.string()),
             ]
         )
         # Match the string type produced by the legacy one-shot Pandas writer in

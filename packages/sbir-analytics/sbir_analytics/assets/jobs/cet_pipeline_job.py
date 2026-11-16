@@ -18,51 +18,27 @@ classification assets; outputs are non-citable.
 
 from dagster import AssetSelection, define_asset_job
 
-
-# Import CET production assets
-try:
-    from ..cet import (
-        cet_taxonomy,
-        enriched_cet_award_classifications,
-        transformed_cet_company_profiles,
-    )
-
-    # Create aliases for backward compatibility
-    cet_award_classifications = enriched_cet_award_classifications
-    cet_company_profiles = transformed_cet_company_profiles
-except Exception:  # pragma: no cover - defensive import for repository load-time
-    cet_taxonomy = None  # type: ignore
-    cet_award_classifications = None  # type: ignore
-    cet_company_profiles = None  # type: ignore
+from ..cet import (
+    cet_taxonomy,
+    enriched_cet_award_classifications,
+    transformed_cet_company_profiles,
+)
 
 EPISTEMIC_TIER = "exploratory"
 
 
-# Compose the CET end-to-end job if all assets are importable; otherwise expose a placeholder job
-if (
-    cet_taxonomy is not None
-    and cet_award_classifications is not None
-    and cet_company_profiles is not None
-):
-    cet_full_pipeline_job = define_asset_job(
-        name="cet_full_pipeline_job",
-        selection=AssetSelection.keys(
-            cet_taxonomy.key,
-            cet_award_classifications.key,
-            cet_company_profiles.key,
-        ),
-        description=(
-            "Materialize the CET pipeline end-to-end: taxonomy -> award classification -> "
-            "company aggregation."
-        ),
-    )
-else:
-    # This branch is reachable when assets fail to import at module load time
-    cet_full_pipeline_job = define_asset_job(  # type: ignore[unreachable]
-        name="cet_full_pipeline_job",
-        selection=AssetSelection.keys(),
-        description="Placeholder job (CET assets unavailable at import time).",
-    )
+cet_full_pipeline_job = define_asset_job(
+    name="cet_full_pipeline_job",
+    selection=AssetSelection.keys(
+        cet_taxonomy.key,
+        enriched_cet_award_classifications.key,
+        transformed_cet_company_profiles.key,
+    ),
+    description=(
+        "Materialize the CET pipeline end-to-end: taxonomy -> award classification -> "
+        "company aggregation."
+    ),
+)
 
 
 __all__ = ["cet_full_pipeline_job"]

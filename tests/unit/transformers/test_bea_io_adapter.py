@@ -39,6 +39,48 @@ def mock_config():
     return config
 
 
+USE_TABLE = pd.DataFrame(
+    [[10, 5, 3], [5, 10, 2], [3, 2, 10]],
+    index=["11", "21", "31"],
+    columns=["11", "21", "31"],
+    dtype=float,
+)
+
+
+def _va_ratios(sectors):
+    return pd.DataFrame(
+        {
+            "sector": sectors,
+            "wage_ratio": [0.5] * len(sectors),
+            "gos_ratio": [0.3] * len(sectors),
+            "tax_ratio": [0.1] * len(sectors),
+            "proprietor_income_ratio": [0.1] * len(sectors),
+        }
+    )
+
+
+def _emp_coeffs(sectors):
+    return pd.DataFrame(
+        {
+            "sector": sectors,
+            "employment": [100.0] * len(sectors),
+            "employment_coefficient": [5.0] * len(sectors),
+        }
+    )
+
+
+def _bea_adapter(mock_config, va_ratios, emp_coeffs, **kwargs):
+    """Build an adapter whose BEA tables come from fixed test frames."""
+    from sbir_etl.transformers.bea_io_adapter import BEAIOAdapter
+
+    with patch("sbir_etl.transformers.bea_io_adapter.BEAApiClient"):
+        adapter = BEAIOAdapter(config=mock_config, **kwargs)
+    adapter._use_table_cache[2023] = USE_TABLE
+    adapter._va_ratios_cache[2023] = va_ratios
+    adapter._emp_coeff_cache[2023] = emp_coeffs
+    return adapter
+
+
 class TestBEAIOAdapterInitialization:
     """Test BEAIOAdapter initialization."""
 
@@ -61,7 +103,7 @@ class TestBEAIOAdapterInitialization:
         ).ConfigurationError("BEA_API_KEY not set", component="test", operation="test"),
     )
     def test_init_no_api_key(self, mock_client_cls, mock_config):
-        """Test initialization falls back when BEA_API_KEY not set."""
+        """Test initialization records that BEA computation is unavailable."""
         from sbir_etl.transformers.bea_io_adapter import BEAIOAdapter
 
         adapter = BEAIOAdapter(config=mock_config)
@@ -132,8 +174,8 @@ class TestBEAIOAdapterImpactComputation:
     """Test impact computation logic."""
 
     @patch("sbir_etl.transformers.bea_io_adapter.BEAApiClient")
-    def test_compute_placeholder_impacts(self, mock_client_cls, mock_config, sample_shocks):
-        """Test placeholder computation when API unavailable."""
+    def test_compute_impacts_requires_api(self, mock_client_cls, mock_config, sample_shocks):
+        """The adapter must not synthesize impacts when the API is unavailable."""
         from sbir_etl.exceptions import ConfigurationError
 
         mock_client_cls.side_effect = ConfigurationError(
@@ -143,12 +185,108 @@ class TestBEAIOAdapterImpactComputation:
         from sbir_etl.transformers.bea_io_adapter import BEAIOAdapter
 
         adapter = BEAIOAdapter(config=mock_config, cache_enabled=False)
-        result = adapter._compute_impacts_bea(sample_shocks)
+        with pytest.raises(ConfigurationError, match="requires BEA_API_KEY"):
+            adapter._compute_impacts_bea(sample_shocks)
 
-        assert len(result) == 3
-        assert "wage_impact" in result.columns
-        assert result["quality_flags"].iloc[0] == "placeholder_computation"
-        assert "confidence" not in result.columns
+    def test_stale_placeholder_cache_is_discarded_and_recomputed(
+        self, mock_config, sample_shocks, tmp_path
+    ):
+        """A cached placeholder is evicted; a working BEA computation replaces it."""
+        from sbir_etl.transformers.bea_io_adapter import BEA_COMPUTED_QUALITY_FLAG
+
+        sectors = ["11", "21", "31"]
+        adapter = _bea_adapter(
+            mock_config,
+            _va_ratios(sectors),
+            _emp_coeffs(sectors),
+            cache_enabled=True,
+            cache_dir=str(tmp_path),
+        )
+        cache_key = adapter._get_cache_key(sample_shocks)
+        stale = sample_shocks.copy()
+        stale["quality_flags"] = "placeholder_computation"
+        adapter._save_to_cache(cache_key, stale)
+
+        result = adapter.compute_impacts(sample_shocks)
+
+        assert (result["quality_flags"] == BEA_COMPUTED_QUALITY_FLAG).all()
+        cached_file = pd.read_parquet(tmp_path / f"{cache_key}.parquet")
+        assert (cached_file["quality_flags"] == BEA_COMPUTED_QUALITY_FLAG).all()
+
+    def test_fallback_result_error_names_cache_file(self, mock_config, sample_shocks, tmp_path):
+        """A rejected fresh result is not cached, and the error names the cache path."""
+        from sbir_etl.exceptions import TransformationError
+
+        adapter = _bea_adapter(
+            mock_config,
+            pd.DataFrame(),
+            _emp_coeffs(["11", "21", "31"]),
+            cache_enabled=True,
+            cache_dir=str(tmp_path),
+        )
+        cache_file = tmp_path / f"{adapter._get_cache_key(sample_shocks)}.parquet"
+
+        with pytest.raises(TransformationError) as excinfo:
+            adapter.compute_impacts(sample_shocks)
+
+        assert excinfo.value.details["cache_file"] == str(cache_file)
+        assert not cache_file.exists()
+
+    @pytest.mark.parametrize(
+        ("va_sectors", "emp_sectors", "shock_sector", "expected_flag"),
+        [
+            # Value-added table lacks the sector: fixed 0.4/0.3/0.15/0.0 ratios.
+            (["21", "31"], ["11", "21", "31"], "11", "bea_api_default_ratios"),
+            # Sector absent from the Leontief production results: zero production.
+            (["11", "99"], ["11", "99"], "99", "bea_zero_production_fallback"),
+            # No employment coefficient for the sector: ~10 jobs per $1M.
+            (["11", "21", "31"], ["21", "31"], "11", "bea_default_employment_fallback"),
+        ],
+    )
+    def test_compute_impacts_rejects_each_fallback(
+        self, mock_config, va_sectors, emp_sectors, shock_sector, expected_flag
+    ):
+        """Every non-BEA fallback branch fails closed, each with its own flag."""
+        from sbir_etl.exceptions import TransformationError
+
+        adapter = _bea_adapter(
+            mock_config, _va_ratios(va_sectors), _emp_coeffs(emp_sectors), cache_enabled=False
+        )
+        shocks = pd.DataFrame(
+            {
+                "state": ["CA"],
+                "bea_sector": [shock_sector],
+                "fiscal_year": [2023],
+                "shock_amount": [Decimal("1000000")],
+            }
+        )
+
+        flagged = adapter._compute_impacts_bea(shocks)
+        assert flagged["quality_flags"].tolist() == [expected_flag]
+
+        with pytest.raises(TransformationError, match="non-BEA fallback rows") as excinfo:
+            adapter.compute_impacts(shocks)
+        assert excinfo.value.details["quality_flags"] == [expected_flag]
+
+    def test_fully_bea_row_is_accepted(self, mock_config):
+        """Near-miss for the fallback tests: all three BEA inputs present passes."""
+        from sbir_etl.transformers.bea_io_adapter import BEA_COMPUTED_QUALITY_FLAG
+
+        adapter = _bea_adapter(
+            mock_config, _va_ratios(["11"]), _emp_coeffs(["11"]), cache_enabled=False
+        )
+        shocks = pd.DataFrame(
+            {
+                "state": ["CA"],
+                "bea_sector": ["11"],
+                "fiscal_year": [2023],
+                "shock_amount": [Decimal("1000000")],
+            }
+        )
+
+        result = adapter.compute_impacts(shocks)
+
+        assert result["quality_flags"].tolist() == [BEA_COMPUTED_QUALITY_FLAG]
 
     @patch("sbir_etl.transformers.bea_io_adapter.BEAApiClient")
     @patch("sbir_etl.transformers.bea_io_adapter.fetch_use_table")
@@ -229,8 +367,12 @@ class TestBEAIOAdapterIntegration:
     @patch("sbir_etl.transformers.bea_io_adapter.fetch_use_table")
     @patch("sbir_etl.transformers.bea_io_adapter.fetch_value_added")
     @patch("sbir_etl.transformers.bea_io_adapter.calculate_value_added_ratios")
+    @patch("sbir_etl.transformers.bea_io_adapter.fetch_employment")
+    @patch("sbir_etl.transformers.bea_io_adapter.calculate_employment_coefficients")
     def test_compute_impacts_with_cache(
         self,
+        mock_emp_coeffs,
+        mock_fetch_emp,
         mock_va_ratios,
         mock_fetch_va,
         mock_fetch_use,
@@ -241,14 +383,11 @@ class TestBEAIOAdapterIntegration:
     ):
         """Test compute_impacts uses cache when available."""
         mock_client_cls.return_value = MagicMock()
-        mock_fetch_use.return_value = pd.DataFrame(
-            [[10, 5, 3], [5, 10, 2], [3, 2, 10]],
-            index=["11", "21", "31"],
-            columns=["11", "21", "31"],
-            dtype=float,
-        )
+        mock_fetch_use.return_value = USE_TABLE
         mock_fetch_va.return_value = pd.DataFrame()
-        mock_va_ratios.return_value = pd.DataFrame()
+        mock_va_ratios.return_value = _va_ratios(["11", "21", "31"])
+        mock_fetch_emp.return_value = pd.DataFrame()
+        mock_emp_coeffs.return_value = _emp_coeffs(["11", "21", "31"])
 
         from sbir_etl.transformers.bea_io_adapter import BEAIOAdapter
 
