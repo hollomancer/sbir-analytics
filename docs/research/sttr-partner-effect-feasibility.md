@@ -1,8 +1,8 @@
 ---
 Type: Research Readout
 Owner: research@project
-Last-Reviewed: 2026-09-27
-Status: draft
+Last-Reviewed: 2026-11-16
+Status: active
 ---
 
 # STTR research-institution partner-effect feasibility
@@ -299,7 +299,7 @@ contains the award-field, RI-count, date/email, and mixed-program queries. Run i
 against the exact snapshot:
 
 ```bash
-SBIR_AWARDS_CSV=/Volumes/SSDmini/sbir-analytics/data/raw/sbir/award_data.csv \
+SBIR_AWARDS_CSV=/path/to/award_data.csv \
   jupyter nbconvert --execute \
   notebooks/explorations/b3_sttr_partner_effect_feasibility.ipynb \
   --to notebook --output /tmp/b3_sttr_partner_effect_feasibility.executed.ipynb
@@ -340,5 +340,14 @@ and file inspection of these named contracts:
 ## Stop condition
 
 Phase 0 ends here. No gate model, density interaction, agency split, placebo, or
-SBIR-versus-STTR outcome contrast was estimated. A Phase 1 spec and its freeze
-mechanism should be drafted only after review of this readout.
+SBIR-versus-STTR outcome contrast was estimated.
+
+**Review decision (2026-11-16): Phase 1 is deferred.** The NSF experiment is an
+idea, not a commitment. The only admissible outcome today is firm-level Phase II
+follow-on, which pools SBIR and STTR and cannot attribute a Phase II to a
+specific Phase I, so a partner-variance model would mostly measure which firms
+choose which partners. Reopen Phase 1 only when both conditions hold:
+
+1. An outcome beyond Phase II follow-on is admissible (for example, Form D after
+   issuer/filing-grain identity is resolved).
+2. `docs/research-questions.md` has a partner-variance entry.
