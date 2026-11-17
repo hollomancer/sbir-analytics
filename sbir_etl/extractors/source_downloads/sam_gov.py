@@ -87,6 +87,11 @@ MAX_PAGINATED_RECORDS = 10_000
 # SAM.gov has shipped the monthly extract as a ZIP inside a ZIP of the same name
 # (Nov. 2026). One level of nesting is expected; the cap stops runaway recursion.
 MAX_NESTED_ZIP_DEPTH = 2
+# SAM.gov does not escape "|" inside free-text fields (Nov. 2026: 27 of 911,820
+# records). A record with extra fields that still ends with "!end" is skipped
+# and counted. More than this many skips points to real positional drift.
+MIN_SKIPPED_PUBLIC_V2_CAP = 100
+SKIPPED_PUBLIC_V2_CAP_FRACTION = 1 / 10_000
 
 # Columns the downstream pipeline reads (SAMGovExtractor.ENRICHMENT_COLUMNS).
 REQUIRED_COLUMNS = [
@@ -645,8 +650,18 @@ def _parse_public_v2(fh) -> pd.DataFrame:
     trailer_records: list[str] = []
 
     print("   Detected headerless SAM Public V2 positional layout")
+    spool, skipped_ueis = _spool_without_unescaped_delimiter_records(fh)
+    skip_cap = max(MIN_SKIPPED_PUBLIC_V2_CAP, int(expected_rows * SKIPPED_PUBLIC_V2_CAP_FRACTION))
+    if len(skipped_ueis) > skip_cap:
+        spool.close()
+        raise ValueError(
+            "SAM Public V2 extract has too many records with extra fields "
+            f"({len(skipped_ueis):,} > {skip_cap:,}); suspect positional drift"
+        )
+    if skipped_ueis:
+        print(f"   Skipped {len(skipped_ueis):,} records with unescaped '|' in a text field")
     reader = pd.read_csv(
-        fh,
+        spool,
         dtype=str,
         delimiter="|",
         header=None,
@@ -669,6 +684,8 @@ def _parse_public_v2(fh) -> pd.DataFrame:
                 print(f"   Parsed {(i + 1) * 100_000:,} rows...", end="\r")
     except pd.errors.ParserError as exc:
         raise ValueError("SAM Public V2 extract contains a malformed positional record") from exc
+    finally:
+        spool.close()
 
     if trailer_records != [expected_trailer]:
         raise ValueError("SAM Public V2 extract has a missing or mismatched EOF control record")
@@ -676,15 +693,44 @@ def _parse_public_v2(fh) -> pd.DataFrame:
         raise ValueError("SAM Public V2 extract contains no entity records")
 
     frame = pd.concat(chunks, ignore_index=True)
-    if len(frame) != expected_rows:
+    if len(frame) + len(skipped_ueis) != expected_rows:
         raise ValueError(
             "SAM Public V2 entity count does not match its BOF/EOF control records: "
-            f"expected {expected_rows:,}, parsed {len(frame):,}"
+            f"expected {expected_rows:,}, parsed {len(frame):,}, skipped {len(skipped_ueis):,}"
         )
     _validate_public_v2_identity_fields(frame)
     frame.attrs["sam_expected_row_count"] = expected_rows
+    frame.attrs["sam_skipped_unescaped_delimiter_records"] = len(skipped_ueis)
+    frame.attrs["sam_skipped_unescaped_delimiter_ueis"] = skipped_ueis
     print(f"\n   {len(frame):,} validated Public V2 entity rows loaded")
     return frame
+
+
+def _spool_without_unescaped_delimiter_records(fh) -> tuple[BinaryIO, list[str]]:
+    """Copy the extract body to a temporary file, leaving out one malformed shape.
+
+    A record with more than ``PUBLIC_V2_FIELD_COUNT`` fields that still ends with
+    ``!end`` has a literal "|" inside a text field (SAM.gov does not escape it).
+    Its UEI (field 0, before any free text) is recorded and the record is skipped.
+    Every other shape, including too few fields or a missing ``!end``, is copied
+    unchanged so the positional checks still fail closed on it.
+    """
+
+    spool = TemporaryFile()
+    skipped: list[str] = []
+    expected_delimiters = PUBLIC_V2_FIELD_COUNT - 1
+    for line in fh:
+        body = line.rstrip(b"\r\n")
+        if (
+            body.count(b"|") > expected_delimiters
+            and body.endswith(b"|!end")
+            and not body.startswith(b"EOF PUBLIC")
+        ):
+            skipped.append(body.split(b"|", 1)[0].decode("utf-8", errors="replace"))
+            continue
+        spool.write(line)
+    spool.seek(0)
+    return spool, skipped
 
 
 def _validate_public_v2_identity_fields(frame: pd.DataFrame) -> None:
@@ -734,6 +780,10 @@ def _write_local(df: pd.DataFrame, dest: Path, *, name: str = PARQUET_NAME) -> P
         "source_sha256": df.attrs.get("sam_source_sha256"),
         "source_url": df.attrs.get("sam_source_url"),
         "expected_row_count": df.attrs.get("sam_expected_row_count"),
+        "skipped_unescaped_delimiter_records": df.attrs.get(
+            "sam_skipped_unescaped_delimiter_records"
+        ),
+        "skipped_unescaped_delimiter_ueis": df.attrs.get("sam_skipped_unescaped_delimiter_ueis"),
         "row_count": len(df),
         "downloaded_at": datetime.now(UTC).isoformat(),
         "partial": name == PARQUET_NAME_PARTIAL,

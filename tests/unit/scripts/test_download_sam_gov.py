@@ -338,3 +338,63 @@ def test_zip_with_two_nested_zips_and_no_data_returns_none() -> None:
     archive.seek(0)
 
     assert download_module._parse_zip(archive) is None
+
+
+def _with_extra_pipe(record: str, extra: int = 1) -> str:
+    fields = record.split("|")
+    fields[11] = fields[11] + "|X" * extra  # literal "|" inside the legal name
+    return "|".join(fields)
+
+
+def test_public_v2_parser_skips_and_counts_records_with_unescaped_pipes() -> None:
+    good = _public_v2_record(uei="GOODUEI00001")
+    bad = _with_extra_pipe(_public_v2_record(uei="BADUEI000001"))
+    bad2 = _with_extra_pipe(_public_v2_record(uei="BADUEI000002"), extra=2)
+    archive = io.BytesIO(_zip_bytes("SAM.dat", _public_v2_file(good, bad, bad2)))
+
+    result = download_module._parse_zip(archive)
+
+    assert result is not None
+    assert list(result["unique_entity_id"]) == ["GOODUEI00001"]
+    assert result.attrs["sam_expected_row_count"] == 3
+    assert result.attrs["sam_skipped_unescaped_delimiter_records"] == 2
+    assert result.attrs["sam_skipped_unescaped_delimiter_ueis"] == ["BADUEI000001", "BADUEI000002"]
+
+
+def test_public_v2_extra_fields_without_end_marker_still_fail_closed() -> None:
+    bad = _with_extra_pipe(_public_v2_record()).rsplit("|", 1)[0] + "|notend"
+    archive = io.BytesIO(_zip_bytes("SAM.dat", _public_v2_file(_public_v2_record(), bad)))
+
+    with pytest.raises(ValueError, match="malformed positional record"):
+        download_module._parse_zip(archive)
+
+
+def test_public_v2_skip_cap_fails_closed(monkeypatch) -> None:
+    monkeypatch.setattr(download_module, "MIN_SKIPPED_PUBLIC_V2_CAP", 1)
+    records = [_with_extra_pipe(_public_v2_record(uei=f"BADUEI00000{i}")) for i in range(2)]
+    archive = io.BytesIO(_zip_bytes("SAM.dat", _public_v2_file(_public_v2_record(), *records)))
+
+    with pytest.raises(ValueError, match="too many records with extra fields"):
+        download_module._parse_zip(archive)
+
+
+def test_public_v2_skipped_records_still_reconcile_with_control_count() -> None:
+    bad = _with_extra_pipe(_public_v2_record(uei="BADUEI000001"))
+    archive = io.BytesIO(
+        _zip_bytes("SAM.dat", _public_v2_file(_public_v2_record(), bad, declared_rows=3))
+    )
+
+    with pytest.raises(ValueError, match="entity count does not match"):
+        download_module._parse_zip(archive)
+
+
+def test_write_local_sidecar_records_skipped_records(tmp_path) -> None:
+    frame = _frame(1)
+    frame.attrs["sam_skipped_unescaped_delimiter_records"] = 2
+    frame.attrs["sam_skipped_unescaped_delimiter_ueis"] = ["A", "B"]
+
+    _write_local(frame, tmp_path)
+
+    meta = json.loads((tmp_path / META_NAME).read_text())
+    assert meta["skipped_unescaped_delimiter_records"] == 2
+    assert meta["skipped_unescaped_delimiter_ueis"] == ["A", "B"]
