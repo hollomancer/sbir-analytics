@@ -10,11 +10,60 @@ version.
 
 ## [Unreleased]
 
+## [0.21.0] — 2026-11-16
+
+### Breaking
+
+- Raised four dependency majors. The lock now resolves NumPy 2.4 (required
+  `>=2.0,<2.5`), PyArrow 26 (required `>=26,<27`), DuckDB 2, and pypdf 7.
+  An environment pinned to NumPy 1.x or PyArrow below 26 no longer satisfies
+  the project requirements (#808, #810, #818).
+- The `economic_impacts` asset now fails closed. It accepts only rows flagged
+  `bea_api_with_ratios`. Default-ratio rows, the new
+  `bea_zero_production_fallback` and `bea_default_employment_fallback` flags,
+  missing flags, and a shock with no impact row now fail the asset instead of
+  passing through. A cached result that holds non-BEA rows is discarded and
+  computed again (#820).
+- A Dagster asset or job module that fails to import now stops the code
+  location from loading. It is no longer skipped silently (#821).
+
+### Added
+
+- Nullable `program` (SBIR or STTR) on all four phase-transition row contracts,
+  with `program_evidence` on `PhaseIIIContract`. Program comes only from a
+  source that states it: FPDS `SR3`/`ST3` on the Phase III side, and the
+  SBIR.gov `Program` column or `SR2`/`ST2` on the Phase II side. Program is
+  never imputed; task-order inheritance does not confer it.
+  `sbir_etl.models.sbir_program.program_specific_measure` excludes
+  unknown-program records from both numerator and denominator (#815).
+- Exploratory, non-citable defense-critical NAICS SBIR study (#716).
+- Exploratory, non-citable notebooks: STTR-specific translational outcomes
+  (#812), STTR award-record timing readiness (#813), and the funded STTR
+  collaboration network (#811).
+
 ### Changed
 
 - Bound `sba-annual-report-structural-comparison-release` to tag v0.20.0 in
   `studies/releases.yaml`; its page may now be cited from that release with
-  status `validated`.
+  status `validated` (#805).
+- The contract extractor adapts to PyArrow 26 nested-struct field ordering, so
+  batched Parquet output keeps schema parity with one-shot output (#808).
+- Refactored without intended behavior change: centralized Dagster definition
+  profiles (#819), split company fuzzy-matching stages (#822), and staged the
+  SBIR enrichment asset (#824).
+- Restored the research-questions section in the README (#802) and reconciled
+  the ModernBERT maintenance scope (#823).
+
+### Fixed
+
+- Classify SBIR.gov's `Phase II - Direct to Phase II` label, applied to 3,303
+  rows in the 2026-10-21 export. Refresh validation now fails on an
+  unclassified Phase value. The released SBA structural-comparison producer is
+  byte-identical (#814).
+- The SAM.gov Public V2 bulk extract reader opens a single nested ZIP, as in
+  the November 2026 extract. Nesting is capped at two levels. The 27 records
+  with unescaped pipe delimiters in that file are not handled here (#826)
+  (#827).
 
 ## [0.20.0] — 2026-09-27
 
@@ -877,7 +926,8 @@ across the root project and the three packages under `packages/`.
 `vMAJOR.MINOR.PATCH` form it requires. Per that policy published tags are never
 moved or reused, so they remain as historical markers.
 
-[Unreleased]: https://github.com/hollomancer/sbir-analytics/compare/v0.20.0...HEAD
+[Unreleased]: https://github.com/hollomancer/sbir-analytics/compare/v0.21.0...HEAD
+[0.21.0]: https://github.com/hollomancer/sbir-analytics/compare/v0.20.0...v0.21.0
 [0.20.0]: https://github.com/hollomancer/sbir-analytics/compare/v0.19.0...v0.20.0
 [0.19.0]: https://github.com/hollomancer/sbir-analytics/compare/v0.18.0...v0.19.0
 [0.18.0]: https://github.com/hollomancer/sbir-analytics/compare/v0.17.0...v0.18.0
