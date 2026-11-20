@@ -25,9 +25,10 @@ prepopulation, and risk-based verification. They are not sufficient by themselve
 to calculate a private-investment credit.
 
 An exploratory pilot found more public evidence of secured-credit relationships
-than of issuer equity financing. That difference may reflect both financing
-behavior and disclosure rules. It should not be interpreted as a program-wide
-capital-structure estimate.
+than of issuer equity financing. That difference may reflect financing behavior,
+disclosure rules, and the lack of a stated common event period for the two
+signal types. It should not be interpreted as a program-wide capital-structure
+estimate.
 
 ## Terminology
 
@@ -47,12 +48,18 @@ systems cover different transactions.
 | USPTO assignment records | recorded security agreements, mortgages, liens, releases, affected patents, and parties | loan amount, patent value, current debt balance, or whether intellectual property was the primary underwriting basis |
 | SEC periodic reports and exhibits | facility commitments, draws, maturity, pricing, covenants, guarantors, and collateral for reporting companies | comparable coverage for private concerns |
 | Bank, lender, and investment-fund disclosures | selected facility amounts, lender role, security level, and sometimes pricing or maturity | complete market coverage, draw amounts, and reliable allocation among operating subsidiaries |
-| SBIR Company Commercialization Report | actual additional-investment dollars and project attribution supplied by the concern | independently verified capital structure unless SBA or an agency requests support |
 
 The SEC describes Form D as a notice filed after the first sale in a Regulation D
 offering. It is not a census of private financing. The USPTO likewise records
 documents affecting patent ownership, including security interests, mortgages,
 and liens, but recordation does not measure the underlying loan.
+
+**Non-public source.** The SBIR Company Commercialization Report holds actual
+additional-investment dollars and project attribution. The concern supplies them
+through SBIR.gov, and SBA does not publish them
+([commercialization benchmark method](../commercialization-benchmark-methodology.md)).
+A public-data analysis cannot obtain them. They are not independently verified
+unless SBA or an agency requests support.
 
 ## Exploratory aggregate pilot
 
@@ -61,11 +68,19 @@ Phase II awards in fiscal years 2020 through 2024. It reviewed public equity,
 ownership, secured-credit, and filing evidence through November 19, 2026. No
 company-level result is reported in this note.
 
+The award years select the 30 concerns. They do not set the period in which
+financing events were counted. November 19, 2026 is the review cutoff for both
+signal categories. This note does not record a financing-event start date for
+either category. Secured-credit evidence can also predate the award window,
+because a UCC filing stays on record until it is terminated. The equity and
+secured-credit counts below therefore do not cover a stated common period. Do not
+compare them as rates.
+
 | Aggregate observation | Count |
 |---|---:|
 | Concerns with affirmative firm-level secured-credit evidence | 15 of 30 |
 | Concerns with a publicly stated secured-facility amount | 3 of 30 |
-| Concerns with a covered-period equity, convertible, ESOP, or acquisition signal | 9 of 30 |
+| Concerns with an equity, convertible, ESOP, or acquisition signal | 9 of 30 |
 | Concerns with confirmed issuer cash proceeds from a reviewed equity offering | 1 of 30 |
 | Concerns with at least one reviewed capital-structure signal | 18 of 30 |
 | Concerns with neither signal established | 12 of 30 |
