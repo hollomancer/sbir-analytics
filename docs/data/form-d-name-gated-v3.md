@@ -36,7 +36,9 @@ A PI name and a related-person name agree when both conditions are true:
 1. The family names (last tokens) are equal.
 2. The given names (first tokens) are equal, or one given name is an initial of the other.
 
-Titles, generational suffixes, and punctuation are removed first. A nickname ("Bob" against
+Titles, generational suffixes, and punctuation are removed first. Accents are folded ("García"
+becomes "garcia"). In-word hyphens and apostrophes are dropped, so "Smith-Lee" stays one token
+and does not agree with "Lee". A nickname ("Bob" against
 "Robert") does not agree. This rule accepts some false negatives so that a different person
 with the same family name does not match. `person_score` is 1.0 when one pair agrees, else 0.0.
 
@@ -59,8 +61,10 @@ a fuzzy ZIP match.
   Consumers reject a record whose rule is not the default. If the default changes before
   `form_d_details.jsonl` is rebuilt, every consumer stops, including the Dagster asset
   `agency_private_capital_form_d_matched_comparison`.
-- `rescore_form_d_details.py` refuses `name-gated-v3`. The stored records do not have the name
-  match type or the raw PI names, so an offline migration would have to guess.
+- `rescore_form_d_details.py` refuses `name-gated-v3` as a target. The stored records do not
+  have the name match type or the raw PI names, so an offline migration would have to guess.
+- It also refuses to relabel a v3 record to an older rule. v3 stores a 0/1 person score, and the
+  older rules expect a fuzzy score.
 - To adopt v3: rerun `fetch_form_d_index.py`, then `fetch_form_d_details.py --rule-version
   name-gated-v3`. Then change the default in a separate change.
 

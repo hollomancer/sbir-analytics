@@ -137,3 +137,13 @@ def test_name_gated_v3_refuses_offline_migration(tmp_path: Path) -> None:
     with pytest.raises(_mod.FormDRescoreError, match="cannot be migrated offline"):
         _mod.rescore_jsonl(source, source, rule_version=FORM_D_TIER_RULE_NAME_GATED_V3)
     assert source.read_bytes() == before
+
+
+@pytest.mark.parametrize(
+    "target", [FORM_D_TIER_RULE_CORROBORATED_PERSON_V2, FORM_D_TIER_RULE_PERSON_OR_ZIP_V1]
+)
+def test_name_gated_v3_record_is_not_relabeled_to_an_older_rule(target: str) -> None:
+    record = _record(person=1.0)
+    record["match_confidence"]["rule_version"] = FORM_D_TIER_RULE_NAME_GATED_V3
+    with pytest.raises(_mod.FormDRescoreError, match="cannot be rescored"):
+        _mod.rescore_record(record, rule_version=target)

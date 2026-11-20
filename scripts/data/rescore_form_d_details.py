@@ -63,6 +63,16 @@ def rescore_record(
     confidence = record.get("match_confidence")
     if not isinstance(confidence, dict):
         raise FormDRescoreError(f"line {line_number}: match_confidence must be an object")
+    if (
+        confidence.get("rule_version") == FORM_D_TIER_RULE_NAME_GATED_V3
+        and rule_version != FORM_D_TIER_RULE_NAME_GATED_V3
+    ):
+        # v3 stores a 0/1 person agreement and a v3 composite; earlier rules expect a fuzzy
+        # person score, so relabeling without recomputing would mix scales.
+        raise FormDRescoreError(
+            f"line {line_number}: a {FORM_D_TIER_RULE_NAME_GATED_V3} record cannot be "
+            f"rescored to {rule_version}; rebuild it with fetch_form_d_details.py"
+        )
 
     migrated = copy.deepcopy(record)
     migrated_confidence = migrated["match_confidence"]

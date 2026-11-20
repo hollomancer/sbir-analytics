@@ -7,6 +7,7 @@ multi-signal confidence score for matching a Form D filing to an SBIR company.
 from __future__ import annotations
 
 import re
+import unicodedata
 from datetime import date
 from xml.etree import ElementTree
 
@@ -351,12 +352,17 @@ _PERSON_SUFFIXES = frozenset({"jr", "sr", "ii", "iii", "iv", "phd", "md", "dr", 
 
 
 def _person_name_parts(name: str) -> tuple[str, str] | None:
-    """Return (given, family) tokens, lowercased, without titles, suffixes, or punctuation."""
-    tokens = [
-        t
-        for t in re.sub(r"[^a-z\s]", " ", name.lower().replace(".", "")).split()
-        if t not in _PERSON_SUFFIXES
-    ]
+    """Return (given, family) tokens, lowercased, without titles, suffixes, or punctuation.
+
+    Accents are folded ("garcía" -> "garcia") and in-word hyphens and apostrophes are
+    dropped ("smith-lee" -> "smithlee", "o'brien" -> "obrien"), so a compound or accented
+    surname stays one token instead of splitting into fragments.
+    """
+    folded = "".join(
+        c for c in unicodedata.normalize("NFKD", name.lower()) if not unicodedata.combining(c)
+    )
+    folded = re.sub(r"[.'’\-]", "", folded)
+    tokens = [t for t in re.sub(r"[^a-z\s]", " ", folded).split() if t not in _PERSON_SUFFIXES]
     if len(tokens) < 2:
         return None
     return tokens[0], tokens[-1]

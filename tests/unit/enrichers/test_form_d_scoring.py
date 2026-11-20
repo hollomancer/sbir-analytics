@@ -579,6 +579,9 @@ class TestPersonNamesAgree:
             ("J. Sass", "James Sass"),
             ("Dr. Ann Lee, Ph.D.", "Ann Lee"),
             ("Robert Smith Jr.", "Robert Smith"),
+            ("José García", "Jose Garcia"),
+            ("Pat O'Brien", "Pat OBrien"),
+            ("Ann Smith-Lee", "Ann Smith-Lee"),
         ],
     )
     def test_agrees(self, pi, person) -> None:
@@ -594,6 +597,9 @@ class TestPersonNamesAgree:
             ("Smith", "John Smith", "a one-token name has no given name"),
             ("John Smith", "Smith John", "order swap is not accepted"),
             ("Ann Lee", "Ann Leeds", "token subset of the family name"),
+            ("John García", "John Lucía", "accented surnames must not split into fragments"),
+            ("Ann Smith-Lee", "Ann Lee", "a hyphenated surname is not its last part"),
+            ("Pat O'Brien", "Pat Brien", "an apostrophe surname is not its last part"),
         ],
     )
     def test_does_not_agree(self, pi, person, reason) -> None:
