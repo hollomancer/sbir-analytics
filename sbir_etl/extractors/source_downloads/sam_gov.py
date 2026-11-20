@@ -45,6 +45,7 @@ import re
 import sys
 import time
 import zipfile
+from collections.abc import Iterator
 from datetime import UTC, datetime
 from functools import partial
 from pathlib import Path
@@ -111,6 +112,7 @@ REQUIRED_COLUMNS = [
 # https://open.gsa.gov/api/sam-entity-extracts-api/v1/
 # SAM_Entity_Management_Public_V2_Extract_Layout.pdf
 PUBLIC_V2_FIELD_COUNT = 142
+PUBLIC_V2_CHUNK_ROWS = 100_000
 PUBLIC_V2_POSITION_MAP = {
     0: "unique_entity_id",
     1: "duns_number",
@@ -645,37 +647,36 @@ def _parse_public_v2(fh) -> pd.DataFrame:
     trailer_records: list[str] = []
 
     print("   Detected headerless SAM Public V2 positional layout")
+    # The EOF control record has one field. If it reaches pandas, it can land
+    # alone in a chunk (entity count a multiple of the chunk size), and pandas
+    # rejects a one-field chunk against 142 named columns. Divert it first.
     reader = pd.read_csv(
-        fh,
+        io.BufferedReader(_LineStream(_divert_trailer_records(fh, trailer_records))),
         dtype=str,
         delimiter="|",
         header=None,
         names=PUBLIC_V2_COLUMNS,
         usecols=sorted(PUBLIC_V2_POSITION_MAP),
-        chunksize=100_000,
+        chunksize=PUBLIC_V2_CHUNK_ROWS,
         quoting=csv.QUOTE_NONE,
         on_bad_lines="error",
         encoding_errors="strict",
     )
     try:
         for i, chunk in enumerate(reader):
-            trailer_mask = chunk["unique_entity_id"].str.startswith("EOF PUBLIC", na=False)
-            trailer_records.extend(chunk.loc[trailer_mask, "unique_entity_id"].tolist())
-            data = chunk.loc[~trailer_mask]
-            if not data["end_of_record"].eq("!end").all():
+            if not chunk["end_of_record"].eq("!end").all():
                 raise ValueError("SAM Public V2 extract contains a malformed positional record")
-            chunks.append(data.drop(columns="end_of_record")[REQUIRED_COLUMNS].fillna(""))
+            chunks.append(chunk.drop(columns="end_of_record")[REQUIRED_COLUMNS].fillna(""))
             if (i + 1) % 5 == 0:
-                print(f"   Parsed {(i + 1) * 100_000:,} rows...", end="\r")
+                print(f"   Parsed {(i + 1) * PUBLIC_V2_CHUNK_ROWS:,} rows...", end="\r")
     except pd.errors.ParserError as exc:
         raise ValueError("SAM Public V2 extract contains a malformed positional record") from exc
 
     if trailer_records != [expected_trailer]:
         raise ValueError("SAM Public V2 extract has a missing or mismatched EOF control record")
-    if not chunks:
+    frame = pd.concat(chunks, ignore_index=True) if chunks else pd.DataFrame()
+    if frame.empty:
         raise ValueError("SAM Public V2 extract contains no entity records")
-
-    frame = pd.concat(chunks, ignore_index=True)
     if len(frame) != expected_rows:
         raise ValueError(
             "SAM Public V2 entity count does not match its BOF/EOF control records: "
@@ -685,6 +686,38 @@ def _parse_public_v2(fh) -> pd.DataFrame:
     frame.attrs["sam_expected_row_count"] = expected_rows
     print(f"\n   {len(frame):,} validated Public V2 entity rows loaded")
     return frame
+
+
+class _LineStream(io.RawIOBase):
+    """Read-only byte stream over an iterator of lines, so pandas can stream it."""
+
+    def __init__(self, lines: Iterator[bytes]) -> None:
+        self._lines = lines
+        self._buffer = b""
+
+    def readable(self) -> bool:
+        return True
+
+    def readinto(self, target) -> int:  # type: ignore[no-untyped-def]
+        while not self._buffer:
+            try:
+                self._buffer = next(self._lines)
+            except StopIteration:
+                return 0
+        size = min(len(target), len(self._buffer))
+        target[:size] = self._buffer[:size]
+        self._buffer = self._buffer[size:]
+        return size
+
+
+def _divert_trailer_records(fh, trailer_records: list[str]) -> Iterator[bytes]:
+    """Yield entity lines; collect EOF control records instead of yielding them."""
+
+    for line in fh:
+        if line.startswith(b"EOF PUBLIC"):
+            trailer_records.append(line.decode("utf-8").rstrip("\r\n"))
+            continue
+        yield line
 
 
 def _validate_public_v2_identity_fields(frame: pd.DataFrame) -> None:
