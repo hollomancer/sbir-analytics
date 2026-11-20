@@ -9,7 +9,10 @@ from pathlib import Path
 
 import pytest
 
-from sbir_etl.enrichers.sec_edgar.form_d_scoring import FORM_D_TIER_RULE_VERSION
+from sbir_etl.enrichers.sec_edgar.form_d_scoring import (
+    FORM_D_TIER_RULE_NAME_GATED_V3,
+    FORM_D_TIER_RULE_VERSION,
+)
 
 SCRIPT_PATH = (
     Path(__file__).resolve().parents[4] / "scripts" / "archive" / "data" / "fetch_form_d_details.py"
@@ -55,3 +58,18 @@ def test_resume_accepts_current_rule_checkpoint(tmp_path: Path) -> None:
     )
 
     assert _mod.load_checkpoint(checkpoint) == {"Current Co"}
+
+
+def test_index_without_name_score_is_refused_not_defaulted() -> None:
+    legacy = [{"company_name": "Acme Labs", "form_d_filings": []}]
+    problem = _mod.index_score_problem(legacy, FORM_D_TIER_RULE_VERSION)
+    assert problem is not None and "lack name_score" in problem
+
+
+def test_v3_needs_match_type_but_current_rule_does_not() -> None:
+    scored = [{"company_name": "Acme Labs", "name_score": 1.0}]
+    assert _mod.index_score_problem(scored, FORM_D_TIER_RULE_VERSION) is None
+    problem = _mod.index_score_problem(scored, FORM_D_TIER_RULE_NAME_GATED_V3)
+    assert problem is not None and "name_match_type" in problem
+    typed = [{"company_name": "Acme Labs", "name_score": 1.0, "name_match_type": "exact"}]
+    assert _mod.index_score_problem(typed, FORM_D_TIER_RULE_NAME_GATED_V3) is None

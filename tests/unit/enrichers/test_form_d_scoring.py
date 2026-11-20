@@ -582,6 +582,14 @@ class TestPersonNamesAgree:
             ("José García", "Jose Garcia"),
             ("Pat O'Brien", "Pat OBrien"),
             ("Ann Smith-Lee", "Ann Smith-Lee"),
+            ("John Smith, P.E.", "John Smith"),
+            ("John Smith, Ph. D.", "John Smith"),
+            ("John Smith Ph", "John Smith"),
+            ("Smith, John", "John Smith"),
+            ("Smith, John R., PhD", "John Smith"),
+            ("Søren Ørsted", "Soren Orsted"),
+            ("Wei Ma", "Wei Ma"),
+            ("Anh Do", "Anh Do"),
         ],
     )
     def test_agrees(self, pi, person) -> None:
@@ -600,6 +608,11 @@ class TestPersonNamesAgree:
             ("John García", "John Lucía", "accented surnames must not split into fragments"),
             ("Ann Smith-Lee", "Ann Lee", "a hyphenated surname is not its last part"),
             ("Pat O'Brien", "Pat Brien", "an apostrophe surname is not its last part"),
+            ("Søren Ørsted", "Sam Orsted", "an untransliterated letter must not leave an initial"),
+            ("Smith, Jane", "John Smith", "last-first order is read, then given names compared"),
+            ("John Smith, P.E.", "John Pe", "a credential is not a family name"),
+            ("Wei Ma", "Wei Li", "a short surname still has to be equal"),
+            ("Li Wei 李", "Li Wei", "a name with an unreadable letter is not read"),
         ],
     )
     def test_does_not_agree(self, pi, person, reason) -> None:

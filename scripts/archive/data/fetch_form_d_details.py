@@ -96,6 +96,30 @@ def load_checkpoint(
     return done
 
 
+def index_score_problem(companies: list[dict], rule_version: str) -> str | None:
+    """Describe index records that cannot be scored, or return None.
+
+    Every rule needs the index's recorded ``name_score``; an index built before it was recorded
+    must be rebuilt rather than given a default. ``name-gated-v3`` also needs
+    ``name_match_type``.
+    """
+    unscored = [c for c in companies if not isinstance(c.get("name_score"), (int, float))]
+    if unscored:
+        return (
+            f"{len(unscored):,} index records lack name_score. Rebuild the index with the "
+            "current fetch_form_d_index.py."
+        )
+    if rule_version == FORM_D_TIER_RULE_NAME_GATED_V3:
+        untyped = [c for c in companies if c.get("name_match_type") not in FORM_D_NAME_MATCH_TYPES]
+        if untyped:
+            return (
+                f"{len(untyped):,} index records lack name_match_type, which "
+                f"{FORM_D_TIER_RULE_NAME_GATED_V3} needs. Rebuild the index with the current "
+                "fetch_form_d_index.py."
+            )
+    return None
+
+
 async def main() -> None:
     parser = argparse.ArgumentParser(
         description="Fetch Form D XML details and compute confidence scores",
@@ -151,20 +175,10 @@ async def main() -> None:
         for line in f:
             companies.append(json.loads(line))
     print(f"  {len(companies):,} companies with Form D matches")
-    if args.rule_version == FORM_D_TIER_RULE_NAME_GATED_V3:
-        untyped = [
-            c["company_name"]
-            for c in companies
-            if c.get("name_match_type") not in FORM_D_NAME_MATCH_TYPES
-            or not isinstance(c.get("name_score"), (int, float))
-        ]
-        if untyped:
-            print(
-                f"Error: {len(untyped):,} index records lack name_match_type or name_score. "
-                f"{FORM_D_TIER_RULE_NAME_GATED_V3} needs an index from the current "
-                "fetch_form_d_index.py."
-            )
-            sys.exit(1)
+    problem = index_score_problem(companies, args.rule_version)
+    if problem:
+        print(f"Error: {problem}")
+        sys.exit(1)
 
     # Load award data (earliest year + ZIP for address matching)
     print(f"Loading award data from {args.awards}...")
@@ -260,10 +274,8 @@ async def main() -> None:
                 if parsed.get("year_of_inc") is not None and year_of_inc is None:
                     year_of_inc = parsed["year_of_inc"]
 
-            # The index records the name score; an older index has none, and its matches all
-            # cleared the old 0.85 gate.
             confidence = compute_form_d_confidence(
-                name_score=company.get("name_score", 0.85),
+                name_score=company["name_score"],
                 pi_names=pi_names,
                 related_persons=all_persons,
                 sbir_state=sbir_state,

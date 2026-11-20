@@ -27,7 +27,7 @@ signals. A tier is a match-strength label. It is not identity validation.
   candidate that sorts first.
 - Write `name_match_type` (`exact` or `fuzzy`) and `name_score` to each index record.
 - The detail fetch uses these stored values. It does not rescore the name, and it does not set
-  a minimum score.
+  a minimum score. It refuses an index that has no recorded `name_score`, under any rule.
 
 ## Person signal
 
@@ -36,9 +36,14 @@ A PI name and a related-person name agree when both conditions are true:
 1. The family names (last tokens) are equal.
 2. The given names (first tokens) are equal, or one given name is an initial of the other.
 
-Titles, generational suffixes, and punctuation are removed first. Accents are folded ("García"
-becomes "garcia"). In-word hyphens and apostrophes are dropped, so "Smith-Lee" stays one token
-and does not agree with "Lee". A nickname ("Bob" against
+Before the comparison:
+- Titles ("Dr."), generational suffixes ("Jr."), credentials ("P.E.", "Ph. D."), and punctuation
+  are removed. Short forms that are also surnames ("Ma", "Do") are not treated as credentials.
+- "Smith, John" is read as family name, given name.
+- Accents are folded ("García" becomes "garcia"), and ø, æ, ł, and ß are transliterated. A name
+  that still holds a non-ASCII letter is not read, and it does not agree with any name.
+- In-word hyphens and apostrophes are dropped, so "Smith-Lee" stays one token and does not agree
+  with "Lee". A nickname ("Bob" against
 "Robert") does not agree. This rule accepts some false negatives so that a different person
 with the same family name does not match. `person_score` is 1.0 when one pair agrees, else 0.0.
 

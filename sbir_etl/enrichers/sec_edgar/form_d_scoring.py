@@ -348,21 +348,66 @@ def select_form_d_name_match(
     return best[0], "fuzzy", best[1]
 
 
-_PERSON_SUFFIXES = frozenset({"jr", "sr", "ii", "iii", "iv", "phd", "md", "dr", "mr", "mrs", "ms"})
+_PERSON_TITLES = frozenset({"dr", "mr", "mrs", "ms", "prof"})
+# Generational suffixes and credentials, compared after dots are removed ("P.E." -> "pe").
+_PERSON_CREDENTIALS = frozenset(
+    # Only forms that are not plausible surnames: "Ma", "Do", and "Ba" are real family names.
+    {
+        "jr",
+        "sr",
+        "ii",
+        "iii",
+        "iv",
+        "phd",
+        "ph",
+        "md",
+        "pe",
+        "esq",
+        "mba",
+        "msc",
+        "cpa",
+        "pmp",
+        "dvm",
+        "pharmd",
+        "dds",
+    }
+)
+# Letters that Unicode decomposition does not reduce to ASCII.
+_PERSON_TRANSLIT = str.maketrans(
+    {"ø": "o", "æ": "ae", "œ": "oe", "ł": "l", "ß": "ss", "đ": "d", "ð": "d", "þ": "th", "ı": "i"}
+)
 
 
 def _person_name_parts(name: str) -> tuple[str, str] | None:
-    """Return (given, family) tokens, lowercased, without titles, suffixes, or punctuation.
+    """Return (given, family) tokens, or None when the name cannot be read safely.
 
-    Accents are folded ("garcía" -> "garcia") and in-word hyphens and apostrophes are
-    dropped ("smith-lee" -> "smithlee", "o'brien" -> "obrien"), so a compound or accented
-    surname stays one token instead of splitting into fragments.
+    - Accents are folded and letters such as ø, æ, ł, ß are transliterated. A name that still
+      holds a non-ASCII letter returns None rather than splitting into fragments.
+    - In-word hyphens and apostrophes are dropped ("smith-lee", "o'brien" stay one token).
+    - Titles ("dr") and trailing credentials or suffixes ("P.E.", "Ph. D.", "Jr.") are removed.
+    - "Smith, John" (one token before the first comma) is read as family, given.
     """
     folded = "".join(
-        c for c in unicodedata.normalize("NFKD", name.lower()) if not unicodedata.combining(c)
+        c
+        for c in unicodedata.normalize("NFKD", name.lower().translate(_PERSON_TRANSLIT))
+        if not unicodedata.combining(c)
     )
     folded = re.sub(r"[.'’\-]", "", folded)
-    tokens = [t for t in re.sub(r"[^a-z\s]", " ", folded).split() if t not in _PERSON_SUFFIXES]
+    if re.search(r"[^\x00-\x7f]", folded):
+        return None
+    folded = re.sub(r"\bph\s+d\b", "phd", folded)
+
+    def words(part: str) -> list[str]:
+        return re.sub(r"[^a-z\s]", " ", part).split()
+
+    head, *rest = folded.split(",")
+    first = words(head)
+    tail = [w for w in (words(p) for p in rest) if w and not set(w) <= _PERSON_CREDENTIALS]
+    tokens = tail[0] + first if tail and len(first) == 1 else first + [t for w in tail for t in w]
+    while tokens and tokens[0] in _PERSON_TITLES:
+        tokens.pop(0)
+    while tokens and tokens[-1] in _PERSON_CREDENTIALS:
+        tokens.pop()
     if len(tokens) < 2:
         return None
     return tokens[0], tokens[-1]
