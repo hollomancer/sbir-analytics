@@ -40,6 +40,48 @@ parallel trends holds nor shows that it fails.
 > corrected placebo is consistent with a pre-trend but does not establish
 > one.
 
+> **Rerun required (second review of PR #817, 2026-11-20).** Every number in
+> sections 3 and 4 came from commit `04f6112`. The code has since changed, and
+> the study has not been rerun, because the award file and the PatentsView
+> location file are not on the machine that made the changes. Do not read the
+> tables as the output of the current code. Changes since `04f6112`:
+>
+> 1. **First-time winners.** The firm key now comes from
+>    `scripts/data/find_same_work_awards.py::assign_firm_keys`. The old key
+>    gave a firm that switched from DUNS to UEI a second key, so its first
+>    UEI-era award counted as a first win. The `ftw` rows are inflated from
+>    about 2022 onward. All-zero placeholder DUNS values are now blanked so
+>    they cannot merge firms. A firm whose DUNS never appears on a row that
+>    also carries its UEI is still split.
+> 2. **Counties.** Each county FIPS now gets one state (the majority state of
+>    its cities). Before, a city whose text state disagreed with its FIPS
+>    could create a same-FIPS twin that paired with itself.
+> 3. **Randomization p-value.** It now counts the observed assignment:
+>    `(1 + #{|β| ≥ |β_obs|}) / (1 + draws)`. Every reported p-value was low by
+>    about 1/300.
+> 4. **MDE units.** The reported MDE was 2.8 × SD in log points, not percent,
+>    yet sections 3 and 4 compare it with percent effects. It is now reported
+>    as a percent reduction, `100 × (1 − exp(−2.8 × SD))`. An MDE of 41 log
+>    points is a 34% reduction.
+>
+> Two data problems remain open and may matter more than the code fixes:
+>
+> - **FY2016 has no treated state.** All 13 FY2016 rows have zero or negative
+>   obligations, so the treatment rule in section 2 empties the whole fiscal
+>   year. It does not remove a few closeout actions. Every 2016 pair-year then
+>   has no treatment contrast.
+> - **The treatment year may be one year early.** The fetch script sets the
+>   fiscal year from the award start date. An agreement that starts in
+>   September counts in the fiscal year that is ending. The panel fits this
+>   pattern: CT, MI, ND, NY and VT each have two FY2015 awards, and FY2016 has
+>   none with a positive amount. If FAST status is shifted one year early, the
+>   t+1 placebo lead partly measures the current-year effect. That would
+>   change how the placebo reads. This was not checked against award records,
+>   because USAspending was not reachable from that machine.
+>
+> The verdict stays *not assessed*. These problems add uncertainty; none of
+> them could make the coefficient readable as a FAST effect.
+
 ---
 
 ## 1. Question and design
@@ -57,7 +99,7 @@ regional shocks, so the state line isolates the policy.
 
 The variation exists. Across the 108 adjacent state pairs among the contiguous
 48 plus DC, the number with **discordant** FAST status averages 47.3 per year
-(44%), never falling below 29 across FY2010–2024. (This count was computed
+(44%), never falling below 29 across FY2010–2024. That floor no longer holds: after the treatment rule in section 2, FY2016 has no treated state. (This count was computed
 before the treatment rule in section 2 dropped zero and negative obligation
 rows, and was not recomputed: the state-adjacency list behind it is not in the
 repo.)
@@ -83,7 +125,7 @@ effect (MDE, 80% power, 5% two-sided).
 
 | Input | Source | Note |
 |---|---|---|
-| FAST treatment panel | USAspending assistance listing 59.058 | 330 state-year rows (339 awards), FY2010–2024, 50 states. `data/reference/fast/fast_awards_fy2010_2024.csv`, built by `scripts/usaspending/fetch_fast_awards.py`. USAspending holds no FAST records before FY2010. **Treatment rule:** a state-year counts as funded only when its net `obligated_usd` is above zero. This keeps 314 state-years (322 awards). The 16 dropped rows have zero or negative obligations (13 in FY2016, plus OH 2015, TX 2011, GA 2024); they are most likely deobligation or closeout actions on earlier agreements, not new agreements. They were not checked award by award. |
+| FAST treatment panel | USAspending assistance listing 59.058 | 330 state-year rows (339 awards), FY2010–2024, 48 states plus DC and PR (MA and RI never appear). `data/reference/fast/fast_awards_fy2010_2024.csv`, built by `scripts/usaspending/fetch_fast_awards.py`. USAspending holds no FAST records before FY2010. **Treatment rule:** a state-year counts as funded only when its net `obligated_usd` is above zero. This keeps 314 state-years (322 awards). The 16 dropped rows have zero or negative obligations (13 in FY2016, plus OH 2015, TX 2011, GA 2024); they are most likely deobligation or closeout actions on earlier agreements, not new agreements. They were not checked award by award. |
 | SBIR Phase I awards | `data/raw/sbir/award_data.csv` | 59,904 Phase I awards FY2010–2024 in the 50 states plus DC. |
 | County + coordinates | PatentsView `g_location_disambiguated.tsv.zip` | Already in-repo; joined on upper-cased city + state. No external crosswalk needed. |
 
@@ -191,7 +233,7 @@ Two further cautions that survive the correction:
 
 The border design's value was always bias reduction relative to a state-level
 panel — holding regional shocks fixed — rather than added power. Power is
-governed by the number of independently treated units, still ~51 states however
+governed by the number of independently treated units: at most 49 contiguous jurisdictions in the permutation pool, however
 finely the outcome is sliced. The confound this run cannot exclude is
 selection of states into FAST, which operates at exactly the level the border
 cannot see. The corrected placebo leaves that confound open; it neither

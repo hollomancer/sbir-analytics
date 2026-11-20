@@ -50,6 +50,7 @@ import pandas as pd
 from scipy.optimize import minimize, minimize_scalar
 from scipy.spatial import cKDTree
 
+from scripts.data.find_same_work_awards import assign_firm_keys
 from sbir_etl.identity.geography import (
     USJurisdictionProfile,
     VALID_US_JURISDICTION_CODES_V1,
@@ -112,17 +113,28 @@ def load_locations(path: Path) -> pd.DataFrame:
     )
 
 
+def _firm_keys(phase1: pd.DataFrame) -> pd.Series:
+    """Firm key per row, from the repository's ID-first firm-key helper.
+
+    A firm that switches from DUNS to UEI must keep one key, or its first
+    UEI-era award reads as a first-time win. `assign_firm_keys` bridges a
+    DUNS-only row to a UEI when that DUNS maps to exactly one UEI. All-zero
+    placeholder DUNS values are blanked first so they cannot merge firms.
+    """
+    frame = phase1[["Company", "UEI", "Duns", "State"]].copy()
+    duns = frame["Duns"].fillna("").astype(str).str.strip()
+    frame["Duns"] = duns.where(duns.str.strip("0").ne(""), "")
+    frame["_source_record_number"] = np.arange(len(frame))
+    return pd.Series(assign_firm_keys(frame)["_firm_key"].values, index=phase1.index)
+
+
 def load_awards(path: Path) -> pd.DataFrame:
     """Phase I awards in the study window, with a firm key and first-time flag."""
     cols = ["Company", "Phase", "Award Year", "UEI", "Duns", "City", "State"]
-    raw = pd.read_csv(path, usecols=cols, low_memory=False)
+    raw = pd.read_csv(path, usecols=cols, dtype={"UEI": str, "Duns": str}, low_memory=False)
     raw["yr"] = pd.to_numeric(raw["Award Year"], errors="coerce")
     phase1 = raw[raw.Phase == "Phase I"].copy()
-    firm = phase1["UEI"].fillna("").astype(str).str.strip()
-    for alt in ("Duns", "Company"):
-        blank = firm.isin(["", "nan"])
-        firm = firm.where(~blank, phase1[alt].fillna("").astype(str).str.upper().str.strip())
-    phase1["firm"] = firm
+    phase1["firm"] = _firm_keys(phase1)
     first_year = phase1.groupby("firm").yr.min()
     window = phase1[(phase1.yr >= FY_MIN) & (phase1.yr <= FY_MAX)].copy()
     window["st"] = window.State.map(
@@ -139,8 +151,13 @@ def load_awards(path: Path) -> pd.DataFrame:
 
 def build_counties(xwalk: pd.DataFrame) -> pd.DataFrame:
     """County centroids plus nearest out-of-state county and distance."""
+    # One row per county. A city whose text state disagrees with its geocoded
+    # FIPS would otherwise create a same-FIPS twin in another state, which then
+    # nominates itself as the nearest out-of-state county.
     counties = (
-        xwalk.groupby(["fips", "st"]).agg(lat=("lat", "mean"), lon=("lon", "mean")).reset_index()
+        xwalk.groupby("fips")
+        .agg(st=("st", lambda s: s.mode().iat[0]), lat=("lat", "mean"), lon=("lon", "mean"))
+        .reset_index()
     )
     counties = counties[counties.st.isin(CONTIGUOUS)].reset_index(drop=True)
     pts = _unit_sphere(counties.lat.values, counties.lon.values)
@@ -386,8 +403,16 @@ def randomization_inference(
     arr = np.array(out)
     return {
         "ri_draws": len(arr),
-        "ri_p": float((np.abs(arr) >= abs(observed)).mean()) if len(arr) else float("nan"),
-        "mde_pct": float(100 * 2.8 * arr.std(ddof=1)) if len(arr) > 1 else float("nan"),
+        "ri_p": (
+            float((1 + (np.abs(arr) >= abs(observed)).sum()) / (1 + len(arr)))
+            if len(arr)
+            else float("nan")
+        ),
+        # beta is a log ratio: convert the 2.8-SD detectable shift to a percent
+        # reduction so it compares with pct_effect.
+        "mde_pct": (
+            float(100 * (1 - np.exp(-2.8 * arr.std(ddof=1)))) if len(arr) > 1 else float("nan")
+        ),
     }
 
 

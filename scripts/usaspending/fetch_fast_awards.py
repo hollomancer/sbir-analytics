@@ -93,6 +93,8 @@ def main() -> None:
     ap.add_argument("--cafile", default=None, help="CA bundle, if the sandbox proxy needs one")
     args = ap.parse_args()
     panel = to_state_year_panel(fetch_awards(cafile=args.cafile))
+    # Keep the declared window so a later run reproduces the committed file.
+    panel = panel[panel.fiscal_year.between(2010, 2024)]
     args.out.parent.mkdir(parents=True, exist_ok=True)
     panel.to_csv(args.out, index=False)
     print(f"wrote {args.out} ({len(panel)} state-years, {panel.state.nunique()} states)")
