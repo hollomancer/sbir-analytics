@@ -39,7 +39,16 @@ A full result is written as:
 
 The Public V2 `.dat` has no header row. The downloader applies GSA's pinned 142-field positional
 layout, requires matching BOF/EOF control records and record count, and validates the census identity
-fields before writing the canonical parquet. Strategies 2 and 3 are always written as
+fields before writing the canonical parquet.
+
+SAM.gov does not escape `|` inside free-text fields. A record that has more than 142 fields but still
+ends with `!end` is kept, not dropped. Fields 0–10 (UEI, DUNS, CAGE, registration status) come
+before any free text and are kept. All later fields are blank, because the stray `|` can be in any
+text field. The record still counts toward the BOF/EOF total. The sidecar lists these records under
+`repaired_unescaped_delimiter_records` and `repaired_unescaped_delimiter_ueis`. Such a firm matches
+on UEI but has no legal name, address, or NAICS in the parquet. The download fails if the repairs exceed
+the larger of 100 records or 1 in 10,000 records. It also fails on any line after the EOF control
+record. Strategies 2 and 3 are always written as
 `sam_entity_records_partial.parquet`, so a capped fallback cannot overwrite the full dataset.
 
 ## Prerequisites

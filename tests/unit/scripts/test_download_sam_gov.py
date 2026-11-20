@@ -346,19 +346,40 @@ def _with_extra_pipe(record: str, extra: int = 1) -> str:
     return "|".join(fields)
 
 
-def test_public_v2_parser_skips_and_counts_records_with_unescaped_pipes() -> None:
+def test_public_v2_parser_keeps_records_with_unescaped_pipes() -> None:
     good = _public_v2_record(uei="GOODUEI00001")
     bad = _with_extra_pipe(_public_v2_record(uei="BADUEI000001"))
-    bad2 = _with_extra_pipe(_public_v2_record(uei="BADUEI000002"), extra=2)
+    bad2 = _with_extra_pipe(_public_v2_record(uei="BADUEI000002", status="E"), extra=2)
     archive = io.BytesIO(_zip_bytes("SAM.dat", _public_v2_file(good, bad, bad2)))
 
     result = download_module._parse_zip(archive)
 
     assert result is not None
-    assert list(result["unique_entity_id"]) == ["GOODUEI00001"]
+    # The entity stays in the canonical file, so a UEI join still finds it.
+    assert list(result["unique_entity_id"]) == ["GOODUEI00001", "BADUEI000001", "BADUEI000002"]
+    repaired = result.set_index("unique_entity_id").loc[["BADUEI000001", "BADUEI000002"]]
+    # Fields before the first free-text field are trusted ...
+    assert list(repaired["registration_status"]) == ["A", "E"]
+    assert list(repaired["cage_code"]) == ["A1B2C", "A1B2C"]
+    # ... and every field that a stray "|" could shift is blank, not misplaced.
+    shiftable = ["legal_business_name", "physical_address_state", "primary_naics"]
+    assert (repaired[shiftable] == "").all().all()
+    good_row = result.set_index("unique_entity_id").loc["GOODUEI00001"]
+    assert good_row["legal_business_name"] == "Example LLC"
+    assert good_row["primary_naics"] == "541715"
     assert result.attrs["sam_expected_row_count"] == 3
-    assert result.attrs["sam_skipped_unescaped_delimiter_records"] == 2
-    assert result.attrs["sam_skipped_unescaped_delimiter_ueis"] == ["BADUEI000001", "BADUEI000002"]
+    assert result.attrs["sam_repaired_unescaped_delimiter_records"] == 2
+    assert result.attrs["sam_repaired_unescaped_delimiter_ueis"] == ["BADUEI000001", "BADUEI000002"]
+
+
+def test_public_v2_well_formed_records_are_not_repaired() -> None:
+    archive = io.BytesIO(_zip_bytes("SAM.dat", _public_v2_file(_public_v2_record())))
+
+    result = download_module._parse_zip(archive)
+
+    assert result is not None
+    assert result.attrs["sam_repaired_unescaped_delimiter_records"] == 0
+    assert result.loc[0, "legal_business_name"] == "Example LLC"
 
 
 def test_public_v2_extra_fields_without_end_marker_still_fail_closed() -> None:
@@ -369,8 +390,38 @@ def test_public_v2_extra_fields_without_end_marker_still_fail_closed() -> None:
         download_module._parse_zip(archive)
 
 
-def test_public_v2_skip_cap_fails_closed(monkeypatch) -> None:
-    monkeypatch.setattr(download_module, "MIN_SKIPPED_PUBLIC_V2_CAP", 1)
+def test_public_v2_repaired_junk_line_fails_uei_check() -> None:
+    # A junk prefix must not stand in for a missing entity.
+    junk = "junk|" + _with_extra_pipe(_public_v2_record(uei="BADUEI000001"))
+    archive = io.BytesIO(_zip_bytes("SAM.dat", _public_v2_file(_public_v2_record(), junk)))
+
+    with pytest.raises(ValueError, match="missing or malformed UEI"):
+        download_module._parse_zip(archive)
+
+
+def test_public_v2_record_after_eof_fails_closed() -> None:
+    late = _with_extra_pipe(_public_v2_record(uei="LATEUEI00001"))
+    body = _public_v2_file(_public_v2_record(), declared_rows=2) + "\n" + late
+    archive = io.BytesIO(_zip_bytes("SAM.dat", body))
+
+    with pytest.raises(ValueError, match="data after its EOF control record"):
+        download_module._parse_zip(archive)
+
+
+def test_public_v2_repaired_record_with_invalid_utf8_uei_fails_closed() -> None:
+    bad = _with_extra_pipe(_public_v2_record(uei="BADUEI000001")).encode()
+    bad = b"\xffBADUEI00001" + bad[len("BADUEI000001") :]
+    good = _public_v2_record().encode()
+    control = b" PUBLIC V2 00000000 20260802 0000002 0008305"
+    body = b"\n".join([b"BOF" + control, good, bad, b"EOF" + control])
+    archive = io.BytesIO(_zip_bytes("SAM.dat", body))
+
+    with pytest.raises(ValueError):
+        download_module._parse_zip(archive)
+
+
+def test_public_v2_repair_cap_fails_closed(monkeypatch) -> None:
+    monkeypatch.setattr(download_module, "MIN_REPAIRED_PUBLIC_V2_CAP", 1)
     records = [_with_extra_pipe(_public_v2_record(uei=f"BADUEI00000{i}")) for i in range(2)]
     archive = io.BytesIO(_zip_bytes("SAM.dat", _public_v2_file(_public_v2_record(), *records)))
 
@@ -378,7 +429,7 @@ def test_public_v2_skip_cap_fails_closed(monkeypatch) -> None:
         download_module._parse_zip(archive)
 
 
-def test_public_v2_skipped_records_still_reconcile_with_control_count() -> None:
+def test_public_v2_repaired_records_still_reconcile_with_control_count() -> None:
     bad = _with_extra_pipe(_public_v2_record(uei="BADUEI000001"))
     archive = io.BytesIO(
         _zip_bytes("SAM.dat", _public_v2_file(_public_v2_record(), bad, declared_rows=3))
@@ -388,13 +439,13 @@ def test_public_v2_skipped_records_still_reconcile_with_control_count() -> None:
         download_module._parse_zip(archive)
 
 
-def test_write_local_sidecar_records_skipped_records(tmp_path) -> None:
+def test_write_local_sidecar_records_repaired_records(tmp_path) -> None:
     frame = _frame(1)
-    frame.attrs["sam_skipped_unescaped_delimiter_records"] = 2
-    frame.attrs["sam_skipped_unescaped_delimiter_ueis"] = ["A", "B"]
+    frame.attrs["sam_repaired_unescaped_delimiter_records"] = 2
+    frame.attrs["sam_repaired_unescaped_delimiter_ueis"] = ["A", "B"]
 
     _write_local(frame, tmp_path)
 
     meta = json.loads((tmp_path / META_NAME).read_text())
-    assert meta["skipped_unescaped_delimiter_records"] == 2
-    assert meta["skipped_unescaped_delimiter_ueis"] == ["A", "B"]
+    assert meta["repaired_unescaped_delimiter_records"] == 2
+    assert meta["repaired_unescaped_delimiter_ueis"] == ["A", "B"]
