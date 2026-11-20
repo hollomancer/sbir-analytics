@@ -14,7 +14,7 @@ Four Dagster assets under
 | `validated_phase_ii_awards` | validation | Unified Phase II population (FPDS/USAspending contracts + USAspending assistance grants, reconciled against SBIR.gov). |
 | `validated_phase_iii_contracts` | validation | FPDS procurement rows flagged Phase III. Emits agency coverage as a `*.checks.json` audit. |
 | `transformed_phase_ii_iii_pairs` | transformation | All valid (Phase II, Phase III) pairs joined on `recipient_uei` with DUNS crosswalk fallback. Latency preserved with sign. |
-| `transformed_phase_transition_survival` | transformation | Per-Phase-II time-to-event frame (event indicator + `time_days` to earliest Phase III or to the data cut). Ready for Kaplan-Meier. |
+| `transformed_phase_transition_survival` | transformation | Per-Phase-II signed completion-relative follow-up frame (event indicator + `time_days` to earliest Phase III or to the data cut). Negative events are not Kaplan-Meier-ready without stratification or a new origin. |
 
 Pydantic row contracts live in
 [`sbir_etl/models/phase_transition.py`](../sbir_etl/models/phase_transition.py).
@@ -31,14 +31,16 @@ and end-year cohort transition rates.
 
 ## Threats to validity
 
-### 1. Phase III coding is a known undercount
+### 1. Phase III coding is incomplete and inconsistent
 
 Phase III status on the FPDS side relies on Element 10Q (`research` = `SR3`
 or `ST3`). Coding is inconsistent outside DoD: many civilian agencies leave
-the field null even on clearly Phase III follow-ons, so the reported
-transition rate is a **lower bound**. `validated_phase_iii_contracts` emits a
+the field null even on clearly Phase III follow-ons. The result is an
+**observed coded-channel rate**, not an identified bound: coding/identity
+misses can bias downward while unrelated same-firm matches can bias upward.
+`validated_phase_iii_contracts` emits a
 per-agency audit in its `*.checks.json` — the `agencies_with_zero_phase_iii`
-list highlights where the undercount is most severe. Cross-checking against
+list highlights where coded-channel coverage is thinnest. Cross-checking against
 solicitation numbers or award descriptions could narrow the gap, but that is
 out of scope for v1.
 
@@ -62,12 +64,17 @@ out of scope for v1.
 When interpreting latency, slicing by `source` is important: grant-to-Phase
 III transitions have different baseline rates than contract-to-Phase III.
 
-### 3. Negative latencies are real
+<a id="3-negative-latencies-are-real"></a>
+
+### 3. Negative latencies require a separate estimand
 
 The pipeline preserves negative `latency_days`. Phase III procurement can
 legally precede Phase II's period-of-performance end — for example, when a
-Phase III option is exercised against an on-going Phase II base. We do not
-clip or filter these because treating them as zero would bias KM estimates.
+Phase III option is exercised during an ongoing Phase II. These are valid
+signed-latency observations but prevalent events relative to a completion
+origin. They must be reported as a pre-completion stratum, or the analysis
+must choose a nonnegative origin, before fitting a conventional survival
+curve. Clipping them to zero is also not valid.
 
 ### 4. Multi-award firms
 
