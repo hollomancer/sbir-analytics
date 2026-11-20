@@ -8,13 +8,18 @@ import pytest
 
 from sbir_etl.enrichers.sec_edgar.form_d_scoring import (
     FORM_D_TIER_RULE_CORROBORATED_PERSON_V2,
+    FORM_D_TIER_RULE_NAME_GATED_V3,
     FORM_D_TIER_RULE_PERSON_OR_ZIP_V1,
     assign_form_d_tier,
     compute_form_d_confidence,
     describe_form_d_signal_scope,
+    form_d_name_similarity,
     parse_form_d_xml,
+    person_names_agree,
     require_form_d_rule_version,
+    select_form_d_name_match,
 )
+from sbir_etl.identity.company_names import CompanyNameProfile, normalize_company_name
 from tests.unit.identity.test_company_names import MUST_NOT_MATCH
 
 # ---------------------------------------------------------------------------
@@ -507,3 +512,211 @@ def test_person_match_tier_for_distinct_firms_used_as_names(
         f"{left!r} vs {right!r} scored person_score={result.person_score} "
         f"-> tier={result.tier} (expected {expected}): {reason}"
     )
+
+
+# ---------------------------------------------------------------------------
+# name-gated-v3: company-name selection, person agreement, and tier rule.
+# See docs/data/form-d-name-gated-v3.md. Every positive branch below has a case
+# where it must not fire.
+# ---------------------------------------------------------------------------
+
+V3 = FORM_D_TIER_RULE_NAME_GATED_V3
+
+
+def _rnorm(name: str) -> str:
+    return normalize_company_name(name, profile=CompanyNameProfile.RECIPIENT_V1)
+
+
+class TestSelectFormDNameMatch:
+    @pytest.mark.parametrize(
+        "sbir,filer",
+        [
+            ("space kinetic", "space"),
+            ("physical sciences", "physical sciences consulting group"),
+            ("creare", "creare labs"),
+            ("alpha beta gamma", "alpha beta delta"),
+        ],
+    )
+    def test_token_subsets_and_one_token_swaps_are_not_matched(self, sbir, filer) -> None:
+        # token_set_ratio scored the first three 1.0 (one side is a subset of the other).
+        assert select_form_d_name_match(sbir, [filer]) is None
+
+    def test_exact_normalized_name_is_exact(self) -> None:
+        assert select_form_d_name_match("creare", ["creare labs", "creare"]) == (
+            "creare",
+            "exact",
+            1.0,
+        )
+
+    def test_best_candidate_wins_not_first(self) -> None:
+        # First-candidate trap: the weaker candidate sorts and arrives first.
+        match = select_form_d_name_match(
+            "spectral sciences", ["spectral sciencs inc", "spectral science"]
+        )
+        assert match is not None
+        assert match[0] == "spectral science"
+        assert match[1] == "fuzzy"
+
+    def test_result_does_not_depend_on_candidate_order(self) -> None:
+        candidates = ["acme robotic", "acme robotix", "acme robotica"]
+        assert select_form_d_name_match("acme robotics", candidates) == select_form_d_name_match(
+            "acme robotics", list(reversed(candidates))
+        )
+
+    def test_empty_name_never_matches(self) -> None:
+        assert select_form_d_name_match("", [""]) is None
+
+    def test_similarity_penalizes_extra_tokens_on_either_side(self) -> None:
+        assert form_d_name_similarity("space kinetic", "space") < 0.85
+        assert form_d_name_similarity("space", "space kinetic") < 0.85
+
+
+class TestPersonNamesAgree:
+    @pytest.mark.parametrize(
+        "pi,person",
+        [
+            ("James  Sass", "James R. Sass"),
+            ("J. Sass", "James Sass"),
+            ("Dr. Ann Lee, Ph.D.", "Ann Lee"),
+            ("Robert Smith Jr.", "Robert Smith"),
+        ],
+    )
+    def test_agrees(self, pi, person) -> None:
+        assert person_names_agree(pi, person)
+
+    @pytest.mark.parametrize(
+        "pi,person,reason",
+        [
+            ("John Smith", "Jane Smith", "same family name, different given name"),
+            ("John Smith", "John Smithson", "family name is a prefix, not equal"),
+            ("Bob Smith", "Robert Smith", "nicknames are not resolved"),
+            ("J. Smith", "K. Smith", "different initials"),
+            ("Smith", "John Smith", "a one-token name has no given name"),
+            ("John Smith", "Smith John", "order swap is not accepted"),
+            ("Ann Lee", "Ann Leeds", "token subset of the family name"),
+        ],
+    )
+    def test_does_not_agree(self, pi, person, reason) -> None:
+        assert not person_names_agree(pi, person), reason
+
+
+class TestNameGatedV3Tier:
+    @pytest.mark.parametrize(
+        "match_type,person,zip_,state,expected",
+        [
+            ("exact", None, 1.0, None, "high"),
+            ("exact", 1.0, None, 1.0, "high"),
+            ("exact", 1.0, None, None, "medium"),
+            ("exact", None, None, 1.0, "medium"),
+            ("exact", None, None, None, "low"),  # v2 gave medium: missing state is no evidence
+            ("exact", 0.0, 0.0, 0.0, "low"),
+            ("fuzzy", 1.0, 1.0, 1.0, "high"),
+            ("fuzzy", None, 1.0, 1.0, "medium"),  # ZIP-only fuzzy is not high
+            ("fuzzy", 1.0, None, 1.0, "medium"),
+            ("fuzzy", 1.0, None, None, "low"),
+            ("fuzzy", None, None, 1.0, "low"),  # state alone does not corroborate a fuzzy name
+            ("fuzzy", None, None, None, "low"),
+        ],
+    )
+    def test_tier_table(self, match_type, person, zip_, state, expected) -> None:
+        assert (
+            assign_form_d_tier(
+                person_score=person,
+                address_score=zip_,
+                state_score=state,
+                rule_version=V3,
+                name_match_type=match_type,
+            )
+            == expected
+        )
+
+    @pytest.mark.parametrize("match_type", [None, "", "token_set"])
+    def test_requires_a_known_match_type(self, match_type) -> None:
+        with pytest.raises(ValueError, match="name_match_type"):
+            assign_form_d_tier(
+                person_score=None,
+                address_score=1.0,
+                state_score=1.0,
+                rule_version=V3,
+                name_match_type=match_type,
+            )
+
+    def test_v2_is_unchanged_by_the_new_parameter(self) -> None:
+        assert (
+            assign_form_d_tier(person_score=None, address_score=None, state_score=None) == "medium"
+        )
+
+    def test_empty_record_with_no_offering_is_low(self) -> None:
+        result = compute_form_d_confidence(
+            name_score=1.0,
+            pi_names=["Jane Doe"],
+            related_persons=[],
+            sbir_state="CA",
+            biz_states=[],
+            earliest_sbir_award_year=2015,
+            form_d_dates=[],
+            year_of_inc=None,
+            rule_version=V3,
+            name_match_type="exact",
+        )
+        assert result.tier == "low"
+        assert result.name_match_type == "exact"
+
+    def test_subset_person_name_does_not_count_as_a_person_hit(self) -> None:
+        # token_set_ratio scored "Ann Lee" against "Ann Lee Chen" 1.0.
+        result = compute_form_d_confidence(
+            name_score=1.0,
+            pi_names=["Ann Lee"],
+            related_persons=[{"name": "Ann Lee Chen", "title": "Director"}],
+            sbir_state="CA",
+            biz_states=["CA"],
+            earliest_sbir_award_year=2015,
+            form_d_dates=[],
+            year_of_inc=None,
+            rule_version=V3,
+            name_match_type="exact",
+        )
+        assert result.person_score == 0.0
+        assert result.tier == "medium"  # state agreement only
+
+    def test_agreeing_person_with_state_reaches_high_on_exact_name(self) -> None:
+        result = compute_form_d_confidence(
+            name_score=1.0,
+            pi_names=["J. Sass"],
+            related_persons=[{"name": "James R Sass", "title": "Executive Officer"}],
+            sbir_state="KY",
+            biz_states=["KY"],
+            earliest_sbir_award_year=2015,
+            form_d_dates=[],
+            year_of_inc=None,
+            rule_version=V3,
+            name_match_type="exact",
+        )
+        assert result.person_score == 1.0
+        assert result.tier == "high"
+
+
+@pytest.mark.parametrize("left,right,reason", MUST_NOT_MATCH)
+def test_v3_distinct_firms_never_reach_medium_on_name_and_state(
+    left: str, right: str, reason: str
+) -> None:
+    """Shared adversarial pairs: distinct firms with similar names.
+
+    Subset pairs are not matched at all. Character-level near-collisions
+    ("adelphi technology" against "adept technology") can still clear 0.85 on
+    token_sort_ratio, so the tier rule must hold them at low without a person
+    or ZIP signal, even when the states agree.
+    """
+    match = select_form_d_name_match(_rnorm(left), [_rnorm(right)])
+    if match is None:
+        return
+    _, match_type, _ = match
+    assert match_type == "fuzzy", reason
+    tier = assign_form_d_tier(
+        person_score=None,
+        address_score=None,
+        state_score=1.0,
+        rule_version=V3,
+        name_match_type=match_type,
+    )
+    assert tier == "low", f"{left!r} vs {right!r}: {reason}"

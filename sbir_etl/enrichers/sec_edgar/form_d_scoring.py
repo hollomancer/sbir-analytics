@@ -16,13 +16,19 @@ from ...models.sec_edgar import FormDMatchConfidence
 
 FORM_D_TIER_RULE_PERSON_OR_ZIP_V1 = "person-or-zip-v1"
 FORM_D_TIER_RULE_CORROBORATED_PERSON_V2 = "corroborated-person-v2"
+# Defined but not yet the default: stored records predate it, and consumers fail closed on
+# a rule mismatch. See docs/data/form-d-name-gated-v3.md.
+FORM_D_TIER_RULE_NAME_GATED_V3 = "name-gated-v3"
 FORM_D_TIER_RULE_VERSION = FORM_D_TIER_RULE_CORROBORATED_PERSON_V2
 FORM_D_TIER_RULE_VERSIONS: frozenset[str] = frozenset(
     {
         FORM_D_TIER_RULE_PERSON_OR_ZIP_V1,
         FORM_D_TIER_RULE_CORROBORATED_PERSON_V2,
+        FORM_D_TIER_RULE_NAME_GATED_V3,
     }
 )
+FORM_D_NAME_MATCH_TYPES: frozenset[str] = frozenset({"exact", "fuzzy"})
+FORM_D_NAME_MATCH_THRESHOLD = 0.85
 
 
 class FormDTierRuleError(ValueError):
@@ -305,12 +311,81 @@ def _normalize_name(name: str) -> str:
     return " ".join(cleaned.split())
 
 
+def form_d_name_similarity(sbir_norm: str, filer_norm: str) -> float:
+    """Score two normalized company names, 0-1, without rewarding a token subset.
+
+    ``token_set_ratio`` scores 1.0 whenever one name's tokens are a subset of the other's
+    ("space kinetic" against "space"). ``token_sort_ratio`` compares the whole sorted token
+    strings, so extra tokens on either side lower the score.
+    """
+    return fuzz.token_sort_ratio(sbir_norm, filer_norm) / 100.0
+
+
+def select_form_d_name_match(
+    sbir_norm: str,
+    filer_norms: list[str],
+    *,
+    threshold: float = FORM_D_NAME_MATCH_THRESHOLD,
+) -> tuple[str, str, float] | None:
+    """Return ``(filer_norm, match_type, score)`` for the best candidate, or None.
+
+    An equal normalized name is an ``exact`` match. Otherwise the highest-scoring candidate
+    at or above ``threshold`` is a ``fuzzy`` match; ties go to the candidate that sorts first,
+    so the result does not depend on candidate order.
+    """
+    if not sbir_norm:
+        return None
+    if sbir_norm in filer_norms:
+        return sbir_norm, "exact", 1.0
+    best: tuple[str, float] | None = None
+    for filer_norm in sorted(set(filer_norms)):
+        score = form_d_name_similarity(sbir_norm, filer_norm)
+        if score >= threshold and (best is None or score > best[1]):
+            best = (filer_norm, score)
+    if best is None:
+        return None
+    return best[0], "fuzzy", best[1]
+
+
+_PERSON_SUFFIXES = frozenset({"jr", "sr", "ii", "iii", "iv", "phd", "md", "dr", "mr", "mrs", "ms"})
+
+
+def _person_name_parts(name: str) -> tuple[str, str] | None:
+    """Return (given, family) tokens, lowercased, without titles, suffixes, or punctuation."""
+    tokens = [
+        t
+        for t in re.sub(r"[^a-z\s]", " ", name.lower().replace(".", "")).split()
+        if t not in _PERSON_SUFFIXES
+    ]
+    if len(tokens) < 2:
+        return None
+    return tokens[0], tokens[-1]
+
+
+def person_names_agree(pi_name: str, person_name: str) -> bool:
+    """True when family names are equal and given names are equal or initial-compatible.
+
+    Nicknames do not agree ("bob" against "robert"). That costs some true matches, but a
+    shared family name alone must not count as the same person.
+    """
+    pi = _person_name_parts(pi_name)
+    person = _person_name_parts(person_name)
+    if pi is None or person is None or pi[1] != person[1]:
+        return False
+    a, b = pi[0], person[0]
+    if a == b:
+        return True
+    short, long_ = sorted((a, b), key=len)
+    return len(short) == 1 and long_.startswith(short)
+
+
 def assign_form_d_tier(
     *,
     person_score: float | None,
     address_score: float | None,
     state_score: float | None,
     rule_version: str = FORM_D_TIER_RULE_VERSION,
+    name_match_type: str | None = None,
 ) -> str:
     """Assign a confidence tier under a named, versioned rule.
 
@@ -318,6 +393,8 @@ def assign_form_d_tier(
     old materializations remain interpretable. ``corroborated-person-v2``
     is the current rule: a fuzzy person-name hit needs an exact ZIP or state
     overlap to reach high, while an exact ZIP remains sufficient by itself.
+    ``name-gated-v3`` also needs ``name_match_type``: missing signals are no
+    evidence, and a fuzzy company name needs two independent signals for high.
     """
 
     if rule_version not in FORM_D_TIER_RULE_VERSIONS:
@@ -329,6 +406,25 @@ def assign_form_d_tier(
     person_hit = person_score is not None and person_score >= 0.7
     address_hit = address_score is not None and address_score >= 1.0
     state_hit = state_score is not None and state_score >= 1.0
+
+    if rule_version == FORM_D_TIER_RULE_NAME_GATED_V3:
+        if name_match_type not in FORM_D_NAME_MATCH_TYPES:
+            raise ValueError(
+                f"{FORM_D_TIER_RULE_NAME_GATED_V3} needs name_match_type 'exact' or 'fuzzy'; "
+                f"got {name_match_type!r}"
+            )
+        if name_match_type == "exact":
+            if address_hit or (person_hit and state_hit):
+                return "high"
+            if person_hit or state_hit:
+                return "medium"
+            return "low"
+        # A ZIP agreement implies a state agreement, so state cannot be the second signal.
+        if address_hit and person_hit:
+            return "high"
+        if address_hit or (person_hit and state_hit):
+            return "medium"
+        return "low"
 
     if rule_version == FORM_D_TIER_RULE_PERSON_OR_ZIP_V1:
         if person_hit or address_hit:
@@ -379,6 +475,7 @@ def compute_form_d_confidence(
     sbir_zip: str | None = None,
     form_d_zips: list[str] | None = None,
     rule_version: str = FORM_D_TIER_RULE_VERSION,
+    name_match_type: str | None = None,
 ) -> FormDMatchConfidence:
     """Score match confidence between a Form D filing and an SBIR company.
 
@@ -391,7 +488,21 @@ def compute_form_d_confidence(
     person_score: float | None = None
     person_match_detail: str | None = None
 
-    if pi_names and related_persons:
+    if rule_version == FORM_D_TIER_RULE_NAME_GATED_V3:
+        if pi_names and related_persons:
+            person_score = 0.0
+            for pi in pi_names:
+                for rp in related_persons:
+                    rp_name = rp.get("name", "")
+                    if person_names_agree(pi, rp_name):
+                        title = rp.get("title", "")
+                        role_label = title.split(",")[0] if title else "Person"
+                        person_score = 1.0
+                        person_match_detail = f"PI '{pi}' <> {role_label} '{rp_name}'"
+                        break
+                if person_score:
+                    break
+    elif pi_names and related_persons:
         best_score = 0.0
         best_detail: str | None = None
 
@@ -472,10 +583,12 @@ def compute_form_d_confidence(
         address_score=address_score,
         state_score=state_score,
         rule_version=rule_version,
+        name_match_type=name_match_type,
     )
 
     return FormDMatchConfidence(
         rule_version=rule_version,
+        name_match_type=name_match_type,
         tier=tier,
         score=round(composite, 4),
         name_score=name_score,

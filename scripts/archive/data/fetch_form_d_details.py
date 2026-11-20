@@ -33,11 +33,12 @@ from pathlib import Path
 sys.stdout.reconfigure(line_buffering=True)
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-from rapidfuzz import fuzz
-
 from sbir_etl.enrichers.sec_edgar.client import EdgarAPIClient
 from sbir_etl.enrichers.sec_edgar.form_d_scoring import (
+    FORM_D_NAME_MATCH_TYPES,
+    FORM_D_TIER_RULE_NAME_GATED_V3,
     FORM_D_TIER_RULE_VERSION,
+    FORM_D_TIER_RULE_VERSIONS,
     compute_form_d_confidence,
     describe_form_d_signal_scope,
     parse_form_d_xml,
@@ -119,6 +120,12 @@ async def main() -> None:
     )
     parser.add_argument("--resume", action="store_true", help="Resume from existing output")
     parser.add_argument(
+        "--rule-version",
+        choices=sorted(FORM_D_TIER_RULE_VERSIONS),
+        default=FORM_D_TIER_RULE_VERSION,
+        help="Form D tier rule to score with",
+    )
+    parser.add_argument(
         "--concurrency",
         type=int,
         default=2,
@@ -144,6 +151,20 @@ async def main() -> None:
         for line in f:
             companies.append(json.loads(line))
     print(f"  {len(companies):,} companies with Form D matches")
+    if args.rule_version == FORM_D_TIER_RULE_NAME_GATED_V3:
+        untyped = [
+            c["company_name"]
+            for c in companies
+            if c.get("name_match_type") not in FORM_D_NAME_MATCH_TYPES
+            or not isinstance(c.get("name_score"), (int, float))
+        ]
+        if untyped:
+            print(
+                f"Error: {len(untyped):,} index records lack name_match_type or name_score. "
+                f"{FORM_D_TIER_RULE_NAME_GATED_V3} needs an index from the current "
+                "fetch_form_d_index.py."
+            )
+            sys.exit(1)
 
     # Load award data (earliest year + ZIP for address matching)
     print(f"Loading award data from {args.awards}...")
@@ -154,7 +175,7 @@ async def main() -> None:
     # Load checkpoint
     done: set[str] = set()
     if args.resume:
-        done = load_checkpoint(output_path)
+        done = load_checkpoint(output_path, expected_rule_version=args.rule_version)
         print(f"  Resuming: {len(done):,} already processed")
 
     remaining = [c for c in companies if c["company_name"] not in done]
@@ -202,17 +223,11 @@ async def main() -> None:
             all_zips = []
             all_dates = []
             year_of_inc = None
-            best_name_score = 0.0
 
             for filing in filings:
                 cik = filing["cik"]
                 accession = filing["accession_number"]
                 filing_date = filing["date_filed"]
-
-                # Compute name score from filer name vs SBIR name
-                score = fuzz.token_set_ratio(name.upper(), filing["filer_name"].upper()) / 100.0
-                if score > best_name_score:
-                    best_name_score = score
 
                 xml_text = await client.fetch_form_d_xml(cik, accession)
                 if xml_text is None:
@@ -245,12 +260,10 @@ async def main() -> None:
                 if parsed.get("year_of_inc") is not None and year_of_inc is None:
                     year_of_inc = parsed["year_of_inc"]
 
-            # Compute confidence
-            if best_name_score < 0.85:
-                best_name_score = 0.85  # minimum gate from index matching
-
+            # The index records the name score; an older index has none, and its matches all
+            # cleared the old 0.85 gate.
             confidence = compute_form_d_confidence(
-                name_score=best_name_score,
+                name_score=company.get("name_score", 0.85),
                 pi_names=pi_names,
                 related_persons=all_persons,
                 sbir_state=sbir_state,
@@ -260,6 +273,8 @@ async def main() -> None:
                 year_of_inc=year_of_inc,
                 sbir_zip=sbir_zip,
                 form_d_zips=all_zips,
+                rule_version=args.rule_version,
+                name_match_type=company.get("name_match_type"),
             )
 
             # Compute total raised across all offerings

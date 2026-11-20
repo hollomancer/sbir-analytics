@@ -11,6 +11,7 @@ import pytest
 
 from sbir_etl.enrichers.sec_edgar.form_d_scoring import (
     FORM_D_TIER_RULE_CORROBORATED_PERSON_V2,
+    FORM_D_TIER_RULE_NAME_GATED_V3,
     FORM_D_TIER_RULE_PERSON_OR_ZIP_V1,
 )
 
@@ -127,3 +128,12 @@ def test_invalid_stored_score_fails_instead_of_guessing() -> None:
 
     with pytest.raises(_mod.FormDRescoreError, match="person_score must be a number or null"):
         _mod.rescore_record(record)
+
+
+def test_name_gated_v3_refuses_offline_migration(tmp_path: Path) -> None:
+    source = tmp_path / "details.jsonl"
+    _write_jsonl(source, [_record()])
+    before = source.read_bytes()
+    with pytest.raises(_mod.FormDRescoreError, match="cannot be migrated offline"):
+        _mod.rescore_jsonl(source, source, rule_version=FORM_D_TIER_RULE_NAME_GATED_V3)
+    assert source.read_bytes() == before
