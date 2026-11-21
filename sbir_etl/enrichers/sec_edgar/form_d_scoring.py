@@ -7,7 +7,9 @@ multi-signal confidence score for matching a Form D filing to an SBIR company.
 from __future__ import annotations
 
 import re
+import unicodedata
 from datetime import date
+from typing import NamedTuple
 from xml.etree import ElementTree
 
 from rapidfuzz import fuzz
@@ -16,13 +18,19 @@ from ...models.sec_edgar import FormDMatchConfidence
 
 FORM_D_TIER_RULE_PERSON_OR_ZIP_V1 = "person-or-zip-v1"
 FORM_D_TIER_RULE_CORROBORATED_PERSON_V2 = "corroborated-person-v2"
+# Defined but not yet the default: stored records predate it, and consumers fail closed on
+# a rule mismatch. See docs/data/form-d-name-gated-v3.md.
+FORM_D_TIER_RULE_NAME_GATED_V3 = "name-gated-v3"
 FORM_D_TIER_RULE_VERSION = FORM_D_TIER_RULE_CORROBORATED_PERSON_V2
 FORM_D_TIER_RULE_VERSIONS: frozenset[str] = frozenset(
     {
         FORM_D_TIER_RULE_PERSON_OR_ZIP_V1,
         FORM_D_TIER_RULE_CORROBORATED_PERSON_V2,
+        FORM_D_TIER_RULE_NAME_GATED_V3,
     }
 )
+FORM_D_NAME_MATCH_TYPES: frozenset[str] = frozenset({"exact", "fuzzy"})
+FORM_D_NAME_MATCH_THRESHOLD = 0.85
 
 
 class FormDTierRuleError(ValueError):
@@ -305,12 +313,211 @@ def _normalize_name(name: str) -> str:
     return " ".join(cleaned.split())
 
 
+def form_d_name_similarity(sbir_norm: str, filer_norm: str) -> float:
+    """Score two normalized company names, 0-1, without rewarding a token subset.
+
+    ``token_set_ratio`` scores 1.0 whenever one name's tokens are a subset of the other's
+    ("space kinetic" against "space"). ``token_sort_ratio`` compares the whole sorted token
+    strings, so extra tokens on either side lower the score.
+    """
+    return fuzz.token_sort_ratio(sbir_norm, filer_norm) / 100.0
+
+
+def select_form_d_name_match(
+    sbir_norm: str,
+    filer_norms: list[str],
+    *,
+    threshold: float = FORM_D_NAME_MATCH_THRESHOLD,
+) -> tuple[str, str, float] | None:
+    """Return ``(filer_norm, match_type, score)`` for the best candidate, or None.
+
+    An equal normalized name is an ``exact`` match. Otherwise the highest-scoring candidate
+    at or above ``threshold`` is a ``fuzzy`` match; ties go to the candidate that sorts first,
+    so the result does not depend on candidate order.
+    """
+    if not sbir_norm:
+        return None
+    if sbir_norm in filer_norms:
+        return sbir_norm, "exact", 1.0
+    best: tuple[str, float] | None = None
+    for filer_norm in sorted(set(filer_norms)):
+        score = form_d_name_similarity(sbir_norm, filer_norm)
+        if score >= threshold and (best is None or score > best[1]):
+            best = (filer_norm, score)
+    if best is None:
+        return None
+    return best[0], "fuzzy", best[1]
+
+
+_PERSON_TITLES = frozenset({"dr", "mr", "mrs", "ms", "prof"})
+_PERSON_SUFFIXES = frozenset({"jr", "sr", "ii", "iii", "iv", "v"})
+# Credentials and job titles, compared after dots are removed ("P.E." -> "pe").
+# Only forms that are not plausible surnames: "Ma", "Do", and "Ba" are real family names, so a
+# degree written that way is dropped only when it is dotted ("M.A.") or follows a comma.
+_PERSON_CREDENTIALS = frozenset(
+    {
+        "phd",
+        "ph",
+        "md",
+        "pe",
+        "esq",
+        "mba",
+        "msc",
+        "ms",
+        "bs",
+        "mph",
+        "rn",
+        "np",
+        "pac",
+        "cpa",
+        "pmp",
+        "dvm",
+        "pharmd",
+        "dds",
+        "ceo",
+        "cto",
+        "cfo",
+        "coo",
+        "president",
+        "founder",
+        "credential",  # marker for a dotted "M.A.", "B.A.", or "D.O."
+    }
+)
+_PERSON_SURNAME_DEGREES = frozenset({"ma", "ba", "do"})
+_PERSON_DOTTED_DEGREE = re.compile(
+    r"(?<=\S)(\s+|\s*,\s*)(?:m\.\s?a|b\.\s?a|d\.\s?o)\.(?=\s*(?:,|$))"
+)
+# Letters that Unicode decomposition does not reduce to ASCII.
+_PERSON_TRANSLIT = str.maketrans(
+    {"ø": "o", "æ": "ae", "œ": "oe", "ł": "l", "ß": "ss", "đ": "d", "ð": "d", "þ": "th", "ı": "i"}
+)
+
+
+class _PersonName(NamedTuple):
+    given: str
+    rest: tuple[str, ...]  # middle names, then the family name
+    family_len: int  # trailing tokens of `rest` known to be the family name
+    suffix: str | None
+
+
+def _strip_trailing(tokens: list[str], v_min_len: int) -> str | None:
+    """Pop trailing credentials and suffixes in place; return the last suffix seen.
+
+    "v" counts as a suffix only when the list has at least `v_min_len` tokens, so the middle
+    initial in "Smith, John V" is kept.
+    """
+    suffix = None
+    while tokens:
+        last = tokens[-1]
+        if last in _PERSON_CREDENTIALS:
+            tokens.pop()
+        elif last in _PERSON_SUFFIXES and (last != "v" or len(tokens) >= v_min_len):
+            tokens.pop()
+            suffix = suffix or last
+        else:
+            break
+    return suffix
+
+
+def _person_name_parts(name: str | None) -> _PersonName | None:
+    """Parse a person name, or return None when it cannot be read safely.
+
+    - Accents are folded and letters such as ø, æ, ł, ß are transliterated. A name that still
+      holds a non-ASCII letter returns None rather than splitting into fragments.
+    - A name that joins two people with "&", "and", "/", or ";" returns None.
+    - Parenthesized text ("(Retired)") is dropped.
+    - In-word hyphens and apostrophes are dropped ("smith-lee", "o'brien" stay one token).
+    - Titles ("dr") and trailing credentials, job titles, or suffixes ("P.E.", "CEO", "Jr.") are
+      removed. A generational suffix is kept for comparison.
+    - When the text after the first comma is a given name, everything before the comma is the
+      family name ("Lee Wong, John"). Otherwise the last token is the family name.
+    """
+    if not name:
+        return None
+    folded = "".join(
+        c
+        for c in unicodedata.normalize("NFKD", name.lower().translate(_PERSON_TRANSLIT))
+        if not unicodedata.combining(c)
+    )
+    folded = re.sub(r"\([^)]*\)", " ", folded)
+    if re.search(r"[&/;]|\band\b", folded):
+        return None
+    folded = _PERSON_DOTTED_DEGREE.sub(r"\1credential", folded)
+    folded = re.sub(r"[.'’\-]", "", folded)
+    if re.search(r"[^\x00-\x7f]", folded):
+        return None
+    folded = re.sub(r"\bph\s+d\b", "phd", folded)
+
+    def words(part: str) -> list[str]:
+        return re.sub(r"[^a-z\s]", " ", part).split()
+
+    after_comma = _PERSON_CREDENTIALS | _PERSON_SUFFIXES | _PERSON_SURNAME_DEGREES
+    head, *rest = (words(p) for p in folded.split(","))
+    given_parts = [w for w in rest if w and not set(w) <= after_comma]
+    suffixes = [t for w in rest if w and set(w) <= after_comma for t in w if t in _PERSON_SUFFIXES]
+    if len(given_parts) > 1:
+        return None
+    while head and head[0] in _PERSON_TITLES:
+        head.pop(0)
+    if given_parts:
+        family = head
+        given = given_parts[0]
+        while given and given[0] in _PERSON_TITLES:
+            given.pop(0)
+        suffixes.append(_strip_trailing(family, v_min_len=2) or "")
+        suffixes.append(_strip_trailing(given, v_min_len=len(given) + 1) or "")
+        if not family or not given:
+            return None
+        tokens, family_len = given + family, len(family)
+    else:
+        tokens = head
+        suffixes.append(_strip_trailing(tokens, v_min_len=3) or "")
+        family_len = 1
+    found = {s for s in suffixes if s}
+    if len(tokens) < 2 or len(found) > 1:
+        return None
+    return _PersonName(tokens[0], tuple(tokens[1:]), family_len, found.pop() if found else None)
+
+
+def _given_compatible(a: str, b: str) -> bool:
+    """Equal, or one is a single initial that starts the other."""
+    if a == b:
+        return True
+    short, long_ = sorted((a, b), key=len)
+    return len(short) == 1 and long_.startswith(short)
+
+
+def person_names_agree(pi_name: str | None, person_name: str | None) -> bool:
+    """True when family names are equal and given names are equal or initial-compatible.
+
+    When both names carry a middle name or a generational suffix, those must also agree. A
+    missing name, or one that cannot be read, is no evidence and returns False.
+
+    Nicknames do not agree ("bob" against "robert"). That costs some true matches, but a
+    shared family name alone must not count as the same person.
+    """
+    pi = _person_name_parts(pi_name)
+    person = _person_name_parts(person_name)
+    if pi is None or person is None:
+        return False
+    if pi.suffix and person.suffix and pi.suffix != person.suffix:
+        return False
+    k = max(pi.family_len, person.family_len)
+    if "".join(pi.rest[-k:]) != "".join(person.rest[-k:]):
+        return False
+    if not _given_compatible(pi.given, person.given):
+        return False
+    middles = zip(pi.rest[:-k], person.rest[:-k], strict=False)
+    return all(_given_compatible(a, b) for a, b in middles)
+
+
 def assign_form_d_tier(
     *,
     person_score: float | None,
     address_score: float | None,
     state_score: float | None,
     rule_version: str = FORM_D_TIER_RULE_VERSION,
+    name_match_type: str | None = None,
 ) -> str:
     """Assign a confidence tier under a named, versioned rule.
 
@@ -318,6 +525,8 @@ def assign_form_d_tier(
     old materializations remain interpretable. ``corroborated-person-v2``
     is the current rule: a fuzzy person-name hit needs an exact ZIP or state
     overlap to reach high, while an exact ZIP remains sufficient by itself.
+    ``name-gated-v3`` also needs ``name_match_type``: missing signals are no
+    evidence, and a fuzzy company name needs two independent signals for high.
     """
 
     if rule_version not in FORM_D_TIER_RULE_VERSIONS:
@@ -329,6 +538,25 @@ def assign_form_d_tier(
     person_hit = person_score is not None and person_score >= 0.7
     address_hit = address_score is not None and address_score >= 1.0
     state_hit = state_score is not None and state_score >= 1.0
+
+    if rule_version == FORM_D_TIER_RULE_NAME_GATED_V3:
+        if name_match_type not in FORM_D_NAME_MATCH_TYPES:
+            raise ValueError(
+                f"{FORM_D_TIER_RULE_NAME_GATED_V3} needs name_match_type 'exact' or 'fuzzy'; "
+                f"got {name_match_type!r}"
+            )
+        if name_match_type == "exact":
+            if address_hit or (person_hit and state_hit):
+                return "high"
+            if person_hit or state_hit:
+                return "medium"
+            return "low"
+        # A ZIP agreement implies a state agreement, so state cannot be the second signal.
+        if address_hit and person_hit:
+            return "high"
+        if address_hit or (person_hit and state_hit):
+            return "medium"
+        return "low"
 
     if rule_version == FORM_D_TIER_RULE_PERSON_OR_ZIP_V1:
         if person_hit or address_hit:
@@ -379,6 +607,7 @@ def compute_form_d_confidence(
     sbir_zip: str | None = None,
     form_d_zips: list[str] | None = None,
     rule_version: str = FORM_D_TIER_RULE_VERSION,
+    name_match_type: str | None = None,
 ) -> FormDMatchConfidence:
     """Score match confidence between a Form D filing and an SBIR company.
 
@@ -391,7 +620,21 @@ def compute_form_d_confidence(
     person_score: float | None = None
     person_match_detail: str | None = None
 
-    if pi_names and related_persons:
+    if rule_version == FORM_D_TIER_RULE_NAME_GATED_V3:
+        if pi_names and related_persons:
+            person_score = 0.0
+            for pi in pi_names:
+                for rp in related_persons:
+                    rp_name = rp.get("name", "")
+                    if person_names_agree(pi, rp_name):
+                        title = rp.get("title", "")
+                        role_label = title.split(",")[0] if title else "Person"
+                        person_score = 1.0
+                        person_match_detail = f"PI '{pi}' <> {role_label} '{rp_name}'"
+                        break
+                if person_score:
+                    break
+    elif pi_names and related_persons:
         best_score = 0.0
         best_detail: str | None = None
 
@@ -472,10 +715,12 @@ def compute_form_d_confidence(
         address_score=address_score,
         state_score=state_score,
         rule_version=rule_version,
+        name_match_type=name_match_type,
     )
 
     return FormDMatchConfidence(
         rule_version=rule_version,
+        name_match_type=name_match_type,
         tier=tier,
         score=round(composite, 4),
         name_score=name_score,

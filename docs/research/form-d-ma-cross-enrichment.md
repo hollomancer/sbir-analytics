@@ -2,6 +2,12 @@
 
 **Status:** Exploratory — non-citable
 
+> **Lineage: ungated detector — do not reuse these figures.** The 5,252 / 598 / 417 / 694 figures in this note came from the
+> historical M&A event file. The detector that built it graded Form D business combinations of
+> any match tier as M&A "high", and the Form D name match scored a token subset as 1.0 (see
+> [`form-d-name-gated-v3.md`](../data/form-d-name-gated-v3.md)). The inputs are no longer
+> available, so the figures cannot be reproduced. Read them as historical only.
+
 **Test case:** [NASA, Air Force, and DOE commercialization outcomes](nasa-air-force-doe-commercialization-outcomes.md)
 
 ## Purpose

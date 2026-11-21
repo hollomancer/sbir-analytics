@@ -23,6 +23,7 @@ from pathlib import Path
 from typing import Any
 
 from sbir_etl.enrichers.sec_edgar.form_d_scoring import (
+    FORM_D_TIER_RULE_NAME_GATED_V3,
     FORM_D_TIER_RULE_VERSION,
     FORM_D_TIER_RULE_VERSIONS,
     assign_form_d_tier,
@@ -62,6 +63,16 @@ def rescore_record(
     confidence = record.get("match_confidence")
     if not isinstance(confidence, dict):
         raise FormDRescoreError(f"line {line_number}: match_confidence must be an object")
+    if (
+        confidence.get("rule_version") == FORM_D_TIER_RULE_NAME_GATED_V3
+        and rule_version != FORM_D_TIER_RULE_NAME_GATED_V3
+    ):
+        # v3 stores a 0/1 person agreement and a v3 composite; earlier rules expect a fuzzy
+        # person score, so relabeling without recomputing would mix scales.
+        raise FormDRescoreError(
+            f"line {line_number}: a {FORM_D_TIER_RULE_NAME_GATED_V3} record cannot be "
+            f"rescored to {rule_version}; rebuild it with fetch_form_d_details.py"
+        )
 
     migrated = copy.deepcopy(record)
     migrated_confidence = migrated["match_confidence"]
@@ -102,6 +113,12 @@ def rescore_jsonl(
         supported = ", ".join(sorted(FORM_D_TIER_RULE_VERSIONS))
         raise FormDRescoreError(
             f"unsupported Form D tier rule {rule_version!r}; expected one of {supported}"
+        )
+    if rule_version == FORM_D_TIER_RULE_NAME_GATED_V3:
+        # Stored records lack the name match type and the raw PI names that v3 needs.
+        raise FormDRescoreError(
+            f"{rule_version} cannot be migrated offline; rebuild with fetch_form_d_index.py "
+            "and fetch_form_d_details.py --rule-version name-gated-v3"
         )
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -187,7 +204,7 @@ def main() -> int:
     )
     parser.add_argument(
         "--rule-version",
-        choices=sorted(FORM_D_TIER_RULE_VERSIONS),
+        choices=sorted(FORM_D_TIER_RULE_VERSIONS - {FORM_D_TIER_RULE_NAME_GATED_V3}),
         default=FORM_D_TIER_RULE_VERSION,
     )
     args = parser.parse_args()
