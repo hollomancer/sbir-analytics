@@ -8,10 +8,9 @@ pipeline only runs when there is fresh input to process.
 Each sensor defaults to STOPPED for the same reason the download schedules do:
 the runbook requires a successful manual run on the host before automation is
 enabled. Enable one with
-``SBIR_ETL__DAGSTER__SENSORS__<NAME>_ENABLED=true``.
+``SBIR_ETL__DAGSTER__SENSORS__<NAME>_ENABLED=true``. A value that is not a
+recognized boolean word raises ``ValueError`` when the definitions load.
 """
-
-import os
 
 from dagster import (
     DagsterRunStatus,
@@ -21,6 +20,8 @@ from dagster import (
     run_status_sensor,
 )
 
+from sbir_etl.config.loader import env_bool
+
 from ..jobs.source_downloads import (
     sbir_awards_download_job,
     usaspending_download_job,
@@ -29,9 +30,12 @@ from ..jobs.source_downloads import (
 
 
 def _sensor_status(name: str) -> DefaultSensorStatus:
-    """Resolve a sensor's default status from an environment toggle."""
-    raw = os.getenv(f"SBIR_ETL__DAGSTER__SENSORS__{name.upper()}_ENABLED", "false")
-    enabled = raw.strip().lower() in ("true", "1", "yes", "on")
+    """Resolve a sensor's default status from an environment toggle.
+
+    Unset or blank means STOPPED. A value that is not a boolean word raises
+    ``ValueError`` so a typo such as ``"ture"`` fails loudly.
+    """
+    enabled = env_bool(f"SBIR_ETL__DAGSTER__SENSORS__{name.upper()}_ENABLED", False)
     return DefaultSensorStatus.RUNNING if enabled else DefaultSensorStatus.STOPPED
 
 
