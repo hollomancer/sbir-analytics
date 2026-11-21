@@ -17,6 +17,7 @@ import io
 from pathlib import Path
 
 import pytest
+from loguru import logger
 
 from sbir_etl.extractors.source_downloads import uspto
 
@@ -192,18 +193,22 @@ def test_stream_download_deletes_an_html_body_served_as_binary(tmp_path):
     assert not dest.exists()
 
 
-def test_stream_download_keeps_a_non_zip_that_is_not_html(tmp_path, capsys):
+def test_stream_download_keeps_a_non_zip_that_is_not_html(tmp_path):
     """An unexpected magic number warns but is not treated as an error."""
     session = _Session(
         _Response(body=b"\x1f\x8bgzip data", headers={"content-type": "application/gzip"})
     )
     dest = tmp_path / "out.gz"
-
-    result = uspto.stream_download("https://data.uspto.gov/f.gz", dest, session)
+    warnings: list[str] = []
+    sink_id = logger.add(warnings.append, level="WARNING", format="{message}")
+    try:
+        result = uspto.stream_download("https://data.uspto.gov/f.gz", dest, session)
+    finally:
+        logger.remove(sink_id)
 
     assert dest.exists()
     assert result["size"] == len(b"\x1f\x8bgzip data")
-    assert "does not appear to be a ZIP" in capsys.readouterr().out
+    assert any("does not appear to be a ZIP" in message for message in warnings)
 
 
 # --------------------------------------------------------------------------

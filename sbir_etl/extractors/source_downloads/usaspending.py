@@ -25,6 +25,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 import requests
+from loguru import logger
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 
@@ -66,7 +67,7 @@ def resolve_source_url(
             base=USASPENDING_DB_BASE_URL, date=date_str
         )
 
-    print("No date specified - searching for latest available file...")
+    logger.info("No date specified - searching for latest available file...")
     latest_file = find_latest_available_file(database_type=database_type)
     if not latest_file:
         raise FileNotFoundError(
@@ -87,10 +88,10 @@ def load_local_checkpoint(checkpoint_path: Path) -> dict | None:
         return None
     try:
         data = json.loads(checkpoint_path.read_text())
-        print(f"Loaded checkpoint from {checkpoint_path}")
+        logger.info(f"Loaded checkpoint from {checkpoint_path}")
         return data
     except (OSError, json.JSONDecodeError) as e:
-        print(f"Warning: Failed to load checkpoint {checkpoint_path}: {e}")
+        logger.warning(f"Failed to load checkpoint {checkpoint_path}: {e}")
         return None
 
 
@@ -111,7 +112,7 @@ def save_local_checkpoint(
             )
         )
     except OSError as e:
-        print(f"Warning: Failed to save checkpoint {checkpoint_path}: {e}")
+        logger.warning(f"Failed to save checkpoint {checkpoint_path}: {e}")
 
 
 def clear_local_checkpoint(checkpoint_path: Path) -> None:
@@ -119,7 +120,7 @@ def clear_local_checkpoint(checkpoint_path: Path) -> None:
     try:
         checkpoint_path.unlink(missing_ok=True)
     except OSError as e:
-        print(f"Warning: Failed to clear checkpoint {checkpoint_path}: {e}")
+        logger.warning(f"Failed to clear checkpoint {checkpoint_path}: {e}")
 
 
 def check_free_space(dest_dir: Path, required_bytes: int, multiplier: float = 1.5) -> None:
@@ -138,7 +139,9 @@ def check_free_space(dest_dir: Path, required_bytes: int, multiplier: float = 1.
             f"{usage.free / 1024**3:.1f} GB free, need ~{needed / 1024**3:.1f} GB "
             f"({required_bytes / 1024**3:.1f} GB dump x {multiplier})"
         )
-    print(f"Disk space OK: {usage.free / 1024**3:.1f} GB free, need ~{needed / 1024**3:.1f} GB")
+    logger.info(
+        f"Disk space OK: {usage.free / 1024**3:.1f} GB free, need ~{needed / 1024**3:.1f} GB"
+    )
 
 
 def download_local(
@@ -174,7 +177,7 @@ def download_local(
 
     if dest_path.is_file() and not force_refresh:
         if total_bytes and dest_path.stat().st_size == total_bytes:
-            print(f"Already downloaded: {dest_path} ({total_bytes / 1024**3:.1f} GB)")
+            logger.info(f"Already downloaded: {dest_path} ({total_bytes / 1024**3:.1f} GB)")
             clear_local_checkpoint(checkpoint_path)
             return {
                 "status": "skipped",
@@ -192,7 +195,7 @@ def download_local(
     checkpoint = load_local_checkpoint(checkpoint_path)
     if checkpoint and checkpoint.get("source_url") != source_url:
         # Checkpoint belongs to a different dump; start over rather than splice.
-        print("Checkpoint is for a different source URL - restarting download")
+        logger.info("Checkpoint is for a different source URL - restarting download")
         part_path.unlink(missing_ok=True)
         resume_from = 0
 
@@ -201,7 +204,7 @@ def download_local(
     headers = {}
     if resume_from:
         headers["Range"] = f"bytes={resume_from}-"
-        print(f"Resuming from byte {resume_from:,} ({resume_from / 1024**3:.1f} GB)")
+        logger.info(f"Resuming from byte {resume_from:,} ({resume_from / 1024**3:.1f} GB)")
 
     session = requests.Session()
     session.mount(
@@ -211,8 +214,7 @@ def download_local(
         ),
     )
 
-    print(f"Downloading {source_url}")
-    print(f"   -> {dest_path}")
+    logger.info(f"Downloading {source_url} -> {dest_path}")
     start = time.time()
     downloaded = resume_from
 
@@ -220,7 +222,7 @@ def download_local(
         response.raise_for_status()
         # A server ignoring Range returns 200 with the whole body; restart cleanly.
         if resume_from and response.status_code == 200:
-            print("Server ignored Range request - restarting from byte 0")
+            logger.info("Server ignored Range request - restarting from byte 0")
             part_path.unlink(missing_ok=True)
             resume_from = downloaded = 0
 
@@ -234,12 +236,9 @@ def download_local(
                 save_local_checkpoint(checkpoint_path, downloaded, source_url, total_bytes)
                 if total_bytes:
                     pct = downloaded / total_bytes * 100
-                    print(
-                        f"  {pct:.1f}% ({downloaded / 1024**3:.2f} / "
-                        f"{total_bytes / 1024**3:.2f} GB)",
-                        end="\r",
+                    logger.debug(
+                        f"{pct:.1f}% ({downloaded / 1024**3:.2f} / {total_bytes / 1024**3:.2f} GB)"
                     )
-    print()
 
     actual = part_path.stat().st_size
     if total_bytes and actual != total_bytes:
@@ -252,7 +251,7 @@ def download_local(
     part_path.replace(dest_path)
     clear_local_checkpoint(checkpoint_path)
     elapsed = time.time() - start
-    print(f"Downloaded {actual / 1024**3:.2f} GB in {elapsed / 60:.1f} min")
+    logger.info(f"Downloaded {actual / 1024**3:.2f} GB in {elapsed / 60:.1f} min")
 
     return {
         "status": "success",
@@ -308,10 +307,7 @@ def main():
         )
         sys.exit(0 if result.get("status") in ["success", "skipped"] else 1)
     except Exception as e:
-        print(f"Error: {e}", file=sys.stderr)
-        import traceback
-
-        traceback.print_exc()
+        logger.exception(f"Error: {e}")
         sys.exit(1)
 
 

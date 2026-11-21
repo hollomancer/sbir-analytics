@@ -22,6 +22,8 @@ import tempfile
 from pathlib import Path
 from typing import TypedDict
 
+from loguru import logger
+
 EPISTEMIC_TIER = "pipelines"
 
 
@@ -69,16 +71,16 @@ async def download_file(page, url: str, output_path: Path, timeout_minutes: int 
     Returns:
         dict with download info (path, size, sha256)
     """
-    print(f"📥 Starting download: {url}")
+    logger.info(f"Starting download: {url}")
 
     async with page.expect_download(timeout=timeout_minutes * 60 * 1000) as download_info:
         await page.evaluate(f'() => {{ window.location.href = "{url}"; }}')
 
     download = await download_info.value
-    print(f"   Signed URL: {download.url[:80]}...")
+    logger.info(f"Signed URL: {download.url[:80]}...")
 
     # Wait for download to complete (important for large files)
-    print(f"   Downloading... (timeout: {timeout_minutes} min)")
+    logger.info(f"Downloading... (timeout: {timeout_minutes} min)")
 
     # Get the download path - this waits for completion
     temp_path = await download.path()
@@ -99,9 +101,9 @@ async def download_file(page, url: str, output_path: Path, timeout_minutes: int 
     size = output_path.stat().st_size
     sha256 = hasher.hexdigest()
 
-    print(f"✅ Downloaded: {output_path.name}")
-    print(f"   Size: {size / 1024 / 1024:.1f} MB")
-    print(f"   SHA256: {sha256[:16]}...")
+    logger.info(f"Downloaded: {output_path.name}")
+    logger.info(f"Size: {size / 1024 / 1024:.1f} MB")
+    logger.info(f"SHA256: {sha256[:16]}...")
 
     return {
         "path": str(output_path),
@@ -142,17 +144,17 @@ async def download_assignments(
         page = await context.new_page()
 
         # Load the main page to establish session
-        print("🌐 Establishing session with USPTO Open Data Portal...")
+        logger.info("Establishing session with USPTO Open Data Portal...")
         await page.goto(
             "https://data.uspto.gov/ui/datasets/products/ECORSEXC",
             timeout=60000,
         )
         await asyncio.sleep(3)
-        print("✅ Session established\n")
+        logger.info("Session established")
 
         for file_key in files:
             if file_key not in USPTO_ASSIGNMENT_FILES:
-                print(f"⚠️  Unknown file: {file_key}, skipping")
+                logger.warning(f"Unknown file: {file_key}, skipping")
                 continue
 
             file_info = USPTO_ASSIGNMENT_FILES[file_key]
@@ -160,9 +162,7 @@ async def download_assignments(
             size_mb = int(file_info["size_mb"])
             output_path = output_dir / f"{file_key}.csv.zip"
 
-            print(f"\n{'=' * 60}")
-            print(f"Downloading: {file_key} (~{size_mb} MB)")
-            print(f"{'=' * 60}")
+            logger.info(f"Downloading: {file_key} (~{size_mb} MB)")
 
             try:
                 result = await download_file(
@@ -173,7 +173,7 @@ async def download_assignments(
                 )
                 results.append({"file": file_key, **result})
             except Exception as e:
-                print(f"❌ Failed to download {file_key}: {e}")
+                logger.error(f"Failed to download {file_key}: {e}")
                 results.append({"file": file_key, "error": str(e)})
 
         await browser.close()
@@ -207,10 +207,9 @@ def main():
 
     args = parser.parse_args()
 
-    print("🚀 USPTO Browser Download")
-    print(f"   Dataset: {args.dataset}")
-    print(f"   Output: {args.output_dir}")
-    print()
+    logger.info("USPTO Browser Download")
+    logger.info(f"Dataset: {args.dataset}")
+    logger.info(f"Output: {args.output_dir}")
 
     try:
         results = asyncio.run(
@@ -220,9 +219,7 @@ def main():
             )
         )
 
-        print("\n" + "=" * 60)
-        print("📊 Download Summary")
-        print("=" * 60)
+        logger.info("Download Summary")
 
         success = 0
         failed = 0
@@ -230,25 +227,21 @@ def main():
 
         for r in results:
             if "error" in r:
-                print(f"❌ {r['file']}: {r['error']}")
+                logger.error(f"{r['file']}: {r['error']}")
                 failed += 1
             else:
-                print(f"✅ {r['file']}: {r['size'] / 1024 / 1024:.1f} MB")
+                logger.info(f"{r['file']}: {r['size'] / 1024 / 1024:.1f} MB")
                 success += 1
                 total_size += r["size"]
 
-        print()
-        print(f"Success: {success}/{len(results)}")
-        print(f"Total size: {total_size / 1024 / 1024 / 1024:.2f} GB")
+        logger.info(f"Success: {success}/{len(results)}")
+        logger.info(f"Total size: {total_size / 1024 / 1024 / 1024:.2f} GB")
 
         if failed > 0:
             sys.exit(1)
 
     except Exception as e:
-        print(f"\n❌ Error: {e}")
-        import traceback
-
-        traceback.print_exc()
+        logger.exception(f"Error: {e}")
         sys.exit(1)
 
 
