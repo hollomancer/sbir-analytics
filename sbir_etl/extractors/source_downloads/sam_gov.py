@@ -57,6 +57,7 @@ import pandas as pd
 
 # Standalone script — uses requests (installed ad-hoc in CI) rather than httpx
 import requests
+from loguru import logger
 
 # Force unbuffered output so CI logs stream in real time.
 print = partial(print, flush=True)  # noqa: A001
@@ -291,8 +292,8 @@ def _public_extract_download_url(item: dict) -> str:
 def _download_bulk_extract() -> pd.DataFrame | None:
     """Download the latest monthly public entity ZIP without an API key."""
 
-    print("\n📦 Strategy 1: Bulk extract download...")
-    print("   Reading the public SAM.gov Data Services catalog...")
+    logger.info("Strategy 1: Bulk extract download...")
+    logger.info("Reading the public SAM.gov Data Services catalog...")
 
     catalog_response = requests.get(
         PUBLIC_FILE_CATALOG_URL,
@@ -303,7 +304,7 @@ def _download_bulk_extract() -> pd.DataFrame | None:
         timeout=REQUEST_TIMEOUT,
     )
     if not catalog_response.ok:
-        print(f"⚠️  Public catalog request failed: HTTP {catalog_response.status_code}")
+        logger.warning(f"Public catalog request failed: HTTP {catalog_response.status_code}")
         return None
 
     try:
@@ -311,24 +312,24 @@ def _download_bulk_extract() -> pd.DataFrame | None:
         item = _latest_public_extract(items)
         download_url = _public_extract_download_url(item)
     except (KeyError, TypeError, ValueError) as exc:
-        print(f"⚠️  Public catalog response is unusable: {exc}")
+        logger.warning(f"Public catalog response is unusable: {exc}")
         return None
 
-    print(f"   Selected: {item['displayKey']}")
+    logger.info(f"Selected: {item['displayKey']}")
     resp = requests.get(download_url, timeout=DOWNLOAD_TIMEOUT, stream=True)
     if not resp.ok:
-        print(f"⚠️  Public bulk download failed: HTTP {resp.status_code}")
+        logger.warning(f"Public bulk download failed: HTTP {resp.status_code}")
         return None
 
     content_type = resp.headers.get("content-type", "").lower()
     content_length = int(resp.headers.get("content-length", 0))
-    print(
+    logger.info(
         (
-            f"   Downloading... (content-type: {content_type}, "
+            f"Downloading... (content-type: {content_type}, "
             f"size: {content_length / 1024 / 1024:.0f} MB)"
         )
         if content_length
-        else f"   Downloading... (content-type: {content_type}, size: unknown)"
+        else f"Downloading... (content-type: {content_type}, size: unknown)"
     )
 
     # A seekable temporary file avoids holding both the compressed ZIP and the
@@ -341,19 +342,18 @@ def _download_bulk_extract() -> pd.DataFrame | None:
             digest.update(chunk)
             downloaded += len(chunk)
             if content_length:
-                print(
-                    f"   {downloaded / 1024 / 1024:.0f} / {content_length / 1024 / 1024:.0f} MB",
-                    end="\r",
+                logger.debug(
+                    f"{downloaded / 1024 / 1024:.0f} / {content_length / 1024 / 1024:.0f} MB"
                 )
             elif downloaded % (20 * 1024 * 1024) == 0:
-                print(f"   {downloaded / 1024 / 1024:.0f} MB...", end="\r")
-        print(f"\n   Downloaded {downloaded / 1024 / 1024:.1f} MB total")
+                logger.debug(f"{downloaded / 1024 / 1024:.0f} MB...")
+        logger.info(f"Downloaded {downloaded / 1024 / 1024:.1f} MB total")
         if content_length and downloaded != content_length:
-            print("⚠️  Public bulk download length does not match Content-Length")
+            logger.warning("Public bulk download length does not match Content-Length")
             return None
         buffer.seek(0)
         if buffer.read(2) != b"PK":
-            print("⚠️  Public bulk download is not a ZIP archive")
+            logger.warning("Public bulk download is not a ZIP archive")
             return None
         buffer.seek(0)
         frame = _parse_downloaded_file(buffer)
@@ -376,7 +376,7 @@ def _download_bulk_extract() -> pd.DataFrame | None:
 
 def _download_entity_extract(api_key: str) -> pd.DataFrame | None:
     """Request a CSV extract via the entity API and poll for completion."""
-    print("\n📦 Strategy 2: Entity API extract mode (format=csv)...")
+    logger.info("Strategy 2: Entity API extract mode (format=csv)...")
 
     resp = requests.get(
         ENTITY_API_URL,
@@ -391,8 +391,8 @@ def _download_entity_extract(api_key: str) -> pd.DataFrame | None:
     _check_api_key_response(resp, "entity API extract (format=csv)")
 
     if not resp.ok:
-        print(f"⚠️  Extract request failed: HTTP {resp.status_code}")
-        print(f"   Body: {resp.text[:300]}")
+        logger.warning(f"Extract request failed: HTTP {resp.status_code}")
+        logger.warning(f"Body: {resp.text[:300]}")
         return None
 
     # Find the download URL with REPLACE_WITH_API_KEY token
@@ -424,16 +424,16 @@ def _download_entity_extract(api_key: str) -> pd.DataFrame | None:
             download_url = urls[0].replace("REPLACE_WITH_API_KEY", api_key)
 
     if not download_url:
-        print("⚠️  No download URL found in response")
-        print(f"   Content-Type: {resp.headers.get('content-type', 'unknown')}")
-        print(f"   Preview: {text[:300]}")
+        logger.warning("No download URL found in response")
+        logger.warning(f"Content-Type: {resp.headers.get('content-type', 'unknown')}")
+        logger.warning(f"Preview: {text[:300]}")
         return None
 
-    print("   Got download URL, polling for file readiness...")
+    logger.info("Got download URL, polling for file readiness...")
 
     # Poll for file
     for attempt in range(1, EXTRACT_POLL_MAX + 1):
-        print(f"   Poll {attempt}/{EXTRACT_POLL_MAX}...")
+        logger.info(f"Poll {attempt}/{EXTRACT_POLL_MAX}...")
         dl_resp = requests.get(download_url, timeout=DOWNLOAD_TIMEOUT, stream=True)
         _check_api_key_response(dl_resp, f"extract download poll {attempt}")
 
@@ -458,14 +458,14 @@ def _download_entity_extract(api_key: str) -> pd.DataFrame | None:
                 pass
 
         # Got a real file
-        print("   File ready!")
+        logger.info("File ready!")
         buf = io.BytesIO()
         for chunk in dl_resp.iter_content(chunk_size=4 * 1024 * 1024):
             buf.write(chunk)
         buf.seek(0)
         return _parse_downloaded_file(buf)
 
-    print(f"⚠️  Extract not ready after {EXTRACT_POLL_MAX} polls")
+    logger.warning(f"Extract not ready after {EXTRACT_POLL_MAX} polls")
     return None
 
 
@@ -477,7 +477,7 @@ def _download_entity_extract(api_key: str) -> pd.DataFrame | None:
 def _download_paginated(api_key: str) -> pd.DataFrame:
     """Page through active entities. 10/page, capped at 10k records."""
     max_pages = MAX_PAGINATED_RECORDS // PAGE_SIZE
-    print(f"\n📥 Strategy 3: Paginated API ({PAGE_SIZE}/page, max {MAX_PAGINATED_RECORDS:,})...")
+    logger.info(f"Strategy 3: Paginated API ({PAGE_SIZE}/page, max {MAX_PAGINATED_RECORDS:,})...")
 
     rows: list[dict] = []
     page = 0
@@ -503,10 +503,10 @@ def _download_paginated(api_key: str) -> pd.DataFrame:
         if total_records is None:
             total_records = data.get("totalRecords", "?")
             if isinstance(total_records, int):
-                print(f"   Total active entities: {total_records:,}")
+                logger.info(f"Total active entities: {total_records:,}")
                 if total_records > MAX_PAGINATED_RECORDS:
-                    print(
-                        f"   ⚠️  Can only fetch {MAX_PAGINATED_RECORDS:,} of "
+                    logger.warning(
+                        f"Can only fetch {MAX_PAGINATED_RECORDS:,} of "
                         f"{total_records:,} via pagination"
                     )
 
@@ -543,9 +543,9 @@ def _download_paginated(api_key: str) -> pd.DataFrame:
 
         page += 1
         if page % 50 == 0:
-            print(f"   {len(rows):,} entities ({page} pages)...", end="\r")
+            logger.info(f"{len(rows):,} entities ({page} pages)...")
 
-    print(f"\n   {len(rows):,} entities fetched")
+    logger.info(f"{len(rows):,} entities fetched")
     return pd.DataFrame(rows, columns=REQUIRED_COLUMNS)
 
 
@@ -562,7 +562,7 @@ def _parse_downloaded_file(buf: BinaryIO) -> pd.DataFrame | None:
     if header[:2] == b"PK":
         return _parse_zip(buf)
     else:
-        print("   File appears to be plain CSV/DAT")
+        logger.info("File appears to be plain CSV/DAT")
         return _parse_csv(buf)
 
 
@@ -575,30 +575,30 @@ def _parse_zip(buf: BinaryIO, *, depth: int = 0) -> pd.DataFrame | None:
     try:
         with zipfile.ZipFile(buf) as zf:
             names = zf.namelist()
-            print(f"   ZIP contains {len(names)} file(s): {names[:5]}")
+            logger.info(f"ZIP contains {len(names)} file(s): {names[:5]}")
 
             # Prefer .dat or .csv files
             data_files = [n for n in names if n.lower().endswith((".csv", ".dat"))]
             if not data_files:
                 nested = [n for n in names if n.lower().endswith(".zip")]
                 if len(nested) == 1 and depth < MAX_NESTED_ZIP_DEPTH:
-                    print(f"   Opening nested ZIP {nested[0]}")
+                    logger.info(f"Opening nested ZIP {nested[0]}")
                     # Spool to disk: the inner archive is as large as the outer one.
                     with zf.open(nested[0]) as inner, TemporaryFile() as spool:
                         shutil.copyfileobj(inner, spool, length=4 * 1024 * 1024)
                         spool.seek(0)
                         return _parse_zip(spool, depth=depth + 1)
-                print(f"⚠️  No CSV/DAT files in ZIP: {names[:10]}")
+                logger.warning(f"No CSV/DAT files in ZIP: {names[:10]}")
                 return None
 
             target = data_files[0]
             info = zf.getinfo(target)
-            print(f"   Parsing {target} ({info.file_size / 1024 / 1024:.0f} MB uncompressed)")
+            logger.info(f"Parsing {target} ({info.file_size / 1024 / 1024:.0f} MB uncompressed)")
             with zf.open(target) as fh:
                 return _parse_csv(fh)
 
     except zipfile.BadZipFile as exc:
-        print(f"⚠️  Bad ZIP file: {exc}")
+        logger.warning(f"Bad ZIP file: {exc}")
         return None
 
 
@@ -611,7 +611,7 @@ def _parse_csv(fh) -> pd.DataFrame:
         return _parse_public_v2(fh)
 
     delimiter = "|" if sample.count(b"|") > sample.count(b",") else ","
-    print(f"   Detected delimiter: {'pipe' if delimiter == '|' else 'comma'}")
+    logger.info(f"Detected delimiter: {'pipe' if delimiter == '|' else 'comma'}")
 
     chunks = []
     reader = pd.read_csv(
@@ -626,21 +626,20 @@ def _parse_csv(fh) -> pd.DataFrame:
         normalised = _normalise_chunk(chunk)
         chunks.append(normalised)
         if (i + 1) % 5 == 0:
-            print(f"   Parsed {(i + 1) * 100_000:,} rows...", end="\r")
+            logger.info(f"Parsed {(i + 1) * 100_000:,} rows...")
 
         # Log available columns on first chunk for debugging
         if i == 0:
-            print(f"   Source columns ({len(chunk.columns)}): {list(chunk.columns)[:15]}...")
+            logger.info(f"Source columns ({len(chunk.columns)}): {list(chunk.columns)[:15]}...")
             mapped = [c for c in normalised.columns if (normalised[c] != "").any()]
-            print(f"   Mapped non-empty: {mapped}")
+            logger.info(f"Mapped non-empty: {mapped}")
 
-    print()
     if not chunks:
-        print("⚠️  File was empty")
+        logger.warning("File was empty")
         return pd.DataFrame(columns=REQUIRED_COLUMNS)
 
     df = pd.concat(chunks, ignore_index=True)
-    print(f"   {len(df):,} rows loaded")
+    logger.info(f"{len(df):,} rows loaded")
     return df
 
 
@@ -657,7 +656,7 @@ def _parse_public_v2(fh) -> pd.DataFrame:
     chunks = []
     trailer_records: list[str] = []
 
-    print("   Detected headerless SAM Public V2 positional layout")
+    logger.info("Detected headerless SAM Public V2 positional layout")
     repair_cap = max(
         MIN_REPAIRED_PUBLIC_V2_CAP, int(expected_rows * REPAIRED_PUBLIC_V2_CAP_FRACTION)
     )
@@ -691,12 +690,12 @@ def _parse_public_v2(fh) -> pd.DataFrame:
                 raise ValueError("SAM Public V2 extract contains a malformed positional record")
             chunks.append(chunk.drop(columns="end_of_record")[REQUIRED_COLUMNS].fillna(""))
             if (i + 1) % 5 == 0:
-                print(f"   Parsed {(i + 1) * PUBLIC_V2_CHUNK_ROWS:,} rows...", end="\r")
+                logger.info(f"Parsed {(i + 1) * PUBLIC_V2_CHUNK_ROWS:,} rows...")
     except pd.errors.ParserError as exc:
         raise ValueError("SAM Public V2 extract contains a malformed positional record") from exc
     if repaired_ueis:
-        print(
-            f"\n   Kept {len(repaired_ueis):,} records with an unescaped '|' in a text field; "
+        logger.info(
+            f"Kept {len(repaired_ueis):,} records with an unescaped '|' in a text field; "
             "their name, address, and NAICS fields are blank"
         )
 
@@ -714,7 +713,7 @@ def _parse_public_v2(fh) -> pd.DataFrame:
     frame.attrs["sam_expected_row_count"] = expected_rows
     frame.attrs["sam_repaired_unescaped_delimiter_records"] = len(repaired_ueis)
     frame.attrs["sam_repaired_unescaped_delimiter_ueis"] = repaired_ueis
-    print(f"\n   {len(frame):,} validated Public V2 entity rows loaded")
+    logger.info(f"{len(frame):,} validated Public V2 entity rows loaded")
     return frame
 
 
@@ -840,7 +839,7 @@ def _write_local(df: pd.DataFrame, dest: Path, *, name: str = PARQUET_NAME) -> P
     """Write DataFrame to parquet under ``dest``, with a metadata sidecar."""
     dest.mkdir(parents=True, exist_ok=True)
     path = dest / name
-    print(f"\n💾 Writing {len(df):,} rows to {path}")
+    logger.info(f"Writing {len(df):,} rows to {path}")
     df.to_parquet(path, index=False, engine="pyarrow")
 
     metadata = {
@@ -862,7 +861,7 @@ def _write_local(df: pd.DataFrame, dest: Path, *, name: str = PARQUET_NAME) -> P
     # not replace the canonical dataset's row count and provenance.
     (dest / f"{path.stem}.meta.json").write_text(json.dumps(metadata, indent=2))
 
-    print(f"✅ Wrote: {path.stat().st_size / 1024 / 1024:.1f} MB, {len(df):,} entities")
+    logger.info(f"Wrote: {path.stat().st_size / 1024 / 1024:.1f} MB, {len(df):,} entities")
     return path
 
 
@@ -900,13 +899,10 @@ def main() -> None:
 
     api_key = os.environ.get("SAM_GOV_API_KEY", "")
     if args.strategy in (2, 3) and not api_key:
-        print(
-            f"❌ Strategy {args.strategy} requires SAM_GOV_API_KEY.",
-            file=sys.stderr,
-        )
+        logger.error(f"Strategy {args.strategy} requires SAM_GOV_API_KEY.")
         sys.exit(2)
     if api_key and not api_key.startswith("SAM-"):
-        print("⚠️  SAM_GOV_API_KEY doesn't look like a SAM.gov key.", file=sys.stderr)
+        logger.warning("SAM_GOV_API_KEY doesn't look like a SAM.gov key.")
 
     try:
         df = None
@@ -919,38 +915,38 @@ def main() -> None:
                 df = _download_bulk_extract()
             elif strat == 2:
                 if not api_key:
-                    print("   Strategy 2 requires SAM_GOV_API_KEY; skipping")
+                    logger.info("Strategy 2 requires SAM_GOV_API_KEY; skipping")
                     continue
                 df = _download_entity_extract(api_key)
             elif strat == 3:
                 if not api_key:
-                    print("   Strategy 3 requires SAM_GOV_API_KEY; skipping")
+                    logger.info("Strategy 3 requires SAM_GOV_API_KEY; skipping")
                     continue
                 df = _download_paginated(api_key)
 
             if df is not None and not df.empty:
                 completed_strategy = strat
                 break
-            print(f"   Strategy {strat} did not produce data, trying next...")
+            logger.info(f"Strategy {strat} did not produce data, trying next...")
 
         if df is None or df.empty:
-            print("❌ No entity data retrieved from any strategy", file=sys.stderr)
+            logger.error("No entity data retrieved from any strategy")
             sys.exit(1)
 
-        print(f"\n📊 Final: {len(df):,} entities, {len(df.columns)} columns")
+        logger.info(f"Final: {len(df):,} entities, {len(df.columns)} columns")
         non_empty = {c: int((df[c] != "").sum()) for c in df.columns}
-        print(f"   Non-empty counts: {non_empty}")
+        logger.info(f"Non-empty counts: {non_empty}")
 
         if args.dry_run:
-            print("\n🔵 Dry run — skipping output")
+            logger.info("Dry run — skipping output")
         else:
             # Authenticated extract and paginated fallbacks are partial by
             # contract, regardless of row count. Only strategy 1 can produce
             # the canonical monthly snapshot.
             partial_result = _is_partial_result(completed_strategy)
             if partial_result:
-                print(
-                    f"\n⚠️  Strategy {completed_strategy} is a capped fallback. "
+                logger.warning(
+                    f"Strategy {completed_strategy} is a capped fallback. "
                     "Writing as a partial dataset regardless of row count."
                 )
 
@@ -961,21 +957,14 @@ def main() -> None:
             )
 
     except APIKeyError as exc:
-        print(f"\n{'=' * 60}", file=sys.stderr)
-        print("❌ SAM.GOV API KEY PROBLEM", file=sys.stderr)
-        print(f"{'=' * 60}", file=sys.stderr)
-        print(str(exc), file=sys.stderr)
-        print(f"{'=' * 60}", file=sys.stderr)
+        logger.error(f"SAM.GOV API KEY PROBLEM\n{exc}")
         # Distinguish rate limits (exit 3) from expired/invalid keys (exit 2)
         if "RATE LIMIT" in str(exc):
             sys.exit(3)
         sys.exit(2)
 
     except Exception as exc:
-        print(f"\n❌ Error: {exc}", file=sys.stderr)
-        import traceback
-
-        traceback.print_exc()
+        logger.exception(f"Error: {exc}")
         sys.exit(1)
 
 
