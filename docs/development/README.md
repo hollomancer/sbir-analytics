@@ -21,6 +21,7 @@ be explained in one place so the instructions do not drift apart.
 ## Engineering conventions
 
 - [Exception Handling](exception-handling.md) - Custom exception hierarchy and patterns
+- [Silent-failure census](silent-failure-census.md) - Snapshot of broad `except` blocks by class and directory
 - [Logging Standards](logging-standards.md) - When to use logger vs console.print
 - [Pre-commit and CI consistency](pre-commit-ci-consistency.md) - What runs locally and in CI
 

@@ -321,10 +321,16 @@ _build_sbir_gov_index()
   │     SbirGovClient.query_all_awards(agency=...) for each target agency
   │     Paginated, with tenacity retry on transport errors
   │
-  └── Attempt 2: Bulk download file (API unavailable or returned 0 results)
+  └── Attempt 2: Bulk download file (API unavailable, any agency query
+        failed, or the API returned 0 results)
         Checks: s3://<bucket>/raw/sbir_gov/awards.json
         Then:   data/raw/sbir_gov/awards.json
 ```
+
+A failed query for any one agency discards the whole API pull. A partial
+index would undercount confirmations, so it is never used. If no bulk file
+exists either, the index is `None` and the asset metadata shows
+`sbir_gov_status: unavailable`.
 
 Both paths produce a `SbirGovLookupIndex` — a multi-key index supporting
 lookup by contract number, UEI, or DUNS.

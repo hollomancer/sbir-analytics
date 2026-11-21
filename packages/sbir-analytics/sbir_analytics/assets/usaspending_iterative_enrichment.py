@@ -22,8 +22,12 @@ from pydantic import Field
 from sbir_etl.config.loader import get_config
 from sbir_etl.enrichers.source_adapter import SourceAdapter, SourceRefreshRunner
 from sbir_etl.enrichers.usaspending import USAspendingSourceAdapter
-from sbir_etl.enrichers.usaspending.requests import has_identifier, stale_awards_to_requests
-from sbir_etl.exceptions import ExtractionError
+from sbir_etl.enrichers.usaspending.requests import (
+    enriched_awards_path,
+    has_identifier,
+    load_enriched_awards,
+    stale_awards_to_requests,
+)
 from sbir_etl.utils.enrichment.checkpoints import CheckpointStore
 from sbir_etl.utils.enrichment.freshness import FreshnessStore
 from sbir_etl.utils.enrichment.metrics import EnrichmentMetricsCollector
@@ -71,26 +75,15 @@ def usaspending_freshness_ledger(context: AssetExecutionContext) -> Output[pd.Da
 
 
 def _load_enriched_awards(context: AssetExecutionContext) -> pd.DataFrame | None:
-    """Load enriched SBIR awards written by sbir_usaspending_enrichment."""
-    from sbir_etl.enrichers.usaspending.requests import enriched_awards_path
+    """Load enriched SBIR awards written by sbir_usaspending_enrichment.
 
-    src = enriched_awards_path()
-    if not src.is_file():
-        context.log.info(f"No enriched awards at {src}")
+    Returns None only when the file is missing; an unreadable file raises.
+    """
+    df = load_enriched_awards()
+    if df is None:
+        context.log.info(f"No enriched awards at {enriched_awards_path()}")
         return None
-    try:
-        df = pd.read_parquet(src)
-    except Exception as e:
-        # The file exists, so an unreadable file is not "no enriched data".
-        # Returning None here would report zero stale awards and skip the refresh.
-        raise ExtractionError(
-            f"Failed to load enriched awards from {src}: {e}",
-            component="assets.usaspending_iterative_enrichment",
-            operation="load_enriched_awards",
-            details={"path": str(src)},
-            cause=e,
-        ) from e
-    context.log.info(f"Loaded {len(df)} enriched awards from {src}")
+    context.log.info(f"Loaded {len(df)} enriched awards")
     return df
 
 

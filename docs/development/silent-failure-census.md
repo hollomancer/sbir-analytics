@@ -1,6 +1,15 @@
 # Silent-failure census: `sbir_etl/` and `packages/`
 
-Tier: `pipelines` (audit of pipeline code). Taken against `origin/main` at `90b7c2953805`, before the fixes in this branch.
+**Type**: Reference
+**Last-Reviewed**: 2026-11-21
+**Status**: Snapshot
+
+This is a snapshot as of commit `90b7c295`. It is not kept current. Line numbers
+refer to that commit; later changes move them. The handler patterns it checks
+are described in [exception-handling.md](exception-handling.md).
+
+Tier: `pipelines` (audit of pipeline code). Taken before the fixes in PR #851, which
+changed the top-level asset files listed under "Fixed group".
 
 ## What was counted
 
@@ -127,7 +136,7 @@ Hand review of every broad (c)/(d) block in this group. "On review" means the ca
 | `usaspending_database_enrichment.py:83` | c -> a (fixed) | A failed per-agency SBIR.gov API query now aborts the API attempt, so the bulk file is tried and a partial index is never used. |
 | `usaspending_database_enrichment.py:93` | b (on review) | Left as is. Falls back to the bulk file; if that also fails, both callers record `sbir_gov_status: unavailable` in metadata. |
 | `usaspending_database_enrichment.py:106` | b (on review) | Left as is. Same outcome as line 93: `sbir_gov_status: unavailable` in metadata. |
-| `usaspending_database_enrichment.py:577` | c -> a (fixed) | A failed recipient query now raises ExtractionError instead of materializing an empty frame with `row_count: 0`. |
+| `usaspending_database_enrichment.py:577` | c -> a (fixed) | A failed recipient query now raises ExtractionError instead of materializing an empty frame with `row_count: 0`. The swallowed error hid that the query named columns that `recipient_lookup` does not have; the SQL now aliases the real columns. |
 | `usaspending_ingestion.py:70` | a (on review) | Left as is. `dump_success = False` always ends in ExtractionError further down. |
 | `usaspending_ingestion.py:177` | c -> b (fixed) | On a parquet failure the metadata now says `source: dump` (it said `parquet`) and carries `parquet_load_error`. |
 | `usaspending_iterative_enrichment.py:84` | c -> a (fixed) | An unreadable enriched-awards file now raises instead of being treated as 'no enriched data', which skipped the refresh. |

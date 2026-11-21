@@ -570,18 +570,20 @@ def sbir_company_usaspending_recipients(
         query = f"""
         SELECT DISTINCT
             recipient_hash,
-            recipient_name,
-            recipient_uei,
-            recipient_duns,
-            parent_recipient_hash,
-            parent_recipient_name,
+            legal_business_name AS recipient_name,
+            uei AS recipient_uei,
+            duns AS recipient_duns,
+            -- recipient_lookup (RECIPIENT_LOOKUP_COLUMNS) has no parent hash or
+            -- business-type description; keep the output columns as NULL.
+            CAST(NULL AS VARCHAR) AS parent_recipient_hash,
+            parent_legal_business_name AS parent_recipient_name,
             parent_uei,
             parent_duns,
             business_types_codes,
-            business_types_description
+            CAST(NULL AS VARCHAR) AS business_types_description
         FROM {physical_table}
-        WHERE recipient_uei IN ({uei_list})
-           OR recipient_duns IN ({",".join(f"'{v}'" for v in duns_values) if duns_values else "''"})
+        WHERE uei IN ({uei_list})
+           OR duns IN ({",".join(f"'{v}'" for v in duns_values) if duns_values else "''"})
         LIMIT 100000
         """
 

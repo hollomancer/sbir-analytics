@@ -19,7 +19,7 @@ from sbir_analytics.assets import sbir_ingestion
 from sbir_analytics.assets import usaspending_database_enrichment as db_enrichment
 from sbir_analytics.assets import usaspending_ingestion
 from sbir_analytics.assets import usaspending_iterative_enrichment as usa_iterative
-from sbir_etl.exceptions import ExtractionError
+from sbir_etl.exceptions import ExtractionError, ValidationError
 
 
 pytestmark = pytest.mark.fast
@@ -148,6 +148,56 @@ def test_recipient_query_failure_fails_the_asset(monkeypatch) -> None:
         db_enrichment.sbir_company_usaspending_recipients(build_asset_context(), awards)
 
 
+def test_recipient_query_matches_the_real_recipient_lookup_columns(monkeypatch) -> None:
+    import duckdb
+
+    from sbir_etl.extractors.usaspending import RECIPIENT_LOOKUP_COLUMNS
+
+    conn = duckdb.connect(":memory:")
+    columns_sql = ", ".join(f"{col} VARCHAR" for col in RECIPIENT_LOOKUP_COLUMNS)
+    conn.execute(f"CREATE TABLE recipient_lookup ({columns_sql})")
+    rows = [
+        {"recipient_hash": "h1", "legal_business_name": "Acme", "uei": "ABCDEFGHJKLM"},
+        {"recipient_hash": "h2", "legal_business_name": "Beta", "duns": "123456789"},
+        {"recipient_hash": "h3", "legal_business_name": "Other", "uei": "ZZZZZZZZZZZZ"},
+    ]
+    placeholders = ", ".join("?" for _ in RECIPIENT_LOOKUP_COLUMNS)
+    for row in rows:
+        values = [row.get(col) for col in RECIPIENT_LOOKUP_COLUMNS]
+        conn.execute(f"INSERT INTO recipient_lookup VALUES ({placeholders})", values)
+
+    class _RealSchemaExtractor:
+        def __init__(self, db_path):
+            del db_path
+
+        def import_postgres_dump(self, _dump, _table):
+            return True
+
+        def resolve_physical_table_name(self, table):
+            return table
+
+        def connect(self):
+            return conn
+
+    config = SimpleNamespace(duckdb=SimpleNamespace(database_path=":memory:"))
+    monkeypatch.setattr(db_enrichment, "get_config", lambda: config)
+    monkeypatch.setattr(
+        db_enrichment, "find_latest_usaspending_dump", lambda **_kw: Path("dump.zip")
+    )
+    monkeypatch.setattr(db_enrichment, "DuckDBUSAspendingExtractor", _RealSchemaExtractor)
+    awards = pd.DataFrame({"UEI": ["ABCDEFGHJKLM"], "Duns": ["123456789"]})
+
+    output: Any = db_enrichment.sbir_company_usaspending_recipients(build_asset_context(), awards)
+    df = output.value.sort_values("recipient_hash").reset_index(drop=True)
+
+    assert df["recipient_hash"].tolist() == ["h1", "h2"]
+    assert df["recipient_name"].tolist() == ["Acme", "Beta"]
+    assert df.loc[0, "recipient_uei"] == "ABCDEFGHJKLM"
+    assert df.loc[1, "recipient_duns"] == "123456789"
+    assert df["parent_recipient_hash"].isna().all()
+    assert df["business_types_description"].isna().all()
+
+
 # --- usaspending_iterative_enrichment ---------------------------------------------
 
 
@@ -159,7 +209,7 @@ def test_unreadable_enriched_awards_file_is_not_treated_as_absent(monkeypatch, t
     )
 
     # Before the fix this returned None and the asset reported "no_enriched_data".
-    with pytest.raises(ExtractionError, match="Failed to load enriched awards"):
+    with pytest.raises(ValidationError, match="could not be read"):
         usa_iterative._load_enriched_awards(build_asset_context())
 
 
