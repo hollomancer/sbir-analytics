@@ -30,7 +30,9 @@ version.
 - Four USAspending assets (`sbir_relevant_usaspending_transactions`,
   `sbir_grant_transactions`, `sbir_company_usaspending_recipients`,
   `stale_usaspending_awards`) now fail when a schema check, query, or read
-  fails. They used to succeed with empty or partial output (#851).
+  fails. They used to succeed with empty or partial output. Other assets now
+  record failures in metadata as `parquet_load_error`,
+  `processed_parquet_status`, and `metrics_emit_error` (#851).
 - The USAspending dump import raises when the table the view is built from
   fails to load. Failures in other tables are logged and listed in asset
   metadata as `dump_import_failed_tables` (#854).
@@ -41,7 +43,8 @@ version.
   `ensure_path_exists`, `validate_date_range`, `parse_date_safe`, and
   `write_ndjson` (#837). Removed the `VendorCrosswalk` class and its records
   (#840), `build_job_from_spec_with_executor`, and the module-level aliases in
-  `definitions.py` and `definitions_ml.py`; load `defs` or `bundle` (#842).
+  `definitions.py` and `definitions_ml.py`; `definitions.py` exposes `defs` and
+  `bundle`, and `definitions_ml.py` exposes only `defs` (#842).
 
 ### Added
 
@@ -76,32 +79,10 @@ version.
 - Source-download modules log through loguru instead of `print()`. CLI
   messages go to stderr; the `--json` output of `check_new_file.py` stays on
   stdout (#848).
-- One job builder with an optional executor replaces two (#842). One-line
-  hash and company-name wrappers now call the shared primitives (#838).
+- One job builder with an optional executor replaces two (#842). Removed
+  one-line hash and company-name wrappers; callers now call the shared
+  primitives directly (#838).
 - Archived the 2025 DuckDB CET trade-off analysis (#839).
-
-### Fixed
-
-- `sbir_company_usaspending_recipients` queried columns that
-  `recipient_lookup` does not have, and the error was hidden. It now reads the
-  real columns and returns rows (#851).
-- `resolve_physical_table_name` ran a query DuckDB 2.0 rejects and fell back
-  to the right view by accident. It now checks for the named table or view and
-  raises when neither exists (#854).
-- The SBIR.gov cross-reference no longer builds its index from a partial API
-  pull; it uses the bulk file instead (#851).
-- M&A discovery no longer labels an acquirer, seller, or mentioned firm as the
-  acquired company, and placeholder identifiers no longer produce exact
-  matches (#835).
-- Empty normalized company names no longer join different firms, and M&A
-  search pairs stay apart when a name normalizes to empty (#845).
-- Form D name-gated-v3 tier rule and subset-safe name matching (#832).
-- SAM.gov Public V2 parsing keeps records with unescaped `|` (identity fields
-  kept, later fields blank) and parses extracts whose entity count is a
-  multiple of the chunk size (#830, #833).
-- `transformed_transition_evidence` reads its gate flag outside the
-  best-effort block, so a bad value raises instead of dropping the gate
-  (#847).
 
 ### Removed
 
@@ -112,7 +93,31 @@ version.
   `specs/archive/superseded/jev-ci-triage/`. It answered no research question,
   its CI job was skipped in 30 of 30 recent pull-request runs, and live calls
   never cleared their gates. The deterministic study preflight
-  (`jev-preflight`, `jev-ci-enforcement`) is unchanged.
+  (`jev-preflight`, `jev-ci-enforcement`) is unchanged (#843).
+
+### Fixed
+
+- `sbir_company_usaspending_recipients` queried columns that
+  `recipient_lookup` does not have, and the error was hidden. It now reads the
+  real columns and returns rows (#851).
+- `resolve_physical_table_name` ran a query DuckDB 2.0 rejects and fell back
+  to the right view by accident. It now checks for the named table or view and
+  raises when neither exists (#854).
+- The SBIR.gov cross-reference no longer builds its index from a partial API
+  pull. When any agency query fails, it uses the bulk file instead (#851).
+- M&A discovery no longer labels an acquirer, seller, or mentioned firm as the
+  acquired company, and placeholder identifiers no longer produce exact
+  matches (#835).
+- Empty normalized company names no longer join different firms, and M&A
+  search pairs stay apart when a name normalizes to empty (#845).
+- Fixed the Form D `name-gated-v3` tier rule and made its name match safe for
+  subset names. `name-gated-v3` is not the default rule (#832).
+- SAM.gov Public V2 parsing keeps records with unescaped `|` (identity fields
+  kept, later fields blank) and parses extracts whose entity count is a
+  multiple of the chunk size (#830, #833).
+- `transformed_transition_evidence` reads its gate flag outside the
+  best-effort block, so a bad value raises instead of dropping the gate
+  (#847).
 
 ## [0.21.0] — 2026-11-16
 
@@ -1030,7 +1035,8 @@ across the root project and the three packages under `packages/`.
 `vMAJOR.MINOR.PATCH` form it requires. Per that policy published tags are never
 moved or reused, so they remain as historical markers.
 
-[Unreleased]: https://github.com/hollomancer/sbir-analytics/compare/v0.21.0...HEAD
+[Unreleased]: https://github.com/hollomancer/sbir-analytics/compare/v0.22.0...HEAD
+[0.22.0]: https://github.com/hollomancer/sbir-analytics/compare/v0.21.0...v0.22.0
 [0.21.0]: https://github.com/hollomancer/sbir-analytics/compare/v0.20.0...v0.21.0
 [0.20.0]: https://github.com/hollomancer/sbir-analytics/compare/v0.19.0...v0.20.0
 [0.19.0]: https://github.com/hollomancer/sbir-analytics/compare/v0.18.0...v0.19.0
