@@ -304,3 +304,19 @@ class TestSha256Digests:
         target.write_bytes(payload)
 
         assert sha256_bytes(payload) == file_sha256(target)
+
+
+def test_atomic_write_new_file_is_world_readable(tmp_path):
+    # mkstemp makes 0600 files; outputs on shared mounts must stay readable.
+    target = tmp_path / "new.json"
+    write_text_atomic(target, "{}\n")
+    assert target.stat().st_mode & 0o777 == 0o644
+
+
+def test_atomic_write_keeps_existing_mode(tmp_path):
+    target = tmp_path / "existing.json"
+    target.write_text("old")
+    target.chmod(0o640)
+    write_text_atomic(target, "new")
+    assert target.read_text() == "new"
+    assert target.stat().st_mode & 0o777 == 0o640

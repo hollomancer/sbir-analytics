@@ -12,6 +12,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import stat
 import tempfile
 from collections.abc import Iterator
 from contextlib import contextmanager
@@ -146,7 +147,8 @@ def atomic_write_path(target: Path | str, *, fsync: bool = False) -> Iterator[Pa
 
     The temporary file is created in the target's directory, so ``os.replace``
     is atomic: readers see the old file or the complete new file, never a
-    partial one. If the block raises, ``target`` is left unchanged and the
+    partial one. The new file keeps the target's permission bits, or gets 0644
+    when the target does not exist yet. If the block raises, ``target`` is left unchanged and the
     temporary file is removed. Each call gets a unique temporary name, so two
     writers to the same target do not share a temporary file.
 
@@ -173,6 +175,10 @@ def atomic_write_path(target: Path | str, *, fsync: bool = False) -> Iterator[Pa
                 os.fsync(sync_descriptor)
             finally:
                 os.close(sync_descriptor)
+        # mkstemp creates the file as 0600. Keep the target's mode, or use 0644
+        # for a new file, so that other users and containers can still read it.
+        mode = stat.S_IMODE(target.stat().st_mode) if target.exists() else 0o644
+        temporary.chmod(mode)
         os.replace(temporary, target)
     finally:
         temporary.unlink(missing_ok=True)
