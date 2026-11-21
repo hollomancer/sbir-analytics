@@ -16,9 +16,12 @@ on:
     - cron: "17 8 * * 6"
   workflow_dispatch:
 
+# A new push to a pull request cancels that PR's older run. Runs on main
+# (push, schedule, manual) each get their own group and are never cancelled, so
+# every merged commit gets the full suite.
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  group: ${{ github.workflow }}-${{ github.event_name == 'pull_request' && github.ref || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 env:
   PYTHON_VERSION: "3.11"
@@ -201,10 +204,23 @@ jobs:
         run: uv run pytest tests/e2e/ -m "not requires_api and not real_data"
 
   test-full:
-    name: Full Tests
-    if: github.event_name != 'pull_request'
+    name: Full Tests (Python ${{ matrix.python-version }})
     runs-on: ubuntu-latest
     timeout-minutes: 60
+    # Runs on pull requests too, so slow, functional, and golden tests and the
+    # 70% coverage gate block a merge instead of failing after it. Measured cost:
+    # the whole job took 3m13s on main, and 2m17s locally on 4 cores, in
+    # parallel with the unit shards and the security scan (also about 3 min).
+    #
+    # requires-python allows 3.11 and 3.12. Pull requests use 3.11 only; push to
+    # main, the weekly schedule, and manual runs check both.
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ${{ fromJSON(github.event_name == 'pull_request' && '["3.11"]' || '["3.11", "3.12"]') }}
+    env:
+      # Make uv build the venv with this interpreter, not a cached managed one.
+      UV_PYTHON: ${{ matrix.python-version }}
     steps:
       - uses: actions/checkout@v7
         with:
@@ -213,8 +229,12 @@ jobs:
       - name: Setup Python and UV
         uses: ./.github/actions/setup-python-uv
         with:
-          python-version: ${{ env.PYTHON_VERSION }}
+          python-version: ${{ matrix.python-version }}
           install-dev-deps: "true"
+
+      - name: Confirm interpreter version
+        run: |
+          uv run python -c "import sys; v = '%d.%d' % sys.version_info[:2]; print(v); assert v == '${{ matrix.python-version }}', v"
 
       # The whole tests/ tree — broader than any previous gate. The old CI only
       # ever ran tests/unit, tests/integration, and tests/e2e, and excluded the
@@ -243,7 +263,7 @@ jobs:
         if: ${{ !cancelled() && hashFiles('coverage.xml') != '' }}
         uses: actions/upload-artifact@v7
         with:
-          name: coverage-report
+          name: coverage-report-py${{ matrix.python-version }}
           path: coverage.xml
           if-no-files-found: error
           retention-days: 14

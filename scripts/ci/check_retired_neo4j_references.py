@@ -61,6 +61,9 @@ ALLOWED_PATHS = frozenset(
         "specs/status.md",
         "studies/sba-annual-report-structural-comparison/reviews/named-reader-review-5.md",
         "tests/unit/scripts/test_check_retired_neo4j_references.py",
+        # Generated pytest-split timings. It repeats the parametrized test IDs of
+        # the guard's own test file above.
+        "tests/.test_durations",
     }
 )
 

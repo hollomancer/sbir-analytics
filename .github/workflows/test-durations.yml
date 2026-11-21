@@ -1,0 +1,74 @@
+name: Test durations
+
+# Regenerates tests/.test_durations, the pytest-split timing file that balances
+# the four "Fast Tests" PR shards in ci.yml. Uploads the new file as an
+# artifact. It does not push, commit, or open a PR: download the artifact,
+# replace tests/.test_durations, and commit it in an ordinary PR.
+# Run the same two commands locally to refresh the file by hand.
+
+permissions:
+  contents: read
+
+on:
+  schedule:
+    # Monthly, 1st day, 09:41 UTC.
+    - cron: "41 9 1 * *"
+  workflow_dispatch:
+
+concurrency:
+  group: test-durations
+  cancel-in-progress: false
+
+env:
+  SBIR_ETL__PIPELINE__ENVIRONMENT: test
+
+jobs:
+  regenerate:
+    name: Regenerate shard timings
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Setup Python and UV
+        uses: ./.github/actions/setup-python-uv
+        with:
+          python-version: "3.11"
+          install-dev-deps: "true"
+
+      - name: Keep the committed file for comparison
+        run: cp tests/.test_durations "$RUNNER_TEMP/old_test_durations.json"
+
+      # Same selection as the Fast Tests job. Serial, because xdist timings
+      # include worker wait and do not balance shards.
+      # Delete the old file first so entries for removed tests do not survive.
+      - name: Regenerate tests/.test_durations
+        run: |
+          rm -f tests/.test_durations
+          uv run pytest tests/unit/ -m "not slow and not jev_preflight" \
+            -n0 -q -p no:cacheprovider \
+            --store-durations --durations-path tests/.test_durations
+
+      - name: Compare with the committed file
+        run: |
+          python3 - "$RUNNER_TEMP/old_test_durations.json" tests/.test_durations <<'EOF' | tee -a "$GITHUB_STEP_SUMMARY"
+          import json
+          import sys
+
+          old = json.load(open(sys.argv[1]))
+          new = json.load(open(sys.argv[2]))
+          print(f"- Committed entries: {len(old)}")
+          print(f"- Regenerated entries: {len(new)}")
+          print(f"- Tests missing from the committed file: {len(new.keys() - old.keys())}")
+          print(f"- Stale entries in the committed file: {len(old.keys() - new.keys())}")
+          print(f"- Total serial seconds: {sum(new.values()):.0f}")
+          EOF
+
+      - name: Upload regenerated file
+        uses: actions/upload-artifact@v7
+        with:
+          name: test-durations
+          path: tests/.test_durations
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 14
