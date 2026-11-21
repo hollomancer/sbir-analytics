@@ -34,7 +34,7 @@ Core deps: `sbir-etl`, `scikit-learn`, `tqdm`. Optional extras:
 | `sbir_ml.transition.detection.scoring` — `TransitionScorer` | Six-signal composite transition scoring |
 | `sbir_ml.transition.detection.detector` / `evidence` | Detection orchestration + evidence bundles |
 | `sbir_ml.transition.features.vendor_resolver` — `VendorResolver` | UEI/CAGE/DUNS + fuzzy (`token_sort_ratio`) vendor matching |
-| `sbir_ml.transition.features.cet_analyzer` / `patent_analyzer` | CET and patent signal extraction |
+| `sbir_ml.transition.features.cet_analyzer` | CET signal extraction |
 | `sbir_ml.transition.analysis.analytics` — `TransitionAnalytics` | KPI aggregation over detections |
 
 ## Notes

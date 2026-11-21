@@ -109,11 +109,6 @@ def _parquet_columns(path: Path) -> list[str]:
     return list(pq.read_schema(path).names)
 
 
-def _file_sha256(path: Path | None) -> str | None:
-    """Return the SHA-256 hex digest of ``path``, or ``None`` when absent."""
-    return file_sha256_or_none(path)
-
-
 def _read_cached_source_provenance(checks_path: Path) -> dict[str, object]:
     if not checks_path.is_file():
         return {}
@@ -293,13 +288,13 @@ def raw_contracts(context) -> Output[pd.DataFrame]:
         )
 
     checks_path = output_path.with_suffix(".checks.json")
-    toc_sha256 = _file_sha256(dump_dir / "toc.dat") if award_archive_file is None else None
+    toc_sha256 = file_sha256_or_none(dump_dir / "toc.dat") if award_archive_file is None else None
     archive_sha256 = (
-        _file_sha256(award_archive_file)
+        file_sha256_or_none(award_archive_file)
         if award_archive_file and output_path.exists() and not force_refresh
         else None
     )
-    vendor_filter_sha256 = _file_sha256(vendor_filter_path)
+    vendor_filter_sha256 = file_sha256_or_none(vendor_filter_path)
     cached_provenance: dict[str, object] | None = None
     cached_source_status: dict[str, object] | None = None
     cache_schema_error: str | None = None
@@ -313,7 +308,7 @@ def raw_contracts(context) -> Output[pd.DataFrame]:
                 archive_sha256=archive_sha256,
                 archive_file=award_archive_file,
                 vendor_filter_sha256=vendor_filter_sha256,
-                output_sha256=_file_sha256(output_path),
+                output_sha256=file_sha256_or_none(output_path),
                 table_files=table_files,
             )
         except Exception as exc:
@@ -396,7 +391,7 @@ def raw_contracts(context) -> Output[pd.DataFrame]:
 
     df = pd.read_parquet(output_path)
     total_rows = len(df)
-    output_sha256 = _file_sha256(output_path)
+    output_sha256 = file_sha256_or_none(output_path)
     if needs_extract:
         source_provenance["output_sha256"] = output_sha256
     provenance = contract_provenance_status(df.columns)

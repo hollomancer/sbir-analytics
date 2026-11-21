@@ -94,20 +94,14 @@ _ENTITY_INDICATORS = {
 }
 
 
-def normalize_name(name: str) -> str:
-    """Compatibility shim for the versioned UCC company-name policy."""
-
-    return normalize_company_name(name, profile=CompanyNameProfile.UCC_V1)
-
-
 def classify_match(name_a: str, name_b: str) -> tuple[str, float]:
     """Return (tier, score) where tier ∈ {high, medium, low, drop}.
 
     Score is normalized to 0..1 (sbir_etl's jaro_winkler_similarity
     returns 0..100; we scale here).
     """
-    a = normalize_name(name_a)
-    b = normalize_name(name_b)
+    a = normalize_company_name(name_a, profile=CompanyNameProfile.UCC_V1)
+    b = normalize_company_name(name_b, profile=CompanyNameProfile.UCC_V1)
     if not a or not b:
         return ("drop", 0.0)
     if a == b:

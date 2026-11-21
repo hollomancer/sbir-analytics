@@ -129,11 +129,6 @@ _UNIQUE_IDS = {
 }
 
 
-def _sha256(path: Path) -> str:
-    """Return the SHA-256 hex digest of ``path``."""
-    return file_sha256(path)
-
-
 def _as_date(value: object) -> date | None:
     timestamp = pd.to_datetime(str(value), errors="coerce", utc=True)
     return None if pd.isna(timestamp) else timestamp.date()
@@ -226,7 +221,7 @@ def validate_nsf_defense_lineage_release(
             else None
         )
         declared = declared_products.get(name, {}) if isinstance(declared_products, dict) else {}
-        checksum = _sha256(path)
+        checksum = file_sha256(path)
         checksum_valid = bool(declared and checksum == declared.get("sha256"))
         row_count_valid = bool(declared and len(frame) == declared.get("row_count"))
         product.update(

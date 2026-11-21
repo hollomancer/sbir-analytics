@@ -28,12 +28,18 @@ from collections import defaultdict
 from pathlib import Path
 
 import httpx
-from rapidfuzz import fuzz
 
 sys.stdout.reconfigure(line_buffering=True)
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-from sbir_etl.utils.text_normalization import normalize_name
+from sbir_etl.enrichers.sec_edgar.form_d_scoring import select_form_d_name_match
+from sbir_etl.identity.company_names import CompanyNameProfile, normalize_company_name
+
+
+def normalize_name(value: str) -> str:
+    """Normalize a company name with the canonical recipient profile."""
+    return normalize_company_name(value, profile=CompanyNameProfile.RECIPIENT_V1)
+
 
 # Form D electronic filing started in earnest Q1 2009
 START_YEAR = 2009
@@ -92,7 +98,7 @@ def load_sbir_companies(awards_csv: str) -> dict[str, dict]:
     # Group by normalized name
     companies: dict[str, dict] = {}
     for raw_name, count in raw_counts.items():
-        norm = normalize_name(raw_name, remove_suffixes=True)
+        norm = normalize_name(raw_name)
         if norm not in companies:
             companies[norm] = {
                 "raw_names": set(),
@@ -213,58 +219,50 @@ async def download_form_d_index(
 def match_form_d_to_sbir(
     form_d_entries: list[dict],
     sbir_companies: dict[str, dict],
-    *,
-    threshold: int = 85,
-) -> dict[str, list[dict]]:
-    """Match Form D filer names to SBIR companies using fuzzy matching.
+) -> dict[str, dict]:
+    """Match Form D filer names to SBIR companies.
 
-    Returns dict keyed by normalized SBIR company name -> list of matching
-    Form D entries.
+    Returns a dict keyed by normalized SBIR company name. Each value holds the matching
+    Form D ``entries``, the ``name_match_type`` (``exact`` or ``fuzzy``), and the
+    ``name_score``. A fuzzy match is the best-scoring candidate in its block, scored by
+    ``select_form_d_name_match`` (no credit for a token subset).
     """
-    # Build normalized index of Form D filer names
-    # Group by normalized name for efficient matching
     fd_by_norm: dict[str, list[dict]] = defaultdict(list)
     for entry in form_d_entries:
-        norm = normalize_name(entry["company_name"], remove_suffixes=True)
+        norm = normalize_name(entry["company_name"])
         fd_by_norm[norm].append(entry)
 
-    matches: dict[str, list[dict]] = {}
-    checked = 0
-
-    # First pass: exact normalized name match (fast)
-    for sbir_norm in sbir_companies:
-        if sbir_norm in fd_by_norm:
-            matches[sbir_norm] = fd_by_norm[sbir_norm]
-
-    exact = len(matches)
-    print(f"  Exact normalized matches: {exact:,}")
-
-    # Second pass: fuzzy match for remaining companies
-    # Only check SBIR companies that didn't get an exact match
-    unmatched_sbir = {k: v for k, v in sbir_companies.items() if k not in matches}
-    fd_norms = list(fd_by_norm.keys())
-
-    # Build a simple blocking index by first 3 chars to avoid O(n*m) comparison
+    # Block candidates by the first three normalized characters to avoid O(n*m) comparison
     fd_blocks: dict[str, list[str]] = defaultdict(list)
-    for norm in fd_norms:
+    for norm in fd_by_norm:
         if len(norm) >= 3:
             fd_blocks[norm[:3]].append(norm)
 
-    for sbir_norm in unmatched_sbir:
-        if len(sbir_norm) < 3:
+    matches: dict[str, dict] = {}
+    checked = 0
+    for sbir_norm in sbir_companies:
+        if sbir_norm in fd_by_norm:
+            candidates = [sbir_norm]
+        elif len(sbir_norm) >= 3:
+            candidates = fd_blocks.get(sbir_norm[:3], [])
+            checked += 1
+            if checked % 5000 == 0:
+                print(f"  Fuzzy checked {checked:,}...")
+        else:
             continue
-        candidates = fd_blocks.get(sbir_norm[:3], [])
-        for fd_norm in candidates:
-            score = fuzz.token_set_ratio(sbir_norm, fd_norm)
-            if score >= threshold:
-                matches[sbir_norm] = fd_by_norm[fd_norm]
-                break
-        checked += 1
-        if checked % 5000 == 0:
-            print(f"  Fuzzy checked {checked:,}/{len(unmatched_sbir):,}...")
+        selected = select_form_d_name_match(sbir_norm, candidates)
+        if selected is None:
+            continue
+        fd_norm, match_type, score = selected
+        matches[sbir_norm] = {
+            "entries": fd_by_norm[fd_norm],
+            "name_match_type": match_type,
+            "name_score": round(score, 4),
+        }
 
-    fuzzy = len(matches) - exact
-    print(f"  Fuzzy matches: {fuzzy:,}")
+    exact = sum(m["name_match_type"] == "exact" for m in matches.values())
+    print(f"  Exact normalized matches: {exact:,}")
+    print(f"  Fuzzy matches: {len(matches) - exact:,}")
     print(f"  Total matched: {len(matches):,}")
 
     return matches
@@ -318,7 +316,8 @@ async def main() -> None:
     # Step 5: Write results
     written = 0
     with open(output_path, "a" if args.resume else "w") as out:
-        for sbir_norm, fd_entries in sorted(matches.items()):
+        for sbir_norm, match in sorted(matches.items()):
+            fd_entries = match["entries"]
             sbir_data = sbir_companies[sbir_norm]
             # Use the most common raw name
             raw_name = min(sbir_data["raw_names"])
@@ -331,6 +330,8 @@ async def main() -> None:
                 "award_count": sbir_data["award_count"],
                 "state": sbir_data["state"],
                 "pi_names": sorted(sbir_data["pi_names"]),
+                "name_match_type": match["name_match_type"],
+                "name_score": match["name_score"],
                 "form_d_count": len(fd_entries),
                 "form_d_filings": [
                     {
@@ -349,7 +350,7 @@ async def main() -> None:
     elapsed = time.time() - start
 
     # Summary
-    total_filings = sum(len(v) for v in matches.values())
+    total_filings = sum(len(v["entries"]) for v in matches.values())
     print(f"\n{'=' * 60}")
     print(f"FORM D INDEX MATCH COMPLETE — {elapsed:.1f}s")
     print(f"{'=' * 60}")

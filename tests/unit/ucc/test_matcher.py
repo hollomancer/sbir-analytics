@@ -1,5 +1,6 @@
 """Tests for UCC debtor-side fuzzy matching with address + person-name filters."""
 
+from sbir_etl.identity import CompanyNameProfile, normalize_company_name
 from sbir_etl.ucc.matcher import (
     address_city_state,
     address_overlap_score,
@@ -7,7 +8,6 @@ from sbir_etl.ucc.matcher import (
     is_debtor_side_match,
     looks_like_person_name,
     match_extraction,
-    normalize_name,
     to_postal,
 )
 
@@ -47,14 +47,16 @@ NON_MATCH_PAIRS = [
 ]
 
 
+def _ucc_name(name: str) -> str:
+    return normalize_company_name(name, profile=CompanyNameProfile.UCC_V1)
+
+
 def test_normalize_name_strips_punctuation_and_lowercases():
-    assert normalize_name("Acme, Inc.") == normalize_name("ACME INC")
+    assert _ucc_name("Acme, Inc.") == _ucc_name("ACME INC")
 
 
 def test_normalize_name_handles_suffix_variations():
-    assert normalize_name("Advanced Materials Corp") == normalize_name(
-        "Advanced Materials Corporation"
-    )
+    assert _ucc_name("Advanced Materials Corp") == _ucc_name("Advanced Materials Corporation")
 
 
 def test_all_match_pairs_classify_high_or_medium():

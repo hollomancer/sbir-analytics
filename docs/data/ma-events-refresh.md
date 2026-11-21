@@ -52,6 +52,12 @@ As of 2026-09-17 all 10,405 stored records were unversioned, so this step was
 required before the chain would run at all. Migrating them moved 193 records
 from `high` to `medium` (3,640 → 3,447 high; `low` unchanged at 5,645).
 
+**Rule `name-gated-v3` (not the default).** The rule set also contains
+`name-gated-v3`. It fixes the subset-token name match and makes a missing state
+no evidence. Step 1 cannot migrate to it, because stored records lack the name
+match type and the raw PI names. Rebuild the inputs to adopt it. See
+[form-d-name-gated-v3.md](form-d-name-gated-v3.md).
+
 ## Step 2 — detect events
 
 ```bash

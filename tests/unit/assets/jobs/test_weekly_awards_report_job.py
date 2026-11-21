@@ -7,11 +7,11 @@ pytestmark = [pytest.mark.fast, pytest.mark.unit]
 
 def test_job_is_discovered_and_scheduled():
     """The job must be auto-discovered and hold weekly.yml's Monday 12:00 slot."""
-    from sbir_analytics.definitions import auto_jobs, source_download_schedules
+    from sbir_analytics.definitions import bundle
 
-    assert "weekly_awards_report_job" in auto_jobs
+    assert "weekly_awards_report_job" in bundle.auto_jobs
 
-    schedule = next(s for s in source_download_schedules if s.name == "weekly_awards_report")
+    schedule = next(s for s in bundle.source_download_schedules if s.name == "weekly_awards_report")
     assert schedule.cron_schedule == "0 12 * * 1"
 
 
@@ -19,9 +19,9 @@ def test_schedule_defaults_to_stopped():
     """Runbook convention: an operator confirms a manual run before enabling."""
     from dagster import DefaultScheduleStatus
 
-    from sbir_analytics.definitions import source_download_schedules
+    from sbir_analytics.definitions import bundle
 
-    schedule = next(s for s in source_download_schedules if s.name == "weekly_awards_report")
+    schedule = next(s for s in bundle.source_download_schedules if s.name == "weekly_awards_report")
     assert schedule.default_status == DefaultScheduleStatus.STOPPED
 
 

@@ -1,6 +1,6 @@
 # Patent Cost and Spillover Analysis — Tasks
 
-> **Status (2026-07-02):** Not started. USPTO extraction and patent-award linkage exist (`packages/sbir-analytics/sbir_analytics/assets/uspto/`), but the cost and citation-network analytical layer is not implemented.
+> **Status (2026-07-02):** Not started. USPTO extraction and patent-award linkage exist (`packages/sbir-analytics/sbir_analytics/assets/uspto/`), but the cost and citation-network analytical layer is not implemented. The `tools/mission_b/` package named in tasks 1.1 and 2.1 was deleted in PR #837 (unused; no callers); choose a new location when this work starts.
 
 ## Phase 1: Marginal Cost Per Patent
 

@@ -21,11 +21,6 @@ EPISTEMIC_TIER = "pipelines"
 Strategy = Callable[[AnalysisSpec], Mapping[str, Any]]
 
 
-def _sha256_file(path: Path | None) -> str | None:
-    """Return the SHA-256 hex digest of ``path``, or ``None`` when absent."""
-    return file_sha256_or_none(path)
-
-
 def materialize_analysis(
     spec: AnalysisSpec,
     *,
@@ -36,10 +31,10 @@ def materialize_analysis(
 ) -> AnalysisRun:
     """Run an injected strategy and pin hashes on the resulting ``AnalysisRun``."""
 
-    config_sha = _sha256_file(spec.config_path)
+    config_sha = file_sha256_or_none(spec.config_path)
     source_sha = spec.corpus.manifest.sha256 if spec.corpus.manifest else None
     if source_sha is None:
-        source_sha = _sha256_file(spec.corpus.source_path)
+        source_sha = file_sha256_or_none(spec.corpus.source_path)
 
     if frozen_snapshot is not None and frozen_snapshot.is_file():
         expected = load_snapshot(frozen_snapshot)

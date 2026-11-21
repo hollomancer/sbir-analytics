@@ -1,6 +1,6 @@
-"""Guards for the _HOST_SCHEDULES table in definitions.py.
+"""Guards for the _HOST_SCHEDULES table in definitions_factory.py.
 
-`definitions.py` builds each host schedule with:
+`definitions_factory.py` builds each host schedule with:
 
     _discovered = _get_job(_job_name)
     if _discovered is None:
@@ -21,21 +21,22 @@ pytestmark = [pytest.mark.fast, pytest.mark.unit]
 
 def test_every_host_schedule_resolves_to_a_real_job():
     """No _HOST_SCHEDULES entry may name a job that does not exist."""
-    from sbir_analytics.definitions import _HOST_SCHEDULES, auto_jobs, source_download_schedules
+    from sbir_analytics.definitions import bundle
+    from sbir_analytics.definitions_factory import _HOST_SCHEDULES
 
-    missing = [job_name for job_name, *_ in _HOST_SCHEDULES if job_name not in auto_jobs]
+    missing = [job_name for job_name, *_ in _HOST_SCHEDULES if job_name not in bundle.auto_jobs]
     assert not missing, (
         f"_HOST_SCHEDULES names jobs that were not discovered: {missing}. "
-        "definitions.py skips these with only a log warning, so the schedule "
+        "definitions_factory.py skips these with only a log warning, so the schedule "
         "would silently not exist."
     )
     # Belt and braces: the skip path would also shorten this list.
-    assert len(source_download_schedules) == len(_HOST_SCHEDULES)
+    assert len(bundle.source_download_schedules) == len(_HOST_SCHEDULES)
 
 
 def test_host_schedules_have_unique_names_and_valid_crons():
     """Duplicate names would have one schedule silently shadow another."""
-    from sbir_analytics.definitions import _HOST_SCHEDULES
+    from sbir_analytics.definitions_factory import _HOST_SCHEDULES
 
     names = [schedule_name for _, schedule_name, *_ in _HOST_SCHEDULES]
     assert len(names) == len(set(names))
@@ -49,11 +50,11 @@ def test_host_schedules_default_to_stopped():
     """The runbook requires a manual run on the host before enabling."""
     from dagster import DefaultScheduleStatus
 
-    from sbir_analytics.definitions import source_download_schedules
+    from sbir_analytics.definitions import bundle
 
     running = [
         s.name
-        for s in source_download_schedules
+        for s in bundle.source_download_schedules
         if s.default_status != DefaultScheduleStatus.STOPPED
     ]
     assert not running, f"host schedules must default to STOPPED: {running}"

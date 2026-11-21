@@ -3,7 +3,8 @@
 import pandas as pd
 import pytest
 
-from sbir_etl.ot_consortium.registry import CMFRegistry, normalize_cmf_name
+from sbir_etl.identity import CompanyNameProfile, normalize_company_name
+from sbir_etl.ot_consortium.registry import CMFRegistry
 
 pytestmark = pytest.mark.fast
 
@@ -21,8 +22,10 @@ def test_missing_file_degrades_gracefully(tmp_path):
 
 
 def test_normalize_drops_suffixes():
-    assert normalize_cmf_name("SOSSEC, Inc.") == normalize_cmf_name("SOSSEC Inc")
-    assert normalize_cmf_name("  Foo   Bar  ") == "foo bar"
+    assert normalize_company_name(
+        "SOSSEC, Inc.", profile=CompanyNameProfile.CMF_V1
+    ) == normalize_company_name("SOSSEC Inc", profile=CompanyNameProfile.CMF_V1)
+    assert normalize_company_name("  Foo   Bar  ", profile=CompanyNameProfile.CMF_V1) == "foo bar"
 
 
 def test_match_by_name_and_alias(registry):

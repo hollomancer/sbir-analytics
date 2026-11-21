@@ -90,11 +90,6 @@ def _row_sha256(values: list[str | None]) -> str:
     return hashlib.sha256(_row_json(values).encode("utf-8")).hexdigest()
 
 
-def sha256_file(path: Path) -> str:
-    """Return the SHA-256 hex digest of ``path``."""
-    return file_sha256(path)
-
-
 def canonicalize_sbir_gov_rows(raw: pd.DataFrame) -> tuple[pd.DataFrame, dict[str, int]]:
     """Apply the frozen exact-row and canonical-ID construction."""
 
@@ -218,7 +213,7 @@ def materialize_sbir_gov_history(
         if temporary.exists():
             temporary.unlink()
 
-    output_sha256 = sha256_file(output_path)
+    output_sha256 = file_sha256(output_path)
     manifest: dict[str, Any] = {
         "ok": True,
         "schema_version": "phase-transition-sbir-input-v2",
@@ -227,7 +222,7 @@ def materialize_sbir_gov_history(
             "system": "SBIR.gov bulk award_data.csv",
             "path": str(input_path.resolve()),
             "url": source_url,
-            "sha256": sha256_file(input_path),
+            "sha256": file_sha256(input_path),
             "bytes": input_path.stat().st_size,
             "provenance_version": SBIR_GOV_PROVENANCE_VERSION,
         },
@@ -319,7 +314,7 @@ def verify_sbir_gov_materialization(path: Path, frame: pd.DataFrame) -> dict[str
     recorded_source_path = Path(source["path"])
     if recorded_source_path.is_file() and (
         recorded_source_path.stat().st_size != source["bytes"]
-        or sha256_file(recorded_source_path) != source["sha256"]
+        or file_sha256(recorded_source_path) != source["sha256"]
     ):
         raise SbirGovSourceError("SBIR.gov raw source does not match its manifest")
     if grain.get("ordered_columns") != list(SBIR_GOV_SOURCE_COLUMNS):
@@ -347,7 +342,7 @@ def verify_sbir_gov_materialization(path: Path, frame: pd.DataFrame) -> dict[str
         raise SbirGovSourceError("SBIR.gov parquet byte count does not match its manifest")
     if output.get("ordered_columns_sha256") != ordered_columns_sha256(list(frame.columns)):
         raise SbirGovSourceError("SBIR.gov parquet columns do not match their fingerprint")
-    if output.get("sha256") != sha256_file(path):
+    if output.get("sha256") != file_sha256(path):
         raise SbirGovSourceError("SBIR.gov parquet checksum does not match its manifest")
 
     expected_fingerprint = {
@@ -489,6 +484,5 @@ __all__ = [
     "materialize_sbir_gov_history",
     "ordered_columns_sha256",
     "read_sbir_gov_csv",
-    "sha256_file",
     "verify_sbir_gov_materialization",
 ]

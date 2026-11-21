@@ -24,7 +24,7 @@
     → `primitives` (exception taxonomy and date parsing are imported by primitives
     modules and depend on nothing repo-internal; root init is version metadata only);
     `cet_pipeline_job.py`, `fiscal_returns_job.py`, `modernbert_job.py` and
-    `tools/{mission_a,mission_c,tech_census}` → `exploratory` (job wrappers and tool
+    `tools/{mission_a,mission_c,tech_census}` (since deleted in PR #837) → `exploratory` (job wrappers and tool
     surfaces for exploratory analytics, matching the weekly/phase-transition job
     precedent). Allowlist landed at six edges: the three seeds, plus
     `pairing.py → phase_iii_candidates.similarity` (lazy scorer import on the

@@ -24,17 +24,6 @@ from sbir_etl.identity import CompanyNameProfile, normalize_company_name
 DEFAULT_REGISTRY_PATH = "data/reference/cmf_registry.csv"
 
 
-def normalize_cmf_name(name: str | None) -> str:
-    """Normalize a vendor name for registry comparison.
-
-    Uppercase-insensitive, punctuation stripped, whitespace collapsed, and common
-    business suffixes dropped so "SOSSEC, Inc." and "SOSSEC Inc" compare equal.
-    Behavior lives in the ``cmf-v1`` identity profile; this wrapper keeps the
-    call sites in this module unchanged.
-    """
-    return normalize_company_name(name, profile=CompanyNameProfile.CMF_V1)
-
-
 def _split_list(value: Any) -> list[str]:
     """Split a pipe-delimited CSV cell into a clean list."""
     if value is None or (isinstance(value, float) and pd.isna(value)):
@@ -82,7 +71,7 @@ class CMFRegistry:
             if rec.uei:
                 self._uei_index[rec.uei.strip().upper()] = rec
             for nm in rec.all_names():
-                norm = normalize_cmf_name(nm)
+                norm = normalize_company_name(nm, profile=CompanyNameProfile.CMF_V1)
                 if norm:
                     self._name_index[norm] = rec
 
@@ -132,7 +121,9 @@ class CMFRegistry:
             if rec:
                 return CMFMatch(record=rec, method="uei")
         if name:
-            rec = self._name_index.get(normalize_cmf_name(name))
+            rec = self._name_index.get(
+                normalize_company_name(name, profile=CompanyNameProfile.CMF_V1)
+            )
             if rec:
                 return CMFMatch(
                     record=rec,
@@ -170,13 +161,19 @@ class CMFRegistry:
             return 0
 
         lut = recipient_lookup[[name_col, uei_col]].dropna().copy()
-        lut["_norm"] = lut[name_col].map(normalize_cmf_name)
+        lut["_norm"] = lut[name_col].map(
+            lambda name: normalize_company_name(name, profile=CompanyNameProfile.CMF_V1)
+        )
 
         filled = 0
         for rec in self.records:
             if rec.uei:
                 continue
-            norms = {normalize_cmf_name(n) for n in rec.all_names() if normalize_cmf_name(n)}
+            norms = {
+                normalize_company_name(n, profile=CompanyNameProfile.CMF_V1)
+                for n in rec.all_names()
+                if normalize_company_name(n, profile=CompanyNameProfile.CMF_V1)
+            }
             candidates = lut[lut["_norm"].isin(norms)]
             ueis = {str(u).strip().upper() for u in candidates[uei_col] if str(u).strip()}
             if len(ueis) == 1:
@@ -231,7 +228,7 @@ class CMFRegistry:
         for _, row in grouped.iterrows():
             name = str(row["recipient_name"])
             total = float(row["total_obligation"])
-            norm = normalize_cmf_name(name)
+            norm = normalize_company_name(name, profile=CompanyNameProfile.CMF_V1)
             if not norm or norm in self._name_index:
                 continue
             looks_consortium = any(k in name.lower() for k in keywords)

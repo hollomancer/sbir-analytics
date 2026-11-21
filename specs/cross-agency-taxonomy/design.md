@@ -2,6 +2,10 @@
 
 ## Architecture
 
+> **Note:** The `tools/mission_a/` modules shown below were deleted in PR #837
+> (unused; no callers). This design describes the earlier layout. Implementing it
+> now needs new code for those metrics.
+
 The analytical tools are already built. The design work is limited to wiring them
 into a Dagster pipeline and defining the output schema that downstream assets consume.
 

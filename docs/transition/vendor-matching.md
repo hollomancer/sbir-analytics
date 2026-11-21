@@ -857,7 +857,7 @@ Solution: Add acquisition record
 ## References
 
 - **Implementation**: `packages/sbir-ml/sbir_ml/transition/features/vendor_resolver.py`
-- **Cross-Walk**: `packages/sbir-ml/sbir_ml/transition/features/vendor_crosswalk.py`
+- **Fuzzy name scorer**: `packages/sbir-ml/sbir_ml/transition/features/vendor_crosswalk.py`
 - **Tests**: `tests/unit/transition/features/test_vendor_resolver.py`
 - **SAM.gov**: <https://sam.gov/>
 - **RapidFuzz**: <https://maxbachmann.github.io/RapidFuzz/>

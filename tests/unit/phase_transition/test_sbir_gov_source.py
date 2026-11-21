@@ -12,9 +12,9 @@ from sbir_analytics.assets.phase_transition.sbir_gov_source import (
     SbirGovSourceError,
     canonicalize_sbir_gov_rows,
     materialize_sbir_gov_history,
-    sha256_file,
     verify_sbir_gov_materialization,
 )
+from sbir_etl.utils.data.file_io import file_sha256
 
 
 pytestmark = pytest.mark.fast
@@ -160,7 +160,7 @@ def test_manifest_verifier_rejects_checksum_and_schema_tampering(tmp_path: Path)
     with pytest.raises(SbirGovSourceError, match="fingerprint contract"):
         verify_sbir_gov_materialization(output_path, frame)
 
-    assert original["output"]["sha256"] == sha256_file(output_path)
+    assert original["output"]["sha256"] == file_sha256(output_path)
 
 
 @pytest.mark.parametrize(
@@ -234,7 +234,7 @@ def test_manifest_verifier_rejects_tampered_derived_fields(
     frame = pd.read_parquet(output_path)
     frame.loc[:, field] = tampered_value
     frame.to_parquet(output_path, index=False)
-    manifest["output"]["sha256"] = sha256_file(output_path)
+    manifest["output"]["sha256"] = file_sha256(output_path)
     manifest["output"]["bytes"] = output_path.stat().st_size
     output_path.with_suffix(".checks.json").write_text(json.dumps(manifest), encoding="utf-8")
 

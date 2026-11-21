@@ -202,8 +202,7 @@ class EnrichmentRefreshConfig(BaseModel):
 class TaxParameterConfig(BaseModel):
     """Configuration for federal tax calculation parameters.
 
-    These defaults are a static snapshot used by
-    ``fiscal_audit_trail.log_configuration()`` for audit-log provenance. Runtime
+    These defaults are a static snapshot of reference rates. Runtime
     fiscal calculations resolve the actual ``individual_income_tax.effective_rate``
     per analysis year via ``NIPARateProvider`` (BEA NIPA Tables 3.2/3.3/1.5) —
     see ``sbir_etl/transformers/fiscal/nipa_rates.py``. Update the default below

@@ -1,5 +1,11 @@
 # Capital-Event Timeline v1 — Results
 
+> **Lineage: ungated detector — do not reuse these figures.** The 35,765 events and the 429-firm figures in this note came from the
+> historical M&A event file. The detector that built it graded Form D business combinations of
+> any match tier as M&A "high", and the Form D name match scored a token subset as 1.0 (see
+> [`form-d-name-gated-v3.md`](../../data/form-d-name-gated-v3.md)). The inputs are no longer
+> available, so the figures cannot be reproduced. Read them as historical only.
+
 **Date:** 2026-05-17
 **Cohort:** Form D high-confidence SBIR cohort (3,639 firms; produced by
 `sbir_etl/ucc/export_cohort.py` from PR #303)
