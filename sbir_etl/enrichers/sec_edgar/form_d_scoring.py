@@ -9,6 +9,7 @@ from __future__ import annotations
 import re
 import unicodedata
 from datetime import date
+from typing import NamedTuple
 from xml.etree import ElementTree
 
 from rapidfuzz import fuzz
@@ -349,15 +350,12 @@ def select_form_d_name_match(
 
 
 _PERSON_TITLES = frozenset({"dr", "mr", "mrs", "ms", "prof"})
-# Generational suffixes and credentials, compared after dots are removed ("P.E." -> "pe").
+_PERSON_SUFFIXES = frozenset({"jr", "sr", "ii", "iii", "iv", "v"})
+# Credentials and job titles, compared after dots are removed ("P.E." -> "pe").
+# Only forms that are not plausible surnames: "Ma", "Do", and "Ba" are real family names, so a
+# degree written that way is dropped only when it is dotted ("M.A.") or follows a comma.
 _PERSON_CREDENTIALS = frozenset(
-    # Only forms that are not plausible surnames: "Ma", "Do", and "Ba" are real family names.
     {
-        "jr",
-        "sr",
-        "ii",
-        "iii",
-        "iv",
         "phd",
         "ph",
         "md",
@@ -365,12 +363,29 @@ _PERSON_CREDENTIALS = frozenset(
         "esq",
         "mba",
         "msc",
+        "ms",
+        "bs",
+        "mph",
+        "rn",
+        "np",
+        "pac",
         "cpa",
         "pmp",
         "dvm",
         "pharmd",
         "dds",
+        "ceo",
+        "cto",
+        "cfo",
+        "coo",
+        "president",
+        "founder",
+        "credential",  # marker for a dotted "M.A.", "B.A.", or "D.O."
     }
+)
+_PERSON_SURNAME_DEGREES = frozenset({"ma", "ba", "do"})
+_PERSON_DOTTED_DEGREE = re.compile(
+    r"(?<=\S)(\s+|\s*,\s*)(?:m\.\s?a|b\.\s?a|d\.\s?o)\.(?=\s*(?:,|$))"
 )
 # Letters that Unicode decomposition does not reduce to ASCII.
 _PERSON_TRANSLIT = str.maketrans(
@@ -378,20 +393,56 @@ _PERSON_TRANSLIT = str.maketrans(
 )
 
 
-def _person_name_parts(name: str) -> tuple[str, str] | None:
-    """Return (given, family) tokens, or None when the name cannot be read safely.
+class _PersonName(NamedTuple):
+    given: str
+    rest: tuple[str, ...]  # middle names, then the family name
+    family_len: int  # trailing tokens of `rest` known to be the family name
+    suffix: str | None
+
+
+def _strip_trailing(tokens: list[str], v_min_len: int) -> str | None:
+    """Pop trailing credentials and suffixes in place; return the last suffix seen.
+
+    "v" counts as a suffix only when the list has at least `v_min_len` tokens, so the middle
+    initial in "Smith, John V" is kept.
+    """
+    suffix = None
+    while tokens:
+        last = tokens[-1]
+        if last in _PERSON_CREDENTIALS:
+            tokens.pop()
+        elif last in _PERSON_SUFFIXES and (last != "v" or len(tokens) >= v_min_len):
+            tokens.pop()
+            suffix = suffix or last
+        else:
+            break
+    return suffix
+
+
+def _person_name_parts(name: str | None) -> _PersonName | None:
+    """Parse a person name, or return None when it cannot be read safely.
 
     - Accents are folded and letters such as ø, æ, ł, ß are transliterated. A name that still
       holds a non-ASCII letter returns None rather than splitting into fragments.
+    - A name that joins two people with "&" or "and" returns None.
+    - Parenthesized text ("(Retired)") is dropped.
     - In-word hyphens and apostrophes are dropped ("smith-lee", "o'brien" stay one token).
-    - Titles ("dr") and trailing credentials or suffixes ("P.E.", "Ph. D.", "Jr.") are removed.
-    - "Smith, John" (one token before the first comma) is read as family, given.
+    - Titles ("dr") and trailing credentials, job titles, or suffixes ("P.E.", "CEO", "Jr.") are
+      removed. A generational suffix is kept for comparison.
+    - When the text after the first comma is a given name, everything before the comma is the
+      family name ("Lee Wong, John"). Otherwise the last token is the family name.
     """
+    if not name:
+        return None
     folded = "".join(
         c
         for c in unicodedata.normalize("NFKD", name.lower().translate(_PERSON_TRANSLIT))
         if not unicodedata.combining(c)
     )
+    folded = re.sub(r"\([^)]*\)", " ", folded)
+    if re.search(r"&|\band\b", folded):
+        return None
+    folded = _PERSON_DOTTED_DEGREE.sub(r"\1credential", folded)
     folded = re.sub(r"[.'’\-]", "", folded)
     if re.search(r"[^\x00-\x7f]", folded):
         return None
@@ -400,34 +451,64 @@ def _person_name_parts(name: str) -> tuple[str, str] | None:
     def words(part: str) -> list[str]:
         return re.sub(r"[^a-z\s]", " ", part).split()
 
-    head, *rest = folded.split(",")
-    first = words(head)
-    tail = [w for w in (words(p) for p in rest) if w and not set(w) <= _PERSON_CREDENTIALS]
-    tokens = tail[0] + first if tail and len(first) == 1 else first + [t for w in tail for t in w]
-    while tokens and tokens[0] in _PERSON_TITLES:
-        tokens.pop(0)
-    while tokens and tokens[-1] in _PERSON_CREDENTIALS:
-        tokens.pop()
-    if len(tokens) < 2:
+    after_comma = _PERSON_CREDENTIALS | _PERSON_SUFFIXES | _PERSON_SURNAME_DEGREES
+    head, *rest = (words(p) for p in folded.split(","))
+    given_parts = [w for w in rest if w and not set(w) <= after_comma]
+    suffixes = [t for w in rest if w and set(w) <= after_comma for t in w if t in _PERSON_SUFFIXES]
+    if len(given_parts) > 1:
         return None
-    return tokens[0], tokens[-1]
+    while head and head[0] in _PERSON_TITLES:
+        head.pop(0)
+    if given_parts:
+        family = head
+        given = given_parts[0]
+        while given and given[0] in _PERSON_TITLES:
+            given.pop(0)
+        suffixes.append(_strip_trailing(family, v_min_len=2) or "")
+        suffixes.append(_strip_trailing(given, v_min_len=len(given) + 1) or "")
+        if not family or not given:
+            return None
+        tokens, family_len = given + family, len(family)
+    else:
+        tokens = head
+        suffixes.append(_strip_trailing(tokens, v_min_len=3) or "")
+        family_len = 1
+    found = {s for s in suffixes if s}
+    if len(tokens) < 2 or len(found) > 1:
+        return None
+    return _PersonName(tokens[0], tuple(tokens[1:]), family_len, found.pop() if found else None)
 
 
-def person_names_agree(pi_name: str, person_name: str) -> bool:
+def _given_compatible(a: str, b: str) -> bool:
+    """Equal, or one is a single initial that starts the other."""
+    if a == b:
+        return True
+    short, long_ = sorted((a, b), key=len)
+    return len(short) == 1 and long_.startswith(short)
+
+
+def person_names_agree(pi_name: str | None, person_name: str | None) -> bool:
     """True when family names are equal and given names are equal or initial-compatible.
+
+    When both names carry a middle name or a generational suffix, those must also agree. A
+    missing name, or one that cannot be read, is no evidence and returns False.
 
     Nicknames do not agree ("bob" against "robert"). That costs some true matches, but a
     shared family name alone must not count as the same person.
     """
     pi = _person_name_parts(pi_name)
     person = _person_name_parts(person_name)
-    if pi is None or person is None or pi[1] != person[1]:
+    if pi is None or person is None:
         return False
-    a, b = pi[0], person[0]
-    if a == b:
-        return True
-    short, long_ = sorted((a, b), key=len)
-    return len(short) == 1 and long_.startswith(short)
+    if pi.suffix and person.suffix and pi.suffix != person.suffix:
+        return False
+    k = max(pi.family_len, person.family_len)
+    if "".join(pi.rest[-k:]) != "".join(person.rest[-k:]):
+        return False
+    if not _given_compatible(pi.given, person.given):
+        return False
+    middles = zip(pi.rest[:-k], person.rest[:-k], strict=False)
+    return all(_given_compatible(a, b) for a, b in middles)
 
 
 def assign_form_d_tier(

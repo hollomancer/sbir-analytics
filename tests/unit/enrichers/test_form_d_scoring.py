@@ -590,6 +590,21 @@ class TestPersonNamesAgree:
             ("Søren Ørsted", "Soren Orsted"),
             ("Wei Ma", "Wei Ma"),
             ("Anh Do", "Anh Do"),
+            ("John R. Smith", "John Smith"),
+            ("John R. Smith", "J. Smith"),
+            ("John Smith Jr.", "John Smith"),
+            ("John Smith III", "John Smith III"),
+            ("Smith Jr., John", "John Smith"),
+            ("Lee Wong, John", "John Lee Wong"),
+            ("Garcia Lopez, Maria", "Maria Garcia Lopez"),
+            ("Van Der Berg, Jan", "Jan Vanderberg"),
+            ("John Doe, M.S.", "John Doe"),
+            ("John Doe RN", "John Doe"),
+            ("Jane Doe (Retired)", "Jane Doe"),
+            ("Jane Doe, CEO", "Jane Doe"),
+            ("John Doe, M.A.", "John Doe"),
+            ("Ms. Jane Doe", "Jane Doe"),
+            ("Bao Ba", "Bao Ba"),
         ],
     )
     def test_agrees(self, pi, person) -> None:
@@ -613,10 +628,51 @@ class TestPersonNamesAgree:
             ("John Smith, P.E.", "John Pe", "a credential is not a family name"),
             ("Wei Ma", "Wei Li", "a short surname still has to be equal"),
             ("Li Wei 李", "Li Wei", "a name with an unreadable letter is not read"),
+            ("K. Smith", "John Smith", "a different initial does not agree"),
+            ("John Smith, Jr.", "John Smith, Sr.", "different generational suffixes"),
+            ("John Smith III", "John Smith II", "different generational suffixes"),
+            ("John R. Smith", "John Q. Smith", "different middle initials"),
+            ("John Robert Smith", "John Richard Smith", "different middle names"),
+            ("Lee Wong, John", "Lee Chen, John", "a multi-token family name is compared whole"),
+            (
+                "Garcia Lopez, Maria",
+                "Garcia Ruiz, Maria",
+                "a compound family name is compared whole",
+            ),
+            ("Van Der Berg, Jan", "Van Dyke, Jan", "a particle family name is compared whole"),
+            ("Lee Wong, John", "John Wong", "part of a family name is not the family name"),
+            ("John Doe, M.S.", "John Roe, M.S.", "a credential is not a family name"),
+            ("John Doe RN", "John Roe RN", "a trailing credential is not a family name"),
+            ("Jane Doe (Retired)", "Jane Smith (Retired)", "parenthesized text is dropped"),
+            ("Jane Doe, CEO", "Jane Smith, CEO", "a job title is not a family name"),
+            ("Jane Doe CEO", "Jane Smith CEO", "a trailing job title is not a family name"),
+            ("John Doe M.A.", "John Roe M.A.", "a dotted degree is not a family name"),
+            ("John Smith & Jane Doe", "John Doe", "two people in one name are not read"),
+            ("John Smith and Jane Doe", "Jane Doe", "two people in one name are not read"),
         ],
     )
     def test_does_not_agree(self, pi, person, reason) -> None:
         assert not person_names_agree(pi, person), reason
+
+    @pytest.mark.parametrize("missing", [None, ""])
+    def test_missing_name_is_no_evidence(self, missing) -> None:
+        assert not person_names_agree("John Smith", missing)
+        assert not person_names_agree(missing, "John Smith")
+
+    def test_related_person_with_null_name_is_skipped(self) -> None:
+        result = compute_form_d_confidence(
+            name_score=1.0,
+            pi_names=["John Smith"],
+            related_persons=[{"name": None, "title": "Director"}],
+            sbir_state="CA",
+            biz_states=["CA"],
+            earliest_sbir_award_year=2015,
+            form_d_dates=[],
+            year_of_inc=None,
+            rule_version=V3,
+            name_match_type="exact",
+        )
+        assert result.person_score == 0.0
 
 
 class TestNameGatedV3Tier:

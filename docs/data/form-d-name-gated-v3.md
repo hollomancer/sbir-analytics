@@ -31,21 +31,33 @@ signals. A tier is a match-strength label. It is not identity validation.
 
 ## Person signal
 
-A PI name and a related-person name agree when both conditions are true:
+A PI name and a related-person name agree when all of these conditions are true:
 
-1. The family names (last tokens) are equal.
+1. The family names are equal. When one name is written "Family, Given", all tokens before the
+   comma are the family name, and the other name must end with the same tokens ("Lee Wong, John"
+   agrees with "John Lee Wong" and does not agree with "Lee Chen, John" or "John Wong").
 2. The given names (first tokens) are equal, or one given name is an initial of the other.
+3. If both names have a middle name, the middle names are equal or initial-compatible. A middle
+   name on one side only does not block agreement.
+4. If both names have a generational suffix (Jr., Sr., II, III, IV, V), the suffixes are equal.
+   A suffix on one side only does not block agreement.
 
 Before the comparison:
-- Titles ("Dr."), generational suffixes ("Jr."), credentials ("P.E.", "Ph. D."), and punctuation
-  are removed. Short forms that are also surnames ("Ma", "Do") are not treated as credentials.
-- "Smith, John" is read as family name, given name.
+- Titles ("Dr."), credentials ("P.E.", "Ph. D.", "M.S.", "RN", "CPA"), job titles ("CEO",
+  "President", "Founder"), parenthesized text ("(Retired)"), and punctuation are removed. A
+  credential or job title is never the family name.
+- Short forms that are also surnames ("Ma", "Do", "Ba") are removed only when they are dotted
+  ("M.A.") or follow a comma. "Wei Ma" keeps "Ma" as the family name.
 - Accents are folded ("García" becomes "garcia"), and ø, æ, ł, and ß are transliterated. A name
   that still holds a non-ASCII letter is not read, and it does not agree with any name.
 - In-word hyphens and apostrophes are dropped, so "Smith-Lee" stays one token and does not agree
-  with "Lee". A nickname ("Bob" against
-"Robert") does not agree. This rule accepts some false negatives so that a different person
-with the same family name does not match. `person_score` is 1.0 when one pair agrees, else 0.0.
+  with "Lee".
+- A name that joins two people with "&" or "and" is not read. A missing name is not read. A name
+  that is not read is no evidence and does not agree with any name.
+
+A nickname ("Bob" against "Robert") does not agree. This rule accepts some false negatives so
+that a different person with the same family name does not match. `person_score` is 1.0 when
+one pair agrees, else 0.0.
 
 ## Tier rule
 
