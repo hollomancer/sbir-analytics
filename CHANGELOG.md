@@ -10,6 +10,99 @@ version.
 
 ## [Unreleased]
 
+## [0.22.0] — 2026-11-21
+
+### Breaking
+
+- Settings now stop the run on a bad value instead of falling back silently.
+  Numeric `SBIR_ETL__*` thresholds raise when the value is not a finite number
+  (#836, #850). Boolean flags accept only 1/0, true/false, yes/no, and on/off;
+  any other word raises (#847). The pipeline-chaining sensor toggles raise at
+  definitions load, so a typo stops the code location (#853). A malformed
+  `SBIR_ETL__PHASE_TRANSITION__DATA_CUT_DATE` raises instead of using today's
+  date (#847). A blank value now means "use the default" where some readers
+  used to raise.
+- The vendor-resolution fuzzy threshold is read from
+  `transition.vendor_resolution.fuzzy_threshold` in `config/base.yaml`. The old
+  variable `SBIR_ETL__TRANSITION__FUZZY__THRESHOLD` now raises; set
+  `SBIR_ETL__TRANSITION__VENDOR_RESOLUTION__FUZZY_THRESHOLD` instead. The
+  default is unchanged at 0.85 (#855).
+- Four USAspending assets (`sbir_relevant_usaspending_transactions`,
+  `sbir_grant_transactions`, `sbir_company_usaspending_recipients`,
+  `stale_usaspending_awards`) now fail when a schema check, query, or read
+  fails. They used to succeed with empty or partial output (#851).
+- The USAspending dump import raises when the table the view is built from
+  fails to load. Failures in other tables are logged and listed in asset
+  metadata as `dump_import_failed_tables` (#854).
+- Removed modules and helpers that nothing outside their own tests imported:
+  `sbir_analytics/tools/`, `sbir_etl/quality/baseline.py` and `dashboard.py`,
+  `sbir_ml` `trainer.py`, `taxonomy_checks.py`, and `patent_analyzer.py`,
+  `sbir_etl/utils/fiscal_audit_trail.py`, and `safe_path_join`,
+  `ensure_path_exists`, `validate_date_range`, `parse_date_safe`, and
+  `write_ndjson` (#837). Removed the `VendorCrosswalk` class and its records
+  (#840), `build_job_from_spec_with_executor`, and the module-level aliases in
+  `definitions.py` and `definitions_ml.py`; load `defs` or `bundle` (#842).
+
+### Added
+
+- `DunsProfile` in `sbir_etl.utils.identifiers`. `DUNS_V1` is the default and
+  unchanged. `DUNS_V2` repairs the ".0" float artifact by zero-padding and
+  rejects placeholders and malformed values. The identity boundary check now
+  forbids private UEI/DUNS cleaners and digit-only DUNS cleaning outside
+  `identifiers.py` (#852, #856).
+- `env_bool` in `sbir_etl.config.loader`, beside `env_int` and `env_float`
+  (#847).
+- `atomic_write_path` and `write_text_atomic` in
+  `sbir_etl.utils.data.file_io`. Sixteen private atomic writers now use them;
+  outputs keep the target's permissions, or get 0644 when new (#849).
+- A golden table that pins `normalize_company_name` output for all 21 name
+  profiles (#841).
+- `docs/development/silent-failure-census.md`, a dated snapshot of broad
+  `except` blocks in pipeline code (#851).
+- Exploratory research notes: STTR partner-effect feasibility (#803) and debt
+  financing and security interests in SBIR/STTR (#831).
+- CI runs the full test suite on pull requests (Python 3.11) and on main
+  (Python 3.11 and 3.12), with refreshed shard timings and a monthly
+  durations workflow (#844).
+
+### Changed
+
+- Matching sites now use DUNS_V2: the company fuzzy matcher, the
+  agency-private-capital aliases, defense funding, the `Award` model, the
+  USAspending recipient prefilter and join, and the SAM fallback. A DUNS read
+  as a float (`12345678.0`) now keys as `012345678`, not `123456780`.
+  Malformed values (`123456789A`, `12345678.9`) and placeholders no longer
+  produce keys (#852, #856).
+- Source-download modules log through loguru instead of `print()`. CLI
+  messages go to stderr; the `--json` output of `check_new_file.py` stays on
+  stdout (#848).
+- One job builder with an optional executor replaces two (#842). One-line
+  hash and company-name wrappers now call the shared primitives (#838).
+- Archived the 2025 DuckDB CET trade-off analysis (#839).
+
+### Fixed
+
+- `sbir_company_usaspending_recipients` queried columns that
+  `recipient_lookup` does not have, and the error was hidden. It now reads the
+  real columns and returns rows (#851).
+- `resolve_physical_table_name` ran a query DuckDB 2.0 rejects and fell back
+  to the right view by accident. It now checks for the named table or view and
+  raises when neither exists (#854).
+- The SBIR.gov cross-reference no longer builds its index from a partial API
+  pull; it uses the bulk file instead (#851).
+- M&A discovery no longer labels an acquirer, seller, or mentioned firm as the
+  acquired company, and placeholder identifiers no longer produce exact
+  matches (#835).
+- Empty normalized company names no longer join different firms, and M&A
+  search pairs stay apart when a name normalizes to empty (#845).
+- Form D name-gated-v3 tier rule and subset-safe name matching (#832).
+- SAM.gov Public V2 parsing keeps records with unescaped `|` (identity fields
+  kept, later fields blank) and parses extracts whose entity count is a
+  multiple of the chunk size (#830, #833).
+- `transformed_transition_evidence` reads its gate flag outside the
+  best-effort block, so a bad value raises instead of dropping the gate
+  (#847).
+
 ### Removed
 
 - Retired the exploratory Jev CI failure-triage pilot. Removed
