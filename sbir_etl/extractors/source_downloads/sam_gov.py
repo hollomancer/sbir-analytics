@@ -45,6 +45,7 @@ import re
 import sys
 import time
 import zipfile
+from collections.abc import Iterator
 from datetime import UTC, datetime
 from functools import partial
 from pathlib import Path
@@ -87,6 +88,17 @@ MAX_PAGINATED_RECORDS = 10_000
 # SAM.gov has shipped the monthly extract as a ZIP inside a ZIP of the same name
 # (Nov. 2026). One level of nesting is expected; the cap stops runaway recursion.
 MAX_NESTED_ZIP_DEPTH = 2
+# SAM.gov does not escape "|" inside free-text fields (Nov. 2026: 27 of 911,820
+# records). A record with extra fields that still ends with "!end" is kept, but
+# only its fields before the first free-text field are trusted (see
+# _repair_unescaped_delimiter_records). More repairs than this points to real
+# positional drift.
+MIN_REPAIRED_PUBLIC_V2_CAP = 100
+REPAIRED_PUBLIC_V2_CAP_FRACTION = 1 / 10_000
+# Positions 0-10 (UEI, DUNS, CAGE, registration status, codes, dates) hold no
+# free text, so an unescaped "|" cannot shift them. Position 11 (legal business
+# name) is the first free-text field.
+PUBLIC_V2_FIRST_FREE_TEXT_POSITION = 11
 
 # Columns the downstream pipeline reads (SAMGovExtractor.ENRICHMENT_COLUMNS).
 REQUIRED_COLUMNS = [
@@ -645,8 +657,18 @@ def _parse_public_v2(fh) -> pd.DataFrame:
     trailer_records: list[str] = []
 
     print("   Detected headerless SAM Public V2 positional layout")
+    repair_cap = max(
+        MIN_REPAIRED_PUBLIC_V2_CAP, int(expected_rows * REPAIRED_PUBLIC_V2_CAP_FRACTION)
+    )
+    repaired_ueis: list[str] = []
+    repaired_rows: list[int] = []
+    stream = io.BufferedReader(
+        _LineStream(
+            _repair_unescaped_delimiter_records(fh, repair_cap, repaired_ueis, repaired_rows)
+        )
+    )
     reader = pd.read_csv(
-        fh,
+        stream,
         dtype=str,
         delimiter="|",
         header=None,
@@ -669,6 +691,11 @@ def _parse_public_v2(fh) -> pd.DataFrame:
                 print(f"   Parsed {(i + 1) * 100_000:,} rows...", end="\r")
     except pd.errors.ParserError as exc:
         raise ValueError("SAM Public V2 extract contains a malformed positional record") from exc
+    if repaired_ueis:
+        print(
+            f"\n   Kept {len(repaired_ueis):,} records with an unescaped '|' in a text field; "
+            "their name, address, and NAICS fields are blank"
+        )
 
     if trailer_records != [expected_trailer]:
         raise ValueError("SAM Public V2 extract has a missing or mismatched EOF control record")
@@ -681,14 +708,91 @@ def _parse_public_v2(fh) -> pd.DataFrame:
             "SAM Public V2 entity count does not match its BOF/EOF control records: "
             f"expected {expected_rows:,}, parsed {len(frame):,}"
         )
-    _validate_public_v2_identity_fields(frame)
+    _validate_public_v2_identity_fields(frame, repaired_rows=frozenset(repaired_rows))
     frame.attrs["sam_expected_row_count"] = expected_rows
+    frame.attrs["sam_repaired_unescaped_delimiter_records"] = len(repaired_ueis)
+    frame.attrs["sam_repaired_unescaped_delimiter_ueis"] = repaired_ueis
     print(f"\n   {len(frame):,} validated Public V2 entity rows loaded")
     return frame
 
 
-def _validate_public_v2_identity_fields(frame: pd.DataFrame) -> None:
-    """Fail closed when positional drift would corrupt the census identity fields."""
+class _LineStream(io.RawIOBase):
+    """Read-only byte stream over an iterator of lines, so pandas can stream it."""
+
+    def __init__(self, lines: Iterator[bytes]) -> None:
+        self._lines = lines
+        self._buffer = b""
+
+    def readable(self) -> bool:
+        return True
+
+    def readinto(self, target) -> int:  # type: ignore[no-untyped-def]
+        while not self._buffer:
+            try:
+                self._buffer = next(self._lines)
+            except StopIteration:
+                return 0
+        size = min(len(target), len(self._buffer))
+        target[:size] = self._buffer[:size]
+        self._buffer = self._buffer[size:]
+        return size
+
+
+def _repair_unescaped_delimiter_records(
+    fh, cap: int, repaired_ueis: list[str], repaired_rows: list[int] | None = None
+) -> Iterator[bytes]:
+    """Yield the extract body, repairing one malformed shape in place.
+
+    A record with more than ``PUBLIC_V2_FIELD_COUNT`` fields that still ends with
+    ``!end`` has a literal "|" inside a free-text field (SAM.gov does not escape
+    it). Which text field holds it cannot be known, so only positions before
+    ``PUBLIC_V2_FIRST_FREE_TEXT_POSITION`` are trusted. The record is rewritten
+    with those fields, blank text fields, and ``!end``, so the entity stays in the
+    canonical file and still counts toward the control total. Its UEI is
+    recorded, and so is its zero-based position among the entity rows, because a UEI
+    can appear on more than one row. Every other shape is passed through unchanged, so the positional
+    checks still fail closed on it. Any line after the EOF control record fails.
+    """
+
+    expected_delimiters = PUBLIC_V2_FIELD_COUNT - 1
+    kept = PUBLIC_V2_FIRST_FREE_TEXT_POSITION
+    blanks = [b""] * (PUBLIC_V2_FIELD_COUNT - 1 - kept)
+    seen_trailer = False
+    row = -1  # position among entity rows; pandas skips blank lines, so they are not counted
+    for line in fh:
+        body = line.rstrip(b"\r\n")
+        if seen_trailer:
+            if body.strip():
+                raise ValueError("SAM Public V2 extract has data after its EOF control record")
+            continue
+        if body.startswith(b"EOF PUBLIC"):
+            seen_trailer = True
+        elif body.strip():
+            row += 1
+        if not seen_trailer and body.count(b"|") > expected_delimiters and body.endswith(b"|!end"):
+            fields = body.split(b"|")
+            repaired_ueis.append(fields[0].decode("utf-8"))
+            if repaired_rows is not None:
+                repaired_rows.append(row)
+            if len(repaired_ueis) > cap:
+                raise ValueError(
+                    "SAM Public V2 extract has too many records with extra fields "
+                    f"(more than {cap:,}); suspect positional drift"
+                )
+            line = b"|".join([*fields[:kept], *blanks, b"!end"]) + b"\n"
+        yield line
+
+
+def _validate_public_v2_identity_fields(
+    frame: pd.DataFrame, *, repaired_rows: frozenset[int] = frozenset()
+) -> None:
+    """Fail closed when positional drift would corrupt the census identity fields.
+
+    Repaired records keep their UEI and registration status, which are checked
+    like any other row, but their legal business name is blank by design. Only
+    the repaired rows themselves are exempt, by position: another row with the
+    same UEI must still have a name.
+    """
 
     if list(frame.columns) != REQUIRED_COLUMNS:
         raise ValueError("SAM Public V2 parser did not produce the pinned census field set")
@@ -696,7 +800,8 @@ def _validate_public_v2_identity_fields(frame: pd.DataFrame) -> None:
         raise ValueError("SAM Public V2 extract contains a missing or malformed UEI")
     if not frame["registration_status"].isin({"A", "E"}).all():
         raise ValueError("SAM Public V2 extract contains an invalid registration status")
-    if frame["legal_business_name"].eq("").any():
+    named = ~pd.Series(range(len(frame)), index=frame.index).isin(repaired_rows)
+    if frame.loc[named, "legal_business_name"].eq("").any():
         raise ValueError("SAM Public V2 extract contains a missing legal business name")
 
 
@@ -734,6 +839,10 @@ def _write_local(df: pd.DataFrame, dest: Path, *, name: str = PARQUET_NAME) -> P
         "source_sha256": df.attrs.get("sam_source_sha256"),
         "source_url": df.attrs.get("sam_source_url"),
         "expected_row_count": df.attrs.get("sam_expected_row_count"),
+        "repaired_unescaped_delimiter_records": df.attrs.get(
+            "sam_repaired_unescaped_delimiter_records"
+        ),
+        "repaired_unescaped_delimiter_ueis": df.attrs.get("sam_repaired_unescaped_delimiter_ueis"),
         "row_count": len(df),
         "downloaded_at": datetime.now(UTC).isoformat(),
         "partial": name == PARQUET_NAME_PARTIAL,
