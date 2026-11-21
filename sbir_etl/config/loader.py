@@ -135,6 +135,33 @@ def env_int(key: str, default: int) -> int:
         raise ValueError(f"Environment variable {key}={text!r} is not a valid integer") from None
 
 
+_TRUE_WORDS = frozenset({"1", "true", "yes", "on"})
+_FALSE_WORDS = frozenset({"0", "false", "no", "off"})
+
+
+def env_bool(key: str, default: bool) -> bool:
+    """Read a boolean from environment variable ``key``.
+
+    An unset, empty, or blank variable returns ``default``. The words ``1``,
+    ``true``, ``yes``, and ``on`` mean true; ``0``, ``false``, ``no``, and ``off``
+    mean false (any letter case). Any other value (for example ``"ture"``)
+    raises ``ValueError`` so that a mistyped flag stops the run instead of
+    being read silently as false.
+    """
+    text = _env_number_text(key)
+    if text is None:
+        return default
+    word = text.lower()
+    if word in _TRUE_WORDS:
+        return True
+    if word in _FALSE_WORDS:
+        return False
+    raise ValueError(
+        f"Environment variable {key}={text!r} is not a boolean; "
+        "use one of 1/0, true/false, yes/no, on/off"
+    )
+
+
 def _apply_env_overrides(config_dict: dict[str, Any], prefix: str = "SBIR_ETL") -> dict[str, Any]:
     """Apply environment variable overrides to configuration dictionary.
 
