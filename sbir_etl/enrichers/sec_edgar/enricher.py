@@ -185,14 +185,18 @@ _FORM_TYPE_LABELS: dict[str, str] = {
 # "Acquisition" senses that are not M&A: data/signal capture and government
 # procurement, both common near SBIR firm names. Their acquisition word is
 # replaced before matching, so the rest of the phrase (e.g. "contract") still counts.
-_NON_MA_ACQUISITION = re.compile(
+# The "<sense> acquisition" and "acquire <noun>" forms match lowercase text only, so
+# a capitalized company name ("acquired Signal Systems Corp") is not neutralized.
+_NON_MA_ACQUISITION_LOWERCASE = re.compile(
     r"\b(?:data|signal|image|imaging|target|sensor|spectrum|federal|defense|dod|"
-    r"government|weapons?|technology)\s+acquisitions?\b"
-    r"|\bacquisitions?\s+(?:systems?|programs?|regulations?|strateg(?:y|ies)|contracts?|"
-    r"process|costs?|workforce|community|executives?|logistics|officers?|reform|cycle)\b"
-    r"|\bacquisition,\s*technology,?\s+and\s+logistics\b"
+    r"government|weapons?)\s+acquisitions?\b"
     r"|\bacquir(?:e|ed|es|ing)\s+(?:the\s+)?(?:data|signals?|images?|imagery|"
-    r"measurements?|targets?|samples?)\b",
+    r"measurements?|targets?|samples?)\b"
+)
+_NON_MA_ACQUISITION_ANY_CASE = re.compile(
+    r"\bacquisitions?\s+(?:systems?|programs?|regulations?|contracts?|"
+    r"workforce|community|executives?|logistics|officers?|reform)\b"
+    r"|\bacquisition,\s*technology,?\s+and\s+logistics\b",
     re.IGNORECASE,
 )
 _ACQUISITION_WORD = re.compile(r"acqui\w*", re.IGNORECASE)
@@ -200,9 +204,12 @@ _ACQUISITION_WORD = re.compile(r"acqui\w*", re.IGNORECASE)
 
 def _neutralize_non_ma_acquisition(text: str) -> str:
     """Replace the acquisition word inside non-M&A phrases with a neutral token."""
-    return _NON_MA_ACQUISITION.sub(
-        lambda match: _ACQUISITION_WORD.sub("procurement_or_capture", match.group(0)), text
-    )
+
+    def replace(match: re.Match[str]) -> str:
+        return _ACQUISITION_WORD.sub("procurement_or_capture", match.group(0))
+
+    text = _NON_MA_ACQUISITION_LOWERCASE.sub(replace, text)
+    return _NON_MA_ACQUISITION_ANY_CASE.sub(replace, text)
 
 
 # Keyword regexes for surrounding-text context classification, ordered by priority.
@@ -427,6 +434,10 @@ def _classify_mention(items: list[str], form_type: str) -> str:
     item_set = set(items)
     if item_set & _MA_ITEMS:
         return "ma_definitive"
+    if "1.01" in item_set:
+        # A signing 8-K may also carry 2.02, 7.01, or 8.01. Item 1.01 covers
+        # leases and loans too, so the surrounding text decides.
+        return "filing_mention"
     if item_set & _FINANCIAL_ITEMS:
         return "financial_mention"
     if item_set & _DISCLOSURE_ITEMS:

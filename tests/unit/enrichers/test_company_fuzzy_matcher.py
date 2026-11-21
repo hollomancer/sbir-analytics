@@ -478,3 +478,20 @@ def test_placeholder_identifiers_never_match_exactly(award_ids, company_ids) -> 
 def test_duns_read_as_a_number_still_matches_exactly() -> None:
     # pandas without dtype=str reads DUNS 012345678 as 12345678.0.
     assert _exact_method({"Duns": 12345678.0}, {"Duns": "012345678"}) == "duns-exact"
+
+
+def test_duns_decimal_text_is_read_as_the_number() -> None:
+    from sbir_etl.enrichers.company_fuzzy_matcher import _exact_duns_key
+
+    # A CSV written from a float column stores DUNS 012345678 as "12345678.0".
+    assert _exact_duns_key("12345678.0") == "012345678"
+    assert _exact_duns_key(" 123456789.00 ") == "123456789"
+    assert _exact_method({"Duns": "12345678.0"}, {"Duns": "012345678"}) == "duns-exact"
+
+
+@pytest.mark.parametrize("value", ["12345678", "1234567890.0"])
+def test_duns_text_that_is_not_a_padded_number_stays_invalid(value) -> None:
+    from sbir_etl.enrichers.company_fuzzy_matcher import _exact_duns_key
+
+    # Text sources keep leading zeros, so a plain 8-digit string is truncated.
+    assert _exact_duns_key(value) is None

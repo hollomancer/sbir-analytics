@@ -814,6 +814,17 @@ class TestClassifyMention:
 
         assert _classify_mention(["1.01", "9.01"], "8-K") == "filing_mention"
 
+    @pytest.mark.parametrize(
+        "items",
+        [["1.01", "8.01", "9.01"], ["1.01", "7.01", "9.01"], ["1.01", "2.02"]],
+    )
+    def test_item_1_01_with_other_items_defers_to_text_context(self, items):
+        # A signing 8-K often adds a press release (7.01/8.01) or results (2.02).
+        # The text check must still run, so these must not be disclosure or financial.
+        from sbir_etl.enrichers.sec_edgar.enricher import _classify_mention
+
+        assert _classify_mention(items, "8-K") == "filing_mention"
+
     def test_ma_proxy_from_form_type(self):
         from sbir_etl.enrichers.sec_edgar.enricher import _classify_mention
 
@@ -1009,6 +1020,20 @@ class TestMentionContextMustNotMatch:
     async def test_acquisition_contract_still_reads_as_contract(self):
         text = "Tiny SBIR Inc holds a defense acquisition program contract."
         assert await _context_label(text) == "contract"
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        ("text", "company"),
+        [
+            ("Parent acquired Signal Systems Corp for $40 million.", "Signal Systems Corp"),
+            ("In 2023 the Company acquired Target Systems Inc. for cash.", "Target Systems Inc"),
+            ("Acme completed the technology acquisition of Foo Inc last year.", "Foo Inc"),
+            ("Our acquisition strategy includes buying Foo Inc and others.", "Foo Inc"),
+            ("In 2024 we incurred acquisition costs related to Foo Inc.", "Foo Inc"),
+        ],
+    )
+    async def test_real_deal_wording_is_not_neutralized(self, text, company):
+        assert await _context_label(text, company) == "acquisition"
 
     @pytest.mark.asyncio
     async def test_real_acquisition_still_reads_as_acquisition(self):

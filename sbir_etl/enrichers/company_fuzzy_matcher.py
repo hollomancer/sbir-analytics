@@ -40,6 +40,7 @@ decisions are non-citable.
 from __future__ import annotations
 
 import json
+import re
 from collections.abc import Hashable, Sequence
 from numbers import Integral
 from typing import Any, TypedDict, cast
@@ -329,16 +330,24 @@ def _exact_uei_key(value: object) -> str | None:
     return None if key is None or _is_placeholder(key) else key
 
 
+_DUNS_AS_DECIMAL_TEXT = re.compile(r"^\s*(\d{1,9})\.0+\s*$")
+
+
 def _exact_duns_key(value: object) -> str | None:
     """Valid 9-digit DUNS usable as an exact-match key, else None.
 
     A DUNS read as a number (pandas without ``dtype=str``) loses its leading
     zeros and may carry ".0", so whole numbers are formatted back to 9 digits.
+    A string such as "12345678.0" is that number written as text and gets the
+    same treatment. A plain 8-digit string stays invalid: text sources keep
+    leading zeros, so a short string is a truncated DUNS, not a number.
     """
     if isinstance(value, Integral) and not isinstance(value, bool):
         value = f"{int(value):09d}"
     elif isinstance(value, float) and value.is_integer():
         value = f"{int(value):09d}"
+    elif isinstance(value, str) and (whole := _DUNS_AS_DECIMAL_TEXT.match(value)):
+        value = f"{int(whole.group(1)):09d}"
     key = normalize_duns(value)
     return None if key is None or _is_placeholder(key) else key
 
