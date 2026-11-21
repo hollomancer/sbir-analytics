@@ -19,6 +19,7 @@ from loguru import logger
 from sbir_etl.config.loader import get_config
 from sbir_etl.enrichers.chunked_enrichment import ChunkedEnricher
 from sbir_etl.enrichers.usaspending import enrich_sbir_with_usaspending
+from sbir_etl.utils.identifiers import normalize_duns, normalize_uei
 from sbir_etl.utils.monitoring import performance_monitor
 from sbir_etl.utils.reporting.analyzers.sbir_analyzer import SbirEnrichmentAnalyzer
 
@@ -70,9 +71,9 @@ def _filter_recipients_by_sbir(
     sbir_duns = set()
 
     if "uei" in sbir_df.columns:
-        sbir_ueis = set(sbir_df["uei"].dropna().astype(str).str.strip().str.upper())
+        sbir_ueis = set(sbir_df["uei"].map(normalize_uei).dropna())
     if "duns" in sbir_df.columns:
-        sbir_duns = set(sbir_df["duns"].dropna().astype(str).str.strip())
+        sbir_duns = set(sbir_df["duns"].map(normalize_duns).dropna())
 
     context.log.info(f"SBIR identifiers: {len(sbir_ueis)} UEIs, {len(sbir_duns)} DUNS")
 
@@ -80,11 +81,11 @@ def _filter_recipients_by_sbir(
     mask = pd.Series(False, index=recipients_df.index)
 
     if "uei" in recipients_df.columns and sbir_ueis:
-        recipient_ueis = recipients_df["uei"].fillna("").astype(str).str.strip().str.upper()
+        recipient_ueis = recipients_df["uei"].map(normalize_uei)
         mask |= recipient_ueis.isin(sbir_ueis)
 
     if "duns" in recipients_df.columns and sbir_duns:
-        recipient_duns = recipients_df["duns"].fillna("").astype(str).str.strip()
+        recipient_duns = recipients_df["duns"].map(normalize_duns)
         mask |= recipient_duns.isin(sbir_duns)
 
     filtered_df = recipients_df[mask].copy()
