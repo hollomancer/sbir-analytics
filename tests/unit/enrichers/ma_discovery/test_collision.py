@@ -141,3 +141,44 @@ def test_c3_does_not_overwrite_form_d_acquirer() -> None:
     assert result.rows[0]["acquirer"] == "Form D Buyer LLC"
     assert result.rows[0]["signals"]["discovered_acquirer_disagrees"] == "Helios Defense"
     assert result.promoted == []
+
+
+def _form_d_event(acquirer: str) -> dict[str, object]:
+    return {
+        "company_name": "Aether Photonics",
+        "acquirer": acquirer,
+        "event_date": "2024-03-12",
+        "confidence": "high",
+        "form_d_detail": {"filing_date": "2024-03-12"},
+        "signals": {"form_d_business_combination": True},
+    }
+
+
+def _discovered(acquirer: str) -> dict[str, object]:
+    return {
+        "company_name": "Aether Photonics",
+        "acquirer": acquirer,
+        "event_date": "2024-03-12",
+        "confidence": "high",
+    }
+
+
+@pytest.mark.parametrize(
+    ("existing_acquirer", "discovered_acquirer"),
+    [("Inc.", "LLC"), ("&.,", "---")],
+)
+def test_c3_flags_disagreement_when_both_acquirer_keys_are_empty(
+    existing_acquirer: str, discovered_acquirer: str
+) -> None:
+    # Both names normalize to "" under recipient-v1. They are different
+    # acquirers, so C3 must not read the shared empty key as agreement.
+    result = apply_c3([_form_d_event(existing_acquirer)], [_discovered(discovered_acquirer)])
+    assert result.rows[0]["acquirer"] == existing_acquirer
+    assert result.rows[0]["signals"]["discovered_acquirer_disagrees"] == discovered_acquirer
+
+
+def test_c3_suffix_variant_acquirer_still_agrees() -> None:
+    # Positive control: the same acquirer with a different legal suffix agrees.
+    result = apply_c3([_form_d_event("Helios Defense LLC")], [_discovered("Helios Defense, Inc.")])
+    assert "discovered_acquirer_disagrees" not in result.rows[0]["signals"]
+    assert result.rows[0]["signals"]["discovery_confirmed"] is True

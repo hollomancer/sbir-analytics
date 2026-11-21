@@ -5,7 +5,7 @@ from __future__ import annotations
 import pytest
 
 from sbir_etl.enrichers.ma_discovery.extractor import ExtractionInput, ExtractionVerdict
-from sbir_etl.enrichers.ma_discovery.orchestrator import main, process_batch
+from sbir_etl.enrichers.ma_discovery.orchestrator import _pair_key, main, process_batch
 from sbir_etl.enrichers.ma_discovery.queries import generate_queries
 from sbir_etl.enrichers.ma_discovery.search import MockSearchTool
 
@@ -261,3 +261,15 @@ def test_main_without_backend_is_fail_closed(tmp_path) -> None:
     with pytest.raises(ConfigurationError, match="fail-closed"):
         main(["--input", str(input_path), "--output", str(output_path)])
     assert not output_path.exists()
+
+
+def test_pair_key_keeps_acquirers_with_empty_normalized_names_apart() -> None:
+    # "Inc." and "LLC" both normalize to "". That is not name evidence, so the
+    # two pairs must not share a dedupe key.
+    assert _pair_key("Aether Photonics", "Inc.") != _pair_key("Aether Photonics", "LLC")
+
+
+def test_pair_key_still_dedupes_same_acquirer_across_casing_and_punctuation() -> None:
+    assert _pair_key("Aether Photonics", "Mercury Systems, Inc.") == _pair_key(
+        "AETHER PHOTONICS", "mercury systems inc"
+    )

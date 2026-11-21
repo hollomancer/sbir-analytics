@@ -153,7 +153,9 @@ class VendorResolver:
                 if key:
                     self._duns_index[key] = r
             nm = self._normalize_name(r.name)
-            self._name_index.setdefault(nm, []).append(r)
+            # An empty key carries no name evidence; never index it.
+            if nm:
+                self._name_index.setdefault(nm, []).append(r)
         logger.info("VendorResolver loaded {} vendor records", count)
 
     # -----------------------------
@@ -214,6 +216,12 @@ class VendorResolver:
             return result
 
         norm = self._normalize_name(name)
+        if not norm:
+            result = ResolverMatch(
+                record=None, method="name", score=0.0, note="name has no normalized key"
+            )
+            self._cache[cache_key] = result
+            return result
         # Exact name match
         exact = self._name_index.get(norm)
         if exact:
@@ -333,7 +341,8 @@ class VendorResolver:
         if rec.duns:
             self._duns_index[str(rec.duns).strip()] = rec
         nm = self._normalize_name(rec.name)
-        self._name_index.setdefault(nm, []).append(rec)
+        if nm:
+            self._name_index.setdefault(nm, []).append(rec)
         # Clear caches (conservative)
         self._cache.clear()
 

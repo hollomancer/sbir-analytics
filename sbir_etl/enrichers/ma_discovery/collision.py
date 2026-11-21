@@ -127,11 +127,13 @@ def apply_c3(
         if _has_form_d(current):
             existing_acq = str(current.get("acquirer") or "")
             discovered_acq = str(hit.get("acquirer") or "")
-            if (
-                existing_acq
-                and discovered_acq
-                and name_key(existing_acq) != name_key(discovered_acq)
-            ):
+            existing_acq_key = name_key(existing_acq)
+            # Empty normalization is a mismatch: two acquirers whose keys are
+            # both "" (for example "Inc." and "LLC") do not agree.
+            acquirers_agree = bool(existing_acq_key) and existing_acq_key == name_key(
+                discovered_acq
+            )
+            if existing_acq and discovered_acq and not acquirers_agree:
                 signals["discovered_acquirer_disagrees"] = discovered_acq
             updated = _with_signal(current, signals=signals)
             rows[match_idx] = updated
