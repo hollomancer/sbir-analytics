@@ -36,10 +36,6 @@ except ImportError:
     process = None  # type: ignore[assignment, no-redef]
 
 
-def _normalize_recipient_name(name: str) -> str:
-    return normalize_company_name(name, profile=CompanyNameProfile.ORGANIZATION_KEY_V1)
-
-
 def enrich_sbir_with_usaspending(
     sbir_df: pd.DataFrame,
     recipient_df: pd.DataFrame,
@@ -99,10 +95,24 @@ def enrich_sbir_with_usaspending(
 
     # Add normalized names
     sbir["_norm_name"] = (
-        sbir[sbir_company_col].fillna("").astype(str).map(_normalize_recipient_name)
+        sbir[sbir_company_col]
+        .fillna("")
+        .astype(str)
+        .map(
+            lambda name: normalize_company_name(
+                name, profile=CompanyNameProfile.ORGANIZATION_KEY_V1
+            )
+        )
     )
     recipients["_norm_name"] = (
-        recipients[recipient_name_col].fillna("").astype(str).map(_normalize_recipient_name)
+        recipients[recipient_name_col]
+        .fillna("")
+        .astype(str)
+        .map(
+            lambda name: normalize_company_name(
+                name, profile=CompanyNameProfile.ORGANIZATION_KEY_V1
+            )
+        )
     )
 
     # Build indexes for exact matching

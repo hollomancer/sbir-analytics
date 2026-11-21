@@ -18,11 +18,11 @@ from loguru import logger
 from sbir_analytics.assets.phase_iii_candidates.pairing import PAIR_COLUMNS, build_uei_pairs
 from sbir_analytics.assets.phase_transition.sbir_gov_source import (
     SbirGovSourceError,
-    sha256_file,
     verify_sbir_gov_materialization,
 )
 from sbir_etl.exceptions import ConfigurationError
 from sbir_etl.quality.study_manifest import load_study_manifest
+from sbir_etl.utils.data.file_io import file_sha256
 
 from .criteria import (
     CensusInputError,
@@ -363,7 +363,7 @@ def _verify_phase_ii_provenance(priors: pd.DataFrame, contracts_path: Path) -> t
         inputs.get("contracts_exists") is not True
         or not isinstance(recorded_contracts, str)
         or Path(recorded_contracts).resolve() != contracts_path.resolve()
-        or inputs.get("contracts_sha256") != sha256_file(contracts_path)
+        or inputs.get("contracts_sha256") != file_sha256(contracts_path)
     ):
         raise CensusInputError("Phase II priors were built from a different contract source")
     recorded_input = inputs.get("sbir_awards_path")
@@ -382,7 +382,7 @@ def _verify_phase_ii_provenance(priors: pd.DataFrame, contracts_path: Path) -> t
     ):
         raise CensusInputError("Phase II priors record a different SBIR.gov source checksum")
 
-    if not phase_ii_path.is_file() or output.get("sha256") != sha256_file(phase_ii_path):
+    if not phase_ii_path.is_file() or output.get("sha256") != file_sha256(phase_ii_path):
         raise CensusInputError("Phase II parquet checksum does not match its provenance manifest")
     if output.get("rows") != len(priors) or output.get("ordered_columns") != list(priors.columns):
         raise CensusInputError("Phase II prior frame shape does not match its manifest")

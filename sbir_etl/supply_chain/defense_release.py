@@ -81,11 +81,6 @@ _SUBAWARD_COLUMNS = {
 }
 
 
-def _sha256(path: Path) -> str:
-    """Return the SHA-256 hex digest of ``path``."""
-    return file_sha256(path)
-
-
 def _prime_snapshot_metadata(path: Path) -> dict[str, object]:
     manifest_path = path / "manifest.json"
     if not manifest_path.is_file():
@@ -96,7 +91,7 @@ def _prime_snapshot_metadata(path: Path) -> dict[str, object]:
     return {
         "path": str(path),
         "manifest_path": str(manifest_path),
-        "manifest_sha256": _sha256(manifest_path),
+        "manifest_sha256": file_sha256(manifest_path),
         "retrieval_complete": manifest.get("retrieval_complete"),
     }
 
@@ -153,7 +148,7 @@ def _read_subaward_source(path: Path) -> pd.DataFrame:
     else:
         raise ValueError(f"unsupported subaward source format: {path}")
     frame["source_input_path"] = str(path)
-    frame["source_input_sha256"] = _sha256(path)
+    frame["source_input_sha256"] = file_sha256(path)
     return frame
 
 
@@ -231,7 +226,7 @@ def _extract_contract_archive(
     registry: pd.DataFrame,
     extract_dir: Path,
 ) -> Path:
-    archive_hash = _sha256(archive)
+    archive_hash = file_sha256(archive)
     destination = extract_dir / f"{archive.stem}-{archive_hash[:12]}.parquet"
     if destination.is_file():
         return destination
@@ -270,7 +265,7 @@ def _write_partitions(
                         "path": str(path.relative_to(root)),
                         "row_count": len(partition),
                         "distinct_source_ids": int(partition[identifier].nunique()),
-                        "sha256": _sha256(path),
+                        "sha256": file_sha256(path),
                     }
                 )
         _write_json(
@@ -388,14 +383,14 @@ def prepare_defense_funding(
                 pd.read_parquet(extracted),
                 registry,
                 source_path=archive,
-                source_sha256=_sha256(archive),
+                source_sha256=file_sha256(archive),
                 ot_only=ot_only,
             )
         )
         archive_inputs.append(
             {
                 "archive_path": str(archive),
-                "archive_sha256": _sha256(archive),
+                "archive_sha256": file_sha256(archive),
                 "extracted_path": str(extracted),
             }
         )
@@ -405,11 +400,11 @@ def prepare_defense_funding(
                 pd.read_parquet(path),
                 registry,
                 source_path=path,
-                source_sha256=_sha256(path),
+                source_sha256=file_sha256(path),
                 ot_only=ot_only,
             )
         )
-        archive_inputs.append({"archive_parquet_path": str(path), "sha256": _sha256(path)})
+        archive_inputs.append({"archive_parquet_path": str(path), "sha256": file_sha256(path)})
     prime = combine_prime_transactions(*api_frames, *archive_frames)
     if prime.empty and not allow_missing_prime:
         raise ValueError("no DoD prime transaction source was configured or produced matches")
@@ -597,7 +592,7 @@ def build_release(workset: DefenseFundingWorkset, *, award_screen: pd.DataFrame)
     _write_json(quality, quality_path)
 
     product_metadata = {
-        name: {"path": str(path), "sha256": _sha256(path), "row_count": len(frame)}
+        name: {"path": str(path), "sha256": file_sha256(path), "row_count": len(frame)}
         for name, (path, frame) in products.items()
     }
     manifest_path = lineage_dir / "nsf_defense_lineage_manifest.json"
@@ -614,11 +609,12 @@ def build_release(workset: DefenseFundingWorkset, *, award_screen: pd.DataFrame)
             **phase1_manifest.get("inputs", {}),
             "prime_api_snapshots": [_prime_snapshot_metadata(path) for path in snapshots],
             "prime_api_parquets": [
-                {"path": str(path), "sha256": _sha256(path)} for path in prime_api_parquets or []
+                {"path": str(path), "sha256": file_sha256(path)}
+                for path in prime_api_parquets or []
             ],
             "prime_contract_archives": archive_inputs,
             "subaward_sources": [
-                {"path": str(path), "sha256": _sha256(path)} for path in subaward_paths
+                {"path": str(path), "sha256": file_sha256(path)} for path in subaward_paths
             ],
         },
         "products": {**phase1_manifest.get("products", {}), **product_metadata},
@@ -628,7 +624,7 @@ def build_release(workset: DefenseFundingWorkset, *, award_screen: pd.DataFrame)
         },
         "quality_report": {
             "path": str(quality_path),
-            "sha256": _sha256(quality_path),
+            "sha256": file_sha256(quality_path),
             "quality_gates_passed": quality["quality_gates_passed"],
         },
         "source_boundaries": {

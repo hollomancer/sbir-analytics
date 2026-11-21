@@ -9,9 +9,9 @@ import pytest
 from sbir_analytics.assets.agency_private_capital.form_d_inputs import (
     load_form_d_control_universe,
     load_form_d_matches,
-    normalize_name,
 )
 from sbir_etl.enrichers.sec_edgar.form_d_scoring import FORM_D_TIER_RULE_VERSION
+from sbir_etl.identity import CompanyNameProfile, normalize_company_name
 
 
 pytestmark = pytest.mark.fast
@@ -23,8 +23,9 @@ def _write_jsonl(path, rows):
             fh.write(json.dumps(row) + "\n")
 
 
-def test_normalize_name_uppercases_and_squashes_whitespace() -> None:
-    assert normalize_name("  Acme   Corp ") == "ACME CORP"
+def test_form_d_join_profile_uppercases_and_squashes_whitespace() -> None:
+    name = normalize_company_name("  Acme   Corp ", profile=CompanyNameProfile.FORM_D_JOIN_V1)
+    assert name == "ACME CORP"
 
 
 def test_load_form_d_matches_keeps_high_non_excluded_offerings(tmp_path) -> None:

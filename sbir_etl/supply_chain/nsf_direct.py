@@ -88,11 +88,6 @@ def _analysis_timestamp(value: str | date | datetime | pd.Timestamp) -> pd.Times
     return result.normalize()
 
 
-def _file_sha256(path: Path) -> str:
-    """Return the SHA-256 hex digest of ``path``."""
-    return file_sha256(path)
-
-
 def _stable_record_ids(frame: pd.DataFrame) -> pd.Series:
     columns = [
         "sbir_gov_company_name",
@@ -221,7 +216,7 @@ def load_nsf_sbir_baseline(path: Path | str, *, include_sttr: bool = True) -> pd
         pd.read_csv(source, dtype=str, low_memory=False),
         include_sttr=include_sttr,
         source_path=str(source),
-        source_sha256=_file_sha256(source),
+        source_sha256=file_sha256(source),
     )
 
 

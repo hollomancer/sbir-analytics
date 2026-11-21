@@ -727,12 +727,6 @@ _GENERIC_WORDS = frozenset(
 )
 
 
-def _clean_company_name(name: str) -> str:
-    """Compatibility shim for the versioned SEC EDGAR company-name policy."""
-
-    return normalize_company_name(name, profile=CompanyNameProfile.SEC_EDGAR_V1)
-
-
 def _distinctive_words(cleaned_name: str) -> set[str]:
     """Words in a cleaned name that aren't generic business terms."""
     return set(cleaned_name.split()) - _GENERIC_WORDS
@@ -757,7 +751,7 @@ async def _resolve_cik(
     if not results:
         return None
 
-    query_clean = _clean_company_name(company_name)
+    query_clean = normalize_company_name(company_name, profile=CompanyNameProfile.SEC_EDGAR_V1)
     query_distinctive = _distinctive_words(query_clean)
     query_is_multiword = len(query_clean.split()) > 1
 
@@ -768,7 +762,7 @@ async def _resolve_cik(
         entity_name = result.get("entity_name", "")
         if not entity_name:
             continue
-        entity_clean = _clean_company_name(entity_name)
+        entity_clean = normalize_company_name(entity_name, profile=CompanyNameProfile.SEC_EDGAR_V1)
 
         score = (
             max(

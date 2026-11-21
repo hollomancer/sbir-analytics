@@ -19,7 +19,6 @@ from sbir_etl.config.loader import env_float as _env_float
 from sbir_etl.config.loader import env_int as _env_int
 from sbir_etl.config.loader import get_config  # noqa: F401
 from sbir_etl.extractors.contract_extractor import ContractExtractor  # noqa: F401
-from sbir_etl.identity import CompanyNameProfile, normalize_company_name
 from sbir_ml.transition.features.vendor_resolver import VendorRecord, VendorResolver  # noqa: F401
 
 
@@ -121,7 +120,6 @@ __all__ = [
     "AssetCheckResult",
     "AssetCheckSeverity",
     "now_utc_iso",
-    "_norm_name",
     "_env_float",
     "_env_int",
     "_env_bool",
@@ -133,11 +131,6 @@ __all__ = [
 
 def now_utc_iso() -> str:
     return datetime.utcnow().isoformat(timespec="seconds") + "Z"
-
-
-def _norm_name(s: str | None) -> str:
-    """Build the company join key via the ``lower-join-v1`` identity profile."""
-    return normalize_company_name(s, profile=CompanyNameProfile.LOWER_JOIN_V1)
 
 
 def _env_bool(key: str, default: bool) -> bool:

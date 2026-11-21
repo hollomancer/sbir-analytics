@@ -35,12 +35,11 @@ from sbir_etl.models.sbir_program import (
     normalize_sbir_program,
     program_from_fpds_research_code,
 )
-from sbir_etl.utils.data.file_io import write_json_atomic
+from sbir_etl.utils.data.file_io import file_sha256, write_json_atomic
 
 from .sbir_gov_source import (
     SbirGovSourceError,
     ordered_columns_sha256,
-    sha256_file,
     verify_sbir_gov_materialization,
 )
 from .utils import (
@@ -626,7 +625,7 @@ def validated_phase_ii_awards(context=None) -> Output[pd.DataFrame]:
             "contracts_path": str(contracts_path),
             "sbir_awards_path": str(sbir_awards_path),
             "contracts_exists": contracts_path.exists(),
-            "contracts_sha256": sha256_file(contracts_path) if contracts_path.is_file() else None,
+            "contracts_sha256": file_sha256(contracts_path) if contracts_path.is_file() else None,
             "sbir_awards_exists": sbir_awards_path.exists(),
             "sbir_awards_v2_verified": sbir_input_provenance is not None,
             "sbir_awards_v2": sbir_input_provenance,
@@ -637,7 +636,7 @@ def validated_phase_ii_awards(context=None) -> Output[pd.DataFrame]:
             "rows": int(len(unified)),
             "ordered_columns": list(unified.columns),
             "ordered_columns_sha256": ordered_columns_sha256(list(unified.columns)),
-            "sha256": sha256_file(output_path) if output_path.is_file() else None,
+            "sha256": file_sha256(output_path) if output_path.is_file() else None,
         },
     }
     checks_path = output_path.with_suffix(".checks.json")

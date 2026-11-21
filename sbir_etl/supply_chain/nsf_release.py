@@ -28,21 +28,16 @@ DEFAULT_OUTPUT_DIR = Path("data/processed/nsf_sbir_defense_lineage")
 DEFAULT_SNAPSHOT_ROOT = Path("data/raw/nsf/award_api")
 
 
-def _sha256(path: Path) -> str:
-    """Return the SHA-256 hex digest of ``path``."""
-    return file_sha256(path)
-
-
 def _source_metadata(path: Path) -> dict[str, object]:
     if path.is_file():
-        return {"path": str(path), "kind": "file", "sha256": _sha256(path)}
+        return {"path": str(path), "kind": "file", "sha256": file_sha256(path)}
     files = sorted(child for child in path.rglob("*") if child.is_file())
     digest = hashlib.sha256()
     for child in files:
         relative = str(child.relative_to(path))
         digest.update(relative.encode())
         digest.update(b"\0")
-        digest.update(_sha256(child).encode())
+        digest.update(file_sha256(child).encode())
         digest.update(b"\n")
     return {
         "path": str(path),
@@ -103,7 +98,7 @@ def build_release(
         sources = [snapshot]
         snapshot_summary = {
             "path": str(snapshot),
-            "manifest_sha256": _sha256(snapshot / "manifest.json")
+            "manifest_sha256": file_sha256(snapshot / "manifest.json")
             if (snapshot / "manifest.json").is_file()
             else None,
             **{
@@ -153,7 +148,7 @@ def build_release(
         "generated_at": datetime.now(UTC).isoformat(),
         "direct_schema_version": NSF_DIRECT_SCHEMA_VERSION,
         "sbir_gov_source_path": str(awards_path),
-        "sbir_gov_source_sha256": _sha256(awards_path),
+        "sbir_gov_source_sha256": file_sha256(awards_path),
         "direct_source_paths": [str(path) for path in sources],
         "direct_snapshot": snapshot_summary,
         "limitations": [
@@ -166,7 +161,7 @@ def build_release(
     quality_path = output_dir / "nsf_defense_lineage_quality.json"
     _write_json(quality, quality_path)
     product_metadata = {
-        name: {"path": str(path), "sha256": _sha256(path), "row_count": len(frames[name])}
+        name: {"path": str(path), "sha256": file_sha256(path), "row_count": len(frames[name])}
         for name, path in products.items()
     }
     release = {
@@ -175,14 +170,14 @@ def build_release(
         "analysis_date": analysis_date.isoformat(),
         "generated_at": datetime.now(UTC).isoformat(),
         "inputs": {
-            "sbir_gov_awards": {"path": str(awards_path), "sha256": _sha256(awards_path)},
+            "sbir_gov_awards": {"path": str(awards_path), "sha256": file_sha256(awards_path)},
             "direct_nsf_sources": [_source_metadata(path) for path in sources],
             "direct_nsf_snapshot": snapshot_summary,
         },
         "products": product_metadata,
         "quality_report": {
             "path": str(quality_path),
-            "sha256": _sha256(quality_path),
+            "sha256": file_sha256(quality_path),
             "quality_gates_passed": True,
         },
     }

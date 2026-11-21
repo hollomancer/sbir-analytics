@@ -49,12 +49,6 @@ _STAGING_MANIFEST_GATES = (
 )
 
 
-def normalize_name(value: object) -> str:
-    """Compatibility shim for the versioned Form D join-key policy."""
-
-    return normalize_company_name(value, profile=CompanyNameProfile.FORM_D_JOIN_V1)
-
-
 def read_jsonl(path: Path) -> list[dict[str, Any]]:
     """Read JSONL records, skipping blank and invalid lines."""
 
@@ -238,9 +232,13 @@ def _iter_company_form_d_rows(
 
         yield {
             "company_name": company_name,
-            "company_key": normalize_name(company_name),
+            "company_key": normalize_company_name(
+                company_name, profile=CompanyNameProfile.FORM_D_JOIN_V1
+            ),
             "issuer_name": issuer_name,
-            "issuer_key": normalize_name(issuer_name),
+            "issuer_key": normalize_company_name(
+                issuer_name, profile=CompanyNameProfile.FORM_D_JOIN_V1
+            ),
             "form_d_cik": str(cik or first.get("cik") or "").lstrip("0"),
             "tier": tier,
             "tier_rule_version": (

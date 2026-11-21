@@ -12,13 +12,13 @@ from typing import Any
 
 import pandas as pd
 
+from sbir_etl.identity import CompanyNameProfile, normalize_company_name
 from sbir_etl.utils.coercion import _to_float
 from .utils import (
     MetadataValue,
     Output,
     _env_float,
     _env_int,
-    _norm_name,
     asset,
     now_utc_iso,
     save_dataframe_parquet,
@@ -51,7 +51,7 @@ def transformed_transition_scores(
             return f"uei:{str(row['UEI']).strip()}"
         if pd.notna(row.get("Duns")) and str(row["Duns"]).strip():
             return f"duns:{str(row['Duns']).strip()}"
-        return f"name:{_norm_name(str(row.get('Company', '')))}"
+        return f"name:{normalize_company_name(str(row.get('Company', '')), profile=CompanyNameProfile.LOWER_JOIN_V1)}"
 
     awards = enriched_sbir_awards.copy()
     if "award_id" not in awards.columns:
@@ -114,7 +114,7 @@ def transformed_transition_scores(
         for key in ["Agency", "agency", "awarding_agency_name"]:
             val = str(r.get(key) or "").strip()
             if val:
-                name = _norm_name(val)
+                name = normalize_company_name(val, profile=CompanyNameProfile.LOWER_JOIN_V1)
                 break
         return code, name
 
@@ -154,7 +154,10 @@ def transformed_transition_scores(
             a_date = _award_date_from_row(a_row)
             a_code, a_name = _agency_from_award_row(a_row)
             c_code = str(contract_row.get("awarding_agency_code") or "").strip().upper()
-            c_name = _norm_name(str(contract_row.get("awarding_agency_name") or ""))
+            c_name = normalize_company_name(
+                str(contract_row.get("awarding_agency_name") or ""),
+                profile=CompanyNameProfile.LOWER_JOIN_V1,
+            )
 
             # Date boost: award date must be on/before contract date and within window
             date_boost = 0.0
