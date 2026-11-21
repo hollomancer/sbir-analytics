@@ -144,11 +144,6 @@ def _run_usaspending_enrichment(
     return enriched_df, {}, False
 
 
-def _digits(value: object) -> str:
-    """Return only the decimal digits in an identifier."""
-    return "".join(character for character in str(value) if character.isdigit())
-
-
 def _build_sam_indexes(
     sam_entities: pd.DataFrame,
 ) -> tuple[dict[str, Any], dict[str, Any]]:
@@ -170,9 +165,9 @@ def _build_sam_indexes(
     )
     if duns_col:
         for index, duns in sam_entities[duns_col].dropna().items():
-            normalized = _digits(duns)
-            if normalized:
-                sam_by_duns[normalized] = index
+            duns_key = _duns_key(duns)
+            if duns_key:
+                sam_by_duns[duns_key] = index
 
     return sam_by_uei, sam_by_duns
 
@@ -209,9 +204,7 @@ def _apply_sam_enrichment(
 
         still_unmatched = unmatched_mask & enriched_df["_sam_gov_match_method"].isna()
         if "duns" in enriched_df.columns and still_unmatched.any():
-            duns_series = (
-                enriched_df.loc[still_unmatched, "duns"].fillna("").astype(str).apply(_digits)
-            )
+            duns_series = enriched_df.loc[still_unmatched, "duns"].map(_duns_key)
             duns_matches = duns_series.isin(sam_by_duns)
             matched_indices = duns_series[duns_matches].index
             enriched_df.loc[matched_indices, "_sam_gov_match_idx"] = (
@@ -239,9 +232,7 @@ def _apply_sam_enrichment(
 
         still_needs_naics = needs_naics & enriched_df["_sam_gov_match_idx"].isna()
         if "Duns" in enriched_df.columns and still_needs_naics.any():
-            duns_series = (
-                enriched_df.loc[still_needs_naics, "Duns"].fillna("").astype(str).apply(_digits)
-            )
+            duns_series = enriched_df.loc[still_needs_naics, "Duns"].map(_duns_key)
             duns_matches = duns_series.isin(sam_by_duns)
             matched_indices = duns_series[duns_matches].index
             enriched_df.loc[matched_indices, "_sam_gov_match_idx"] = (

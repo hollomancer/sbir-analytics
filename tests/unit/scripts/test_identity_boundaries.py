@@ -181,7 +181,8 @@ def test_local_uei_or_duns_cleaner_is_rejected(tmp_path: Path) -> None:
 
     violations = boundaries.scan_file(path, repository_root=tmp_path)
 
-    assert [violation.line_number for violation in violations] == [1, 3]
+    # Line 2 also keeps only digits of a DUNS, which the digit-extraction rule reports.
+    assert sorted(violation.line_number for violation in violations) == [1, 2, 3]
     assert "sbir_etl.utils.identifiers" in violations[0].message
 
 
@@ -201,3 +202,60 @@ def test_canonical_and_frozen_identifier_files_are_allowed(tmp_path: Path) -> No
     for relative in ("sbir_etl/utils/identifiers.py", "sbir_etl/identity/canonical_merge.py"):
         path = _write(tmp_path, relative, source)
         assert boundaries.scan_file(path, repository_root=tmp_path) == []
+
+
+def test_digit_helper_applied_to_duns_is_rejected(tmp_path: Path) -> None:
+    # The SAM fallback defect: a generic digit helper used as a DUNS key.
+    path = _write(
+        tmp_path,
+        "packages/example.py",
+        "def _digits(value):\n"
+        "    return ''.join(c for c in str(value) if c.isdigit())\n"
+        "def index(frame, duns):\n"
+        "    key = _digits(duns)\n"
+        "    keys = frame['duns'].astype(str).apply(_digits)\n"
+        "    return key, keys\n",
+    )
+
+    violations = boundaries.scan_file(path, repository_root=tmp_path)
+
+    assert [violation.line_number for violation in violations] == [4, 5]
+    assert "DunsProfile.DUNS_V2" in violations[0].message
+
+
+def test_inline_digit_extraction_of_duns_is_rejected(tmp_path: Path) -> None:
+    path = _write(
+        tmp_path,
+        "sbir_etl/example.py",
+        "import re\n"
+        "def key(row):\n"
+        "    return re.sub(r'\\D', '', str(row['duns_number']))\n"
+        "def _duns_digits(value):\n"
+        "    return re.sub('[^0-9]', '', value)\n",
+    )
+
+    violations = boundaries.scan_file(path, repository_root=tmp_path)
+
+    assert [violation.line_number for violation in violations] == [3, 5]
+
+
+def test_digit_extraction_of_other_values_is_allowed(tmp_path: Path) -> None:
+    # NAICS codes, ZIP codes, and a digit helper applied to a non-DUNS column
+    # must not fire, even in a file that also handles DUNS correctly.
+    path = _write(
+        tmp_path,
+        "sbir_etl/example.py",
+        "import re\n"
+        "from sbir_etl.utils.identifiers import DunsProfile, normalize_duns\n"
+        "def _digits(value):\n"
+        "    return ''.join(c for c in str(value) if c.isdigit())\n"
+        "def keys(frame):\n"
+        "    naics = re.sub(r'\\D', '', str(frame['naics']))\n"
+        "    zips = frame['zip'].map(_digits)\n"
+        "    duns = frame['duns'].map(\n"
+        "        lambda v: normalize_duns(v, profile=DunsProfile.DUNS_V2)\n"
+        "    )\n"
+        "    return naics, zips, duns\n",
+    )
+
+    assert boundaries.scan_file(path, repository_root=tmp_path) == []
