@@ -163,7 +163,8 @@ You can tweak thresholds and scoring parameters using environment variables:
     - Path to contracts sample (default: data/processed/contracts_sample.parquet)
 
 - Vendor resolution:
-  - SBIR_ETL__TRANSITION__FUZZY__THRESHOLD (default: 0.85)
+  - SBIR_ETL__TRANSITION__VENDOR_RESOLUTION__FUZZY_THRESHOLD (default: 0.85 from
+    `transition.vendor_resolution.fuzzy_threshold` in config/base.yaml)
   - SBIR_ETL__TRANSITION__VENDOR_RESOLUTION__MIN_RATE (default: 0.60)
 
 - Contracts coverage gates:
@@ -227,7 +228,7 @@ In Dagster environments, these checks can block downstream assets if thresholds 
   - Ensure you have write permissions to data/processed and reports/validation.
 
 - Fuzzy matches too strict or too lenient
-  - Adjust SBIR_ETL__TRANSITION__FUZZY__THRESHOLD (e.g., export SBIR_ETL__TRANSITION__FUZZY__THRESHOLD=0.7)
+  - Adjust SBIR_ETL__TRANSITION__VENDOR_RESOLUTION__FUZZY_THRESHOLD (e.g., export SBIR_ETL__TRANSITION__VENDOR_RESOLUTION__FUZZY_THRESHOLD=0.7)
 
 - Gates failing
   - Review the checks JSON files and validation summary.

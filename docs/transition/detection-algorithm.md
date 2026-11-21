@@ -98,8 +98,9 @@ The Transition Detection Algorithm is a multi-signal scoring system that identif
    - RapidFuzz `token_sort_ratio` algorithm (`difflib` fallback if RapidFuzz absent)
    - Normalized company names (uppercase, special char removal)
    - Configurable thresholds — library defaults: primary 0.90, secondary 0.80
-     (the Dagster `enriched_vendor_resolution` asset overrides the primary to
-     0.85 via `SBIR_ETL__TRANSITION__FUZZY__THRESHOLD`). See
+     (the Dagster `enriched_vendor_resolution` asset sets the primary from
+     `transition.vendor_resolution.fuzzy_threshold` in `config/base.yaml`, 0.85;
+     override it with `SBIR_ETL__TRANSITION__VENDOR_RESOLUTION__FUZZY_THRESHOLD`). See
      [vendor-matching.md](vendor-matching.md) for the authoritative algorithm.
 
 **Confidence Tracking**: Each resolved vendor match includes a confidence score reflecting the match method quality.

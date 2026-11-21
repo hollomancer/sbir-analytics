@@ -22,6 +22,18 @@ def _unwrap_output(result):
     return result, None
 
 
+@pytest.fixture
+def fuzzy_threshold_07(monkeypatch):
+    """Set the fuzzy-threshold override to 0.7 and load config before tests change directory."""
+    from sbir_etl.config.loader import get_config, reload_config
+
+    monkeypatch.setenv("SBIR_ETL__TRANSITION__VENDOR_RESOLUTION__FUZZY_THRESHOLD", "0.7")
+    reload_config()
+    get_config()  # load config/base.yaml from the repo root
+    yield
+    reload_config()
+
+
 def _assert_artifact_exists(base_path: Path) -> Path:
     """
     Assert that either a parquet artifact exists at base_path, or a .ndjson fallback exists.
@@ -35,7 +47,7 @@ def _assert_artifact_exists(base_path: Path) -> Path:
     return ndjson
 
 
-def test_transition_mvp_chain_current_assets(tmp_path, monkeypatch):
+def test_transition_mvp_chain_current_assets(tmp_path, monkeypatch, fuzzy_threshold_07):
     """
     Integration test for the Transition MVP chain through the current exported asset interfaces.
 
@@ -46,9 +58,6 @@ def test_transition_mvp_chain_current_assets(tmp_path, monkeypatch):
     """
     # Isolate all IO under a temp working directory
     monkeypatch.chdir(tmp_path)
-
-    # Loosen fuzzy threshold slightly to be robust to tokenization variants
-    monkeypatch.setenv("SBIR_ETL__TRANSITION__FUZZY__THRESHOLD", "0.7")
 
     # Import the current public transition asset interfaces.
     from sbir_analytics.assets.transition import (
@@ -171,13 +180,12 @@ def test_transition_mvp_chain_current_assets(tmp_path, monkeypatch):
     assert str(trans_art.resolve()).startswith(str(cwd))
 
 
-def test_transition_mvp_analytics_current_assets(tmp_path, monkeypatch):
+def test_transition_mvp_analytics_current_assets(tmp_path, monkeypatch, fuzzy_threshold_07):
     """
     Exercise the current transition analytics asset interface and validate outputs/checks.
     """
     # Isolate IO
     monkeypatch.chdir(tmp_path)
-    monkeypatch.setenv("SBIR_ETL__TRANSITION__FUZZY__THRESHOLD", "0.7")
 
     from sbir_analytics.assets.transition import (
         enriched_vendor_resolution,

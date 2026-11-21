@@ -26,6 +26,18 @@ def _unwrap_output(result):
     return result, None
 
 
+@pytest.fixture
+def fuzzy_threshold_07(monkeypatch):
+    """Set the fuzzy-threshold override to 0.7 and load config before tests change directory."""
+    from sbir_etl.config.loader import get_config, reload_config
+
+    monkeypatch.setenv("SBIR_ETL__TRANSITION__VENDOR_RESOLUTION__FUZZY_THRESHOLD", "0.7")
+    reload_config()
+    get_config()  # load config/base.yaml from the repo root
+    yield
+    reload_config()
+
+
 def _write_detection_config(base_dir: Path) -> Path:
     config_path = base_dir / "detection.yaml"
     config_path.write_text(
@@ -134,11 +146,9 @@ def test_contracts_sample_parent_child_stats(monkeypatch, tmp_path):
     assert parent_child.get("idv_parent_ratio") == pytest.approx(0.5)
 
 
-def test_vendor_resolution_exact_and_fuzzy(monkeypatch, tmp_path):
+def test_vendor_resolution_exact_and_fuzzy(monkeypatch, tmp_path, fuzzy_threshold_07):
     # Run all outputs into a temp working directory
     monkeypatch.chdir(tmp_path)
-    # Lower fuzzy threshold to ensure partial matches pass comfortably in all environments
-    monkeypatch.setenv("SBIR_ETL__TRANSITION__FUZZY__THRESHOLD", "0.7")
 
     # Import locally so env/working dir changes apply
     from sbir_analytics.assets.transition import enriched_vendor_resolution
