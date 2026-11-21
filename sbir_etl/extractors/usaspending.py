@@ -14,6 +14,7 @@ import duckdb
 import pandas as pd
 
 from ..config.loader import get_config
+from ..exceptions import ExtractionError
 from ..utils.logging_config import log_with_context
 
 # USAspending recipient_lookup table schema (from Django model)
@@ -41,6 +42,10 @@ RECIPIENT_LOOKUP_COLUMNS = [
     "alternate_names",
 ]
 
+# pg_dump COPY file OIDs of the tables the named import views are built from.
+RECIPIENT_LOOKUP_OID = 5419
+TRANSACTION_NORMALIZED_OID = 5420
+
 
 class DuckDBUSAspendingExtractor:
     """Extractor for USAspending data using DuckDB."""
@@ -53,6 +58,9 @@ class DuckDBUSAspendingExtractor:
         """
         self.db_path = db_path or ":memory:"
         self.connection: duckdb.DuckDBPyConnection | None = None
+        # COPY tables of the last ZIP import that failed to load but that the
+        # named view does not read. Maps raw table name to the error text.
+        self.import_failed_tables: dict[str, str] = {}
 
     @staticmethod
     def _escape_identifier(identifier: str) -> str:
@@ -105,6 +113,11 @@ class DuckDBUSAspendingExtractor:
 
         Returns:
             True if import successful, False otherwise
+
+        Raises:
+            ExtractionError: If the COPY file that the ``table_name`` view is
+                built from fails to load. Other COPY files that fail are listed
+                in ``self.import_failed_tables`` and logged at WARNING.
         """
         with log_with_context(stage="extract", run_id="usaspending_import") as logger:
             dump_file = Path(dump_file)
@@ -116,6 +129,7 @@ class DuckDBUSAspendingExtractor:
 
             self.connect()
             self._escape_identifier(table_name)
+            self.import_failed_tables = {}
 
             try:
                 # Handle different dump formats
@@ -127,6 +141,8 @@ class DuckDBUSAspendingExtractor:
                     # Assume plain SQL dump
                     return self._import_sql_dump(dump_file, table_name)
 
+            except ExtractionError:
+                raise
             except Exception as e:
                 logger.error(f"Failed to import PostgreSQL dump: {e}")
                 return False
@@ -142,6 +158,15 @@ class DuckDBUSAspendingExtractor:
 
             logger.warning("COPY file extraction failed, trying pg_restore fallback")
             return self._extract_and_import_dump(dump_file, table_name)
+
+    @staticmethod
+    def _view_source_oid(table_name: str, oids: list[int]) -> int:
+        """Return the OID of the COPY file that the ``table_name`` view reads."""
+        if RECIPIENT_LOOKUP_OID in oids and "recipient" in table_name.lower():
+            return RECIPIENT_LOOKUP_OID
+        if TRANSACTION_NORMALIZED_OID in oids:
+            return TRANSACTION_NORMALIZED_OID
+        return oids[0]
 
     def _import_copy_files(self, dump_file: Path, table_name: str) -> bool:
         """Import PostgreSQL COPY files from ZIP archive."""
@@ -172,6 +197,12 @@ class DuckDBUSAspendingExtractor:
                     return False
 
                 logger.info(f"Found {len(copy_files)} COPY files in ZIP")
+                source_oid = self._view_source_oid(
+                    table_name, [int(str(f["oid"])) for f in copy_files]
+                )
+                source_table_name = f"{table_name}_{source_oid}"
+                failed_tables: dict[str, str] = {}
+                source_error: Exception | None = None
 
                 # Create tables for each COPY file
                 for file_info in copy_files:
@@ -197,6 +228,7 @@ class DuckDBUSAspendingExtractor:
                             stderr_bytes = extract_result.stderr  # type: ignore[assignment]
                             stderr_str = stderr_bytes.decode() if stderr_bytes else "Unknown error"
                             logger.error(f"Failed to extract {filename}: {stderr_str}")
+                            failed_tables[table_name_for_file] = f"extract failed: {stderr_str}"
                             continue
 
                         # Decompress if gzipped
@@ -228,19 +260,36 @@ class DuckDBUSAspendingExtractor:
                             logger.info(f"Created table {table_name_for_file}")
                         except Exception as e:
                             logger.error(f"Failed to create table {table_name_for_file}: {e}")
+                            failed_tables[table_name_for_file] = str(e)
+                            if table_name_for_file == source_table_name:
+                                source_error = e
 
-                # Create views based on table type and OID
+                if source_table_name in failed_tables:
+                    raise ExtractionError(
+                        f"COPY file for {source_table_name}, which the {table_name} view "
+                        f"reads, failed to load: {failed_tables[source_table_name]}",
+                        component="extractors.usaspending",
+                        operation="import_copy_files",
+                        details={
+                            "dump_file": str(dump_file),
+                            "source_table": source_table_name,
+                            "failed_tables": failed_tables,
+                        },
+                        cause=source_error,
+                    ) from source_error
+                if failed_tables:
+                    logger.warning(
+                        f"{len(failed_tables)} of {len(copy_files)} COPY files failed to load; "
+                        f"the {table_name} view does not read them: {sorted(failed_tables)}"
+                    )
+                self.import_failed_tables = failed_tables
+
+                # Create the named view over the source table
                 base_table_identifier = self._escape_identifier(table_name)
+                source_table = self._escape_identifier(source_table_name)
 
-                # OID 5419 = recipient_lookup, OID 5420 = transaction_normalized
-                recipient_tables = [
-                    f"{table_name}_{f['oid']}" for f in copy_files if f["oid"] == 5419
-                ]
-                txn_tables = [f"{table_name}_{f['oid']}" for f in copy_files if f["oid"] == 5420]
-
-                # Handle recipient_lookup (OID 5419) with proper column names
-                if recipient_tables and "recipient" in table_name.lower():
-                    source_table = self._escape_identifier(recipient_tables[0])
+                # recipient_lookup: apply column names from the schema
+                if source_oid == RECIPIENT_LOOKUP_OID:
                     # Apply column names from schema (DuckDB uses column00, column01, etc.)
                     col_aliases = ", ".join(
                         f"column{i:02d} AS {col}" for i, col in enumerate(RECIPIENT_LOOKUP_COLUMNS)
@@ -249,32 +298,25 @@ class DuckDBUSAspendingExtractor:
                     try:
                         conn.execute(view_query)
                         logger.info(
-                            f"Created view {table_name} with schema from {recipient_tables[0]}"
+                            f"Created view {table_name} with schema from {source_table_name}"
                         )
                     except Exception as e:
                         # Fallback: column count mismatch, use raw table
                         logger.warning(f"Schema mapping failed ({e}), using raw columns")
                         fallback_query = f"CREATE OR REPLACE VIEW {base_table_identifier} AS SELECT * FROM {source_table}"  # nosec B608
                         conn.execute(fallback_query)
-                        logger.info(f"Created view {table_name} from {recipient_tables[0]}")
+                        logger.info(f"Created view {table_name} from {source_table_name}")
 
-                # Handle transaction_normalized (OID 5420)
-                elif txn_tables:
-                    first_table_identifier = self._escape_identifier(txn_tables[0])
-                    union_query = f"CREATE OR REPLACE VIEW {base_table_identifier} AS SELECT * FROM {first_table_identifier}"  # nosec B608
-                    conn.execute(union_query)
-                    logger.info(f"Created view {table_name} from {txn_tables[0]}")
-
-                # Fallback: use first available table
-                elif copy_files:
-                    first_table = f"{table_name}_{copy_files[0]['oid']}"
-                    first_table_identifier = self._escape_identifier(first_table)
-                    fallback_query = f"CREATE OR REPLACE VIEW {base_table_identifier} AS SELECT * FROM {first_table_identifier}"  # nosec B608
-                    conn.execute(fallback_query)
-                    logger.info(f"Created view {table_name} from {first_table}")
+                # transaction_normalized, or the first table when neither is present
+                else:
+                    view_query = f"CREATE OR REPLACE VIEW {base_table_identifier} AS SELECT * FROM {source_table}"  # nosec B608
+                    conn.execute(view_query)
+                    logger.info(f"Created view {table_name} from {source_table_name}")
 
                 return True
 
+            except ExtractionError:
+                raise
             except Exception as e:
                 logger.error(f"Failed to import COPY files: {e}")
                 return False
@@ -450,20 +492,30 @@ class DuckDBUSAspendingExtractor:
             return {"table_name": table_name, "error": str(e)}
 
     def resolve_physical_table_name(self, base_name: str) -> str:
-        """Resolve the physical DuckDB table name created during import.
+        """Return the queryable DuckDB object for ``base_name`` after an import.
 
-        Some imports materialize tables with OID suffixes (e.g., raw_table_5412).
-        This helper finds the first matching table with the expected prefix.
+        A ZIP import loads each COPY file into a raw ``<base_name>_<oid>`` table
+        with placeholder columns (``column00``...), then creates a view named
+        ``base_name`` over it (with ``RECIPIENT_LOOKUP_COLUMNS`` names for
+        recipient tables). Other import paths create a table named ``base_name``.
+        Callers must query that named object, never the raw OID table, so this
+        returns ``base_name`` once it exists as a table or view.
+
+        Raises:
+            ExtractionError: If no table or view named ``base_name`` exists.
         """
         conn = self.connect()
-        try:
-            pattern = f"{base_name}\\_%"
-            query = r"SELECT name FROM duckdb_tables() WHERE name LIKE ? ESCAPE '\\' ORDER BY name"
-            rows = conn.execute(query, [pattern]).fetchall()
-            if rows:
-                return rows[0][0]
-        except Exception:
-            pass
+        row = conn.execute(
+            "SELECT table_type FROM information_schema.tables WHERE table_name = ?",
+            [base_name],
+        ).fetchone()
+        if row is None:
+            raise ExtractionError(
+                f"No table or view named {base_name!r} after USAspending import",
+                component="extractors.usaspending",
+                operation="resolve_physical_table_name",
+                details={"table_name": base_name, "db_path": self.db_path},
+            )
         return base_name
 
     def list_dump_tables(self, dump_file: Path) -> list:

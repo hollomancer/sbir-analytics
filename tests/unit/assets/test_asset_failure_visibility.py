@@ -125,6 +125,7 @@ def test_recipient_query_failure_fails_the_asset(monkeypatch) -> None:
     class _DumpExtractor:
         def __init__(self, db_path):
             del db_path
+            self.import_failed_tables = {}
 
         def import_postgres_dump(self, _dump, _table):
             return True
@@ -169,6 +170,7 @@ def test_recipient_query_matches_the_real_recipient_lookup_columns(monkeypatch) 
     class _RealSchemaExtractor:
         def __init__(self, db_path):
             del db_path
+            self.import_failed_tables = {}
 
         def import_postgres_dump(self, _dump, _table):
             return True
@@ -296,7 +298,7 @@ def test_recipients_metadata_names_the_dump_when_parquet_load_fails(monkeypatch,
     monkeypatch.setattr(
         usaspending_ingestion,
         "_import_usaspending_table",
-        lambda _ctx, **_kw: Output(value=dump_df, metadata={}),
+        lambda _ctx, **_kw: Output(value=dump_df, metadata={"dump_import_failed_tables": {}}),
     )
 
     output = usaspending_ingestion.raw_usaspending_recipients(build_asset_context())

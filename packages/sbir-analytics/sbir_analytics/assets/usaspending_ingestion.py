@@ -67,6 +67,9 @@ def _import_usaspending_table(
             dump_success = extractor.import_postgres_dump(dump_path, table_name)
             if dump_success:
                 context.log.info(f"Successfully imported {log_label} from local dump")
+        except ExtractionError:
+            # The dump was found but did not load; keep the cause and failed tables.
+            raise
         except Exception as e:
             context.log.warning(f"Dump import failed: {e}")
             dump_success = False
@@ -139,6 +142,7 @@ def _import_usaspending_table(
             [col["column_name"] for col in table_info.get("columns", [])]
         ),
         "preview": MetadataValue.md(sample_df.head(10).to_markdown()),
+        "dump_import_failed_tables": MetadataValue.json(extractor.import_failed_tables),
     }
 
     return Output(value=sample_df, metadata=metadata)
@@ -182,6 +186,7 @@ def raw_usaspending_recipients(context: AssetExecutionContext) -> Output[pd.Data
 
     # PRIORITY 2: Fall back to full dump extraction
     loaded_from_parquet = df is not None
+    metadata_from_dump: dict[str, Any] = {}
     if df is None:
         context.log.info("Falling back to full USAspending dump extraction")
         result = _import_usaspending_table(
@@ -190,6 +195,9 @@ def raw_usaspending_recipients(context: AssetExecutionContext) -> Output[pd.Data
             table_name="raw_usaspending_recipients",
         )
         df = result.value
+        metadata_from_dump = {
+            "dump_import_failed_tables": result.metadata["dump_import_failed_tables"]
+        }
 
     # Verify expected columns exist
     required_cols = ["legal_business_name", "uei", "duns"]
@@ -219,6 +227,7 @@ def raw_usaspending_recipients(context: AssetExecutionContext) -> Output[pd.Data
     }
     if parquet_error is not None:
         metadata["parquet_load_error"] = parquet_error
+    metadata.update(metadata_from_dump)
 
     return Output(value=df, metadata=metadata)
 
