@@ -310,7 +310,7 @@ Approximately **3,500 LOC of audit-relevant code**:
 | `transition/features/cet_analyzer.py` | 420 | CET-signal extraction (the cascade from the ML audit lands here) |
 | `transition/features/patent_analyzer.py` | 356 | Patent-signal extraction. PR #837 deleted this file. Do not audit it. |
 | `transition/features/vendor_resolver.py` | 448 | Vendor matching |
-| `transition/features/vendor_crosswalk.py` | 580 | Vendor entity resolution |
+| `transition/features/vendor_crosswalk.py` | 14 | Fuzzy name scorer used by `vendor_resolver.py` |
 
 The configuration files defining weights and thresholds are also in scope — `config/base.yaml` and any `transition/*.yaml` overrides.
 
