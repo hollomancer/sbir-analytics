@@ -90,7 +90,7 @@ pair table is ~1.5× the size of the Phase III contract table.
 | `SBIR_ETL__PHASE_TRANSITION__PHASE_III_OUTPUT_PATH` | `data/processed/phase_iii_contracts.parquet` | Phase III asset output. |
 | `SBIR_ETL__PHASE_TRANSITION__PAIRS_OUTPUT_PATH` | `data/processed/phase_ii_iii_pairs.parquet` | Matched-pair output. |
 | `SBIR_ETL__PHASE_TRANSITION__SURVIVAL_OUTPUT_PATH` | `data/processed/phase_transition_survival.parquet` | Survival frame output. |
-| `SBIR_ETL__PHASE_TRANSITION__DATA_CUT_DATE` | today (UTC) | Right-censoring date for Phase IIs without a matched Phase III. |
+| `SBIR_ETL__PHASE_TRANSITION__DATA_CUT_DATE` | today (UTC) | Right-censoring date for Phase IIs without a matched Phase III. A value that is not `YYYY-MM-DD` stops the run. |
 
 ### Explicitly out of scope (v1)
 

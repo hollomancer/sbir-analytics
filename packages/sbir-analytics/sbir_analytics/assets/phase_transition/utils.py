@@ -79,19 +79,22 @@ def parse_data_cut_date() -> date:
     """Read the data-cut date used for right-censoring survival rows.
 
     Driven by ``SBIR_ETL__PHASE_TRANSITION__DATA_CUT_DATE`` (ISO YYYY-MM-DD).
-    Falls back to today in UTC. We intentionally do not clip negative
-    latencies — see the README in this package for why.
+    An unset, empty, or blank variable falls back to today in UTC. A set value that is
+    not a valid ISO date raises ``ValueError``: silently using today would make
+    the censoring cut, and every survival row, depend on the day of the run.
+    We intentionally do not clip negative latencies — see the README in this
+    package for why.
     """
 
     raw = env_str("SBIR_ETL__PHASE_TRANSITION__DATA_CUT_DATE")
-    if raw:
-        try:
-            return date.fromisoformat(raw)
-        except ValueError:
-            logger.warning(
-                "Invalid SBIR_ETL__PHASE_TRANSITION__DATA_CUT_DATE={!r}; using today", raw
-            )
-    return datetime.utcnow().date()
+    if raw is None or not raw.strip():
+        return datetime.utcnow().date()
+    try:
+        return date.fromisoformat(raw.strip())
+    except ValueError:
+        raise ValueError(
+            f"SBIR_ETL__PHASE_TRANSITION__DATA_CUT_DATE={raw!r} is not an ISO date (YYYY-MM-DD)"
+        ) from None
 
 
 def coerce_date_series(series: pd.Series) -> pd.Series:
