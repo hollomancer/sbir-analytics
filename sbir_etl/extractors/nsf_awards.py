@@ -19,7 +19,7 @@ from loguru import logger
 from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_exponential
 
 from sbir_etl.exceptions import APIError
-from sbir_etl.utils.data.file_io import sha256_bytes
+from sbir_etl.utils.data.file_io import sha256_bytes, write_text_atomic
 
 NSF_AWARDS_API_BASE = "https://api.nsf.gov/services/v1/awards"
 NSF_AWARDS_API_DOCUMENTATION = "https://resources.research.gov/common/webapi/awardapisearch-v1.htm"
@@ -232,10 +232,7 @@ def _write_immutable(path: Path, content: bytes) -> None:
 
 
 def _write_json_atomic(path: Path, payload: object) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    temporary = path.with_suffix(path.suffix + ".tmp")
-    temporary.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
-    temporary.replace(path)
+    write_text_atomic(path, json.dumps(payload, indent=2, sort_keys=True) + "\n")
 
 
 def fetch_nsf_award_snapshots(

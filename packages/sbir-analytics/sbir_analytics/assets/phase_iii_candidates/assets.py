@@ -5,7 +5,6 @@ NOTE: do NOT add ``from __future__ import annotations`` — breaks Dagster runti
 
 import hashlib
 import json
-import os
 import uuid
 from collections.abc import Callable
 from datetime import UTC, datetime
@@ -17,6 +16,7 @@ from loguru import logger
 
 from sbir_etl.models.phase_iii_candidate import PhaseIIICandidate, SignalClass
 from sbir_etl.models.transition_models import CompetitionType, FederalContract
+from sbir_etl.utils.data.file_io import atomic_write_path, write_text_atomic
 from sbir_ml.transition.detection.scoring import TransitionScorer
 from sbir_ml.transition.detection.ranking_features import id_xref
 
@@ -798,16 +798,9 @@ def evidence_path_for(signal_class: SignalClass) -> Path:
     )
 
 
-def _atomic_write_text(path: Path, text: str) -> None:
-    tmp = path.with_name(f".{path.name}.tmp")
-    tmp.write_text(text, encoding="utf-8")
-    os.replace(tmp, path)
-
-
 def _atomic_write_parquet(path: Path, frame: pd.DataFrame) -> None:
-    tmp = path.with_name(f".{path.name}.tmp")
-    frame.to_parquet(tmp, index=False)
-    os.replace(tmp, path)
+    with atomic_write_path(path) as tmp:
+        frame.to_parquet(tmp, index=False)
 
 
 def _write_outputs(
@@ -832,7 +825,7 @@ def _write_outputs(
     _atomic_write_parquet(
         candidates_path, new_rows if not new_rows.empty else _candidate_dataframe([])
     )
-    _atomic_write_text(
+    write_text_atomic(
         evidence_path, "".join(json.dumps(record) + "\n" for record in evidence_records)
     )
 
@@ -861,7 +854,7 @@ def combine_candidate_outputs() -> pd.DataFrame:
     CANDIDATES_OUTPUT_PATH.parent.mkdir(parents=True, exist_ok=True)
     EVIDENCE_OUTPUT_PATH.parent.mkdir(parents=True, exist_ok=True)
     _atomic_write_parquet(CANDIDATES_OUTPUT_PATH, combined)
-    _atomic_write_text(EVIDENCE_OUTPUT_PATH, "".join(line + "\n" for line in lines))
+    write_text_atomic(EVIDENCE_OUTPUT_PATH, "".join(line + "\n" for line in lines))
     return combined
 
 

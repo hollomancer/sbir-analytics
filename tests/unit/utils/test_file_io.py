@@ -12,6 +12,7 @@ import pytest
 pytestmark = pytest.mark.fast
 
 from sbir_etl.utils.data.file_io import (
+    atomic_write_path,
     file_sha256,
     file_sha256_or_none,
     read_parquet_or_ndjson,
@@ -19,6 +20,7 @@ from sbir_etl.utils.data.file_io import (
     sha256_bytes,
     write_json,
     write_json_atomic,
+    write_text_atomic,
 )
 
 
@@ -111,6 +113,100 @@ def test_write_json_atomic_with_sort_keys(temp_dir):
         content = f.read()
         # Check keys are sorted
         assert content.index('"a"') < content.index('"m"') < content.index('"z"')
+
+
+class TestAtomicWrites:
+    """A failed write must leave the old file intact and no temp file behind."""
+
+    @staticmethod
+    def _seed(tmp_path: Path) -> Path:
+        target = tmp_path / "out.dat"
+        target.write_bytes(b"previous-complete-artifact")
+        return target
+
+    @staticmethod
+    def _assert_untouched(target: Path) -> None:
+        assert target.read_bytes() == b"previous-complete-artifact"
+        assert sorted(p.name for p in target.parent.iterdir()) == [target.name]
+
+    def test_path_replaces_target_on_success(self, tmp_path: Path) -> None:
+        target = self._seed(tmp_path)
+        with atomic_write_path(target) as temporary:
+            assert temporary.parent == target.parent
+            assert temporary != target
+            temporary.write_bytes(b"new")
+        assert target.read_bytes() == b"new"
+        assert sorted(p.name for p in tmp_path.iterdir()) == ["out.dat"]
+
+    def test_path_failure_keeps_old_file_and_removes_temp(self, tmp_path: Path) -> None:
+        target = self._seed(tmp_path)
+        with pytest.raises(RuntimeError, match="simulated"):
+            with atomic_write_path(target) as temporary:
+                temporary.write_bytes(b"partial")
+                raise RuntimeError("simulated")
+        self._assert_untouched(target)
+
+    def test_path_failure_after_fsync_keeps_old_file(self, tmp_path: Path, monkeypatch) -> None:
+        target = self._seed(tmp_path)
+
+        def fail_fsync(_fd: int) -> None:
+            raise OSError("simulated fsync failure")
+
+        monkeypatch.setattr("sbir_etl.utils.data.file_io.os.fsync", fail_fsync)
+        with pytest.raises(OSError, match="simulated fsync"):
+            with atomic_write_path(target, fsync=True) as temporary:
+                temporary.write_bytes(b"new")
+        self._assert_untouched(target)
+
+    def test_path_fsync_runs_only_when_requested(self, tmp_path: Path, monkeypatch) -> None:
+        calls: list[int] = []
+        monkeypatch.setattr("sbir_etl.utils.data.file_io.os.fsync", calls.append)
+        with atomic_write_path(tmp_path / "a.dat") as temporary:
+            temporary.write_bytes(b"a")
+        assert calls == []
+        with atomic_write_path(tmp_path / "b.dat", fsync=True) as temporary:
+            temporary.write_bytes(b"b")
+        assert len(calls) == 1
+
+    def test_path_creates_parent_and_gives_each_writer_its_own_temp(self, tmp_path: Path) -> None:
+        target = tmp_path / "nested" / "out.dat"
+        with atomic_write_path(target) as first, atomic_write_path(target) as second:
+            assert first != second
+            first.write_bytes(b"first")
+            second.write_bytes(b"second")
+        assert target.read_bytes() == b"first"
+        assert sorted(p.name for p in target.parent.iterdir()) == ["out.dat"]
+
+    def test_path_supports_parquet_writers(self, tmp_path: Path, sample_dataframe) -> None:
+        target = tmp_path / "out.parquet"
+        with atomic_write_path(target) as temporary:
+            sample_dataframe.to_parquet(temporary, index=False)
+        pd.testing.assert_frame_equal(pd.read_parquet(target), sample_dataframe)
+
+    def test_text_writes_exact_bytes(self, tmp_path: Path) -> None:
+        target = tmp_path / "out.txt"
+        write_text_atomic(target, "caf\u00e9\r\nline\n")
+        assert target.read_bytes() == "caf\u00e9\r\nline\n".encode()
+
+    def test_text_failure_keeps_old_file_and_removes_temp(self, tmp_path: Path) -> None:
+        target = self._seed(tmp_path)
+        with pytest.raises(UnicodeEncodeError):
+            write_text_atomic(target, "caf\u00e9", encoding="ascii")
+        self._assert_untouched(target)
+
+    def test_json_failure_keeps_old_file_and_removes_temp(self, tmp_path: Path) -> None:
+        target = self._seed(tmp_path)
+        circular: dict[str, object] = {}
+        circular["self"] = circular
+        with pytest.raises(ValueError, match="Circular reference"):
+            write_json_atomic(target, circular)
+        self._assert_untouched(target)
+
+    def test_json_still_fsyncs(self, tmp_path: Path, monkeypatch) -> None:
+        calls: list[int] = []
+        monkeypatch.setattr("sbir_etl.utils.data.file_io.os.fsync", calls.append)
+        write_json_atomic(tmp_path / "out.json", {"a": 1})
+        assert len(calls) == 1
 
 
 def test_write_json(temp_dir):

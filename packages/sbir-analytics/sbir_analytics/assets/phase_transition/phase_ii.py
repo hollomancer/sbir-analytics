@@ -22,9 +22,7 @@ Input parquet locations (overridable via env):
 from __future__ import annotations
 
 import json
-import os
 import re
-import tempfile
 from pathlib import Path
 from typing import Any
 
@@ -35,7 +33,7 @@ from sbir_etl.models.sbir_program import (
     normalize_sbir_program,
     program_from_fpds_research_code,
 )
-from sbir_etl.utils.data.file_io import file_sha256, write_json_atomic
+from sbir_etl.utils.data.file_io import atomic_write_path, file_sha256, write_json_atomic
 
 from .sbir_gov_source import (
     SbirGovSourceError,
@@ -47,7 +45,6 @@ from .utils import (
     Output,
     asset,
     coerce_date_series,
-    ensure_parent_dir,
     env_str,
     load_parquet_if_exists,
     logger,
@@ -530,18 +527,8 @@ def _agency_coverage(df: pd.DataFrame) -> dict[str, int]:
 def _write_parquet_atomic(frame: pd.DataFrame, output_path: Path) -> None:
     """Replace a parquet only after a complete same-directory write succeeds."""
 
-    ensure_parent_dir(output_path)
-    descriptor, temporary_name = tempfile.mkstemp(
-        prefix=f".{output_path.name}.", suffix=".tmp.parquet", dir=output_path.parent
-    )
-    os.close(descriptor)
-    temporary = Path(temporary_name)
-    try:
+    with atomic_write_path(output_path) as temporary:
         frame.to_parquet(temporary, index=False)
-        temporary.replace(output_path)
-    finally:
-        if temporary.exists():
-            temporary.unlink()
 
 
 @asset(

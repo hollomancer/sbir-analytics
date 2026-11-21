@@ -16,7 +16,7 @@ from loguru import logger
 
 from sbir_etl.enrichers.usaspending.client import USAspendingAPIClient
 from sbir_etl.exceptions import APIError
-from sbir_etl.utils.data.file_io import sha256_bytes
+from sbir_etl.utils.data.file_io import sha256_bytes, write_text_atomic
 
 USASPENDING_API_BASE = "https://api.usaspending.gov/api/v2"
 USASPENDING_API_DOCUMENTATION = "https://api.usaspending.gov/docs/endpoints"
@@ -82,10 +82,7 @@ def _write_immutable(path: Path, content: bytes) -> None:
 
 
 def _write_json_atomic(path: Path, payload: object) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    temporary = path.with_suffix(path.suffix + ".tmp")
-    temporary.write_bytes(json.dumps(payload, indent=2, sort_keys=True).encode() + b"\n")
-    temporary.replace(path)
+    write_text_atomic(path, json.dumps(payload, indent=2, sort_keys=True) + "\n")
 
 
 def _request_hash(payload: object) -> str:

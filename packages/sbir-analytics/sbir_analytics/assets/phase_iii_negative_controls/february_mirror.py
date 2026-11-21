@@ -28,7 +28,7 @@ from .source_keys import (
     canonicalize_fain_or_uri,
     canonicalize_piid,
 )
-from sbir_etl.utils.data.file_io import file_sha256
+from sbir_etl.utils.data.file_io import atomic_write_path, file_sha256
 
 
 AWARD_SEARCH_RELATION = "rpt.award_search"
@@ -668,20 +668,9 @@ class FebruaryAwardSearchExtractor:
         """Atomically publish exact matches and a sidecar provenance manifest."""
 
         output_path = Path(output_path)
-        output_path.parent.mkdir(parents=True, exist_ok=True)
         result = self.extract()
-        with tempfile.NamedTemporaryFile(
-            dir=output_path.parent,
-            prefix=f".{output_path.name}.",
-            suffix=".tmp",
-            delete=False,
-        ) as handle:
-            temporary_path = Path(handle.name)
-        try:
+        with atomic_write_path(output_path) as temporary_path:
             result.to_parquet(temporary_path, index=False)
-            os.replace(temporary_path, output_path)
-        finally:
-            temporary_path.unlink(missing_ok=True)
         output_digest = file_sha256(output_path)
         manifest = {**self.provenance, "output_sha256": output_digest, "rows": len(result)}
         manifest_path = output_path.with_suffix(".manifest.json")

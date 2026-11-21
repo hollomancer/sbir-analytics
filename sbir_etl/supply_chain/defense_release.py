@@ -32,7 +32,7 @@ from sbir_etl.supply_chain.defense_funding import (
     normalize_subaward_transactions,
 )
 from sbir_etl.supply_chain.subaward_network import build_subaward_facts
-from sbir_etl.utils.data.file_io import file_sha256
+from sbir_etl.utils.data.file_io import atomic_write_path, file_sha256, write_text_atomic
 
 DEFAULT_LINEAGE_DIR = Path("data/processed/nsf_sbir_defense_lineage")
 DEFAULT_PRIME_SNAPSHOT_ROOT = Path("data/raw/usaspending/nsf_awardee_prime")
@@ -97,17 +97,12 @@ def _prime_snapshot_metadata(path: Path) -> dict[str, object]:
 
 
 def _write_json(payload: object, path: Path) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    temporary = path.with_suffix(path.suffix + ".tmp")
-    temporary.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
-    temporary.replace(path)
+    write_text_atomic(path, json.dumps(payload, indent=2, sort_keys=True) + "\n")
 
 
 def _write_parquet(frame: pd.DataFrame, path: Path) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    temporary = path.with_suffix(path.suffix + ".tmp")
-    frame.to_parquet(temporary, index=False)
-    temporary.replace(path)
+    with atomic_write_path(path) as temporary:
+        frame.to_parquet(temporary, index=False)
 
 
 def _read_subaward_source(path: Path) -> pd.DataFrame:
