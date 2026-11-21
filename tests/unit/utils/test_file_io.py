@@ -19,7 +19,6 @@ from sbir_etl.utils.data.file_io import (
     sha256_bytes,
     write_json,
     write_json_atomic,
-    write_ndjson,
 )
 
 
@@ -127,20 +126,6 @@ def test_write_json(temp_dir):
     assert loaded == data
 
 
-def test_write_ndjson(temp_dir):
-    """Test NDJSON write."""
-    path = temp_dir / "test.ndjson"
-    records = [{"a": 1}, {"b": 2}, {"c": 3}]
-
-    write_ndjson(path, records)
-    assert path.exists()
-
-    with path.open() as f:
-        lines = f.readlines()
-    assert len(lines) == 3
-    assert json.loads(lines[0]) == {"a": 1}
-
-
 def test_read_parquet_or_ndjson_parquet(temp_dir, sample_dataframe):
     """Test reading from Parquet file."""
     parquet_path = temp_dir / "test.parquet"
@@ -158,7 +143,7 @@ def test_read_parquet_or_ndjson_ndjson_fallback(temp_dir):
 
     # Create NDJSON file
     records = [{"a": 1, "b": 2}, {"a": 3, "b": 4}]
-    write_ndjson(ndjson_path, records)
+    ndjson_path.write_text("".join(json.dumps(r) + "\n" for r in records))
 
     # Should read from NDJSON since Parquet doesn't exist
     df = read_parquet_or_ndjson(parquet_path, ndjson_path)

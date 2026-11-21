@@ -16,7 +16,7 @@ scores, and supporting evidence; a label is not a policy finding by itself.
 | Concern | Owner |
 | --- | --- |
 | Taxonomy | `config/cet/taxonomy.yaml` |
-| Taxonomy loading and checks | `sbir_ml.ml.config.taxonomy_loader` and `taxonomy_checks` |
+| Taxonomy loading | `sbir_ml.ml.config.taxonomy_loader` |
 | Award model and rules | `sbir_ml.ml.models.cet_classifier.CETClassifier` |
 | Patent model | `sbir_ml.ml.models.patent_classifier` |
 | Dagster assets | `packages/sbir-analytics/sbir_analytics/assets/cet/` |
