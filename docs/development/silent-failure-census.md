@@ -142,6 +142,13 @@ Hand review of every broad (c)/(d) block in this group. "On review" means the ca
 | `usaspending_iterative_enrichment.py:84` | c -> a (fixed) | An unreadable enriched-awards file now raises instead of being treated as 'no enriched data', which skipped the refresh. |
 | `usaspending_iterative_enrichment.py:215` | c -> b (fixed) | Metrics write failure now sets `metrics_emit_error` in asset metadata. |
 
+## Follow-up fixes: `sbir_etl/extractors/usaspending.py`
+
+| Block | Class | Action |
+|---|---|---|
+| `usaspending.py:229` | c -> a (fixed) | A COPY file that fails to extract or load now makes `import_postgres_dump` raise ExtractionError with the failed table names in `details["failed_tables"]`, instead of returning `True` for a partial import. |
+| `usaspending.py:465` | d -> a (fixed) | `resolve_physical_table_name` queried a column that `duckdb_tables()` does not have, swallowed the error, and returned the base name by accident. It now returns the base-name table or view on purpose and raises ExtractionError when none exists. It never returns the raw `<name>_<oid>` table, whose columns are `column00`, `column01`, and so on. |
+
 ## Every (c) and (d) block
 
 `file:line` on `origin/main`, by group. `scope` is broad or narrow tuple.
