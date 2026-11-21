@@ -162,9 +162,11 @@ def nih_reporter_refresh_batch(
         f"NIH RePORTER refresh complete: {stats['success']} success, "
         f"{stats['unchanged']} unchanged, {stats['failed']} failed"
     )
+    metadata: dict[str, Any] = {k: v for k, v in stats.items() if k != "errors"}
     try:
         metrics_path = metrics_collector.emit_metrics("nih_reporter")
         context.log.info(f"Emitted freshness metrics to {metrics_path}")
     except Exception as e:
         logger.warning(f"Failed to emit metrics: {e}")
-    return Output(value=stats, metadata={k: v for k, v in stats.items() if k != "errors"})
+        metadata["metrics_emit_error"] = str(e)
+    return Output(value=stats, metadata=metadata)
