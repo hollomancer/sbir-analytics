@@ -102,18 +102,24 @@ def _extract_financials(cik: str, facts: dict[str, Any]) -> EdgarFinancials | No
 
 
 def _detect_ma_events(cik: str, filings: list[dict[str, Any]]) -> list[EdgarMAEvent]:
-    """Detect M&A events from 8-K filings (Item 1.01 / Item 2.01)."""
+    """Detect M&A events from 8-K filings (Item 2.01, or M&A language).
+
+    Item 1.01 ("Entry into a Material Definitive Agreement") also covers leases,
+    loans, and licenses, so it counts only with acquisition or merger language.
+    ``items_reported`` lists only items the description states.
+    """
     events = []
     for filing in filings:
         if filing.get("form_type") != "8-K":
             continue
-        description = (filing.get("description") or "").lower()
+        description = _neutralize_non_ma_acquisition((filing.get("description") or "").lower())
         items_found: list[str] = []
-        if "1.01" in description or "material" in description:
+        if "1.01" in description or "material definitive agreement" in description:
             items_found.append("1.01")
-        if "2.01" in description or "acqui" in description or "merger" in description:
+        if "2.01" in description or "completion of acquisition" in description:
             items_found.append("2.01")
-        if not items_found:
+        has_ma_text = "acqui" in description or "merger" in description
+        if "2.01" not in items_found and not has_ma_text:
             continue
 
         if "acqui" in description:
@@ -157,8 +163,10 @@ _EFTS_PAGE_SIZE = 100
 # SIC code ranges that are almost always noise (REIT/mortgage filings).
 _NOISE_SIC_RANGES = (range(6500, 6800), range(6150, 6200))
 
-# 8-K item codes by signal strength.
-_MA_ITEMS = {"1.01", "2.01"}  # definitive agreement, completion of acquisition
+# 8-K item codes by signal strength. Item 1.01 (material definitive agreement)
+# is not here: it also covers leases, loans, and licenses, so a 1.01-only
+# mention is classified from its surrounding text instead.
+_MA_ITEMS = {"2.01"}  # completion of acquisition
 _FINANCIAL_ITEMS = {"2.02", "2.05"}  # results of operations, delisting
 _DISCLOSURE_ITEMS = {"7.01", "8.01"}  # Reg FD, other events
 
@@ -173,6 +181,36 @@ _FORM_TYPE_LABELS: dict[str, str] = {
     "SC 13G": "ownership_passive",
     "SC 13G/A": "ownership_passive",
 }
+
+# "Acquisition" senses that are not M&A: data/signal capture and government
+# procurement, both common near SBIR firm names. Their acquisition word is
+# replaced before matching, so the rest of the phrase (e.g. "contract") still counts.
+# The "<sense> acquisition" and "acquire <noun>" forms match lowercase text only, so
+# a capitalized company name ("acquired Signal Systems Corp") is not neutralized.
+_NON_MA_ACQUISITION_LOWERCASE = re.compile(
+    r"\b(?:data|signal|image|imaging|target|sensor|spectrum|federal|defense|dod|"
+    r"government|weapons?)\s+acquisitions?\b"
+    r"|\bacquir(?:e|ed|es|ing)\s+(?:the\s+)?(?:data|signals?|images?|imagery|"
+    r"measurements?|targets?|samples?)\b"
+)
+_NON_MA_ACQUISITION_ANY_CASE = re.compile(
+    r"\bacquisitions?\s+(?:systems?|programs?|regulations?|contracts?|"
+    r"workforce|community|executives?|logistics|officers?|reform)\b"
+    r"|\bacquisition,\s*technology,?\s+and\s+logistics\b",
+    re.IGNORECASE,
+)
+_ACQUISITION_WORD = re.compile(r"acqui\w*", re.IGNORECASE)
+
+
+def _neutralize_non_ma_acquisition(text: str) -> str:
+    """Replace the acquisition word inside non-M&A phrases with a neutral token."""
+
+    def replace(match: re.Match[str]) -> str:
+        return _ACQUISITION_WORD.sub("procurement_or_capture", match.group(0))
+
+    text = _NON_MA_ACQUISITION_LOWERCASE.sub(replace, text)
+    return _NON_MA_ACQUISITION_ANY_CASE.sub(replace, text)
+
 
 # Keyword regexes for surrounding-text context classification, ordered by priority.
 _MENTION_CONTEXT_PATTERNS: list[tuple[re.Pattern[str], str]] = [
@@ -377,7 +415,7 @@ async def _extract_mention_context(
 
     start = max(0, match.start() - context_chars)
     end = min(len(text), match.end() + context_chars)
-    window = text[start:end]
+    window = _neutralize_non_ma_acquisition(text[start:end])
 
     for pattern, label in _MENTION_CONTEXT_PATTERNS:
         if pattern.search(window):
@@ -396,6 +434,10 @@ def _classify_mention(items: list[str], form_type: str) -> str:
     item_set = set(items)
     if item_set & _MA_ITEMS:
         return "ma_definitive"
+    if "1.01" in item_set:
+        # A signing 8-K may also carry 2.02, 7.01, or 8.01. Item 1.01 covers
+        # leases and loans too, so the surrounding text decides.
+        return "filing_mention"
     if item_set & _FINANCIAL_ITEMS:
         return "financial_mention"
     if item_set & _DISCLOSURE_ITEMS:

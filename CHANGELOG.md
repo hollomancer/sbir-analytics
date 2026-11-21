@@ -10,6 +10,17 @@ version.
 
 ## [Unreleased]
 
+### Removed
+
+- Retired the exploratory Jev CI failure-triage pilot. Removed
+  `scripts/ci/jev_triage/`, `tests/fixtures/jev_ci_triage/`, its two unit-test
+  files, the `Experimental Jev Triage Contract` CI job, its change filter, and
+  the per-shard JUnit uploads that only that job read. The spec moved to
+  `specs/archive/superseded/jev-ci-triage/`. It answered no research question,
+  its CI job was skipped in 30 of 30 recent pull-request runs, and live calls
+  never cleared their gates. The deterministic study preflight
+  (`jev-preflight`, `jev-ci-enforcement`) is unchanged.
+
 ## [0.21.0] — 2026-11-16
 
 ### Breaking

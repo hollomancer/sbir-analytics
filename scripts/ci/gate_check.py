@@ -14,16 +14,10 @@ Usage:
 from __future__ import annotations
 
 import json
-import os
 import sys
 from pathlib import Path
 
-
-def _env_float(key: str, default: float) -> float:
-    try:
-        return float(os.environ.get(key, str(default)))
-    except Exception:
-        return default
+from sbir_etl.config.loader import env_float
 
 
 def _get_nested(data: dict, *keys: str, default=None):
@@ -39,6 +33,7 @@ def _get_nested(data: dict, *keys: str, default=None):
 # ---------------------------------------------------------------------------
 # Gate definitions
 # ---------------------------------------------------------------------------
+
 
 def gate_transition_validation() -> int:
     """Gate: transition MVP validation summary."""
@@ -109,15 +104,21 @@ def gate_transition_analytics() -> int:
     denom_ok = (a_den > 0) and (c_den > 0)
     rate_bounds_ok = (0.0 <= a_rate <= 1.0) and (0.0 <= c_rate <= 1.0)
 
-    min_award_rate = _env_float("SBIR_ETL__TRANSITION__ANALYTICS__MIN_AWARD_RATE", 0.0)
-    min_company_rate = _env_float("SBIR_ETL__TRANSITION__ANALYTICS__MIN_COMPANY_RATE", 0.0)
+    min_award_rate = env_float("SBIR_ETL__TRANSITION__ANALYTICS__MIN_AWARD_RATE", 0.0)
+    min_company_rate = env_float("SBIR_ETL__TRANSITION__ANALYTICS__MIN_COMPANY_RATE", 0.0)
     min_ok = (a_rate >= min_award_rate) and (c_rate >= min_company_rate)
 
-    print("Analytics checks:", json.dumps({
-        "award": {"denominator": a_den, "rate": a_rate, "min_rate": min_award_rate},
-        "company": {"denominator": c_den, "rate": c_rate, "min_rate": min_company_rate},
-        "sanity": {"denominators_positive": denom_ok, "rates_within_0_1": rate_bounds_ok},
-    }, indent=2))
+    print(
+        "Analytics checks:",
+        json.dumps(
+            {
+                "award": {"denominator": a_den, "rate": a_rate, "min_rate": min_award_rate},
+                "company": {"denominator": c_den, "rate": c_rate, "min_rate": min_company_rate},
+                "sanity": {"denominators_positive": denom_ok, "rates_within_0_1": rate_bounds_ok},
+            },
+            indent=2,
+        ),
+    )
 
     if not denom_ok:
         print("::error::Analytics gate failed: zero denominators.")

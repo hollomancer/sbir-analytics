@@ -12,6 +12,7 @@ though it were current.
 
 | Area | Contents |
 |---|---|
+| `architecture/` | Superseded architecture trade-off analyses |
 | `deployment/` | Completed GitHub Actions migration plan |
 | `design/` | Implemented feature designs, retained as the design record |
 | `development/` | Cleanup and source-layout migration snapshots |

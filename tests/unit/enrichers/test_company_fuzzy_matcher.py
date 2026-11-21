@@ -161,15 +161,25 @@ def test_enrich_multiple_awards_batch_behavior():
     # Ensure vectorized/batch matching works for multiple rows and retains order
     companies = pd.DataFrame(
         [
-            {"company": "Acme Innovations", "UEI": "U1", "Duns": "111111111", "industry": "A"},
-            {"company": "BioTech Labs", "UEI": "U2", "Duns": "222222222", "industry": "B"},
-            {"company": "NanoWorks", "UEI": "U3", "Duns": "333333333", "industry": "C"},
+            {
+                "company": "Acme Innovations",
+                "UEI": "ACMEUEI00001",
+                "Duns": "123456781",
+                "industry": "A",
+            },
+            {
+                "company": "BioTech Labs",
+                "UEI": "BIOUEI000002",
+                "Duns": "123456782",
+                "industry": "B",
+            },
+            {"company": "NanoWorks", "UEI": "NANOUEI00003", "Duns": "123456783", "industry": "C"},
         ]
     )
     awards = pd.DataFrame(
         [
-            {"company": "Acme Innovations", "UEI": "U1", "Duns": ""},
-            {"company": "BioTech Labs", "UEI": "", "Duns": "222-222-222"},
+            {"company": "Acme Innovations", "UEI": "ACMEUEI00001", "Duns": ""},
+            {"company": "BioTech Labs", "UEI": "", "Duns": "123-456-782"},
             {"company": "NanoWorks Inc.", "UEI": "", "Duns": ""},
         ]
     )
@@ -283,8 +293,8 @@ def test_enrich_missing_company_name_column():
 
 def test_enrich_column_name_fallback():
     """Test column name fallback detection."""
-    companies = pd.DataFrame([{"Company Name": "Test Corp", "UEI": "U1"}])
-    awards = pd.DataFrame([{"Company": "Test Corp", "UEI": "U1"}])
+    companies = pd.DataFrame([{"Company Name": "Test Corp", "UEI": "TESTUEI00001"}])
+    awards = pd.DataFrame([{"Company": "Test Corp", "UEI": "TESTUEI00001"}])
 
     # Should use fallback detection
     enriched = enrich_awards_with_companies(awards, companies)
@@ -430,3 +440,58 @@ def test_distinct_firms_do_not_auto_accept(left: str, right: str, reason: str) -
     assert method != "fuzzy-auto", (
         f"{left!r} vs {right!r} auto-accepted at score {score} (method={method}): {reason}"
     )
+
+
+def _exact_method(award_ids: dict, company_ids: dict) -> object:
+    companies = pd.DataFrame([{"company": "Alpha Rotor Systems", **company_ids}])
+    awards = pd.DataFrame([{"company": "Zephyr Biologics", **award_ids}])
+    enriched = enrich_awards_with_companies(awards, companies, high_threshold=90)
+    return enriched["_match_method"].iloc[0]
+
+
+@pytest.mark.parametrize(
+    ("award_ids", "company_ids"),
+    [
+        ({"UEI": "N/A", "Duns": ""}, {"UEI": "N/A", "Duns": ""}),
+        ({"UEI": "NONE", "Duns": ""}, {"UEI": "NONE", "Duns": ""}),
+        ({"UEI": "U1", "Duns": ""}, {"UEI": "U1", "Duns": ""}),
+        ({"UEI": "000000000000", "Duns": ""}, {"UEI": "000000000000", "Duns": ""}),
+        ({"UEI": "", "Duns": "000000000"}, {"UEI": "", "Duns": "000-000-000"}),
+        ({"UEI": "", "Duns": "999999999"}, {"UEI": "", "Duns": "999999999"}),
+        ({"UEI": "", "Duns": "12345"}, {"UEI": "", "Duns": "12345"}),
+    ],
+    ids=[
+        "uei_na",
+        "uei_none",
+        "uei_too_short",
+        "uei_all_zero",
+        "duns_all_zero",
+        "duns_all_nine",
+        "duns_too_short",
+    ],
+)
+def test_placeholder_identifiers_never_match_exactly(award_ids, company_ids) -> None:
+    # Unrelated names: only a shared placeholder ID could link these firms.
+    assert _exact_method(award_ids, company_ids) not in ("uei-exact", "duns-exact")
+
+
+def test_duns_read_as_a_number_still_matches_exactly() -> None:
+    # pandas without dtype=str reads DUNS 012345678 as 12345678.0.
+    assert _exact_method({"Duns": 12345678.0}, {"Duns": "012345678"}) == "duns-exact"
+
+
+def test_duns_decimal_text_is_read_as_the_number() -> None:
+    from sbir_etl.enrichers.company_fuzzy_matcher import _exact_duns_key
+
+    # A CSV written from a float column stores DUNS 012345678 as "12345678.0".
+    assert _exact_duns_key("12345678.0") == "012345678"
+    assert _exact_duns_key(" 123456789.00 ") == "123456789"
+    assert _exact_method({"Duns": "12345678.0"}, {"Duns": "012345678"}) == "duns-exact"
+
+
+@pytest.mark.parametrize("value", ["12345678", "1234567890.0"])
+def test_duns_text_that_is_not_a_padded_number_stays_invalid(value) -> None:
+    from sbir_etl.enrichers.company_fuzzy_matcher import _exact_duns_key
+
+    # Text sources keep leading zeros, so a plain 8-digit string is truncated.
+    assert _exact_duns_key(value) is None

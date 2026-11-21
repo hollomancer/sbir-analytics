@@ -17,11 +17,11 @@ from dagster._core.definitions.unresolved_asset_job_definition import (
 from ..sbir_ingestion import validated_sbir_awards
 from ..sec_edgar_enrichment import sec_edgar_enriched_companies
 
-from .job_registry import JobSpec, build_job_from_spec_with_executor
+from .job_registry import JobSpec, build_job_from_spec
 
 
 def _build_job() -> JobDefinition | UnresolvedAssetJobDefinition:
-    return build_job_from_spec_with_executor(
+    return build_job_from_spec(
         JobSpec(
             name="sec_edgar_pipeline_job",
             description=(

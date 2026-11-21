@@ -25,9 +25,9 @@ EXPECTED_JOBS = {
 
 @pytest.fixture(scope="module")
 def schedules():
-    from sbir_analytics.definitions import schedules as all_schedules
+    from sbir_analytics.definitions import bundle
 
-    return {s.name: s for s in all_schedules}
+    return {s.name: s for s in bundle.schedules}
 
 
 class TestJobsAreDiscovered:
@@ -37,9 +37,9 @@ class TestJobsAreDiscovered:
         assert EXPECTED_JOBS == set(source_downloads.__all__)
 
     def test_jobs_registered_in_definitions(self):
-        from sbir_analytics.definitions import auto_jobs
+        from sbir_analytics.definitions import bundle
 
-        assert EXPECTED_JOBS <= set(auto_jobs)
+        assert EXPECTED_JOBS <= set(bundle.auto_jobs)
 
 
 class TestSchedules:
@@ -110,9 +110,9 @@ class TestPipelineChaining:
 
     @pytest.fixture(scope="class")
     def sensors(self):
-        from sbir_analytics.definitions import all_sensors
+        from sbir_analytics.definitions import bundle
 
-        return {s.name: s for s in all_sensors}
+        return {s.name: s for s in bundle.all_sensors}
 
     @pytest.mark.parametrize("name", sorted(EXPECTED_SENSORS))
     def test_sensor_registered(self, sensors, name):
