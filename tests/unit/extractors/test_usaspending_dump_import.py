@@ -13,9 +13,11 @@ from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
 
+import duckdb
 import pandas as pd
 import pytest
 from dagster import build_asset_context
+from loguru import logger
 
 from sbir_etl.exceptions import ExtractionError
 from sbir_etl.extractors.usaspending import RECIPIENT_LOOKUP_COLUMNS, DuckDBUSAspendingExtractor
@@ -46,9 +48,6 @@ RECIPIENT_COPY_DATA = (
     )
     + "\n"
 )
-
-# DuckDB's CSV sniffer cannot find a dialect for this, so the table load fails.
-BAD_COPY_DATA = 'a\tb\n1\n1\t2\t3\t4\t5\n"x\ty\n'
 
 
 def _write_dump(path: Path, files: dict[int, str]) -> Path:
@@ -148,16 +147,95 @@ def test_ingestion_asset_reads_named_columns_from_imported_dump(
 
 # --- partial COPY import -----------------------------------------------------
 
+UNUSED_OID = 5500
 
-def test_copy_file_that_fails_to_load_fails_the_import(tmp_path) -> None:
+
+def _late_type_change(row: str, bad_row: str, good_rows: int = 30_000) -> str:
+    # DuckDB sniffs the column types from the first rows, so a bad value this
+    # far down fails the load with a Conversion Error, not a sniffing error.
+    return row * good_rows + bad_row
+
+
+BAD_RECIPIENT_COPY_DATA = _late_type_change(
+    _recipient_row(id="1", recipient_hash="h1") + "\n",
+    _recipient_row(id="x", recipient_hash="h2") + "\n",
+)
+BAD_UNUSED_COPY_DATA = _late_type_change("1\ta\n", "x\ta\n")
+
+
+def test_needed_table_that_fails_to_load_fails_the_import(tmp_path) -> None:
     dump = _write_dump(
         tmp_path / "usaspending-db.zip",
-        {RECIPIENT_OID: RECIPIENT_COPY_DATA, 5500: BAD_COPY_DATA},
+        {RECIPIENT_OID: BAD_RECIPIENT_COPY_DATA, UNUSED_OID: RECIPIENT_COPY_DATA},
     )
     extractor = DuckDBUSAspendingExtractor(str(tmp_path / "usa.duckdb"))
 
-    # Before the fix the bad table was only logged and the import returned True.
-    with pytest.raises(ExtractionError, match="1 of 2 COPY files failed to load") as exc_info:
+    # Before the fix this returned False with only a log line.
+    with pytest.raises(ExtractionError, match="recipient_lookup_5419") as exc_info:
         extractor.import_postgres_dump(dump, "recipient_lookup")
 
-    assert list(exc_info.value.details["failed_tables"]) == ["recipient_lookup_5500"]
+    assert exc_info.value.details["source_table"] == f"recipient_lookup_{RECIPIENT_OID}"
+    assert isinstance(exc_info.value.__cause__, duckdb.ConversionException)
+
+
+def test_unused_table_that_fails_to_load_is_recorded_not_fatal(tmp_path) -> None:
+    dump = _write_dump(
+        tmp_path / "usaspending-db.zip",
+        {RECIPIENT_OID: RECIPIENT_COPY_DATA, UNUSED_OID: BAD_UNUSED_COPY_DATA},
+    )
+    extractor = DuckDBUSAspendingExtractor(str(tmp_path / "usa.duckdb"))
+    warnings: list[str] = []
+    sink_id = logger.add(warnings.append, level="WARNING", format="{message}")
+    try:
+        assert extractor.import_postgres_dump(dump, "recipient_lookup") is True
+    finally:
+        logger.remove(sink_id)
+
+    assert list(extractor.import_failed_tables) == [f"recipient_lookup_{UNUSED_OID}"]
+    assert "Conversion Error" in extractor.import_failed_tables[f"recipient_lookup_{UNUSED_OID}"]
+    assert any("recipient_lookup_5500" in w for w in warnings)
+    assert _columns(extractor, "recipient_lookup") == RECIPIENT_LOOKUP_COLUMNS
+
+
+def test_unused_table_failure_shows_in_asset_metadata(monkeypatch, tmp_path) -> None:
+    from sbir_analytics.assets import usaspending_database_enrichment as db_enrichment
+
+    dump = _write_dump(
+        tmp_path / "usaspending-db.zip",
+        {RECIPIENT_OID: RECIPIENT_COPY_DATA, UNUSED_OID: BAD_UNUSED_COPY_DATA},
+    )
+    config = SimpleNamespace(duckdb=SimpleNamespace(database_path=str(tmp_path / "usa.duckdb")))
+    monkeypatch.setattr(db_enrichment, "get_config", lambda: config)
+    monkeypatch.setattr(db_enrichment, "find_latest_usaspending_dump", lambda **_kw: dump)
+    awards = pd.DataFrame({"UEI": ["UEIACME00001"], "Duns": ["123456789"]})
+
+    output: Any = db_enrichment.sbir_company_usaspending_recipients(build_asset_context(), awards)
+
+    failed = output.metadata["dump_import_failed_tables"].value
+    assert list(failed) == [f"recipient_lookup_{UNUSED_OID}"]
+
+
+def test_ingestion_keeps_the_import_error_and_its_cause(monkeypatch, tmp_path) -> None:
+    from sbir_analytics.assets import usaspending_ingestion
+
+    dump = _write_dump(tmp_path / "usaspending-db.zip", {RECIPIENT_OID: BAD_RECIPIENT_COPY_DATA})
+    config = SimpleNamespace(duckdb=SimpleNamespace(database_path=str(tmp_path / "usa.duckdb")))
+    monkeypatch.setattr(usaspending_ingestion, "get_config", lambda: config)
+    monkeypatch.setattr(
+        usaspending_ingestion, "_resolve_tiered_path", lambda *_a, **_kw: (dump, str(dump))
+    )
+
+    # Before the fix the asset raised a new, unchained "API fallback not
+    # implemented" error and the failed tables were only in a log line.
+    with pytest.raises(ExtractionError) as exc_info:
+        usaspending_ingestion._import_usaspending_table(
+            build_asset_context(),
+            log_label="recipient_lookup",
+            table_name="raw_usaspending_recipients",
+        )
+
+    assert exc_info.value.operation == "import_copy_files"
+    assert list(exc_info.value.details["failed_tables"]) == [
+        f"raw_usaspending_recipients_{RECIPIENT_OID}"
+    ]
+    assert isinstance(exc_info.value.__cause__, duckdb.ConversionException)

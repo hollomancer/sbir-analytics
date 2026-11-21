@@ -146,7 +146,7 @@ Hand review of every broad (c)/(d) block in this group. "On review" means the ca
 
 | Block | Class | Action |
 |---|---|---|
-| `usaspending.py:229` | c -> a (fixed) | A COPY file that fails to extract or load now makes `import_postgres_dump` raise ExtractionError with the failed table names in `details["failed_tables"]`, instead of returning `True` for a partial import. |
+| `usaspending.py:229` | c -> a/b (fixed) | If the COPY file that the named view reads fails to extract or load, `import_postgres_dump` raises ExtractionError, chained to the DuckDB error, with `details["failed_tables"]`. Other COPY files that fail are logged at WARNING, kept in `import_failed_tables`, and shown as `dump_import_failed_tables` in the USAspending asset metadata. `usaspending_ingestion.py` now lets this error through instead of replacing it with an unchained one. |
 | `usaspending.py:465` | d -> a (fixed) | `resolve_physical_table_name` queried a column that `duckdb_tables()` does not have, swallowed the error, and returned the base name by accident. It now returns the base-name table or view on purpose and raises ExtractionError when none exists. It never returns the raw `<name>_<oid>` table, whose columns are `column00`, `column01`, and so on. |
 
 ## Every (c) and (d) block

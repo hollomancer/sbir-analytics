@@ -431,7 +431,13 @@ def sbir_relevant_usaspending_transactions(
     # Data quality checks
     if df.empty:
         context.log.warning("No SBIR-relevant transactions found in dump")
-        return Output(value=df, metadata={"row_count": 0})  # type: ignore[arg-type]
+        return Output(
+            value=df,
+            metadata={  # type: ignore[arg-type]
+                "row_count": 0,
+                "dump_import_failed_tables": MetadataValue.json(extractor.import_failed_tables),
+            },
+        )
 
     # --- SBIR.gov cross-reference (heuristic fallback only) ---
     # When we used the authoritative research field, every record is already
@@ -474,6 +480,7 @@ def sbir_relevant_usaspending_transactions(
         else "N/A",
         "preview": MetadataValue.md(df.head(10).to_markdown()),
         **sbir_gov_stats,
+        "dump_import_failed_tables": MetadataValue.json(extractor.import_failed_tables),
     }
 
     context.log.info(
@@ -607,6 +614,7 @@ def sbir_company_usaspending_recipients(
         "sbir_uei_count": len(uei_values),
         "sbir_duns_count": len(duns_values),
         "match_rate": f"{len(df) / max(len(uei_values), 1) * 100:.1f}%",
+        "dump_import_failed_tables": MetadataValue.json(extractor.import_failed_tables),
     }
 
     return Output(value=df, metadata=metadata)  # type: ignore[arg-type]
@@ -673,7 +681,11 @@ def sbir_grant_transactions(
         )
         return Output(
             value=pd.DataFrame(),
-            metadata={"row_count": 0, "reason": "no_cfda_column"},  # type: ignore[arg-type]
+            metadata={  # type: ignore[arg-type]
+                "row_count": 0,
+                "reason": "no_cfda_column",
+                "dump_import_failed_tables": MetadataValue.json(extractor.import_failed_tables),
+            },
         )
 
     # Build SQL with all known SBIR/STTR ALNs
@@ -710,7 +722,13 @@ def sbir_grant_transactions(
         )
 
     if df.empty:
-        return Output(value=df, metadata={"row_count": 0})  # type: ignore[arg-type]
+        return Output(
+            value=df,
+            metadata={  # type: ignore[arg-type]
+                "row_count": 0,
+                "dump_import_failed_tables": MetadataValue.json(extractor.import_failed_tables),
+            },
+        )
 
     exclusive_count = int(
         (df["sbir_aln_confidence"] == "exclusive").sum()
@@ -812,6 +830,7 @@ def sbir_grant_transactions(
         else [],
         "preview": MetadataValue.md(df.head(10).to_markdown()),
         **sbir_gov_stats,
+        "dump_import_failed_tables": MetadataValue.json(extractor.import_failed_tables),
     }
 
     context.log.info(
