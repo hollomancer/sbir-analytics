@@ -1211,6 +1211,9 @@ The relevant literature is Lerner [L10], Howell [L11], and Kortum & Lerner
   **Status:** Not computable. The CA-only pilot used the retired v1
   Form D cohort; its cohort-dependent lender mix and rates are suppressed.
   Its state-portal access observations remain a source-method note.
+  The [debt-financing assessment](research/sbir-debt-financing-assessment.md)
+  describes the available public sources, classification choices, and a
+  non-citable aggregate pilot without restoring a program-wide rate.
   *Deps: ER, UCC-1 · Spec: [../specs/archive/completed-features/ucc1-financing-analysis/](../specs/archive/completed-features/ucc1-financing-analysis/) (PRs #303 / #305 merged)*
 
 - **Unified capital-event timeline**
