@@ -59,13 +59,16 @@ bypassing lifecycle review; the status and rationale still require human judgmen
   Phase 1 artifacts were materialized.
 - **`bea-nipa-tax-rates` — Active.** The NIPA provider exists; the remaining
   work is the on-disk cache and removal of hardcoded effective-rate consumers.
+  Requirement 3 was resolved by removal in PR #837; Requirement 4's schema
+  default is in place, but `config/base.yaml` still sets an unread `0.22`.
 - **`company-categorization` — Maintenance.** About 80% complete. The governed
   categorization table remains supported; its unused graph publication path was
   removed with `neo4j-retirement`. Complete only the remaining table-owned
   validation and documentation work.
-- **`cross-agency-taxonomy` — Gated backlog.** M3 research target. Prerequisite
-  classifier/tools exist, but this spec's batch run, report, and Dagster wiring
-  are not implemented.
+- **`cross-agency-taxonomy` — Gated backlog.** M3 research target. The CET classifier
+  exists. The prerequisite portfolio tools (`tools/mission_a/`) were deleted in
+  PR #837 because nothing called them, so implementing C1 now needs new code.
+  This spec's batch run, report, and Dagster wiring are not implemented.
 - **`dark-majority-resolution` — Maintenance.** Retiered `evidence` → `pipelines`
   (2026-08-15): no four-item evidence contract yet. Core contract, identity,
   liveness, and recovery work is implemented. Remaining work is a bounded web

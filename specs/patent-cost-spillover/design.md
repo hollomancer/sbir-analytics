@@ -6,6 +6,9 @@ Builds on the existing patent-award linkage pipeline. New analytical code lives 
 `packages/sbir-analytics/sbir_analytics/tools/mission_b/` (knowledge-output metrics
 are an innovation/commercialization outcome, consistent with the mission_b namespace).
 
+> **Note:** `packages/sbir-analytics/sbir_analytics/tools/` (including `mission_b/`) was
+> deleted in PR #837 (unused; no callers). Choose a new location when this work starts.
+
 ### Precondition: USPTO citation ingestion
 
 The existing USPTO pipeline ingests patent grant data but **does not yet ingest patent

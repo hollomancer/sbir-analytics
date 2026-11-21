@@ -3,7 +3,6 @@
 This module provides:
 - Unified parquet saving with NDJSON fallback
 - Atomic JSON write operations
-- NDJSON writing utilities
 - Unified parquet/NDJSON reading
 - SHA-256 digests for source-provenance records
 """
@@ -213,25 +212,6 @@ def write_json(
     _ensure_parent_dir(path)
     with path.open("w", encoding="utf-8") as fh:
         json.dump(payload, fh, indent=indent, ensure_ascii=ensure_ascii)
-
-
-def write_ndjson(path: Path, records: list[dict[str, Any]]) -> None:
-    """Write records as newline-delimited JSON (NDJSON).
-
-    Each record is written as a single JSON object on its own line.
-
-    Args:
-        path: Path to write NDJSON file
-        records: List of dictionaries to write
-    """
-    _ensure_parent_dir(path)
-    with path.open("w", encoding="utf-8") as fh:
-        for record in records:
-            # Convert to JSON-serializable format
-            jsonable_record = {k: _to_jsonable(v) for k, v in record.items()}
-            fh.write(json.dumps(jsonable_record) + "\n")
-
-    logger.debug(f"Wrote {len(records)} records to NDJSON: {path}")
 
 
 def read_parquet_or_ndjson(parquet_path: Path, json_path: Path | None = None) -> pd.DataFrame:
