@@ -6,6 +6,8 @@ This module contains:
 
 from __future__ import annotations
 
+import math
+import os
 from pathlib import Path
 from typing import Any
 
@@ -17,12 +19,43 @@ from .utils import (
     Output,
     VendorRecord,
     VendorResolver,
-    _env_float,
     asset,
+    get_config,
     now_utc_iso,
     save_dataframe_parquet,
     write_json,
 )
+
+_FUZZY_THRESHOLD_KEY = "transition.vendor_resolution.fuzzy_threshold"
+_FUZZY_THRESHOLD_ENV = "SBIR_ETL__TRANSITION__VENDOR_RESOLUTION__FUZZY_THRESHOLD"
+_RETIRED_FUZZY_THRESHOLD_ENV = "SBIR_ETL__TRANSITION__FUZZY__THRESHOLD"
+
+
+def _fuzzy_threshold() -> float:
+    """Return the fuzzy name-match threshold from the loaded config.
+
+    ``config/base.yaml`` holds the default. ``SBIR_ETL__TRANSITION__VENDOR_RESOLUTION__
+    FUZZY_THRESHOLD`` overrides it through the standard config loader. The retired
+    variable ``SBIR_ETL__TRANSITION__FUZZY__THRESHOLD`` raises instead of being ignored.
+    """
+    if os.environ.get(_RETIRED_FUZZY_THRESHOLD_ENV) is not None:
+        raise ValueError(
+            f"{_RETIRED_FUZZY_THRESHOLD_ENV} is no longer read; "
+            f"set {_FUZZY_THRESHOLD_ENV} (config key {_FUZZY_THRESHOLD_KEY}) instead"
+        )
+    transition = getattr(get_config(), "transition", None) or {}
+    vendor_resolution = transition.get("vendor_resolution") or {}
+    value = vendor_resolution.get("fuzzy_threshold")
+    if (
+        isinstance(value, bool)
+        or not isinstance(value, int | float)
+        or not math.isfinite(value)
+        or not 0.0 <= value <= 1.0
+    ):
+        raise ValueError(
+            f"Config key {_FUZZY_THRESHOLD_KEY} must be a finite number in [0, 1]; got {value!r}"
+        )
+    return float(value)
 
 
 @asset(
@@ -40,7 +73,7 @@ def enriched_vendor_resolution(
     enriched_sbir_awards: pd.DataFrame,
 ) -> Output[pd.DataFrame]:
     # Config
-    fuzzy_threshold = _env_float("SBIR_ETL__TRANSITION__FUZZY__THRESHOLD", 0.85)
+    fuzzy_threshold = _fuzzy_threshold()
     out_path = Path("data/processed/vendor_resolution.parquet")
     checks_path = out_path.with_suffix(".checks.json")
 
