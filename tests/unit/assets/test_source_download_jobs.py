@@ -230,3 +230,49 @@ class TestUnchangedDetection:
         )
 
         assert _download_was_unchanged(self._ctx({"status": "success"})) is False
+
+
+class TestSensorStatusToggle:
+    """The on/off variable goes through env_bool, so a typo fails loudly."""
+
+    VAR = "SBIR_ETL__DAGSTER__SENSORS__SBIR_PIPELINE_AFTER_DOWNLOAD_ENABLED"
+
+    def test_unset_is_stopped(self, monkeypatch):
+        from dagster import DefaultSensorStatus
+
+        from sbir_analytics.assets.sensors.source_download_chaining import _sensor_status
+
+        monkeypatch.delenv(self.VAR, raising=False)
+        assert _sensor_status("sbir_pipeline_after_download") is DefaultSensorStatus.STOPPED
+
+    @pytest.mark.parametrize("value", ["1", "true", "TRUE", "yes", "Yes", "on", "ON"])
+    def test_true_words_are_running(self, monkeypatch, value):
+        from dagster import DefaultSensorStatus
+
+        from sbir_analytics.assets.sensors.source_download_chaining import _sensor_status
+
+        monkeypatch.setenv(self.VAR, value)
+        assert _sensor_status("sbir_pipeline_after_download") is DefaultSensorStatus.RUNNING
+
+    @pytest.mark.parametrize("value", ["0", "false", "FALSE", "no", "No", "off", "OFF", "  "])
+    def test_false_words_are_stopped(self, monkeypatch, value):
+        from dagster import DefaultSensorStatus
+
+        from sbir_analytics.assets.sensors.source_download_chaining import _sensor_status
+
+        monkeypatch.setenv(self.VAR, value)
+        assert _sensor_status("sbir_pipeline_after_download") is DefaultSensorStatus.STOPPED
+
+    def test_bad_value_fails_module_load(self, monkeypatch):
+        """The read runs at import, so a typo stops the definitions from loading."""
+        import importlib
+
+        from sbir_analytics.assets.sensors import source_download_chaining
+
+        monkeypatch.setenv(self.VAR, "ture")
+        try:
+            with pytest.raises(ValueError, match=self.VAR):
+                importlib.reload(source_download_chaining)
+        finally:
+            monkeypatch.delenv(self.VAR, raising=False)
+            importlib.reload(source_download_chaining)
