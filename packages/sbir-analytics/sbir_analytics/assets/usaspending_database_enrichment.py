@@ -36,9 +36,17 @@ def _table_has_column(
     try:
         conn = extractor.connect()
         cols_df = conn.execute(f"DESCRIBE {table_name}").fetchdf()
-        return column_name.lower() in cols_df["column_name"].str.lower().values
-    except Exception:
-        return False
+    except Exception as exc:
+        # A failed DESCRIBE is not the same as a missing column. Treating it as
+        # missing would silently switch the SBIR filter or return no grants.
+        raise ExtractionError(
+            f"Could not read the schema of {table_name}",
+            component="assets.usaspending_database_enrichment",
+            operation="describe_table",
+            details={"table_name": table_name, "column_name": column_name},
+            cause=exc,
+        ) from exc
+    return column_name.lower() in cols_df["column_name"].str.lower().values
 
 
 def _build_sbir_gov_index(
@@ -81,9 +89,15 @@ def _build_sbir_gov_index(
                         )
                         all_awards.extend(awards)
                     except Exception as e:
-                        context.log.warning(
-                            f"SBIR.gov API query failed for agency={agency} year={year}: {e}"
-                        )
+                        # Do not build an index from a partial pull: missing
+                        # agency-years would undercount confirmations. Fail the
+                        # API attempt so the bulk file is tried instead.
+                        raise ExtractionError(
+                            f"SBIR.gov API query failed for agency={agency} year={year}: {e}",
+                            component="assets.usaspending_database_enrichment",
+                            operation="sbir_gov_api_query",
+                            cause=e,
+                        ) from e
 
         if all_awards:
             context.log.info(f"SBIR.gov API returned {len(all_awards)} awards total")
@@ -556,18 +570,20 @@ def sbir_company_usaspending_recipients(
         query = f"""
         SELECT DISTINCT
             recipient_hash,
-            recipient_name,
-            recipient_uei,
-            recipient_duns,
-            parent_recipient_hash,
-            parent_recipient_name,
+            legal_business_name AS recipient_name,
+            uei AS recipient_uei,
+            duns AS recipient_duns,
+            -- recipient_lookup (RECIPIENT_LOOKUP_COLUMNS) has no parent hash or
+            -- business-type description; keep the output columns as NULL.
+            CAST(NULL AS VARCHAR) AS parent_recipient_hash,
+            parent_legal_business_name AS parent_recipient_name,
             parent_uei,
             parent_duns,
             business_types_codes,
-            business_types_description
+            CAST(NULL AS VARCHAR) AS business_types_description
         FROM {physical_table}
-        WHERE recipient_uei IN ({uei_list})
-           OR recipient_duns IN ({",".join(f"'{v}'" for v in duns_values) if duns_values else "''"})
+        WHERE uei IN ({uei_list})
+           OR duns IN ({",".join(f"'{v}'" for v in duns_values) if duns_values else "''"})
         LIMIT 100000
         """
 
@@ -575,8 +591,13 @@ def sbir_company_usaspending_recipients(
             df = extractor.connect().execute(query).fetchdf()
             context.log.info(f"Found {len(df)} recipient records for SBIR companies")
         except Exception as e:
-            logger.error(f"Recipient query failed: {e}")
-            df = pd.DataFrame()
+            raise ExtractionError(
+                f"Recipient query failed: {e}",
+                component="assets.usaspending_database_enrichment",
+                operation="query_recipients",
+                details={"table_name": physical_table},
+                cause=e,
+            ) from e
     else:
         context.log.warning("No UEI/DUNS values found in SBIR awards")
         df = pd.DataFrame()
