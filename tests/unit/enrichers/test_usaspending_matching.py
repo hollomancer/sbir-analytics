@@ -150,3 +150,35 @@ def test_exact_matches_have_full_score(
     mask = enriched["_usaspending_match_method"].str.contains("exact", na=False)
     if mask.any():
         assert (enriched.loc[mask, "_usaspending_match_score"] == 100).all()
+
+
+def test_float_recipient_duns_does_not_match_a_different_firm() -> None:
+    # A recipient DUNS column with NaN is read as float, so DUNS 012345678
+    # arrives as 12345678.0. Digit stripping would key it as 123456780.
+    recipients = pd.DataFrame(
+        {
+            "recipient_name": ["Alpha Recip", "Unrelated Holdings"],
+            "recipient_duns": [12345678.0, None],
+        }
+    )
+    sbir = pd.DataFrame(
+        {"Company": ["Alpha Inc", "Bravo Corp"], "Duns": ["012345678", "123456780"]}
+    )
+
+    enriched = enrich_sbir_with_usaspending(sbir, recipients)
+
+    by_company = enriched.set_index("Company")
+    assert by_company.at["Alpha Inc", "_usaspending_match_method"] == "duns-exact"
+    assert by_company.at["Alpha Inc", "usaspending_recipient_recipient_name"] == "Alpha Recip"
+    assert pd.isna(by_company.at["Bravo Corp", "_usaspending_match_method"])
+    assert pd.isna(by_company.at["Bravo Corp", "usaspending_recipient_recipient_name"])
+
+
+@pytest.mark.parametrize("placeholder", ["000000000", "N/A"])
+def test_placeholder_duns_does_not_match_exactly(placeholder: str) -> None:
+    recipients = pd.DataFrame({"recipient_name": ["Alpha Recip"], "recipient_duns": [placeholder]})
+    sbir = pd.DataFrame({"Company": ["Bravo Corp"], "Duns": [placeholder]})
+
+    enriched = enrich_sbir_with_usaspending(sbir, recipients)
+
+    assert pd.isna(enriched.iloc[0]["_usaspending_match_method"])

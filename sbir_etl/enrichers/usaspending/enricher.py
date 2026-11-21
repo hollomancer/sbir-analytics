@@ -5,7 +5,7 @@ USAspending enricher for SBIR awards using identifier-first matching strategy.
 Strategy summary:
 1. Attempt deterministic joins on identifiers:
    - UEI exact match (preferred)
-   - DUNS exact match (digits-only)
+   - DUNS exact match (DunsProfile.DUNS_V2)
 2. If no exact match, use fuzzy name matching on recipient names
 3. Enrich awards with USAspending transaction data (federal obligations, etc.)
 4. Return enriched DataFrame with match metadata and USAspending columns
@@ -27,6 +27,7 @@ from sbir_etl.identity import (
     normalize_company_name,
     rapidfuzz_token_set_100,
 )
+from sbir_etl.utils.identifiers import DunsProfile, normalize_duns
 
 
 try:
@@ -125,11 +126,10 @@ def enrich_sbir_with_usaspending(
                 recipient_by_uei[str(uei).strip().upper()] = idx
 
     if recipient_duns_col in recipients.columns:
-        for idx, duns in recipients[recipient_duns_col].dropna().items():
-            if duns:
-                digits = "".join(ch for ch in str(duns) if ch.isdigit())
-                if digits:
-                    recipient_by_duns[digits] = idx
+        for idx, duns in recipients[recipient_duns_col].items():
+            duns_key = normalize_duns(duns, profile=DunsProfile.DUNS_V2)
+            if duns_key:
+                recipient_by_duns[duns_key] = idx
 
     # Prepare output columns
     sbir["_usaspending_recipient_idx"] = pd.NA
@@ -152,13 +152,10 @@ def enrich_sbir_with_usaspending(
 
     # DUNS exact matches (only for rows that don't already have a UEI match)
     if sbir_duns_col in sbir.columns:
-        duns_series = (
-            sbir[sbir_duns_col]
-            .fillna("")
-            .astype(str)
-            .apply(lambda x: "".join(ch for ch in str(x) if ch.isdigit()))
+        duns_series = sbir[sbir_duns_col].map(
+            lambda value: normalize_duns(value, profile=DunsProfile.DUNS_V2)
         )
-        duns_mask = duns_series.isin(recipient_by_duns.keys())
+        duns_mask = duns_series.notna() & duns_series.isin(recipient_by_duns.keys())
         # Only match DUNS for rows that don't already have a UEI match
         duns_mask = duns_mask & sbir["_usaspending_recipient_idx"].isna()
         if duns_mask.any():
