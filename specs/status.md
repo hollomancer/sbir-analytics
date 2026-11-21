@@ -109,13 +109,6 @@ bypassing lifecycle review; the status and rationale still require human judgmen
   as the reference adapter, and `usaspending_refresh_batch` on the job.
   Per-source adapters stay split (#443 NIH RePORTER, then SAM/PatentsView).
   Tasks 6.1–6.2 remain optional Phase 2 expansion.
-- **`jev-ci-triage` — Active.** Exploratory, non-blocking CI failure-triage
-  pilot. Stage 0 may implement typed contracts, sanitization, deterministic
-  policy and rendering, a fake transport, and hermetic tests. Live Jev calls
-  remain gated on API documentation, data-retention review, disclosure terms,
-  credentials, and an approved shadow-evaluation protocol. Jev output must not
-  change check conclusions, skip tests, suppress security findings, or control
-  merges.
 - **`jev-preflight` — Active.** Exploratory, unapproved study-readiness
   vertical slice. It applies deterministic claim and evidence rules to
   `studies/sba-annual-report-tables`, then evaluates Jev only in private shadow
@@ -287,6 +280,12 @@ bypassing lifecycle review; the status and rationale still require human judgmen
 its Phase 0 question and the stop was a deliberate scope decision). All three
 archive steps were executed — live-doc links updated, completion record added,
 directory moved.
+
+`jev-ci-triage` was archived on 2026-11-21 under `specs/archive/superseded/`
+(dropped, not completed). It answered no research question, its CI job never
+ran in recent pull requests, and live Jev calls stayed gated. Its package,
+fixtures, tests, and CI job were removed in the same change. `jev-preflight`
+and `jev-ci-enforcement` stay active.
 
 No other top-level spec should be archived from this review because each still
 anchors a live research question or an active maintenance cleanup.
