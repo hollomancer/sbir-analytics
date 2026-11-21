@@ -19,6 +19,7 @@ from typing import Any
 from dagster import AssetCheckResult, AssetCheckSeverity, AssetIn, MetadataValue, asset, asset_check
 from loguru import logger
 
+from sbir_etl.config.loader import env_float
 from sbir_etl.exceptions import DependencyError
 
 # Re-export dagster decorators for use in other USPTO asset modules
@@ -101,10 +102,8 @@ DEFAULT_EXTRACT_CHECKS = DEFAULT_AI_PROCESSED_DIR / "uspto_ai_extract.checks.jso
 DEFAULT_DEDUP_CHECKS = DEFAULT_AI_PROCESSED_DIR / "uspto_ai_deduplicate.checks.json"
 
 # Thresholds
-TRANSFORM_SUCCESS_THRESHOLD = float(
-    os.environ.get("SBIR_ETL__USPTO__TRANSFORM_SUCCESS_THRESHOLD", "0.98")
-)
-LINKAGE_TARGET = float(os.environ.get("SBIR_ETL__USPTO__LINKAGE_TARGET", "0.60"))
+TRANSFORM_SUCCESS_THRESHOLD = env_float("SBIR_ETL__USPTO__TRANSFORM_SUCCESS_THRESHOLD", 0.98)
+LINKAGE_TARGET = env_float("SBIR_ETL__USPTO__LINKAGE_TARGET", 0.60)
 _SUPPORTED_EXTS = [".csv", ".dta", ".parquet"]
 
 
