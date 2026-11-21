@@ -456,3 +456,40 @@ def test_every_profile_is_dispatched() -> None:
     # enum member from silently shipping without an implementation.
     for profile in CompanyNameProfile:
         normalize_company_name("Acme Inc", profile=profile)
+
+
+# Different firms whose names some profiles normalize to "" (CJK-only names,
+# bare legal suffixes, punctuation-only strings). An empty key is "no name
+# evidence": it must never score as a match, even against another empty key.
+_EMPTY_KEY_NAME_PAIRS = (
+    ("東京エレクトロン株式会社", "ソニー株式会社"),
+    ("Inc.", "LLC"),
+    ("&.,", "---"),
+)
+
+
+@pytest.mark.parametrize("profile", list(CompanyNameProfile))
+@pytest.mark.parametrize("metric", list(CompanyNameMetric))
+def test_distinct_names_with_empty_keys_never_match(
+    profile: CompanyNameProfile, metric: CompanyNameMetric
+) -> None:
+    for left, right in _EMPTY_KEY_NAME_PAIRS:
+        if normalize_company_name(left, profile=profile) or normalize_company_name(
+            right, profile=profile
+        ):
+            continue
+        assert company_name_similarity(left, right, metric=metric, profile=profile) == 0.0
+
+
+def test_empty_key_rule_does_not_suppress_real_matches() -> None:
+    # Positive control: a CJK name that a profile keeps still matches itself.
+    for profile in (CompanyNameProfile.MATCHING_V1, CompanyNameProfile.LOWER_JOIN_V1):
+        assert (
+            company_name_similarity(
+                "東京エレクトロン株式会社",
+                "東京エレクトロン株式会社",
+                metric=CompanyNameMetric.TOKEN_SET,
+                profile=profile,
+            )
+            == 1.0
+        )

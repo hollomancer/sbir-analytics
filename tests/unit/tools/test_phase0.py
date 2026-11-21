@@ -49,6 +49,23 @@ class TestGenerateCanonicalId:
         id2 = _generate_canonical_id("Widget Inc")
         assert id1 != id2
 
+    @pytest.mark.parametrize(
+        ("left", "right"),
+        [("東京エレクトロン株式会社", "ソニー株式会社"), ("&.,", "---")],
+    )
+    def test_distinct_names_with_empty_keys_get_distinct_ids(self, left, right):
+        # Both names normalize to "" under entity-resolution-v1; they are
+        # different firms and must not share a canonical ID.
+        assert _normalize_name(left) == _normalize_name(right) == ""
+        assert _generate_canonical_id(left) != _generate_canonical_id(right)
+
+    def test_empty_key_name_id_is_deterministic(self):
+        assert _generate_canonical_id("ソニー株式会社") == _generate_canonical_id("ソニー株式会社")
+
+    def test_normal_name_id_unchanged_by_empty_key_rule(self):
+        # Positive control: suffix variants still share one ID.
+        assert _generate_canonical_id("Acme Corp") == _generate_canonical_id("ACME CORP")
+
 
 class TestResolveEntitiesTool:
     def test_basic_resolution(self):

@@ -796,3 +796,38 @@ class TestEdgeCases:
 
         assert match.record is None
         assert match.method == "none"
+
+
+class TestEmptyNameKeys:
+    """An empty normalized name is no name evidence and never matches."""
+
+    @staticmethod
+    def _blank_named_vendors():
+        # Two different vendors whose names normalize to "" under vendor-key-v1.
+        return [
+            VendorRecord(uei="BLANK0000001", cage=None, duns=None, name="", metadata={}),
+            VendorRecord(uei="BLANK0000002", cage=None, duns=None, name="   ", metadata={}),
+        ]
+
+    def test_blank_names_are_not_indexed(self):
+        resolver = VendorResolver(self._blank_named_vendors())
+        assert "" not in resolver._name_index
+
+    def test_whitespace_name_does_not_match_a_blank_named_vendor(self):
+        resolver = VendorResolver(self._blank_named_vendors())
+        match = resolver.resolve_by_name(" \t ")
+        assert match.record is None
+        assert match.score == 0.0
+
+    def test_add_record_does_not_index_blank_name(self):
+        resolver = VendorResolver([])
+        resolver.add_record(self._blank_named_vendors()[0])
+        assert resolver.resolve_by_name("  ").record is None
+
+    def test_named_vendor_still_matches_exactly(self, sample_vendors):
+        # Positive control.
+        resolver = VendorResolver(sample_vendors + self._blank_named_vendors())
+        match = resolver.resolve_by_name("ACME CORPORATION")
+        assert match.record is not None
+        assert match.record.name == "Acme Corporation"
+        assert match.method == "name_exact"

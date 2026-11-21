@@ -55,7 +55,13 @@ def _amount(value: object) -> float:
 
 
 def _relationship_id(target_key: str, event_date: object, acquirer: object) -> str:
-    material = "|".join((target_key, str(event_date or ""), organization_key(acquirer)))
+    acquirer_key = organization_key(acquirer)
+    if not acquirer_key and acquirer:
+        # An empty organization key (for example a CJK-only name) is not name
+        # evidence. Keep distinct acquirers apart by their exact source text so
+        # two different acquirers of one target never share a relationship id.
+        acquirer_key = f"raw:{str(acquirer).strip()}"
+    material = "|".join((target_key, str(event_date or ""), acquirer_key))
     return "ma_" + hashlib.sha256(material.encode()).hexdigest()[:20]
 
 

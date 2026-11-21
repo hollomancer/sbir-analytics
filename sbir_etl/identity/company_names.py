@@ -427,7 +427,15 @@ def company_name_similarity(
     profile: CompanyNameProfile | None = None,
     prefix_weight: float = 0.1,
 ) -> float:
-    """Return company-name similarity on a stable 0..1 scale."""
+    """Return company-name similarity on a stable 0..1 scale.
+
+    An empty name, raw or after profile normalization, carries no name
+    evidence and scores 0.0, even against another empty name. Some profiles
+    normalize non-blank input to "" (for example CJK-only names, or a bare
+    legal suffix such as "Inc."), so two such names never score as the same
+    firm. Callers that use a normalized name as an exact join, index, group,
+    or dedupe key must apply the same rule: an empty key never matches.
+    """
 
     left_text = normalize_company_name(left, profile=profile) if profile else _raw_name(left)
     right_text = normalize_company_name(right, profile=profile) if profile else _raw_name(right)

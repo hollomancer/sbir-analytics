@@ -42,8 +42,13 @@ def _normalize_name(name: str | None) -> str:
 
 
 def _generate_canonical_id(name: str, uei: str | None = None) -> str:
-    """Generate a stable canonical company ID."""
-    key = uei if uei else _normalize_name(name)
+    """Generate a stable canonical company ID.
+
+    An empty normalized name (for example a CJK-only name) is not name
+    evidence, so it must not become one ID shared by unrelated firms. Such a
+    name falls back to its exact source text.
+    """
+    key = uei if uei else (_normalize_name(name) or f"raw:{(name or '').strip()}")
     return f"co-{hashlib.sha256(key.encode()).hexdigest()[:12]}"
 
 

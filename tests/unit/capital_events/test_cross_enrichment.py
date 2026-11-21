@@ -346,3 +346,42 @@ def test_relationship_source_classes_count_linked_form_d():
         "matched_form_d_combination_count": 1,
     }
     assert relationship_source_classes(row) == ["efts", "form_d"]
+
+
+def _ma_event(acquirer: str | None) -> dict[str, object]:
+    return {
+        "company_name": "Acme Robotics, Inc.",
+        "event_date": "2021-05-01",
+        "acquirer": acquirer,
+        "confidence": "medium",
+        "signals": {"press_release": True},
+        "form_d_detail": None,
+        "efts_detail": None,
+    }
+
+
+def test_distinct_acquirers_with_empty_organization_keys_stay_separate():
+    # Both CJK-only acquirer names normalize to "" under organization-key-v1.
+    # Two different acquirers of the same target must not merge into one
+    # relationship.
+    ma = [_ma_event("東芝株式会社"), _ma_event("ソニー株式会社")]
+    _, relationships, _ = enrich_form_d_and_ma([], ma)
+    assert len(relationships) == 2
+    assert {row["acquirer_name"] for row in relationships} == {"東芝株式会社", "ソニー株式会社"}
+    assert len({row["relationship_id"] for row in relationships}) == 2
+
+
+def test_empty_key_acquirer_does_not_merge_with_missing_acquirer():
+    _, relationships, _ = enrich_form_d_and_ma([], [_ma_event("東芝株式会社"), _ma_event(None)])
+    assert len(relationships) == 2
+
+
+def test_same_acquirer_reports_still_merge_into_one_relationship():
+    # Positive controls: suffix variants of one acquirer, and repeated reports
+    # of the same CJK-only acquirer, each collapse to one relationship.
+    ma = [_ma_event("Giant Co"), _ma_event("GIANT CO., INC.")]
+    _, relationships, _ = enrich_form_d_and_ma([], ma)
+    assert len(relationships) == 1
+    ma = [_ma_event("東芝株式会社"), _ma_event("東芝株式会社")]
+    _, relationships, _ = enrich_form_d_and_ma([], ma)
+    assert len(relationships) == 1
