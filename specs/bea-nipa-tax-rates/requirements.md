@@ -28,9 +28,9 @@
 > `data/reference/bea/nipa_tax_rates.parquet`, so a fresh process gets cached
 > rates without re-hitting the BEA API. No runtime code path applies a hardcoded
 > `0.22` effective-tax flat rate where a NIPA-derived rate is available — the
-> sensitivity analyzer, the `mission_c` tax-estimation tool, and the
-> `TaxParameterConfig` audit-trail default all flow through (or align with) the
-> same `NIPARateProvider` baseline."
+> sensitivity analyzer and the `TaxParameterConfig` default both flow through
+> (or align with) the same `NIPARateProvider` baseline." (The `mission_c` tool
+> named here originally was deleted in PR #837; see Requirement 3.)
 
 ---
 
@@ -110,6 +110,12 @@ literal sitting in a config default.
 
 ### Requirement 3 — `mission_c` tax-estimation tool pulls from `NIPARateProvider`
 
+> **Resolved by removal (2026-11-21, PR #837).** `tax_estimation.py` and its
+> test had no callers outside their own tests, and PR #837 deletes the whole
+> `sbir_analytics/tools/` layer. No runtime path applies the hardcoded `0.22`
+> from this module any more, which is the outcome this requirement asked for.
+> The criteria below are kept as history.
+
 #### Acceptance Criteria
 
 1. THE System SHALL remove the module-level constant
@@ -125,6 +131,16 @@ literal sitting in a config default.
    range, not the literal `0.22`.
 
 ### Requirement 4 — `TaxParameterConfig` default reflects NIPA baseline
+
+> **Status (2026-11-21).** Criteria 1 and 3 are implemented: the schema default
+> is `0.194` with an explanatory comment. Criterion 2's premise no longer
+> holds after PR #837, which deletes `fiscal_audit_trail.py`; no runtime code
+> reads `tax_parameters` now, only `tests/unit/config/test_schemas.py`.
+> `config/base.yaml` still sets `tax_parameters.individual_income_tax.effective_rate:
+> 0.22`, which overrides the schema default when config loads. Because nothing
+> reads it, this changes no output, but it contradicts this requirement.
+> Removing the unread `tax_parameters` config, or aligning `base.yaml` to
+> `0.194`, is a follow-up.
 
 #### Acceptance Criteria
 
@@ -153,6 +169,5 @@ literal sitting in a config default.
 - The hardcoded `PAYROLL_TAX_RATE = 0.153` in
   `mission_c/tax_estimation.py:50`. It's the statutory FICA rate, not an
   effective rate — no NIPA equivalent.
-- Wholesale audit-trail rework. `fiscal_audit_trail.log_configuration()`
-  continues to log the (now-updated) `TaxParameterConfig` defaults; logging
-  the per-analysis NIPA-derived rates alongside is a follow-up if needed.
+- Wholesale audit-trail rework. (Moot after PR #837 deleted
+  `fiscal_audit_trail.py`.)
