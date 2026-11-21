@@ -123,6 +123,7 @@ REQUIRED_COLUMNS = [
 # https://open.gsa.gov/api/sam-entity-extracts-api/v1/
 # SAM_Entity_Management_Public_V2_Extract_Layout.pdf
 PUBLIC_V2_FIELD_COUNT = 142
+PUBLIC_V2_CHUNK_ROWS = 100_000
 PUBLIC_V2_POSITION_MAP = {
     0: "unique_entity_id",
     1: "duns_number",
@@ -662,9 +663,14 @@ def _parse_public_v2(fh) -> pd.DataFrame:
     )
     repaired_ueis: list[str] = []
     repaired_rows: list[int] = []
+    # The EOF control record has one field. If it reaches pandas, it can land
+    # alone in a chunk (entity count a multiple of the chunk size), and pandas
+    # rejects a one-field chunk against 142 named columns. The stream diverts it.
     stream = io.BufferedReader(
         _LineStream(
-            _repair_unescaped_delimiter_records(fh, repair_cap, repaired_ueis, repaired_rows)
+            _repair_unescaped_delimiter_records(
+                fh, repair_cap, repaired_ueis, repaired_rows, trailer_records
+            )
         )
     )
     reader = pd.read_csv(
@@ -674,21 +680,18 @@ def _parse_public_v2(fh) -> pd.DataFrame:
         header=None,
         names=PUBLIC_V2_COLUMNS,
         usecols=sorted(PUBLIC_V2_POSITION_MAP),
-        chunksize=100_000,
+        chunksize=PUBLIC_V2_CHUNK_ROWS,
         quoting=csv.QUOTE_NONE,
         on_bad_lines="error",
         encoding_errors="strict",
     )
     try:
         for i, chunk in enumerate(reader):
-            trailer_mask = chunk["unique_entity_id"].str.startswith("EOF PUBLIC", na=False)
-            trailer_records.extend(chunk.loc[trailer_mask, "unique_entity_id"].tolist())
-            data = chunk.loc[~trailer_mask]
-            if not data["end_of_record"].eq("!end").all():
+            if not chunk["end_of_record"].eq("!end").all():
                 raise ValueError("SAM Public V2 extract contains a malformed positional record")
-            chunks.append(data.drop(columns="end_of_record")[REQUIRED_COLUMNS].fillna(""))
+            chunks.append(chunk.drop(columns="end_of_record")[REQUIRED_COLUMNS].fillna(""))
             if (i + 1) % 5 == 0:
-                print(f"   Parsed {(i + 1) * 100_000:,} rows...", end="\r")
+                print(f"   Parsed {(i + 1) * PUBLIC_V2_CHUNK_ROWS:,} rows...", end="\r")
     except pd.errors.ParserError as exc:
         raise ValueError("SAM Public V2 extract contains a malformed positional record") from exc
     if repaired_ueis:
@@ -699,10 +702,9 @@ def _parse_public_v2(fh) -> pd.DataFrame:
 
     if trailer_records != [expected_trailer]:
         raise ValueError("SAM Public V2 extract has a missing or mismatched EOF control record")
-    if not chunks:
+    frame = pd.concat(chunks, ignore_index=True) if chunks else pd.DataFrame()
+    if frame.empty:
         raise ValueError("SAM Public V2 extract contains no entity records")
-
-    frame = pd.concat(chunks, ignore_index=True)
     if len(frame) != expected_rows:
         raise ValueError(
             "SAM Public V2 entity count does not match its BOF/EOF control records: "
@@ -739,7 +741,11 @@ class _LineStream(io.RawIOBase):
 
 
 def _repair_unescaped_delimiter_records(
-    fh, cap: int, repaired_ueis: list[str], repaired_rows: list[int] | None = None
+    fh,
+    cap: int,
+    repaired_ueis: list[str],
+    repaired_rows: list[int] | None = None,
+    trailer_records: list[str] | None = None,
 ) -> Iterator[bytes]:
     """Yield the extract body, repairing one malformed shape in place.
 
@@ -751,7 +757,9 @@ def _repair_unescaped_delimiter_records(
     canonical file and still counts toward the control total. Its UEI is
     recorded, and so is its zero-based position among the entity rows, because a UEI
     can appear on more than one row. Every other shape is passed through unchanged, so the positional
-    checks still fail closed on it. Any line after the EOF control record fails.
+    checks still fail closed on it. The EOF control record is collected into
+    ``trailer_records`` and not yielded, so pandas never sees a one-field line.
+    Any line after it fails.
     """
 
     expected_delimiters = PUBLIC_V2_FIELD_COUNT - 1
@@ -767,9 +775,12 @@ def _repair_unescaped_delimiter_records(
             continue
         if body.startswith(b"EOF PUBLIC"):
             seen_trailer = True
-        elif body.strip():
+            if trailer_records is not None:
+                trailer_records.append(body.decode("utf-8"))
+            continue
+        if body.strip():
             row += 1
-        if not seen_trailer and body.count(b"|") > expected_delimiters and body.endswith(b"|!end"):
+        if body.count(b"|") > expected_delimiters and body.endswith(b"|!end"):
             fields = body.split(b"|")
             repaired_ueis.append(fields[0].decode("utf-8"))
             if repaired_rows is not None:

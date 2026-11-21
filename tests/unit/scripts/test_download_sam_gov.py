@@ -288,6 +288,89 @@ def test_public_v2_parser_fails_closed_on_positional_drift() -> None:
         download_module._parse_zip(archive)
 
 
+@pytest.mark.parametrize("entities", [2, 4])
+def test_public_v2_parser_handles_entity_count_on_a_chunk_boundary(monkeypatch, entities) -> None:
+    # With the count a multiple of the chunk size, the EOF line used to form a
+    # one-field chunk on its own, which pandas rejected.
+    monkeypatch.setattr(download_module, "PUBLIC_V2_CHUNK_ROWS", 2)
+    records = [_public_v2_record(uei=f"CANDIDATE{i:03d}") for i in range(entities)]
+    archive = io.BytesIO(_zip_bytes("SAM.dat", _public_v2_file(*records)))
+
+    result = download_module._parse_zip(archive)
+
+    assert result is not None
+    assert len(result) == entities
+    assert result.attrs["sam_expected_row_count"] == entities
+
+
+def test_public_v2_parser_fails_closed_without_eof_control_record() -> None:
+    body = _public_v2_file(_public_v2_record()).rsplit("\n", 1)[0]
+    archive = io.BytesIO(_zip_bytes("SAM.dat", body))
+
+    with pytest.raises(ValueError, match="missing or mismatched EOF control record"):
+        download_module._parse_zip(archive)
+
+
+def test_public_v2_parser_fails_closed_on_mismatched_eof_control_record() -> None:
+    body = _public_v2_file(_public_v2_record()).replace(
+        "EOF PUBLIC V2 00000000 20260802", "EOF PUBLIC V2 00000000 20260901"
+    )
+    archive = io.BytesIO(_zip_bytes("SAM.dat", body))
+
+    with pytest.raises(ValueError, match="missing or mismatched EOF control record"):
+        download_module._parse_zip(archive)
+
+
+def test_public_v2_parser_fails_closed_on_duplicated_eof_control_record() -> None:
+    body = _public_v2_file(_public_v2_record())
+    body += "\n" + body.rsplit("\n", 1)[1]
+    archive = io.BytesIO(_zip_bytes("SAM.dat", body))
+
+    with pytest.raises(ValueError, match="data after its EOF control record"):
+        download_module._parse_zip(archive)
+
+
+def test_public_v2_repair_on_a_chunk_boundary_keeps_row_positions(monkeypatch) -> None:
+    # Combines the two stream jobs: a repaired record in the second chunk, an
+    # entity count that is a chunk multiple, and the EOF line diverted.
+    monkeypatch.setattr(download_module, "PUBLIC_V2_CHUNK_ROWS", 2)
+    records = [_public_v2_record(uei=f"CANDIDATE{i:03d}") for i in range(3)]
+    records.append(_with_extra_pipe(_public_v2_record(uei="BADUEI000001")))
+    archive = io.BytesIO(_zip_bytes("SAM.dat", _public_v2_file(*records)))
+
+    result = download_module._parse_zip(archive)
+
+    assert result is not None
+    assert len(result) == 4
+    assert result.loc[3, "unique_entity_id"] == "BADUEI000001"
+    assert result.loc[3, "legal_business_name"] == ""
+    assert (result.loc[:2, "legal_business_name"] == "Example LLC").all()
+    assert result.attrs["sam_repaired_unescaped_delimiter_ueis"] == ["BADUEI000001"]
+
+
+def test_public_v2_blank_name_on_unrepaired_row_fails_across_chunks(monkeypatch) -> None:
+    # The exemption is by position: a blank name on an unrepaired row in a later
+    # chunk must still fail, even when a repaired row sits in an earlier chunk.
+    monkeypatch.setattr(download_module, "PUBLIC_V2_CHUNK_ROWS", 2)
+    records = [
+        _with_extra_pipe(_public_v2_record(uei="BADUEI000001")),
+        _public_v2_record(uei="CANDIDATE001"),
+        _public_v2_record(uei="CANDIDATE002", legal_name=""),
+        _public_v2_record(uei="CANDIDATE003"),
+    ]
+    archive = io.BytesIO(_zip_bytes("SAM.dat", _public_v2_file(*records)))
+
+    with pytest.raises(ValueError, match="missing legal business name"):
+        download_module._parse_zip(archive)
+
+
+def test_public_v2_parser_fails_closed_on_control_records_only() -> None:
+    archive = io.BytesIO(_zip_bytes("SAM.dat", _public_v2_file(declared_rows=0)))
+
+    with pytest.raises(ValueError, match="no entity records"):
+        download_module._parse_zip(archive)
+
+
 def _zip_bytes(name: str, payload: bytes | str) -> bytes:
     archive = io.BytesIO()
     with zipfile.ZipFile(archive, "w") as bundle:
