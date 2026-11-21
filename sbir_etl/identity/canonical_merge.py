@@ -55,6 +55,12 @@ class CanonicalMergePolicy(StrEnum):
     PRELOAD_V1 = "preload-v1"
 
 
+def _normalize_name(value: object) -> str:
+    """Blank-safe ``MATCHING_V1`` normalization (missing values become '')."""
+
+    return normalize_company_name(value, profile=CompanyNameProfile.MATCHING_V1)
+
+
 def _matching_text(value: object) -> str:
     """Historical award-side text coercion: ``str()`` without null masking."""
 
@@ -85,7 +91,7 @@ def _own_key(uei: object, duns: object, name: object) -> str:
         return f"UEI:{uei}"
     if not _is_missing(duns) and duns:
         return f"DUNS:{duns}"
-    return f"NAME:{normalize_company_name(name, profile=CompanyNameProfile.MATCHING_V1)}"
+    return f"NAME:{_normalize_name(name)}"
 
 
 def _unique_companies(awards: pd.DataFrame) -> list[dict[str, object]]:
@@ -122,18 +128,8 @@ def _match_records(records: list[dict[str, object]]) -> list[int | None]:
     may be itself), or None when no candidate reaches the auto-merge gate.
     """
 
-    company_norms = [
-        normalize_company_name(
-            _company_text(record["company"]), profile=CompanyNameProfile.MATCHING_V1
-        )
-        for record in records
-    ]
-    award_norms = [
-        normalize_company_name(
-            _matching_text(record["company"]), profile=CompanyNameProfile.MATCHING_V1
-        )
-        for record in records
-    ]
+    company_norms = [_normalize_name(_company_text(record["company"])) for record in records]
+    award_norms = [_normalize_name(_matching_text(record["company"])) for record in records]
 
     by_uei: dict[str, int] = {}
     by_duns: dict[str, int] = {}
