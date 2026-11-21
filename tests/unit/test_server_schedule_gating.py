@@ -30,15 +30,14 @@ def _reload_definitions(monkeypatch, **env):
 
 
 def _schedule(defs_module, name):
-    for sched in defs_module.schedules:
+    for sched in defs_module.bundle.schedules:
         if sched.name == name:
             return sched
     raise AssertionError(f"schedule {name!r} not found")
 
 
 def test_schedule_status_helper(monkeypatch):
-    defs = _reload_definitions(monkeypatch)
-    status = defs._schedule_status
+    from sbir_analytics.definitions_factory import schedule_status as status
 
     monkeypatch.setenv("X_TOGGLE", "true")
     assert status("X_TOGGLE", default_running=False) == DefaultScheduleStatus.RUNNING
@@ -70,8 +69,8 @@ def test_weekly_core_refresh_opt_in(monkeypatch):
 def test_repository_wide_job_and_schedule_are_retired(monkeypatch):
     defs = _reload_definitions(monkeypatch)
 
-    assert "sbir_analytics_job" not in {job.name for job in defs.job_definitions}
-    assert "daily_sbir_analytics" not in {schedule.name for schedule in defs.schedules}
+    assert "sbir_analytics_job" not in {job.name for job in defs.bundle.job_definitions}
+    assert "daily_sbir_analytics" not in {schedule.name for schedule in defs.bundle.schedules}
 
 
 @pytest.mark.parametrize(
@@ -82,7 +81,7 @@ def test_definitions_are_loadable_with_matching_jobs(monkeypatch, load_heavy, he
     defs = _reload_definitions(monkeypatch, DAGSTER_LOAD_HEAVY_ASSETS=load_heavy)
 
     dagster.Definitions.validate_loadable(defs.defs)
-    job_names = set(defs.auto_jobs)
+    job_names = set(defs.bundle.auto_jobs)
     for job_name in (
         "cet_full_pipeline_job",
         "fiscal_returns_mvp_job",

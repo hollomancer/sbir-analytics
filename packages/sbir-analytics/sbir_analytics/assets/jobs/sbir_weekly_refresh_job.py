@@ -13,12 +13,12 @@ from ..sbir_ingestion import raw_sbir_awards, sbir_validation_report, validated_
 from ..sbir_usaspending_enrichment import enriched_sbir_awards
 from ..usaspending_ingestion import raw_usaspending_recipients
 
-from .job_registry import JobSpec, build_job_from_spec_with_executor
+from .job_registry import JobSpec, build_job_from_spec
 
 
 def _build_job() -> JobDefinition | UnresolvedAssetJobDefinition:
     # Use in-process executor to avoid OOM on GitHub runners (7GB limit)
-    return build_job_from_spec_with_executor(
+    return build_job_from_spec(
         JobSpec(
             name="sbir_weekly_refresh_job",
             description="Weekly SBIR data refresh: extract, validate, and enrich awards",

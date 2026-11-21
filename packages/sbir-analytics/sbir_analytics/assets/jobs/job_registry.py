@@ -29,47 +29,15 @@ class JobSpec:
     assets: Sequence[AssetsDefinition] | None = None
 
 
-def build_job_from_spec(spec: JobSpec) -> JobDefinition | UnresolvedAssetJobDefinition:
-    """Create a Dagster job from a JobSpec."""
-
-    if spec.assets:
-        initial_selection = AssetSelection.keys(*(asset.key for asset in spec.assets))
-        return define_asset_job(
-            name=spec.name,
-            selection=initial_selection,
-            description=spec.description,
-        )
-
-    selection: Any | None = None
-    if spec.asset_keys:
-        selection = AssetSelection.keys(*spec.asset_keys)  # type: ignore[no-redef]
-    elif spec.asset_groups:
-        selection = AssetSelection.groups(*spec.asset_groups)  # type: ignore[no-redef]
-
-    if selection is None:
-        raise ValueError(
-            f"Job '{spec.name}' must define asset_keys, asset_groups, or assets for selection"
-        )
-
-    return define_asset_job(name=spec.name, selection=selection, description=spec.description)  # type: ignore[return-value]
-
-
-def build_job_from_spec_with_executor(
-    spec: JobSpec, executor: ExecutorDefinition
+def build_job_from_spec(
+    spec: JobSpec, executor: ExecutorDefinition | None = None
 ) -> JobDefinition | UnresolvedAssetJobDefinition:
-    """Create a Dagster job from a JobSpec with a custom executor."""
-
-    if spec.assets:
-        initial_selection = AssetSelection.keys(*(asset.key for asset in spec.assets))
-        return define_asset_job(
-            name=spec.name,
-            selection=initial_selection,
-            description=spec.description,
-            executor_def=executor,
-        )
+    """Create a Dagster job from a JobSpec, optionally with a custom executor."""
 
     selection: Any | None = None
-    if spec.asset_keys:
+    if spec.assets:
+        selection = AssetSelection.keys(*(asset.key for asset in spec.assets))
+    elif spec.asset_keys:
         selection = AssetSelection.keys(*spec.asset_keys)
     elif spec.asset_groups:
         selection = AssetSelection.groups(*spec.asset_groups)
