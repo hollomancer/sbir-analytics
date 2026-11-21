@@ -643,11 +643,6 @@ CENSUS_AWARD_COLUMNS = [
 ]
 
 
-def _sha256(path: Path) -> str:
-    """Return the SHA-256 hex digest of ``path``."""
-    return file_sha256(path)
-
-
 def _source_timestamp(path: Path) -> str:
     return datetime.fromtimestamp(path.stat().st_mtime, UTC).isoformat()
 
@@ -705,7 +700,7 @@ def write_census_artifacts(
         },
         "provenance": {
             "source_path": str(awards_csv.resolve()),
-            "sha256": _sha256(awards_csv),
+            "sha256": file_sha256(awards_csv),
             "source_timestamp": _source_timestamp(awards_csv),
             "data_vintage": data_vintage,
             "source_row_count": source_row_count,

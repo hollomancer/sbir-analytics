@@ -27,12 +27,6 @@ FORM_D_CHANNEL_AMOUNT_SOLD_MEASURE = "exempt_securities_sold"
 FORM_D_AMOUNT_SOLD_MEASURE = "business_combination_associated_exempt_securities_sold"
 
 
-def organization_key(value: object) -> str:
-    """Return the repository's versioned organization identity key."""
-
-    return normalize_company_name(value, profile=CompanyNameProfile.ORGANIZATION_KEY_V1)
-
-
 def parse_iso_date(value: object) -> date | None:
     """Parse a leading ISO date without guessing other date formats."""
 
@@ -55,7 +49,13 @@ def _amount(value: object) -> float:
 
 
 def _relationship_id(target_key: str, event_date: object, acquirer: object) -> str:
-    material = "|".join((target_key, str(event_date or ""), organization_key(acquirer)))
+    material = "|".join(
+        (
+            target_key,
+            str(event_date or ""),
+            normalize_company_name(acquirer, profile=CompanyNameProfile.ORGANIZATION_KEY_V1),
+        )
+    )
     return "ma_" + hashlib.sha256(material.encode()).hexdigest()[:20]
 
 
@@ -165,7 +165,9 @@ def _form_d_offerings(records: Iterable[dict[str, Any]]) -> list[dict[str, Any]]
         if _match_tier(record) != HIGH_FORM_D_MATCH_TIER:
             continue
         target_name = str(record.get("company_name") or "").strip()
-        target_key = organization_key(target_name)
+        target_key = normalize_company_name(
+            target_name, profile=CompanyNameProfile.ORGANIZATION_KEY_V1
+        )
         if not target_key:
             continue
         record_cik = str(record.get("form_d_cik") or "").lstrip("0")
@@ -215,7 +217,9 @@ def enrich_form_d_and_ma(
     for raw_record in ma_records:
         record = dict(raw_record)
         target_name = str(record.get("company_name") or "").strip()
-        target_key = organization_key(target_name)
+        target_key = normalize_company_name(
+            target_name, profile=CompanyNameProfile.ORGANIZATION_KEY_V1
+        )
         if not target_key:
             enriched.append(record)
             continue
@@ -260,7 +264,12 @@ def enrich_form_d_and_ma(
         acquirer_offerings = (
             [
                 offering
-                for offering in by_target.get(organization_key(acquirer), [])
+                for offering in by_target.get(
+                    normalize_company_name(
+                        acquirer, profile=CompanyNameProfile.ORGANIZATION_KEY_V1
+                    ),
+                    [],
+                )
                 if event_date is not None
                 and offering["event_date"] is not None
                 and offering["event_date"] >= event_date
@@ -316,7 +325,9 @@ def enrich_form_d_and_ma(
                 "target_name": target_name,
                 "target_key": target_key,
                 "acquirer_name": acquirer,
-                "acquirer_key": organization_key(acquirer),
+                "acquirer_key": normalize_company_name(
+                    acquirer, profile=CompanyNameProfile.ORGANIZATION_KEY_V1
+                ),
                 "event_date": event_date.isoformat() if event_date else None,
                 "relationship_type": (
                     "candidate_acquired_by" if acquirer else "candidate_business_combination"

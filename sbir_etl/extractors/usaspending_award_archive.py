@@ -123,11 +123,6 @@ class AwardArchiveFile:
         )
 
 
-def _sha256(path: Path) -> str:
-    """Return the SHA-256 hex digest of ``path``."""
-    return file_sha256(path)
-
-
 def _write_json_atomic(path: Path, payload: Mapping[str, object]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     temporary = path.with_name(f".{path.name}.tmp")
@@ -223,7 +218,7 @@ def download_award_archive(
             metadata.get("source_url") == source.url
             and metadata.get("size_bytes") == destination.stat().st_size
             and isinstance(expected_hash, str)
-            and _sha256(destination) == expected_hash
+            and file_sha256(destination) == expected_hash
         ):
             _validated_archive_members(destination)
             return destination, metadata
@@ -435,7 +430,7 @@ class AwardArchiveContractExtractor(ContractExtractor):
         if not archive_file.is_file():
             raise FileNotFoundError(f"USAspending award archive not found: {archive_file}")
         initial_stat = archive_file.stat()
-        archive_sha256 = _sha256(archive_file)
+        archive_sha256 = file_sha256(archive_file)
         with zipfile.ZipFile(archive_file) as archive:
             members = sorted(
                 (info for info in archive.infolist() if not info.is_dir()),

@@ -7,8 +7,9 @@ from typing import Any
 
 import pandas as pd
 
+from sbir_etl.identity import CompanyNameProfile, normalize_company_name
+
 from .cohort import AgencyCohortBuilder
-from .form_d_inputs import normalize_name
 
 
 def agency_leverage_cross_check(
@@ -99,7 +100,10 @@ class AgencyAwardeeFilter:
 
         agency_awards = agency_awards.copy()
         agency_awards["company_key"] = agency_awards.apply(
-            lambda row: normalize_name(company_name(row)), axis=1
+            lambda row: normalize_company_name(
+                company_name(row), profile=CompanyNameProfile.FORM_D_JOIN_V1
+            ),
+            axis=1,
         )
         agency_awards["_award_year"] = agency_awards.apply(award_year, axis=1)
         amount_col = "award_amount" if "award_amount" in agency_awards.columns else "Award Amount"

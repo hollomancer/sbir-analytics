@@ -281,11 +281,6 @@ def _unquote(value: str) -> str:
     return value.strip().strip('"').replace('""', '"')
 
 
-def _file_sha256(path: Path) -> str:
-    """Return the SHA-256 hex digest of ``path``."""
-    return file_sha256(path)
-
-
 def _select_table_entry(toc_text: str, schema_sql: str) -> tuple[_TableEntry, bool]:
     entries: list[_TableEntry] = []
     for line in toc_text.splitlines():
@@ -810,7 +805,7 @@ class ContractExtractor:
         copy_sql = cls._restore_copy_statement(toc_file, entry)
         source = replace(
             _resolve_source(toc_text, schema_sql, copy_sql),
-            toc_sha256=_file_sha256(toc_file),
+            toc_sha256=file_sha256(toc_file),
         )
         if not (dump_dir / source.member_name).is_file():
             raise ArchiveSchemaError(
@@ -856,7 +851,7 @@ class ContractExtractor:
             copy_sql = cls._restore_copy_statement(archive_dir / "toc.dat", entry)
             source = replace(
                 _resolve_source(toc_text, schema_sql, copy_sql),
-                toc_sha256=_file_sha256(archive_dir / "toc.dat"),
+                toc_sha256=file_sha256(archive_dir / "toc.dat"),
             )
 
         member = str(PurePosixPath(toc_info.filename).parent / source.member_name)

@@ -220,11 +220,6 @@ def _text(value: Any) -> str:
     return "" if normalized.upper() in _NULL_TEXT else normalized
 
 
-def _file_sha256(path: Path) -> str:
-    """Return the SHA-256 hex digest of ``path``."""
-    return file_sha256(path)
-
-
 def _copy_value(value: str) -> str | None:
     if value == r"\N":
         return None
@@ -313,7 +308,7 @@ class FebruaryAwardSearchExtractor:
 
     @classmethod
     def _resolve_source(cls, toc_file: Path, pin: AwardSearchMirrorPin) -> AwardSearchSource:
-        toc_digest = _file_sha256(toc_file)
+        toc_digest = file_sha256(toc_file)
         if toc_digest != pin.toc_sha256:
             raise ArchiveSchemaError(f"February mirror toc.dat digest mismatch: {toc_digest}")
         with tempfile.TemporaryDirectory(prefix="award-search-schema-") as temp_name:
@@ -687,7 +682,7 @@ class FebruaryAwardSearchExtractor:
             os.replace(temporary_path, output_path)
         finally:
             temporary_path.unlink(missing_ok=True)
-        output_digest = _file_sha256(output_path)
+        output_digest = file_sha256(output_path)
         manifest = {**self.provenance, "output_sha256": output_digest, "rows": len(result)}
         manifest_path = output_path.with_suffix(".manifest.json")
         manifest_path.write_text(

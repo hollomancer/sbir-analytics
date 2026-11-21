@@ -11,12 +11,13 @@ from typing import Any
 
 import pandas as pd
 
+from sbir_etl.identity import CompanyNameProfile, normalize_company_name
+
 from .utils import (
     Output,
     VendorRecord,
     VendorResolver,
     _env_float,
-    _norm_name,
     asset,
     now_utc_iso,
     save_dataframe_parquet,
@@ -53,7 +54,7 @@ def enriched_vendor_resolution(
         elif pd.notna(award.get("Duns")) and str(award["Duns"]).strip():
             vendor_id = f"duns:{str(award['Duns']).strip()}"
         else:
-            vendor_id = f"name:{_norm_name(str(award.get('Company', '')))}"
+            vendor_id = f"name:{normalize_company_name(str(award.get('Company', '')), profile=CompanyNameProfile.LOWER_JOIN_V1)}"
 
         award_vendors.append(
             VendorRecord(

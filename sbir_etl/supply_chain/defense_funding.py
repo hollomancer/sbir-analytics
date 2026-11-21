@@ -73,11 +73,6 @@ def _first(frame: pd.DataFrame, aliases: tuple[str, ...]) -> pd.Series:
     return pd.Series(pd.NA, index=frame.index, dtype="object")
 
 
-def _file_sha256(path: Path) -> str:
-    """Return the SHA-256 hex digest of ``path``."""
-    return file_sha256(path)
-
-
 def _json_values(values: object) -> list[str]:
     if _missing(values):
         return []
@@ -500,7 +495,7 @@ def normalize_prime_archive_transactions(
     working["naics_code"] = _first(working, ("naics_code",))
     working["product_or_service_code"] = _first(working, ("product_or_service_code",))
     source = Path(source_path) if source_path is not None else None
-    source_hash = source_sha256 or (_file_sha256(source) if source and source.is_file() else None)
+    source_hash = source_sha256 or (file_sha256(source) if source and source.is_file() else None)
     working["source_system"] = "USAspending Award Data Archive (FPDS)"
     working["source_kind"] = "FPDS prime transaction"
     working["source_record_id"] = working["prime_transaction_id"]
