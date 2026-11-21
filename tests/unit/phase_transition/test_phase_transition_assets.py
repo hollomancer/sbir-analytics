@@ -1228,7 +1228,9 @@ def test_survival_respects_data_cut_from_env(monkeypatch):
     assert parse_data_cut_date() == date(2020, 12, 31)
 
 
-@pytest.mark.parametrize("raw", ["2020-13-01", "12/31/2020", "today", "2020-12"])
+@pytest.mark.parametrize(
+    "raw", ["2020-13-01", "12/31/2020", "today", "2020-12", "20201231", "2020-W01-1"]
+)
 def test_data_cut_rejects_malformed_date(monkeypatch, raw):
     from sbir_analytics.assets.phase_transition.utils import parse_data_cut_date
 

@@ -93,13 +93,14 @@ def transformed_transition_evidence(
     if not transitions_path.exists() and transitions_fallback.exists():
         transitions_path = transitions_fallback
 
-    # Read gate thresholds outside the best-effort blocks below, so a mistyped
+    # Read gate thresholds and flags outside the best-effort blocks below, so a mistyped
     # value raises instead of silently dropping the gate entry.
     date_min = _env_float("SBIR_ETL__TRANSITION__CONTRACTS__DATE_COVERAGE_MIN", 0.90)
     id_min = _env_float("SBIR_ETL__TRANSITION__CONTRACTS__IDENT_COVERAGE_MIN", 0.60)
     min_size = _env_int("SBIR_ETL__TRANSITION__CONTRACTS__SAMPLE_SIZE_MIN", 1000)
     max_size = _env_int("SBIR_ETL__TRANSITION__CONTRACTS__SAMPLE_SIZE_MAX", 10000)
     min_rate = _env_float("SBIR_ETL__TRANSITION__VENDOR_RESOLUTION__MIN_RATE", 0.60)
+    enforce_size = _env_bool("SBIR_ETL__TRANSITION__CONTRACTS__ENFORCE_SAMPLE_SIZE", False)
 
     # Emit a lightweight validation summary for the MVP
     try:
@@ -153,9 +154,6 @@ def transformed_transition_evidence(
                     (total_rows >= min_size) and (total_rows <= max_size)
                     if total_rows > 0
                     else False
-                )
-                enforce_size = _env_bool(
-                    "SBIR_ETL__TRANSITION__CONTRACTS__ENFORCE_SAMPLE_SIZE", False
                 )
                 passed = (
                     (date_cov >= date_min)

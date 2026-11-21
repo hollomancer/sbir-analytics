@@ -50,3 +50,20 @@ def test_evidence_validation_summary_raises_on_bad_threshold(monkeypatch, tmp_pa
     contracts = pd.DataFrame({"contract_id": ["C1"], "action_date": ["2024-01-01"]})
     with pytest.raises(ValueError, match=key):
         transformed_transition_evidence(build_asset_context(), scores, contracts)
+
+
+def test_evidence_validation_summary_raises_on_bad_flag(monkeypatch, tmp_path):
+    # The gate summary sits inside broad try/except blocks; a mistyped flag must
+    # still stop the run rather than drop the gate entry silently.
+    monkeypatch.chdir(tmp_path)
+    checks = tmp_path / "data/processed/contracts_sample.checks.json"
+    checks.parent.mkdir(parents=True)
+    checks.write_text(json.dumps({"coverage": {"action_date": 1.0, "any_identifier": 1.0}}))
+    key = "SBIR_ETL__TRANSITION__CONTRACTS__ENFORCE_SAMPLE_SIZE"
+    monkeypatch.setenv(key, "ture")
+    scores = pd.DataFrame(
+        {"award_id": ["A1"], "contract_id": ["C1"], "score": [0.9], "method": ["uei"]}
+    )
+    contracts = pd.DataFrame({"contract_id": ["C1"], "action_date": ["2024-01-01"]})
+    with pytest.raises(ValueError, match=key):
+        transformed_transition_evidence(build_asset_context(), scores, contracts)

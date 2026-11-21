@@ -8,6 +8,7 @@ without Dagster installed (e.g. during unit tests).
 from __future__ import annotations
 
 import os
+import re
 from datetime import date, datetime
 from typing import Any
 
@@ -75,6 +76,9 @@ def env_str(key: str, default: str | None = None) -> str | None:
     return v
 
 
+_ISO_DATE = re.compile(r"\d{4}-\d{2}-\d{2}")
+
+
 def parse_data_cut_date() -> date:
     """Read the data-cut date used for right-censoring survival rows.
 
@@ -89,8 +93,13 @@ def parse_data_cut_date() -> date:
     raw = env_str("SBIR_ETL__PHASE_TRANSITION__DATA_CUT_DATE")
     if raw is None or not raw.strip():
         return datetime.utcnow().date()
+    text = raw.strip()
     try:
-        return date.fromisoformat(raw.strip())
+        # date.fromisoformat also accepts 20201231 and week dates such as
+        # 2020-W01-1, so require the documented YYYY-MM-DD shape first.
+        if not _ISO_DATE.fullmatch(text):
+            raise ValueError
+        return date.fromisoformat(text)
     except ValueError:
         raise ValueError(
             f"SBIR_ETL__PHASE_TRANSITION__DATA_CUT_DATE={raw!r} is not an ISO date (YYYY-MM-DD)"
