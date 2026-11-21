@@ -24,6 +24,7 @@ from pathlib import Path
 from urllib.parse import quote
 
 import requests
+from loguru import logger
 from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_exponential
 
 from sbir_etl.extractors.sbir_award_export import inspect_sbir_gov_csv
@@ -62,14 +63,14 @@ def _download_with_retry(url: str) -> requests.Response:
 
 def _fetch() -> tuple[bytes, str, dict[str, str]]:
     """Stream the awards CSV, returning its bytes and sha256."""
-    print(f"📥 Downloading SBIR awards from: {SBIR_AWARDS_URL}")
+    logger.info(f"Downloading SBIR awards from: {SBIR_AWARDS_URL}")
 
     response = _download_with_retry(SBIR_AWARDS_URL)
     response.raise_for_status()
 
     content_length = int(response.headers.get("content-length", 0))
     if content_length:
-        print(f"📊 Size: {content_length / 1024 / 1024:.1f} MB")
+        logger.info(f"Size: {content_length / 1024 / 1024:.1f} MB")
 
     hasher = hashlib.sha256()
     chunks = []
@@ -81,9 +82,8 @@ def _fetch() -> tuple[bytes, str, dict[str, str]]:
         downloaded += len(chunk)
         if content_length:
             pct = downloaded / content_length * 100
-            print(f"  {pct:.1f}% ({downloaded / 1024 / 1024:.1f} MB)", end="\r")
+            logger.debug(f"{pct:.1f}% ({downloaded / 1024 / 1024:.1f} MB)")
 
-    print()
     headers = {key.lower(): value for key, value in response.headers.items()}
     response.close()
     return b"".join(chunks), hasher.hexdigest(), headers
@@ -198,7 +198,7 @@ def _previous_hash(dest: Path) -> tuple[str, Path | None]:
         )
         return metadata.sha256, latest
     except (OSError, ValueError) as e:
-        print(f"⚠️ Could not read {meta_path}: {e}")
+        logger.warning(f"Could not read {meta_path}: {e}")
         return "", latest
 
 
@@ -224,7 +224,7 @@ def download_sbir_awards(
         # while discovery keeps serving a bad file.
         canonical = dest / CSV_NAME
         if not canonical.is_file() or canonical.stat().st_size != len(data):
-            print(f"⚠️  Canonical {canonical} missing or truncated; repairing from fetch")
+            logger.warning(f"Canonical {canonical} missing or truncated; repairing from fetch")
             _atomic_write(canonical, data)
             if latest_vintage is None:
                 raise RuntimeError("matching source hash has no vintage metadata")
@@ -232,7 +232,7 @@ def download_sbir_awards(
                 dest / META_NAME,
                 (latest_vintage / META_NAME).read_text(encoding="utf-8"),
             )
-        print(f"✅ No changes detected (hash matches {latest_vintage})")
+        logger.info(f"No changes detected (hash matches {latest_vintage})")
         return {
             "changed": False,
             "path": str(canonical),
@@ -273,9 +273,9 @@ def download_sbir_awards(
     _atomic_write(canonical, data)
     _atomic_write_text(dest / META_NAME, metadata.to_json())
 
-    print(f"✅ Wrote {len(data) / 1024 / 1024:.1f} MB to {canonical}")
-    print(f"   Vintage: {vintage_dir / CSV_NAME}")
-    print(f"   SHA256:  {file_hash[:16]}...")
+    logger.info(f"Wrote {len(data) / 1024 / 1024:.1f} MB to {canonical}")
+    logger.info(f"Vintage: {vintage_dir / CSV_NAME}")
+    logger.info(f"SHA256:  {file_hash[:16]}...")
 
     return {
         "changed": True,
@@ -304,11 +304,11 @@ def main():
         result = download_sbir_awards(Path(args.dest), operator_identity=args.operator)
 
         if result["changed"]:
-            print(f"\n✅ New data: {result['path']}")
+            logger.info(f"New data: {result['path']}")
         else:
-            print(f"\n✅ No changes - existing data current: {result['path']}")
+            logger.info(f"No changes - existing data current: {result['path']}")
     except Exception as e:
-        print(f"\n❌ Error: {e}", file=sys.stderr)
+        logger.error(f"Error: {e}")
         sys.exit(1)
 
 

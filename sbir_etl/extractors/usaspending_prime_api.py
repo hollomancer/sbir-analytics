@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import asyncio
 import json
-import re
 from collections.abc import Awaitable, Callable
 from datetime import UTC, date, datetime
 from functools import partial
@@ -17,6 +16,7 @@ from loguru import logger
 from sbir_etl.enrichers.usaspending.client import USAspendingAPIClient
 from sbir_etl.exceptions import APIError
 from sbir_etl.utils.data.file_io import sha256_bytes, write_text_atomic
+from sbir_etl.utils.identifiers import normalize_uei
 
 USASPENDING_API_BASE = "https://api.usaspending.gov/api/v2"
 USASPENDING_API_DOCUMENTATION = "https://api.usaspending.gov/docs/endpoints"
@@ -52,8 +52,6 @@ AWARD_FIELDS = [
     "Assistance Listing",
 ]
 
-_NON_ALNUM = re.compile(r"[^A-Z0-9]")
-
 
 def _sha256(content: bytes) -> str:
     """Return the SHA-256 hex digest of ``content``."""
@@ -62,13 +60,6 @@ def _sha256(content: bytes) -> str:
 
 def _canonical(payload: object) -> bytes:
     return (json.dumps(payload, sort_keys=True, separators=(",", ":")) + "\n").encode()
-
-
-def _clean_uei(value: object) -> str | None:
-    if value is None or value is pd.NA:
-        return None
-    cleaned = _NON_ALNUM.sub("", str(value).upper())
-    return cleaned if len(cleaned) == 12 else None
 
 
 def _write_immutable(path: Path, content: bytes) -> None:
@@ -158,7 +149,7 @@ def _validated_awardees(awardees: pd.DataFrame) -> tuple[list[str], dict[str, st
     if missing := sorted(required - set(awardees.columns)):
         raise ValueError(f"NSF awardees are missing required columns: {missing}")
     usable = awardees[["nsf_organization_id", "nsf_awardee_uei"]].copy()
-    usable["uei"] = usable["nsf_awardee_uei"].map(_clean_uei)
+    usable["uei"] = usable["nsf_awardee_uei"].map(normalize_uei)
     usable = usable.dropna(subset=["uei", "nsf_organization_id"]).drop_duplicates()
     if usable["uei"].duplicated().any():
         raise ValueError("one recipient UEI resolves to multiple NSF organization IDs")
@@ -318,7 +309,7 @@ async def fetch_usaspending_prime_snapshot(
                 for raw_record in results:
                     if not isinstance(raw_record, dict):
                         continue
-                    recipient_uei = _clean_uei(raw_record.get("Recipient UEI"))
+                    recipient_uei = normalize_uei(raw_record.get("Recipient UEI"))
                     if recipient_uei not in organization_by_uei:
                         continue
                     record = dict(raw_record)
@@ -361,7 +352,9 @@ async def fetch_usaspending_prime_snapshot(
                 record["_agency_query_scopes"] = [record.pop("_agency_query_scope")]
                 awards[generated_id] = record
                 continue
-            if _clean_uei(existing.get("Recipient UEI")) != _clean_uei(record.get("Recipient UEI")):
+            if normalize_uei(existing.get("Recipient UEI")) != normalize_uei(
+                record.get("Recipient UEI")
+            ):
                 raise APIError(f"USAspending award {generated_id} returned conflicting recipients")
             scope = record.get("_agency_query_scope")
             if scope not in existing["_agency_query_scopes"]:
@@ -542,7 +535,7 @@ def _normalize_transaction(
         pd.Series([transaction.get("federal_action_obligation")]), errors="coerce"
     ).iloc[0]
     amount = None if pd.isna(obligation) else float(obligation)
-    recipient_uei = _clean_uei(award.get("Recipient UEI"))
+    recipient_uei = normalize_uei(award.get("Recipient UEI"))
     return {
         "prime_transaction_id": transaction_id,
         "dod_award_generated_id": _award_identity(award),

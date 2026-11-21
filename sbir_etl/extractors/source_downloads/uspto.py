@@ -37,6 +37,7 @@ from datetime import datetime, UTC
 from pathlib import Path
 
 import requests
+from loguru import logger
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 
@@ -154,7 +155,7 @@ def download_odp_file(
     Each file allows 20 API requests per 365 days, so do not call speculatively.
     """
     api_url = f"{ODP_FILES_API}/{product_file}"
-    print(f"🔑 Requesting {product_file} from ODP files API...")
+    logger.info(f"Requesting {product_file} from ODP files API...")
     resp = session.get(api_url, headers={"X-API-KEY": api_key}, stream=True, timeout=300)
     resp.raise_for_status()
 
@@ -168,7 +169,7 @@ def download_odp_file(
         # Surface the remaining-mints notice the API appends to its response
         quota = re.search(r"you submitted[^.]*", body)
         if quota:
-            print(f"   Mint quota: {quota.group(0)}")
+            logger.info(f"Mint quota: {quota.group(0)}")
         return stream_download(m.group(0).rstrip("."), dest_path, session)
     if "text/html" in content_type:
         raise ValueError(
@@ -184,7 +185,9 @@ def download_odp_file(
         if not head.startswith(b"PK"):
             binary_match = re.search(rb'https://[^\s"]+', head)
             if binary_match:
-                print("   Response was a mint message, not the file — following presigned URL...")
+                logger.info(
+                    "Response was a mint message, not the file — following presigned URL..."
+                )
                 return stream_download(
                     binary_match.group(0).decode().rstrip("."), dest_path, session
                 )
@@ -201,8 +204,8 @@ def stream_download(source_url: str, dest_path: Path, session: requests.Session)
         ValueError: If response is HTML instead of the expected binary file
                     (for presigned URLs this usually means the mint expired)
     """
-    print(f"📥 Downloading: {_redact_url(source_url)}")
-    print(f"   User-Agent: {USER_AGENT}")
+    logger.info(f"Downloading: {_redact_url(source_url)}")
+    logger.info(f"User-Agent: {USER_AGENT}")
 
     response = session.get(source_url, stream=True, timeout=300)
     response.raise_for_status()
@@ -223,7 +226,7 @@ def stream_download(source_url: str, dest_path: Path, session: requests.Session)
 def _stream_response_to_file(response: requests.Response, dest_path: Path) -> dict:
     """Stream an open HTTP response to disk with progress and ZIP validation."""
     content_length = int(response.headers.get("content-length", 0))
-    print(f"📊 Size: {content_length / 1024 / 1024:.1f} MB")
+    logger.info(f"Size: {content_length / 1024 / 1024:.1f} MB")
 
     hasher = hashlib.sha256()
     downloaded = 0
@@ -245,13 +248,10 @@ def _stream_response_to_file(response: requests.Response, dest_path: Path) -> di
                 pct = downloaded / content_length * 100
                 elapsed = time.time() - start_time
                 speed = downloaded / elapsed / 1024 / 1024 if elapsed > 0 else 0
-                print(
-                    f"  {pct:.1f}% ({downloaded / 1024 / 1024:.1f} MB) - {speed:.1f} MB/s", end="\r"
-                )
+                logger.debug(f"{pct:.1f}% ({downloaded / 1024 / 1024:.1f} MB) - {speed:.1f} MB/s")
 
-    print()  # New line after progress
     elapsed = time.time() - start_time
-    print(f"⏱️  Download completed in {elapsed:.1f}s")
+    logger.info(f"Download completed in {elapsed:.1f}s")
 
     # Validate that we got a ZIP file, not HTML
     # ZIP files start with PK (0x504B), HTML starts with <!DOCTYPE or <html
@@ -263,9 +263,7 @@ def _stream_response_to_file(response: requests.Response, dest_path: Path) -> di
                 f"For presigned URLs this means the mint expired before the download "
                 f"started; re-run to mint a fresh URL."
             )
-        print(
-            f"⚠️  Warning: File does not appear to be a ZIP (magic bytes: {first_bytes[:4].hex()})"
-        )
+        logger.warning(f"File does not appear to be a ZIP (magic bytes: {first_bytes[:4].hex()})")
 
     return {
         "size": downloaded,
@@ -318,11 +316,10 @@ Examples:
 
     date_str = datetime.now(UTC).strftime("%Y-%m-%d")
 
-    print("🚀 USPTO Data Download")
-    print(f"   Dataset: {args.dataset}")
-    print(f"   Date: {date_str}")
-    print(f"   Destination: {args.local}")
-    print()
+    logger.info("USPTO Data Download")
+    logger.info(f"Dataset: {args.dataset}")
+    logger.info(f"Date: {date_str}")
+    logger.info(f"Destination: {args.local}")
 
     try:
         session = create_session_with_retries()
@@ -334,13 +331,14 @@ Examples:
             filename = product_file.rsplit("/", 1)[-1]
             api_key = resolve_api_key(args.api_key)
             source_url = f"{ODP_FILES_API}/{product_file}"
-            print(f"   Product file: {product_file}")
+            logger.info(f"Product file: {product_file}")
 
         elif args.dataset == "patentsview":
             table = args.table or "patent"
             if table not in PATENTSVIEW_TABLES:
-                print(f"❌ Unknown table: {table}")
-                print(f"   Valid tables: {', '.join(PATENTSVIEW_TABLES.keys())}")
+                logger.error(
+                    f"Unknown table: {table}. Valid tables: {', '.join(PATENTSVIEW_TABLES.keys())}"
+                )
                 sys.exit(1)
 
             filename = PATENTSVIEW_TABLES[table]
@@ -348,23 +346,22 @@ Examples:
             patentsview_file = filename
             # For error messages; the real download URL is resolved by the API
             source_url = f"{ODP_FILES_API}/{PATENTSVIEW_PRODUCT}/{filename}"
-            print(f"   Table: {table}")
+            logger.info(f"Table: {table}")
 
         elif args.dataset == "assignments":
             filename = "patent_assignments.zip"
             source_url = USPTO_ASSIGNMENT_URL
-            print("   Format: CSV (2023 release)")
+            logger.info("Format: CSV (2023 release)")
 
         elif args.dataset == "ai_patents":
             filename = "ai_patent_dataset.zip"
             source_url = USPTO_AI_PATENT_URL
-            print("   Format: CSV (2023 release, updated Jan 8, 2025)")
+            logger.info("Format: CSV (2023 release, updated Jan 8, 2025)")
 
         dest_dir = Path(args.local)
         dest_dir.mkdir(parents=True, exist_ok=True)
         dest_path = dest_dir / filename
 
-        print()
         if product_file:
             result = download_odp_file(product_file, api_key, dest_path, session)
         elif patentsview_file:
@@ -376,80 +373,57 @@ Examples:
 
         upload_time = None
 
-        print()
-        print("=" * 60)
-        print("✅ Download Complete")
-        print("=" * 60)
-        print(f"Local File: {dest_path}")
-        print(f"File Size: {result['size'] / 1024 / 1024:.1f} MB")
-        print(f"SHA256: {result['sha256']}")
-        print(f"Download Time: {result['download_time_seconds']:.1f}s")
+        logger.info("Download Complete")
+        logger.info(f"Local File: {dest_path}")
+        logger.info(f"File Size: {result['size'] / 1024 / 1024:.1f} MB")
+        logger.info(f"SHA256: {result['sha256']}")
+        logger.info(f"Download Time: {result['download_time_seconds']:.1f}s")
         if upload_time is not None:
-            print(f"Upload Time: {upload_time:.1f}s")
-        print("=" * 60)
+            logger.info(f"Upload Time: {upload_time:.1f}s")
 
     except requests.exceptions.Timeout:
-        print()
-        print("=" * 60)
-        print("❌ Download Timeout")
-        print("=" * 60)
-        print("Error: Request timed out after 300 seconds")
-        print(f"URL: {_redact_url(source_url)}")
-        print("Suggestion: Check network connectivity or try again later")
-        print("=" * 60)
+        logger.error(
+            "Download Timeout\n"
+            "Error: Request timed out after 300 seconds\n"
+            f"URL: {_redact_url(source_url)}\n"
+            "Suggestion: Check network connectivity or try again later"
+        )
         sys.exit(1)
 
     except requests.exceptions.HTTPError as e:
-        print()
-        print("=" * 60)
-        print("❌ HTTP Error")
-        print("=" * 60)
-        print(f"Status Code: {e.response.status_code}")
-        print(f"URL: {_redact_url(source_url)}")
-        print(f"Error: {e}")
-        print("Suggestion: Verify URL is correct and accessible")
-        print("=" * 60)
+        logger.error(
+            "HTTP Error\n"
+            f"Status Code: {e.response.status_code}\n"
+            f"URL: {_redact_url(source_url)}\n"
+            f"Error: {e}\n"
+            "Suggestion: Verify URL is correct and accessible"
+        )
         sys.exit(1)
 
     except requests.exceptions.RequestException as e:
-        print()
-        print("=" * 60)
-        print("❌ Network Error")
-        print("=" * 60)
-        print(f"Error: {e}")
-        print(f"URL: {_redact_url(source_url)}")
-        print("Suggestion: Check network connectivity and try again")
-        print("=" * 60)
+        logger.error(
+            "Network Error\n"
+            f"Error: {e}\n"
+            f"URL: {_redact_url(source_url)}\n"
+            "Suggestion: Check network connectivity and try again"
+        )
         sys.exit(1)
 
     except ValueError as e:
-        print()
-        print("=" * 60)
-        print("❌ Invalid Response or Configuration")
-        print("=" * 60)
-        print(f"Error: {e}")
-        print(f"URL: {_redact_url(source_url)}")
-        print()
-        print("Common causes:")
-        print("  1. Missing/invalid API key — set USPTO_ODP_API_KEY (see .env.example)")
-        print("  2. Presigned URL expired before download started (mint lasts ~30s) — re-run")
-        print("  3. assignments/ai_patents URLs still require browser-based download;")
-        print("     contact EconomicsData@uspto.gov for programmatic access")
-        print("=" * 60)
+        logger.error(
+            "Invalid Response or Configuration\n"
+            f"Error: {e}\n"
+            f"URL: {_redact_url(source_url)}\n"
+            "Common causes:\n"
+            "  1. Missing/invalid API key — set USPTO_ODP_API_KEY (see .env.example)\n"
+            "  2. Presigned URL expired before download started (mint lasts ~30s) — re-run\n"
+            "  3. assignments/ai_patents URLs still require browser-based download;\n"
+            "     contact EconomicsData@uspto.gov for programmatic access"
+        )
         sys.exit(1)
 
     except Exception as e:
-        print()
-        print("=" * 60)
-        print("❌ Unexpected Error")
-        print("=" * 60)
-        print(f"Error: {e}")
-        print(f"Type: {type(e).__name__}")
-        import traceback
-
-        print("Traceback:")
-        traceback.print_exc()
-        print("=" * 60)
+        logger.exception(f"Unexpected Error\nError: {e}\nType: {type(e).__name__}")
         sys.exit(1)
 
 

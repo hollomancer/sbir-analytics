@@ -42,6 +42,27 @@ REVIEWED_NON_COMPANY_NORMALIZERS = frozenset(
         ("scripts/sttr_spinout_linkage/kernel.py", "_normalize_person_name"),
     }
 )
+CANONICAL_IDENTIFIER_FILE = "sbir_etl/utils/identifiers.py"
+# Function names that read as a UEI or DUNS cleaner. These identifiers have one
+# implementation, the versioned primitive in sbir_etl.utils.identifiers; a new
+# cleaner must use normalize_uei or normalize_duns with a named DunsProfile.
+IDENTIFIER_CLEANER_FUNCTION_PATTERN = re.compile(
+    r"^_{0,2}(clean|norm|normalize|normalized)_?(uei|duns)$"
+)
+REVIEWED_IDENTIFIER_CLEANER_FILES = frozenset(
+    {
+        # Frozen canonical-merge implementation; its output is pinned by golden files.
+        "sbir_etl/identity/canonical_merge.py",
+    }
+)
+REVIEWED_IDENTIFIER_CLEANERS = frozenset(
+    {
+        # Treats any populated UEI text as present evidence for verification tiers,
+        # and its tests use 13-character UEIs. Migrating changes T1 assignment, so it
+        # needs its own reviewed change.
+        ("sbir_etl/ot_consortium/classifier.py", "_norm_uei"),
+    }
+)
 CANONICAL_JURISDICTION_FILE = "sbir_etl/identity/geography.py"
 CANONICAL_EXACT_AWARD_IDENTITY_FILE = "sbir_etl/identity/exact_awards.py"
 EXACT_AWARD_IDENTITY_SYMBOLS = frozenset(
@@ -170,6 +191,23 @@ def scan_file(
                         f"{node.name} normalizes company names outside "
                         "sbir_etl.identity.company_names; call normalize_company_name with a "
                         "named CompanyNameProfile, or add a reviewed non-company exception"
+                    ),
+                )
+            )
+        if (
+            relative != CANONICAL_IDENTIFIER_FILE
+            and relative not in REVIEWED_IDENTIFIER_CLEANER_FILES
+            and isinstance(node, (ast.AsyncFunctionDef, ast.FunctionDef))
+            and IDENTIFIER_CLEANER_FUNCTION_PATTERN.match(node.name)
+            and (relative, node.name) not in REVIEWED_IDENTIFIER_CLEANERS
+        ):
+            violations.append(
+                IdentityBoundaryViolation(
+                    path=relative,
+                    line_number=node.lineno,
+                    message=(
+                        f"{node.name} cleans a UEI or DUNS outside sbir_etl.utils.identifiers; "
+                        "call normalize_uei, or normalize_duns with a named DunsProfile"
                     ),
                 )
             )

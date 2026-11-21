@@ -10,12 +10,12 @@ This module contains:
 from __future__ import annotations
 
 import json
-import os
 from pathlib import Path
 from typing import Any
 
 from loguru import logger
 
+from sbir_etl.config.loader import env_float
 from sbir_ml.ml.config.taxonomy_loader import TaxonomyLoader
 
 from .utils import (
@@ -73,11 +73,9 @@ def cet_award_classifications_quality_check(context) -> AssetCheckResult:
         )
 
     # Targets (defaults align with project guidance; override via env)
-    target_high_conf = float(
-        os.environ.get("SBIR_ETL__CET__CLASSIFICATION__HIGH_CONF_THRESHOLD", "0.60")
-    )
-    target_evidence_cov = float(
-        os.environ.get("SBIR_ETL__CET__CLASSIFICATION__EVIDENCE_COVERAGE_THRESHOLD", "0.80")
+    target_high_conf = env_float("SBIR_ETL__CET__CLASSIFICATION__HIGH_CONF_THRESHOLD", 0.60)
+    target_evidence_cov = env_float(
+        "SBIR_ETL__CET__CLASSIFICATION__EVIDENCE_COVERAGE_THRESHOLD", 0.80
     )
 
     high_conf_rate = checks.get("high_conf_rate")

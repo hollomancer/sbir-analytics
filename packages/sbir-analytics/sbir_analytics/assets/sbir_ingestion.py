@@ -402,6 +402,10 @@ def validated_sbir_awards(
     }
     if s3_uri:
         metadata["s3_uri"] = s3_uri
+    else:
+        # _save_parquet returns None only when the write failed; any earlier copy
+        # under processed/ is now stale.
+        metadata["processed_parquet_status"] = "write_failed"
 
     return Output(value=validated_df, metadata=metadata)
 

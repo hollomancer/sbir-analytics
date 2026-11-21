@@ -131,6 +131,26 @@ def test_filter_recipients_handles_empty_input() -> None:
     assert result.columns.tolist() == ["uei", "duns"]
 
 
+def test_filter_recipients_keys_float_duns_as_the_zero_padded_duns() -> None:
+    # A DUNS column with NaN is read as float, so DUNS 012345678 arrives as 12345678.0.
+    sbir = pd.DataFrame({"duns": [12345678.0, float("nan")]})
+    recipients = pd.DataFrame({"duns": ["012345678", "123456780"], "name": ["real", "other"]})
+
+    result = enrichment._filter_recipients_by_sbir(sbir, recipients, build_asset_context())
+
+    assert result["name"].tolist() == ["real"]
+
+
+@pytest.mark.parametrize("partial_uei", ["ABC123DEF45", "ABC123DEF4567"])
+def test_filter_recipients_does_not_match_a_uei_of_the_wrong_length(partial_uei: str) -> None:
+    sbir = pd.DataFrame({"uei": [partial_uei]})
+    recipients = pd.DataFrame({"uei": ["ABC123DEF456", partial_uei], "name": ["full", "same"]})
+
+    result = enrichment._filter_recipients_by_sbir(sbir, recipients, build_asset_context())
+
+    assert result.empty
+
+
 def test_persist_enriched_awards_propagates_write_failure(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path,

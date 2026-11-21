@@ -164,6 +164,7 @@ def raw_usaspending_recipients(context: AssetExecutionContext) -> Output[pd.Data
 
     df = None
     parquet_url = None
+    parquet_error: str | None = None
 
     # PRIORITY 1: Try parquet extract (fast, ~500MB)
     if True:
@@ -176,9 +177,11 @@ def raw_usaspending_recipients(context: AssetExecutionContext) -> Output[pd.Data
                 context.log.info(f"Loaded {len(df)} recipients from parquet")
             except Exception as e:
                 context.log.warning(f"Parquet load failed: {e}, falling back to dump")
+                parquet_error = str(e)
                 df = None
 
     # PRIORITY 2: Fall back to full dump extraction
+    loaded_from_parquet = df is not None
     if df is None:
         context.log.info("Falling back to full USAspending dump extraction")
         result = _import_usaspending_table(
@@ -204,14 +207,18 @@ def raw_usaspending_recipients(context: AssetExecutionContext) -> Output[pd.Data
 
     # Stamp data source provenance (if not already stamped by _import_usaspending_table)
     if "data_source" not in df.columns:
-        stamp_provenance(df, "usaspending", str(parquet_url) if parquet_url else "usaspending_dump")
+        stamp_provenance(
+            df, "usaspending", str(parquet_url) if loaded_from_parquet else "usaspending_dump"
+        )
 
     metadata: dict[str, Any] = {
         "num_records": len(df),
         "columns": list(df.columns),
-        "source": "parquet" if parquet_url else "dump",
+        "source": "parquet" if loaded_from_parquet else "dump",
         "preview": MetadataValue.md(df.head(10).to_markdown()),
     }
+    if parquet_error is not None:
+        metadata["parquet_load_error"] = parquet_error
 
     return Output(value=df, metadata=metadata)
 

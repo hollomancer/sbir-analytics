@@ -25,6 +25,8 @@ from typing import NotRequired, TypedDict
 from urllib.parse import urlparse
 from urllib.request import Request, urlopen
 
+from loguru import logger
+
 # USAspending database download base URL
 USASPENDING_DB_BASE_URL = "https://files.usaspending.gov/database_download"
 
@@ -232,7 +234,7 @@ def main():
             source_url = url_template.format(base=USASPENDING_DB_BASE_URL, date=date_str)
         else:
             # Auto-discover latest available file
-            print("No date specified - searching for latest available file...", file=sys.stderr)
+            logger.info("No date specified - searching for latest available file...")
             latest_file = find_latest_available_file(database_type=args.database_type)
 
             if not latest_file:
@@ -242,6 +244,7 @@ def main():
                 if args.json:
                     import json
 
+                    # --json output is the CLI contract on stdout; keep it a print.
                     print(
                         json.dumps(
                             {
@@ -253,13 +256,13 @@ def main():
                         )
                     )
                 else:
-                    print(f"Error: {error_msg}")
+                    logger.error(f"Error: {error_msg}")
                 sys.exit(1)
 
             source_url = latest_file["source_url"]
             date_str = latest_file["date_str"]
             if not args.json:
-                print(f"Found latest available file: {date_str}", file=sys.stderr)
+                logger.info(f"Found latest available file: {date_str}")
     else:
         source_url = args.source_url
         date_str = None
@@ -275,18 +278,19 @@ def main():
         if json_result.get("last_modified"):
             json_result["last_modified"] = json_result["last_modified"].isoformat()
 
+        # --json output is the CLI contract on stdout; keep it a print.
         print(json.dumps(json_result, indent=2))
     else:
-        print(f"Source URL: {source_url}")
-        print(f"Available: {result['available']}")
+        logger.info(f"Source URL: {source_url}")
+        logger.info(f"Available: {result['available']}")
         if result.get("error"):
-            print(f"Error: {result['error']}")
+            logger.warning(f"Error: {result['error']}")
         if result.get("last_modified"):
-            print(f"Last Modified: {result['last_modified']}")
+            logger.info(f"Last Modified: {result['last_modified']}")
         if result.get("content_length"):
             size_gb = result["content_length"] / 1024 / 1024 / 1024
-            print(f"Size: {result['content_length']:,} bytes ({size_gb:.2f} GB)")
-        print(f"Is New: {result['is_new']}")
+            logger.info(f"Size: {result['content_length']:,} bytes ({size_gb:.2f} GB)")
+        logger.info(f"Is New: {result['is_new']}")
 
     # Exit code: 0 if new file available, 1 if not
     sys.exit(0 if result.get("is_new") else 1)

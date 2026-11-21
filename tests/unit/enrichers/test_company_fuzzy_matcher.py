@@ -495,3 +495,12 @@ def test_duns_text_that_is_not_a_padded_number_stays_invalid(value) -> None:
 
     # Text sources keep leading zeros, so a plain 8-digit string is truncated.
     assert _exact_duns_key(value) is None
+
+
+@pytest.mark.parametrize("value", ["123456789A", "12345678.9", "１２３４５６７８９"])
+def test_malformed_duns_has_no_exact_key(value) -> None:
+    from sbir_etl.enrichers.company_fuzzy_matcher import _exact_duns_key
+
+    # Before DUNS_V2 each of these produced a key.
+    assert _exact_duns_key(value) is None
+    assert _exact_duns_key("12345678.0") == "012345678"

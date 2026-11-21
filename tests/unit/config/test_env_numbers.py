@@ -1,8 +1,8 @@
-"""Tests for the numeric environment-variable readers in ``sbir_etl.config.loader``."""
+"""Tests for the environment-variable readers in ``sbir_etl.config.loader``."""
 
 import pytest
 
-from sbir_etl.config.loader import env_float, env_int
+from sbir_etl.config.loader import env_bool, env_float, env_int
 
 
 pytestmark = pytest.mark.unit
@@ -56,3 +56,33 @@ def test_env_int_rejects_unparseable(monkeypatch, raw):
     message = str(excinfo.value)
     assert KEY in message
     assert repr(raw) in message
+
+
+@pytest.mark.parametrize("raw", [None, "", "   "])
+@pytest.mark.parametrize("default", [True, False])
+def test_env_bool_unset_or_blank_returns_default(monkeypatch, raw, default):
+    if raw is None:
+        monkeypatch.delenv(KEY, raising=False)
+    else:
+        monkeypatch.setenv(KEY, raw)
+    assert env_bool(KEY, default) is default
+
+
+@pytest.mark.parametrize("raw", ["1", "true", "TRUE", " Yes ", "on"])
+def test_env_bool_true_words(monkeypatch, raw):
+    monkeypatch.setenv(KEY, raw)
+    assert env_bool(KEY, False) is True
+
+
+@pytest.mark.parametrize("raw", ["0", "false", "False", " no ", "OFF"])
+def test_env_bool_false_words(monkeypatch, raw):
+    monkeypatch.setenv(KEY, raw)
+    # Default True so a false word cannot pass by falling through to the default.
+    assert env_bool(KEY, True) is False
+
+
+@pytest.mark.parametrize("raw", ["ture", "flase", "y", "n", "2", "enabled", "1.0"])
+def test_env_bool_rejects_unknown_words(monkeypatch, raw):
+    monkeypatch.setenv(KEY, raw)
+    with pytest.raises(ValueError, match=KEY):
+        env_bool(KEY, False)

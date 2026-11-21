@@ -12,6 +12,8 @@ import json
 from pathlib import Path
 from typing import Any
 
+from sbir_etl.config.loader import env_float, env_int
+
 from .utils import Output, asset
 
 
@@ -35,7 +37,6 @@ def raw_cet_human_sampling() -> Output:
         - SBIR_ETL__CET__SAMPLE_SIZE (default: 50)
         - SBIR_ETL__CET__SAMPLE_SEED (default: 42)
     """
-    import os
     from pathlib import Path
     from random import Random
 
@@ -52,8 +53,8 @@ def raw_cet_human_sampling() -> Output:
     checks_path = processed_dir / "cet_human_sample.checks.json"
 
     # Config
-    sample_size = int(os.environ.get("SBIR_ETL__CET__SAMPLE_SIZE", "50"))
-    seed = int(os.environ.get("SBIR_ETL__CET__SAMPLE_SEED", "42"))
+    sample_size = env_int("SBIR_ETL__CET__SAMPLE_SIZE", 50)
+    seed = env_int("SBIR_ETL__CET__SAMPLE_SEED", 42)
     Random(seed)  # nosec B311 - Used for deterministic test data sampling, not cryptography
 
     def _read_awards():
@@ -375,7 +376,6 @@ def validated_cet_drift_detection() -> Output:
         - reports/benchmarks/cet_drift_report.json  (summary & divergence values)
         - reports/alerts/cet_drift_alerts.json       (alerts if any)
     """
-    import os
     from datetime import datetime
     from pathlib import Path
 
@@ -409,8 +409,8 @@ def validated_cet_drift_detection() -> Output:
     alerts_out = alerts_dir / "cet_drift_alerts.json"
 
     # Configurable thresholds (env vars, fallback defaults)
-    SCORE_JS_THRESHOLD = float(os.environ.get("SBIR_ETL__CET__DRIFT__SCORE_JS_THRESHOLD", "0.15"))
-    LABEL_JS_THRESHOLD = float(os.environ.get("SBIR_ETL__CET__DRIFT__LABEL_JS_THRESHOLD", "0.10"))
+    SCORE_JS_THRESHOLD = env_float("SBIR_ETL__CET__DRIFT__SCORE_JS_THRESHOLD", 0.15)
+    LABEL_JS_THRESHOLD = env_float("SBIR_ETL__CET__DRIFT__LABEL_JS_THRESHOLD", 0.10)
 
     # Helper: safe JSON read
     def _read_json(path: Path):

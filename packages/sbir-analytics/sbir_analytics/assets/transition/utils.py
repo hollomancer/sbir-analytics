@@ -9,12 +9,12 @@ This module provides:
 
 from __future__ import annotations
 
-import os
 from datetime import datetime
 from typing import Any
 from loguru import logger
 
 # Configuration and extractor imports (re-exported for use by other transition modules)
+from sbir_etl.config.loader import env_bool as _env_bool
 from sbir_etl.config.loader import env_float as _env_float
 from sbir_etl.config.loader import env_int as _env_int
 from sbir_etl.config.loader import get_config  # noqa: F401
@@ -131,13 +131,6 @@ __all__ = [
 
 def now_utc_iso() -> str:
     return datetime.utcnow().isoformat(timespec="seconds") + "Z"
-
-
-def _env_bool(key: str, default: bool) -> bool:
-    v = os.getenv(key)
-    if v is None:
-        return default
-    return v.strip().lower() in {"1", "true", "yes", "on"}
 
 
 # -----------------------------

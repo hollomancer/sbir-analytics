@@ -17,12 +17,12 @@ import pandas as pd
 
 from sbir_etl.utils.text_normalization import normalize_name
 from sbir_etl.utils.data.file_io import file_sha256
+from sbir_etl.utils.identifiers import DunsProfile, normalize_duns, normalize_uei
 
 DEFENSE_FUNDING_SCHEMA_VERSION = "NSF-DEFENSE-FUNDING-2026Q3"
 DOD_SOURCE_AGENCY_NAME = "Department of Defense"
 DOD_FPDS_AGENCY_CODE = "9700"
 
-_NON_ALNUM = re.compile(r"[^A-Z0-9]")
 _DOD_AWARD_CODE = re.compile(r"(?:^|_)9700(?:_|$)")
 _OTHER_TRANSACTION_CODES = {"O", "R", "IDV-O", "IDV-R"}
 
@@ -43,19 +43,12 @@ def _text(value: object) -> str | None:
     return None if cleaned.upper() in {"", "NAN", "NONE", "NULL", "<NA>"} else cleaned
 
 
-def _identifier(value: object) -> str | None:
-    cleaned = _text(value)
-    return _NON_ALNUM.sub("", cleaned.upper()) or None if cleaned else None
-
-
 def _uei(value: object) -> str | None:
-    cleaned = _identifier(value)
-    return cleaned if cleaned and len(cleaned) == 12 else None
+    return normalize_uei(value)
 
 
 def _duns(value: object) -> str | None:
-    cleaned = _identifier(value)
-    return cleaned if cleaned and len(cleaned) == 9 and cleaned.isdigit() else None
+    return normalize_duns(value, profile=DunsProfile.DUNS_V2)
 
 
 def _name(value: object) -> str | None:

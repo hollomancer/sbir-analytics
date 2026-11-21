@@ -765,3 +765,24 @@ class TestAwardSerialization:
         award = Award.model_validate(data)
         assert award.award_id == "VALID-001"
         assert award.award_date == date(2023, 1, 15)
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [
+        ("company_uei", "ABC123DEF45"),
+        ("company_uei", "ABC123DEF4567"),
+        ("company_duns", "123456789A"),
+        ("company_duns", "12345678.9"),
+        ("company_duns", "12345678"),
+        ("company_duns", "000000000"),
+    ],
+)
+def test_award_identifier_of_the_wrong_shape_is_dropped(field: str, value: str) -> None:
+    award = _make_award(**{field: value})
+    assert getattr(award, field) is None
+
+
+def test_award_duns_float_artifact_is_zero_padded() -> None:
+    assert _make_award(company_duns=12345678.0).company_duns == "012345678"
+    assert _make_award(company_duns="12345678.0").company_duns == "012345678"
