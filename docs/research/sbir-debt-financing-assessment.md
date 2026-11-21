@@ -16,7 +16,7 @@ capital should inform SBIR/STTR performance measurement
 capabilities and measurement choices. It does not determine the financing,
 eligibility, or benchmark status of any concern.
 
-## Finding
+## Summary
 
 Public records can show that an SBIR/STTR concern has used secured credit, but
 they usually cannot show the cash received, current balance, use of proceeds, or
@@ -24,10 +24,10 @@ relationship to an SBIR/STTR project. The records are useful for source discover
 prepopulation, and risk-based verification. They are not sufficient by themselves
 to calculate a private-investment credit.
 
-An exploratory pilot found more public evidence of secured-credit relationships
-than of issuer equity financing. That difference may reflect financing behavior,
-disclosure rules, and the lack of a stated common event period for the two
-signal types. It should not be interpreted as a program-wide capital-structure
+An exploratory pilot checked which public sources carry any financing signal
+for a small sample of concerns. Its counts describe source coverage only. The
+equity and secured-credit counts do not cover a stated common period, so they
+cannot be compared with each other or read as a program-wide capital-structure
 estimate.
 
 ## Terminology
@@ -58,8 +58,7 @@ and liens, but recordation does not measure the underlying loan.
 additional-investment dollars and project attribution. The concern supplies them
 through SBIR.gov, and SBA does not publish them
 ([commercialization benchmark method](../commercialization-benchmark-methodology.md)).
-A public-data analysis cannot obtain them. They are not independently verified
-unless SBA or an agency requests support.
+A public-data analysis cannot obtain them.
 
 ## Exploratory aggregate pilot
 
@@ -72,7 +71,8 @@ The award years select the 30 concerns. They do not set the period in which
 financing events were counted. November 19, 2026 is the review cutoff for both
 signal categories. This note does not record a financing-event start date for
 either category. Secured-credit evidence can also predate the award window,
-because a UCC filing stays on record until it is terminated. The equity and
+because a UCC financing statement stays on record for five years, and longer
+when a continuation is filed, unless it is terminated earlier (UCC §9-515). The equity and
 secured-credit counts below therefore do not cover a stated common period. Do not
 compare them as rates.
 
@@ -197,7 +197,8 @@ sample.
 - UCC law and public portal access vary by jurisdiction.
 - The filing jurisdiction may follow legal organization rather than operating
   address.
-- A filing can remain of record after repayment, and a termination can lag.
+- A filing can remain of record after repayment until it is terminated or
+  lapses, and a termination can lag.
 - Continuations and amendments are lifecycle events, not new financing.
 - Form D amendments are cumulative and can be double-counted if summed.
 - Patent recordation is voluntary in important respects and is not a valuation.
