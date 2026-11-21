@@ -63,6 +63,19 @@ REVIEWED_IDENTIFIER_CLEANERS = frozenset(
         ("sbir_etl/ot_consortium/classifier.py", "_norm_uei"),
     }
 )
+# Keeping every digit of a value is not a DUNS rule: 12345678.0 becomes the
+# different DUNS 123456780, and 123456789A becomes 123456789. A digit-only
+# extraction is flagged when it touches a name or column that says "duns", or
+# when a local helper that does one is applied to such a value.
+DIGIT_ONLY_PATTERNS = frozenset({r"\D", r"\D+", "[^0-9]", "[^0-9]+", r"[^\d]", r"[^\d]+"})
+REVIEWED_DUNS_DIGIT_EXTRACTION_FILES = frozenset(
+    {
+        # Known instances of the same pattern. Moving them to DUNS_V2 changes
+        # their lookup keys, so each needs its own reviewed change.
+        "sbir_etl/extractors/sbir_gov_api.py",
+        "scripts/data/build_supplier_share_census.py",
+    }
+)
 CANONICAL_JURISDICTION_FILE = "sbir_etl/identity/geography.py"
 CANONICAL_EXACT_AWARD_IDENTITY_FILE = "sbir_etl/identity/exact_awards.py"
 EXACT_AWARD_IDENTITY_SYMBOLS = frozenset(
@@ -130,6 +143,72 @@ def _forks_company_name_normalization(node: ast.AST) -> bool:
         ):
             return False
     return True
+
+
+def _is_digit_only_extraction(node: ast.AST) -> bool:
+    """Return True for ``re.sub(r"\\D", "", x)`` or ``"".join(c for c in x if c.isdigit())``."""
+
+    if not isinstance(node, ast.Call) or not isinstance(node.func, ast.Attribute):
+        return False
+    if node.func.attr in {"sub", "replace"} and len(node.args) >= 2:
+        pattern, replacement = node.args[0], node.args[1]
+        return (
+            isinstance(pattern, ast.Constant)
+            and pattern.value in DIGIT_ONLY_PATTERNS
+            and isinstance(replacement, ast.Constant)
+            and replacement.value == ""
+        )
+    if node.func.attr == "join" and len(node.args) == 1:
+        comprehension = node.args[0]
+        if isinstance(comprehension, (ast.GeneratorExp, ast.ListComp)):
+            return any(
+                isinstance(condition, ast.Call)
+                and isinstance(condition.func, ast.Attribute)
+                and condition.func.attr == "isdigit"
+                for generator in comprehension.generators
+                for condition in generator.ifs
+            )
+    return False
+
+
+def _mentions_duns(node: ast.AST) -> bool:
+    for child in ast.walk(node):
+        text = None
+        if isinstance(child, ast.Name):
+            text = child.id
+        elif isinstance(child, ast.Attribute):
+            text = child.attr
+        elif isinstance(child, ast.Constant) and isinstance(child.value, str):
+            text = child.value
+        if text is not None and "duns" in text.lower():
+            return True
+    return False
+
+
+def _duns_digit_extraction_lines(tree: ast.AST) -> set[int]:
+    """Return lines where a DUNS value is cleaned by keeping only its digits."""
+
+    lines: set[int] = set()
+    digit_helpers: set[str] = set()
+    for node in ast.walk(tree):
+        if isinstance(node, (ast.AsyncFunctionDef, ast.FunctionDef)):
+            extractions = [child for child in ast.walk(node) if _is_digit_only_extraction(child)]
+            if extractions:
+                digit_helpers.add(node.name)
+            if "duns" in node.name.lower():
+                lines.update(getattr(child, "lineno", 0) for child in extractions)
+        elif _is_digit_only_extraction(node) and _mentions_duns(node):
+            lines.add(getattr(node, "lineno", 0))
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Call):
+            continue
+        callees = [node.func, *node.args, *(keyword.value for keyword in node.keywords)]
+        uses_helper = any(
+            isinstance(callee, ast.Name) and callee.id in digit_helpers for callee in callees
+        )
+        if uses_helper and _mentions_duns(node):
+            lines.add(node.lineno)
+    return lines
 
 
 def _jurisdiction_mapping_pairs(node: ast.AST) -> int:
@@ -237,6 +316,22 @@ def scan_file(
                     ),
                 )
             )
+    if (
+        relative != CANONICAL_IDENTIFIER_FILE
+        and relative not in REVIEWED_IDENTIFIER_CLEANER_FILES
+        and relative not in REVIEWED_DUNS_DIGIT_EXTRACTION_FILES
+    ):
+        violations.extend(
+            IdentityBoundaryViolation(
+                path=relative,
+                line_number=line_number,
+                message=(
+                    "DUNS cleaned by keeping only its digits; call normalize_duns with "
+                    "profile=DunsProfile.DUNS_V2"
+                ),
+            )
+            for line_number in sorted(_duns_digit_extraction_lines(tree))
+        )
     return violations
 
 

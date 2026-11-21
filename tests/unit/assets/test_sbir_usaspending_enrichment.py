@@ -13,7 +13,7 @@ def test_build_sam_indexes_normalizes_identifiers() -> None:
     sam_entities = pd.DataFrame(
         {
             "unique_entity_id": [" abc123 ", None],
-            "duns_number": ["12-34", "000 567"],
+            "duns_number": ["12-345-6789", "012 345 678"],
         },
         index=[10, 20],
     )
@@ -21,7 +21,64 @@ def test_build_sam_indexes_normalizes_identifiers() -> None:
     by_uei, by_duns = enrichment._build_sam_indexes(sam_entities)
 
     assert by_uei == {"ABC123": 10}
-    assert by_duns == {"1234": 10, "000567": 20}
+    assert by_duns == {"123456789": 10, "012345678": 20}
+
+
+def test_build_sam_indexes_keys_float_duns_as_the_zero_padded_duns() -> None:
+    # A DUNS column with NaN is read as float, so DUNS 012345678 arrives as 12345678.0.
+    sam_entities = pd.DataFrame({"duns_number": [12345678.0, float("nan")]})
+
+    _, by_duns = enrichment._build_sam_indexes(sam_entities)
+
+    assert by_duns == {"012345678": 0}
+
+
+def _sam_duns_fallback(sbir_duns: list[object], sam_duns: list[object]) -> pd.Series:
+    """Run the real SAM fallback for USAspending misses and return the match methods."""
+    enriched_awards = pd.DataFrame(
+        {
+            "_usaspending_match_method": [pd.NA] * len(sbir_duns),
+            "uei": [""] * len(sbir_duns),
+            "duns": sbir_duns,
+        }
+    )
+    sam_entities = pd.DataFrame(
+        {
+            "unique_entity_id": [f"SAMUEI{i:06d}" for i in range(len(sam_duns))],
+            "duns_number": sam_duns,
+            "legal_business_name": [f"SAM Firm {i}" for i in range(len(sam_duns))],
+        }
+    )
+    result = enrichment._apply_sam_enrichment(enriched_awards, sam_entities, build_asset_context())
+    return result["_sam_gov_match_method"]
+
+
+def test_sam_fallback_float_duns_does_not_match_the_digit_shifted_duns() -> None:
+    # 12345678.0 is DUNS 012345678. Keeping all its digits gives 123456780,
+    # which is a different firm and must not match.
+    methods = _sam_duns_fallback(["123456780"], [12345678.0, float("nan")])
+
+    assert methods.isna().all()
+
+
+def test_sam_fallback_float_duns_matches_the_zero_padded_duns() -> None:
+    methods = _sam_duns_fallback(["012345678"], [12345678.0, float("nan")])
+
+    assert methods.tolist() == ["sam-duns-exact"]
+
+
+@pytest.mark.parametrize("placeholder", ["000000000", "N/A"])
+def test_sam_fallback_placeholder_duns_never_matches(placeholder: str) -> None:
+    methods = _sam_duns_fallback([placeholder], [placeholder])
+
+    assert methods.isna().all()
+
+
+def test_sam_fallback_malformed_duns_never_matches() -> None:
+    # Pulling digits out of 123456789A would key it as the valid DUNS 123456789.
+    methods = _sam_duns_fallback(["123456789A", "123456789"], ["123456789A"])
+
+    assert methods.isna().all()
 
 
 def test_apply_sam_enrichment_separates_fallback_from_naics_only() -> None:
@@ -68,16 +125,16 @@ def test_apply_sam_enrichment_covers_duns_conflicts_and_unmatched_rows() -> None
             ],
             # Lowercase columns drive SAM fallback for USAspending misses.
             "uei": ["U1", "", "", "unused", "unused", "unused"],
-            "duns": ["222", "222", "", "", "", ""],
+            "duns": ["222222220", "222222220", "", "", "", ""],
             # Source-style columns drive NAICS-only enrichment for existing matches.
             "UEI": ["unused", "unused", "unused", "U1", "", ""],
-            "Duns": ["", "", "", "222", "222", ""],
+            "Duns": ["", "", "", "222222220", "222222220", ""],
         }
     )
     sam_entities = pd.DataFrame(
         {
             "unique_entity_id": ["U1", "U2"],
-            "duns_number": ["111", "222"],
+            "duns_number": ["111111110", "222222220"],
             "legal_business_name": ["UEI Corp", "DUNS Corp"],
             "primary_naics": ["541715", "334511"],
         }
