@@ -37,12 +37,18 @@ DEFAULT_QUERIES_PATH = Path("data/ma_search_queries.csv")
 DEFAULT_OUTPUT_PATH = Path("data/discovered_acquisitions.jsonl")
 
 
+def _name_key(name: str) -> str:
+    key = normalize_company_name(name, profile=CompanyNameProfile.RECIPIENT_V1)
+    if not key and name:
+        # An empty normalized key (for example "Inc." or "LLC") is not name
+        # evidence. Keep distinct names apart by their exact source text so two
+        # different pairs never share a dedupe key or a confirming-URL list.
+        key = f"raw:{name.strip()}"
+    return key
+
+
 def _pair_key(company: str, acquirer: str) -> tuple[str, str]:
-    profile = CompanyNameProfile.RECIPIENT_V1
-    return (
-        normalize_company_name(company, profile=profile),
-        normalize_company_name(acquirer, profile=profile),
-    )
+    return (_name_key(company), _name_key(acquirer))
 
 
 async def process_batch(
