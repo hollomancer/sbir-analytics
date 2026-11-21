@@ -163,11 +163,11 @@ literal sitting in a config default.
 - Adding NIPA tables 3.4, 3.6, 1.12, 6.2D. `NIPARateProvider`'s current three
   tables already produce the eight derived rates downstream consumers use.
   Add them in a follow-up spec if a consumer requests the finer breakdown.
-- The industry-effective-tax-rate dict in `mission_c/tax_estimation.py:38-46`.
+- The industry-effective-tax-rate dict in `mission_c/tax_estimation.py:38-46` (deleted in PR #837).
   Those rates come from IRS Statistics of Income (SOI), not NIPA — different
   spec.
 - The hardcoded `PAYROLL_TAX_RATE = 0.153` in
-  `mission_c/tax_estimation.py:50`. It's the statutory FICA rate, not an
+  `mission_c/tax_estimation.py:50` (deleted in PR #837). It's the statutory FICA rate, not an
   effective rate — no NIPA equivalent.
 - Wholesale audit-trail rework. (Moot after PR #837 deleted
   `fiscal_audit_trail.py`.)

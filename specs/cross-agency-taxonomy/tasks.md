@@ -15,7 +15,7 @@
 
 ## Phase 2: Agency-Level Analysis
 
-- [ ] 2.1 Create `packages/sbir-analytics/sbir_analytics/tools/mission_a/cross_agency_taxonomy.py` with `AgencyTaxonomyAnalyzer`
+- [ ] 2.1 Create `packages/sbir-analytics/sbir_analytics/tools/mission_a/cross_agency_taxonomy.py` with `AgencyTaxonomyAnalyzer` (note: the `tools/` package was deleted in PR #837; choose a new location)
 - [ ] 2.2 Compute per-agency technology allocation (% of awards per CET area)
 - [ ] 2.3 Compute cross-agency overlap matrix (Jaccard similarity of technology portfolios)
 - [ ] 2.4 Identify concentration risk (HHI or single-agency dominance per technology area)

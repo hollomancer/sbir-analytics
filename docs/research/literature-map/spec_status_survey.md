@@ -36,9 +36,10 @@ artifacts. The implemented core sits in **commercialization (B)** and **data inf
 
 ## Partial (tools exist; end-to-end pipeline or some inputs missing)
 
-- **cross-agency-taxonomy (C)** — the C1 portfolio tools are live (`mission_a/`: HHI per CET
-  area, cross-agency company counts, geographic concentration, semantic clustering, gap
-  detection) and the **CET classifier (C1d)** is implemented. *Missing:* the scheduled
+- **cross-agency-taxonomy (C)** — the C1 portfolio tools were live at survey time (`mission_a/`:
+  HHI per CET area, cross-agency company counts, geographic concentration, semantic
+  clustering, gap detection) and the **CET classifier (C1d)** is implemented. *Update:*
+  `mission_a/` was deleted in PR #837 (unused; no callers); C1 now needs new code. *Missing:* the scheduled
   end-to-end Dagster reporting asset wiring them into a cross-agency view (C1a–c).
 - **modernbert_analysis_layer (C)** — only the **core embedding layer** (~488 LOC) is built. The
   **Bayesian Mixture-of-Experts**, **LoRA expert routing**, and **three-stage Bayesian routing**
