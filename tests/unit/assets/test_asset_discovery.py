@@ -174,7 +174,7 @@ Definitions.validate_loadable(definitions.defs)
 def test_nsf_defense_lineage_schedule_is_discovered_but_stopped_by_default():
     schedule = next(
         item
-        for item in definitions.schedules
+        for item in definitions.bundle.schedules
         if item.name == "monthly_nsf_defense_lineage_refresh"
     )
 
