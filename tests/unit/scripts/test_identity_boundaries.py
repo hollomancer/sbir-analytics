@@ -169,3 +169,35 @@ def test_archived_normalizer_is_not_scanned(tmp_path: Path) -> None:
     )
 
     assert boundaries.scan_file(path, repository_root=tmp_path) == []
+
+
+def test_local_uei_or_duns_cleaner_is_rejected(tmp_path: Path) -> None:
+    path = _write(
+        tmp_path,
+        "sbir_etl/example.py",
+        "def _clean_duns(value):\n    return ''.join(c for c in str(value) if c.isdigit())\n"
+        "def normalized_uei(value):\n    return str(value).upper()\n",
+    )
+
+    violations = boundaries.scan_file(path, repository_root=tmp_path)
+
+    assert [violation.line_number for violation in violations] == [1, 3]
+    assert "sbir_etl.utils.identifiers" in violations[0].message
+
+
+def test_identifier_names_that_are_not_cleaners_are_allowed(tmp_path: Path) -> None:
+    path = _write(
+        tmp_path,
+        "sbir_etl/example.py",
+        "def _exact_duns_key(value):\n    return value\n"
+        "def normalize_duns_column(frame):\n    return frame\n",
+    )
+
+    assert boundaries.scan_file(path, repository_root=tmp_path) == []
+
+
+def test_canonical_and_frozen_identifier_files_are_allowed(tmp_path: Path) -> None:
+    source = "def normalize_duns(value):\n    return value\n"
+    for relative in ("sbir_etl/utils/identifiers.py", "sbir_etl/identity/canonical_merge.py"):
+        path = _write(tmp_path, relative, source)
+        assert boundaries.scan_file(path, repository_root=tmp_path) == []

@@ -21,6 +21,7 @@ from sbir_etl.models.sbir_identification import (
     SBIR_RESEARCH_CODES,
 )
 from sbir_etl.utils.cloud_storage import find_latest_usaspending_dump, get_data_root
+from sbir_etl.utils.identifiers import normalize_duns
 
 
 def _table_has_column(
@@ -206,12 +207,11 @@ def _crossref_dataframe_with_sbir_gov(
             if hit:
                 return hit, "uei"
         # Then DUNS
-        if duns_str:
-            digits = "".join(ch for ch in duns_str if ch.isdigit())
-            if digits:
-                hit = index.by_duns.get(digits)
-                if hit:
-                    return hit, "duns"
+        duns_key = normalize_duns(duns_str)
+        if duns_key:
+            hit = index.by_duns.get(duns_key)
+            if hit:
+                return hit, "duns"
         return None, ""
 
     results = df.apply(_lookup_row, axis=1, result_type="expand")

@@ -11,6 +11,7 @@ from sbir_analytics.assets.agency_private_capital.cohort import AgencyCohortBuil
 from sbir_analytics.assets.agency_private_capital.asset import AgencyPrivateCapitalConfig
 from sbir_analytics.assets.agency_private_capital.outcomes import (
     OutcomeMetricsCalculator,
+    _resolve_company_identities,
     wilson_interval,
 )
 
@@ -437,3 +438,34 @@ def test_empty_cohort_returns_empty_metrics_frame() -> None:
         "ci_high",
         "available",
     }
+
+
+@pytest.mark.parametrize("missing_duns", ["N/A", "NONE", "000000000", "999999999"])
+def test_placeholder_duns_does_not_join_unrelated_awards(missing_duns: str) -> None:
+    cohort = pd.DataFrame(
+        [
+            {"duns": missing_duns, "company_name": "Alpha Research"},
+            {"duns": missing_duns, "company_name": "Zeta Photonics"},
+        ]
+    )
+
+    company_keys, row_aliases = _resolve_company_identities(cohort)
+
+    assert company_keys[0] != company_keys[1]
+    assert row_aliases[0].isdisjoint(row_aliases[1])
+    assert not any(alias.startswith("duns:") for aliases in row_aliases for alias in aliases)
+
+
+def test_duns_float_artifact_joins_the_zero_padded_duns() -> None:
+    cohort = pd.DataFrame(
+        [
+            {"duns": "12345678.0", "company_name": "Alpha Research"},
+            {"duns": "012345678", "company_name": "Alpha Research Labs"},
+            {"duns": "123456780", "company_name": "Zeta Photonics"},
+        ]
+    )
+
+    company_keys, _ = _resolve_company_identities(cohort)
+
+    assert company_keys[0] == company_keys[1] == "duns:012345678"
+    assert company_keys[2] != company_keys[0]

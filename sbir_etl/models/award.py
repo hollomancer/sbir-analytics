@@ -15,6 +15,7 @@ from pydantic import (
 
 from sbir_etl.models.sbir_phase import sbir_phase_for_counting
 from sbir_etl.utils.date_utils import parse_date
+from sbir_etl.utils.identifiers import DunsProfile, normalize_duns, normalize_uei
 
 _PHASE_NORMALIZE = {
     "I": "I",
@@ -286,14 +287,13 @@ class Award(BaseModel):
             return v
         if not isinstance(v, str):
             return None
-        cleaned = "".join(ch for ch in v if ch.isalnum()).strip()
-        return cleaned.upper() if len(cleaned) == 12 else None
+        return normalize_uei(v)
 
     @field_validator("company_duns", mode="before")
     @classmethod
     def validate_company_duns(cls, v: Any) -> str | None:
-        """Coerce DUNS to 9 digits; lenient on non-string or wrong-length values."""
-        return _clean_digits(v if not isinstance(v, int) else str(v), allowed_lengths=(9,))
+        """Coerce DUNS to 9 digits with ``DUNS_V2``; invalid values become None."""
+        return normalize_duns(v, profile=DunsProfile.DUNS_V2)
 
     @field_validator("company_state")
     @classmethod

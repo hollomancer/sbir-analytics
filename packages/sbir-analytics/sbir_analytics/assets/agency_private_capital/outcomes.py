@@ -32,6 +32,7 @@ from typing import Any
 import pandas as pd
 
 from sbir_etl.identity import CompanyNameProfile, normalize_company_name
+from sbir_etl.utils.identifiers import DunsProfile, normalize_duns
 
 
 WILSON_Z_95 = 1.959963984540054
@@ -92,14 +93,6 @@ def _nonempty_value(row: pd.Series, *keys: str) -> object | None:
     return None
 
 
-def _normalized_duns(value: object) -> str:
-    text = str(value).strip()
-    if text.endswith(".0") and text[:-2].isdigit():
-        text = text[:-2]
-    digits = "".join(character for character in text if character.isdigit())
-    return digits or text.upper()
-
-
 def _identity_aliases(row: pd.Series) -> frozenset[str]:
     """Return every exact identity alias present on an award row.
 
@@ -113,9 +106,9 @@ def _identity_aliases(row: pd.Series) -> frozenset[str]:
     uei = _nonempty_value(row, "uei", "UEI")
     if uei is not None:
         aliases.add(f"uei:{str(uei).strip().upper()}")
-    duns = _nonempty_value(row, "duns", "Duns")
+    duns = normalize_duns(_nonempty_value(row, "duns", "Duns"), profile=DunsProfile.DUNS_V2)
     if duns is not None:
-        aliases.add(f"duns:{_normalized_duns(duns)}")
+        aliases.add(f"duns:{duns}")
     name = _nonempty_value(row, "company_name", "Company")
     if name is not None:
         normalized_name = normalize_company_name(
