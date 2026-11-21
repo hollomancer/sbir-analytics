@@ -111,6 +111,27 @@ def test_duns_v2_placeholders_and_missing_values_produce_no_key(value) -> None:
     assert normalize_duns(value, profile=DunsProfile.DUNS_V2) is None
 
 
+@pytest.mark.parametrize(
+    "value",
+    [
+        "123456789A",
+        "1A2B3C4D5E6F7G8H9",
+        "12345678.9",
+        12345678.9,
+        "1234567.89",
+        "１２３４５６７８９",  # full-width digits pass str.isdigit but are not a DUNS
+        "１２３４５６７８.0",
+        "123.456.789",
+        "DUNS 123456789",
+        -123456789,
+        -12345678.0,
+        float("inf"),
+    ],
+)
+def test_duns_v2_does_not_pull_digits_out_of_a_malformed_value(value) -> None:
+    assert normalize_duns(value, profile=DunsProfile.DUNS_V2) is None
+
+
 @pytest.mark.parametrize("profile", list(DunsProfile))
 @pytest.mark.parametrize("value", ["12345678", "1234567", " 12345678 "])
 def test_short_duns_text_stays_invalid(profile, value) -> None:

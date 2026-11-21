@@ -332,7 +332,8 @@ def _exact_duns_key(value: object) -> str | None:
     """Valid 9-digit DUNS usable as an exact-match key, else None.
 
     Uses ``DunsProfile.DUNS_V2``: ".0" float artifacts are repaired by
-    zero-padding to 9 digits, and placeholders such as 000000000 are rejected.
+    zero-padding to 9 digits, malformed values such as "123456789A" are
+    rejected, and placeholders such as 000000000 are rejected.
     """
     return normalize_duns(value, profile=DunsProfile.DUNS_V2)
 

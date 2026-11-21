@@ -19,7 +19,7 @@ from loguru import logger
 from sbir_etl.config.loader import get_config
 from sbir_etl.enrichers.chunked_enrichment import ChunkedEnricher
 from sbir_etl.enrichers.usaspending import enrich_sbir_with_usaspending
-from sbir_etl.utils.identifiers import normalize_duns, normalize_uei
+from sbir_etl.utils.identifiers import DunsProfile, normalize_duns, normalize_uei
 from sbir_etl.utils.monitoring import performance_monitor
 from sbir_etl.utils.reporting.analyzers.sbir_analyzer import SbirEnrichmentAnalyzer
 
@@ -45,6 +45,12 @@ class PerformanceSummary:
     records_per_second: float
     max_peak_memory: float
     avg_memory_delta: float
+
+
+def _duns_key(value: object) -> str | None:
+    # DUNS_V2: a DUNS column with NaN is read as float, so 12345678.0 must key
+    # as 012345678, not as the different DUNS 123456780.
+    return normalize_duns(value, profile=DunsProfile.DUNS_V2)
 
 
 def _filter_recipients_by_sbir(
@@ -73,7 +79,7 @@ def _filter_recipients_by_sbir(
     if "uei" in sbir_df.columns:
         sbir_ueis = set(sbir_df["uei"].map(normalize_uei).dropna())
     if "duns" in sbir_df.columns:
-        sbir_duns = set(sbir_df["duns"].map(normalize_duns).dropna())
+        sbir_duns = set(sbir_df["duns"].map(_duns_key).dropna())
 
     context.log.info(f"SBIR identifiers: {len(sbir_ueis)} UEIs, {len(sbir_duns)} DUNS")
 
@@ -85,7 +91,7 @@ def _filter_recipients_by_sbir(
         mask |= recipient_ueis.isin(sbir_ueis)
 
     if "duns" in recipients_df.columns and sbir_duns:
-        recipient_duns = recipients_df["duns"].map(normalize_duns)
+        recipient_duns = recipients_df["duns"].map(_duns_key)
         mask |= recipient_duns.isin(sbir_duns)
 
     filtered_df = recipients_df[mask].copy()
