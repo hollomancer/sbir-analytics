@@ -21,7 +21,7 @@ from sbir_etl.supply_chain.nsf_direct import (
     reconcile_nsf_sbir_awards,
     requested_nsf_award_ids,
 )
-from sbir_etl.utils.data.file_io import file_sha256
+from sbir_etl.utils.data.file_io import atomic_write_path, file_sha256, write_text_atomic
 
 DEFAULT_AWARDS = Path("data/raw/sbir/award_data.csv")
 DEFAULT_OUTPUT_DIR = Path("data/processed/nsf_sbir_defense_lineage")
@@ -48,17 +48,12 @@ def _source_metadata(path: Path) -> dict[str, object]:
 
 
 def _write_parquet(frame: pd.DataFrame, path: Path) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    temporary = path.with_suffix(path.suffix + ".tmp")
-    frame.to_parquet(temporary, index=False)
-    temporary.replace(path)
+    with atomic_write_path(path) as temporary:
+        frame.to_parquet(temporary, index=False)
 
 
 def _write_json(payload: object, path: Path) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    temporary = path.with_suffix(path.suffix + ".tmp")
-    temporary.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
-    temporary.replace(path)
+    write_text_atomic(path, json.dumps(payload, indent=2, sort_keys=True) + "\n")
 
 
 def build_release(

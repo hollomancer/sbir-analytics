@@ -22,7 +22,7 @@ from loguru import logger
 from sbir_etl.models.transition_models import FederalContract
 
 from .contract_extractor import ArchiveSchemaError, ContractExtractor, SourceDataError
-from sbir_etl.utils.data.file_io import file_sha256
+from sbir_etl.utils.data.file_io import file_sha256, write_text_atomic
 
 
 ARCHIVE_API_URL = "https://api.usaspending.gov/api/v2/bulk_download/list_monthly_files/"
@@ -124,16 +124,7 @@ class AwardArchiveFile:
 
 
 def _write_json_atomic(path: Path, payload: Mapping[str, object]) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    temporary = path.with_name(f".{path.name}.tmp")
-    try:
-        temporary.write_text(
-            json.dumps(payload, indent=2, sort_keys=True) + "\n",
-            encoding="utf-8",
-        )
-        temporary.replace(path)
-    finally:
-        temporary.unlink(missing_ok=True)
+    write_text_atomic(path, json.dumps(payload, indent=2, sort_keys=True) + "\n")
 
 
 def discover_full_award_archive(

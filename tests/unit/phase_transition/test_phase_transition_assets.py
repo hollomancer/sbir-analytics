@@ -1483,7 +1483,7 @@ def test_validated_phase_ii_awards_preserves_existing_output_when_write_fails(
         validated_phase_ii_awards(context=build_asset_context())
 
     assert output_path.read_bytes() == b"previous-complete-artifact"
-    assert not list(output_path.parent.glob(".phase_ii_awards.parquet.*.tmp.parquet"))
+    assert not list(output_path.parent.glob(".phase_ii_awards.parquet.*.tmp"))
 
 
 def test_validated_phase_ii_awards_rejects_non_object_source_manifest(tmp_path, monkeypatch):

@@ -42,6 +42,8 @@ from pathlib import Path
 
 import pandas as pd
 
+from sbir_etl.utils.data.file_io import write_text_atomic
+
 _API_BASE = "https://api.usaspending.gov/api/v2"
 _USER_AGENT = "SBIR-Analytics/1.0"
 _PAGE_LIMIT = 100  # max per page
@@ -309,12 +311,7 @@ def fetch_commercialization_from_api(
 
 def _write_cache(cache_path: Path, cache: dict[str, float]) -> None:
     """Write cache to disk atomically."""
-    cache_path = Path(cache_path)
-    cache_path.parent.mkdir(parents=True, exist_ok=True)
-    tmp = cache_path.with_suffix(".tmp")
-    with open(tmp, "w") as f:
-        json.dump(cache, f, indent=2)
-    tmp.replace(cache_path)
+    write_text_atomic(cache_path, json.dumps(cache, indent=2))
 
 
 def _fetch_obligations_for_uei(

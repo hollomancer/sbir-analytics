@@ -2,7 +2,7 @@
 
 This module provides:
 - Unified parquet saving with NDJSON fallback
-- Atomic JSON write operations
+- Atomic file writes (temp file in the target directory, then os.replace)
 - Unified parquet/NDJSON reading
 - SHA-256 digests for source-provenance records
 """
@@ -12,7 +12,10 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import stat
 import tempfile
+from collections.abc import Iterator
+from contextlib import contextmanager
 from decimal import Decimal
 from pathlib import Path
 from typing import Any
@@ -138,6 +141,65 @@ def save_dataframe_parquet(
         return ndjson_path
 
 
+@contextmanager
+def atomic_write_path(target: Path | str, *, fsync: bool = False) -> Iterator[Path]:
+    """Yield a temporary path that replaces ``target`` when the block succeeds.
+
+    The temporary file is created in the target's directory, so ``os.replace``
+    is atomic: readers see the old file or the complete new file, never a
+    partial one. The new file keeps the target's permission bits, or gets 0644
+    when the target does not exist yet. If the block raises, ``target`` is left unchanged and the
+    temporary file is removed. Each call gets a unique temporary name, so two
+    writers to the same target do not share a temporary file.
+
+    Args:
+        target: Final path to write.
+        fsync: If True, flush the temporary file to disk before the replace.
+
+    Example:
+        >>> with atomic_write_path(Path("out.parquet")) as tmp:  # doctest: +SKIP
+        ...     frame.to_parquet(tmp, index=False)
+    """
+    target = Path(target)
+    _ensure_parent_dir(target)
+    descriptor, temporary_name = tempfile.mkstemp(
+        prefix=f".{target.name}.", suffix=".tmp", dir=target.parent
+    )
+    os.close(descriptor)
+    temporary = Path(temporary_name)
+    try:
+        yield temporary
+        if fsync:
+            sync_descriptor = os.open(temporary, os.O_RDWR)
+            try:
+                os.fsync(sync_descriptor)
+            finally:
+                os.close(sync_descriptor)
+        # mkstemp creates the file as 0600. Keep the target's mode, or use 0644
+        # for a new file, so that other users and containers can still read it.
+        mode = stat.S_IMODE(target.stat().st_mode) if target.exists() else 0o644
+        temporary.chmod(mode)
+        os.replace(temporary, target)
+    finally:
+        temporary.unlink(missing_ok=True)
+
+
+def write_text_atomic(
+    target: Path | str,
+    text: str,
+    *,
+    encoding: str = "utf-8",
+    fsync: bool = False,
+) -> None:
+    """Write ``text`` to ``target`` atomically. See :func:`atomic_write_path`.
+
+    No newline translation is applied, so the bytes on disk are exactly
+    ``text.encode(encoding)``.
+    """
+    with atomic_write_path(target, fsync=fsync) as temporary:
+        temporary.write_bytes(text.encode(encoding))
+
+
 def write_json_atomic(
     target: Path,
     data: dict[str, Any] | list[Any],
@@ -146,7 +208,7 @@ def write_json_atomic(
     ensure_ascii: bool = False,
     default: Any = str,
 ) -> None:
-    """Write JSON atomically to target path using a temp file + os.replace.
+    """Write JSON atomically to target path, with fsync before the replace.
 
     This ensures that the target file is either completely written or not modified,
     preventing partial writes in case of interruption.
@@ -159,36 +221,19 @@ def write_json_atomic(
         ensure_ascii: Whether to escape non-ASCII characters
         default: Function to handle non-serializable objects
     """
-    _ensure_parent_dir(target)
-
-    # Create temp file in same directory for atomicity
-    fd, tmp_path = tempfile.mkstemp(
-        prefix=target.stem + "_", suffix=".json.tmp", dir=str(target.parent)
-    )
-
     try:
-        with os.fdopen(fd, "w", encoding="utf-8") as fh:
-            json.dump(
-                data,
-                fh,
-                indent=indent,
-                sort_keys=sort_keys,
-                ensure_ascii=ensure_ascii,
-                default=default,
-            )
-            fh.flush()
-            os.fsync(fh.fileno())
-
-        # Atomic replace
-        os.replace(tmp_path, str(target))
+        with atomic_write_path(target, fsync=True) as temporary:
+            with temporary.open("w", encoding="utf-8") as fh:
+                json.dump(
+                    data,
+                    fh,
+                    indent=indent,
+                    sort_keys=sort_keys,
+                    ensure_ascii=ensure_ascii,
+                    default=default,
+                )
         logger.debug(f"Atomically wrote JSON: {target}")
     except Exception as e:
-        # Clean up temp file on error
-        try:
-            if os.path.exists(tmp_path):
-                os.remove(tmp_path)
-        except Exception:
-            pass
         logger.error(f"Failed to write JSON atomically: {e}")
         raise
 

@@ -20,8 +20,6 @@ Rate calculation:
 
 from __future__ import annotations
 
-import os
-import tempfile
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
@@ -29,6 +27,8 @@ from typing import Any
 
 import pandas as pd
 from loguru import logger
+
+from sbir_etl.utils.data.file_io import atomic_write_path
 
 
 @dataclass(frozen=True)
@@ -309,22 +309,9 @@ class NIPARateProvider:
         else:
             combined = row
 
-        # Atomic write: unique temp file in the same directory, then rename.
-        # Using mkstemp avoids races when multiple processes refresh concurrently
-        # (a fixed ".tmp" suffix would collide and corrupt the cache).
-        fd, tmp_name = tempfile.mkstemp(dir=self._cache_path.parent, suffix=".parquet.tmp")
-        os.close(fd)
-        tmp_path = Path(tmp_name)
-        try:
+        # Unique temp file per writer, so concurrent refreshes do not collide.
+        with atomic_write_path(self._cache_path) as tmp_path:
             combined.to_parquet(tmp_path, index=False)
-            os.replace(tmp_path, self._cache_path)
-        except Exception:
-            # Clean up the orphaned temp file so we don't leak junk in the cache dir.
-            try:
-                tmp_path.unlink(missing_ok=True)
-            except OSError:
-                pass
-            raise
 
     def _get_baseline(self, year: int) -> NIPATaxRates:
         """Return hardcoded baseline rates for the given year."""

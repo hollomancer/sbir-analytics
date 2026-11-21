@@ -4,8 +4,6 @@ from __future__ import annotations
 
 import hashlib
 import json
-import os
-import tempfile
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -18,7 +16,7 @@ from sbir_etl.extractors.sbir_award_export import (
     ordered_columns_sha256,
     read_sbir_gov_csv,
 )
-from sbir_etl.utils.data.file_io import file_sha256
+from sbir_etl.utils.data.file_io import atomic_write_path, file_sha256, write_text_atomic
 
 
 SBIR_GOV_SOURCE_URL = "https://data.www.sbir.gov/mod_awarddatapublic/award_data.csv"
@@ -174,18 +172,7 @@ def canonicalize_sbir_gov_rows(raw: pd.DataFrame) -> tuple[pd.DataFrame, dict[st
 
 
 def _write_json_atomic(path: Path, payload: dict[str, Any]) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    descriptor, temporary_name = tempfile.mkstemp(
-        prefix=f".{path.name}.", suffix=".tmp", dir=path.parent
-    )
-    os.close(descriptor)
-    temporary = Path(temporary_name)
-    try:
-        temporary.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
-        temporary.replace(path)
-    finally:
-        if temporary.exists():
-            temporary.unlink()
+    write_text_atomic(path, json.dumps(payload, indent=2) + "\n")
 
 
 def materialize_sbir_gov_history(
@@ -200,18 +187,8 @@ def materialize_sbir_gov_history(
     output, stats = canonicalize_sbir_gov_rows(raw)
     output["data_source_url"] = source_url
 
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-    descriptor, temporary_name = tempfile.mkstemp(
-        prefix=f".{output_path.name}.", suffix=".tmp", dir=output_path.parent
-    )
-    os.close(descriptor)
-    temporary = Path(temporary_name)
-    try:
+    with atomic_write_path(output_path) as temporary:
         output.to_parquet(temporary, index=False)
-        temporary.replace(output_path)
-    finally:
-        if temporary.exists():
-            temporary.unlink()
 
     output_sha256 = file_sha256(output_path)
     manifest: dict[str, Any] = {

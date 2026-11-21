@@ -27,6 +27,7 @@ from dagster import (
 from sbir_etl.supply_chain.release_validation import validate_nsf_defense_lineage_release
 from sbir_etl.supply_chain.web_release import export_lineage
 from sbir_etl.utils.cloud_storage import get_data_root
+from sbir_etl.utils.data.file_io import write_text_atomic
 
 
 EPISTEMIC_TIER = "exploratory"
@@ -165,9 +166,7 @@ def nsf_defense_lineage_validation(
         max_release_age_days=int(os.getenv(f"{_ENV_PREFIX}MAX_RELEASE_AGE_DAYS", "45")),
     )
     path = _lineage_dir() / "nsf_defense_lineage_validation.json"
-    temporary = path.with_suffix(".json.tmp")
-    temporary.write_text(json.dumps(report, indent=2, sort_keys=True) + "\n", encoding="utf-8")
-    temporary.replace(path)
+    write_text_atomic(path, json.dumps(report, indent=2, sort_keys=True) + "\n")
     context.log.info(
         f"NSF defense lineage validation passed={report['quality_gates_passed']} path={path}"
     )
