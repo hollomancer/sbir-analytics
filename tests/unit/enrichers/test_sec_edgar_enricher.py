@@ -805,8 +805,14 @@ class TestClassifyMention:
     def test_ma_definitive_from_items(self):
         from sbir_etl.enrichers.sec_edgar.enricher import _classify_mention
 
-        assert _classify_mention(["1.01", "9.01"], "8-K") == "ma_definitive"
         assert _classify_mention(["2.01"], "8-K") == "ma_definitive"
+        assert _classify_mention(["1.01", "2.01"], "8-K") == "ma_definitive"
+
+    def test_item_1_01_alone_is_not_ma_definitive(self):
+        # Item 1.01 covers leases, loans, and licenses; its text decides instead.
+        from sbir_etl.enrichers.sec_edgar.enricher import _classify_mention
+
+        assert _classify_mention(["1.01", "9.01"], "8-K") == "filing_mention"
 
     def test_ma_proxy_from_form_type(self):
         from sbir_etl.enrichers.sec_edgar.enricher import _classify_mention
@@ -933,3 +939,78 @@ class TestExtractMentionContext:
         assert result is None
         assert calls == [True]
         mock_client.fetch_filing_document.assert_not_called()
+
+
+def _8k(description: str) -> dict:
+    return {
+        "form_type": "8-K",
+        "filing_date": "2024-06-15",
+        "accession_number": "0001-24-300",
+        "description": description,
+    }
+
+
+class TestDetectMAEventsMustNotMatch:
+    """Each positive rule in _detect_ma_events has a case where it must not fire."""
+
+    @pytest.mark.parametrize(
+        "description",
+        [
+            "Item 1.01: Entry into a Material Definitive Agreement (office lease)",
+            "Item 1.01: Credit Agreement with First National Bank",
+            "Item 1.01: Exclusive License Agreement",
+            "Item 4.02: Material weakness in internal control",
+            "Item 8.01: New data acquisition system delivered to the Navy",
+            "Item 8.01: Award under a defense acquisition program",
+        ],
+    )
+    def test_non_ma_8k_is_not_an_event(self, description):
+        assert _detect_ma_events("12345", [_8k(description)]) == []
+
+    def test_item_1_01_with_merger_language_is_an_event(self):
+        events = _detect_ma_events("12345", [_8k("Item 1.01: Agreement and Plan of Merger")])
+        assert len(events) == 1
+        assert events[0].items_reported == ["1.01"]
+
+    def test_acquisition_text_without_item_numbers_reports_no_items(self):
+        # The old rule recorded a 2.01 that the filing never stated.
+        events = _detect_ma_events("12345", [_8k("Acquisition of XYZ Corp")])
+        assert len(events) == 1
+        assert events[0].items_reported == []
+        assert events[0].event_type == MAAcquisitionType.ACQUISITION
+
+
+async def _context_label(text: str, company: str = "Tiny SBIR Inc") -> str | None:
+    from sbir_etl.enrichers.sec_edgar.enricher import _extract_mention_context
+
+    client = AsyncMock()
+    client.fetch_filing_document.return_value = text
+    mention = {"doc_id": "0001-24-400:doc.htm", "filer_cik": "999"}
+    return await _extract_mention_context(client, company, mention)
+
+
+class TestMentionContextMustNotMatch:
+    """Non-M&A senses of "acquisition" near a firm name must not read as M&A."""
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        "text",
+        [
+            "We buy data acquisition systems from Tiny SBIR Inc for our test range.",
+            "Tiny SBIR Inc supports signal acquisition and image acquisition research.",
+            "Purchases follow the Federal Acquisition Regulation; Tiny SBIR Inc is one source.",
+            "Our sensors acquire imagery; Tiny SBIR Inc builds the optics.",
+        ],
+    )
+    async def test_non_ma_acquisition_is_not_acquisition(self, text):
+        assert await _context_label(text) != "acquisition"
+
+    @pytest.mark.asyncio
+    async def test_acquisition_contract_still_reads_as_contract(self):
+        text = "Tiny SBIR Inc holds a defense acquisition program contract."
+        assert await _context_label(text) == "contract"
+
+    @pytest.mark.asyncio
+    async def test_real_acquisition_still_reads_as_acquisition(self):
+        text = "Big Defense Corp completed its acquisition of Tiny SBIR Inc in March."
+        assert await _context_label(text) == "acquisition"

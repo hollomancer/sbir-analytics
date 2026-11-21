@@ -41,6 +41,7 @@ from __future__ import annotations
 
 import json
 from collections.abc import Hashable, Sequence
+from numbers import Integral
 from typing import Any, TypedDict, cast
 
 import pandas as pd
@@ -48,6 +49,7 @@ import pandas as pd
 from ..exceptions import ValidationError
 from ..utils.text_normalization import normalize_name
 from sbir_etl.identity import rapidfuzz_jaro_winkler_100, rapidfuzz_token_set_100
+from sbir_etl.utils.identifiers import normalize_duns, normalize_uei
 
 
 EPISTEMIC_TIER = "exploratory"
@@ -177,21 +179,21 @@ def _build_company_indexes(
     )
     block_series = norm_series.map(lambda n: build_block_key(n, prefix_len))
 
-    # UEI exact mapping (uppercased)
+    # UEI exact mapping (valid, non-placeholder UEIs only)
     comp_by_uei: dict[str, int] = {}
     if uei_col in df.columns:
         for idx, v in df[uei_col].dropna().items():
-            key = str(v).strip().upper()
+            key = _exact_uei_key(v)
             if key:
                 comp_by_uei[key] = cast(int, idx)
 
-    # DUNS exact mapping (digits-only)
+    # DUNS exact mapping (valid, non-placeholder DUNS only)
     comp_by_duns: dict[str, int] = {}
     if duns_col in df.columns:
         for idx, v in df[duns_col].dropna().items():
-            digits = "".join(ch for ch in str(v) if ch.isdigit())
-            if digits:
-                comp_by_duns[digits] = cast(int, idx)
+            key = _exact_duns_key(v)
+            if key:
+                comp_by_duns[key] = cast(int, idx)
 
     # Blocks dict: block_key -> list of indices
     blocks: dict[str, list[int]] = {}
@@ -316,6 +318,31 @@ def _prepare_match_columns(
         awards["_match_candidates"] = pd.NA
 
 
+def _is_placeholder(key: str) -> bool:
+    """A key of one repeated character (000000000, 999999999) is a placeholder."""
+    return len(set(key)) == 1
+
+
+def _exact_uei_key(value: object) -> str | None:
+    """Valid 12-character UEI usable as an exact-match key, else None."""
+    key = normalize_uei(value)
+    return None if key is None or _is_placeholder(key) else key
+
+
+def _exact_duns_key(value: object) -> str | None:
+    """Valid 9-digit DUNS usable as an exact-match key, else None.
+
+    A DUNS read as a number (pandas without ``dtype=str``) loses its leading
+    zeros and may carry ".0", so whole numbers are formatted back to 9 digits.
+    """
+    if isinstance(value, Integral) and not isinstance(value, bool):
+        value = f"{int(value):09d}"
+    elif isinstance(value, float) and value.is_integer():
+        value = f"{int(value):09d}"
+    key = normalize_duns(value)
+    return None if key is None or _is_placeholder(key) else key
+
+
 def _apply_exact_identifier_matches(
     awards: pd.DataFrame,
     *,
@@ -326,21 +353,16 @@ def _apply_exact_identifier_matches(
 ) -> None:
     """Apply vectorized UEI and DUNS matches in place."""
     if uei_col in awards.columns:
-        uei_series = awards[uei_col].fillna("").astype(str).str.strip().str.upper()
-        uei_mask = uei_series.isin(comp_by_uei)
+        uei_series = awards[uei_col].map(_exact_uei_key)
+        uei_mask = uei_series.notna() & uei_series.isin(comp_by_uei)
         if uei_mask.any():
             awards.loc[uei_mask, "_matched_company_idx"] = uei_series[uei_mask].map(comp_by_uei)
             awards.loc[uei_mask, "_match_score"] = 100
             awards.loc[uei_mask, "_match_method"] = "uei-exact"
 
     if duns_col in awards.columns:
-        duns_series = (
-            awards[duns_col]
-            .fillna("")
-            .astype(str)
-            .apply(lambda value: "".join(character for character in value if character.isdigit()))
-        )
-        duns_mask = duns_series.isin(comp_by_duns)
+        duns_series = awards[duns_col].map(_exact_duns_key)
+        duns_mask = duns_series.notna() & duns_series.isin(comp_by_duns)
         if duns_mask.any():
             awards.loc[duns_mask, "_matched_company_idx"] = duns_series[duns_mask].map(comp_by_duns)
             awards.loc[duns_mask, "_match_score"] = 100
