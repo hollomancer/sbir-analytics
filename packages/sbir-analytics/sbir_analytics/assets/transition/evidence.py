@@ -93,6 +93,14 @@ def transformed_transition_evidence(
     if not transitions_path.exists() and transitions_fallback.exists():
         transitions_path = transitions_fallback
 
+    # Read gate thresholds outside the best-effort blocks below, so a mistyped
+    # value raises instead of silently dropping the gate entry.
+    date_min = _env_float("SBIR_ETL__TRANSITION__CONTRACTS__DATE_COVERAGE_MIN", 0.90)
+    id_min = _env_float("SBIR_ETL__TRANSITION__CONTRACTS__IDENT_COVERAGE_MIN", 0.60)
+    min_size = _env_int("SBIR_ETL__TRANSITION__CONTRACTS__SAMPLE_SIZE_MIN", 1000)
+    max_size = _env_int("SBIR_ETL__TRANSITION__CONTRACTS__SAMPLE_SIZE_MAX", 10000)
+    min_rate = _env_float("SBIR_ETL__TRANSITION__VENDOR_RESOLUTION__MIN_RATE", 0.60)
+
     # Emit a lightweight validation summary for the MVP
     try:
         summary = {
@@ -140,11 +148,7 @@ def transformed_transition_evidence(
                     cs = json.load(fh)
                 date_cov = float(cs.get("coverage", {}).get("action_date", 0.0))
                 any_id_cov = float(cs.get("coverage", {}).get("any_identifier", 0.0))
-                date_min = _env_float("SBIR_ETL__TRANSITION__CONTRACTS__DATE_COVERAGE_MIN", 0.90)
-                id_min = _env_float("SBIR_ETL__TRANSITION__CONTRACTS__IDENT_COVERAGE_MIN", 0.60)
                 total_rows = int(cs.get("total_rows", 0))
-                min_size = _env_int("SBIR_ETL__TRANSITION__CONTRACTS__SAMPLE_SIZE_MIN", 1000)
-                max_size = _env_int("SBIR_ETL__TRANSITION__CONTRACTS__SAMPLE_SIZE_MAX", 10000)
                 size_ok = (
                     (total_rows >= min_size) and (total_rows <= max_size)
                     if total_rows > 0
@@ -184,7 +188,6 @@ def transformed_transition_evidence(
                 with vr_checks_path.open("r", encoding="utf-8") as fh:
                     vr = json.load(fh)
                 res_rate = float(vr.get("stats", {}).get("resolution_rate", 0.0))
-                min_rate = _env_float("SBIR_ETL__TRANSITION__VENDOR_RESOLUTION__MIN_RATE", 0.60)
                 summary["gates"]["enriched_vendor_resolution"] = {  # type: ignore[index]
                     "passed": res_rate >= min_rate,
                     "resolution_rate": res_rate,
