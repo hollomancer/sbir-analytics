@@ -52,8 +52,10 @@ def test_core_refresh_job_selection_excludes_heavy_assets_and_resolves():
     job = defs_module.defs.resolve_job_def("core_refresh_job")
     selected_keys = job.asset_layer.executable_asset_keys
 
-    all_loaded_keys = {asset.key for asset in defs_module.all_assets if hasattr(asset, "key")}
-    expected_keys = all_loaded_keys - defs_module._heavy_keys
+    all_loaded_keys = {
+        asset.key for asset in defs_module.bundle.all_assets if hasattr(asset, "key")
+    }
+    expected_keys = all_loaded_keys - defs_module.bundle.heavy_asset_keys
 
     assert selected_keys, "core_refresh_job selected no assets"
     assert selected_keys == expected_keys

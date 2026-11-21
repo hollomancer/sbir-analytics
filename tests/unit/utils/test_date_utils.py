@@ -11,8 +11,6 @@ pytestmark = pytest.mark.fast
 from sbir_etl.utils.date_utils import (
     format_date_iso,
     parse_date,
-    parse_date_safe,
-    validate_date_range,
 )
 
 
@@ -141,62 +139,3 @@ class TestFormatDateIso:
         result = format_date_iso("invalid")
         # Should return None if parsing fails
         assert result is None
-
-
-class TestValidateDateRange:
-    """Test validate_date_range function."""
-
-    def test_validate_date_range_within_range(self):
-        """Test date within range."""
-        d = date(2023, 6, 15)
-        assert validate_date_range(d, min_date=date(2023, 1, 1), max_date=date(2023, 12, 31))
-
-    def test_validate_date_range_before_min(self):
-        """Test date before minimum."""
-        d = date(2022, 6, 15)
-        assert not validate_date_range(d, min_date=date(2023, 1, 1))
-
-    def test_validate_date_range_after_max(self):
-        """Test date after maximum."""
-        d = date(2024, 6, 15)
-        assert not validate_date_range(d, max_date=date(2023, 12, 31))
-
-    def test_validate_date_range_none(self):
-        """Test None date (should be valid)."""
-        assert validate_date_range(None, min_date=date(2023, 1, 1))
-
-    def test_validate_date_range_datetime(self):
-        """Test datetime object."""
-        dt = datetime(2023, 6, 15, 14, 30)
-        assert validate_date_range(dt, min_date=date(2023, 1, 1), max_date=date(2023, 12, 31))
-
-    def test_validate_date_range_no_bounds(self):
-        """Test validation with no bounds."""
-        d = date(2023, 6, 15)
-        assert validate_date_range(d)
-
-
-class TestParseDateSafe:
-    """Test parse_date_safe function."""
-
-    def test_parse_date_safe_success(self):
-        """Test successful parsing."""
-        result = parse_date_safe("2023-01-15", default=date.today())
-        assert result == date(2023, 1, 15)
-
-    def test_parse_date_safe_failure_with_default(self):
-        """Test failure returns default."""
-        default = date(2020, 1, 1)
-        result = parse_date_safe("invalid", default=default)
-        assert result == default
-
-    def test_parse_date_safe_failure_no_default(self):
-        """Test failure returns None if no default."""
-        result = parse_date_safe("invalid")
-        assert result is None
-
-    def test_parse_date_safe_return_datetime(self):
-        """Test return_datetime parameter."""
-        result = parse_date_safe("2023-01-15 14:30:00", return_datetime=True)
-        assert isinstance(result, datetime)
-        assert result.year == 2023

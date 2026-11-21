@@ -17,3 +17,14 @@ monitoring proposal was never implemented or validated and had no current
 operating owner. The active `modernbert-analysis-layer` spec now covers the
 maintained exploratory single-model similarity path; reviving the superseded
 proposal requires a new scope review.
+
+## Jev CI Failure Triage (jev-ci-triage/)
+**Archived:** 2026-11-21
+**Reason:** Dropped, not completed. The pilot sent sanitized CI failures to an
+LLM for triage. It answered no research question in
+`docs/research-questions.md`. Its non-blocking `Experimental Jev Triage
+Contract` CI job was skipped in 30 of 30 recent pull-request runs, and live Jev
+calls never cleared their gates. The `scripts/ci/jev_triage/` package, its
+fixtures, tests, and CI job were removed with this archive. Git history holds
+the code. The separate `jev-preflight` and `jev-ci-enforcement` specs are not
+affected.

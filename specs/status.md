@@ -59,13 +59,16 @@ bypassing lifecycle review; the status and rationale still require human judgmen
   Phase 1 artifacts were materialized.
 - **`bea-nipa-tax-rates` — Active.** The NIPA provider exists; the remaining
   work is the on-disk cache and removal of hardcoded effective-rate consumers.
+  Requirement 3 was resolved by removal in PR #837; Requirement 4's schema
+  default is in place, but `config/base.yaml` still sets an unread `0.22`.
 - **`company-categorization` — Maintenance.** About 80% complete. The governed
   categorization table remains supported; its unused graph publication path was
   removed with `neo4j-retirement`. Complete only the remaining table-owned
   validation and documentation work.
-- **`cross-agency-taxonomy` — Gated backlog.** M3 research target. Prerequisite
-  classifier/tools exist, but this spec's batch run, report, and Dagster wiring
-  are not implemented.
+- **`cross-agency-taxonomy` — Gated backlog.** M3 research target. The CET classifier
+  exists. The prerequisite portfolio tools (`tools/mission_a/`) were deleted in
+  PR #837 because nothing called them, so implementing C1 now needs new code.
+  This spec's batch run, report, and Dagster wiring are not implemented.
 - **`dark-majority-resolution` — Maintenance.** Retiered `evidence` → `pipelines`
   (2026-08-15): no four-item evidence contract yet. Core contract, identity,
   liveness, and recovery work is implemented. Remaining work is a bounded web
@@ -109,13 +112,6 @@ bypassing lifecycle review; the status and rationale still require human judgmen
   as the reference adapter, and `usaspending_refresh_batch` on the job.
   Per-source adapters stay split (#443 NIH RePORTER, then SAM/PatentsView).
   Tasks 6.1–6.2 remain optional Phase 2 expansion.
-- **`jev-ci-triage` — Active.** Exploratory, non-blocking CI failure-triage
-  pilot. Stage 0 may implement typed contracts, sanitization, deterministic
-  policy and rendering, a fake transport, and hermetic tests. Live Jev calls
-  remain gated on API documentation, data-retention review, disclosure terms,
-  credentials, and an approved shadow-evaluation protocol. Jev output must not
-  change check conclusions, skip tests, suppress security findings, or control
-  merges.
 - **`jev-preflight` — Active.** Exploratory, unapproved study-readiness
   vertical slice. It applies deterministic claim and evidence rules to
   `studies/sba-annual-report-tables`, then evaluates Jev only in private shadow
@@ -287,6 +283,12 @@ bypassing lifecycle review; the status and rationale still require human judgmen
 its Phase 0 question and the stop was a deliberate scope decision). All three
 archive steps were executed — live-doc links updated, completion record added,
 directory moved.
+
+`jev-ci-triage` was archived on 2026-11-21 under `specs/archive/superseded/`
+(dropped, not completed). It answered no research question, its CI job never
+ran in recent pull requests, and live Jev calls stayed gated. Its package,
+fixtures, tests, and CI job were removed in the same change. `jev-preflight`
+and `jev-ci-enforcement` stay active.
 
 No other top-level spec should be archived from this review because each still
 anchors a live research question or an active maintenance cleanup.

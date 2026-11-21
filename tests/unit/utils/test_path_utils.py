@@ -20,10 +20,8 @@ _spec.loader.exec_module(_path_utils)  # type: ignore[union-attr]
 
 ensure_dir = _path_utils.ensure_dir
 ensure_parent_dir = _path_utils.ensure_parent_dir
-ensure_path_exists = _path_utils.ensure_path_exists
 normalize_path_list = _path_utils.normalize_path_list
 resolve_path = _path_utils.resolve_path
-safe_path_join = _path_utils.safe_path_join
 
 
 class TestEnsureParentDir:
@@ -174,66 +172,3 @@ class TestNormalizePathList:
         """Test that invalid list items raise TypeError."""
         with pytest.raises(TypeError, match="Unsupported path entry type"):
             normalize_path_list(["valid.csv", 123])  # type: ignore[list-item]
-
-
-class TestEnsurePathExists:
-    """Tests for ensure_path_exists function."""
-
-    def test_creates_parent_only(self, tmp_path: Path) -> None:
-        """Test that parent is created but file is not."""
-        file_path = tmp_path / "subdir" / "file.txt"
-        result = ensure_path_exists(file_path, create_parent=True, create_file=False)
-        assert file_path.parent.exists()
-        assert not file_path.exists()
-        assert result == file_path
-
-    def test_creates_parent_and_file(self, tmp_path: Path) -> None:
-        """Test that both parent and file are created."""
-        file_path = tmp_path / "subdir" / "file.txt"
-        result = ensure_path_exists(file_path, create_parent=True, create_file=True)
-        assert file_path.parent.exists()
-        assert file_path.exists()
-        assert result == file_path
-
-    def test_does_not_create_without_flags(self, tmp_path: Path) -> None:
-        """Test that nothing is created without flags."""
-        file_path = tmp_path / "subdir" / "file.txt"
-        result = ensure_path_exists(file_path, create_parent=False, create_file=False)
-        assert not file_path.parent.exists()
-        assert not file_path.exists()
-        assert result == file_path
-
-    def test_handles_string_path(self, tmp_path: Path) -> None:
-        """Test that string paths are accepted."""
-        file_path = tmp_path / "subdir" / "file.txt"
-        ensure_path_exists(str(file_path), create_parent=True, create_file=True)
-        assert file_path.exists()
-
-
-class TestSafePathJoin:
-    """Tests for safe_path_join function."""
-
-    def test_joins_strings(self) -> None:
-        """Test joining string path components."""
-        result = safe_path_join("data", "raw", "file.csv")
-        assert result == Path("data/raw/file.csv")
-
-    def test_joins_path_objects(self) -> None:
-        """Test joining Path object components."""
-        result = safe_path_join(Path("data"), Path("raw"), Path("file.csv"))
-        assert result == Path("data/raw/file.csv")
-
-    def test_joins_mixed_types(self) -> None:
-        """Test joining mixed string and Path components."""
-        result = safe_path_join("data", Path("raw"), "file.csv")
-        assert result == Path("data/raw/file.csv")
-
-    def test_single_component(self) -> None:
-        """Test joining a single component."""
-        result = safe_path_join("file.csv")
-        assert result == Path("file.csv")
-
-    def test_empty_components(self) -> None:
-        """Test joining with empty components."""
-        result = safe_path_join("data", "", "file.csv")
-        assert result == Path("data") / "" / "file.csv"

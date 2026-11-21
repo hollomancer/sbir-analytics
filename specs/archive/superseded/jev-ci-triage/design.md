@@ -1,6 +1,7 @@
 # Jev CI Failure Triage — Design
 
-**Status:** Stage 0 implementation is active. Live integration is gated.
+**Status:** Superseded on 2026-11-21. The Stage 0 code was removed; see
+[`../README.md`](../README.md).
 **Date:** 2026-09-19.
 
 ## Decision

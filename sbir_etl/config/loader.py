@@ -9,6 +9,7 @@ inspect raw file merging can rely on an unmodified merge output.
 
 from __future__ import annotations
 
+import math
 import os
 from functools import lru_cache
 from pathlib import Path
@@ -88,6 +89,50 @@ def _convert_env_value(value: str) -> Any:
 
     # Return as string
     return value
+
+
+def _env_number_text(key: str) -> str | None:
+    """Return the stripped value of ``key``, or ``None`` when it is unset or blank."""
+    raw = os.getenv(key)
+    if raw is None or not raw.strip():
+        return None
+    return raw.strip()
+
+
+def env_float(key: str, default: float) -> float:
+    """Read a finite float from environment variable ``key``.
+
+    An unset, empty, or blank variable returns ``default``. A set value that is
+    not a finite number (for example ``"abc"``, ``"0,8"``, ``"nan"``, or ``"inf"``)
+    raises ``ValueError`` so that a mistyped threshold stops the run instead of
+    being replaced silently by the default.
+    """
+    text = _env_number_text(key)
+    if text is None:
+        return default
+    try:
+        value = float(text)
+    except ValueError:
+        raise ValueError(f"Environment variable {key}={text!r} is not a valid number") from None
+    if not math.isfinite(value):
+        raise ValueError(f"Environment variable {key}={text!r} must be a finite number")
+    return value
+
+
+def env_int(key: str, default: int) -> int:
+    """Read an integer from environment variable ``key``.
+
+    An unset, empty, or blank variable returns ``default``. A set value that is
+    not a base-10 integer (for example ``"abc"``, ``"5.0"``, or ``"1e3"``) raises
+    ``ValueError``.
+    """
+    text = _env_number_text(key)
+    if text is None:
+        return default
+    try:
+        return int(text)
+    except ValueError:
+        raise ValueError(f"Environment variable {key}={text!r} is not a valid integer") from None
 
 
 def _apply_env_overrides(config_dict: dict[str, Any], prefix: str = "SBIR_ETL") -> dict[str, Any]:

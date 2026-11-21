@@ -169,11 +169,12 @@ If we end up running this regularly, the right long-term answer is either (a) a 
 
 ### The validated command
 
+PR #837 deleted `trainer.py`. The command below does not include it. Findings in this document that name `trainer.py` are historical.
+
 ```bash
 SCICODE_LINT_MODEL_SERVED_NAME=auto \
 OPENAI_BASE_URL=http://localhost:8080/v1 \
 scicode-lint lint \
-  packages/sbir-ml/sbir_ml/ml/models/trainer.py \
   packages/sbir-ml/sbir_ml/ml/models/cet_classifier.py \
   packages/sbir-ml/sbir_ml/ml/models/patent_classifier.py \
   packages/sbir-ml/sbir_ml/ml/models/multi_source_vectorizer.py \
@@ -307,9 +308,9 @@ Approximately **3,500 LOC of audit-relevant code**:
 | `transition/evaluation/evaluator.py` | 509 | Where the ≥85% target is *measured* against ground truth |
 | `transition/analysis/benchmark_evaluator.py` | 795 | Benchmark harness; how the historical claim was computed |
 | `transition/features/cet_analyzer.py` | 420 | CET-signal extraction (the cascade from the ML audit lands here) |
-| `transition/features/patent_analyzer.py` | 356 | Patent-signal extraction |
+| `transition/features/patent_analyzer.py` | 356 | Patent-signal extraction. PR #837 deleted this file. Do not audit it. |
 | `transition/features/vendor_resolver.py` | 448 | Vendor matching |
-| `transition/features/vendor_crosswalk.py` | 580 | Vendor entity resolution |
+| `transition/features/vendor_crosswalk.py` | 14 | Fuzzy name scorer used by `vendor_resolver.py` |
 
 The configuration files defining weights and thresholds are also in scope — `config/base.yaml` and any `transition/*.yaml` overrides.
 

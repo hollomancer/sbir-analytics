@@ -2,12 +2,13 @@
 
 **Target epistemic tier:** `pipelines`
 
-> **Status:** Partially implemented as of June 2026 — analytical tools in
-> `packages/sbir-analytics/sbir_analytics/tools/mission_a/` already compute HHI per CET
-> area, cross-agency company count, geographic concentration, semantic clustering, gap
-> detection, and topic extraction. The CET classifier is live at
-> `packages/sbir-ml/sbir_ml/ml/models/cet_classifier.py`. What remains is a Dagster
-> pipeline / reporting asset wiring these tools into a scheduled, cross-agency view.
+> **Status:** The CET classifier is live at
+> `packages/sbir-ml/sbir_ml/ml/models/cet_classifier.py`. The analytical tools in
+> `packages/sbir-analytics/sbir_analytics/tools/mission_a/` (HHI per CET area,
+> cross-agency company count, geographic concentration, semantic clustering, gap
+> detection, topic extraction) were deleted in PR #837 because nothing called them.
+> Implementing C1 now needs new code for those metrics, plus a Dagster
+> pipeline / reporting asset that produces a scheduled, cross-agency view.
 > Anchors inventory questions **C1a–c** in [docs/research-questions.md](../../docs/research-questions.md).
 
 **Research question anchor:** C1 — federal SBIR portfolio composition across all 11 agencies (descriptive tier)
@@ -138,6 +139,6 @@ are ingested without requiring manual re-runs.
 ## Dependencies
 
 - CET classifier (`packages/sbir-ml/sbir_ml/ml/models/cet_classifier.py`) — EXISTS
-- Portfolio-metrics tools (`packages/sbir-analytics/sbir_analytics/tools/mission_a/`) — EXISTS
+- Portfolio-metrics tools (`packages/sbir-analytics/sbir_analytics/tools/mission_a/`) — DELETED in PR #837 (unused; no callers); must be rewritten
 - Full SBIR.gov award corpus — EXISTS (verify freshness before scheduling)
 - ModernBERT embeddings (`specs/modernbert-analysis-layer/`) — enhances clustering but not required

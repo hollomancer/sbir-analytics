@@ -1,7 +1,8 @@
 # Jev CI Failure Triage — Requirements
 
-> **Lifecycle status:** Active
-> **Spec-file progress:** In progress
+> **Lifecycle status:** Superseded — archived 2026-11-21; see
+> [`../README.md`](../README.md). The code was removed. Do not implement.
+> **Spec-file progress:** Stopped after Stage 0
 
 **Target epistemic tier:** `exploratory`
 

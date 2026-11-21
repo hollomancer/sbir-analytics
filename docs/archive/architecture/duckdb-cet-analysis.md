@@ -1,4 +1,15 @@
+---
+Type: Reference
+Maintainer: Conrad Hollomon
+Last-Reviewed: 2026-11-21
+Status: archived
+---
+
 # DuckDB for CET Classification: Trade-off Analysis
+
+> Archived on 2026-11-21. This October 2025 trade-off analysis is not an active
+> source of truth. Its Neo4j recommendations were retired by ADR-006. Use the
+> current [architecture index](../../architecture/README.md) instead.
 
 **Date**: October 26, 2025
 **Question**: Should we use DuckDB for CET classification work?

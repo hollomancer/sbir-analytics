@@ -214,6 +214,9 @@ class FormDMatchConfidence(BaseModel):
 
     # Individual signals (None if not evaluable)
     name_score: float = Field(..., description="Fuzzy name match score")
+    name_match_type: str | None = Field(
+        None, description="'exact' or 'fuzzy' company-name match; required by name-gated-v3"
+    )
     person_score: float | None = Field(None, description="Best PI-to-related-person match")
     person_match_detail: str | None = Field(
         None, description="e.g., \"PI 'J Smith' <> Dir 'John Smith' (92%)\""
