@@ -694,7 +694,7 @@ def _parse_public_v2(fh) -> pd.DataFrame:
     except pd.errors.ParserError as exc:
         raise ValueError("SAM Public V2 extract contains a malformed positional record") from exc
     if repaired_ueis:
-        logger.info(
+        logger.warning(
             f"Kept {len(repaired_ueis):,} records with an unescaped '|' in a text field; "
             "their name, address, and NAICS fields are blank"
         )
