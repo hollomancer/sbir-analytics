@@ -605,6 +605,9 @@ class TestPersonNamesAgree:
             ("John Doe, M.A.", "John Doe"),
             ("Ms. Jane Doe", "Jane Doe"),
             ("Bao Ba", "Bao Ba"),
+            ("John Smith, CEO", "John Smith"),
+            ("John Smith RN", "John Smith"),
+            ("Mary Smith-Lee Jr.", "Mary Smith-Lee"),
         ],
     )
     def test_agrees(self, pi, person) -> None:
@@ -648,7 +651,13 @@ class TestPersonNamesAgree:
             ("Jane Doe CEO", "Jane Smith CEO", "a trailing job title is not a family name"),
             ("John Doe M.A.", "John Roe M.A.", "a dotted degree is not a family name"),
             ("John Smith & Jane Doe", "John Doe", "two people in one name are not read"),
-            ("John Smith and Jane Doe", "Jane Doe", "two people in one name are not read"),
+            ("John Smith and Jane Doe", "John Doe", "two people in one name are not read"),
+            ("John Smith / Jane Doe", "John Doe", "two people in one name are not read"),
+            ("John Smith/Jane Doe", "John Doe", "two people in one name are not read"),
+            ("John Smith; Jane Doe", "John Doe", "two people in one name are not read"),
+            ("John Doe RN", "John Rn", "a trailing credential is not a family name"),
+            ("Jane Doe CEO", "Jane Ceo", "a trailing job title is not a family name"),
+            ("John Doe M.A.", "John Ma", "a dotted degree is not a family name"),
         ],
     )
     def test_does_not_agree(self, pi, person, reason) -> None:

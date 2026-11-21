@@ -424,7 +424,7 @@ def _person_name_parts(name: str | None) -> _PersonName | None:
 
     - Accents are folded and letters such as ø, æ, ł, ß are transliterated. A name that still
       holds a non-ASCII letter returns None rather than splitting into fragments.
-    - A name that joins two people with "&" or "and" returns None.
+    - A name that joins two people with "&", "and", "/", or ";" returns None.
     - Parenthesized text ("(Retired)") is dropped.
     - In-word hyphens and apostrophes are dropped ("smith-lee", "o'brien" stay one token).
     - Titles ("dr") and trailing credentials, job titles, or suffixes ("P.E.", "CEO", "Jr.") are
@@ -440,7 +440,7 @@ def _person_name_parts(name: str | None) -> _PersonName | None:
         if not unicodedata.combining(c)
     )
     folded = re.sub(r"\([^)]*\)", " ", folded)
-    if re.search(r"&|\band\b", folded):
+    if re.search(r"[&/;]|\band\b", folded):
         return None
     folded = _PERSON_DOTTED_DEGREE.sub(r"\1credential", folded)
     folded = re.sub(r"[.'’\-]", "", folded)
