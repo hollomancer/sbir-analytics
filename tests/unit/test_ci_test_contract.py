@@ -19,7 +19,40 @@ def test_ci_has_a_weekly_full_suite_schedule() -> None:
     workflow = _workflow()
 
     assert workflow["on"]["schedule"] == [{"cron": "17 8 * * 6"}]
-    assert workflow["jobs"]["test-full"]["if"] == "github.event_name != 'pull_request'"
+
+
+def test_full_suite_and_coverage_gate_run_on_pull_requests() -> None:
+    job = _workflow()["jobs"]["test-full"]
+    run_step = next(step for step in job["steps"] if step.get("name") == "Run full test suite")
+
+    assert "if" not in job
+    assert "--cov-fail-under=70" in run_step["run"]
+
+
+def test_full_suite_checks_python_312_after_merge_only() -> None:
+    job = _workflow()["jobs"]["test-full"]
+
+    assert job["strategy"]["matrix"]["python-version"] == (
+        "${{ fromJSON(github.event_name == 'pull_request' && '[\"3.11\"]' "
+        '|| \'["3.11", "3.12"]\') }}'
+    )
+    assert job["env"]["UV_PYTHON"] == "${{ matrix.python-version }}"
+
+
+def test_only_pull_request_runs_cancel_each_other() -> None:
+    concurrency = _workflow()["concurrency"]
+
+    assert concurrency["cancel-in-progress"] == "${{ github.event_name == 'pull_request' }}"
+    assert "github.run_id" in concurrency["group"]
+
+
+def test_duration_refresh_workflow_cannot_push() -> None:
+    workflow = yaml.load(
+        (REPOSITORY_ROOT / ".github/workflows/test-durations.yml").read_text(encoding="utf-8"),
+        Loader=yaml.BaseLoader,
+    )
+    assert workflow["permissions"] == {"contents": "read"}
+    assert "pull_request" not in workflow["on"]
 
 
 def test_study_validation_jobs_fetch_release_history() -> None:
