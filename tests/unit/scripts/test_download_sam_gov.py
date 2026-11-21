@@ -372,6 +372,29 @@ def test_public_v2_parser_keeps_records_with_unescaped_pipes() -> None:
     assert result.attrs["sam_repaired_unescaped_delimiter_ueis"] == ["BADUEI000001", "BADUEI000002"]
 
 
+def test_public_v2_repair_exempts_only_the_repaired_row_not_its_uei() -> None:
+    # A UEI can appear on more than one row. Repairing one of them must not hide a
+    # blank legal name on another row with the same UEI.
+    repaired = _with_extra_pipe(_public_v2_record(uei="SHAREDUEI001"))
+    blank_sibling = _public_v2_record(uei="SHAREDUEI001", legal_name="")
+    archive = io.BytesIO(_zip_bytes("SAM.dat", _public_v2_file(repaired, blank_sibling)))
+
+    with pytest.raises(ValueError, match="missing legal business name"):
+        download_module._parse_zip(archive)
+
+
+def test_public_v2_repaired_row_and_named_sibling_with_same_uei_are_kept() -> None:
+    repaired = _with_extra_pipe(_public_v2_record(uei="SHAREDUEI001"))
+    sibling = _public_v2_record(uei="SHAREDUEI001")
+    archive = io.BytesIO(_zip_bytes("SAM.dat", _public_v2_file(repaired, sibling)))
+
+    result = download_module._parse_zip(archive)
+
+    assert result is not None
+    assert list(result["legal_business_name"]) == ["", "Example LLC"]
+    assert result.attrs["sam_repaired_unescaped_delimiter_records"] == 1
+
+
 def test_public_v2_well_formed_records_are_not_repaired() -> None:
     archive = io.BytesIO(_zip_bytes("SAM.dat", _public_v2_file(_public_v2_record())))
 

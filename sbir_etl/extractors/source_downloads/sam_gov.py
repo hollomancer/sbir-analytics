@@ -661,8 +661,11 @@ def _parse_public_v2(fh) -> pd.DataFrame:
         MIN_REPAIRED_PUBLIC_V2_CAP, int(expected_rows * REPAIRED_PUBLIC_V2_CAP_FRACTION)
     )
     repaired_ueis: list[str] = []
+    repaired_rows: list[int] = []
     stream = io.BufferedReader(
-        _LineStream(_repair_unescaped_delimiter_records(fh, repair_cap, repaired_ueis))
+        _LineStream(
+            _repair_unescaped_delimiter_records(fh, repair_cap, repaired_ueis, repaired_rows)
+        )
     )
     reader = pd.read_csv(
         stream,
@@ -705,7 +708,7 @@ def _parse_public_v2(fh) -> pd.DataFrame:
             "SAM Public V2 entity count does not match its BOF/EOF control records: "
             f"expected {expected_rows:,}, parsed {len(frame):,}"
         )
-    _validate_public_v2_identity_fields(frame, repaired_ueis=frozenset(repaired_ueis))
+    _validate_public_v2_identity_fields(frame, repaired_rows=frozenset(repaired_rows))
     frame.attrs["sam_expected_row_count"] = expected_rows
     frame.attrs["sam_repaired_unescaped_delimiter_records"] = len(repaired_ueis)
     frame.attrs["sam_repaired_unescaped_delimiter_ueis"] = repaired_ueis
@@ -735,7 +738,9 @@ class _LineStream(io.RawIOBase):
         return size
 
 
-def _repair_unescaped_delimiter_records(fh, cap: int, repaired_ueis: list[str]) -> Iterator[bytes]:
+def _repair_unescaped_delimiter_records(
+    fh, cap: int, repaired_ueis: list[str], repaired_rows: list[int] | None = None
+) -> Iterator[bytes]:
     """Yield the extract body, repairing one malformed shape in place.
 
     A record with more than ``PUBLIC_V2_FIELD_COUNT`` fields that still ends with
@@ -744,7 +749,8 @@ def _repair_unescaped_delimiter_records(fh, cap: int, repaired_ueis: list[str]) 
     ``PUBLIC_V2_FIRST_FREE_TEXT_POSITION`` are trusted. The record is rewritten
     with those fields, blank text fields, and ``!end``, so the entity stays in the
     canonical file and still counts toward the control total. Its UEI is
-    recorded. Every other shape is passed through unchanged, so the positional
+    recorded, and so is its zero-based position among the entity rows, because a UEI
+    can appear on more than one row. Every other shape is passed through unchanged, so the positional
     checks still fail closed on it. Any line after the EOF control record fails.
     """
 
@@ -752,6 +758,7 @@ def _repair_unescaped_delimiter_records(fh, cap: int, repaired_ueis: list[str]) 
     kept = PUBLIC_V2_FIRST_FREE_TEXT_POSITION
     blanks = [b""] * (PUBLIC_V2_FIELD_COUNT - 1 - kept)
     seen_trailer = False
+    row = -1  # position among entity rows; pandas skips blank lines, so they are not counted
     for line in fh:
         body = line.rstrip(b"\r\n")
         if seen_trailer:
@@ -760,9 +767,13 @@ def _repair_unescaped_delimiter_records(fh, cap: int, repaired_ueis: list[str]) 
             continue
         if body.startswith(b"EOF PUBLIC"):
             seen_trailer = True
-        elif body.count(b"|") > expected_delimiters and body.endswith(b"|!end"):
+        elif body.strip():
+            row += 1
+        if not seen_trailer and body.count(b"|") > expected_delimiters and body.endswith(b"|!end"):
             fields = body.split(b"|")
             repaired_ueis.append(fields[0].decode("utf-8"))
+            if repaired_rows is not None:
+                repaired_rows.append(row)
             if len(repaired_ueis) > cap:
                 raise ValueError(
                     "SAM Public V2 extract has too many records with extra fields "
@@ -773,12 +784,14 @@ def _repair_unescaped_delimiter_records(fh, cap: int, repaired_ueis: list[str]) 
 
 
 def _validate_public_v2_identity_fields(
-    frame: pd.DataFrame, *, repaired_ueis: frozenset[str] = frozenset()
+    frame: pd.DataFrame, *, repaired_rows: frozenset[int] = frozenset()
 ) -> None:
     """Fail closed when positional drift would corrupt the census identity fields.
 
     Repaired records keep their UEI and registration status, which are checked
-    like any other row, but their legal business name is blank by design.
+    like any other row, but their legal business name is blank by design. Only
+    the repaired rows themselves are exempt, by position: another row with the
+    same UEI must still have a name.
     """
 
     if list(frame.columns) != REQUIRED_COLUMNS:
@@ -787,7 +800,7 @@ def _validate_public_v2_identity_fields(
         raise ValueError("SAM Public V2 extract contains a missing or malformed UEI")
     if not frame["registration_status"].isin({"A", "E"}).all():
         raise ValueError("SAM Public V2 extract contains an invalid registration status")
-    named = ~frame["unique_entity_id"].isin(repaired_ueis)
+    named = ~pd.Series(range(len(frame)), index=frame.index).isin(repaired_rows)
     if frame.loc[named, "legal_business_name"].eq("").any():
         raise ValueError("SAM Public V2 extract contains a missing legal business name")
 
