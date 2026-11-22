@@ -201,7 +201,8 @@ provisional identity staging only.
     scoring tiers only after verifying that they apply to the DERA source schema.
 13. **SHALL NOT** use #286's retired `person-or-zip-v1` leverage result as a
     cross-check. Any future cross-check SHALL require one pinned
-    `corroborated-person-v2` input, reject unversioned or mixed tiers, and stay
+    `name-gated-v3` input (the current rule since 2026-11-21;
+    `corroborated-person-v2` is historical), reject unversioned or mixed tiers, and stay
     unavailable until the `form-d-fundraising` filing/CIK aggregation gates close.
 
 ### Phase 2 Gate Condition

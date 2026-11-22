@@ -4,43 +4,62 @@
 program-wide private-capital leverage.
 **Evidence status:** retired; no current numerical result and not approved for citation.
 **Study contract:** [`studies/form-d-fundraising`](../../studies/form-d-fundraising/study.yaml).
-**Current tier rule:** `corroborated-person-v2`.
+**Current tier rule:** `name-gated-v3` (adopted 2026-11-21; see
+[form-d-name-gated-v3.md](../data/form-d-name-gated-v3.md)). `corroborated-person-v2` is historical.
 
 ## Result status
 
 The former tables and headline estimates are withdrawn. They were computed from a local,
 gitignored Form D corpus scored under the historical `person-or-zip-v1` rule, where a fuzzy
 person-name hit alone could reach high. The repository does not contain the input bytes needed to
-prove a complete v2 rebuild, so those numbers cannot be relabeled as v2 results.
+prove a complete rebuild, so those numbers cannot be relabeled as v2 or v3 results.
 
 There is no current high-only or high-plus-medium leverage estimate. There are also no current
 agency, year, security-type, fill-rate, pathway-cohort, or PIF-exposure results. Downstream reports
-that used the old cohort are historical v1 artifacts until rebuilt from one pinned v2
+that used the old cohort are historical v1 artifacts until rebuilt from one pinned v3
 materialization.
 
 ## Why the study was retired
 
 Realistic pairs of distinct people can clear the person similarity threshold. Raising the
-threshold does not separate real matches from collisions, so `corroborated-person-v2` changes the
-tier rule:
+threshold does not separate real matches from collisions, so `corroborated-person-v2` changed the
+tier rule. This is the historical v2 table:
 
-| Tier | Current record-level rule |
+| Tier | v2 record-level rule |
 |---|---|
 | High | Exact ZIP, or person score at least 0.7 together with exact ZIP or state overlap |
 | Medium | Person hit without corroboration, state overlap alone, or missing state evidence |
 | Low | No person/ZIP hit and an observed state mismatch |
 
+A later audit found defects in the company-name match and the tier rule itself, so the owner
+adopted `name-gated-v3` on 2026-11-21. Its rule table and known limits are in
+[form-d-name-gated-v3.md](../data/form-d-name-gated-v3.md): the 0.85 name threshold is not
+calibrated, the audit review was not adjudicated, and v3 accepts fewer true matches in exchange
+for fewer false ones.
+
 New confidence objects persist `match_confidence.rule_version`. Consumers supporting this study
-reject unversioned and mixed-version records.
+reject unversioned, `corroborated-person-v2`, and mixed-version records.
 
-## Offline migration
+## Rebuild under v3
 
-Existing detail rows can be re-tiered without contacting the SEC:
+A v3 file cannot be made offline. Stored rows lack the company-name match type and the raw PI
+names that v3 needs. Rebuild from the SEC:
+
+```bash
+python scripts/archive/data/fetch_form_d_index.py --awards <SBIR awards CSV>
+python scripts/archive/data/fetch_form_d_details.py --rule-version name-gated-v3
+```
+
+## Historical offline migration
+
+Existing detail rows could be re-tiered to v2 without contacting the SEC. The target rule must now
+be named, because the default is v3:
 
 ```bash
 python scripts/data/rescore_form_d_details.py \
   --input data/form_d_details.jsonl \
-  --output data/form_d_details.corroborated-person-v2.jsonl
+  --output data/form_d_details.corroborated-person-v2.jsonl \
+  --rule-version corroborated-person-v2
 ```
 
 The command reads stored person, address, and state scores, writes deterministically, and replaces
@@ -58,7 +77,7 @@ across all Form D filings attached to one SBIR company record. The filings can s
 A stored person-plus-state conjunction therefore does not prove that both signals came from the
 same filing or issuer.
 
-The v2 PIF cross-link audit now:
+The PIF cross-link audit, written for v2:
 
 - treats person-plus-state/no-ZIP as a distinct valid-v2 profile instead of person-only;
 - retains both person and CIK link types for the same company pair;
@@ -87,7 +106,7 @@ down.
 Before any number returns to this page:
 
 1. Pin the complete Form D and SBIR inputs by SHA-256, size, and row count.
-2. Apply `corroborated-person-v2` to the complete corpus and verify exact row coverage and a single
+2. Apply `name-gated-v3` to the complete corpus and verify exact row coverage and a single
    persisted rule version.
 3. Score at a declared filing/issuer grain, or quarantine and quantify all cross-filing and
    multi-CIK confidence records.

@@ -10,7 +10,11 @@ from sbir_analytics.assets.agency_private_capital.form_d_inputs import (
     load_form_d_control_universe,
     load_form_d_matches,
 )
-from sbir_etl.enrichers.sec_edgar.form_d_scoring import FORM_D_TIER_RULE_VERSION
+from sbir_etl.enrichers.sec_edgar.form_d_scoring import (
+    FORM_D_TIER_RULE_CORROBORATED_PERSON_V2,
+    FORM_D_TIER_RULE_VERSION,
+    FormDTierRuleError,
+)
 from sbir_etl.identity import CompanyNameProfile, normalize_company_name
 
 
@@ -331,5 +335,32 @@ def test_load_form_d_matches_refuses_unversioned_tier(tmp_path) -> None:
         ],
     )
 
-    with pytest.raises(ValueError, match="Rescore the complete input"):
+    with pytest.raises(ValueError, match="Rebuild form_d_details.jsonl"):
         load_form_d_matches(path)
+
+
+def test_load_form_d_matches_refuses_a_v2_file_by_default(tmp_path) -> None:
+    # The live files were built under corroborated-person-v2. After the default moved to
+    # name-gated-v3, the Dagster asset path must stop with rebuild instructions, not mix rules.
+    path = tmp_path / "form_d_details.jsonl"
+    _write_jsonl(
+        path,
+        [
+            {
+                "company_name": "Acme Corp",
+                "form_d_cik": "123",
+                "match_confidence": {
+                    "rule_version": FORM_D_TIER_RULE_CORROBORATED_PERSON_V2,
+                    "tier": "high",
+                },
+                "offerings": [{"filing_date": "2021-01-01", "industry_group": "Technology"}],
+            }
+        ],
+    )
+
+    with pytest.raises(FormDTierRuleError) as excinfo:
+        load_form_d_matches(path)
+    message = str(excinfo.value)
+    assert "Form D record 'Acme Corp'" in message
+    assert "'corroborated-person-v2'; expected 'name-gated-v3'" in message
+    assert "fetch_form_d_details.py --rule-version name-gated-v3" in message

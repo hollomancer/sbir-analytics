@@ -3,11 +3,16 @@
 ## Lifecycle and version boundary
 
 `form_d_details.jsonl` is a local, gitignored exploratory artifact. Each current
-`match_confidence` object must carry
-`rule_version: "corroborated-person-v2"`. Unversioned rows are historical
-`person-or-zip-v1` rows and must be rescored before a current consumer uses their
-tier. A deterministic offline migration is available at
-`scripts/data/rescore_form_d_details.py`.
+`match_confidence` object must carry `rule_version: "name-gated-v3"`. The owner
+adopted that rule on 2026-11-21; see
+[form-d-name-gated-v3.md](../data/form-d-name-gated-v3.md). Rows that carry
+`corroborated-person-v2` are historical, and unversioned rows are historical
+`person-or-zip-v1` rows. Current consumers refuse both.
+
+A v3 file cannot be made offline from older rows: they lack the company-name match
+type and the raw PI names. Rebuild it with `fetch_form_d_index.py`, then
+`fetch_form_d_details.py --rule-version name-gated-v3`.
+`scripts/data/rescore_form_d_details.py` only reproduces a named historical rule.
 
 Versioning makes the Boolean tier rule auditable. It does not validate the
 underlying company match.
@@ -37,15 +42,32 @@ numerical result.
 | `rule_version` | Named rule used to assign `tier` |
 | `tier` | `high`, `medium`, or `low` under that named rule |
 | `score` | Weighted composite retained for ordering; it does not assign the tier |
-| `name_score` | Fuzzy company-name score supplied by index matching |
-| `person_score` | Best fuzzy SBIR PI to Form D related-person score |
+| `name_score` | Company-name score recorded by index matching (`token_sort_ratio` under v3) |
+| `name_match_type` | `exact` or `fuzzy` company-name match; required under v3 |
+| `person_score` | Under v3, 1.0 when one SBIR PI and Form D related person agree, else 0.0. Under v1 and v2, the best fuzzy score |
 | `person_match_detail` | Human-readable best-person comparison |
 | `state_score` | Whether the SBIR state appears among pooled Form D states |
 | `address_score` | Whether the SBIR ZIP appears among pooled Form D ZIPs |
 | `temporal_score` | Form D timing relative to earliest SBIR award |
 | `year_of_inc_score` | Incorporation-year plausibility |
 
-### Current tier rule: `corroborated-person-v2`
+### Current tier rule: `name-gated-v3`
+
+A missing state, ZIP, or person signal is no evidence and never raises a tier.
+
+| Name match | High | Medium | Low |
+|---|---|---|---|
+| exact | Exact ZIP, or person and state | Person, or state | All other cases |
+| fuzzy | Exact ZIP and person | Exact ZIP, or person and state | All other cases |
+
+The name match, person rule, and known limits are in
+[form-d-name-gated-v3.md](../data/form-d-name-gated-v3.md). The 0.85 name threshold
+is not calibrated, and v3 accepts fewer true matches in exchange for fewer false
+ones.
+
+### Historical tier rules
+
+`corroborated-person-v2` was the default until 2026-11-21:
 
 | Tier | Record-level rule |
 |---|---|
@@ -53,13 +75,13 @@ numerical result.
 | Medium | Person hit without corroboration, state overlap alone, or missing state evidence |
 | Low | No person/ZIP hit and an observed state mismatch |
 
-The historical `person-or-zip-v1` rule promoted a person hit or exact ZIP to
-high. It remains available only so old materializations can be interpreted and
-migrated; it is not the current default.
+The `person-or-zip-v1` rule before it promoted a person hit or exact ZIP to high.
+Both remain available only so old materializations can be interpreted; neither is
+the current default.
 
-An exact ZIP or person-plus-state conjunction satisfies the record-level v2
-rule, but neither is proof that the issuer is the SBIR firm. Common-person
-collisions, reused addresses, and pooled filing evidence still require review.
+A record that satisfies any of these rules at the high tier is not proof that the
+issuer is the SBIR firm. Common-person collisions, reused addresses, and pooled
+filing evidence still require review.
 
 ## Signal-scope metadata
 
@@ -76,7 +98,7 @@ Current records also expose `match_confidence_scope`:
 These flags disclose aggregation scope; they do not identify which filing
 supplied each score. Until scoring is rebuilt at a declared filing/issuer grain,
 no high-tier record should be described as trustworthy solely because it passes
-the v2 Boolean rule.
+the v3 Boolean rule.
 
 ## Temporal and incorporation signals
 

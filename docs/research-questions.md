@@ -1305,8 +1305,9 @@ remain outside that design.
   leverage [L1]; it is not that quantity.
   **Status:** Not computable. The `form-d-fundraising` study is
   `retired`: its historical result used `person-or-zip-v1`, the complete input
-  is not pinned in the repository, and no issuer-scoped
-  `corroborated-person-v2` rebuild exists. Former numerical results are
+  is not pinned in the repository, and no issuer-scoped rebuild exists under
+  the successor rule `name-gated-v3`, which the owner adopted on 2026-11-21
+  in place of `corroborated-person-v2`. Former numerical results are
   suppressed. A future ratio would measure disclosed Regulation D capital,
   not NASEM's federal-contract leverage, and would not be a one-sided lower
   bound while identity and filing-aggregation error remain unresolved.

@@ -108,7 +108,7 @@ def test_extract_form_d_signals_uses_earliest_combo_date():
 
 
 def test_extract_form_d_signals_refuses_unversioned_tiers():
-    with pytest.raises(ValueError, match="Rescore the complete input"):
+    with pytest.raises(ValueError, match="Rebuild form_d_details.jsonl"):
         extract_form_d_signals(
             [
                 {

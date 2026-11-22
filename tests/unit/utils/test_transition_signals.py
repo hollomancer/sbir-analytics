@@ -90,7 +90,7 @@ def test_load_form_d_signals_refuses_unversioned_cohort(tmp_path):
     path = tmp_path / "cohort.jsonl"
     path.write_text(json.dumps({"company_name": "Legacy"}) + "\n")
 
-    with pytest.raises(ValueError, match="Rescore the complete input"):
+    with pytest.raises(ValueError, match="Rebuild form_d_details.jsonl"):
         load_form_d_signals(path)
 
 

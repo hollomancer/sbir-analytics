@@ -10,8 +10,9 @@ The former overall M&A totals, confidence-tier totals, Form D
 business-combination count, overlaps, and agency tables are suppressed. The
 Form D component was built from unversioned records now identified as
 `person-or-zip-v1`. A fuzzy person hit alone could place a company in the
-matched cohort, so those values cannot be presented as
-`corroborated-person-v2` results.
+matched cohort, so those values cannot be presented as results under a later
+rule: neither the historical `corroborated-person-v2` rule nor the current
+`name-gated-v3` rule (adopted 2026-11-21).
 
 PR #717 reported local counts of changed business-combination records, but the
 underlying gitignored Form D corpus is absent from this checkout. Those counts
@@ -39,14 +40,14 @@ exploratory methodology and tables for provenance.
 Before restoring a Form D-dependent M&A count:
 
 1. pin the complete Form D and EFTS inputs by hash, size, and row count;
-2. require one persisted `corroborated-person-v2` rule version throughout;
+2. require one persisted `name-gated-v3` rule version throughout;
 3. score or quarantine links at a declared filing/issuer grain, including
    multi-CIK records;
 4. collapse amendments and duplicate accessions under a declared SEC key;
 5. recompute Form D and EFTS channels separately before merging them; and
 6. complete human review of the identity links used for any high-tier claim.
 
-Passing the v2 Boolean rule alone does not make every high-tier M&A record
+Passing the v3 Boolean rule alone does not make every high-tier M&A record
 trustworthy. Until the gate closes, only the existence of the historical
 pipeline—not its numerical output—is current documentation.
 

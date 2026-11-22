@@ -7,7 +7,7 @@ research_questions:
 estimand: >-
   No current estimate is authorized. A future successor would estimate program-level
   and per-matched-firm ratios of disclosed Form D totalAmountSold to SBIR.gov award
-  dollars for 2009–2024 under a pinned, issuer-scoped corroborated-person-v2
+  dollars for 2009–2024 under a pinned, issuer-scoped name-gated-v3
   materialization. The historical person-or-zip-v1 estimates are withdrawn.
 frozen_artifacts:
   - path: studies/form-d-fundraising/design.md
@@ -25,11 +25,15 @@ implementation:
     symbol: assign_form_d_tier
 identity_policy:
   strategy: >-
-    Current target behavior is corroborated-person-v2. Exact ZIP reaches high;
-    fuzzy person similarity reaches high only with ZIP or state overlap. Stored
-    scores remain company-aggregate and may span filings or CIKs, so satisfying
-    the Boolean rule is not identity validation.
-  version: corroborated-person-v2; historical person-or-zip-v1 retired
+    Successor target behavior is name-gated-v3, adopted by the owner on
+    2026-11-21 (docs/data/form-d-name-gated-v3.md). A missing signal is no
+    evidence. An exact company name reaches high with exact ZIP, or with an
+    agreeing person and state; a fuzzy company name needs exact ZIP and an
+    agreeing person. Stored scores remain company-aggregate and may span filings
+    or CIKs, so satisfying the Boolean rule is not identity validation.
+  version: >-
+    name-gated-v3 successor target; historical corroborated-person-v2 and
+    person-or-zip-v1 retired
   negative_evidence_allowed: false
 materialization:
   allowed: false
@@ -38,8 +42,8 @@ materialization:
       The complete historical Form D and SBIR input bytes are local, gitignored,
       absent from this checkout, and not pinned by SHA-256, size, and row count.
     - >-
-      No complete corroborated-person-v2 rescore and dependent-output rebuild has
-      been recorded; unversioned or mixed-version inputs must fail closed.
+      No complete name-gated-v3 rebuild and dependent-output rebuild has been
+      recorded; unversioned, older-rule, or mixed-version inputs must fail closed.
     - >-
       Legacy company-level confidence can pool signals across filings and CIKs.
       Same-filing or issuer-scoped scoring, or an explicit quarantine with counts,
@@ -53,7 +57,8 @@ materialization:
 permitted_claims:
   - >-
     The historical person-or-zip-v1 study is retired, its numerical results are
-    suppressed, and no corroborated-person-v2 fundraising estimate exists.
+    suppressed, and no corroborated-person-v2 or name-gated-v3 fundraising
+    estimate exists.
   - >-
     The offline rescorer deterministically applies a named tier rule to stored
     signal values; it does not validate identity or same-filing corroboration.

@@ -6,7 +6,8 @@ contracts, and UCC liens — for the Form D high-confidence cohort. Code lives i
 
 > The historical cohort and its numerical pathway/UCC reports are retired.
 > Current builders reject unversioned Form D tiers and require
-> `corroborated-person-v2`; that rule-version check does not validate pooled
+> `name-gated-v3` (the default since 2026-11-21; `corroborated-person-v2` is
+> historical); that rule-version check does not validate pooled
 > cross-filing or multi-CIK identity. Do not publish a replacement until the
 > `form-d-fundraising` study gate reopens.
 

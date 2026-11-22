@@ -178,5 +178,5 @@ def test_refuses_unversioned_details(cohort, tmp_path):
     del record["match_confidence"]["rule_version"]
     src.write_text(json.dumps(record) + "\n")
 
-    with pytest.raises(ValueError, match="Rescore the complete input"):
+    with pytest.raises(ValueError, match="Rebuild form_d_details.jsonl"):
         list(build_form_d_events(cohort, src))
