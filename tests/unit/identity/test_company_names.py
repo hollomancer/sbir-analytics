@@ -48,6 +48,8 @@ from sbir_etl.identity import (
         (CompanyNameProfile.SEC_EDGAR_V1, "QUALCOMM INC/DE", "QUALCOMM"),
         (CompanyNameProfile.SEC_EDGAR_TRAILING_V1, "QUALCOMM INC/DE", "QUALCOMM INC"),
         (CompanyNameProfile.SEC_EDGAR_MATCH_V1, "The A.B.C. Labs Co., Inc. /DE/", "ABC LABS"),
+        (CompanyNameProfile.SEC_EDGAR_MATCH_V1, "ACME INC /CAN/ /NEW/ /DE/", "ACME"),
+        (CompanyNameProfile.SEC_EDGAR_MATCH_V1, "Acme-Tech/Solutions", "ACME TECH SOLUTIONS"),
         (CompanyNameProfile.NOTICE_KEY_V1, "Acme Photonics, Inc.", "ACMEPHOTONICS"),
         (CompanyNameProfile.PHASE3_RANKING_V1, "Acme CorpTech LLC", "ACME"),
         (CompanyNameProfile.CMF_V1, "SOSSEC, Inc.", "sossec"),

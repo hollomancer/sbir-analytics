@@ -164,8 +164,19 @@ _SEC_SUFFIX = re.compile(
 # punctuation, a leading "THE", and every trailing legal-form word, so that "Inc." and
 # "Incorporated" do not move a token-sort score. Suffix differences are then
 # no reason to use a subset-rewarding metric such as token-set (issue #713).
-# EDGAR conformed names can end in a two-letter state tag such as "/DE/" or "/VA".
-_SEC_MATCH_STATE_SUFFIX_V1 = re.compile(r"\s*/\s*[A-Z]{2}\s*/?\s*$")
+# EDGAR conformed names can end in one or more slash tags: a state or country
+# ("/DE/", "/VA", "/CAN/") or a filer marker ("/NEW/", "/ADR/", "/FI/"). A tag
+# is 1-5 letters or digits. It is stripped only in a slash form EDGAR uses:
+# closed ("/NEW/"), opened after a space ("ACME CORP /NV"), or opened right
+# after a legal-form word ("QUALCOMM INC/DE"). "ACME-TECH/SOLUTIONS" and
+# "D/B/A" stay as they are.
+_SEC_MATCH_EDGAR_TAG_V1 = re.compile(
+    r"(?:\s*/\s*[A-Z0-9]{1,5}\s*/"
+    r"|\s+/\s*[A-Z0-9]{1,5}"
+    r"|(?:"
+    + "|".join(rf"(?<=\b{word})" for word in ("INC", "CORP", "CO", "LTD", "LLC", "LP", "PLC"))
+    + r")/\s*[A-Z0-9]{1,5})\s*$"
+)
 _SEC_MATCH_JOINERS_V1 = re.compile(r"[.'\u2019]")
 _SEC_MATCH_PUNCTUATION_V1 = re.compile(r"[^\w\s]|_")
 _SEC_MATCH_SUFFIX_TOKENS_V1: frozenset[str] = frozenset(
@@ -404,7 +415,9 @@ def normalize_company_name(
             text = cleaned
         return text
     if profile is CompanyNameProfile.SEC_EDGAR_MATCH_V1:
-        text = _SEC_MATCH_STATE_SUFFIX_V1.sub("", text.strip().upper())
+        text = text.strip().upper()
+        while (stripped := _SEC_MATCH_EDGAR_TAG_V1.sub("", text)) != text:
+            text = stripped
         text = _SEC_MATCH_JOINERS_V1.sub("", text).replace("&", " AND ")
         tokens = _SEC_MATCH_PUNCTUATION_V1.sub(" ", text).split()
         if len(tokens) > 1 and tokens[0] == "THE":

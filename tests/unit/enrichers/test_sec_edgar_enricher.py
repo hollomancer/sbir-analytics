@@ -1159,6 +1159,29 @@ class TestSearchFormDSubsetCollisions:
         assert filings[0].match_confidence >= 0.9
 
 
+class TestEdgarSlashTags:
+    """EDGAR filer tags such as "/DE/" and "/NEW/" do not identify a company."""
+
+    @pytest.mark.asyncio
+    async def test_stacked_tags_still_match_in_form_d(self):
+        filings = await _search_form_d_filings(_form_d_client("ACME CORP /DE/ /NEW/"), "Acme Corp")
+        assert len(filings) == 1
+
+    @pytest.mark.asyncio
+    async def test_stacked_tags_still_resolve_cik(self):
+        result = await _resolve_cik(_companies_client("ACME CORP /DE/ /NEW/"), "Acme Corp")
+        assert result is not None
+
+    @pytest.mark.asyncio
+    async def test_tag_does_not_hide_a_different_name_in_form_d(self):
+        client = _form_d_client("ACME BIOTECH CORP")
+        assert await _search_form_d_filings(client, "ACME CORP /NEW/") == []
+
+    @pytest.mark.asyncio
+    async def test_tag_does_not_hide_a_different_name_in_cik(self):
+        assert await _resolve_cik(_companies_client("ACME BIOTECH CORP"), "ACME CORP /NEW/") is None
+
+
 class TestMentionSelfFilingFilter:
     """A self-filing is dropped; a different filer with a subset name is not."""
 
