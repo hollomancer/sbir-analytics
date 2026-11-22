@@ -148,6 +148,7 @@ Hand review of every broad (c)/(d) block in this group. "On review" means the ca
 |---|---|---|
 | `usaspending.py:229` | c -> a/b (fixed) | If the COPY file that the named view reads fails to extract or load, `import_postgres_dump` raises ExtractionError, chained to the DuckDB error, with `details["failed_tables"]`. Other COPY files that fail are logged at WARNING, kept in `import_failed_tables`, and shown as `dump_import_failed_tables` in the USAspending asset metadata. `usaspending_ingestion.py` now lets this error through instead of replacing it with an unchained one. |
 | `usaspending.py:465` | d -> a (fixed) | `resolve_physical_table_name` queried a column that `duckdb_tables()` does not have, swallowed the error, and returned the base name by accident. It now returns the base-name table or view on purpose and raises ExtractionError when none exists. It never returns the raw `<name>_<oid>` table, whose columns are `column00`, `column01`, and so on. |
+| `usaspending.py:325` | d -> a (removed) | The placeholder `_import_sql_dump` loaded the file's text lines into a one-column table through `read_csv_auto` and returned `True`. The `.gz` path and the ZIP fallback ran `pg_restore` and then the same placeholder; `pg_restore` cannot read a ZIP or a gzip file, so they returned `False`. All three paths are removed. `import_postgres_dump` now raises ExtractionError for any input that is not a `.zip` archive, and names the supported format. |
 
 ## Every (c) and (d) block
 

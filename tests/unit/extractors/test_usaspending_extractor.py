@@ -30,14 +30,6 @@ def mock_connection():
     return DuckDBMocks.connection()
 
 
-@pytest.fixture
-def sample_dump_file(tmp_path):
-    """Sample PostgreSQL dump file."""
-    dump_file = tmp_path / "usaspending.sql"
-    dump_file.write_text("-- Sample PostgreSQL dump\nCREATE TABLE test_table (id INT);")
-    return dump_file
-
-
 # ==================== Initialization Tests ====================
 
 
@@ -188,22 +180,6 @@ class TestImportPostgresDump:
             extractor.import_postgres_dump(nonexistent)
 
     @patch("sbir_etl.extractors.usaspending.duckdb.connect")
-    def test_import_sql_dump(self, mock_connect, sample_dump_file):
-        """Test import of plain SQL dump."""
-        from tests.mocks import DuckDBMocks
-
-        mock_conn = DuckDBMocks.connection()
-        mock_connect.return_value = mock_conn
-
-        extractor = DuckDBUSAspendingExtractor()
-
-        with patch.object(extractor, "_import_sql_dump", return_value=True) as mock_import:
-            result = extractor.import_postgres_dump(sample_dump_file)
-
-        assert result is True
-        mock_import.assert_called_once()
-
-    @patch("sbir_etl.extractors.usaspending.duckdb.connect")
     def test_import_zipped_dump(self, mock_connect, tmp_path):
         """Test import of zipped dump."""
         zip_file = tmp_path / "usaspending.zip"
@@ -223,36 +199,21 @@ class TestImportPostgresDump:
         mock_import.assert_called_once()
 
     @patch("sbir_etl.extractors.usaspending.duckdb.connect")
-    def test_import_gzipped_dump(self, mock_connect, tmp_path):
-        """Test import of gzipped dump."""
-        gz_file = tmp_path / "usaspending.gz"
-        gz_file.touch()
-
-        from tests.mocks import DuckDBMocks
-
-        mock_conn = DuckDBMocks.connection()
-        mock_connect.return_value = mock_conn
-
-        extractor = DuckDBUSAspendingExtractor()
-
-        with patch.object(extractor, "_import_gzipped_dump", return_value=True) as mock_import:
-            result = extractor.import_postgres_dump(gz_file)
-
-        assert result is True
-        mock_import.assert_called_once()
-
-    @patch("sbir_etl.extractors.usaspending.duckdb.connect")
-    def test_import_handles_exception(self, mock_connect, sample_dump_file):
+    def test_import_handles_exception(self, mock_connect, tmp_path):
         """Test import handles exceptions gracefully."""
         from tests.mocks import DuckDBMocks
 
+        zip_file = tmp_path / "usaspending.zip"
+        zip_file.touch()
         mock_conn = DuckDBMocks.connection()
         mock_connect.return_value = mock_conn
 
         extractor = DuckDBUSAspendingExtractor()
 
-        with patch.object(extractor, "_import_sql_dump", side_effect=RuntimeError("Import failed")):
-            result = extractor.import_postgres_dump(sample_dump_file)
+        with patch.object(
+            extractor, "_import_zipped_dump", side_effect=RuntimeError("Import failed")
+        ):
+            result = extractor.import_postgres_dump(zip_file)
 
         # Should return False on error
         assert result is False
@@ -320,8 +281,8 @@ class TestZippedDumpImport:
         mock_copy.assert_called_once()
 
     @patch("sbir_etl.extractors.usaspending.duckdb.connect")
-    def test_import_zipped_dump_final_fallback(self, mock_connect, tmp_path):
-        """Test zipped dump import final fallback to extraction."""
+    def test_import_zipped_dump_returns_false_when_copy_files_fail(self, mock_connect, tmp_path):
+        """Test zipped dump import has no pg_restore fallback."""
         zip_file = tmp_path / "usaspending.zip"
         zip_file.touch()
 
@@ -335,13 +296,9 @@ class TestZippedDumpImport:
         extractor.connection = mock_conn
 
         with patch.object(extractor, "_import_copy_files", return_value=False):
-            with patch.object(
-                extractor, "_extract_and_import_dump", return_value=True
-            ) as mock_extract:
-                result = extractor._import_zipped_dump(zip_file, "test_table")
+            result = extractor._import_zipped_dump(zip_file, "test_table")
 
-        assert result is True
-        mock_extract.assert_called_once()
+        assert result is False
 
 
 # ==================== Query Tests ====================
@@ -603,23 +560,6 @@ class TestEdgeCases:
 
         assert isinstance(result, pd.DataFrame)
         assert len(result) == 0
-
-    @patch("sbir_etl.extractors.usaspending.duckdb.connect")
-    def test_import_sql_dump_execute_fails(self, mock_connect, sample_dump_file):
-        """Test SQL dump import handles execution failures."""
-        from tests.mocks import DuckDBMocks
-
-        mock_conn = DuckDBMocks.connection()
-        mock_conn.execute = Mock(side_effect=Exception("SQL execution failed"))
-        mock_connect.return_value = mock_conn
-
-        extractor = DuckDBUSAspendingExtractor()
-        extractor.connection = mock_conn
-
-        result = extractor._import_sql_dump(sample_dump_file, "test_table")
-
-        # Should return False on failure
-        assert result is False
 
     @patch("sbir_etl.extractors.usaspending.duckdb.connect")
     def test_context_manager_with_exception(self, mock_connect):
