@@ -12,6 +12,7 @@ from sbir_etl.enrichers.sec_edgar.enricher import (
     _extract_financials,
     _extract_latest_fact,
     _resolve_cik,
+    _search_filing_mentions_filtered,
     _search_form_d_filings,
     _search_inbound_ma_mentions,
     enrich_company,
@@ -1039,3 +1040,171 @@ class TestMentionContextMustNotMatch:
     async def test_real_acquisition_still_reads_as_acquisition(self):
         text = "Big Defense Corp completed its acquisition of Tiny SBIR Inc in March."
         assert await _context_label(text) == "acquisition"
+
+
+# ---------------------------------------------------------------------------
+# Issue #713: token-set scoring accepted subset names as the same company.
+# Each pair below is a different company whose cleaned name is a token subset
+# of the other. The first is a real production error: "3D Control Systems,
+# Inc." resolved to filer 3D SYSTEMS CORP (CIK 0000910638) at "high" confidence.
+# ---------------------------------------------------------------------------
+
+# The issue's pairs, as _resolve_cik sees them (suffixes stripped by its profile).
+_SUBSET_COLLISIONS = [
+    ("3D Control Systems, Inc.", "3D SYSTEMS CORP"),
+    ("ADT Pharmaceuticals", "ADT Inc."),
+    ("COMPASS SYSTEMS", "Compass, Inc."),
+]
+
+# The same pairs as the Form D and mention filters see them. Those filters
+# scored raw names, so the subset only shows when both names carry the same
+# legal suffix.
+_RAW_SUBSET_COLLISIONS = [
+    ("3D Control Systems Corp", "3D SYSTEMS CORP"),
+    ("ADT Pharmaceuticals Inc", "ADT INC"),
+    ("Compass Systems Inc", "COMPASS INC"),
+]
+
+# Near collisions: a shared word or a one-word difference, different firm.
+_CIK_NEAR_COLLISIONS = [
+    ("Opto Knowledge Systems, Inc.", "OPTO SYSTEMS INC"),
+]
+_FORM_D_NEAR_COLLISIONS = [
+    ("Adelphi Technology Inc", "ADEPT TECHNOLOGY INC"),
+    ("Opto Knowledge Systems Inc", "OPTO SYSTEMS INC"),
+]
+_MENTION_NEAR_COLLISIONS = [
+    *_FORM_D_NEAR_COLLISIONS,
+    ("Aurora Flight Sciences Corp", "AURORA FLIGHT SYSTEMS CORP"),
+    ("Mesa Labs Inc", "MESA AIR INC"),
+]
+
+# Same firm written differently: legal suffix, punctuation, word order.
+_TRUE_MATCHES = [
+    ("Acme Widgets Inc.", "ACME WIDGETS INCORPORATED"),
+    ("Physical Optics Corporation", "PHYSICAL OPTICS CORP"),
+    ("Luna Innovations Incorporated", "LUNA INNOVATIONS INC"),
+    ("A.B.C. Labs, Inc.", "ABC LABS INC"),
+    ("Acme-Tech Solutions, L.L.C.", "ACME TECH SOLUTIONS LLC"),
+    ("Widgets Acme LLC", "ACME WIDGETS LLC"),
+    ("Qualcomm Incorporated", "QUALCOMM INC/DE"),
+    ("Luna Innovations Inc", "LUNA INNOVATIONS INC /VA/"),
+    ("The Boeing Company", "BOEING CO"),
+]
+
+
+def _companies_client(*entity_names: str) -> AsyncMock:
+    client = AsyncMock()
+    client.search_companies = AsyncMock(
+        return_value=[
+            {"cik": f"{index:05d}", "entity_name": name, "ticker": None}
+            for index, name in enumerate(entity_names, start=1)
+        ]
+    )
+    return client
+
+
+def _form_d_client(entity_name: str) -> AsyncMock:
+    client = AsyncMock()
+    client.search_form_d_filings = AsyncMock(
+        return_value=[{"cik": "55555", "entity_name": entity_name, "file_date": "2023-09-15"}]
+    )
+    return client
+
+
+def _ownership_mention(filer_name: str) -> dict:
+    # SC 13D classifies from its form type, so no document fetch is needed.
+    return {
+        "filer_cik": "99999",
+        "filer_name": filer_name,
+        "form_type": "SC 13D",
+        "file_date": "2024-06-15",
+        "accession_number": "0001-24-500",
+        "file_description": "",
+    }
+
+
+class TestResolveCIKSubsetCollisions:
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(("query", "entity"), _SUBSET_COLLISIONS + _CIK_NEAR_COLLISIONS)
+    async def test_different_company_does_not_resolve(self, query, entity):
+        assert await _resolve_cik(_companies_client(entity), query) is None
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(("query", "entity"), _TRUE_MATCHES)
+    async def test_same_company_still_resolves(self, query, entity):
+        result = await _resolve_cik(_companies_client(entity), query)
+        assert result is not None
+        assert result["entity_name"] == entity
+
+    @pytest.mark.asyncio
+    async def test_prefers_full_name_over_subset_name(self):
+        client = _companies_client("3D SYSTEMS CORP", "3D CONTROL SYSTEMS INC")
+        result = await _resolve_cik(client, "3D Control Systems, Inc.")
+        assert result is not None
+        assert result["entity_name"] == "3D CONTROL SYSTEMS INC"
+
+
+class TestSearchFormDSubsetCollisions:
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(("query", "entity"), _RAW_SUBSET_COLLISIONS + _FORM_D_NEAR_COLLISIONS)
+    async def test_different_company_is_not_a_form_d_match(self, query, entity):
+        assert await _search_form_d_filings(_form_d_client(entity), query) == []
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(("query", "entity"), _TRUE_MATCHES)
+    async def test_same_company_is_a_form_d_match(self, query, entity):
+        filings = await _search_form_d_filings(_form_d_client(entity), query)
+        assert len(filings) == 1
+        assert filings[0].match_confidence >= 0.9
+
+
+class TestEdgarSlashTags:
+    """EDGAR filer tags such as "/DE/" and "/NEW/" do not identify a company."""
+
+    @pytest.mark.asyncio
+    async def test_stacked_tags_still_match_in_form_d(self):
+        filings = await _search_form_d_filings(_form_d_client("ACME CORP /DE/ /NEW/"), "Acme Corp")
+        assert len(filings) == 1
+
+    @pytest.mark.asyncio
+    async def test_stacked_tags_still_resolve_cik(self):
+        result = await _resolve_cik(_companies_client("ACME CORP /DE/ /NEW/"), "Acme Corp")
+        assert result is not None
+
+    @pytest.mark.asyncio
+    async def test_tag_does_not_hide_a_different_name_in_form_d(self):
+        client = _form_d_client("ACME BIOTECH CORP")
+        assert await _search_form_d_filings(client, "ACME CORP /NEW/") == []
+
+    @pytest.mark.asyncio
+    async def test_tag_does_not_hide_a_different_name_in_cik(self):
+        assert await _resolve_cik(_companies_client("ACME BIOTECH CORP"), "ACME CORP /NEW/") is None
+
+
+class TestMentionSelfFilingFilter:
+    """A self-filing is dropped; a different filer with a subset name is not."""
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(("target", "filer"), _RAW_SUBSET_COLLISIONS + _MENTION_NEAR_COLLISIONS)
+    async def test_unrelated_filer_is_kept_as_mention(self, target, filer):
+        events = await _search_filing_mentions_filtered(
+            AsyncMock(), target, "SC 13D", mentions=[_ownership_mention(filer)]
+        )
+        assert [event.filer_name for event in events] == [filer]
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        ("target", "filer"),
+        [
+            ("Luna Innovations Incorporated", "LUNA INNOVATIONS INC"),
+            ("Physical Optics Corporation", "PHYSICAL OPTICS CORP"),
+            ("A.B.C. Labs, Inc.", "ABC LABS INC"),
+            ("Widgets Acme LLC", "ACME WIDGETS LLC"),
+        ],
+    )
+    async def test_self_filing_is_dropped(self, target, filer):
+        events = await _search_filing_mentions_filtered(
+            AsyncMock(), target, "SC 13D", mentions=[_ownership_mention(filer)]
+        )
+        assert events == []

@@ -46,7 +46,12 @@
     "only_punctuation": "&.,",
     "inner_period_abbrev": "J.P. Morgan Chase & Co.",
     "empty": "",
-    "whitespace_only": "   "
+    "whitespace_only": "   ",
+    "sec_tag_stacked": "ACME CORP /DE/ /NEW/",
+    "sec_tag_new": "ACME CORP /NEW/",
+    "sec_tag_adr": "Acme Holdings Ltd /ADR/",
+    "sec_tag_attached": "ACME INC/FI",
+    "slash_word_kept": "ACME/TECH"
   },
   "expected": {
     "organization-key-v1": {
@@ -96,7 +101,12 @@
       "only_punctuation": "",
       "inner_period_abbrev": "J P MORGAN CHASE",
       "empty": "",
-      "whitespace_only": ""
+      "whitespace_only": "",
+      "sec_tag_stacked": "ACME CORP DE NEW",
+      "sec_tag_new": "ACME CORP NEW",
+      "sec_tag_adr": "ACME HOLDINGS LTD ADR",
+      "sec_tag_attached": "ACME INC FI",
+      "slash_word_kept": "ACME TECH"
     },
     "matching-v1": {
       "inc_period": "acme robotics inc",
@@ -145,7 +155,12 @@
       "only_punctuation": "",
       "inner_period_abbrev": "j p morgan chase company",
       "empty": "",
-      "whitespace_only": ""
+      "whitespace_only": "",
+      "sec_tag_stacked": "acme corp de new",
+      "sec_tag_new": "acme corp new",
+      "sec_tag_adr": "acme holdings ltd adr",
+      "sec_tag_attached": "acme inc fi",
+      "slash_word_kept": "acme tech"
     },
     "press-wire-watchlist-v1": {
       "inc_period": "acme robotics",
@@ -194,7 +209,12 @@
       "only_punctuation": "&.",
       "inner_period_abbrev": "j.p. morgan chase &",
       "empty": "",
-      "whitespace_only": ""
+      "whitespace_only": "",
+      "sec_tag_stacked": "acme corp /de/ /new/",
+      "sec_tag_new": "acme corp /new/",
+      "sec_tag_adr": "acme holdings ltd /adr/",
+      "sec_tag_attached": "acme inc/fi",
+      "slash_word_kept": "acme/tech"
     },
     "recipient-v1": {
       "inc_period": "acme robotics",
@@ -243,7 +263,12 @@
       "only_punctuation": "",
       "inner_period_abbrev": "j p morgan chase",
       "empty": "",
-      "whitespace_only": ""
+      "whitespace_only": "",
+      "sec_tag_stacked": "acme de new",
+      "sec_tag_new": "acme new",
+      "sec_tag_adr": "acme holdings adr",
+      "sec_tag_attached": "acme fi",
+      "slash_word_kept": "acme tech"
     },
     "entity-resolution-v1": {
       "inc_period": "ACME ROBOTICS INC",
@@ -292,7 +317,12 @@
       "only_punctuation": "",
       "inner_period_abbrev": "JP MORGAN CHASE CO",
       "empty": "",
-      "whitespace_only": ""
+      "whitespace_only": "",
+      "sec_tag_stacked": "ACME CORP DE NEW",
+      "sec_tag_new": "ACME CORP NEW",
+      "sec_tag_adr": "ACME HOLDINGS LTD ADR",
+      "sec_tag_attached": "ACME INCFI",
+      "slash_word_kept": "ACMETECH"
     },
     "groundtruth-v1": {
       "inc_period": "ACME ROBOTICS",
@@ -341,7 +371,12 @@
       "only_punctuation": "",
       "inner_period_abbrev": "J P MORGAN CHASE",
       "empty": "",
-      "whitespace_only": ""
+      "whitespace_only": "",
+      "sec_tag_stacked": "ACME DE NEW",
+      "sec_tag_new": "ACME NEW",
+      "sec_tag_adr": "ACME HOLDINGS ADR",
+      "sec_tag_attached": "ACME FI",
+      "slash_word_kept": "ACME TECH"
     },
     "vendor-crosswalk-v1": {
       "inc_period": "Acme Robotics  Inc",
@@ -390,7 +425,12 @@
       "only_punctuation": "AND",
       "inner_period_abbrev": "J P  Morgan Chase  AND  Co",
       "empty": "",
-      "whitespace_only": ""
+      "whitespace_only": "",
+      "sec_tag_stacked": "ACME CORP  DE   NEW",
+      "sec_tag_new": "ACME CORP  NEW",
+      "sec_tag_adr": "Acme Holdings Ltd  ADR",
+      "sec_tag_attached": "ACME INC FI",
+      "slash_word_kept": "ACME TECH"
     },
     "vendor-key-v1": {
       "inc_period": "acme robotics inc",
@@ -439,7 +479,12 @@
       "only_punctuation": "and",
       "inner_period_abbrev": "j p morgan chase and co",
       "empty": "",
-      "whitespace_only": ""
+      "whitespace_only": "",
+      "sec_tag_stacked": "acme corp de new",
+      "sec_tag_new": "acme corp new",
+      "sec_tag_adr": "acme holdings ltd adr",
+      "sec_tag_attached": "acme inc fi",
+      "slash_word_kept": "acme tech"
     },
     "vendor-resolver-v1": {
       "inc_period": "acme robotics inc",
@@ -488,7 +533,12 @@
       "only_punctuation": "and",
       "inner_period_abbrev": "j p morgan chase and co",
       "empty": "",
-      "whitespace_only": ""
+      "whitespace_only": "",
+      "sec_tag_stacked": "acme corp de new",
+      "sec_tag_new": "acme corp new",
+      "sec_tag_adr": "acme holdings ltd adr",
+      "sec_tag_attached": "acme inc fi",
+      "slash_word_kept": "acme tech"
     },
     "form-d-join-v1": {
       "inc_period": "ACME ROBOTICS, INC.",
@@ -537,7 +587,12 @@
       "only_punctuation": "&.,",
       "inner_period_abbrev": "J.P. MORGAN CHASE & CO.",
       "empty": "",
-      "whitespace_only": ""
+      "whitespace_only": "",
+      "sec_tag_stacked": "ACME CORP /DE/ /NEW/",
+      "sec_tag_new": "ACME CORP /NEW/",
+      "sec_tag_adr": "ACME HOLDINGS LTD /ADR/",
+      "sec_tag_attached": "ACME INC/FI",
+      "slash_word_kept": "ACME/TECH"
     },
     "ucc-v1": {
       "inc_period": "acme robotics",
@@ -586,7 +641,12 @@
       "only_punctuation": "",
       "inner_period_abbrev": "j p morgan chase",
       "empty": "",
-      "whitespace_only": ""
+      "whitespace_only": "",
+      "sec_tag_stacked": "acme de new",
+      "sec_tag_new": "acme new",
+      "sec_tag_adr": "acme holdings adr",
+      "sec_tag_attached": "acme fi",
+      "slash_word_kept": "acme tech"
     },
     "sec-edgar-v1": {
       "inc_period": "ACME ROBOTICS",
@@ -635,7 +695,12 @@
       "only_punctuation": "&.,",
       "inner_period_abbrev": "J.P. MORGAN CHASE &",
       "empty": "",
-      "whitespace_only": ""
+      "whitespace_only": "",
+      "sec_tag_stacked": "ACME CORP /DE/ /NEW/",
+      "sec_tag_new": "ACME CORP /NEW/",
+      "sec_tag_adr": "ACME HOLDINGS LTD /ADR/",
+      "sec_tag_attached": "ACME INC/FI",
+      "slash_word_kept": "ACME/TECH"
     },
     "sec-edgar-trailing-v1": {
       "inc_period": "ACME ROBOTICS",
@@ -684,7 +749,12 @@
       "only_punctuation": "&.,",
       "inner_period_abbrev": "J.P. MORGAN CHASE &",
       "empty": "",
-      "whitespace_only": ""
+      "whitespace_only": "",
+      "sec_tag_stacked": "ACME CORP /DE/ /NEW/",
+      "sec_tag_new": "ACME CORP /NEW/",
+      "sec_tag_adr": "ACME HOLDINGS LTD /ADR/",
+      "sec_tag_attached": "ACME INC/FI",
+      "slash_word_kept": "ACME/TECH"
     },
     "notice-key-v1": {
       "inc_period": "ACMEROBOTICS",
@@ -733,7 +803,12 @@
       "only_punctuation": "",
       "inner_period_abbrev": "JPMORGANCHASE",
       "empty": "",
-      "whitespace_only": ""
+      "whitespace_only": "",
+      "sec_tag_stacked": "ACMEDENEW",
+      "sec_tag_new": "ACMENEW",
+      "sec_tag_adr": "ACMEHOLDINGSADR",
+      "sec_tag_attached": "ACMEFI",
+      "slash_word_kept": "ACMETECH"
     },
     "phase3-ranking-v1": {
       "inc_period": "ACME ROBOTICS",
@@ -782,7 +857,12 @@
       "only_punctuation": "",
       "inner_period_abbrev": "J P MORGAN CHASE",
       "empty": "",
-      "whitespace_only": ""
+      "whitespace_only": "",
+      "sec_tag_stacked": "ACME DE NEW",
+      "sec_tag_new": "ACME NEW",
+      "sec_tag_adr": "ACME HOLDINGS ADR",
+      "sec_tag_attached": "ACME FI",
+      "slash_word_kept": "ACME TECH"
     },
     "cmf-v1": {
       "inc_period": "acme robotics",
@@ -831,7 +911,12 @@
       "only_punctuation": "",
       "inner_period_abbrev": "j p morgan chase",
       "empty": "",
-      "whitespace_only": ""
+      "whitespace_only": "",
+      "sec_tag_stacked": "acme de new",
+      "sec_tag_new": "acme new",
+      "sec_tag_adr": "acme holdings adr",
+      "sec_tag_attached": "acme fi",
+      "slash_word_kept": "acme tech"
     },
     "uspto-assignee-v1": {
       "inc_period": "Acme Robotics  Inc",
@@ -880,7 +965,12 @@
       "only_punctuation": "",
       "inner_period_abbrev": "J P  Morgan Chase   Co",
       "empty": "",
-      "whitespace_only": ""
+      "whitespace_only": "",
+      "sec_tag_stacked": "ACME CORP  DE   NEW",
+      "sec_tag_new": "ACME CORP  NEW",
+      "sec_tag_adr": "Acme Holdings Ltd  ADR",
+      "sec_tag_attached": "ACME INC FI",
+      "slash_word_kept": "ACME TECH"
     },
     "benchmark-firm-key-v1": {
       "inc_period": "ACME ROBOTICS",
@@ -929,7 +1019,12 @@
       "only_punctuation": "",
       "inner_period_abbrev": "J P MORGAN CHASE",
       "empty": "",
-      "whitespace_only": ""
+      "whitespace_only": "",
+      "sec_tag_stacked": "ACME DE NEW",
+      "sec_tag_new": "ACME NEW",
+      "sec_tag_adr": "ACME HOLDINGS ADR",
+      "sec_tag_attached": "ACME FI",
+      "slash_word_kept": "ACME"
     },
     "lower-join-v1": {
       "inc_period": "acme robotics, inc.",
@@ -978,7 +1073,12 @@
       "only_punctuation": "&.,",
       "inner_period_abbrev": "j.p. morgan chase & co.",
       "empty": "",
-      "whitespace_only": ""
+      "whitespace_only": "",
+      "sec_tag_stacked": "acme corp /de/ /new/",
+      "sec_tag_new": "acme corp /new/",
+      "sec_tag_adr": "acme holdings ltd /adr/",
+      "sec_tag_attached": "acme inc/fi",
+      "slash_word_kept": "acme/tech"
     },
     "patent-assignee-v1": {
       "inc_period": "Acme Robotics Inc",
@@ -1027,7 +1127,12 @@
       "only_punctuation": "AND",
       "inner_period_abbrev": "J P Morgan Chase AND Co",
       "empty": "",
-      "whitespace_only": ""
+      "whitespace_only": "",
+      "sec_tag_stacked": "ACME CORP DE NEW",
+      "sec_tag_new": "ACME CORP NEW",
+      "sec_tag_adr": "Acme Holdings Ltd ADR",
+      "sec_tag_attached": "ACME INC FI",
+      "slash_word_kept": "ACME TECH"
     },
     "transition-signal-key-v1": {
       "inc_period": "ACME ROBOTICS, INC.",
@@ -1076,7 +1181,66 @@
       "only_punctuation": "&.,",
       "inner_period_abbrev": "J.P. MORGAN CHASE & CO.",
       "empty": "",
-      "whitespace_only": ""
+      "whitespace_only": "",
+      "sec_tag_stacked": "ACME CORP /DE/ /NEW/",
+      "sec_tag_new": "ACME CORP /NEW/",
+      "sec_tag_adr": "ACME HOLDINGS LTD /ADR/",
+      "sec_tag_attached": "ACME INC/FI",
+      "slash_word_kept": "ACME/TECH"
+    },
+    "sec-edgar-match-v1": {
+      "inc_period": "ACME ROBOTICS",
+      "llc_plain": "ACME ROBOTICS",
+      "llc_dotted": "ACME ROBOTICS",
+      "corp_period": "ACME ROBOTICS",
+      "corporation_word": "ACME ROBOTICS",
+      "incorporated_word": "ACME ROBOTICS",
+      "ltd_limited": "ACME ROBOTICS",
+      "lp_dotted": "ACME PARTNERS",
+      "llp": "SMITH JONES",
+      "pllc_dotted": "SMITH JONES",
+      "pc": "SMITH JONES",
+      "plc": "ACME HOLDINGS",
+      "co_company": "BUSEK",
+      "company_word": "ACME",
+      "llc_phrase": "ACME ROBOTICS",
+      "stacked_suffixes": "ACME HOLDINGS",
+      "suffix_mid_name": "INC RESEARCH CORP OF AMERICA",
+      "co_prefix_token": "CO DESIGN LABS",
+      "the_prefix": "BOEING",
+      "ampersand": "JOHNSON AND JOHNSON",
+      "ampersand_tight": "AT AND T",
+      "apostrophe": "OBRIEN AND ASSOCIATES",
+      "punctuation_mix": "ACME TECH SOLUTIONS",
+      "plus_sign": "SKY TECHNOLOGIES",
+      "parentheses": "ACME ROBOTICS USA",
+      "dba": "ACME LLC D B A ACME ROBOTICS",
+      "accent": "CAFÉ ÉNERGIE SARL",
+      "non_latin": "ÅNGSTRÖM LABORATORIES GMBH",
+      "cjk": "東京エレクトロン株式会社",
+      "sharp_s": "STRASSE GMBH",
+      "digits": "3M",
+      "digits_ordinal": "21ST CENTURY SYSTEMS",
+      "extra_whitespace": "ACME ROBOTICS",
+      "all_caps": "ACME ROBOTICS",
+      "lower_case": "ACME ROBOTICS",
+      "abbrev_words": "ADVANCED TECHNOLOGY SYSTEMS INTERNATIONAL",
+      "tech_words": "TOYON TECHNOLOGIES SYSTEMS",
+      "corptech_prefix": "ACME CORPTECH",
+      "sec_state_de": "QUALCOMM",
+      "sec_state_nv": "ACME",
+      "sec_stacked": "ACME HOLDINGS",
+      "trailing_comma": "ACME ROBOTICS",
+      "single_suffix_only": "",
+      "only_punctuation": "",
+      "inner_period_abbrev": "JP MORGAN CHASE",
+      "empty": "",
+      "whitespace_only": "",
+      "sec_tag_stacked": "ACME",
+      "sec_tag_new": "ACME",
+      "sec_tag_adr": "ACME HOLDINGS",
+      "sec_tag_attached": "ACME",
+      "slash_word_kept": "ACME TECH"
     }
   }
 }

@@ -31,6 +31,30 @@ from ...models.sec_edgar import (
 from .client import EdgarAPIClient
 
 
+# Company-name scoring for every SEC name comparison in this module (issue #713).
+# Token-sort does not reward a subset: "3D CONTROL SYSTEMS" against "3D SYSTEMS"
+# scores 71, not 100 as with token-set. The profile removes punctuation and
+# trailing legal-form words first, so "Inc." against "Incorporated" and word
+# order do not lower the score. No call site needs a deliberate subset match.
+_SEC_MATCH_PROFILE = CompanyNameProfile.SEC_EDGAR_MATCH_V1
+# 90 rejects one-word near collisions such as "ADELPHI TECHNOLOGY" against
+# "ADEPT TECHNOLOGY" (88) and accepts one-character spelling variants.
+_NAME_MATCH_THRESHOLD = 90
+
+
+def _sec_name_score(left: str, right: str) -> float:
+    """Return the 0..100 token-sort score of two names under ``_SEC_MATCH_PROFILE``."""
+    return (
+        company_name_similarity(
+            left,
+            right,
+            metric=CompanyNameMetric.TOKEN_SORT,
+            profile=_SEC_MATCH_PROFILE,
+        )
+        * 100.0
+    )
+
+
 # XBRL concept lists per financial field; first match wins.
 _FINANCIAL_CONCEPTS: dict[str, list[str]] = {
     "revenue": [
@@ -475,7 +499,7 @@ async def _search_filing_mentions_filtered(
     company_name: str,
     forms: str,
     *,
-    name_match_threshold: int = 80,
+    name_match_threshold: int = _NAME_MATCH_THRESHOLD,
     limit: int = 20,
     mentions: list[dict] | None = None,
 ) -> list[EdgarMAEvent]:
@@ -483,7 +507,9 @@ async def _search_filing_mentions_filtered(
 
     Filters self-filings (by fuzzy name match), REIT/mortgage filers (by SIC),
     and name-collision filers (target name is a substring of a different,
-    longer filer name).
+    longer filer name). The self-filing test uses ``_sec_name_score``, so a
+    different filer that shares only some of the target's words (for example
+    "COMPASS SYSTEMS" for target "Compass, Inc.") is kept as a mention.
     """
     if mentions is None:
         mentions = await client.search_filing_mentions(company_name, forms=forms, limit=limit)
@@ -498,15 +524,7 @@ async def _search_filing_mentions_filtered(
         filer_name = mention.get("filer_name", "")
         if not filer_name:
             continue
-        if (
-            company_name_similarity(
-                company_name.upper(),
-                filer_name.upper(),
-                metric=CompanyNameMetric.TOKEN_SET,
-            )
-            * 100.0
-            >= name_match_threshold
-        ):
+        if _sec_name_score(company_name, filer_name) >= name_match_threshold:
             continue  # self-filing
         if _is_noise(filer_name, company_name, mention.get("sics", [])):
             continue
@@ -553,7 +571,7 @@ async def _search_inbound_ma_mentions(
     client: EdgarAPIClient,
     company_name: str,
     *,
-    name_match_threshold: int = 80,
+    name_match_threshold: int = _NAME_MATCH_THRESHOLD,
 ) -> list[EdgarMAEvent]:
     """Concurrently search three tiers of filings for inbound M&A signals.
 
@@ -637,7 +655,7 @@ async def _search_form_d_filings(
     client: EdgarAPIClient,
     company_name: str,
     *,
-    match_threshold: int = 85,
+    match_threshold: int = _NAME_MATCH_THRESHOLD,
 ) -> list[EdgarFormDFiling]:
     """Search for Form D (Regulation D) filings by a company.
 
@@ -653,14 +671,7 @@ async def _search_form_d_filings(
         entity_name = result.get("entity_name", "")
         if not entity_name:
             continue
-        score = (
-            company_name_similarity(
-                company_name.upper(),
-                entity_name.upper(),
-                metric=CompanyNameMetric.TOKEN_SET,
-            )
-            * 100.0
-        )
+        score = _sec_name_score(company_name, entity_name)
         if score < match_threshold:
             continue
         filing_date_str = result.get("file_date")
@@ -736,11 +747,11 @@ async def _resolve_cik(
     client: EdgarAPIClient,
     company_name: str,
     *,
-    threshold: int = 90,
+    threshold: int = _NAME_MATCH_THRESHOLD,
 ) -> dict[str, Any] | None:
     """Resolve a company name to a CIK using three-layer filtering.
 
-    1. Fuzzy score ≥ threshold on suffix-cleaned names
+    1. Token-sort score ≥ threshold on suffix-cleaned names (see ``_sec_name_score``)
     2. Containment filter — reject if query is a substring of a longer entity
     3. Distinctive word overlap — at least one non-generic word in common
        (skipped for single-word names where the whole name IS distinctive)
@@ -751,7 +762,7 @@ async def _resolve_cik(
     if not results:
         return None
 
-    query_clean = normalize_company_name(company_name, profile=CompanyNameProfile.SEC_EDGAR_V1)
+    query_clean = normalize_company_name(company_name, profile=_SEC_MATCH_PROFILE)
     query_distinctive = _distinctive_words(query_clean)
     query_is_multiword = len(query_clean.split()) > 1
 
@@ -762,23 +773,9 @@ async def _resolve_cik(
         entity_name = result.get("entity_name", "")
         if not entity_name:
             continue
-        entity_clean = normalize_company_name(entity_name, profile=CompanyNameProfile.SEC_EDGAR_V1)
+        entity_clean = normalize_company_name(entity_name, profile=_SEC_MATCH_PROFILE)
 
-        score = (
-            max(
-                company_name_similarity(
-                    query_clean,
-                    entity_clean,
-                    metric=CompanyNameMetric.TOKEN_SET,
-                ),
-                company_name_similarity(
-                    query_clean,
-                    entity_clean,
-                    metric=CompanyNameMetric.RATIO,
-                ),
-            )
-            * 100.0
-        )
+        score = _sec_name_score(query_clean, entity_clean)
         if score < threshold:
             continue
 

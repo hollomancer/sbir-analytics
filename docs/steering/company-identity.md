@@ -50,8 +50,9 @@ migration cannot silently change research outputs:
 | `vendor-resolver-v1` | legacy transition resolver key; equivalent to `vendor-key-v1` |
 | `form-d-join-v1` | agency/private-capital join keys |
 | `ucc-v1` | UCC debtor matching |
-| `sec-edgar-v1` | SEC company lookup and mention filtering |
+| `sec-edgar-v1` | none; SEC CIK lookup used it until `sec-edgar-match-v1` replaced it (issue #713) |
 | `sec-edgar-trailing-v1` | single-suffix SEC mention/noise filtering |
+| `sec-edgar-match-v1` | SEC name scoring with token-sort (CIK, Form D, self-filing); not a join key |
 | `notice-key-v1` | Phase III notice attribution |
 | `phase3-ranking-v1` | legacy Phase III firm-ranking normalization |
 
