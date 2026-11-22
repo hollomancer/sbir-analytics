@@ -555,3 +555,67 @@ def test_write_local_sidecar_records_repaired_records(tmp_path) -> None:
     meta = json.loads((tmp_path / META_NAME).read_text())
     assert meta["repaired_unescaped_delimiter_records"] == 2
     assert meta["repaired_unescaped_delimiter_ueis"] == ["A", "B"]
+
+
+@pytest.mark.parametrize("status", ["A~E", "E~A"])
+def test_public_v2_multi_value_registration_status_is_kept_and_counted(tmp_path, status) -> None:
+    # SAM.gov separates values in a multi-value field with "~" (Nov. 2026: one
+    # record with "A~E"). The record is kept with its raw status, not rewritten.
+    records = [
+        _public_v2_record(uei="GOODUEI00001"),
+        _public_v2_record(uei="MULTIUEI0001", status=status),
+        _public_v2_record(uei="GOODUEI00002", status="E"),
+    ]
+    archive = io.BytesIO(_zip_bytes("SAM.dat", _public_v2_file(*records)))
+
+    result = download_module._parse_zip(archive)
+
+    assert result is not None
+    assert list(result["registration_status"]) == ["A", status, "E"]
+    assert result.attrs["sam_multi_value_registration_status_records"] == 1
+    assert result.attrs["sam_multi_value_registration_status_ueis"] == ["MULTIUEI0001"]
+
+    path = _write_local(result, tmp_path)
+
+    assert list(pd.read_parquet(path)["registration_status"]) == ["A", status, "E"]
+    meta = json.loads((tmp_path / META_NAME).read_text())
+    assert meta["multi_value_registration_status_records"] == 1
+    assert meta["multi_value_registration_status_ueis"] == ["MULTIUEI0001"]
+
+
+def test_public_v2_single_value_statuses_record_zero_multi_value_records() -> None:
+    archive = io.BytesIO(_zip_bytes("SAM.dat", _public_v2_file(_public_v2_record())))
+
+    result = download_module._parse_zip(archive)
+
+    assert result is not None
+    assert result.attrs["sam_multi_value_registration_status_records"] == 0
+    assert result.attrs["sam_multi_value_registration_status_ueis"] == []
+
+
+@pytest.mark.parametrize("status", ["A~X", "X", "", "~", "A~~E", "A~E~Z", "A~", "~A", "A~A"])
+def test_public_v2_unexpected_registration_status_still_fails_closed(status) -> None:
+    records = [_public_v2_record(), _public_v2_record(uei="BADUEI000001", status=status)]
+    archive = io.BytesIO(_zip_bytes("SAM.dat", _public_v2_file(*records)))
+
+    with pytest.raises(ValueError, match="invalid registration status"):
+        download_module._parse_zip(archive)
+
+
+def test_public_v2_multi_value_status_at_cap_is_kept() -> None:
+    records = [_public_v2_record(uei=f"MULTIUEI{i:04d}", status="A~E") for i in range(100)]
+    archive = io.BytesIO(_zip_bytes("SAM.dat", _public_v2_file(*records)))
+
+    result = download_module._parse_zip(archive)
+
+    assert result is not None
+    assert result.attrs["sam_multi_value_registration_status_records"] == 100
+
+
+def test_public_v2_multi_value_status_cap_fails_closed() -> None:
+    # The cap is the larger of 100 records or 1 in 10,000; this file has 101.
+    records = [_public_v2_record(uei=f"MULTIUEI{i:04d}", status="A~E") for i in range(101)]
+    archive = io.BytesIO(_zip_bytes("SAM.dat", _public_v2_file(*records)))
+
+    with pytest.raises(ValueError, match="too many records with a multi-value registration"):
+        download_module._parse_zip(archive)
