@@ -227,14 +227,14 @@ class TestZippedDumpImport:
 
     @patch("subprocess.run")
     @patch("sbir_etl.extractors.usaspending.duckdb.connect")
-    def test_import_zipped_dump_postgres_scanner_success(
-        self, mock_connect, mock_subprocess, tmp_path
-    ):
-        """Test zipped dump import with postgres_scanner."""
+    def test_import_zipped_dump_without_toc_raises(self, mock_connect, mock_subprocess, tmp_path):
+        """A ZIP with COPY files but no readable toc.dat no longer uses the first file."""
+        from sbir_etl.exceptions import ExtractionError
+
         zip_file = tmp_path / "usaspending.zip"
         zip_file.touch()
 
-        # Mock successful unzip listing with .dat.gz files
+        # Before #798 this listing alone built the view from 5881.dat.gz.
         mock_subprocess.return_value = Mock(
             returncode=0,
             stdout="  12345  2024-01-01 12:00   5881.dat.gz\n  67890  2024-01-01 12:00   5882.dat.gz\n",
@@ -244,17 +244,15 @@ class TestZippedDumpImport:
         from tests.mocks import DuckDBMocks
 
         mock_conn = DuckDBMocks.connection()
-        mock_conn.execute = Mock(return_value=Mock(fetchone=Mock(return_value=(1000,))))
         mock_connect.return_value = mock_conn
 
         extractor = DuckDBUSAspendingExtractor()
         extractor.connection = mock_conn
 
-        result = extractor._import_zipped_dump(zip_file, "test_table")
+        with pytest.raises(ExtractionError, match="table of contents"):
+            extractor._import_zipped_dump(zip_file, "test_table")
 
-        assert result is True
-        # Should have executed CREATE VIEW
-        assert any(
+        assert not any(
             "CREATE OR REPLACE VIEW" in str(call) for call in mock_conn.execute.call_args_list
         )
 
@@ -486,6 +484,54 @@ class TestModuleFunctions:
 
         assert result == mock_extractor
         mock_extractor_class.assert_called_once()
+
+    @staticmethod
+    def _config(configured_dump):
+        config = Mock()
+        config.duckdb.database_path = ":memory:"
+        config.extraction.usaspending = {"table_name": "usaspending_awards"}
+        config.paths.resolve_path.return_value = configured_dump
+        return config
+
+    @patch("sbir_etl.extractors.usaspending.DuckDBUSAspendingExtractor")
+    def test_configured_dump_import_error_propagates(self, mock_extractor_class, tmp_path):
+        """An import error on the configured path is no longer logged at DEBUG and dropped."""
+        from sbir_etl.exceptions import ExtractionError
+
+        configured_dump = tmp_path / "configured.zip"
+        configured_dump.touch()
+        mock_extractor_class.return_value.import_postgres_dump.side_effect = ExtractionError(
+            "TOC does not list recipient_lookup"
+        )
+
+        with pytest.raises(ExtractionError, match="TOC does not list recipient_lookup"):
+            extract_usaspending_from_config(data_dir=tmp_path, config=self._config(configured_dump))
+
+    @patch("sbir_etl.extractors.usaspending.DuckDBUSAspendingExtractor")
+    def test_import_returning_false_raises(self, mock_extractor_class, tmp_path):
+        """A False import result is no longer ignored."""
+        from sbir_etl.exceptions import ExtractionError
+
+        (tmp_path / "dump.zip").touch()
+        mock_extractor_class.return_value.import_postgres_dump.return_value = False
+
+        with pytest.raises(ExtractionError, match="import from .*dump.zip failed"):
+            extract_usaspending_from_config(
+                data_dir=tmp_path,
+                dump_filename="dump.zip",
+                config=self._config(tmp_path / "missing.zip"),
+            )
+
+    @patch("sbir_etl.extractors.usaspending.DuckDBUSAspendingExtractor")
+    def test_unavailable_configured_path_imports_nothing(self, mock_extractor_class, tmp_path):
+        """Only the configured-path lookup is optional."""
+        config = self._config(None)
+        config.paths.resolve_path.side_effect = ValueError("Unknown path key")
+
+        result = extract_usaspending_from_config(data_dir=tmp_path, config=config)
+
+        assert result is mock_extractor_class.return_value
+        mock_extractor_class.return_value.import_postgres_dump.assert_not_called()
 
 
 # ==================== Edge Cases ====================

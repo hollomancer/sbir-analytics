@@ -1,13 +1,14 @@
 """USAspending ZIP dump import against a real DuckDB database.
 
-These tests build a small pg_dump-style ZIP (``<oid>.dat.gz`` COPY files), run it
-through ``import_postgres_dump`` the way the assets do, and check which DuckDB
-object the callers end up querying.
+These tests build a small pg_dump directory-format ZIP (``toc.dat`` plus
+``<oid>.dat.gz`` COPY files), run it through ``import_postgres_dump`` the way
+the assets do, and check which DuckDB object the callers end up querying.
 """
 
 from __future__ import annotations
 
 import gzip
+import shutil
 import zipfile
 from pathlib import Path
 from types import SimpleNamespace
@@ -20,6 +21,7 @@ from dagster import build_asset_context
 from loguru import logger
 
 from sbir_etl.exceptions import ExtractionError
+from sbir_etl.extractors import contract_extractor
 from sbir_etl.extractors.usaspending import RECIPIENT_LOOKUP_COLUMNS, DuckDBUSAspendingExtractor
 
 
@@ -50,11 +52,54 @@ RECIPIENT_COPY_DATA = (
 )
 
 
-def _write_dump(path: Path, files: dict[int, str]) -> Path:
+def _toc_listing(toc: dict[int, str]) -> str:
+    """Render ``pg_restore --list`` TABLE DATA lines for ``{dump_id: "schema.table"}``."""
+    lines = []
+    for dump_id, relation in toc.items():
+        schema, table = relation.split(".")
+        lines.append(f"{dump_id}; 0 16385 TABLE DATA {schema} {table} postgres")
+    return "\n".join(lines) + "\n"
+
+
+def _write_dump(path: Path, files: dict[int, str], toc: dict[int, str] | None = None) -> Path:
+    """Write a directory-format dump ZIP: ``toc.dat`` plus ``<id>.dat.gz`` members.
+
+    ``toc`` maps dump IDs to ``schema.table``. By default ``RECIPIENT_OID`` is
+    ``rpt.recipient_lookup`` and every other ID is an unrelated table. The
+    ``toc.dat`` here holds the ``pg_restore --list`` text that the
+    ``fake_pg_restore`` fixture returns for it.
+    """
+    if toc is None:
+        toc = {
+            oid: "rpt.recipient_lookup" if oid == RECIPIENT_OID else f"public.unrelated_{oid}"
+            for oid in files
+        }
     with zipfile.ZipFile(path, "w") as zf:
+        zf.writestr("toc.dat", _toc_listing(toc))
         for oid, data in files.items():
             zf.writestr(f"{oid}.dat.gz", gzip.compress(data.encode()))
     return path
+
+
+_REAL_RUN_PG_RESTORE = contract_extractor.run_pg_restore
+
+
+@pytest.fixture(autouse=True)
+def fake_pg_restore(monkeypatch):
+    """Stand in for ``pg_restore --list``, as the contract extractor tests do.
+
+    A fixture ``toc.dat`` holds its own listing text, so the fake echoes it.
+    A real pg_dump ``toc.dat`` (starts with ``PGDMP``) goes to the real binary.
+    """
+
+    def run(dump_dir: Path, *arguments: str) -> str:
+        toc_bytes = (dump_dir / "toc.dat").read_bytes()
+        if toc_bytes.startswith(b"PGDMP"):
+            return _REAL_RUN_PG_RESTORE(dump_dir, *arguments)
+        assert arguments == ("--list",)
+        return toc_bytes.decode()
+
+    monkeypatch.setattr(contract_extractor, "run_pg_restore", run)
 
 
 @pytest.fixture
@@ -275,3 +320,162 @@ def test_non_zip_dump_raises_and_creates_no_table(tmp_path, filename, content) -
     assert exc_info.value.details["supported_formats"] == [".zip"]
     with duckdb.connect(str(db_path)) as conn:
         assert conn.execute("SELECT count(*) FROM duckdb_tables()").fetchone() == (0,)
+
+
+# --- table selection from the archive table of contents (#798) ---------------
+
+TRANSACTION_COPY_DATA = "100\tTX-A\n101\tTX-B\n"
+UNRELATED_COPY_DATA = "9\tnot-a-recipient\n"
+
+
+def test_renumbered_dump_ids_still_resolve_tables_by_name(tmp_path) -> None:
+    # A later dump renumbers its members. IDs 5419 and 5420 now belong to
+    # unrelated tables; the TOC says where recipient_lookup and
+    # transaction_normalized went.
+    dump = _write_dump(
+        tmp_path / "usaspending-db.zip",
+        {
+            5419: UNRELATED_COPY_DATA,
+            5420: UNRELATED_COPY_DATA,
+            7001: RECIPIENT_COPY_DATA,
+            7002: TRANSACTION_COPY_DATA,
+        },
+        toc={
+            5419: "public.unrelated_a",
+            5420: "public.unrelated_b",
+            7001: "rpt.recipient_lookup",
+            7002: "int.transaction_normalized",
+        },
+    )
+    extractor = DuckDBUSAspendingExtractor(str(tmp_path / "usa.duckdb"))
+
+    assert extractor.import_postgres_dump(dump, "recipient_lookup") is True
+    recipients = extractor.query_awards("recipient_lookup")
+    assert sorted(recipients["legal_business_name"]) == ["Acme", "Beta", "Other"]
+
+    assert extractor.import_postgres_dump(dump, "usaspending_awards") is True
+    transactions = extractor.query_awards("usaspending_awards")
+    assert sorted(transactions["column1"]) == ["TX-A", "TX-B"]
+
+
+def test_must_not_build_view_from_unrelated_table_at_ids_5419_5420(tmp_path) -> None:
+    # The old code took 5419 as recipient_lookup and 5420 as
+    # transaction_normalized without reading the TOC.
+    dump = _write_dump(
+        tmp_path / "usaspending-db.zip",
+        {5419: RECIPIENT_COPY_DATA, 5420: TRANSACTION_COPY_DATA},
+        toc={5419: "public.award_search", 5420: "public.subaward_search"},
+    )
+    db_path = tmp_path / "usa.duckdb"
+    extractor = DuckDBUSAspendingExtractor(str(db_path))
+
+    with pytest.raises(ExtractionError, match="does not list table 'recipient_lookup'") as exc:
+        extractor.import_postgres_dump(dump, "recipient_lookup")
+    assert exc.value.details["toc_tables"] == ["public.award_search", "public.subaward_search"]
+    assert "public.award_search" in str(exc.value)
+
+    with pytest.raises(ExtractionError, match="does not list table 'transaction_normalized'"):
+        extractor.import_postgres_dump(dump, "usaspending_awards")
+    extractor.close()
+
+    with duckdb.connect(str(db_path)) as conn:
+        views = conn.execute("SELECT count(*) FROM duckdb_views() WHERE NOT internal").fetchone()
+        assert views == (0,)
+
+
+def test_must_not_fall_back_to_transaction_table_for_recipient_request(tmp_path) -> None:
+    # The old code fell back to 5420 (or the first COPY file) when a recipient
+    # view could not find 5419.
+    dump = _write_dump(
+        tmp_path / "usaspending-db.zip",
+        {7002: TRANSACTION_COPY_DATA},
+        toc={7002: "int.transaction_normalized"},
+    )
+    extractor = DuckDBUSAspendingExtractor(str(tmp_path / "usa.duckdb"))
+
+    with pytest.raises(ExtractionError, match="does not list table 'recipient_lookup'"):
+        extractor.import_postgres_dump(dump, "raw_usaspending_recipients")
+
+
+def test_table_listed_twice_in_toc_raises(tmp_path) -> None:
+    dump = _write_dump(
+        tmp_path / "usaspending-db.zip",
+        {7001: RECIPIENT_COPY_DATA, 7003: RECIPIENT_COPY_DATA},
+        toc={7001: "rpt.recipient_lookup", 7003: "temp.recipient_lookup"},
+    )
+    extractor = DuckDBUSAspendingExtractor(str(tmp_path / "usa.duckdb"))
+
+    with pytest.raises(ExtractionError, match="lists 2 copies of table 'recipient_lookup'"):
+        extractor.import_postgres_dump(dump, "recipient_lookup")
+
+
+def test_toc_entry_without_zip_member_raises(tmp_path) -> None:
+    dump = _write_dump(
+        tmp_path / "usaspending-db.zip",
+        {5500: UNRELATED_COPY_DATA},
+        toc={5500: "public.other", 7001: "rpt.recipient_lookup"},
+    )
+    extractor = DuckDBUSAspendingExtractor(str(tmp_path / "usa.duckdb"))
+
+    with pytest.raises(ExtractionError, match=r"7001\.dat\.gz, but the ZIP has no such member"):
+        extractor.import_postgres_dump(dump, "recipient_lookup")
+
+
+def test_dump_without_toc_raises(tmp_path) -> None:
+    dump = tmp_path / "usaspending-db.zip"
+    with zipfile.ZipFile(dump, "w") as zf:
+        zf.writestr(f"{RECIPIENT_OID}.dat.gz", gzip.compress(RECIPIENT_COPY_DATA.encode()))
+    extractor = DuckDBUSAspendingExtractor(str(tmp_path / "usa.duckdb"))
+
+    with pytest.raises(ExtractionError, match="exactly one toc.dat; found 0") as exc:
+        extractor.import_postgres_dump(dump, "recipient_lookup")
+    assert exc.value.operation == "read_toc"
+
+
+def test_unreadable_toc_raises_and_does_not_fall_back_to_ids(tmp_path, monkeypatch) -> None:
+    dump = _write_dump(tmp_path / "usaspending-db.zip", {RECIPIENT_OID: RECIPIENT_COPY_DATA})
+    # Use the real reader with no pg_restore on PATH: the TOC cannot be read.
+    monkeypatch.setattr(contract_extractor, "run_pg_restore", _REAL_RUN_PG_RESTORE)
+    monkeypatch.setattr(contract_extractor.shutil, "which", lambda _name: None)
+    extractor = DuckDBUSAspendingExtractor(str(tmp_path / "usa.duckdb"))
+
+    with pytest.raises(ExtractionError, match="pg_restore is required") as exc:
+        extractor.import_postgres_dump(dump, "recipient_lookup")
+    assert isinstance(exc.value.__cause__, contract_extractor.ArchiveSchemaError)
+
+
+def test_recipient_column_mapping_failure_raises(tmp_path) -> None:
+    # Before the fix a column-count mismatch logged a warning and exposed the
+    # raw column00, column01 names under the recipient_lookup view.
+    dump = _write_dump(tmp_path / "usaspending-db.zip", {RECIPIENT_OID: "1\tAcme\n2\tBeta\n"})
+    extractor = DuckDBUSAspendingExtractor(str(tmp_path / "usa.duckdb"))
+
+    with pytest.raises(ExtractionError, match="recipient_lookup column names") as exc:
+        extractor.import_postgres_dump(dump, "recipient_lookup")
+    assert isinstance(exc.value.__cause__, duckdb.Error)
+
+
+REAL_DUMP_DIR = Path(__file__).parents[2] / "fixtures" / "extractors" / "usaspending_pg_dump"
+
+
+@pytest.mark.skipif(shutil.which("pg_restore") is None, reason="pg_restore is not installed")
+def test_real_pg_dump_toc_resolves_renumbered_member(tmp_path) -> None:
+    # The fixture is a real `pg_dump -Fd` archive (PostgreSQL 16) of three small
+    # tables: public.other (3398), rpt.recipient_lookup (3399) and
+    # public.transaction_normalized (3400).
+    dump = tmp_path / "usaspending-db_20990101.zip"
+    with zipfile.ZipFile(dump, "w") as zf:
+        for member in sorted(REAL_DUMP_DIR.iterdir()):
+            zf.write(member, f"usaspending-db/{member.name}")
+    extractor = DuckDBUSAspendingExtractor(str(tmp_path / "usa.duckdb"))
+
+    entries = extractor._read_toc_entries(dump)
+    assert {(e.dump_id, e.schema, e.table) for e in entries} == {
+        ("3398", "public", "other"),
+        ("3399", "rpt", "recipient_lookup"),
+        ("3400", "public", "transaction_normalized"),
+    }
+    assert extractor._view_source_entry("usaspending_awards", entries).dump_id == "3400"
+    assert extractor._view_source_entry("recipient_lookup", entries).dump_id == "3399"
+    # The full import is not run here: real data members end with the COPY
+    # terminator line, which read_csv_auto cannot sniff in a file this small.

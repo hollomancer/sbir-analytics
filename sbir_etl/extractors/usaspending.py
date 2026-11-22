@@ -3,11 +3,17 @@
 This module provides functionality to extract USAspending data from compressed PostgreSQL dumps using DuckDB.
 Supports both direct DuckDB postgres_scanner access and pg_restore streaming for removable media workflows.
 Reads dumps from local disk.
+
+The dump import reads the archive table of contents (``toc.dat``) with
+``pg_restore --list`` to find each table's data member, so ``pg_restore``
+must be installed.
 """
 
+import shutil
 import subprocess
 import tempfile
-from pathlib import Path
+import zipfile
+from pathlib import Path, PurePosixPath
 from typing import Any
 
 import duckdb
@@ -16,6 +22,7 @@ import pandas as pd
 from ..config.loader import get_config
 from ..exceptions import ExtractionError
 from ..utils.logging_config import log_with_context
+from .contract_extractor import ArchiveSchemaError, TocTableEntry, read_toc_table_data
 
 # USAspending recipient_lookup table schema (from Django model)
 # https://github.com/fedspendingtransparency/usaspending-api/blob/master/usaspending_api/recipient/models.py
@@ -42,9 +49,11 @@ RECIPIENT_LOOKUP_COLUMNS = [
     "alternate_names",
 ]
 
-# pg_dump COPY file OIDs of the tables the named import views are built from.
-RECIPIENT_LOOKUP_OID = 5419
-TRANSACTION_NORMALIZED_OID = 5420
+# Dump tables that the named import views are built from. The import finds
+# each table's data member through the archive table of contents (toc.dat),
+# because pg_dump renumbers the members between dumps.
+RECIPIENT_LOOKUP_TABLE = "recipient_lookup"
+TRANSACTION_NORMALIZED_TABLE = "transaction_normalized"
 
 
 class DuckDBUSAspendingExtractor:
@@ -117,9 +126,13 @@ class DuckDBUSAspendingExtractor:
         Raises:
             ExtractionError: If ``dump_file`` is not a ``.zip`` archive. Only
                 the ZIP archive of COPY files is supported.
+            ExtractionError: If the archive has no readable ``toc.dat``, or
+                the table of contents does not list the table that the
+                ``table_name`` view is built from.
             ExtractionError: If the COPY file that the ``table_name`` view is
-                built from fails to load. Other COPY files that fail are listed
-                in ``self.import_failed_tables`` and logged at WARNING.
+                built from fails to load, or its columns cannot be named.
+                Other COPY files that fail are listed in
+                ``self.import_failed_tables`` and logged at WARNING.
         """
         with log_with_context(stage="extract", run_id="usaspending_import") as logger:
             dump_file = Path(dump_file)
@@ -159,13 +172,67 @@ class DuckDBUSAspendingExtractor:
             return self._import_copy_files(dump_file, table_name)
 
     @staticmethod
-    def _view_source_oid(table_name: str, oids: list[int]) -> int:
-        """Return the OID of the COPY file that the ``table_name`` view reads."""
-        if RECIPIENT_LOOKUP_OID in oids and "recipient" in table_name.lower():
-            return RECIPIENT_LOOKUP_OID
-        if TRANSACTION_NORMALIZED_OID in oids:
-            return TRANSACTION_NORMALIZED_OID
-        return oids[0]
+    def _read_toc_entries(dump_file: Path) -> list[TocTableEntry]:
+        """Return the ``TABLE DATA`` entries of the ``toc.dat`` inside ``dump_file``."""
+        try:
+            with zipfile.ZipFile(dump_file) as archive:
+                toc_members = [
+                    name for name in archive.namelist() if PurePosixPath(name).name == "toc.dat"
+                ]
+                if len(toc_members) != 1:
+                    raise ExtractionError(
+                        f"USAspending dump {dump_file} must contain exactly one toc.dat; "
+                        f"found {len(toc_members)}. Tables cannot be identified without it.",
+                        component="extractors.usaspending",
+                        operation="read_toc",
+                        details={"dump_file": str(dump_file), "toc_members": toc_members},
+                    )
+                with tempfile.TemporaryDirectory(prefix="usaspending-toc-") as temp_name:
+                    archive_dir = Path(temp_name)
+                    with (
+                        archive.open(toc_members[0]) as source,
+                        open(archive_dir / "toc.dat", "wb") as target,
+                    ):
+                        shutil.copyfileobj(source, target)
+                    return read_toc_table_data(archive_dir)
+        except (zipfile.BadZipFile, ArchiveSchemaError) as e:
+            raise ExtractionError(
+                f"Could not read the table of contents of USAspending dump {dump_file}: {e}",
+                component="extractors.usaspending",
+                operation="read_toc",
+                details={"dump_file": str(dump_file)},
+                cause=e,
+            ) from e
+
+    @staticmethod
+    def _view_source_entry(table_name: str, entries: list[TocTableEntry]) -> TocTableEntry:
+        """Return the TOC entry of the dump table that the ``table_name`` view reads.
+
+        A ``table_name`` that contains "recipient" reads ``recipient_lookup``;
+        any other name reads ``transaction_normalized``.
+        """
+        wanted = (
+            RECIPIENT_LOOKUP_TABLE
+            if "recipient" in table_name.lower()
+            else TRANSACTION_NORMALIZED_TABLE
+        )
+        matches = [entry for entry in entries if entry.table == wanted]
+        if len(matches) == 1:
+            return matches[0]
+        available = sorted(f"{entry.schema}.{entry.table}" for entry in entries)
+        problem = "does not list" if not matches else f"lists {len(matches)} copies of"
+        raise ExtractionError(
+            f"The dump table of contents {problem} table {wanted!r}, which the "
+            f"{table_name} view reads. Tables in the TOC: {available}",
+            component="extractors.usaspending",
+            operation="import_copy_files",
+            details={
+                "view": table_name,
+                "required_table": wanted,
+                "matching_entries": [f"{e.schema}.{e.table} ({e.dump_id})" for e in matches],
+                "toc_tables": available,
+            },
+        )
 
     def _import_copy_files(self, dump_file: Path, table_name: str) -> bool:
         """Import PostgreSQL COPY files from ZIP archive."""
@@ -173,6 +240,11 @@ class DuckDBUSAspendingExtractor:
             conn = self.connect()
 
             try:
+                source_entry = self._view_source_entry(
+                    table_name, self._read_toc_entries(dump_file)
+                )
+                source_oid = int(source_entry.dump_id)
+
                 # List files in ZIP to find .dat.gz files
                 cmd = ["unzip", "-l", str(dump_file)]
                 result = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
@@ -196,8 +268,22 @@ class DuckDBUSAspendingExtractor:
                     return False
 
                 logger.info(f"Found {len(copy_files)} COPY files in ZIP")
-                source_oid = self._view_source_oid(
-                    table_name, [int(str(f["oid"])) for f in copy_files]
+                if source_oid not in {int(str(f["oid"])) for f in copy_files}:
+                    raise ExtractionError(
+                        f"The dump table of contents maps {source_entry.schema}."
+                        f"{source_entry.table} to {source_oid}.dat.gz, but the ZIP has no "
+                        "such member",
+                        component="extractors.usaspending",
+                        operation="import_copy_files",
+                        details={
+                            "dump_file": str(dump_file),
+                            "required_table": source_entry.table,
+                            "dump_id": source_entry.dump_id,
+                        },
+                    )
+                logger.info(
+                    f"TOC maps {source_entry.schema}.{source_entry.table} to "
+                    f"{source_oid}.dat.gz; the {table_name} view reads it"
                 )
                 source_table_name = f"{table_name}_{source_oid}"
                 failed_tables: dict[str, str] = {}
@@ -288,7 +374,7 @@ class DuckDBUSAspendingExtractor:
                 source_table = self._escape_identifier(source_table_name)
 
                 # recipient_lookup: apply column names from the schema
-                if source_oid == RECIPIENT_LOOKUP_OID:
+                if source_entry.table == RECIPIENT_LOOKUP_TABLE:
                     # Apply column names from schema (DuckDB uses column00, column01, etc.)
                     col_aliases = ", ".join(
                         f"column{i:02d} AS {col}" for i, col in enumerate(RECIPIENT_LOOKUP_COLUMNS)
@@ -296,17 +382,22 @@ class DuckDBUSAspendingExtractor:
                     view_query = f"CREATE OR REPLACE VIEW {base_table_identifier} AS SELECT {col_aliases} FROM {source_table}"  # nosec B608
                     try:
                         conn.execute(view_query)
-                        logger.info(
-                            f"Created view {table_name} with schema from {source_table_name}"
-                        )
-                    except Exception as e:
-                        # Fallback: column count mismatch, use raw table
-                        logger.warning(f"Schema mapping failed ({e}), using raw columns")
-                        fallback_query = f"CREATE OR REPLACE VIEW {base_table_identifier} AS SELECT * FROM {source_table}"  # nosec B608
-                        conn.execute(fallback_query)
-                        logger.info(f"Created view {table_name} from {source_table_name}")
+                    except duckdb.Error as e:
+                        raise ExtractionError(
+                            f"Could not apply the {len(RECIPIENT_LOOKUP_COLUMNS)} "
+                            f"recipient_lookup column names to {source_table_name}: {e}",
+                            component="extractors.usaspending",
+                            operation="import_copy_files",
+                            details={
+                                "dump_file": str(dump_file),
+                                "source_table": source_table_name,
+                                "expected_columns": RECIPIENT_LOOKUP_COLUMNS,
+                            },
+                            cause=e,
+                        ) from e
+                    logger.info(f"Created view {table_name} with schema from {source_table_name}")
 
-                # transaction_normalized, or the first table when neither is present
+                # transaction_normalized
                 else:
                     view_query = f"CREATE OR REPLACE VIEW {base_table_identifier} AS SELECT * FROM {source_table}"  # nosec B608
                     conn.execute(view_query)
@@ -575,6 +666,10 @@ def extract_usaspending_from_config(
 
     Returns:
         Configured DuckDBUSAspendingExtractor instance
+
+    Raises:
+        ExtractionError: If a dump file is found and its import fails or
+            returns False. When no dump file is found, nothing is imported.
     """
     config = config or get_config()
 
@@ -587,22 +682,28 @@ def extract_usaspending_from_config(
     # Import dump if it exists - check multiple locations:
     # 1. Specified data_dir
     dump_file = data_dir / dump_filename
-    if dump_file.exists():
-        table_name = config.extraction.usaspending.get("table_name", "usaspending_awards")
-        extractor.import_postgres_dump(dump_file, table_name)
-    else:
-        # 2. Try configured path (supports environment variable overrides)
+    if not dump_file.exists():
+        # 2. Try configured path (supports environment variable overrides).
+        # Only the path lookup is optional; import errors propagate.
         try:
             configured_dump = config.paths.resolve_path("usaspending_dump_file")
+        except (AttributeError, TypeError, ValueError) as e:
+            with log_with_context(stage="extract", run_id="usaspending_config") as logger:
+                logger.debug(f"Configured dump path not available: {e}")
+        else:
             if configured_dump.exists():
                 with log_with_context(stage="extract", run_id="usaspending_config") as logger:
                     logger.info(f"Using dump from configured path: {configured_dump}")
-                    table_name = config.extraction.usaspending.get(
-                        "table_name", "usaspending_awards"
-                    )
-                    extractor.import_postgres_dump(configured_dump, table_name)
-        except Exception as e:
-            with log_with_context(stage="extract", run_id="usaspending_config") as logger:
-                logger.debug(f"Configured dump path not available: {e}")
+                dump_file = configured_dump
+
+    if dump_file.exists():
+        table_name = config.extraction.usaspending.get("table_name", "usaspending_awards")
+        if not extractor.import_postgres_dump(dump_file, table_name):
+            raise ExtractionError(
+                f"USAspending dump import from {dump_file} failed",
+                component="extractors.usaspending",
+                operation="extract_usaspending_from_config",
+                details={"dump_file": str(dump_file), "table_name": table_name},
+            )
 
     return extractor

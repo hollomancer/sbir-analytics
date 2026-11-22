@@ -260,10 +260,15 @@ class TransactionSource:
 
 
 @dataclass(frozen=True)
-class _TableEntry:
+class TocTableEntry:
+    """One ``TABLE DATA`` entry of a pg_dump archive table of contents."""
+
     dump_id: str
     schema: str
     table: str
+
+
+_TableEntry = TocTableEntry
 
 
 _TABLE_DATA_RE = re.compile(
@@ -281,11 +286,60 @@ def _unquote(value: str) -> str:
     return value.strip().strip('"').replace('""', '"')
 
 
-def _select_table_entry(toc_text: str, schema_sql: str) -> tuple[_TableEntry, bool]:
-    entries: list[_TableEntry] = []
+def parse_toc_table_data(toc_text: str) -> list[TocTableEntry]:
+    """Return the ``TABLE DATA`` entries of a ``pg_restore --list`` listing.
+
+    Each entry names the data member (``<dump_id>.dat.gz``) that holds the
+    rows of ``schema.table``. pg_dump assigns the dump IDs, and they change
+    between dumps, so callers must select tables by name, not by ID.
+    """
+    entries: list[TocTableEntry] = []
     for line in toc_text.splitlines():
         if match := _TABLE_DATA_RE.match(line):
-            entries.append(_TableEntry(match[1], _unquote(match[2]), _unquote(match[3])))
+            entries.append(TocTableEntry(match[1], _unquote(match[2]), _unquote(match[3])))
+    return entries
+
+
+def run_pg_restore(dump_dir: Path, *arguments: str) -> str:
+    """Run ``pg_restore`` on a directory-format archive and return its stdout.
+
+    Raises:
+        ArchiveSchemaError: If ``pg_restore`` is not installed or cannot read
+            the archive.
+    """
+    executable = shutil.which("pg_restore")
+    if executable is None:
+        raise ArchiveSchemaError(
+            "pg_restore is required to verify the USAspending dump; refusing positional extraction"
+        )
+    try:
+        result = subprocess.run(
+            [executable, *arguments, str(dump_dir)],
+            check=True,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+        )
+    except subprocess.CalledProcessError as error:
+        detail = error.stderr.strip() or error.stdout.strip() or str(error)
+        raise ArchiveSchemaError(f"pg_restore could not inspect {dump_dir}: {detail}") from error
+    return result.stdout
+
+
+def read_toc_table_data(dump_dir: Path) -> list[TocTableEntry]:
+    """Read the ``TABLE DATA`` entries from ``dump_dir/toc.dat`` with ``pg_restore``.
+
+    Raises:
+        ArchiveSchemaError: If ``toc.dat`` is missing, or ``pg_restore`` is not
+            installed or cannot read it.
+    """
+    if not (dump_dir / "toc.dat").is_file():
+        raise ArchiveSchemaError(f"pg_dump directory archive has no toc.dat: {dump_dir}")
+    return parse_toc_table_data(run_pg_restore(dump_dir, "--list"))
+
+
+def _select_table_entry(toc_text: str, schema_sql: str) -> tuple[_TableEntry, bool]:
+    entries = parse_toc_table_data(toc_text)
 
     leaves = [
         entry
@@ -736,26 +790,7 @@ class ContractExtractor:
 
     @staticmethod
     def _run_pg_restore(dump_dir: Path, *arguments: str) -> str:
-        executable = shutil.which("pg_restore")
-        if executable is None:
-            raise ArchiveSchemaError(
-                "pg_restore is required to verify the USAspending dump; "
-                "refusing positional extraction"
-            )
-        try:
-            result = subprocess.run(
-                [executable, *arguments, str(dump_dir)],
-                check=True,
-                capture_output=True,
-                text=True,
-                encoding="utf-8",
-            )
-        except subprocess.CalledProcessError as error:
-            detail = error.stderr.strip() or error.stdout.strip() or str(error)
-            raise ArchiveSchemaError(
-                f"pg_restore could not inspect {dump_dir}: {detail}"
-            ) from error
-        return result.stdout
+        return run_pg_restore(dump_dir, *arguments)
 
     @classmethod
     def _restore_copy_statement(cls, toc_file: Path, entry: _TableEntry) -> str:
