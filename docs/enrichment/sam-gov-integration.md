@@ -48,8 +48,18 @@ text field. The record still counts toward the BOF/EOF total. The sidecar lists 
 `repaired_unescaped_delimiter_records` and `repaired_unescaped_delimiter_ueis`. Such a firm matches
 on UEI but has no legal name, address, or NAICS in the parquet. The download fails if the repairs exceed
 the larger of 100 records or 1 in 10,000 records. It also fails on any line after the EOF control
-record. Strategies 2 and 3 are always written as
-`sam_entity_records_partial.parquet`, so a capped fallback cannot overwrite the full dataset.
+record.
+
+SAM.gov separates the values in a multi-value field with `~`. The registration status must be `A`
+or `E`, or exactly `A~E` or `E~A`. A record with `A~E` or `E~A` is kept, and the parquet stores
+the raw value. The downloader does not choose one status, because that would be a guess. The
+sidecar lists these records under `multi_value_registration_status_records` and
+`multi_value_registration_status_ueis`. A consumer that filters on `registration_status == "A"`
+leaves these records out. Any other status fails the download, for example an empty value, `X`,
+`A~X`, `~`, `A~~E`, or `A~E~Z`. The download also fails if the multi-value records exceed the
+larger of 100 records or 1 in 10,000 records.
+
+Strategies 2 and 3 are always written as `sam_entity_records_partial.parquet`, so a capped fallback cannot overwrite the full dataset.
 
 ## Prerequisites
 
@@ -114,6 +124,7 @@ an identifier match.
 | Exit code 2 | API key missing, invalid, or expired | Rotate the key and update the host secret |
 | Exit code 3 | Daily request quota exhausted | Retry after the reported reset time |
 | Public V2 control/schema error | Source format, record count, or identity fields failed validation | Preserve the prior canonical parquet; inspect the catalog file and parser contract |
+| Public V2 "too many records with a multi-value registration status" | More than the larger of 100 or 1 in 10,000 records have status `A~E` or `E~A` | Preserve the prior canonical parquet; inspect field position 5 in the catalog file for drift |
 | Partial parquet produced | Only an authenticated capped fallback succeeded | Preserve the canonical parquet; inspect logs and retry strategy 1 later |
 | Empty entity asset | File missing or schema mismatch | Check the configured local path and normalized columns |
 

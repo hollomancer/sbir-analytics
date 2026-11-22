@@ -96,6 +96,15 @@ MAX_NESTED_ZIP_DEPTH = 2
 # positional drift.
 MIN_REPAIRED_PUBLIC_V2_CAP = 100
 REPAIRED_PUBLIC_V2_CAP_FRACTION = 1 / 10_000
+# SAM.gov separates values in a multi-value field with "~". The Nov. 2026 extract
+# has one record with registration status "A~E". Such a record is kept with its
+# raw status and listed in the sidecar; which status applies is not guessed.
+# Only a combination of the two valid statuses is accepted, and more of them
+# than this cap points to drift, not a one-off source quirk.
+VALID_PUBLIC_V2_REGISTRATION_STATUSES = frozenset({"A", "E"})
+MULTI_VALUE_PUBLIC_V2_REGISTRATION_STATUSES = frozenset({"A~E", "E~A"})
+MIN_MULTI_VALUE_STATUS_PUBLIC_V2_CAP = 100
+MULTI_VALUE_STATUS_PUBLIC_V2_CAP_FRACTION = 1 / 10_000
 # Positions 0-10 (UEI, DUNS, CAGE, registration status, codes, dates) hold no
 # free text, so an unescaped "|" cannot shift them. Position 11 (legal business
 # name) is the first free-text field.
@@ -709,10 +718,19 @@ def _parse_public_v2(fh) -> pd.DataFrame:
             "SAM Public V2 entity count does not match its BOF/EOF control records: "
             f"expected {expected_rows:,}, parsed {len(frame):,}"
         )
-    _validate_public_v2_identity_fields(frame, repaired_rows=frozenset(repaired_rows))
+    multi_status_ueis = _validate_public_v2_identity_fields(
+        frame, repaired_rows=frozenset(repaired_rows)
+    )
+    if multi_status_ueis:
+        logger.warning(
+            f"Kept {len(multi_status_ueis):,} records with a multi-value registration status; "
+            "the raw status is kept as is"
+        )
     frame.attrs["sam_expected_row_count"] = expected_rows
     frame.attrs["sam_repaired_unescaped_delimiter_records"] = len(repaired_ueis)
     frame.attrs["sam_repaired_unescaped_delimiter_ueis"] = repaired_ueis
+    frame.attrs["sam_multi_value_registration_status_records"] = len(multi_status_ueis)
+    frame.attrs["sam_multi_value_registration_status_ueis"] = multi_status_ueis
     logger.info(f"{len(frame):,} validated Public V2 entity rows loaded")
     return frame
 
@@ -795,24 +813,40 @@ def _repair_unescaped_delimiter_records(
 
 def _validate_public_v2_identity_fields(
     frame: pd.DataFrame, *, repaired_rows: frozenset[int] = frozenset()
-) -> None:
+) -> list[str]:
     """Fail closed when positional drift would corrupt the census identity fields.
 
     Repaired records keep their UEI and registration status, which are checked
     like any other row, but their legal business name is blank by design. Only
     the repaired rows themselves are exempt, by position: another row with the
     same UEI must still have a name.
+
+    A registration status of "A~E" or "E~A" (SAM.gov's multi-value separator)
+    is accepted and kept as is. Every other status besides "A" and "E" fails.
+    Returns the UEIs of the multi-value records, one per row, in row order.
     """
 
     if list(frame.columns) != REQUIRED_COLUMNS:
         raise ValueError("SAM Public V2 parser did not produce the pinned census field set")
     if not frame["unique_entity_id"].str.fullmatch(r"[A-Z0-9]{12}").all():
         raise ValueError("SAM Public V2 extract contains a missing or malformed UEI")
-    if not frame["registration_status"].isin({"A", "E"}).all():
+    status = frame["registration_status"]
+    multi_status = status.isin(MULTI_VALUE_PUBLIC_V2_REGISTRATION_STATUSES)
+    if not (status.isin(VALID_PUBLIC_V2_REGISTRATION_STATUSES) | multi_status).all():
         raise ValueError("SAM Public V2 extract contains an invalid registration status")
+    multi_status_cap = max(
+        MIN_MULTI_VALUE_STATUS_PUBLIC_V2_CAP,
+        int(len(frame) * MULTI_VALUE_STATUS_PUBLIC_V2_CAP_FRACTION),
+    )
+    if int(multi_status.sum()) > multi_status_cap:
+        raise ValueError(
+            "SAM Public V2 extract has too many records with a multi-value registration "
+            f"status (more than {multi_status_cap:,}); suspect positional drift"
+        )
     named = ~pd.Series(range(len(frame)), index=frame.index).isin(repaired_rows)
     if frame.loc[named, "legal_business_name"].eq("").any():
         raise ValueError("SAM Public V2 extract contains a missing legal business name")
+    return frame.loc[multi_status, "unique_entity_id"].tolist()
 
 
 def _normalise_chunk(chunk: pd.DataFrame) -> pd.DataFrame:
@@ -853,6 +887,12 @@ def _write_local(df: pd.DataFrame, dest: Path, *, name: str = PARQUET_NAME) -> P
             "sam_repaired_unescaped_delimiter_records"
         ),
         "repaired_unescaped_delimiter_ueis": df.attrs.get("sam_repaired_unescaped_delimiter_ueis"),
+        "multi_value_registration_status_records": df.attrs.get(
+            "sam_multi_value_registration_status_records"
+        ),
+        "multi_value_registration_status_ueis": df.attrs.get(
+            "sam_multi_value_registration_status_ueis"
+        ),
         "row_count": len(df),
         "downloaded_at": datetime.now(UTC).isoformat(),
         "partial": name == PARQUET_NAME_PARTIAL,
