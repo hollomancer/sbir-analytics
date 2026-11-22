@@ -140,9 +140,13 @@ substantive claim the design was meant to support, and it does not become `appro
 
 ## Captured published tables
 
+This convention comes from `sba-annual-report-tables`, the only study that captures
+published tables today. Apply it to any new study that captures a published table.
+
 A study that reproduces a published table keeps its transcription of that table at
 `studies/<study-id>/data/*.csv`. One CSV holds one printed table for one report year.
-`studies/sba-annual-report-tables/data/` is the reference example.
+`studies/sba-annual-report-tables/data/` follows this layout. It does not yet meet every rule
+below: its `sources.yaml` hashes only the FY2012, FY2016, FY2020, FY2021, and FY2022 PDFs.
 
 Apply these rules when you capture a table:
 
@@ -156,7 +160,8 @@ Apply these rules when you capture a table:
 7. Investigate each identity failure.
 8. Read the source line to find the cause.
 9. Fix a transcription error in the CSV.
-10. Keep a source defect as printed, and record it.
+10. Keep a source defect as printed.
+11. Record the source defect in a flag column or in the study's amendments.
 
 Examples from `studies/sba-annual-report-tables`, each verified against its source PDF:
 
@@ -190,11 +195,16 @@ FY2019, the shift is in the printed report, not in the transcription.
 
 ## Extension outputs
 
+This convention also comes from `sba-annual-report-tables`, the only study with an
+`extension/` directory today.
+
 An extension applies a study's code to years or cells outside the study's declared scope.
 Write extension outputs to `studies/<study-id>/extension/`. Do not write them to
 `results/`. A generic consumer of `results/` must never read an extension as study output.
 Report an extension separately from the study's result, with its own claims.
-Do not cite an extension output.
+State in the extension's own record whether it may be cited. The
+`sba-annual-report-tables` extension is not citable because it skipped difference
+classification (`extension-to-eight-years.md`).
 
 This rule comes from `studies/sba-annual-report-tables/design.md`. Its "Two separate
 products" section keeps the published-sample replication and the current-data extension
