@@ -20,6 +20,7 @@ SCRIPT_PATH = (
     / "audit_form_d_pif_cross_links.py"
 )
 _spec = importlib.util.spec_from_file_location("audit_form_d_pif_cross_links", SCRIPT_PATH)
+assert _spec is not None and _spec.loader is not None
 _mod = importlib.util.module_from_spec(_spec)
 sys.modules["audit_form_d_pif_cross_links"] = _mod
 _spec.loader.exec_module(_mod)
@@ -332,7 +333,7 @@ class TestLoadRecords:
             encoding="utf-8",
         )
 
-        with pytest.raises(ValueError, match="Rescore the complete input first"):
+        with pytest.raises(ValueError, match="Rebuild form_d_details.jsonl"):
             _mod.load_records(path, 2009, 2024)
 
 

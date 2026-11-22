@@ -10,6 +10,9 @@ from sbir_etl.enrichers.sec_edgar.form_d_scoring import (
     FORM_D_TIER_RULE_CORROBORATED_PERSON_V2,
     FORM_D_TIER_RULE_NAME_GATED_V3,
     FORM_D_TIER_RULE_PERSON_OR_ZIP_V1,
+    FORM_D_TIER_RULE_VERSION,
+    FORM_D_TIER_RULE_VERSIONS,
+    FormDTierRuleError,
     assign_form_d_tier,
     compute_form_d_confidence,
     describe_form_d_signal_scope,
@@ -17,6 +20,7 @@ from sbir_etl.enrichers.sec_edgar.form_d_scoring import (
     parse_form_d_xml,
     person_names_agree,
     require_form_d_rule_version,
+    require_form_d_tier_rule,
     select_form_d_name_match,
 )
 from sbir_etl.identity.company_names import CompanyNameProfile, normalize_company_name
@@ -161,7 +165,11 @@ class TestParseFormDXml:
 
 
 class TestComputeFormDConfidence:
-    """Tests for compute_form_d_confidence()."""
+    """Tests for compute_form_d_confidence() under the historical v2 rule.
+
+    These pin ``corroborated-person-v2`` explicitly so old materializations stay
+    interpretable after ``name-gated-v3`` became the default.
+    """
 
     _RELATED = [
         {
@@ -183,6 +191,7 @@ class TestComputeFormDConfidence:
             earliest_sbir_award_year=2012,
             form_d_dates=[date(2011, 12, 10)],
             year_of_inc=2008,
+            rule_version=FORM_D_TIER_RULE_CORROBORATED_PERSON_V2,
         )
         assert result.tier == "high"
         assert result.person_score is not None
@@ -205,6 +214,7 @@ class TestComputeFormDConfidence:
             earliest_sbir_award_year=2013,
             form_d_dates=[date(2012, 1, 1)],
             year_of_inc=None,
+            rule_version=FORM_D_TIER_RULE_CORROBORATED_PERSON_V2,
         )
         assert result.tier == "medium"
         assert result.person_score is None
@@ -225,6 +235,7 @@ class TestComputeFormDConfidence:
             earliest_sbir_award_year=2013,
             form_d_dates=[date(2005, 6, 1)],
             year_of_inc=2015,
+            rule_version=FORM_D_TIER_RULE_CORROBORATED_PERSON_V2,
         )
         assert result.tier == "low"
         assert result.state_score == 0.0
@@ -249,6 +260,7 @@ class TestComputeFormDConfidence:
             earliest_sbir_award_year=2020,
             form_d_dates=[date(2011, 12, 10)],  # big temporal gap
             year_of_inc=None,
+            rule_version=FORM_D_TIER_RULE_CORROBORATED_PERSON_V2,
         )
         assert result.person_score is not None
         assert result.person_score >= 0.70
@@ -286,6 +298,7 @@ class TestComputeFormDConfidence:
             earliest_sbir_award_year=2020,
             form_d_dates=[date(2010, 1, 1)],
             year_of_inc=None,
+            rule_version=FORM_D_TIER_RULE_CORROBORATED_PERSON_V2,
         )
 
         assert result.person_score is not None
@@ -305,6 +318,7 @@ class TestComputeFormDConfidence:
             earliest_sbir_award_year=2020,
             form_d_dates=[date(2011, 12, 10)],
             year_of_inc=None,
+            rule_version=FORM_D_TIER_RULE_CORROBORATED_PERSON_V2,
         )
         assert result.person_score is not None
         assert result.person_score >= 0.70
@@ -322,6 +336,7 @@ class TestComputeFormDConfidence:
             earliest_sbir_award_year=2015,
             form_d_dates=[date(2016, 1, 1)],
             year_of_inc=2010,
+            rule_version=FORM_D_TIER_RULE_CORROBORATED_PERSON_V2,
             sbir_zip="01532",
             form_d_zips=["01532"],
         )
@@ -341,6 +356,7 @@ class TestComputeFormDConfidence:
             earliest_sbir_award_year=2015,
             form_d_dates=[date(2016, 1, 1)],
             year_of_inc=None,
+            rule_version=FORM_D_TIER_RULE_CORROBORATED_PERSON_V2,
             sbir_zip="01532",
             form_d_zips=["90210"],
         )
@@ -363,6 +379,7 @@ class TestComputeFormDConfidence:
             earliest_sbir_award_year=2015,
             form_d_dates=[],
             year_of_inc=None,
+            rule_version=FORM_D_TIER_RULE_CORROBORATED_PERSON_V2,
         )
         # composite = 0.15*0.60 + 0.35*0.5 + 0.15*0.5 + 0.15*0.5 + 0.10*0.5 + 0.10*0.5
         #           = 0.09 + 0.175 + 0.075 + 0.075 + 0.05 + 0.05 = 0.515
@@ -391,6 +408,7 @@ class TestComputeFormDConfidence:
             earliest_sbir_award_year=2015,
             form_d_dates=[date(2016, 1, 1)],
             year_of_inc=None,
+            rule_version=FORM_D_TIER_RULE_CORROBORATED_PERSON_V2,
         )
         assert result.person_score is None
         assert result.address_score is None
@@ -470,10 +488,12 @@ def test_signal_scope_exposes_cross_filing_and_cross_cik_aggregation() -> None:
 # the identity primitive documents as its own worst case (0.882, see
 # test_company_names.py::test_distinct_firms_do_not_score_as_the_same_firm).
 # Under the retired `person-or-zip-v1` rule that crossed into "high". The
-# current `corroborated-person-v2` rule requires an exact ZIP or state
-# overlap before a person score alone can reach high, so this pair now stops
-# at "medium" -- the caller-threshold defect this audit found is fixed, and
-# this table pins the corrected behavior.
+# historical `corroborated-person-v2` rule requires an exact ZIP or state
+# overlap before a person score alone can reach high, so this pair stops at
+# "medium" -- the caller-threshold defect this audit found is fixed, and this
+# table pins the corrected v2 behavior. The test passes v2 explicitly; the
+# default `name-gated-v3` rule replaces this fuzzy person score with a 0/1
+# agreement and is probed by the v3 tests below.
 FORM_D_PERSON_MATCH_EXPECTED_TIER = {
     "3D Control Systems, Inc.": "low",
     "ADELPHI TECHNOLOGY": "medium",  # corroboration required; see note above
@@ -506,6 +526,7 @@ def test_person_match_tier_for_distinct_firms_used_as_names(
         earliest_sbir_award_year=2015,
         form_d_dates=[],
         year_of_inc=None,
+        rule_version=FORM_D_TIER_RULE_CORROBORATED_PERSON_V2,
     )
     expected = FORM_D_PERSON_MATCH_EXPECTED_TIER[left]
     assert result.tier == expected, (
@@ -727,8 +748,36 @@ class TestNameGatedV3Tier:
 
     def test_v2_is_unchanged_by_the_new_parameter(self) -> None:
         assert (
-            assign_form_d_tier(person_score=None, address_score=None, state_score=None) == "medium"
+            assign_form_d_tier(
+                person_score=None,
+                address_score=None,
+                state_score=None,
+                rule_version=FORM_D_TIER_RULE_CORROBORATED_PERSON_V2,
+            )
+            == "medium"
         )
+
+    def test_default_rule_is_name_gated_v3(self) -> None:
+        assert FORM_D_TIER_RULE_VERSION == FORM_D_TIER_RULE_NAME_GATED_V3
+        assert {
+            FORM_D_TIER_RULE_PERSON_OR_ZIP_V1,
+            FORM_D_TIER_RULE_CORROBORATED_PERSON_V2,
+        } < FORM_D_TIER_RULE_VERSIONS
+        # The default rule needs the name match type; it never falls back to v2.
+        with pytest.raises(ValueError, match="name_match_type"):
+            assign_form_d_tier(person_score=None, address_score=1.0, state_score=1.0)
+
+    def test_default_consumer_check_rejects_a_v2_record_with_rebuild_instructions(self) -> None:
+        with pytest.raises(FormDTierRuleError) as excinfo:
+            require_form_d_tier_rule(
+                {"tier": "high", "rule_version": FORM_D_TIER_RULE_CORROBORATED_PERSON_V2},
+                context="Form D record 'Acme Labs'",
+            )
+        message = str(excinfo.value)
+        assert "'corroborated-person-v2'; expected 'name-gated-v3'" in message
+        assert "fetch_form_d_index.py" in message
+        assert "--rule-version name-gated-v3" in message
+        assert "rescore_form_d_details.py" not in message
 
     def test_empty_record_with_no_offering_is_low(self) -> None:
         result = compute_form_d_confidence(

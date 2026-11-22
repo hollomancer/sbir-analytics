@@ -10,6 +10,16 @@ version.
 
 ## [Unreleased]
 
+### Breaking
+
+- The default Form D tier rule is now `name-gated-v3`, replacing
+  `corroborated-person-v2`. Every Form D consumer, including the Dagster asset
+  `agency_private_capital_form_d_matched_comparison`, now rejects a v2 record.
+  Rebuild `form_d_details.jsonl` with `fetch_form_d_index.py`, then
+  `fetch_form_d_details.py --rule-version name-gated-v3`, and rebuild every
+  derived file. `rescore_form_d_details.py` now needs an explicit historical
+  `--rule-version`. See `docs/data/form-d-name-gated-v3.md`.
+
 ## [0.22.0] — 2026-11-21
 
 ### Breaking

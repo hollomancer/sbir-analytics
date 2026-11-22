@@ -40,8 +40,8 @@ requests. Output is deterministic and published with an atomic same-directory
 replace.
 
 **Why it is not optional.** Step 2 calls `require_form_d_tier_rule`, which
-rejects any record whose `rule_version` is not the current
-`corroborated-person-v2`:
+rejects any record whose `rule_version` is not the current default. Until
+2026-11-21 the default was `corroborated-person-v2`:
 
 ```
 FormDTierRuleError: Form D record '...' uses Form D tier rule None;
@@ -52,10 +52,13 @@ As of 2026-09-17 all 10,405 stored records were unversioned, so this step was
 required before the chain would run at all. Migrating them moved 193 records
 from `high` to `medium` (3,640 → 3,447 high; `low` unchanged at 5,645).
 
-**Rule `name-gated-v3` (not the default).** The rule set also contains
-`name-gated-v3`. It fixes the subset-token name match and makes a missing state
-no evidence. Step 1 cannot migrate to it, because stored records lack the name
-match type and the raw PI names. Rebuild the inputs to adopt it. See
+**Rule `name-gated-v3` (the default since 2026-11-21).** It fixes the
+subset-token name match and makes a missing state no evidence. Step 1 cannot
+migrate to it, because stored records lack the name match type and the raw PI
+names. Step 2 now rejects a v2 file. Replace step 1 with a rebuild:
+`fetch_form_d_index.py`, then `fetch_form_d_details.py --rule-version
+name-gated-v3`. Step 1 now needs an explicit historical `--rule-version`, and
+its output is accepted only by a consumer called with that rule. See
 [form-d-name-gated-v3.md](form-d-name-gated-v3.md).
 
 ## Step 2 — detect events

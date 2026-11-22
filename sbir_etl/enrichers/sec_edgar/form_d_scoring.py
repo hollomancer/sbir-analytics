@@ -18,10 +18,11 @@ from ...models.sec_edgar import FormDMatchConfidence
 
 FORM_D_TIER_RULE_PERSON_OR_ZIP_V1 = "person-or-zip-v1"
 FORM_D_TIER_RULE_CORROBORATED_PERSON_V2 = "corroborated-person-v2"
-# Defined but not yet the default: stored records predate it, and consumers fail closed on
-# a rule mismatch. See docs/data/form-d-name-gated-v3.md.
+# The default since 2026-11-21. v1 and v2 stay in FORM_D_TIER_RULE_VERSIONS so old
+# materializations remain interpretable. Consumers fail closed on a rule mismatch, so a v2
+# file must be rebuilt, not rescored. See docs/data/form-d-name-gated-v3.md.
 FORM_D_TIER_RULE_NAME_GATED_V3 = "name-gated-v3"
-FORM_D_TIER_RULE_VERSION = FORM_D_TIER_RULE_CORROBORATED_PERSON_V2
+FORM_D_TIER_RULE_VERSION = FORM_D_TIER_RULE_NAME_GATED_V3
 FORM_D_TIER_RULE_VERSIONS: frozenset[str] = frozenset(
     {
         FORM_D_TIER_RULE_PERSON_OR_ZIP_V1,
@@ -52,10 +53,18 @@ def require_form_d_rule_version(
             f"supported rules: {supported}"
         )
     if observed_rule_version != expected_rule_version:
+        if expected_rule_version == FORM_D_TIER_RULE_NAME_GATED_V3:
+            remedy = (
+                "Rebuild form_d_details.jsonl with fetch_form_d_index.py, then "
+                f"fetch_form_d_details.py --rule-version {FORM_D_TIER_RULE_NAME_GATED_V3}, "
+                "then rebuild every file derived from it. Stored records cannot be rescored "
+                "to this rule offline."
+            )
+        else:
+            remedy = "Rescore the complete input first with scripts/data/rescore_form_d_details.py."
         raise FormDTierRuleError(
             f"{context} uses Form D tier rule {observed_rule_version!r}; expected "
-            f"{expected_rule_version!r}. Rescore the complete input first with "
-            "scripts/data/rescore_form_d_details.py."
+            f"{expected_rule_version!r}. {remedy}"
         )
     return expected_rule_version
 
@@ -522,11 +531,12 @@ def assign_form_d_tier(
     """Assign a confidence tier under a named, versioned rule.
 
     ``person-or-zip-v1`` preserves the historical 2026-04-23 behavior so
-    old materializations remain interpretable. ``corroborated-person-v2``
-    is the current rule: a fuzzy person-name hit needs an exact ZIP or state
+    old materializations remain interpretable. ``corroborated-person-v2`` is
+    the historical rule: a fuzzy person-name hit needs an exact ZIP or state
     overlap to reach high, while an exact ZIP remains sufficient by itself.
-    ``name-gated-v3`` also needs ``name_match_type``: missing signals are no
-    evidence, and a fuzzy company name needs two independent signals for high.
+    ``name-gated-v3`` is the current rule and needs ``name_match_type``:
+    missing signals are no evidence, and a fuzzy company name needs two
+    independent signals for high.
     """
 
     if rule_version not in FORM_D_TIER_RULE_VERSIONS:

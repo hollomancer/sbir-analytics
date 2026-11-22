@@ -73,17 +73,25 @@ a fuzzy ZIP match.
 
 ## Adoption
 
-- `name-gated-v3` is added to `FORM_D_TIER_RULE_VERSIONS`.
-- The default `FORM_D_TIER_RULE_VERSION` stays `corroborated-person-v2` in this change.
-  Consumers reject a record whose rule is not the default. If the default changes before
-  `form_d_details.jsonl` is rebuilt, every consumer stops, including the Dagster asset
-  `agency_private_capital_form_d_matched_comparison`.
+- `name-gated-v3` is in `FORM_D_TIER_RULE_VERSIONS`.
+- On 2026-11-21 the owner adopted `name-gated-v3` as the default `FORM_D_TIER_RULE_VERSION`.
+  `corroborated-person-v2` and `person-or-zip-v1` stay in `FORM_D_TIER_RULE_VERSIONS`, so old
+  materializations stay interpretable. They are historical rules.
+- Consumers reject a record whose rule is not the default. A `form_d_details.jsonl` built under
+  `corroborated-person-v2` stops every consumer, including the Dagster asset
+  `agency_private_capital_form_d_matched_comparison`. The error names the rebuild commands.
+- Merge the default change only after the server rebuild under `name-gated-v3` is complete and its
+  output hashes are recorded.
+- To rebuild: run `fetch_form_d_index.py`, then `fetch_form_d_details.py --rule-version
+  name-gated-v3`. Then rebuild every file derived from `form_d_details.jsonl` and rematerialize
+  the dependent assets.
 - `rescore_form_d_details.py` refuses `name-gated-v3` as a target. The stored records do not
-  have the name match type or the raw PI names, so an offline migration would have to guess.
+  have the name match type or the raw PI names, so an offline migration would have to guess. The
+  script has no default target rule. It only reproduces a named historical rule.
 - It also refuses to relabel a v3 record to an older rule. v3 stores a 0/1 person score, and the
   older rules expect a fuzzy score.
-- To adopt v3: rerun `fetch_form_d_index.py`, then `fetch_form_d_details.py --rule-version
-  name-gated-v3`. Then change the default in a separate change.
+- `fetch_form_d_details.py` now scores under v3 by default. It refuses an index without
+  `name_match_type`, so an index built before v3 must be rebuilt.
 
 ## Not verified
 

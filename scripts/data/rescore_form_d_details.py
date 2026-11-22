@@ -7,6 +7,12 @@ is deterministic, and publication uses an atomic same-directory replace so a
 parse, validation, serialization, or replace failure leaves an existing target
 untouched.
 
+The current default rule, ``name-gated-v3``, cannot be reached offline: stored
+records lack the name match type and the raw PI names it needs. Rebuild with
+``fetch_form_d_index.py`` and ``fetch_form_d_details.py --rule-version
+name-gated-v3`` instead. This script now only reproduces a named historical rule,
+so the target rule has no default and must be given.
+
 This remains exploratory: changing a tier is a contestable identity decision.
 """
 
@@ -24,7 +30,6 @@ from typing import Any
 
 from sbir_etl.enrichers.sec_edgar.form_d_scoring import (
     FORM_D_TIER_RULE_NAME_GATED_V3,
-    FORM_D_TIER_RULE_VERSION,
     FORM_D_TIER_RULE_VERSIONS,
     assign_form_d_tier,
     describe_form_d_signal_scope,
@@ -55,7 +60,7 @@ def _optional_score(value: object, *, field: str, line_number: int) -> float | N
 def rescore_record(
     record: dict[str, Any],
     *,
-    rule_version: str = FORM_D_TIER_RULE_VERSION,
+    rule_version: str,
     line_number: int = 1,
 ) -> dict[str, Any]:
     """Return a copy with its tier recomputed from stored signal values."""
@@ -103,7 +108,7 @@ def rescore_jsonl(
     input_path: Path,
     output_path: Path,
     *,
-    rule_version: str = FORM_D_TIER_RULE_VERSION,
+    rule_version: str,
 ) -> dict[str, object]:
     """Rescore JSONL records and atomically publish the complete output."""
 
@@ -205,7 +210,12 @@ def main() -> int:
     parser.add_argument(
         "--rule-version",
         choices=sorted(FORM_D_TIER_RULE_VERSIONS - {FORM_D_TIER_RULE_NAME_GATED_V3}),
-        default=FORM_D_TIER_RULE_VERSION,
+        required=True,
+        help=(
+            "Historical rule to reproduce. The default rule, name-gated-v3, cannot be "
+            "reached offline; rebuild with fetch_form_d_index.py and "
+            "fetch_form_d_details.py --rule-version name-gated-v3."
+        ),
     )
     args = parser.parse_args()
     summary = rescore_jsonl(

@@ -60,7 +60,7 @@ def _write_jsonl(path: Path, rows: list[dict]) -> None:
 
 
 def test_rescore_record_demotes_person_only_and_stamps_rule_and_scope() -> None:
-    migrated = _mod.rescore_record(_record())
+    migrated = _mod.rescore_record(_record(), rule_version=FORM_D_TIER_RULE_CORROBORATED_PERSON_V2)
 
     assert migrated["match_confidence"]["tier"] == "medium"
     assert migrated["match_confidence"]["rule_version"] == FORM_D_TIER_RULE_CORROBORATED_PERSON_V2
@@ -69,7 +69,10 @@ def test_rescore_record_demotes_person_only_and_stamps_rule_and_scope() -> None:
 
 
 def test_rescore_record_keeps_person_plus_state_high_without_zip() -> None:
-    migrated = _mod.rescore_record(_record(person=0.9, address=0.0, state=1.0))
+    migrated = _mod.rescore_record(
+        _record(person=0.9, address=0.0, state=1.0),
+        rule_version=FORM_D_TIER_RULE_CORROBORATED_PERSON_V2,
+    )
 
     assert migrated["match_confidence"]["tier"] == "high"
 
@@ -97,8 +100,12 @@ def test_rescore_jsonl_is_deterministic_idempotent_and_reports_aggregation(tmp_p
         ],
     )
 
-    summary = _mod.rescore_jsonl(source, first)
-    second_summary = _mod.rescore_jsonl(first, second)
+    summary = _mod.rescore_jsonl(
+        source, first, rule_version=FORM_D_TIER_RULE_CORROBORATED_PERSON_V2
+    )
+    second_summary = _mod.rescore_jsonl(
+        first, second, rule_version=FORM_D_TIER_RULE_CORROBORATED_PERSON_V2
+    )
 
     assert first.read_bytes() == second.read_bytes()
     assert summary["record_count"] == 3
@@ -116,7 +123,7 @@ def test_in_place_parse_failure_preserves_original_bytes(tmp_path: Path) -> None
     path.write_text(original, encoding="utf-8")
 
     with pytest.raises(_mod.FormDRescoreError, match="line 2: invalid JSON"):
-        _mod.rescore_jsonl(path, path)
+        _mod.rescore_jsonl(path, path, rule_version=FORM_D_TIER_RULE_CORROBORATED_PERSON_V2)
 
     assert path.read_text(encoding="utf-8") == original
     assert list(tmp_path.glob(".details.jsonl.*.tmp")) == []
@@ -127,7 +134,7 @@ def test_invalid_stored_score_fails_instead_of_guessing() -> None:
     record["match_confidence"]["person_score"] = "0.9"
 
     with pytest.raises(_mod.FormDRescoreError, match="person_score must be a number or null"):
-        _mod.rescore_record(record)
+        _mod.rescore_record(record, rule_version=FORM_D_TIER_RULE_CORROBORATED_PERSON_V2)
 
 
 def test_name_gated_v3_refuses_offline_migration(tmp_path: Path) -> None:
@@ -147,3 +154,16 @@ def test_name_gated_v3_record_is_not_relabeled_to_an_older_rule(target: str) -> 
     record["match_confidence"]["rule_version"] = FORM_D_TIER_RULE_NAME_GATED_V3
     with pytest.raises(_mod.FormDRescoreError, match="cannot be rescored"):
         _mod.rescore_record(record, rule_version=target)
+
+
+def test_cli_requires_an_explicit_historical_target(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    # The default rule is name-gated-v3, which cannot be reached offline, so the CLI has
+    # no default target rule.
+    source = tmp_path / "details.jsonl"
+    _write_jsonl(source, [_record()])
+    monkeypatch.setattr(sys, "argv", ["rescore_form_d_details.py", "--input", str(source)])
+    with pytest.raises(SystemExit) as excinfo:
+        _mod.main()
+    assert excinfo.value.code == 2

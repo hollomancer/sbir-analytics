@@ -149,7 +149,8 @@ on a pinned real-data run.
 - [ ] 2.7 Add security-type / offering-size decomposition view. Reuse #286's
   Form D scoring tiers only after verifying compatibility with the DERA schema.
   Do not reproduce the retired `person-or-zip-v1` headline as a cross-check.
-  Require one pinned `corroborated-person-v2` version and keep the result
+  Require one pinned `name-gated-v3` version (current since 2026-11-21;
+  `corroborated-person-v2` is historical) and keep the result
   unavailable until the fundraising study's filing/CIK aggregation gates close.
 - [ ] 2.8 Extend the unit + integration scaffold tests under
   `tests/unit/agency_private_capital/` and

@@ -5,8 +5,10 @@
 
 > **Historical note (2026-09-12):** The fetch and API observations below remain
 > useful, but the unversioned Form D cohort and tier counts were produced under
-> the retired `person-or-zip-v1` rule. They are not current v2 findings. Current
-> records must carry `corroborated-person-v2`, and no aggregate Form D result is
+> the retired `person-or-zip-v1` rule. They are not current findings. Current
+> records must carry `name-gated-v3` (adopted 2026-11-21; see
+> [form-d-name-gated-v3.md](../data/form-d-name-gated-v3.md)).
+> `corroborated-person-v2` is historical. No aggregate Form D result is
 > authorized until the filing/CIK and amendment-chain gates in the
 > `form-d-fundraising` study are closed.
 
@@ -131,14 +133,18 @@ retained for within-tier ordering but does not assign the tier.
 
 | Signal | Role | Notes |
 |--------|------|-------|
-| Name fuzzy ≥ 85% | Baseline gate | Required for index matching |
-| PI ↔ related_person match | Tier input | Fuzzy names can collide; not sufficient alone under v2 |
-| ZIP code match (SBIR ↔ Form D) | Tier input | Sufficient for record-level v2 high, but not identity validation |
-| biz_states ∩ SBIR state | Tier input | Corroborates a person hit; state alone is medium |
+| Name match ≥ 85% | Baseline gate | Required for index matching; v3 records `exact` or `fuzzy` |
+| PI ↔ related_person match | Tier input | v3: 0/1 agreement on family and given names; never sufficient alone for high |
+| ZIP code match (SBIR ↔ Form D) | Tier input | v3: high alone only on an exact company name; not identity validation |
+| biz_states ∩ SBIR state | Tier input | Corroborates a person hit; a missing state is no evidence under v3 |
 | Form D date vs SBIR award date | Metadata only | ≤2yr=1.0, 2-5yr=0.5, >5yr=0.0 |
 | year_of_inc ≤ SBIR award year | Metadata only | Missing 29% of the time |
 
-**Current tier assignment (`corroborated-person-v2`):**
+**Current tier assignment (`name-gated-v3`):** the rule table and its known limits
+are in [form-d-name-gated-v3.md](../data/form-d-name-gated-v3.md). A fuzzy company
+name needs exact ZIP and an agreeing person for high.
+
+**Historical tier assignment (`corroborated-person-v2`, default until 2026-11-21):**
 
 | Tier | Record-level rule |
 |---|---|
@@ -148,7 +154,7 @@ retained for within-tier ordering but does not assign the tier.
 
 The retired `person-or-zip-v1` rule allowed a fuzzy person hit alone to
 reach high. Its counts and agency ratios are suppressed rather than relabeled
-as v2 because the complete historical inputs are absent from this checkout.
+as v2 or v3 because the complete historical inputs are absent from this checkout.
 
 The composite score is still computed (weighted sum of all 6 signals)
 and stored for within-tier ranking, but it no longer drives tier
@@ -177,12 +183,14 @@ returns zero hits — PIs are researchers, not mentioned in corporate filings.
 **Useful but collision-prone for Form D person matching**: SBIR PI names can
 be compared with Form D `relatedPersons` (officers, directors, promoters).
 Realistic distinct-person pairs such as Robert/Roberta Chen and John/Jonathan
-Smith can clear the fuzzy threshold. A person hit therefore needs state or ZIP
-corroboration to reach v2 high and still requires identity review.
+Smith can clear the fuzzy threshold. Under v2, a person hit therefore needed state
+or ZIP corroboration to reach high. It still requires identity review.
 
-Name normalization: strip "Dr.", "Ph.D.", "Mr.", "Jr.", single-letter
-initials ("R."), duplicated names. Match via `rapidfuzz.token_set_ratio`
-at ≥85% threshold.
+Under v1 and v2, names were normalized (strip "Dr.", "Ph.D.", "Mr.", "Jr.",
+single-letter initials, duplicated names) and matched with
+`rapidfuzz.token_set_ratio` at ≥85%. That score rewards a token subset. Under v3,
+family names must be equal and given names equal or initial-compatible; see
+[form-d-name-gated-v3.md](../data/form-d-name-gated-v3.md).
 
 **Key insight**: the earlier conclusion that "PI names are useless" was
 about searching filing *prose* — a different use case entirely. Comparing
@@ -195,7 +203,7 @@ is the right shape for entity resolution.
 noise by 73-95% for generic company names in EFTS mention search.
 
 **Form D ZIP matching**: The scorer compares the five-digit SBIR ZIP with
-pooled Form D issuer ZIPs. Exact ZIP is the strongest PI-independent v2
+pooled Form D issuer ZIPs. Exact ZIP is the strongest PI-independent
 signal, but shared addresses and cross-filing/multi-CIK pooling mean it is not
 automatic proof of identity. Historical agency/tier ZIP rates are suppressed.
 

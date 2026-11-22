@@ -147,7 +147,7 @@ def test_refuses_unversioned_details():
     record = _form_d_record("ACME INC", "CA", "94000", 1_000_000, "high", True, False)
     del record["match_confidence"]["rule_version"]
 
-    with pytest.raises(ValueError, match="Rescore the complete input"):
+    with pytest.raises(ValueError, match="Rebuild form_d_details.jsonl"):
         list(build_cohort_rows([record], []))
 
 

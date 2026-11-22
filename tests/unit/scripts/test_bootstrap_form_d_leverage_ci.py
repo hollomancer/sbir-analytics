@@ -19,6 +19,7 @@ SCRIPT_PATH = (
     Path(__file__).resolve().parents[3] / "scripts" / "data" / "bootstrap_form_d_leverage_ci.py"
 )
 _spec = importlib.util.spec_from_file_location("bootstrap_form_d_leverage_ci", SCRIPT_PATH)
+assert _spec is not None and _spec.loader is not None
 _mod = importlib.util.module_from_spec(_spec)
 sys.modules["bootstrap_form_d_leverage_ci"] = _mod
 _spec.loader.exec_module(_mod)
@@ -292,7 +293,7 @@ def test_form_d_loader_refuses_unversioned_tiers(tmp_path: Path) -> None:
         encoding="utf-8",
     )
 
-    with pytest.raises(ValueError, match="Rescore the complete input"):
+    with pytest.raises(ValueError, match="Rebuild form_d_details.jsonl"):
         _mod.load_form_d_per_firm(path, 2009, 2024)
 
 
