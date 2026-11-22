@@ -299,10 +299,13 @@ PLAIN_SQL_DUMP = (
     [
         ("usaspending-db.sql", PLAIN_SQL_DUMP.encode()),
         # A gzip file that is not a ZIP archive.
-        ("usaspending-db.sql.gz", gzip.compress(PLAIN_SQL_DUMP.encode())),
+        ("usaspending-db.sql.gz", gzip.compress(PLAIN_SQL_DUMP.encode(), mtime=0)),
         # No suffix also used to fall through to the plain-SQL path.
         ("usaspending-db", PLAIN_SQL_DUMP.encode()),
     ],
+    # Explicit ids keep raw bytes out of the test names. pytest-xdist requires
+    # every worker to collect identical names.
+    ids=["sql", "gzip-not-zip", "no-suffix"],
 )
 def test_non_zip_dump_raises_and_creates_no_table(tmp_path, filename, content) -> None:
     dump = tmp_path / filename
