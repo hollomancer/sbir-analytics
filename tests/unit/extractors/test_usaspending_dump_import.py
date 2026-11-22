@@ -239,3 +239,39 @@ def test_ingestion_keeps_the_import_error_and_its_cause(monkeypatch, tmp_path) -
         f"raw_usaspending_recipients_{RECIPIENT_OID}"
     ]
     assert isinstance(exc_info.value.__cause__, duckdb.ConversionException)
+
+
+PLAIN_SQL_DUMP = (
+    "--\n-- PostgreSQL database dump\n--\n"
+    "CREATE TABLE public.recipient_lookup (id integer, legal_business_name text);\n"
+    "COPY public.recipient_lookup (id, legal_business_name) FROM stdin;\n"
+    "1\tAcme\n\\.\n"
+)
+
+
+@pytest.mark.parametrize(
+    ("filename", "content"),
+    [
+        ("usaspending-db.sql", PLAIN_SQL_DUMP.encode()),
+        # A gzip file that is not a ZIP archive.
+        ("usaspending-db.sql.gz", gzip.compress(PLAIN_SQL_DUMP.encode())),
+        # No suffix also used to fall through to the plain-SQL path.
+        ("usaspending-db", PLAIN_SQL_DUMP.encode()),
+    ],
+)
+def test_non_zip_dump_raises_and_creates_no_table(tmp_path, filename, content) -> None:
+    dump = tmp_path / filename
+    dump.write_bytes(content)
+    db_path = tmp_path / "usa.duckdb"
+    extractor = DuckDBUSAspendingExtractor(str(db_path))
+
+    # Before the fix, a plain-SQL file "imported" its own text lines as a
+    # one-column table and returned True, and a .gz file returned False.
+    with pytest.raises(ExtractionError, match=r"Supported formats: \.zip") as exc_info:
+        extractor.import_postgres_dump(dump, "recipient_lookup")
+    extractor.close()
+
+    assert exc_info.value.operation == "import_postgres_dump"
+    assert exc_info.value.details["supported_formats"] == [".zip"]
+    with duckdb.connect(str(db_path)) as conn:
+        assert conn.execute("SELECT count(*) FROM duckdb_tables()").fetchone() == (0,)

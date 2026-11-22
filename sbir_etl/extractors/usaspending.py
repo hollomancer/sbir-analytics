@@ -108,13 +108,15 @@ class DuckDBUSAspendingExtractor:
         """Import PostgreSQL dump file into DuckDB.
 
         Args:
-            dump_file: Path to the PostgreSQL dump file (supports .zip, .gz, .sql)
+            dump_file: Path to the USAspending pg_dump ZIP archive (.zip)
             table_name: Name for the imported table
 
         Returns:
             True if import successful, False otherwise
 
         Raises:
+            ExtractionError: If ``dump_file`` is not a ``.zip`` archive. Only
+                the ZIP archive of COPY files is supported.
             ExtractionError: If the COPY file that the ``table_name`` view is
                 built from fails to load. Other COPY files that fail are listed
                 in ``self.import_failed_tables`` and logged at WARNING.
@@ -127,19 +129,21 @@ class DuckDBUSAspendingExtractor:
             if not dump_file.exists():
                 raise FileNotFoundError(f"PostgreSQL dump file not found: {dump_file}")
 
+            if dump_file.suffix.lower() != ".zip":
+                raise ExtractionError(
+                    f"Unsupported USAspending dump format {dump_file.suffix!r} for "
+                    f"{dump_file}. Supported formats: .zip (pg_dump archive of COPY files).",
+                    component="extractors.usaspending",
+                    operation="import_postgres_dump",
+                    details={"dump_file": str(dump_file), "supported_formats": [".zip"]},
+                )
+
             self.connect()
             self._escape_identifier(table_name)
             self.import_failed_tables = {}
 
             try:
-                # Handle different dump formats
-                if dump_file.suffix == ".zip":
-                    return self._import_zipped_dump(dump_file, table_name)
-                elif dump_file.suffix == ".gz":
-                    return self._import_gzipped_dump(dump_file, table_name)
-                else:
-                    # Assume plain SQL dump
-                    return self._import_sql_dump(dump_file, table_name)
+                return self._import_zipped_dump(dump_file, table_name)
 
             except ExtractionError:
                 raise
@@ -152,12 +156,7 @@ class DuckDBUSAspendingExtractor:
         with log_with_context(stage="extract", run_id="usaspending_import") as logger:
             logger.info("Extracting COPY files from ZIP archive")
 
-            # Import COPY files (primary method for pg_dump archives)
-            if self._import_copy_files(dump_file, table_name):
-                return True
-
-            logger.warning("COPY file extraction failed, trying pg_restore fallback")
-            return self._extract_and_import_dump(dump_file, table_name)
+            return self._import_copy_files(dump_file, table_name)
 
     @staticmethod
     def _view_source_oid(table_name: str, oids: list[int]) -> int:
@@ -319,52 +318,6 @@ class DuckDBUSAspendingExtractor:
                 raise
             except Exception as e:
                 logger.error(f"Failed to import COPY files: {e}")
-                return False
-
-    def _extract_and_import_dump(self, dump_file: Path, table_name: str) -> bool:
-        """Extract dump to temporary location and import."""
-        with log_with_context(stage="extract", run_id="usaspending_import") as logger:
-            with tempfile.TemporaryDirectory() as temp_dir:
-                temp_dump = Path(temp_dir) / "dump.sql"
-
-                logger.info(f"Extracting dump to temporary file: {temp_dump}")
-
-                # Extract dump using pg_restore
-                cmd = ["pg_restore", "-f", str(temp_dump), str(dump_file)]
-                result = subprocess.run(cmd, capture_output=True, text=True)
-
-                if result.returncode != 0:
-                    logger.error(f"pg_restore extraction failed: {result.stderr}")
-                    return False
-
-                # Import the extracted SQL
-                return self._import_sql_dump(temp_dump, table_name)
-
-    def _import_gzipped_dump(self, dump_file: Path, table_name: str) -> bool:
-        """Import gzipped PostgreSQL dump."""
-        with log_with_context(stage="extract", run_id="usaspending_import") as logger:
-            logger.warning("Gzipped dump support is limited - consider using .zip format")
-            # For now, fall back to extraction
-            return self._extract_and_import_dump(dump_file, table_name)
-
-    def _import_sql_dump(self, dump_file: Path, table_name: str) -> bool:
-        """Import plain SQL dump file."""
-        with log_with_context(stage="extract", run_id="usaspending_import") as logger:
-            conn = self.connect()
-
-            # This is a simplified approach - real implementation would parse SQL properly
-            logger.warning("Plain SQL dump import is not fully implemented")
-            logger.info("Use postgres_scanner for production dump access")
-
-            # Placeholder: try to read as CSV if it's actually CSV data
-            try:
-                import_query = f"""
-                CREATE TABLE IF NOT EXISTS {table_name} AS
-                SELECT * FROM read_csv_auto('{dump_file}')
-                """
-                conn.execute(import_query)
-                return True
-            except Exception:
                 return False
 
     def query_awards(
