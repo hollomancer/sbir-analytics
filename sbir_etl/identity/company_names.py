@@ -46,6 +46,7 @@ class CompanyNameProfile(StrEnum):
     UCC_V1 = "ucc-v1"
     SEC_EDGAR_V1 = "sec-edgar-v1"
     SEC_EDGAR_TRAILING_V1 = "sec-edgar-trailing-v1"
+    SEC_EDGAR_MATCH_V1 = "sec-edgar-match-v1"
     NOTICE_KEY_V1 = "notice-key-v1"
     PHASE3_RANKING_V1 = "phase3-ranking-v1"
     CMF_V1 = "cmf-v1"
@@ -158,6 +159,32 @@ _NOTICE_SUFFIX = re.compile(
 _SEC_SUFFIX = re.compile(
     r",?\s*(Inc\.?|Corp\.?|LLC|Ltd\.?|Co\.?|L\.?P\.?|/DE|/NV|/MD|CORP|INC)$",
     re.IGNORECASE,
+)
+# sec-edgar-match-v1: a scoring form for SEC name comparison. It removes
+# punctuation, a leading "THE", and every trailing legal-form word, so that "Inc." and
+# "Incorporated" do not move a token-sort score. Suffix differences are then
+# no reason to use a subset-rewarding metric such as token-set (issue #713).
+# EDGAR conformed names can end in a two-letter state tag such as "/DE/" or "/VA".
+_SEC_MATCH_STATE_SUFFIX_V1 = re.compile(r"\s*/\s*[A-Z]{2}\s*/?\s*$")
+_SEC_MATCH_JOINERS_V1 = re.compile(r"[.'\u2019]")
+_SEC_MATCH_PUNCTUATION_V1 = re.compile(r"[^\w\s]|_")
+_SEC_MATCH_SUFFIX_TOKENS_V1: frozenset[str] = frozenset(
+    {
+        "INC",
+        "INCORPORATED",
+        "CORP",
+        "CORPORATION",
+        "CO",
+        "COMPANY",
+        "LLC",
+        "LLP",
+        "LP",
+        "LTD",
+        "LIMITED",
+        "PLLC",
+        "PC",
+        "PLC",
+    }
 )
 _DOTTED_DESIGNATORS = (
     (re.compile(r"\bp\s*\.\s*l\s*\.\s*l\s*\.\s*c\s*\.?", re.IGNORECASE), "pllc"),
@@ -376,6 +403,20 @@ def normalize_company_name(
                 break
             text = cleaned
         return text
+    if profile is CompanyNameProfile.SEC_EDGAR_MATCH_V1:
+        text = _SEC_MATCH_STATE_SUFFIX_V1.sub("", text.strip().upper())
+        text = _SEC_MATCH_JOINERS_V1.sub("", text).replace("&", " AND ")
+        tokens = _SEC_MATCH_PUNCTUATION_V1.sub(" ", text).split()
+        if len(tokens) > 1 and tokens[0] == "THE":
+            tokens.pop(0)
+        while tokens:
+            if tokens[-1] in _SEC_MATCH_SUFFIX_TOKENS_V1 or tokens[-1] == "AND":
+                tokens.pop()
+            elif tokens[-2:] == ["LIMITED", "LIABILITY"]:
+                del tokens[-2:]
+            else:
+                break
+        return " ".join(tokens)
     if profile is CompanyNameProfile.NOTICE_KEY_V1:
         text = _NOTICE_SUFFIX.sub("", text)
         return re.sub(r"[^A-Z0-9]", "", text.upper())
