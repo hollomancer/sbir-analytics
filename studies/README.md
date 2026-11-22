@@ -140,8 +140,9 @@ substantive claim the design was meant to support, and it does not become `appro
 
 ## Captured published tables
 
-This convention comes from `sba-annual-report-tables`, the only study that captures
-published tables today. Apply it to any new study that captures a published table.
+This convention comes from `sba-annual-report-tables`. `allocation-transaction-costs` also
+keeps transcribed tables in `data/`. Apply the convention to any new study that captures a
+published table.
 
 A study that reproduces a published table keeps its transcription of that table at
 `studies/<study-id>/data/*.csv`. One CSV holds one printed table for one report year.
