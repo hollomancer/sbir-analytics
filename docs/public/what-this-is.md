@@ -21,3 +21,7 @@ Use [the repository map](repository-map.md) to identify each top-level path.
 Read the [validated SBA structural comparison](sba-structural-comparison.md),
 frozen at v0.18.0, and its [release page](sba-structural-comparison-release.md),
 which states the current citation status.
+
+Read [capacity and provenance](capacity-and-provenance.md) for the capacity in
+which this work is done, the meaning of agency names and spec personas, and the
+public-inputs rule.

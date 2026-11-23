@@ -131,6 +131,8 @@ listed explicitly in [STATUS.md](STATUS.md) and in each `study.yaml`.
 For contributor details, see the [research-question inventory](docs/research-questions.md),
 [study-contract rules](studies/README.md), and
 [development guide](CONTRIBUTING.md). The
+[capacity and provenance page](docs/public/capacity-and-provenance.md) states
+the capacity in which this work is done and the public-inputs rule. The
 [repository map](docs/public/repository-map.md) states the purpose and evidence
 relationship of every tracked top-level directory. The software is MIT
 licensed. Research claims remain bounded by their study contracts and release

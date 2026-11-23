@@ -69,6 +69,27 @@ Do not add real credentials, private datasets, or generated research outputs to
 the repository. Prefer fixtures, temporary directories, and the synthetic sample
 generator for reproducible tests.
 
+## Capacity and Data Provenance
+
+This is a personal project. It is not the work product of a government agency.
+See [capacity and provenance](docs/public/capacity-and-provenance.md).
+
+When you contribute, you confirm these points:
+
+1. You contribute in your personal capacity, or your employer permits the
+   contribution. You have the right to release it under the MIT license.
+2. The contribution is not work that you did as part of official government
+   duties. You did not use government time, equipment, or accounts to make it.
+3. The contribution uses public information only. It does not contain or rely
+   on data from employment, credentials, agreements, or other non-public access.
+4. If you work for a firm that holds or seeks SBIR/STTR awards, or for a firm
+   that does business with an SBIR/STTR agency, you say so in the pull request.
+
+A pull request that cannot meet these points will be closed.
+
+Do not propose changes that rank, rate, or select firms for awards, visits,
+meetings, or other official attention.
+
 ## Open a Pull Request
 
 A typical pull request includes:
