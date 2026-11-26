@@ -245,8 +245,8 @@ class TestFederalFiscalYear:
         assert federal_fiscal_year_series(values).tolist() == [2024]
         assert federal_fiscal_year(values.iloc[0]) == 2024
 
-    def test_series_calls_scalar_only_for_newly_missing_rows(self, monkeypatch):
-        """Guard against falling back to the scalar function for the whole column."""
+    def test_series_calls_scalar_once_per_distinct_value(self, monkeypatch):
+        """Speed guard without a clock: one scalar call per distinct value."""
         pd = pytest.importorskip("pandas")
         from sbir_etl.utils import date_utils
 
@@ -263,7 +263,15 @@ class TestFederalFiscalYear:
 
         result = date_utils.federal_fiscal_year_series(values)
 
-        assert sorted(map(str, calls)) == ["", "10/01/2023", "garbage"]
+        assert len(calls) == 6
+        # The sixth call is the one null; pandas may store it as None or NaN.
+        assert {value for value in calls if isinstance(value, str)} == {
+            "2023-09-30",
+            "2023-10-01",
+            "",
+            "garbage",
+            "10/01/2023",
+        }
         assert str(result.dtype) == "Int64"
         assert result.iloc[:1000].tolist() == [2023, 2024] * 500
         assert result.iloc[1000:].tolist() == [pd.NA, pd.NA, pd.NA, pd.NA, 2024]
@@ -279,3 +287,51 @@ class TestFederalFiscalYear:
             ]
         )
         assert federal_fiscal_year_series(values).tolist() == [2023, 2024, 2024]
+
+    def test_series_empty_and_mixed_strings(self):
+        pd = pytest.importorskip("pandas")
+        values = pd.Series(["", "2023-09-30", "10/01/2023"])
+        assert federal_fiscal_year_series(values).tolist() == [pd.NA, 2023, 2024]
+
+    @pytest.mark.parametrize(
+        "index",
+        [
+            [0, 0, 1, 1],
+            ["d", "c", "b", "a"],
+            [3, 1, 0, 2],
+        ],
+        ids=["duplicate", "string", "shuffled"],
+    )
+    def test_series_keeps_index_and_positions(self, index):
+        pd = pytest.importorskip("pandas")
+        values = pd.Series(["10/01/2023", "2023-09-30", "", "2023-10-01"], index=index)
+        result = federal_fiscal_year_series(values)
+        assert result.index.tolist() == index
+        assert result.tolist() == [2024, 2023, pd.NA, 2024]
+
+    def test_datetime_series_keeps_duplicate_index(self):
+        pd = pytest.importorskip("pandas")
+        values = pd.Series(pd.to_datetime(["2023-10-01", "2023-09-30", None]), index=[5, 5, 1])
+        result = federal_fiscal_year_series(values)
+        assert result.index.tolist() == [5, 5, 1]
+        assert result.tolist() == [2024, 2023, pd.NA]
+
+    @pytest.mark.parametrize(
+        ("value", "expected"),
+        [(2023, 2023), (20231001, 2024), (20230930, 2023), (1.0, None), (float("nan"), None)],
+    )
+    def test_numbers_are_read_as_written_not_epoch(self, value, expected):
+        pd = pytest.importorskip("pandas")
+        assert federal_fiscal_year(value) == expected
+        result = federal_fiscal_year_series(pd.Series([value])).tolist()
+        assert result == [pd.NA if expected is None else expected]
+
+    def test_integer_series_is_not_epoch(self):
+        pd = pytest.importorskip("pandas")
+        values = pd.Series([2023, 20231001, 20230930])
+        assert federal_fiscal_year_series(values).tolist() == [2023, 2024, 2023]
+
+    def test_mixed_object_column_of_ints_and_strings(self):
+        pd = pytest.importorskip("pandas")
+        values = pd.Series([20231001, "2023-09-30", 2023, "10/01/2023", None], dtype=object)
+        assert federal_fiscal_year_series(values).tolist() == [2024, 2023, 2023, 2024, pd.NA]

@@ -245,13 +245,15 @@ def _local_calendar_date(value: Any) -> date | None:
     text = value.strip() if isinstance(value, str) else str(value).strip()
     if not text or text.lower() in NULL_VALUES:
         return None
-    if pd is not None:
-        parsed = pd.to_datetime(text, errors="coerce")
-        return None if pd.isna(parsed) else parsed
+    # Fast path for ISO 8601 text, including offsets and "Z"; keeps the local fields.
     try:
         return datetime.fromisoformat(text)
     except ValueError:
-        return None
+        pass
+    if pd is not None:
+        parsed = pd.to_datetime(text, errors="coerce")
+        return None if pd.isna(parsed) else parsed
+    return None
 
 
 def federal_fiscal_year(value: Any) -> int | None:
@@ -283,18 +285,20 @@ def federal_fiscal_year(value: Any) -> int | None:
 
 
 def federal_fiscal_year_series(values: pd.Series) -> pd.Series:
-    """Vectorized :func:`federal_fiscal_year` over a pandas Series.
+    """Apply :func:`federal_fiscal_year` to each value of a pandas Series.
 
     Applies the same rule: local date as written, no UTC conversion. Returns a
-    nullable ``Int64`` Series; missing or unparseable values become ``<NA>``.
+    nullable ``Int64`` Series with the input's index; missing or unparseable
+    values become ``<NA>``.
 
-    The column is parsed at once with ``pandas.to_datetime``. Coercion can turn
-    some non-missing values into ``NaT``: ``Timestamp`` objects or strings with
-    different UTC offsets, mixed string formats, empty strings, or bad values.
-    Only those rows go through the scalar function, once per distinct value,
-    and their results replace the ``<NA>``. Coercion never turns a parseable
-    value into ``<NA>``. If pandas refuses the whole column, every value goes
-    through the scalar function.
+    A ``datetime64`` column is read directly from its fields. Any other column
+    goes through the scalar function once per distinct value, and results are
+    mapped back by position. Values are told apart by ``(type, str(value))``, not by
+    equality: two ``Timestamp`` objects for the same instant in different zones
+    compare equal but can fall in different fiscal years. A non-datetime column
+    is never passed to a vectorized ``pandas.to_datetime``, so its coercion
+    rules do not apply. Integers are read as written (``20231001`` is 2023-10-01), never as
+    epoch nanoseconds.
 
     A tz-aware ``datetime64`` Series uses the zone it stores. A column already
     converted to UTC gives the UTC date, not the date as originally written.
@@ -303,29 +307,15 @@ def federal_fiscal_year_series(values: pd.Series) -> pd.Series:
     """
     if pd is None:  # pragma: no cover - pandas is a core dependency
         raise ImportError("federal_fiscal_year_series requires pandas")
-    try:
-        parsed = pd.to_datetime(values, errors="coerce")
-    except (TypeError, ValueError):
-        return _scalar_fiscal_years(values)
-    year = parsed.dt.year.astype("Int64")
-    result = (year + (parsed.dt.month >= 10).astype("Int64")).astype("Int64")
-    newly_missing = parsed.isna() & values.notna()
-    if newly_missing.any():
-        result[newly_missing] = _scalar_fiscal_years(values[newly_missing])
-    return result
-
-
-def _scalar_fiscal_years(values: pd.Series) -> pd.Series:
-    """Apply :func:`federal_fiscal_year` once per distinct value; ``Int64`` result.
-
-    Values are grouped by ``str(value)``, not by equality. Two ``Timestamp``
-    objects for the same instant in different zones compare equal but can fall
-    in different fiscal years; their strings keep the offset and stay apart.
-    """
-    keys = values.map(str)
-    first = ~keys.duplicated()
-    cache = {
-        key: federal_fiscal_year(value)
-        for key, value in zip(keys[first], values[first], strict=True)
-    }
-    return keys.map(cache).astype("Int64")
+    if pd.api.types.is_datetime64_any_dtype(values.dtype):
+        # Already datetimes: no parsing or coercion, so the fields are exact.
+        year = values.dt.year.astype("Int64")
+        return (year + (values.dt.month >= 10).astype("Int64")).astype("Int64")
+    memo: dict[tuple[type, str], int | None] = {}
+    years: list[int | None] = []
+    for value in values.to_numpy(dtype=object):
+        key = (type(value), str(value))
+        if key not in memo:
+            memo[key] = federal_fiscal_year(value)
+        years.append(memo[key])
+    return pd.Series(pd.array(years, dtype="Int64"), index=values.index, name=values.name)
