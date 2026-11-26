@@ -7,7 +7,7 @@ This document outlines the requirements for consolidating, refactoring, and stre
 ## Glossary
 
 > Archived. Consolidation jargon glossary removed; not a live standard. See
-> [glossary.md](../../../docs/steering/glossary.md).
+> [glossary.md](../../../../docs/steering/glossary.md).
 
 ## Requirements
 
