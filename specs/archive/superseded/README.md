@@ -28,3 +28,9 @@ calls never cleared their gates. The `scripts/ci/jev_triage/` package, its
 fixtures, tests, and CI job were removed with this archive. Git history holds
 the code. The separate `jev-preflight` and `jev-ci-enforcement` specs are not
 affected.
+
+## E2E Testing Enhancement (e2e-testing-enhancement/)
+**Archived:** before 2026-11-26 (moved from the archive root on 2026-11-26)
+**Reason:** Dropped, not completed. Seven of 31 tasks were done. The plan
+depended on the retired Neo4j graph and on MacBook-specific resource limits.
+The current hermetic end-to-end suite is described in `docs/testing/`.

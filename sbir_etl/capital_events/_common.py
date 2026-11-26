@@ -1,20 +1,15 @@
 """Cross-source helpers for the capital-event timeline builder."""
 
-import os
 import re
 from datetime import datetime
 from pathlib import Path
 
-# Repo-relative default: sbir_etl/capital_events/_common.py is 2 parents
-# below the repo root, so the data dir is parents[2] / "data". Matches
-# the sbir_etl/ucc/_common.py pattern. Override via SBIR_DATA_DIR env var.
-DEFAULT_DATA_DIR = Path(__file__).resolve().parents[2] / "data"
+from sbir_etl.config.loader import data_root
 
 
 def data_dir() -> Path:
-    """Return the resolved data directory, honoring SBIR_DATA_DIR."""
-    override = os.environ.get("SBIR_DATA_DIR")
-    return Path(override) if override else DEFAULT_DATA_DIR
+    """Return the configured data root (see ``sbir_etl.config.loader.data_root``)."""
+    return data_root()
 
 
 def data_path(relative_name: str) -> Path:

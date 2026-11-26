@@ -4,7 +4,8 @@
 Tier declarations (``EPISTEMIC_TIER`` constants) state how much weight a module
 can carry; this check makes their dependency consequences executable, so a
 pipelines-tier module cannot quietly grow an exploratory import. Contracts:
-docs/steering/epistemic-tiers.md. Spec: specs/epistemic-tier-enforcement/.
+docs/steering/epistemic-tiers.md. Spec (archived):
+specs/archive/completed-features/epistemic-tier-enforcement/.
 
 Resolution is static and per-file: a module's own top-level constant wins,
 otherwise the nearest ancestor package ``__init__.py`` declaration within the

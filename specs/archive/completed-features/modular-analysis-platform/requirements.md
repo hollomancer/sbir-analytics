@@ -7,10 +7,10 @@
   bespoke CLI, Dagster, or snapshot-directory code. Existing calibrated
   outputs stay unchanged unless an explicitly versioned methodology change is
   made. Serves the same consumers as
-  [tech-area-transition-report](../tech-area-transition-report/requirements.md)
+  [tech-area-transition-report](../../../tech-area-transition-report/requirements.md)
   (B / C1) without rewriting those classifiers. See
-  [docs/research-questions.md](../../docs/research-questions.md).
-- **Status:** active
+  [docs/research-questions.md](../../../../docs/research-questions.md).
+- **Status:** archived 2026-11-26 (complete; see `COMPLETION_RECORD.md`)
 - **Out of scope:** HTTP or MCP adapters (ADR-004); weekly-awards
   `analysis_kind`; rewriting census or transition matching; promoting
   profiles to the evidence tier; `cross-agency-taxonomy` scheduled assets;

@@ -7,7 +7,7 @@ This document outlines the requirements for enhancing the end-to-end (E2E) testi
 ## Glossary
 
 > Archived. Boilerplate E2E/testing glossary removed. See
-> [glossary.md](../../../docs/steering/glossary.md).
+> [glossary.md](../../../../docs/steering/glossary.md).
 
 ## Requirements
 

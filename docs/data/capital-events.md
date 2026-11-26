@@ -10,8 +10,9 @@ contracts, and UCC liens — for the Form D high-confidence cohort. Code lives i
 > cross-filing or multi-CIK identity. Do not publish a replacement until the
 > `form-d-fundraising` study gate reopens.
 
-All paths below are under the data root, overridable with the `SBIR_DATA_DIR`
-environment variable. No API credentials are required for either subsystem.
+All paths below are under the data root, overridable with the
+`SBIR_ETL__PATHS__DATA_ROOT` environment variable (config key `paths.data_root`).
+The old `SBIR_DATA_DIR` variable is no longer read; setting it raises an error. No API credentials are required for either subsystem.
 
 ## Build capital events
 

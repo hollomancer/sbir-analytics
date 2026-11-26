@@ -19,7 +19,7 @@ def _write_cohort(path: Path, rows: list[dict]) -> None:
 
 def test_orchestrator_end_to_end(tmp_path, monkeypatch):
     """Synthetic data in all 5 active sources → parquet output with expected rows."""
-    monkeypatch.setenv("SBIR_DATA_DIR", str(tmp_path))
+    monkeypatch.setenv("SBIR_ETL__PATHS__DATA_ROOT", str(tmp_path))
 
     cohort_path = tmp_path / "form_d_high_conf_cohort.jsonl"
     _write_cohort(
@@ -179,7 +179,7 @@ def test_orchestrator_end_to_end(tmp_path, monkeypatch):
     result = subprocess.run(
         [sys.executable, "scripts/data/build_capital_events.py"],
         env={
-            "SBIR_DATA_DIR": str(tmp_path),
+            "SBIR_ETL__PATHS__DATA_ROOT": str(tmp_path),
             "PATH": "/usr/bin:/bin",
             "PYTHONPATH": str(Path(__file__).resolve().parents[3]),
         },

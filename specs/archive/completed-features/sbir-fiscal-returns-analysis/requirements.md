@@ -7,7 +7,7 @@ The SBIR Fiscal Returns Analysis feature enables computation of federal fiscal r
 ## Glossary
 
 > Archived. Fiscal-feature terms only; confidence intervals here are statistical,
-> not enrichment bands. See [glossary.md](../../../docs/steering/glossary.md).
+> not enrichment bands. See [glossary.md](../../../../docs/steering/glossary.md).
 
 - **Economic_Multiplier** — Indirect/induced effects factor on direct spending.
 - **Sensitivity_Band** — Range of estimates reflecting parameter uncertainty.

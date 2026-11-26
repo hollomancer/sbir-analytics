@@ -3,12 +3,12 @@
 **Target epistemic tier:** `pipelines`
 
 - **Research question:** none directly. Operational obligation: the tier system in
-  [docs/steering/epistemic-tiers.md](../../docs/steering/epistemic-tiers.md) protects the
+  [docs/steering/epistemic-tiers.md](../../../../docs/steering/epistemic-tiers.md) protects the
   citability of every answered question, and its own doctrine is that an unenforced
   contract is decoration. The 2026-08 labeling sweep (PRs #550, #551, #552) made module
   tiers machine-readable; nothing yet enforces the dependency rules those labels imply,
   and the sweep surfaced live violations.
-- **Status:** active. Implementation starts after PRs #550–#552 merge, since the guard
+- **Status:** archived 2026-11-26 (complete; see `COMPLETION_RECORD.md`). Implementation started after PRs #550–#552 merged, since the guard
   reads the `EPISTEMIC_TIER` declarations they introduce.
 - **Out of scope:** a fifth tier; directory reorganization; data-level lineage or
   storage-tier tracking; study manifests for analytics not named here; runtime

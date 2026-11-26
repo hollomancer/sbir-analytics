@@ -21,6 +21,7 @@ import pandas as pd
 
 from ..config.loader import get_config
 from ..exceptions import ExtractionError
+from ..utils.data.duckdb_client import DuckDBClient
 from ..utils.logging_config import log_with_context
 from .contract_extractor import ArchiveSchemaError, TocTableEntry, read_toc_table_data
 
@@ -70,22 +71,6 @@ class DuckDBUSAspendingExtractor:
         # COPY tables of the last ZIP import that failed to load but that the
         # named view does not read. Maps raw table name to the error text.
         self.import_failed_tables: dict[str, str] = {}
-
-    @staticmethod
-    def _escape_identifier(identifier: str) -> str:
-        try:
-            return duckdb.escape_identifier(identifier)  # type: ignore[attr-defined]
-        except AttributeError:
-            double_quoted = identifier.replace('"', '""')
-            return f'"{double_quoted}"'
-
-    @staticmethod
-    def _escape_literal(value: str) -> str:
-        try:
-            return duckdb.escape_string_literal(value)  # type: ignore[attr-defined]
-        except AttributeError:
-            escaped = value.replace("\\", "\\\\").replace("'", "''")
-            return "'" + escaped + "'"
 
     def connect(self) -> duckdb.DuckDBPyConnection:
         """Get or create database connection."""
@@ -152,7 +137,7 @@ class DuckDBUSAspendingExtractor:
                 )
 
             self.connect()
-            self._escape_identifier(table_name)
+            DuckDBClient.escape_identifier(table_name)
             self.import_failed_tables = {}
 
             try:
@@ -294,7 +279,7 @@ class DuckDBUSAspendingExtractor:
                     oid: int = int(file_info["oid"])  # type: ignore[assignment, call-overload]
                     filename: str = str(file_info["filename"])  # type: ignore[assignment]
                     table_name_for_file = f"{table_name}_{oid}"
-                    table_identifier = self._escape_identifier(table_name_for_file)
+                    table_identifier = DuckDBClient.escape_identifier(table_name_for_file)
 
                     logger.info(f"Importing {filename} as {table_name_for_file}")
 
@@ -332,7 +317,7 @@ class DuckDBUSAspendingExtractor:
 
                         # Load into DuckDB
                         try:
-                            file_literal = self._escape_literal(str(decompressed_file))
+                            file_literal = DuckDBClient.escape_literal(str(decompressed_file))
                             create_query = f"""
                             CREATE TABLE IF NOT EXISTS {table_identifier} AS
                             SELECT * FROM read_csv_auto({file_literal},
@@ -370,8 +355,8 @@ class DuckDBUSAspendingExtractor:
                 self.import_failed_tables = failed_tables
 
                 # Create the named view over the source table
-                base_table_identifier = self._escape_identifier(table_name)
-                source_table = self._escape_identifier(source_table_name)
+                base_table_identifier = DuckDBClient.escape_identifier(table_name)
+                source_table = DuckDBClient.escape_identifier(source_table_name)
 
                 # recipient_lookup: apply column names from the schema
                 if source_entry.table == RECIPIENT_LOOKUP_TABLE:

@@ -1,6 +1,6 @@
 # Specification Status Registry
 
-Reviewed: 2026-09-23
+Reviewed: 2026-11-26
 
 This registry is the cleanup checkpoint for top-level specs. It does not replace
 the requirements, design, or tasks files; it records whether a spec is a current
@@ -34,14 +34,13 @@ bypassing lifecycle review; the status and rationale still require human judgmen
   versus R01-equivalent transaction-cost study. Target tier is `exploratory`;
   the study contract is `reproducible` and not approved evidence. NSF/DOE/NASA/DoD
   series, Dagster, and evidence promotion are out of scope.
-- **`award-export-semantics` — Maintenance.** Primitives contract for the one
-  source-faithful SBIR.gov export-row grain, the one award-year profile needed
-  by the SBA annual-report study, and pinned source metadata. It does not move
-  data, define award identity, or authorize a public claim.
 - **`award-export-source-pipeline` — Maintenance.** Pipelines contract for the exact
   42-column SBIR.gov raw reader, pin-before-use verification, new-capture
-  vintage layout, and migration of the SBA annual-report study only. Existing
-  storage moves and other reader migrations require separate review.
+  vintage layout, and migration of the SBA annual-report study only. All seven
+  tasks are checked, but the spec stays here: its `consumer-inventory.md` holds
+  the unexecuted existing-storage migration plan and the reader inventory that
+  open issue #771 (migrating the other award-export readers) builds on.
+  Existing storage moves and other reader migrations require separate review.
 - **`agency-private-capital-comparison` — Active.** The NSF Phase 1 real-data
   gate is materialized for review but remains unapproved and unsigned. Phase 2
   now has a maintained, deterministic 2009Q1–2024Q4 SEC DERA Form D staging
@@ -90,18 +89,6 @@ bypassing lifecycle review; the status and rationale still require human judgmen
   only `sbir_etl/enrichers/sec_edgar/`. The Form D amendment work reviewed
   alongside it (PR #691) is not here — it lives with the code it changes, as
   `agency-private-capital-comparison` tasks F.1-F.3.
-- **`epistemic-tier-enforcement` — Maintenance.** Enforcement follow-on to the
-  2026-08 module-labeling sweep (PRs #550–#552). Shipped: the blocking
-  tier-aware import guard (`scripts/ci/check_tier_boundaries.py`, in
-  `make lint-boundaries` and CI), the workbench/operated doctrine (T4.1), and a
-  full burndown of `TIER_IMPORT_ALLOWLIST` to zero — canonical company merge
-  promoted into `sbir_etl.identity` under `CanonicalMergePolicy.PRELOAD_V1`
-  (T2, byte-identical to the golden corpus), the NSF CET screen inverted out of
-  the pipelines defense release into the operated exploratory asset layer (T3),
-  the opportunity scorer split into an exploratory pairing module (edge 4), and
-  NAICS text-inference registration moved behind an exploratory composition
-  point (edges 5-6). No fifth tier and no directory moves. Remaining work is
-  ordinary upkeep of declarations as modules are added.
 - **`fiscal-tax-impact-v2.md` — Gated backlog.** Valid D2 methodology upgrade.
   Leave inactive until fiscal-model refresh is selected.
 - **`follow-on-multiplier-validation` — Active.** Retiered `evidence` →
@@ -128,11 +115,6 @@ bypassing lifecycle review; the status and rationale still require human judgmen
   tree. The held-out confirmatory cut met strict recall (13>=10), FP 0/19,
   and the cost cap. evidence_status stays exploratory pending
   evidence-auditor. Candidate discovery stays unapproved.
-- **`modular-analysis-platform` — Maintenance.** Pipelines-tier contracts
-  and registry so a new tech-census or transition-cohort profile is
-  YAML-only (issue #441). HTTP is out of scope per ADR-004. Weekly awards
-  stay on their existing builder. Census and cohort classifiers remain
-  exploratory.
 - **`modernbert-analysis-layer` — Maintenance.** Core embeddings and brute-force
   similarity are implemented for exploratory question C2. Remaining work is a
   deterministic multi-asset integration test, effective configuration wiring,
@@ -289,6 +271,20 @@ directory moved.
 ran in recent pull requests, and live Jev calls stayed gated. Its package,
 fixtures, tests, and CI job were removed in the same change. `jev-preflight`
 and `jev-ci-enforcement` stay active.
+
+`award-export-semantics`, `epistemic-tier-enforcement`, and
+`modular-analysis-platform` were archived on 2026-11-26 under
+`specs/archive/completed-features/`. Each had every task checked and owned no
+open work; each directory has a `COMPLETION_RECORD.md`. On the same date the
+three directories loose at the archive root were filed by category:
+`codebase-consolidation-refactor` under `completed-migrations/`,
+`sbir-fiscal-returns-analysis` under `completed-features/`, and
+`e2e-testing-enhancement` under `superseded/`.
+
+`neo4j-retirement` stays in Maintenance with every task checked because the
+one-time operator cutover still needs a verified final dump.
+`upstream-drift-reproduction` stays because other live-source studies have not
+yet adopted its contract.
 
 No other top-level spec should be archived from this review because each still
 anchors a live research question or an active maintenance cleanup.

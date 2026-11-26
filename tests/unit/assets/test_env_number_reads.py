@@ -166,7 +166,7 @@ class _CapturingBuilder:
 
 
 def test_weekly_lookback_days_default_when_unset(monkeypatch, tmp_path):
-    monkeypatch.setenv(weekly.DATA_ROOT_ENV, str(tmp_path))
+    monkeypatch.setenv("SBIR_ETL__PATHS__DATA_ROOT", str(tmp_path))
     monkeypatch.delenv(weekly.LOOKBACK_DAYS_ENV, raising=False)
     monkeypatch.setattr(weekly, "WeeklyAwardsReportBuilder", _CapturingBuilder)
 
@@ -176,7 +176,7 @@ def test_weekly_lookback_days_default_when_unset(monkeypatch, tmp_path):
 
 
 def test_weekly_lookback_days_reject_bad_value(monkeypatch, tmp_path):
-    monkeypatch.setenv(weekly.DATA_ROOT_ENV, str(tmp_path))
+    monkeypatch.setenv("SBIR_ETL__PATHS__DATA_ROOT", str(tmp_path))
     monkeypatch.setenv(weekly.LOOKBACK_DAYS_ENV, "7d")
     monkeypatch.setattr(weekly, "WeeklyAwardsReportBuilder", _CapturingBuilder)
 

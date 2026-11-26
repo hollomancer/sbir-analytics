@@ -376,9 +376,9 @@ class TestNAICSMappingModel:
         assert mapping.naics_code == "541715"
         assert mapping.bea_sector_code == "54"
 
-    def test_naics_code_validator_removes_non_digits(self):
-        """Test naics_code validator removes non-digit characters."""
-        mapping = _make_naics_mapping(naics_code="54-17-15")
+    def test_naics_code_validator_repairs_float_artifact(self):
+        """Test naics_code validator repairs a code read as a float."""
+        mapping = _make_naics_mapping(naics_code="541715.0")
         assert mapping.naics_code == "541715"
 
     @pytest.mark.parametrize(
@@ -399,8 +399,8 @@ class TestNAICSMappingModel:
 
     @pytest.mark.parametrize(
         "code",
-        ["5", "5417150"],
-        ids=["1_digit_invalid", "7_digit_invalid"],
+        ["5", "5417150", "54-17-15", "abc", "005417"],
+        ids=["1_digit_invalid", "7_digit_invalid", "hyphens", "letters", "leading_zeros"],
     )
     def test_naics_code_validator_rejects_invalid_length(self, code):
         """Test naics_code validator rejects codes not 2-6 digits."""

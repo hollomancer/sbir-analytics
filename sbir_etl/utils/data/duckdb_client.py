@@ -76,15 +76,14 @@ class DuckDBClient:
 
     @staticmethod
     def escape_literal(value: str) -> str:
-        """Return a DuckDB-safe string literal."""
-        if duckdb is not None:
-            try:
-                return duckdb.escape_string_literal(value)  # type: ignore[attr-defined]
-            except AttributeError:
-                pass
+        """Return a DuckDB-safe string literal.
 
-        escaped = value.replace("\\", "\\\\").replace("'", "''")
-        return "'" + escaped + "'"
+        DuckDB string literals follow standard SQL: a single quote is written as
+        two single quotes, and a backslash is an ordinary character. Only single
+        quotes are doubled, so a value such as ``C:\\data`` keeps one backslash.
+        Prefer bound parameters when the statement accepts them.
+        """
+        return "'" + value.replace("'", "''") + "'"
 
     def _setup_connection(self, conn: Any) -> None:
         """Apply standard settings to a DuckDB connection."""
