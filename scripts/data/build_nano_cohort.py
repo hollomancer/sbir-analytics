@@ -950,7 +950,7 @@ flagged but retained. Exclusion of bare "nano" prevents matching "nanosecond" an
 ### 2B. CET Keyword Proxy Cohort [MED confidence — heuristic, not trained]
 
 **ACCURACY DISCLAIMER [HIGH confidence in this claim]:**
-The CET system in `packages/sbir-ml/sbir_ml/transition/features/cet_analyzer.py` is a
+The former transition CET extractor (`cet_analyzer.py`, since removed from `sbir_ml`) was a
 **deterministic keyword matcher, not a trained probabilistic classifier.** No precision/recall
 has been published for this heuristic on nanotech classification tasks.
 

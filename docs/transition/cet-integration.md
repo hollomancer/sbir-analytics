@@ -1,7 +1,7 @@
 ---
 Type: Integration Note
 Maintainer: Conrad Hollomon
-Last-Reviewed: 2026-08-03
+Last-Reviewed: 2026-11-26
 Status: limited
 ---
 
@@ -13,27 +13,22 @@ labels rather than maintain another taxonomy.
 
 ## Current implementation
 
-`sbir_ml.transition.features.cet_analyzer.CETSignalExtractor` can:
+The transition library has no CET extractor. `TransitionScorer.score_cet_alignment` in
+`sbir_ml.transition.detection.scoring` compares an award CET label and a contract CET label only
+when a caller supplies both. The current Dagster transition scoring asset does not supply them.
 
-- read a CET-like field from award data;
-- infer one contract area from description keywords;
-- compare the two labels; and
-- emit a `CETSignal` for the multi-signal transition library.
-
-The extractor currently embeds a separate ten-name keyword mapping. It is not aligned to the
-canonical 21-area `NSTC-2025Q1` taxonomy, and repository search shows it is exercised by unit tests
-but not called by the current Dagster transition scoring asset. Therefore:
+The former `sbir_ml.transition.features.cet_analyzer.CETSignalExtractor` was removed because only
+its own unit tests called it. It embedded a separate ten-name keyword mapping that did not match the
+canonical 21-area `NSTC-2025Q1` taxonomy. Therefore:
 
 - do not describe CET alignment as a current production scoring input;
-- do not compare its labels directly with canonical CET aggregates;
-- do not tune or expand the embedded list as a substitute for integration work.
+- do not rebuild a separate keyword taxonomy for transition scoring.
 
 ## Integration requirement
 
-A future integration should remove the embedded taxonomy, consume versioned award and contract
-classifications, define behavior for missing or multi-label cases, and re-run the transition
-precision benchmark. Until then CET alignment is a tested library capability, not an operational
-or evidence-tier signal.
+A future integration should consume versioned award and contract classifications, define
+behavior for missing or multi-label cases, and re-run the transition precision benchmark. Until
+then CET alignment is an unused scorer input, not an operational or evidence-tier signal.
 
 See the [transition overview](overview.md) for the distinction between the current Dagster path and
 the richer `sbir_ml.transition` library.

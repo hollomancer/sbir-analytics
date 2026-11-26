@@ -16,7 +16,7 @@ from difflib import SequenceMatcher
 from enum import StrEnum
 from typing import Any
 
-from sbir_etl.utils.coercion import _blank
+from sbir_etl.utils.coercion import is_blank
 
 
 try:
@@ -345,7 +345,7 @@ def normalize_company_name(
 ) -> str:
     """Normalize ``value`` using an explicit, versioned company-name profile."""
 
-    if _blank(value):
+    if is_blank(value):
         return ""
     if profile is CompanyNameProfile.ORGANIZATION_KEY_V1:
         return _organization_key_v1(value)
@@ -470,7 +470,7 @@ def _fallback_token_set(left: str, right: str) -> float:
 
 
 def _raw_name(value: Any) -> str:
-    return "" if _blank(value) else str(value)
+    return "" if is_blank(value) else str(value)
 
 
 def company_name_similarity(

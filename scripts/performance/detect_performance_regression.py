@@ -27,8 +27,8 @@ _workspace_root = str(Path(__file__).resolve().parent.parent.parent)
 if _workspace_root not in sys.path:
     sys.path.insert(0, _workspace_root)
 
-from sbir_etl.utils.monitoring.metrics import MetricComparison, PerformanceMetrics
-from sbir_etl.utils.monitoring.reporting import PerformanceReporter
+from scripts.performance.metrics import MetricComparison, PerformanceMetrics
+from scripts.performance.reporting import PerformanceReporter
 
 from scripts.performance.benchmark_base import (
     load_baseline,

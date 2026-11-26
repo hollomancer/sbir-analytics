@@ -17,7 +17,7 @@ Features:
 
 Usage example
 -------------
-from sbir_etl.src.transition.features.vendor_resolver import VendorResolver, VendorRecord
+from sbir_ml.transition.features.vendor_resolver import VendorResolver, VendorRecord
 
 # Prepare a list of known vendors (from DB, DuckDB, or CSV)
 vendors = [
@@ -38,8 +38,12 @@ from typing import Any
 
 from loguru import logger
 
-from sbir_etl.identity import CompanyNameProfile, normalize_company_name
-from sbir_ml.transition.features.vendor_crosswalk import _fuzzy_score as _crosswalk_fuzzy_score
+from sbir_etl.identity import (
+    CompanyNameMetric,
+    CompanyNameProfile,
+    company_name_similarity,
+    normalize_company_name,
+)
 
 
 @dataclass
@@ -192,8 +196,8 @@ class VendorResolver:
         return ResolverMatch(record=None, method="duns", score=0.0, note="no match")
 
     def _fuzzy_score(self, s1: str, s2: str) -> float:
-        """Delegate to the canonical fuzzy scorer in vendor_crosswalk."""
-        return _crosswalk_fuzzy_score(s1, s2)
+        """Score name similarity with the canonical token-sort metric."""
+        return company_name_similarity(s1, s2, metric=CompanyNameMetric.TOKEN_SORT)
 
     def resolve_by_name(self, name: str, prefer_identifiers: bool = True) -> ResolverMatch:
         """

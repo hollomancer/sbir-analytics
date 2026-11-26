@@ -13,7 +13,7 @@ from typing import Any
 import pandas as pd
 
 from sbir_etl.identity import CompanyNameProfile, normalize_company_name
-from sbir_etl.utils.coercion import _to_float
+from sbir_etl.utils.coercion import to_float
 from .utils import (
     MetadataValue,
     Output,
@@ -193,10 +193,10 @@ def transformed_transition_scores(
             id_boost = id_link_boost_val if (piid_match or fain_match) else 0.0
 
             # Amount sanity boost (contract vs award amount roughly similar)
-            c_amt = _to_float(contract_row.get("obligated_amount"))
-            a_amt = _to_float(
-                a_row.get("Award Amount") if a_row is not None else None
-            ) or _to_float(a_row.get("award_amount") if a_row is not None else None)
+            c_amt = to_float(contract_row.get("obligated_amount"))
+            a_amt = to_float(a_row.get("Award Amount") if a_row is not None else None) or to_float(
+                a_row.get("award_amount") if a_row is not None else None
+            )
             amount_boost = 0.0
             if c_amt and a_amt and c_amt > 0 and a_amt > 0:
                 ratio = min(c_amt, a_amt) / max(c_amt, a_amt)

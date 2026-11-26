@@ -8,7 +8,7 @@ It is **not a CI gate** and not a required merge checklist. Use it when reviewin
 
 The patterns are drawn from [`scicode-lint`](https://github.com/authentic-research-partners/scicode-lint)'s published 66-pattern catalog (v1.0 registry, 2026-03-15), filtered to the subset relevant to our sklearn + HuggingFace-Inference stack. PyTorch-specific patterns are documented but currently not load-bearing.
 
-Methodology bugs in the CET classifier directly distort its own reported precision/recall/F1 (computed in `trainer.py` and stored in the metrics dict). Indirectly, degraded CET classifications feed `transition/features/cet_analyzer.py` and become one signal in the rule-based **transition scorer** — which is what CLAUDE.md's "≥85% precision benchmark" actually references. The cascade is dampened by `cet_alignment`'s weight (1 of 6 signals), but real: a data-leakage bug here doesn't just produce a worse classifier, it can quietly degrade downstream transition-scoring precision in ways the CET-classifier-internal metrics don't show.
+Methodology bugs in the CET classifier directly distort its own reported precision/recall/F1 (computed in `trainer.py` and stored in the metrics dict). Indirectly, degraded CET classifications can reach the `cet_alignment` input of the rule-based **transition scorer** — which is what CLAUDE.md's "≥85% precision benchmark" actually references. The cascade is dampened by `cet_alignment`'s weight (1 of 6 signals), but real: a data-leakage bug here doesn't just produce a worse classifier, it can quietly degrade downstream transition-scoring precision in ways the CET-classifier-internal metrics don't show.
 
 ### What this guidance does and does not cover
 
@@ -307,10 +307,8 @@ Approximately **3,500 LOC of audit-relevant code**:
 | `transition/detection/evidence.py` | 574 | Evidence aggregation; what gets recorded per detection |
 | `transition/evaluation/evaluator.py` | 509 | Where the ≥85% target is *measured* against ground truth |
 | `transition/analysis/benchmark_evaluator.py` | 795 | Benchmark harness; how the historical claim was computed |
-| `transition/features/cet_analyzer.py` | 420 | CET-signal extraction (the cascade from the ML audit lands here) |
 | `transition/features/patent_analyzer.py` | 356 | Patent-signal extraction. PR #837 deleted this file. Do not audit it. |
 | `transition/features/vendor_resolver.py` | 448 | Vendor matching |
-| `transition/features/vendor_crosswalk.py` | 14 | Fuzzy name scorer used by `vendor_resolver.py` |
 
 The configuration files defining weights and thresholds are also in scope — `config/base.yaml` and any `transition/*.yaml` overrides.
 

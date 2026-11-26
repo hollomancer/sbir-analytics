@@ -857,7 +857,7 @@ Solution: Add acquisition record
 ## References
 
 - **Implementation**: `packages/sbir-ml/sbir_ml/transition/features/vendor_resolver.py`
-- **Fuzzy name scorer**: `packages/sbir-ml/sbir_ml/transition/features/vendor_crosswalk.py`
+- **Fuzzy name scorer**: `VendorResolver._fuzzy_score`, which calls `sbir_etl.identity.company_name_similarity` with the token-sort metric
 - **Tests**: `tests/unit/transition/features/test_vendor_resolver.py`
 - **SAM.gov**: <https://sam.gov/>
 - **RapidFuzz**: <https://maxbachmann.github.io/RapidFuzz/>
