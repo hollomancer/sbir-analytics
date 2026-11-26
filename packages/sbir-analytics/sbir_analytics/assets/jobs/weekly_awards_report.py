@@ -11,15 +11,12 @@ notice.
 
 import os
 from datetime import UTC, datetime
-from pathlib import Path
 
 from dagster import OpExecutionContext, job, op
 
-from sbir_etl.config.loader import env_int
+from sbir_etl.config.loader import data_root, env_int
 from sbir_etl.reporting.weekly.orchestrator import WeeklyAwardsReportBuilder
 
-DATA_ROOT_ENV = "SBIR_ETL__PATHS__DATA_ROOT"
-DEFAULT_DATA_ROOT = "data"
 EPISTEMIC_TIER = "exploratory"
 
 # The workflow's `days` input, which defaulted to 7 and was only ever overridden
@@ -28,16 +25,12 @@ LOOKBACK_DAYS_ENV = "SBIR_ETL__REPORTS__WEEKLY_AWARDS_DAYS"
 DEFAULT_LOOKBACK_DAYS = 7
 
 
-def _data_root() -> Path:
-    return Path(os.getenv(DATA_ROOT_ENV, DEFAULT_DATA_ROOT))
-
-
 @op
 def generate_weekly_awards_report_op(context: OpExecutionContext) -> dict:
     """Build the report through its package API and store dated markdown."""
     days = env_int(LOOKBACK_DAYS_ENV, DEFAULT_LOOKBACK_DAYS)
     report_date = datetime.now(UTC).strftime("%Y-%m-%d")
-    output_dir = _data_root() / "reports" / "weekly_awards" / report_date
+    output_dir = data_root() / "reports" / "weekly_awards" / report_date
     output_dir.mkdir(parents=True, exist_ok=True)
     output_path = output_dir / "weekly-awards.md"
 

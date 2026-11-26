@@ -6,7 +6,7 @@ still record-level candidate evidence, not proof of same-filing or issuer
 identity.
 
 Aggregates SBIR award history per firm. Writes
-$SBIR_DATA_DIR/form_d_high_conf_cohort.jsonl.
+form_d_high_conf_cohort.jsonl under the data root ($SBIR_ETL__PATHS__DATA_ROOT).
 
 Usage:
     python -m sbir_etl.ucc.export_cohort

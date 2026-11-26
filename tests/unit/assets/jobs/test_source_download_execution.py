@@ -10,7 +10,7 @@ layers while being unable to run at all.
 These run each job *graph* through `execute_in_process` with the package API
 mocked, so they stay unit-fast. What they pin is the wiring the ops own rather
 than the downloaders' behaviour: that each op routes its destination through
-`_data_root()`, and that the guards which turn a "successful" fetch into a
+`data_root()`, and that the guards which turn a "successful" fetch into a
 failure actually fire when the job runs.
 
 Destination routing is the specific thing worth a graph-level test. Promoting
@@ -30,9 +30,8 @@ pytestmark = [pytest.mark.fast, pytest.mark.unit]
 @pytest.fixture
 def data_root(tmp_path, monkeypatch):
     """Point the jobs at an isolated data root."""
-    from sbir_analytics.assets.jobs import source_downloads as mod
 
-    monkeypatch.setenv(mod.DATA_ROOT_ENV, str(tmp_path))
+    monkeypatch.setenv("SBIR_ETL__PATHS__DATA_ROOT", str(tmp_path))
     return tmp_path
 
 

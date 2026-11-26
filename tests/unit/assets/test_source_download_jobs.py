@@ -60,16 +60,16 @@ class TestSchedules:
 
 class TestDataRoot:
     def test_defaults_to_data(self, monkeypatch):
-        from sbir_analytics.assets.jobs.source_downloads import DATA_ROOT_ENV, _data_root
+        from sbir_etl.config.loader import DATA_ROOT_ENV, data_root
 
         monkeypatch.delenv(DATA_ROOT_ENV, raising=False)
-        assert str(_data_root()) == "data"
+        assert str(data_root()) == "data"
 
     def test_honours_env_override(self, monkeypatch):
-        from sbir_analytics.assets.jobs.source_downloads import DATA_ROOT_ENV, _data_root
+        from sbir_etl.config.loader import DATA_ROOT_ENV, data_root
 
         monkeypatch.setenv(DATA_ROOT_ENV, "/Volumes/SSDmini/sbir-analytics/data")
-        assert str(_data_root()) == "/Volumes/SSDmini/sbir-analytics/data"
+        assert str(data_root()) == "/Volumes/SSDmini/sbir-analytics/data"
 
 
 class TestSamGovOp:
@@ -78,10 +78,8 @@ class TestSamGovOp:
         from dagster import build_op_context
 
         from sbir_etl.extractors.source_downloads import sam_gov as download_module
-        from sbir_analytics.assets.jobs.source_downloads import (
-            DATA_ROOT_ENV,
-            download_sam_gov_op,
-        )
+        from sbir_analytics.assets.jobs.source_downloads import download_sam_gov_op
+        from sbir_etl.config.loader import DATA_ROOT_ENV
 
         monkeypatch.delenv("SAM_GOV_API_KEY", raising=False)
         monkeypatch.setenv(DATA_ROOT_ENV, str(tmp_path))

@@ -38,10 +38,9 @@ def _write_outputs(root: Path, *, names=None) -> None:
 @pytest.fixture
 def workspace(tmp_path, monkeypatch):
     """Run the job with sources under cwd and the archive under the data root."""
-    from sbir_analytics.assets.jobs import phase_transition_archive as mod
 
     monkeypatch.chdir(tmp_path)
-    monkeypatch.setenv(mod.DATA_ROOT_ENV, str(tmp_path / "data-root"))
+    monkeypatch.setenv("SBIR_ETL__PATHS__DATA_ROOT", str(tmp_path / "data-root"))
     return tmp_path
 
 

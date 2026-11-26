@@ -7,7 +7,6 @@ that series would be lost. This regenerates the report the workflow produced,
 then writes the same file set under the data root.
 """
 
-import os
 import shutil
 import time
 from datetime import UTC, datetime
@@ -15,10 +14,9 @@ from pathlib import Path
 
 from dagster import OpExecutionContext, job, op
 
+from sbir_etl.config.loader import data_root
 from sbir_etl.reporting.phase_transition_analysis import generate_phase_transition_report
 
-DATA_ROOT_ENV = "SBIR_ETL__PATHS__DATA_ROOT"
-DEFAULT_DATA_ROOT = "data"
 EPISTEMIC_TIER = "exploratory"
 
 # Same file set the S3 publish step carried, relative to the repo root.
@@ -33,10 +31,6 @@ ARCHIVED_OUTPUTS = (
     "data/processed/phase_transition_survival.checks.json",
     "reports/phase_transition/phase_transition_report.json",
 )
-
-
-def _data_root() -> Path:
-    return Path(os.getenv(DATA_ROOT_ENV, DEFAULT_DATA_ROOT))
 
 
 @op
@@ -99,7 +93,7 @@ def archive_phase_transition_outputs_op(context: OpExecutionContext, started: fl
         )
 
     date_str = datetime.now(UTC).strftime("%Y-%m-%d")
-    archive_dir = _data_root() / "processed" / "phase_transition" / "history" / date_str
+    archive_dir = data_root() / "processed" / "phase_transition" / "history" / date_str
     archive_dir.mkdir(parents=True, exist_ok=True)
 
     copied: list[str] = []

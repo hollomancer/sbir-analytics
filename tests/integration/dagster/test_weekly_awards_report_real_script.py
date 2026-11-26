@@ -28,7 +28,7 @@ pytestmark = [pytest.mark.integration, pytest.mark.slow]
 def test_job_never_succeeds_without_producing_a_report(tmp_path, monkeypatch):
     from sbir_analytics.assets.jobs import weekly_awards_report as mod
 
-    monkeypatch.setenv(mod.DATA_ROOT_ENV, str(tmp_path))
+    monkeypatch.setenv("SBIR_ETL__PATHS__DATA_ROOT", str(tmp_path))
     # Keep the run bounded and offline-ish: shortest lookback, no AI calls, and
     # skip the SBIR.gov API the script offers a flag for.
     monkeypatch.setenv(mod.LOOKBACK_DAYS_ENV, "1")

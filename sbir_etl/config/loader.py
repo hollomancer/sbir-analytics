@@ -19,7 +19,7 @@ import yaml
 from pydantic import ValidationError
 
 from ..exceptions import ConfigurationError
-from .schemas import PipelineConfig
+from .schemas import PathsConfig, PipelineConfig
 
 
 _ENVIRONMENT_PROFILE_ALIASES = {
@@ -160,6 +160,45 @@ def env_bool(key: str, default: bool) -> bool:
         f"Environment variable {key}={text!r} is not a boolean; "
         "use one of 1/0, true/false, yes/no, on/off"
     )
+
+
+DATA_ROOT_ENV = "SBIR_ETL__PATHS__DATA_ROOT"
+_RETIRED_DATA_DIR_ENV = "SBIR_DATA_DIR"
+
+
+def data_root(config_dir: Path | None = None) -> Path:
+    """Return the root directory for local data files.
+
+    Precedence:
+
+    1. The ``SBIR_ETL__PATHS__DATA_ROOT`` environment variable, read on every call
+       so that tests and long-running processes see changes.
+    2. ``paths.data_root`` from the config files (``config/base.yaml`` plus the
+       selected environment profile). The files are read on every call, without
+       environment overrides, so a cached ``get_config()`` cannot carry a stale
+       value of the variable.
+    3. The ``PathsConfig`` schema default, ``data``.
+
+    The path is returned as written. A relative path stays relative to the
+    current working directory, as before.
+
+    The retired variable ``SBIR_DATA_DIR`` raises instead of being ignored.
+    """
+    if os.environ.get(_RETIRED_DATA_DIR_ENV) is not None:
+        raise ConfigurationError(
+            f"{_RETIRED_DATA_DIR_ENV} is no longer read; "
+            f"set {DATA_ROOT_ENV} (config key paths.data_root) instead",
+            operation="data_root",
+            details={"retired_variable": _RETIRED_DATA_DIR_ENV, "variable": DATA_ROOT_ENV},
+        )
+    override = os.environ.get(DATA_ROOT_ENV)
+    if override is not None and override.strip():
+        return Path(override)
+    file_config = load_config_from_files(
+        base_path=Path.cwd(), environment=_selected_environment(None), config_dir=config_dir
+    )
+    paths = PathsConfig(**(file_config.get("paths") or {}))
+    return Path(paths.data_root)
 
 
 def _apply_env_overrides(config_dict: dict[str, Any], prefix: str = "SBIR_ETL") -> dict[str, Any]:

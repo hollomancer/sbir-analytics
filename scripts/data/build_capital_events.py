@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Build the capital-event timeline parquet artifacts.
 
-Reads per-source data files in $SBIR_DATA_DIR, projects each into the
+Reads per-source data files under the data root ($SBIR_ETL__PATHS__DATA_ROOT), projects each into the
 common CapitalEvent schema, concatenates, sorts, writes:
   - capital_events.parquet          (long-format)
   - capital_events_per_firm.parquet (wide-format summary)
