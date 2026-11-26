@@ -288,11 +288,13 @@ def federal_fiscal_year_series(values: pd.Series) -> pd.Series:
     Applies the same rule: local date as written, no UTC conversion. Returns a
     nullable ``Int64`` Series; missing or unparseable values become ``<NA>``.
 
-    The fast path parses the whole column with ``pandas.to_datetime``. If that
-    turns any non-missing value into ``NaT`` (for example, ``Timestamp`` objects
-    or strings with different UTC offsets, or mixed string formats), the result
-    comes from the scalar function applied to each value instead. Coercion
-    never turns a parseable value into ``<NA>``.
+    The column is parsed at once with ``pandas.to_datetime``. Coercion can turn
+    some non-missing values into ``NaT``: ``Timestamp`` objects or strings with
+    different UTC offsets, mixed string formats, empty strings, or bad values.
+    Only those rows go through the scalar function, once per distinct value,
+    and their results replace the ``<NA>``. Coercion never turns a parseable
+    value into ``<NA>``. If pandas refuses the whole column, every value goes
+    through the scalar function.
 
     A tz-aware ``datetime64`` Series uses the zone it stores. A column already
     converted to UTC gives the UTC date, not the date as originally written.
@@ -304,8 +306,26 @@ def federal_fiscal_year_series(values: pd.Series) -> pd.Series:
     try:
         parsed = pd.to_datetime(values, errors="coerce")
     except (TypeError, ValueError):
-        parsed = None
-    if parsed is None or int(parsed.isna().sum()) > int(values.isna().sum()):
-        return values.map(federal_fiscal_year).astype("Int64")
+        return _scalar_fiscal_years(values)
     year = parsed.dt.year.astype("Int64")
-    return (year + (parsed.dt.month >= 10).astype("Int64")).astype("Int64")
+    result = (year + (parsed.dt.month >= 10).astype("Int64")).astype("Int64")
+    newly_missing = parsed.isna() & values.notna()
+    if newly_missing.any():
+        result[newly_missing] = _scalar_fiscal_years(values[newly_missing])
+    return result
+
+
+def _scalar_fiscal_years(values: pd.Series) -> pd.Series:
+    """Apply :func:`federal_fiscal_year` once per distinct value; ``Int64`` result.
+
+    Values are grouped by ``str(value)``, not by equality. Two ``Timestamp``
+    objects for the same instant in different zones compare equal but can fall
+    in different fiscal years; their strings keep the offset and stay apart.
+    """
+    keys = values.map(str)
+    first = ~keys.duplicated()
+    cache = {
+        key: federal_fiscal_year(value)
+        for key, value in zip(keys[first], values[first], strict=True)
+    }
+    return keys.map(cache).astype("Int64")

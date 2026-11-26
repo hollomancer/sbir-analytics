@@ -244,3 +244,38 @@ class TestFederalFiscalYear:
         values = pd.to_datetime(pd.Series(["2023-09-30T22:00-05:00"]), utc=True)
         assert federal_fiscal_year_series(values).tolist() == [2024]
         assert federal_fiscal_year(values.iloc[0]) == 2024
+
+    def test_series_calls_scalar_only_for_newly_missing_rows(self, monkeypatch):
+        """Guard against falling back to the scalar function for the whole column."""
+        pd = pytest.importorskip("pandas")
+        from sbir_etl.utils import date_utils
+
+        calls: list[object] = []
+        real = date_utils.federal_fiscal_year
+
+        def counting(value):
+            calls.append(value)
+            return real(value)
+
+        monkeypatch.setattr(date_utils, "federal_fiscal_year", counting)
+        clean = ["2023-09-30", "2023-10-01"] * 500
+        values = pd.Series([*clean, "", "garbage", "garbage", None, "10/01/2023"])
+
+        result = date_utils.federal_fiscal_year_series(values)
+
+        assert sorted(map(str, calls)) == ["", "10/01/2023", "garbage"]
+        assert str(result.dtype) == "Int64"
+        assert result.iloc[:1000].tolist() == [2023, 2024] * 500
+        assert result.iloc[1000:].tolist() == [pd.NA, pd.NA, pd.NA, pd.NA, 2024]
+
+    def test_series_same_instant_different_zones_not_merged(self):
+        """Equal instants in different zones can fall in different fiscal years."""
+        pd = pytest.importorskip("pandas")
+        values = pd.Series(
+            [
+                pd.Timestamp("2023-09-30T22:00-05:00"),
+                pd.Timestamp("2023-10-01T03:00+00:00"),
+                pd.Timestamp("2023-10-01T08:00+05:00"),
+            ]
+        )
+        assert federal_fiscal_year_series(values).tolist() == [2023, 2024, 2024]
