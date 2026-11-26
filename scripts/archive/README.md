@@ -37,6 +37,16 @@ USAspending helpers, fixture generators that did not match the real fixtures,
 and validators that either could not run or had assertion-based replacements.
 None had active callers, documentation references, or tests.
 
+Archived 2026-11-26 after a search of the Makefile, Compose files,
+Dockerfile, CI workflows, docs, and `studies/` found no callers:
+
+- `setup-ec2-agent.sh`, which set up a Dagster Cloud hybrid agent on EC2.
+  That infrastructure is retired; the stack runs on the self-hosted server.
+- `docker/dagster-daemon.sh`, `docker/dagster-webserver.sh`,
+  `docker/etl-runner.sh`, and `docker/healthcheck.sh`. Compose starts every
+  service through `scripts/docker/entrypoint.sh` and checks health with
+  `scripts/docker/healthcheck/*.sh`.
+
 Unit tests for the remaining archived research scripts live in
 `tests/unit/scripts/archive/` and still run in CI so the reproducibility paths
 keep passing.
