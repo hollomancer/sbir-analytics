@@ -236,3 +236,36 @@ class TestSbirDuckDBExtractorImportedFlag:
         extractor.import_csv()
 
         assert extractor._imported is True
+
+
+class TestSbirDuckDBExtractorFiltersRealDuckDB:
+    """Agency and phase filters bind values unchanged (issue #866)."""
+
+    VALUES = ["a\\b", "C:\\path\\file.csv", "it's", "a''b", "trailing\\"]
+
+    def _extractor(self, sample_csv_file):
+        extractor = SbirDuckDBExtractor(csv_path=sample_csv_file)
+        with extractor.duckdb_client.connection() as conn:
+            conn.execute('CREATE TABLE sbir_awards ("Agency" VARCHAR, "Phase" VARCHAR)')
+            conn.executemany(
+                "INSERT INTO sbir_awards VALUES (?, ?)",
+                [[value, value] for value in self.VALUES] + [["other", "other"]],
+            )
+        return extractor
+
+    @pytest.mark.parametrize("value", VALUES)
+    def test_extract_by_agency_matches_exact_value(self, sample_csv_file, value):
+        df = self._extractor(sample_csv_file).extract_by_agency([value])
+
+        assert df["Agency"].tolist() == [value]
+
+    @pytest.mark.parametrize("value", VALUES)
+    def test_extract_by_phase_matches_exact_value(self, sample_csv_file, value):
+        df = self._extractor(sample_csv_file).extract_by_phase([value])
+
+        assert df["Phase"].tolist() == [value]
+
+    def test_extract_by_agency_with_several_values(self, sample_csv_file):
+        df = self._extractor(sample_csv_file).extract_by_agency(self.VALUES)
+
+        assert sorted(df["Agency"].tolist()) == sorted(self.VALUES)

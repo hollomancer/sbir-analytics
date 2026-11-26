@@ -70,10 +70,8 @@ class TestDuckDBClientIdentifierEscaping:
         assert result == '"table_name"'
 
     def test_escape_identifier_with_quotes(self):
-        """Test escaping identifier with quotes."""
-        result = DuckDBClient.escape_identifier('table"name')
-
-        assert '""' in result or result == '"table\\"name"'
+        """Embedded double quotes are doubled and nothing else changes."""
+        assert DuckDBClient.escape_identifier('table"name') == '"table""name"'
 
     def test_escape_identifier_special_chars(self):
         """Test escaping identifier with special characters."""
@@ -88,16 +86,71 @@ class TestDuckDBClientIdentifierEscaping:
         assert result == "'test string'"
 
     def test_escape_literal_with_quotes(self):
-        """Test escaping literal with single quotes."""
-        result = DuckDBClient.escape_literal("test's string")
+        """Single quotes are doubled."""
+        assert DuckDBClient.escape_literal("test's string") == "'test''s string'"
 
-        assert "''" in result or "\\'s" in result
+    def test_escape_literal_keeps_backslash(self):
+        """A backslash is not an escape character in DuckDB string literals."""
+        assert DuckDBClient.escape_literal("test\\string") == "'test\\string'"
 
-    def test_escape_literal_with_backslash(self):
-        """Test escaping literal with backslash."""
-        result = DuckDBClient.escape_literal("test\\string")
 
-        assert "\\\\" in result or result == "'test\\string'"
+ROUND_TRIP_VALUES = [
+    "a\\b",
+    "C:\\path\\file.csv",
+    "it's",
+    "a''b",
+    "trailing\\",
+]
+
+
+class TestDuckDBClientEscapingRoundTrip:
+    """Escaped values must reach a real DuckDB connection unchanged (issue #866)."""
+
+    @pytest.mark.parametrize("value", ROUND_TRIP_VALUES)
+    def test_literal_round_trip(self, value):
+        client = DuckDBClient()
+        with client.connection() as conn:
+            stored = conn.execute(f"SELECT {DuckDBClient.escape_literal(value)}").fetchone()[0]
+
+        assert stored == value
+
+    @pytest.mark.parametrize("value", ROUND_TRIP_VALUES)
+    def test_literal_round_trip_through_table(self, value):
+        client = DuckDBClient()
+        with client.connection() as conn:
+            conn.execute("CREATE TABLE t (v VARCHAR)")
+            conn.execute(f"INSERT INTO t VALUES ({DuckDBClient.escape_literal(value)})")
+            stored = conn.execute("SELECT v FROM t").fetchone()[0]
+            matched = conn.execute(
+                f"SELECT count(*) FROM t WHERE v = {DuckDBClient.escape_literal(value)}"
+            ).fetchone()[0]
+
+        assert stored == value
+        assert matched == 1
+
+    @pytest.mark.parametrize("name", ['tab"le', 'a""b', '"quoted"', "back\\slash"])
+    def test_identifier_with_double_quotes_works(self, name):
+        client = DuckDBClient()
+        identifier = DuckDBClient.escape_identifier(name)
+        with client.connection() as conn:
+            conn.execute(f"CREATE TABLE {identifier} ({identifier} INTEGER)")
+            conn.execute(f"INSERT INTO {identifier} VALUES (7)")
+            value = conn.execute(f"SELECT {identifier} FROM {identifier}").fetchone()[0]
+            tables = [row[0] for row in conn.execute("SHOW TABLES").fetchall()]
+
+        assert value == 7
+        assert name in tables
+
+    def test_import_csv_path_with_backslash(self, tmp_path):
+        """A file name that contains a backslash is read from the right path."""
+        csv_file = tmp_path / "dir\\name.csv"
+        csv_file.write_text("id,name\n1,a\\b\n")
+
+        client = DuckDBClient()
+        assert client.import_csv(csv_file, "back_table") is True
+        rows = client.execute_query("SELECT id, name FROM back_table")
+
+        assert rows == [{"id": 1, "name": "a\\b"}]
 
 
 class TestDuckDBClientConnection:

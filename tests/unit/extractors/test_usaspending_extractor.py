@@ -128,41 +128,6 @@ class TestConnectionManagement:
         mock_conn.close.assert_called_once()
 
 
-# ==================== Escape Functions Tests ====================
-
-
-class TestEscapeFunctions:
-    """Tests for SQL escaping functions."""
-
-    def test_escape_identifier_with_duckdb(self):
-        """Test escape_identifier (uses fallback since DuckDB function doesn't exist)."""
-        result = DuckDBUSAspendingExtractor._escape_identifier("table_name")
-
-        # Should wrap in double quotes
-        assert result == '"table_name"'
-
-    def test_escape_identifier_with_quotes(self):
-        """Test escape_identifier handles embedded quotes."""
-        result = DuckDBUSAspendingExtractor._escape_identifier('table"name')
-
-        # Should escape embedded quotes
-        assert result == '"table""name"'
-
-    def test_escape_literal_basic(self):
-        """Test escape_literal with basic string."""
-        result = DuckDBUSAspendingExtractor._escape_literal("value")
-
-        # Should wrap in single quotes
-        assert result == "'value'"
-
-    def test_escape_literal_with_quotes(self):
-        """Test escape_literal handles embedded quotes."""
-        result = DuckDBUSAspendingExtractor._escape_literal("value's")
-
-        # Should escape embedded quotes
-        assert result == "'value''s'"
-
-
 # ==================== Import Tests ====================
 
 
@@ -539,38 +504,6 @@ class TestModuleFunctions:
 
 class TestEdgeCases:
     """Tests for edge cases and error handling."""
-
-    def test_escape_identifier_empty_string(self):
-        """Test escape_identifier with empty string."""
-        import sbir_etl.extractors.usaspending as usaspending_module
-
-        # Remove the attribute if it exists, then test fallback
-        original = getattr(usaspending_module.duckdb, "escape_identifier", None)
-        try:
-            if hasattr(usaspending_module.duckdb, "escape_identifier"):
-                delattr(usaspending_module.duckdb, "escape_identifier")
-            result = DuckDBUSAspendingExtractor._escape_identifier("")
-            assert result == '""'
-        finally:
-            # Restore the original attribute if it existed
-            if original is not None:
-                usaspending_module.duckdb.escape_identifier = original
-
-    def test_escape_literal_empty_string(self):
-        """Test escape_literal with empty string."""
-        import sbir_etl.extractors.usaspending as usaspending_module
-
-        # Remove the attribute if it exists, then test fallback
-        original = getattr(usaspending_module.duckdb, "escape_string_literal", None)
-        try:
-            if hasattr(usaspending_module.duckdb, "escape_string_literal"):
-                delattr(usaspending_module.duckdb, "escape_string_literal")
-            result = DuckDBUSAspendingExtractor._escape_literal("")
-            assert result == "''"
-        finally:
-            # Restore the original attribute if it existed
-            if original is not None:
-                usaspending_module.duckdb.escape_string_literal = original
 
     @patch("sbir_etl.extractors.usaspending.duckdb.connect")
     def test_multiple_close_calls(self, mock_connect):
