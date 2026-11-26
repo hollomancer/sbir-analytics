@@ -159,30 +159,6 @@ class TestNAICSToBEAMapper:
         assert mapper.crosswalk_df.empty
         assert mapper.fallback_config == {}
 
-    def test_normalize_naics_6_digit(self, temp_crosswalk_csv, temp_fallback_yaml):
-        """Test normalizing 6-digit NAICS code."""
-        mapper = NAICSToBEAMapper(temp_crosswalk_csv, temp_fallback_yaml)
-
-        normalized = mapper._normalize_naics("541715")
-
-        assert normalized == "541715"
-
-    def test_normalize_naics_short_code(self, temp_crosswalk_csv, temp_fallback_yaml):
-        """Test normalizing short NAICS code with padding."""
-        mapper = NAICSToBEAMapper(temp_crosswalk_csv, temp_fallback_yaml)
-
-        normalized = mapper._normalize_naics("5417")
-
-        assert normalized == "005417"  # Padded to 6 digits
-
-    def test_normalize_naics_with_non_digits(self, temp_crosswalk_csv, temp_fallback_yaml):
-        """Test normalizing NAICS code with non-digit characters."""
-        mapper = NAICSToBEAMapper(temp_crosswalk_csv, temp_fallback_yaml)
-
-        normalized = mapper._normalize_naics("54-17-15")
-
-        assert normalized == "541715"
-
     def test_map_direct_exact_match(self, temp_crosswalk_csv, temp_fallback_yaml):
         """Test direct mapping with exact match."""
         mapper = NAICSToBEAMapper(temp_crosswalk_csv, temp_fallback_yaml)
@@ -338,6 +314,86 @@ class TestNAICSToBEAMapper:
             "direct" in stats.source_distribution
             or "hierarchical_4digit" in stats.source_distribution
         )
+
+
+# =============================================================================
+# Prefix fallback on unpadded codes (issue #867)
+# =============================================================================
+
+
+@pytest.fixture
+def prefix_mapper(tmp_path: Path, temp_fallback_yaml: Path) -> NAICSToBEAMapper:
+    """Mapper whose crosswalk holds one entry per NAICS level.
+
+    Padded entries (541710, 541700, 334000, 540000) and one short entry (5413)
+    check that the crosswalk may store either form.
+    """
+    crosswalk = pd.DataFrame(
+        {
+            "naics_code": ["511210", "541710", "541700", "334000", "540000", "5413"],
+            "bea_sector_code": [
+                "5112A0/US",
+                "54171X/US",
+                "5417B0/US",
+                "334000/US",
+                "540000/US",
+                "541300/US",
+            ],
+            "confidence": [0.90] * 6,
+        }
+    )
+    csv_path = tmp_path / "prefix_crosswalk.csv"
+    crosswalk.to_csv(csv_path, index=False)
+    return NAICSToBEAMapper(csv_path, temp_fallback_yaml)
+
+
+class TestUnpaddedPrefixFallback:
+    """Short codes reach their prefix entry instead of the default sector."""
+
+    def test_4_digit_code_uses_prefix_fallback_not_default(self, prefix_mapper):
+        results = prefix_mapper.map_naics_to_bea("5417")
+
+        assert len(results) == 1
+        assert results[0].source == "hierarchical_4digit"
+        assert results[0].bea_sector_code == "5417B0/US"
+        assert results[0].naics_code == "5417"
+        assert results[0].confidence == pytest.approx(0.70)
+
+    @pytest.mark.parametrize(
+        ("code", "sector", "source"),
+        [
+            ("511210", "5112A0/US", "direct"),
+            ("541712", "54171X/US", "hierarchical_5digit"),
+            ("541799", "5417B0/US", "hierarchical_4digit"),
+            ("54171", "54171X/US", "hierarchical_5digit"),
+            ("5417", "5417B0/US", "hierarchical_4digit"),
+            ("334", "334000/US", "hierarchical_3digit"),
+            ("54", "540000/US", "hierarchical_2digit"),
+            ("5413", "541300/US", "direct"),
+            ("541330", "541300/US", "hierarchical_4digit"),
+            ("541712.0", "54171X/US", "hierarchical_5digit"),
+        ],
+    )
+    def test_codes_of_each_length_map_to_their_sector(self, prefix_mapper, code, sector, source):
+        results = prefix_mapper.map_naics_to_bea(code)
+
+        assert [(r.bea_sector_code, r.source) for r in results] == [(sector, source)]
+
+    @pytest.mark.parametrize("code", ["54-17", "abc", "", "1234567", "0", "005417"])
+    def test_malformed_codes_get_the_default_sector(self, prefix_mapper, code):
+        results = prefix_mapper.map_naics_to_bea(code)
+
+        assert len(results) == 1
+        assert results[0].source == "default_fallback"
+        assert results[0].naics_code == "UNKNOWN"
+
+    def test_short_code_does_not_match_a_longer_sibling(self, prefix_mapper):
+        """A 3-digit code must not borrow a deeper entry that shares its prefix."""
+        results = prefix_mapper.map_naics_to_bea("541")
+
+        assert [(r.bea_sector_code, r.source) for r in results] == [
+            ("540000/US", "hierarchical_2digit")
+        ]
 
 
 # =============================================================================

@@ -7,6 +7,7 @@ import pytest
 from sbir_etl.utils.identifiers import (
     DunsProfile,
     normalize_duns,
+    normalize_naics,
     normalize_uei,
     normalize_uspto_identifier,
 )
@@ -169,3 +170,53 @@ def test_normalize_uei_happy_path(value, expected) -> None:
 def test_uei_of_wrong_length_does_not_match_its_12_character_prefix(value) -> None:
     assert normalize_uei(value) is None
     assert normalize_uei(value) != "ABC123DEF456"
+
+
+@pytest.mark.parametrize(
+    ("value", "expected"),
+    [
+        ("54", "54"),
+        ("541", "541"),
+        ("5417", "5417"),
+        ("54171", "54171"),
+        ("541712", "541712"),
+        ("  541712  ", "541712"),
+        ("541712.0", "541712"),
+        ("5417.00", "5417"),
+        (541712, "541712"),
+        (541712.0, "541712"),
+        (np.int64(5417), "5417"),
+        (np.float64(541712.0), "541712"),
+    ],
+)
+def test_normalize_naics_accepts_2_to_6_digits_without_padding(value, expected) -> None:
+    assert normalize_naics(value) == expected
+
+
+@pytest.mark.parametrize(
+    "value",
+    [
+        None,
+        "",
+        "   ",
+        pd.NA,
+        float("nan"),
+        "0",
+        "5",
+        "1234567",
+        "5417120",
+        "54-17",
+        "54 17",
+        "abc",
+        "NAICS:5417",
+        "541712.5",
+        541712.5,
+        "005417",
+        "054171",
+        -5417,
+        True,
+        "\u0665\u0664",  # Arabic-Indic digits are not ASCII digits
+    ],
+)
+def test_normalize_naics_rejects_malformed_values(value) -> None:
+    assert normalize_naics(value) is None

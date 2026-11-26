@@ -101,10 +101,12 @@ class TestUtilityFunctions:
         [
             ("541715", "541715"),
             ("5417", "5417"),
-            ("005417", "5417"),  # Leading zeros stripped
-            ("00054", "54"),
-            ("54-17-15", "541715"),  # Non-digits removed
-            ("NAICS:5417", "5417"),
+            ("541712.0", "541712"),  # Float artifact repaired
+            (" 5417 ", "5417"),
+            ("005417", None),  # Padded value: no NAICS code starts with 0
+            ("00054", None),
+            ("54-17-15", None),  # Malformed: digits are not pulled out
+            ("NAICS:5417", None),
             ("", None),
             ("1", None),  # Too short
             ("1234567", None),  # Too long
@@ -113,6 +115,8 @@ class TestUtilityFunctions:
         ids=[
             "6digit",
             "4digit",
+            "float_artifact",
+            "whitespace",
             "leading_zeros",
             "leading_zeros_short",
             "dashes",
@@ -167,14 +171,13 @@ class TestOriginalDataStrategy:
         assert result.naics_code == "5417"
 
     def test_enrich_with_leading_zeros(self):
-        """Test enriching NAICS with leading zeros."""
+        """A zero-padded NAICS value is malformed and is not used."""
         strategy = OriginalDataStrategy()
         row = pd.Series({"naics": "005417"})
 
         result = strategy.enrich(row)
 
-        assert result is not None
-        assert result.naics_code == "5417"  # Leading zeros stripped
+        assert result is None
 
     def test_enrich_no_naics_column(self):
         """Test enriching when no NAICS column exists."""

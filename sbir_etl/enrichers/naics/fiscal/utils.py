@@ -2,56 +2,20 @@
 
 from __future__ import annotations
 
-import re
+from sbir_etl.utils.identifiers import normalize_naics
 
 
 def validate_naics_code(naics_code: str) -> bool:
-    """Validate NAICS code format and structure.
+    """Return True when ``naics_code`` is a valid 2- to 6-digit NAICS code.
 
-    Args:
-        naics_code: NAICS code to validate
-
-    Returns:
-        True if valid NAICS code format
+    Uses the shared rules in ``sbir_etl.utils.identifiers.normalize_naics``.
     """
-    if not naics_code:
-        return False
-
-    # Remove any non-digit characters
-    clean_code = re.sub(r"\D", "", str(naics_code))
-
-    # NAICS codes should be 2-6 digits
-    if len(clean_code) < 2 or len(clean_code) > 6:
-        return False
-
-    # Check if it's a valid numeric string
-    try:
-        int(clean_code)
-        return True
-    except ValueError:
-        return False
+    return normalize_naics(naics_code) is not None
 
 
 def normalize_naics_code(naics_code: str) -> str | None:
-    """Normalize NAICS code to standard format.
+    """Return the normalized NAICS code, or None if it is invalid.
 
-    Args:
-        naics_code: Raw NAICS code
-
-    Returns:
-        Normalized NAICS code or None if invalid
+    Delegates to ``sbir_etl.utils.identifiers.normalize_naics``.
     """
-    if not naics_code:
-        return None
-
-    # Remove non-digit characters and leading zeros
-    clean_code = re.sub(r"\D", "", str(naics_code)).lstrip("0")
-
-    if not clean_code:
-        return None
-
-    # Validate the cleaned code
-    if validate_naics_code(clean_code):
-        return clean_code
-
-    return None
+    return normalize_naics(naics_code)
