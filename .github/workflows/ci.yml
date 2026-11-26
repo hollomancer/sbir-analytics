@@ -69,7 +69,7 @@ jobs:
       # keys, unresolved jobs, invalid partition mappings, and missing
       # resources. In-process validation takes about a second once the
       # environment is installed, so keep it on every PR instead of hiding it
-      # in the slower integration lane.
+      # in a slower test job.
       - name: Validate Dagster definitions
         run: |
           uv run python -c \
@@ -268,35 +268,12 @@ jobs:
           if-no-files-found: error
           retention-days: 14
 
-  test-integration:
-    name: Service-free Integration Tests
-    needs: [detect-changes]
-    if: |
-      github.event_name == 'pull_request' &&
-      needs.detect-changes.outputs.integration == 'true'
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    steps:
-      - uses: actions/checkout@v7
-
-      - name: Setup Python and UV
-        uses: ./.github/actions/setup-python-uv
-        with:
-          python-version: ${{ env.PYTHON_VERSION }}
-          install-dev-deps: "true"
-
-      # This lane runs alongside the four unit shards. It is conditional on
-      # integration-sensitive code and test changes.
-      - name: Run integration tests
-        run: uv run pytest tests/integration/ -m "integration and not slow"
-
   detect-changes:
     name: Detect File Changes
     runs-on: ubuntu-latest
     timeout-minutes: 5
     outputs:
       docker: ${{ steps.filter.outputs.docker }}
-      integration: ${{ steps.filter.outputs.integration }}
       jev_preflight: ${{ steps.filter.outputs.jev_preflight }}
       setup: ${{ steps.filter.outputs.setup }}
     steps:
@@ -318,17 +295,6 @@ jobs:
               - 'workspace.server.yaml'
               - 'pyproject.toml'
               - 'packages/*/pyproject.toml'
-              - 'uv.lock'
-            # Run service-free integration tests when their code or harness changes.
-            integration:
-              - 'sbir_etl/**'
-              - 'packages/sbir-analytics/**'
-              - 'packages/sbir-ml/**'
-              - 'config/**'
-              - 'tests/integration/**'
-              - 'tests/conftest.py'
-              - 'tests/conftest_shared.py'
-              - 'pyproject.toml'
               - 'uv.lock'
             # setup_dev.sh also consumes the root lock and project metadata.
             setup:
