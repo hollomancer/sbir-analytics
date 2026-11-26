@@ -39,11 +39,13 @@ brief count as maintainer-facing.
 | [NSF Phase I to Phase II baseline comparison](agency-private-capital-phase1-nsf.md) | B2, B3, F3 | Exploratory Phase 1 review; non-citable with incomplete outcomes | Pinned SBIR.gov snapshot (219,500 rows); NSF Phase I firms, 2015–2019 |
 | [Public private-capital baseline candidates](private-capital-published-baselines.md) | F2 | Exploratory cite-only candidates; not loaded into the live registry | Carta Q4 2025 reports; Yearbook 2025–2026 PDFs |
 | [Agency private-capital Phase 2 method](agency-private-capital-phase2-form-d.md) | B2, B3, F3 | Compares matched groups; does not prove cause and effect | No fixed published run |
+| [Form D control-identity universe audit](agency-private-capital-form-d-control-universe.md) | Not stated | Exploratory identity staging audit; non-citable; not a matched control cohort | SEC DERA Form D quarterly archives 2009Q1–2024Q4; SBIR.gov snapshot (219,500 rows) |
 | [M&A exit analysis](sbir-ma-exit-analysis.md) | A4, F1, F2 | Retired combined result; Form D-dependent counts suppressed | Historical method from 2026-04-23; rebuild gated |
 | [Capital-pathway cohorts](sbir-pathway-cohorts.md) | F1, F2 | Historical v1 cohort; current counts suppressed pending v2 rebuild | 2026-06-23 materialization |
 | [NASA, Air Force, and DOE commercialization outcomes](nasa-air-force-doe-commercialization-outcomes.md) | B2, B3, F1, F2, F3 | Exploratory multi-channel comparison; non-citable | First Phase II cohorts; 3-, 5-, and 10-year windows through 2024-12-31 |
 | [Form D and M&A-candidate cross-enrichment](form-d-ma-cross-enrichment.md) | B2, B3, F1, F2, F3 | Exploratory provenance and candidate-relationship layer; non-citable | Current Form D and public-record M&A-candidate files; three-agency analysis test case |
 | [UCC-1 pilot](sbir-ucc1-pilot.md) | F1 | Retired cohort-dependent result; source-access observations retained | Historical California probe; 2026-05-16 |
+| [Debt financing and security interests](sbir-debt-financing-assessment.md) | Not stated (the F1 secured-debt question links here) | Exploratory and non-citable; 30-concern pilot counts show source coverage only | Public records reviewed through 2026-11-19; pilot firms chosen from FY2020–FY2024 Phase II awards |
 | [California UCC API notes](ucc1-bizfileonline-api.md) | E5, F1 | Reference for the data source; not a research result | Web addresses recorded 2026-05-16 |
 | [SEC EDGAR learnings](sec-edgar-sbir-learnings.md) | E5, F1, F2 | Notes on implementation and source behavior | Observations from 2026-04-19 and 2026-04-22 |
 
@@ -53,6 +55,9 @@ brief count as maintainer-facing.
 | --- | --- | --- | --- |
 | [DoD industrial-base concentration](dod_supply_chain_initial_analysis.md) | A1–A3 | Early descriptive starting point | FY2012–FY2025; main results use FY2021–FY2025 |
 | [SBIR entities in defense-critical NAICS codes](defense_critical_naics_sbir_analysis.md) | A1, A2, B2, B3, D1, E2, E3 | Exploratory public-data screening; non-citable | Public procurement Oct 2008–Jul 2026; SAM extract 2026-09-07; SBIR archive 2026-09-07 |
+| [SBIR awardees in the observed defense supply network](sbir_dib_supply_network.md) | Not stated | Exploratory (no tier stated); reported subcontract edges, not supply dependency | USAspending DoD contract subawards FY2021–FY2025; local SBIR.gov registry |
+| [NSF SBIR defense-funding lineage plan](nsf_sbir_defense_funding_plan.md) | Not stated | Exploratory (no tier stated); plan marked implemented; does not tie a specific NSF award to a DoD procurement | Baseline DoD subawards FY2021–FY2025; NSF snapshot date not stated |
+| [Massachusetts unmanned-systems readout](massachusetts_unmanned_systems_sbir_readout.md) | Not stated | Exploratory and non-citable discovery input; 238-award reviewed total cannot be regenerated | SBIR.gov snapshot timestamped 2026-04-01; award years 1992–2026 |
 | [GSA and OTSB Phase III analysis](sbir-phase3-gsa-otsb-analysis.md) | B2, B3 | Working keyword analysis; known to miss some award codes | FY2008–FY2026 sources assembled 2026-06-28 |
 | [Phase II→III latency method](../phase-transition-latency.md) | B3 | Method works in the pipeline; not an approved finding | Uses the data selected for each pipeline run |
 | [STTR partner-effect feasibility](sttr-partner-effect-feasibility.md) | A4, B1–B3, E3, E5, F1, F3 | Exploratory Phase 0 availability and sample-size audit; non-citable; no model run | Public SBIR.gov snapshot retrieved 2026-09-07 plus local outcome-artifact gate checks |
@@ -116,6 +121,14 @@ explain how firms were selected and what the results cannot show.
   mapped to roadmap orders with per-document text-layer quality and SHA-256. The corpus is deep on
   Order 1 and contributes benchmark context only to Orders 3 and 5. Read this before staging any
   historical source cuts: the files are already inventoried.
+- [Corpus gap assessment](corpus-gap-assessment.md) — what the 51-document corpus still lacks,
+  ranked by what each item unlocks for the annual-report replication and roadmap Orders 3 and 5.
+  Questions not stated; exploratory (no tier stated). Covers SBA reports 1990–2022 and
+  SBIR.gov export vintages 2026-05-11, 2026-08-30, and 2026-09-17.
+- [Source acquisition for Orders 3 and 5](source-acquisition-orders-3-5.md) — identifiers and
+  exhausted retrieval routes for the closed-access works behind roadmap blockers B5 and B6.
+  Questions not stated; exploratory (no tier stated); an acquisition record, not a research
+  result. OpenAlex checked as of 2026-09-17.
 - [Literature map and citation audit](literature-map/README.md) — research published
   from 2019–2026 and missing coverage across question areas A–F. The CSV is
   refreshed manually from OpenAlex (`make literature-map`); authored memos are not.
