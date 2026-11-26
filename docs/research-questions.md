@@ -1225,8 +1225,9 @@ The relevant literature is Lerner [L10], Howell [L11], and Kortum & Lerner
 
 - **M&A exit rate by agency**
   What is the SBIR-firm M&A exit rate, and how does it stratify by funding agency?
-  **Status:** Dated research note; no study contract. Older write-ups quote
-  agency-specific rates; those figures are not inventory Status and are not
+  **Status:** Not computable. Dated research note. The linked exploratory study
+  authorizes no numerical output and does not estimate this rate. Older write-ups
+  quote agency-specific rates; those figures are not inventory Status and are not
   approved for citation.
   *Deps: ER, M&A signals · Spec: (PR #286 merged), [../specs/sbir-ma-dated-signal-study/](../specs/sbir-ma-dated-signal-study/) · Study: [sbir-ma-dated-signal-study](../studies/sbir-ma-dated-signal-study/study.yaml)*
 
