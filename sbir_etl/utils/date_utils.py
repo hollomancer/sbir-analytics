@@ -226,3 +226,75 @@ def format_date_iso(value: date | datetime | None) -> str | None:
         return parsed.date().isoformat()
 
     return parsed.isoformat()
+
+
+def _local_calendar_date(value: Any) -> date | None:
+    """Return the calendar date of ``value`` as written, without any timezone conversion."""
+    if value is None:
+        return None
+    if pd is not None:
+        try:
+            if pd.isna(value):
+                return None
+        except (TypeError, ValueError):
+            pass
+    # datetime and pandas.Timestamp are date subclasses; their year and month
+    # fields are already the local wall-clock values.
+    if isinstance(value, date):
+        return value
+    text = value.strip() if isinstance(value, str) else str(value).strip()
+    if not text or text.lower() in NULL_VALUES:
+        return None
+    if pd is not None:
+        parsed = pd.to_datetime(text, errors="coerce")
+        return None if pd.isna(parsed) else parsed
+    try:
+        return datetime.fromisoformat(text)
+    except ValueError:
+        return None
+
+
+def federal_fiscal_year(value: Any) -> int | None:
+    """Return the US federal fiscal year of a date-like value.
+
+    Rule: the federal fiscal year is the calendar year, plus one when the month
+    is October or later. FY2024 runs from 2023-10-01 through 2024-09-30.
+
+    A timestamp with a UTC offset uses its local date as written. The value is
+    not converted to UTC first. ``2023-09-30T22:00-05:00`` is September 30, so
+    it is FY2023, even though the same instant is October 1 in UTC.
+
+    Accepts ``date``, ``datetime``, ``pandas.Timestamp``, ISO strings, and other
+    strings that ``pandas.to_datetime`` can parse. Returns ``None`` for
+    ``None``, ``NaT``, ``NaN``, null-like strings, and values that do not parse.
+
+    Examples:
+        >>> federal_fiscal_year("2023-09-30")
+        2023
+        >>> federal_fiscal_year("2023-10-01")
+        2024
+        >>> federal_fiscal_year("2023-09-30T22:00-05:00")
+        2023
+    """
+    local_date = _local_calendar_date(value)
+    if local_date is None:
+        return None
+    return int(local_date.year + (local_date.month >= 10))
+
+
+def federal_fiscal_year_series(values: pd.Series) -> pd.Series:
+    """Vectorized :func:`federal_fiscal_year` over a pandas Series.
+
+    Applies the same rule: local date as written, no UTC conversion. Returns a
+    nullable ``Int64`` Series; missing or unparseable values become ``<NA>``.
+    A column whose values carry different UTC offsets falls back to the scalar
+    function, because pandas cannot hold mixed offsets in one datetime column.
+    """
+    if pd is None:  # pragma: no cover - pandas is a core dependency
+        raise ImportError("federal_fiscal_year_series requires pandas")
+    try:
+        parsed = pd.to_datetime(values, errors="coerce")
+    except (TypeError, ValueError):
+        return values.map(federal_fiscal_year).astype("Int64")
+    year = parsed.dt.year.astype("Int64")
+    return (year + (parsed.dt.month >= 10).astype("Int64")).astype("Int64")

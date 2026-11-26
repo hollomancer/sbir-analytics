@@ -16,6 +16,7 @@ from loguru import logger
 from sbir_etl.enrichers.usaspending.client import USAspendingAPIClient
 from sbir_etl.exceptions import APIError
 from sbir_etl.utils.data.file_io import sha256_bytes, write_text_atomic
+from sbir_etl.utils.date_utils import federal_fiscal_year
 from sbir_etl.utils.identifiers import normalize_uei
 
 USASPENDING_API_BASE = "https://api.usaspending.gov/api/v2"
@@ -78,13 +79,6 @@ def _write_json_atomic(path: Path, payload: object) -> None:
 
 def _request_hash(payload: object) -> str:
     return _sha256(_canonical(payload))[:12]
-
-
-def _fiscal_year(value: object) -> int | None:
-    timestamp = pd.to_datetime(str(value), errors="coerce", utc=True)
-    if pd.isna(timestamp):
-        return None
-    return int(timestamp.year + (timestamp.month >= 10))
 
 
 def _request_spec(
@@ -554,7 +548,7 @@ def _normalize_transaction(
         "is_deobligation": amount is not None and amount < 0,
         "is_zero_obligation": amount == 0 if amount is not None else False,
         "action_date": transaction.get("action_date"),
-        "fiscal_year": _fiscal_year(transaction.get("action_date")),
+        "fiscal_year": federal_fiscal_year(transaction.get("action_date")),
         "action_type_code": transaction.get("action_type"),
         "action_type_description": transaction.get("action_type_description"),
         "modification_number": transaction.get("modification_number"),

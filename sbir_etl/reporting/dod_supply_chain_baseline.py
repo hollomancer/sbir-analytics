@@ -21,6 +21,7 @@ from sbir_etl.reporting.defense_taxonomy_crosswalk import (
     DefenseTaxonomyCrosswalk,
     load_defense_crosswalk,
 )
+from sbir_etl.utils.date_utils import federal_fiscal_year, federal_fiscal_year_series
 from sbir_etl.utils.text_normalization import normalize_company_name
 
 
@@ -66,7 +67,9 @@ class DoDSupplyChainBaseline:
 def latest_complete_fiscal_year(as_of: date) -> int:
     """Return the most recently completed US federal fiscal year."""
 
-    current_fy = as_of.year + 1 if as_of.month >= 10 else as_of.year
+    current_fy = federal_fiscal_year(as_of)
+    if current_fy is None:
+        raise ValueError(f"as_of is not a usable date: {as_of!r}")
     return current_fy - 1
 
 
@@ -97,11 +100,9 @@ def _federal_fiscal_years(awards: pd.DataFrame) -> pd.Series:
     explicit = pd.to_numeric(
         _first_column(awards, ("fiscal_year", "award_fiscal_year", "fy")), errors="coerce"
     )
-    dates = pd.to_datetime(
-        _first_column(awards, ("award_date", "proposal_award_date", "Proposal Award Date")),
-        errors="coerce",
+    derived = federal_fiscal_year_series(
+        _first_column(awards, ("award_date", "proposal_award_date", "Proposal Award Date"))
     )
-    derived = dates.dt.year + (dates.dt.month >= 10).astype("Int64")
     return explicit.fillna(derived).astype("Int64")
 
 

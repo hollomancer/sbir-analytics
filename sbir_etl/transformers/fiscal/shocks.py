@@ -17,6 +17,7 @@ from loguru import logger
 
 from ...config.loader import get_config
 from ...models.fiscal_models import EconomicShock
+from ...utils.date_utils import NULL_VALUES, federal_fiscal_year
 
 
 @dataclass
@@ -42,40 +43,21 @@ def calculate_fiscal_year(award_date: date | datetime | str | None) -> int | Non
     For example, FY 2024 runs from Oct 1, 2023 to Sep 30, 2024.
 
     Args:
-        award_date: Award date (date, datetime, or parseable string)
+        award_date: Award date (date, datetime, or parseable string). A timestamp
+            with a UTC offset uses its local date; see
+            ``sbir_etl.utils.date_utils.federal_fiscal_year``.
 
     Returns:
         Fiscal year (int) or None if date cannot be determined
     """
-    if award_date is None:
-        return None
-
-    try:
-        # Convert to date if needed
-        if isinstance(award_date, str):
-            award_date = pd.to_datetime(award_date).date()
-        elif isinstance(award_date, datetime):
-            award_date = award_date.date()
-        elif isinstance(award_date, pd.Timestamp):
-            award_date = award_date.date()
-
-        if not isinstance(award_date, date):
-            return None  # type: ignore[unreachable]
-
-        # Fiscal year calculation: if month is Oct-Dec, fiscal year is next calendar year
-        year = award_date.year
-        month = award_date.month
-
-        if month >= 10:  # Oct, Nov, Dec
-            fiscal_year = year + 1
-        else:  # Jan-Sep
-            fiscal_year = year
-
-        return fiscal_year
-
-    except (ValueError, TypeError, AttributeError) as e:
-        logger.warning(f"Failed to calculate fiscal year from {award_date}: {e}")
-        return None
+    fiscal_year = federal_fiscal_year(award_date)
+    if (
+        fiscal_year is None
+        and isinstance(award_date, str)
+        and award_date.strip().lower() not in NULL_VALUES
+    ):
+        logger.warning(f"Failed to calculate fiscal year from {award_date}")
+    return fiscal_year
 
 
 class FiscalShockAggregator:

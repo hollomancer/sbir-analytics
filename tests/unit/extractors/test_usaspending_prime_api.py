@@ -187,3 +187,43 @@ async def test_loader_rejects_snapshot_corruption(tmp_path) -> None:
     (snapshot / "prime_transaction_index.json").write_text("[]\n", encoding="utf-8")
     with pytest.raises(ValueError, match="checksum mismatch"):
         load_usaspending_prime_snapshot(snapshot)
+
+
+class OffsetActionDateClient(FakeUSAspendingClient):
+    """Returns one transaction stamped 22:00 on September 30 at UTC-05:00."""
+
+    async def get_award_transactions(self, generated_award_id, *, page, limit):
+        self.transaction_calls += 1
+        return {
+            "results": [
+                {
+                    "id": "CONT_TX_OFFSET",
+                    "type": "D",
+                    "type_description": "DEFINITIVE CONTRACT",
+                    "action_date": "2025-09-30T22:00-05:00",
+                    "action_type": "A",
+                    "action_type_description": "NEW",
+                    "modification_number": "0",
+                    "description": "Evening of September 30, local time",
+                    "federal_action_obligation": 100.0,
+                },
+            ],
+            "page_metadata": {"hasNext": False},
+        }
+
+
+@pytest.mark.asyncio
+async def test_fiscal_year_uses_local_action_date_not_utc(tmp_path) -> None:
+    """Regression for #868: an offset timestamp on September 30 stays in that FY."""
+
+    snapshot = tmp_path / "prime"
+    await fetch_usaspending_prime_snapshot(
+        _awardees(),
+        snapshot,
+        end_date=date(2026, 8, 3),
+        client=OffsetActionDateClient(),  # type: ignore[arg-type]
+        max_concurrency=2,
+    )
+    frame = load_usaspending_prime_snapshot(snapshot)
+
+    assert frame["fiscal_year"].tolist() == [2025]

@@ -238,6 +238,34 @@ def test_api_prime_normalization_recomputes_fiscal_year_and_signed_flags() -> No
     assert transactions["is_deobligation"].tolist() == [False, True]
 
 
+def test_api_prime_fiscal_year_uses_local_date_not_utc() -> None:
+    """Regression for #868: UTC conversion of action_date must not shift the FY."""
+    row = {
+        "dod_award_generated_id": "CONT_AWD_1_9700",
+        "dod_award_id": "P1",
+        "nsf_organization_id": "uei:ABCDEFGHIJKL",
+        "recipient_match_method": "exact_uei",
+        "recipient_match_confidence": "verified_identifier",
+        "instrument_group": "prime_procurement",
+        "signed_obligation_amount": 50,
+        "source_system": "USAspending API",
+    }
+    transactions = normalize_prime_api_transactions(
+        pd.DataFrame(
+            [
+                {**row, "prime_transaction_id": "A", "action_date": "2023-09-30T22:00-05:00"},
+                {**row, "prime_transaction_id": "B", "action_date": "2023-10-01T01:00+02:00"},
+                {**row, "prime_transaction_id": "C", "action_date": "2023-09-30T23:59Z"},
+            ]
+        )
+    )
+
+    by_id = dict(
+        zip(transactions["prime_transaction_id"], transactions["fiscal_year"], strict=True)
+    )
+    assert by_id == {"A": 2023, "B": 2024, "C": 2023}
+
+
 def _subaward_facts() -> pd.DataFrame:
     return pd.DataFrame(
         [

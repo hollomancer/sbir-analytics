@@ -9,6 +9,8 @@ pytestmark = pytest.mark.fast
 
 # Import directly to avoid duckdb dependency in utils/__init__.py
 from sbir_etl.utils.date_utils import (
+    federal_fiscal_year,
+    federal_fiscal_year_series,
     format_date_iso,
     parse_date,
 )
@@ -139,3 +141,86 @@ class TestFormatDateIso:
         result = format_date_iso("invalid")
         # Should return None if parsing fails
         assert result is None
+
+
+class TestFederalFiscalYear:
+    """Federal FY rule: year + 1 from October; local date as written, no UTC conversion."""
+
+    @pytest.mark.parametrize(
+        ("value", "expected"),
+        [
+            # No offset
+            ("2023-09-30T23:59:59", 2023),
+            ("2023-10-01T00:00:00", 2024),
+            # Negative offset: the UTC instant is already October 1
+            ("2023-09-30T22:00-05:00", 2023),
+            ("2023-09-30T23:59:59-08:00", 2023),
+            ("2023-10-01T00:30-05:00", 2024),
+            # Positive offset: the UTC instant is still September 30
+            ("2023-10-01T01:00+02:00", 2024),
+            ("2023-09-30T23:00+05:30", 2023),
+            # UTC "Z"
+            ("2023-09-30T23:59Z", 2023),
+            ("2023-10-01T00:00Z", 2024),
+        ],
+    )
+    def test_boundary_timestamps_use_local_date(self, value, expected):
+        assert federal_fiscal_year(value) == expected
+
+    @pytest.mark.parametrize(
+        ("value", "expected"),
+        [
+            ("2023-09-30", 2023),
+            ("2023-10-01", 2024),
+            ("2024-01-15", 2024),
+            ("2023-12-31", 2024),
+            (" 2023-10-01 ", 2024),
+        ],
+    )
+    def test_date_only_strings(self, value, expected):
+        assert federal_fiscal_year(value) == expected
+
+    def test_date_and_datetime_objects(self):
+        from datetime import timedelta, timezone
+
+        assert federal_fiscal_year(date(2023, 9, 30)) == 2023
+        assert federal_fiscal_year(date(2023, 10, 1)) == 2024
+        eastern = timezone(timedelta(hours=-5))
+        assert federal_fiscal_year(datetime(2023, 9, 30, 22, tzinfo=eastern)) == 2023
+
+    def test_pandas_timestamp(self):
+        pd = pytest.importorskip("pandas")
+        assert federal_fiscal_year(pd.Timestamp("2023-09-30")) == 2023
+        assert federal_fiscal_year(pd.Timestamp("2023-10-01")) == 2024
+        assert federal_fiscal_year(pd.Timestamp("2023-09-30T22:00-05:00")) == 2023
+
+    @pytest.mark.parametrize("value", [None, "", "  ", "nan", "NaT", "None", "not a date"])
+    def test_missing_and_unparseable_return_none(self, value):
+        assert federal_fiscal_year(value) is None
+
+    def test_nat_and_nan_return_none(self):
+        pd = pytest.importorskip("pandas")
+        assert federal_fiscal_year(pd.NaT) is None
+        assert federal_fiscal_year(float("nan")) is None
+
+    def test_series_matches_scalar_rule(self):
+        pd = pytest.importorskip("pandas")
+        values = pd.Series(["2023-09-30", "2023-10-01", None, "not a date"])
+        result = federal_fiscal_year_series(values)
+        assert str(result.dtype) == "Int64"
+        assert result.tolist() == [2023, 2024, pd.NA, pd.NA]
+
+    def test_series_single_offset_uses_local_date(self):
+        pd = pytest.importorskip("pandas")
+        values = pd.Series(["2023-09-30T22:00-05:00", "2023-10-01T00:30-05:00"])
+        assert federal_fiscal_year_series(values).tolist() == [2023, 2024]
+
+    def test_series_mixed_offsets_use_local_date(self):
+        pd = pytest.importorskip("pandas")
+        values = pd.Series(["2023-09-30T22:00-05:00", "2023-10-01T01:00+02:00", None])
+        assert federal_fiscal_year_series(values).tolist() == [2023, 2024, pd.NA]
+
+    def test_series_of_timestamps(self):
+        pd = pytest.importorskip("pandas")
+        values = pd.to_datetime(pd.Series(["2023-09-30", None, "2023-10-01"]))
+        assert federal_fiscal_year_series(values).tolist() == [2023, pd.NA, 2024]
