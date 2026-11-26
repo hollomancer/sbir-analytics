@@ -1,8 +1,8 @@
-"""Tests for firm alias-graph construction (sbir_etl.utils.firm_aliases)."""
+"""Tests for firm alias-graph construction (scripts.data.firm_aliases)."""
 
 import pytest
 
-from sbir_etl.utils.firm_aliases import (
+from scripts.data.firm_aliases import (
     AliasEdge,
     alias_edges_from_shared_uei,
     build_alias_index,

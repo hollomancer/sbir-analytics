@@ -50,7 +50,10 @@ except Exception:
 
 # Validators
 try:  # pragma: no cover - defensive import
-    from sbir_etl.quality import USPTODataQualityValidator, USPTOValidationConfig  # type: ignore
+    from sbir_etl.validators.uspto import (  # type: ignore
+        USPTODataQualityValidator,
+        USPTOValidationConfig,
+    )
 except Exception:
     validate_rf_id_uniqueness = None
     USPTODataQualityValidator = None  # type: ignore[assignment,misc]

@@ -1595,6 +1595,6 @@ The next audit should verify:
   code-level taxonomies remain unreconciled — a 10-area transition-system set
   (`docs/transition/cet-integration.md`, code in transition CET inference) and a
   19-area hardcoded reporting set
-  (`sbir_etl/utils/reporting/analyzers/cet_analyzer.py`). Reconciling these to
+  (`sbir_etl/analyzers/cet_analyzer.py`). Reconciling these to
   the 21-area spine is a code change with test/precision-benchmark risk and
   should be scoped separately.

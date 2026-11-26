@@ -31,7 +31,7 @@ from .utils import (
 # Statistical reporting imports
 try:  # pragma: no cover - defensive import
     from sbir_etl.models.quality import ModuleReport
-    from sbir_etl.utils.reporting.analyzers.cet_analyzer import CetClassificationAnalyzer
+    from sbir_etl.analyzers.cet_analyzer import CetClassificationAnalyzer
 except Exception:
     ModuleReport = None  # type: ignore[assignment, misc, no-redef]
     CetClassificationAnalyzer = None  # type: ignore[assignment, misc, no-redef]

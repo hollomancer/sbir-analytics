@@ -12,5 +12,5 @@
   "Not computed — not zero" wording.
   - Verify: `test_policy_brief_stub_signals_absent_reports_not_computed`
 - [x] 6. Keep calibration tests green.
-  - Verify: `tests/unit/utils/test_tech_census.py` and
+  - Verify: `tests/unit/reporting/test_tech_census.py` and
     `tests/unit/scripts/test_build_tech_area_cohort.py`

@@ -14,6 +14,9 @@ Alias edges are directional evidence but stored symmetrically (a rename is an
 equivalence). An edge is only useful if the two names differ *after*
 normalization — ``ACME CORP`` → ``ACME CORPORATION`` normalizes to the same
 token and carries no new matching power.
+
+Epistemic tier: exploratory. Deciding that two names belong to one firm is a
+contestable matching decision, and only the dark-majority scripts use it.
 """
 
 from __future__ import annotations
@@ -21,6 +24,9 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from sbir_etl.utils.text_normalization import normalize_name
+
+
+EPISTEMIC_TIER = "exploratory"
 
 # USPTO patent-assignment conveyance types (assignment_conveyance.convey_ty).
 # A name change or merger means the assignor and assignee are the *same* economic

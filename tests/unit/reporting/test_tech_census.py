@@ -5,7 +5,7 @@ from pathlib import Path
 import pytest
 import yaml
 
-from sbir_etl.utils.tech_census import (
+from sbir_etl.reporting.tech_census import (
     CompiledCensus,
     classify_subset,
     gate_evidence,

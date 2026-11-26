@@ -17,10 +17,10 @@ import pytest
 pytestmark = pytest.mark.fast
 
 from sbir_etl.models.quality import ChangesSummary, DataHygieneMetrics, ModuleReport
-from sbir_etl.utils.reporting.analyzers.base_analyzer import AnalysisInsight, ModuleAnalyzer
-from sbir_etl.utils.reporting.analyzers.cet_analyzer import CetClassificationAnalyzer
-from sbir_etl.utils.reporting.analyzers.sbir_analyzer import SbirEnrichmentAnalyzer
-from sbir_etl.utils.reporting.analyzers.transition_analyzer import TransitionDetectionAnalyzer
+from sbir_etl.analyzers.base_analyzer import AnalysisInsight, ModuleAnalyzer
+from sbir_etl.analyzers.cet_analyzer import CetClassificationAnalyzer
+from sbir_etl.analyzers.sbir_analyzer import SbirEnrichmentAnalyzer
+from sbir_etl.analyzers.transition_analyzer import TransitionDetectionAnalyzer
 
 
 pytestmark = pytest.mark.fast
@@ -764,7 +764,7 @@ class TestCetClassificationAnalyzer:
 
         import yaml
 
-        taxonomy_path = Path(__file__).parents[4] / "config" / "cet" / "taxonomy.yaml"
+        taxonomy_path = Path(__file__).parents[3] / "config" / "cet" / "taxonomy.yaml"
         taxonomy = yaml.safe_load(taxonomy_path.read_text())
         canonical_ids = [area["cet_id"] for area in taxonomy["cet_areas"]]
 

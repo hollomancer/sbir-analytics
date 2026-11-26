@@ -53,7 +53,7 @@ DATA = REPO / "data"
 ASGN = DATA / "raw/uspto/assignments"
 
 sys.path.insert(0, str(REPO))
-from sbir_etl.utils.firm_aliases import (  # noqa: E402
+from scripts.data.firm_aliases import (  # noqa: E402
     alias_edges_from_shared_uei,
     classify_conveyance,
     make_alias_edge,
@@ -103,9 +103,11 @@ def patent_assignment_edges(firms: set[str]) -> list:
     assignee_path = ASGN / "assignee.csv.zip"
     for p in (conv_path, assignor_path, assignee_path):
         if not p.exists():
-            print(f"  SKIP patent_assignment: {p.name} absent "
-                  f"(download ECORSEXC/2023 via download_uspto.py --product-file)",
-                  file=sys.stderr)
+            print(
+                f"  SKIP patent_assignment: {p.name} absent "
+                f"(download ECORSEXC/2023 via download_uspto.py --product-file)",
+                file=sys.stderr,
+            )
             return []
 
     print("  conveyance types...")
@@ -138,8 +140,11 @@ def patent_assignment_edges(firms: set[str]) -> list:
         if or_norm not in firms and _norm(ee_raw) not in firms:
             continue
         edge = make_alias_edge(
-            or_raw, ee_raw, source="patent_assignment",
-            relation=relation[rf], effective_date=(exec_dt or "")[:10],
+            or_raw,
+            ee_raw,
+            source="patent_assignment",
+            relation=relation[rf],
+            effective_date=(exec_dt or "")[:10],
             corrob_state=ee_state,
         )
         if edge:
@@ -218,20 +223,41 @@ def main(argv: list[str] | None = None) -> int:
     out_csv.parent.mkdir(parents=True, exist_ok=True)
     with open(out_csv, "w", newline="", encoding="utf-8") as f:
         w = csv.writer(f)
-        w.writerow(["firm_normalized", "alias_name", "alias_normalized", "source",
-                    "relation", "effective_date", "corrob_state"])
+        w.writerow(
+            [
+                "firm_normalized",
+                "alias_name",
+                "alias_normalized",
+                "source",
+                "relation",
+                "effective_date",
+                "corrob_state",
+            ]
+        )
         for e in sorted(out, key=lambda x: (x.firm_normalized, x.alias_normalized)):
-            w.writerow([e.firm_normalized, e.alias_name, e.alias_normalized, e.source,
-                        e.relation, e.effective_date, e.corrob_state])
+            w.writerow(
+                [
+                    e.firm_normalized,
+                    e.alias_name,
+                    e.alias_normalized,
+                    e.source,
+                    e.relation,
+                    e.effective_date,
+                    e.corrob_state,
+                ]
+            )
     print(f"\nWritten: {out_csv} ({len(out):,} edges)")
 
     from collections import Counter
+
     by_source = Counter(e.source for e in out)
     by_rel = Counter(e.relation for e in out)
     print(f"  by source: {dict(by_source)}")
     print(f"  by relation: {dict(by_rel)}")
-    print(f"  distinct cohort/dark firms with ≥1 alias: "
-          f"{len({e.firm_normalized for e in out if e.firm_normalized in firms} | {e.alias_normalized for e in out if e.alias_normalized in firms}):,}")
+    print(
+        f"  distinct cohort/dark firms with ≥1 alias: "
+        f"{len({e.firm_normalized for e in out if e.firm_normalized in firms} | {e.alias_normalized for e in out if e.alias_normalized in firms}):,}"
+    )
     return 0
 
 
