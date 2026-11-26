@@ -179,9 +179,7 @@ class EvidenceBundle(BaseModel):
 class VendorMatch(BaseModel):
     """Result of vendor/company resolution for a contract.
 
-    This is the single canonical model for vendor match results, used by both
-    transition detection (``transition_models``) and contract analysis
-    (``contract_models``).
+    This is the single canonical model for vendor match results.
     """
 
     vendor_id: str | None = Field(

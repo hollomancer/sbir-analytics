@@ -1,109 +1,13 @@
-"""Tests for miscellaneous model files (transitions, ma_models, researcher, company)."""
-
-from datetime import date
+"""Tests for miscellaneous model files (researcher, company)."""
 
 import pytest
 from pydantic import ValidationError
 
 from sbir_etl.models.company import Company, CompanyMatch, RawCompany
-from sbir_etl.models.ma_models import MAEvent
 from sbir_etl.models.researcher import RawResearcher, Researcher
-from sbir_etl.models.transitions import CompanyTransition, TransitionType
 
 
 pytestmark = pytest.mark.fast
-
-
-class TestTransitionModels:
-    """Tests for transitions.py models."""
-
-    def test_transition_type_enum_values(self):
-        """Test TransitionType enum has correct values."""
-        assert TransitionType.MERGER.value == "merger"
-        assert TransitionType.ACQUISITION.value == "acquisition"
-        assert TransitionType.BANKRUPTCY.value == "bankruptcy"
-        assert TransitionType.SPIN_OFF.value == "spin_off"
-        assert TransitionType.IPO.value == "ipo"
-
-    def test_company_transition_valid(self):
-        """Test creating a valid company transition."""
-        transition = CompanyTransition(
-            company_id=123,
-            transition_type=TransitionType.ACQUISITION,
-            date="2023-06-15",
-            confidence=0.95,
-            source="sec_filings",
-        )
-        assert transition.company_id == 123
-        assert transition.transition_type == TransitionType.ACQUISITION
-        assert transition.date == "2023-06-15"
-        assert transition.confidence == 0.95
-        assert transition.source == "sec_filings"
-
-    def test_company_transition_merger(self):
-        """Test company transition with merger type."""
-        transition = CompanyTransition(
-            company_id=456,
-            transition_type=TransitionType.MERGER,
-            date="2024-01-01",
-            confidence=0.88,
-            source="news_article",
-        )
-        assert transition.transition_type == TransitionType.MERGER
-
-    def test_company_transition_all_types(self):
-        """Test company transition accepts all transition types."""
-        for trans_type in TransitionType:
-            transition = CompanyTransition(
-                company_id=1,
-                transition_type=trans_type,
-                date="2023-01-01",
-                confidence=0.8,
-                source="test",
-            )
-            assert transition.transition_type == trans_type
-
-
-class TestMAEventModel:
-    """Tests for MAEvent model."""
-
-    def test_valid_ma_event(self):
-        """Test creating a valid M&A event."""
-        event = MAEvent(
-            acquiring_company_name="Big Corp",
-            acquired_company_name="Small Startup",
-            acquisition_date=date(2023, 6, 15),
-            source="sec_8k_filing",
-            confidence_score=0.98,
-        )
-        assert event.acquiring_company_name == "Big Corp"
-        assert event.acquired_company_name == "Small Startup"
-        assert event.acquisition_date == date(2023, 6, 15)
-        assert event.source == "sec_8k_filing"
-        assert event.confidence_score == 0.98
-
-    def test_ma_event_date_parsing(self):
-        """Test M&A event accepts date strings."""
-        event = MAEvent(
-            acquiring_company_name="Acquirer Inc",
-            acquired_company_name="Target LLC",
-            acquisition_date="2024-03-20",
-            source="press_release",
-            confidence_score=0.75,
-        )
-        assert event.acquisition_date == date(2024, 3, 20)
-
-    def test_ma_event_confidence_score(self):
-        """Test M&A event with various confidence scores."""
-        for score in [0.0, 0.5, 1.0]:
-            event = MAEvent(
-                acquiring_company_name="Test Corp",
-                acquired_company_name="Test Target",
-                acquisition_date=date(2023, 1, 1),
-                source="test",
-                confidence_score=score,
-            )
-            assert event.confidence_score == score
 
 
 class TestResearcherModels:
