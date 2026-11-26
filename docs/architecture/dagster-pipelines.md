@@ -9,10 +9,10 @@ code-verified against `packages/sbir-analytics/sbir_analytics/`.
 
 - **Primary code location:** `sbir_analytics.definitions` — declared in
   `workspace.yaml`. This is what `dagster dev` loads by default.
-- **`sbir_analytics.definitions_ml`** is an alias. It re-exports the primary
-  `defs` so that existing `-m sbir_analytics.definitions_ml` commands keep
-  working. The separate heavy code location is retired; neither workspace file
-  loaded it.
+- **`sbir_analytics.definitions_ml`** builds the same primary definitions with
+  the heavy modules always loaded, so `-m sbir_analytics.definitions_ml`
+  commands find the heavy jobs even when `DAGSTER_LOAD_HEAVY_ASSETS=false`. The
+  separate heavy code location is retired; neither workspace file loaded it.
 
 The primary location is built by
 `sbir_analytics.definitions_factory.build_definitions` and honors
@@ -32,8 +32,8 @@ uv run dagster job execute -m sbir_analytics.definitions -j fiscal_returns_mvp_j
 `DAGSTER_LOAD_HEAVY_ASSETS` (default `"true"`) controls whether memory-hungry
 modules load in the primary location. When it is `false`, the four heavy jobs —
 `cet_full_pipeline_job`, `fiscal_returns_*`, `modernbert_job`, and
-`uspto_ai_extraction_job` — and their assets are skipped. `definitions_ml`
-follows the same toggle, so run heavy jobs with the variable unset or `true`.
+`uspto_ai_extraction_job` — and their assets are skipped there. Run them from
+`definitions_ml` instead, which ignores the toggle.
 Intentional profile exclusions occur before import.
 The discovery layer propagates unexpected asset and job import failures. A
 missing sensors package remains optional, but import failures from an existing
@@ -93,7 +93,8 @@ sensor table and toggles.
 
 The shared definitions factory registers all assets and checks, the jobs for the
 selected profile, its schedules, and its sensors. `definitions.py` is the
-stable, thin Dagster entry point; `definitions_ml.py` re-exports its `defs`. See
+stable, thin Dagster entry point; `definitions_ml.py` builds the same
+definitions with heavy modules always loaded. See
 `packages/sbir-analytics/sbir_analytics/definitions_factory.py` and
 `assets/jobs/job_registry.py`.
 

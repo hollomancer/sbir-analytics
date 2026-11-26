@@ -1,12 +1,14 @@
-"""Alias for the primary Dagster code location.
+"""Heavy ML and fiscal entry point for the primary Dagster definitions.
 
-The separate heavy ML and fiscal code location is retired. This module re-exports
-the primary ``defs`` so that ``-m sbir_analytics.definitions_ml`` commands keep
-working. Heavy jobs load only while ``DAGSTER_LOAD_HEAVY_ASSETS`` is true (the
-default).
+The separate heavy code location is retired. This module builds the primary
+definitions with the heavy modules always loaded, so that
+``-m sbir_analytics.definitions_ml`` commands find the CET, fiscal, ModernBERT,
+and USPTO AI jobs even when ``DAGSTER_LOAD_HEAVY_ASSETS`` is false.
 """
 
-from .definitions import defs
+from .definitions_factory import build_definitions
 
+
+defs = build_definitions("heavy").defs
 
 __all__ = ["defs"]

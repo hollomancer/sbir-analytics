@@ -133,8 +133,8 @@ export HF_TOKEN="your_huggingface_token"
 # Run the complete embedding job through the canonical target
 make modernbert-run
 
-# Or materialize one asset (needs DAGSTER_LOAD_HEAVY_ASSETS unset or true)
-uv run dagster asset materialize -m sbir_analytics.definitions \
+# Or materialize one asset from the heavy-asset definitions module
+uv run dagster asset materialize -m sbir_analytics.definitions_ml \
   --select modernbert_embeddings_awards
 ```
 

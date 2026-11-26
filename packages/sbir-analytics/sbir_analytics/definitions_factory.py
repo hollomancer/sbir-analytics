@@ -34,7 +34,7 @@ from . import assets as assets_pkg
 
 LOG = logging.getLogger(__name__)
 EPISTEMIC_TIER = "pipelines"
-DefinitionProfile = Literal["primary"]
+DefinitionProfile = Literal["primary", "heavy"]
 DiscoveredJob = JobDefinition | UnresolvedAssetJobDefinition
 
 _HOST_SCHEDULES = (
@@ -255,8 +255,14 @@ def _build_primary_bundle(*, load_heavy: bool) -> DefinitionBundle:
 
 
 def build_definitions(profile: DefinitionProfile) -> DefinitionBundle:
-    """Build a supported Dagster code-location profile."""
+    """Build a supported Dagster code-location profile.
+
+    ``primary`` honors ``DAGSTER_LOAD_HEAVY_ASSETS``. ``heavy`` builds the same
+    definitions with the heavy modules always loaded.
+    """
 
     if profile == "primary":
         return _build_primary_bundle(load_heavy=assets_pkg.should_load_heavy_assets())
+    if profile == "heavy":
+        return _build_primary_bundle(load_heavy=True)
     raise ValueError(f"Unknown Dagster definition profile: {profile!r}")
