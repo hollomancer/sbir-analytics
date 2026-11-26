@@ -17,22 +17,17 @@ from pathlib import Path
 
 from dagster import OpExecutionContext, job, op
 
+from sbir_etl.config.loader import data_root
 from sbir_etl.extractors.source_downloads.sbir import download_sbir_awards
 from sbir_etl.extractors.source_downloads.usaspending import download_local
 
-DATA_ROOT_ENV = "SBIR_ETL__PATHS__DATA_ROOT"
-DEFAULT_DATA_ROOT = "data"
 EPISTEMIC_TIER = "pipelines"
-
-
-def _data_root() -> Path:
-    return Path(os.getenv(DATA_ROOT_ENV, DEFAULT_DATA_ROOT))
 
 
 @op
 def download_sbir_awards_op(context: OpExecutionContext) -> dict:
     """Fetch the SBIR.gov awards CSV, keeping a dated vintage."""
-    result = download_sbir_awards(_data_root() / "raw" / "sbir")
+    result = download_sbir_awards(data_root() / "raw" / "sbir")
     context.log.info(
         f"SBIR awards: changed={result['changed']} path={result['path']} "
         f"sha256={result['sha256'][:16]}"
@@ -50,7 +45,7 @@ def download_sam_gov_op(context: OpExecutionContext) -> dict:
 
     from sbir_etl.extractors.source_downloads.sam_gov import download_sam_public_extract
 
-    path = download_sam_public_extract(_data_root() / "raw" / "sam_gov")
+    path = download_sam_public_extract(data_root() / "raw" / "sam_gov")
     row_count = len(pd.read_parquet(path))
     context.add_output_metadata({"rows": row_count, "path": str(path), "partial": False})
     return {"rows": row_count, "path": str(path), "partial": False}
@@ -64,7 +59,7 @@ def download_usaspending_op(context: OpExecutionContext) -> dict:
     resumes from a sidecar checkpoint if interrupted. It checks free space
     before downloading rather than failing late on a full volume.
     """
-    result = download_local(_data_root() / "usaspending")
+    result = download_local(data_root() / "usaspending")
     context.log.info(f"USAspending: status={result['status']} path={result['path']}")
     context.add_output_metadata(
         {"status": result["status"], "path": result["path"], "size": result["size"]}
@@ -142,7 +137,7 @@ def download_uspto_op(context: OpExecutionContext) -> dict:
         stream_download,
     )
 
-    dest_dir = _data_root() / "raw" / "uspto"
+    dest_dir = data_root() / "raw" / "uspto"
     dest_dir.mkdir(parents=True, exist_ok=True)
 
     api_key = os.environ.get("USPTO_ODP_API_KEY", "")

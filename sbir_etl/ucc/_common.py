@@ -1,25 +1,19 @@
-"""Cross-worktree data path helpers for the UCC pilot.
+"""Data path helpers for the UCC pilot.
 
-The pilot's data inputs (form_d_details.jsonl, sbir_ma_events.jsonl) live
-in the gitignored data/ dir of the repo; outputs go alongside.
-
-Default: the repo's own data/ directory (resolved relative to this file).
-Override via the SBIR_DATA_DIR env var to point at a shared dir (e.g.,
-the main repo's data/) when running from a worktree without its own copy.
+The pilot's data inputs (form_d_details.jsonl, sbir_ma_events.jsonl) and its
+outputs live under the configured data root. ``sbir_etl.config.loader.data_root``
+resolves it: ``SBIR_ETL__PATHS__DATA_ROOT``, then ``paths.data_root`` in config,
+then ``data`` relative to the current working directory.
 """
 
-import os
 from pathlib import Path
 
-# Repo root's data/ dir, resolved from this file's location:
-#   sbir_etl/ucc/_common.py → repo_root/data
-DEFAULT_DATA_DIR = Path(__file__).resolve().parents[2] / "data"
+from sbir_etl.config.loader import data_root
 
 
 def data_dir() -> Path:
-    """Return the resolved data directory, honoring SBIR_DATA_DIR."""
-    override = os.environ.get("SBIR_DATA_DIR")
-    return Path(override) if override else DEFAULT_DATA_DIR
+    """Return the configured data root."""
+    return data_root()
 
 
 def data_path(relative_name: str) -> Path:

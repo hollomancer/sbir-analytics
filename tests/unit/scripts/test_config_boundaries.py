@@ -86,3 +86,43 @@ def test_canonical_readers_and_tests_are_outside_the_guard(tmp_path: Path) -> No
 
 def test_current_repository_obeys_config_boundaries() -> None:
     assert boundaries.scan_repository() == []
+
+
+def test_direct_paths_env_reads_are_rejected(tmp_path: Path) -> None:
+    for source in (
+        "import os\nroot = os.getenv('SBIR_ETL__PATHS__DATA_ROOT', 'data')\n",
+        "import os\nroot = os.environ.get('SBIR_ETL__PATHS__RAW_DATA')\n",
+        "import os\nroot = os.environ['SBIR_ETL__PATHS__DATA_ROOT']\n",
+        "from os import getenv\nroot = getenv('SBIR_ETL__PATHS__DATA_ROOT')\n",
+        "from os import environ as env\nroot = env.get('SBIR_ETL__PATHS__DATA_ROOT')\n",
+        # The old job-module pattern: the name sits in a module constant.
+        "import os\nKEY = 'SBIR_ETL__PATHS__DATA_ROOT'\nroot = os.getenv(KEY, 'data')\n",
+    ):
+        path = _write(tmp_path, "sbir_etl/example.py", source)
+
+        violations = boundaries.scan_file(path, repository_root=tmp_path)
+
+        assert len(violations) == 1, source
+        assert "SBIR_ETL__PATHS__" in violations[0].format()
+
+
+def test_other_env_reads_and_the_loader_are_allowed(tmp_path: Path) -> None:
+    other = _write(
+        tmp_path,
+        "sbir_etl/example.py",
+        "import os\n"
+        "a = os.getenv('SBIR_ETL__PIPELINE__ENVIRONMENT')\n"
+        "b = os.environ.get('SBIR_ETL__PATHSX')\n"
+        "os.environ['SBIR_ETL__PATHS__DATA_ROOT_NOTE'] = 'written, not read'\n"
+        "c = {}.get('SBIR_ETL__PATHS__DATA_ROOT')\n",
+    )
+    loader = _write(
+        tmp_path,
+        "sbir_etl/config/loader.py",
+        "import os\nroot = os.environ.get('SBIR_ETL__PATHS__DATA_ROOT')\n",
+    )
+
+    assert boundaries.scan_file(loader, repository_root=tmp_path) == []
+    # The assignment target is a Subscript store; only loads count as reads.
+    violations = boundaries.scan_file(other, repository_root=tmp_path)
+    assert violations == []

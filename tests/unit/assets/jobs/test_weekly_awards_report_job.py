@@ -35,7 +35,7 @@ def test_empty_report_fails_rather_than_passing_silently(tmp_path, monkeypatch):
 
     from sbir_analytics.assets.jobs import weekly_awards_report as mod
 
-    monkeypatch.setenv(mod.DATA_ROOT_ENV, str(tmp_path))
+    monkeypatch.setenv("SBIR_ETL__PATHS__DATA_ROOT", str(tmp_path))
 
     monkeypatch.setattr(mod.WeeklyAwardsReportBuilder, "run", lambda _builder: "")
 
@@ -49,7 +49,7 @@ def test_builder_failure_surfaces(tmp_path, monkeypatch):
 
     from sbir_analytics.assets.jobs import weekly_awards_report as mod
 
-    monkeypatch.setenv(mod.DATA_ROOT_ENV, str(tmp_path))
+    monkeypatch.setenv("SBIR_ETL__PATHS__DATA_ROOT", str(tmp_path))
 
     def _fail(_builder):
         raise RuntimeError("boom")

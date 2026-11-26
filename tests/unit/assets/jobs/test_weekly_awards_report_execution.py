@@ -37,7 +37,7 @@ def test_job_succeeds_and_writes_a_dated_report(tmp_path, monkeypatch):
     """Happy path: the job writes to <data_root>/reports/weekly_awards/<date>/."""
     from sbir_analytics.assets.jobs import weekly_awards_report as mod
 
-    monkeypatch.setenv(mod.DATA_ROOT_ENV, str(tmp_path))
+    monkeypatch.setenv("SBIR_ETL__PATHS__DATA_ROOT", str(tmp_path))
     monkeypatch.setattr(mod, "WeeklyAwardsReportBuilder", _builder_returning("# Weekly awards\n"))
 
     result = mod.weekly_awards_report_job.execute_in_process()
@@ -56,7 +56,7 @@ def test_job_fails_when_the_builder_produces_nothing(tmp_path, monkeypatch):
     """
     from sbir_analytics.assets.jobs import weekly_awards_report as mod
 
-    monkeypatch.setenv(mod.DATA_ROOT_ENV, str(tmp_path))
+    monkeypatch.setenv("SBIR_ETL__PATHS__DATA_ROOT", str(tmp_path))
     monkeypatch.setattr(mod, "WeeklyAwardsReportBuilder", _builder_returning(""))
 
     with pytest.raises(Exception):  # noqa: B017 - Dagster wraps the op failure
@@ -73,7 +73,7 @@ def test_job_fails_when_the_builder_raises(tmp_path, monkeypatch):
         def run(self):
             raise RuntimeError("boom")
 
-    monkeypatch.setenv(mod.DATA_ROOT_ENV, str(tmp_path))
+    monkeypatch.setenv("SBIR_ETL__PATHS__DATA_ROOT", str(tmp_path))
     monkeypatch.setattr(mod, "WeeklyAwardsReportBuilder", _Exploding)
 
     with pytest.raises(Exception):  # noqa: B017 - Dagster wraps the op failure

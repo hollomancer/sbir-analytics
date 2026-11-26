@@ -10,19 +10,18 @@ import from here; only the storage backend changed.
 
 from __future__ import annotations
 
-import os
 from dataclasses import dataclass
 from pathlib import Path
 
 from loguru import logger
 
-DATA_ROOT_ENV = "SBIR_ETL__PATHS__DATA_ROOT"
-DEFAULT_DATA_ROOT = "data"
+from sbir_etl.config.loader import DATA_ROOT_ENV as DATA_ROOT_ENV
+from sbir_etl.config.loader import data_root
 
 
 def get_data_root() -> Path:
-    """Root directory for all source data, overridable per deployment."""
-    return Path(os.getenv(DATA_ROOT_ENV, DEFAULT_DATA_ROOT))
+    """Root directory for all source data; see ``sbir_etl.config.loader.data_root``."""
+    return data_root()
 
 
 def resolve_data_path(
