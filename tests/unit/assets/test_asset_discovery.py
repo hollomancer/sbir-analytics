@@ -182,7 +182,6 @@ def test_nsf_defense_lineage_schedule_is_discovered_but_stopped_by_default():
 blocked = (
     "sbir_analytics.assets.cet",
     "sbir_analytics.assets.fiscal_assets",
-    "sbir_analytics.assets.sbir_fiscal_impacts",
     "sbir_analytics.assets.modernbert",
     "sbir_analytics.assets.uspto.ai_extraction",
 )

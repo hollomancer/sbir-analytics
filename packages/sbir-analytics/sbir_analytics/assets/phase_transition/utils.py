@@ -1,8 +1,7 @@
 """Shared helpers for phase-transition assets.
 
-Mirrors the Dagster import shim / helper pattern used in
-``sbir_analytics.assets.transition.utils`` so these assets remain importable
-without Dagster installed (e.g. during unit tests).
+Re-exports the Dagster names the phase-transition asset modules share, matching
+the helper pattern in ``sbir_analytics.assets.transition.utils``.
 """
 
 from __future__ import annotations
@@ -13,28 +12,8 @@ from datetime import date, datetime
 from typing import Any
 
 import pandas as pd
+from dagster import MetadataValue, Output, asset
 from loguru import logger
-
-
-try:
-    from dagster import MetadataValue, Output, asset
-except Exception:  # pragma: no cover - test-only shim
-
-    def asset(*args: Any, **kwargs: Any):  # type: ignore[no-redef]
-        def _wrap(fn):
-            return fn
-
-        return _wrap
-
-    class Output:  # type: ignore[no-redef]
-        def __init__(self, value: Any, metadata: dict | None = None) -> None:
-            self.value = value
-            self.metadata = metadata or {}
-
-    class MetadataValue:  # type: ignore[no-redef]
-        @staticmethod
-        def json(v: Any) -> Any:
-            return v
 
 
 # Centralized path / IO utilities from sbir_etl (re-exported where convenient).

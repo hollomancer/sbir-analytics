@@ -222,26 +222,6 @@ def _build_primary_bundle(*, load_heavy: bool) -> DefinitionBundle:
         *source_download_schedules,
         *research_release_schedules,
     ]
-    if cet_full_pipeline_job is not None:
-        schedules.append(
-            ScheduleDefinition(
-                job=cet_full_pipeline_job,
-                cron_schedule=os.getenv(
-                    "SBIR_ETL__DAGSTER__SCHEDULES__CET_FULL_PIPELINE_JOB", "0 2 * * *"
-                ),
-                name="daily_cet_full_pipeline",
-                description="Daily CET full pipeline end-to-end execution",
-            )
-        )
-    if cet_drift_job is not None:
-        schedules.append(
-            ScheduleDefinition(
-                job=cet_drift_job,
-                cron_schedule=os.getenv("SBIR_ETL__DAGSTER__SCHEDULES__CET_DRIFT_JOB", "0 6 * * *"),
-                name="daily_cet_drift_detection",
-                description="Daily CET drift detection and alerting",
-            )
-        )
 
     all_sensors = assets_pkg.iter_public_sensors()
     job_definitions: list[DiscoveredJob] = [core_refresh_job]
@@ -274,75 +254,15 @@ def _build_primary_bundle(*, load_heavy: bool) -> DefinitionBundle:
     )
 
 
-def _build_heavy_bundle() -> DefinitionBundle:
-    asset_modules = assets_pkg.iter_asset_modules(load_heavy=True)
-    all_assets = load_assets_from_modules(asset_modules)
-    all_asset_checks = load_asset_checks_from_modules(asset_modules)
-    auto_jobs = _discover_jobs(load_heavy=True, all_assets=all_assets)
-
-    heavy_job_keywords = ("cet", "fiscal", "modernbert", "uspto", "ml", "drift")
-    job_definitions = [
-        job
-        for job in auto_jobs.values()
-        if any(keyword in job.name.lower() for keyword in heavy_job_keywords)
-    ]
-    schedules: list[ScheduleDefinition] = []
-    cet_full_pipeline_job = auto_jobs.get("cet_full_pipeline_job")
-    if cet_full_pipeline_job is not None:
-        schedules.append(
-            ScheduleDefinition(
-                job=cet_full_pipeline_job,
-                cron_schedule=os.getenv(
-                    "SBIR_ETL__DAGSTER__SCHEDULES__CET_FULL_PIPELINE_JOB", "0 3 * * *"
-                ),
-                name="daily_cet_full_pipeline",
-                description="Daily CET ML pipeline end-to-end execution",
-            )
-        )
-    fiscal_returns_mvp_job = auto_jobs.get("fiscal_returns_mvp_job")
-    if fiscal_returns_mvp_job is not None:
-        schedules.append(
-            ScheduleDefinition(
-                job=fiscal_returns_mvp_job,
-                cron_schedule=os.getenv(
-                    "SBIR_ETL__DAGSTER__SCHEDULES__FISCAL_RETURNS_JOB", "0 4 * * 1"
-                ),
-                name="weekly_fiscal_returns",
-                description="Weekly fiscal returns analysis",
-            )
-        )
-
-    all_sensors = assets_pkg.iter_public_sensors()
-    defs = Definitions(
-        assets=all_assets,
-        asset_checks=all_asset_checks,
-        jobs=job_definitions,
-        schedules=schedules,
-        sensors=all_sensors,
-    )
-    return DefinitionBundle(
-        defs=defs,
-        asset_modules=asset_modules,
-        all_assets=all_assets,
-        all_asset_checks=all_asset_checks,
-        auto_jobs=auto_jobs,
-        all_sensors=all_sensors,
-        job_definitions=job_definitions,
-        schedules=schedules,
-        source_download_schedules=[],
-        research_release_schedules=[],
-        heavy_asset_keys=_heavy_asset_keys(asset_modules),
-        core_refresh_job=None,
-        cet_drift_job=auto_jobs.get("cet_drift_job"),
-        cet_full_pipeline_job=cet_full_pipeline_job,
-    )
-
-
 def build_definitions(profile: DefinitionProfile) -> DefinitionBundle:
-    """Build a supported Dagster code-location profile."""
+    """Build a supported Dagster code-location profile.
+
+    ``primary`` honors ``DAGSTER_LOAD_HEAVY_ASSETS``. ``heavy`` builds the same
+    definitions with the heavy modules always loaded.
+    """
 
     if profile == "primary":
         return _build_primary_bundle(load_heavy=assets_pkg.should_load_heavy_assets())
     if profile == "heavy":
-        return _build_heavy_bundle()
+        return _build_primary_bundle(load_heavy=True)
     raise ValueError(f"Unknown Dagster definition profile: {profile!r}")

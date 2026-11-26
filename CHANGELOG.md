@@ -10,6 +10,38 @@ version.
 
 ## [Unreleased]
 
+### Breaking
+
+- Removed schedules `daily_cet_full_pipeline` and `daily_cet_drift_detection`
+  from the primary code location. No operator ran them and they had no enable
+  toggle. `cet_full_pipeline_job` and `cet_drift_job` remain for manual runs.
+- Removed schedules `daily_cet_full_pipeline` (cron `0 3 * * *`) and
+  `weekly_fiscal_returns` from the retired heavy code location. Neither
+  workspace file loaded that location. `fiscal_returns_mvp_job` remains for
+  manual runs.
+- Removed sensor `usaspending_refresh_sensor`.
+  `usaspending_pipeline_after_download` already starts `usaspending_iterative_enrichment_job` after a successful
+  download. The removed sensor's docstring described a `cadence_days` check
+  that its code never made.
+- Removed assets `sbir_fiscal_impacts`, `sbir_fiscal_impacts_by_state`, and
+  `sbir_fiscal_impacts_by_sector`, and asset check
+  `check_fiscal_impacts_quality`. No job selected them and nothing read them;
+  the `fiscal_returns_*` jobs cover the fiscal analysis.
+- Removed the separate heavy code location. `sbir_analytics.definitions_ml`
+  now builds the primary definitions with heavy modules always loaded, so
+  `-m sbir_analytics.definitions_ml` commands still find the heavy jobs when
+  `DAGSTER_LOAD_HEAVY_ASSETS=false`. It also gains the primary location's jobs,
+  schedules, and sensors.
+- Removed fallback stubs for a missing Dagster install in five asset modules.
+  Dagster is a required dependency. The no-argument `AssetExecutionContext` wrappers
+  re-exported from `assets.cet` and `assets.transition` are now Dagster's own
+  class.
+
+Operators: Dagster keeps schedule and sensor state in the `dagster_home`
+volume. If someone started one of the removed schedules or sensors from the
+UI, its state remains there and the UI may list it as missing. Check the
+Automation page after deploying, and reset any stale entry.
+
 ## [0.22.0] — 2026-11-21
 
 ### Breaking

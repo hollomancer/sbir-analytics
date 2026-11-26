@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import Any
 
 import pandas as pd
+from dagster import Output, asset
 from loguru import logger
 
 from sbir_etl.models.phase_iii_candidate import PhaseIIICandidate, SignalClass
@@ -27,38 +28,6 @@ from .similarity import (
     compute_text_similarity_batch,
     compute_topical_similarity,
 )
-
-try:
-    from dagster import (
-        AssetsDefinition,
-        MetadataValue,
-        OpExecutionContext,
-        Output,
-        asset,
-    )
-except Exception:  # pragma: no cover - test-only shim
-
-    def asset(*_args: Any, **_kwargs: Any):  # type: ignore[no-redef]
-        def _wrap(fn):
-            return fn
-
-        return _wrap
-
-    class Output:  # type: ignore[no-redef]
-        def __init__(self, value: Any, metadata: dict | None = None) -> None:
-            self.value = value
-            self.metadata = metadata or {}
-
-    class MetadataValue:  # type: ignore[no-redef]
-        @staticmethod
-        def json(v: Any) -> Any:
-            return v
-
-    class OpExecutionContext:  # type: ignore[no-redef]
-        pass
-
-    AssetsDefinition = Any  # type: ignore[assignment, misc]
-
 
 CANDIDATES_OUTPUT_PATH = Path("data/processed/phase_iii_candidates.parquet")
 EVIDENCE_OUTPUT_PATH = Path("data/processed/phase_iii_evidence.ndjson")

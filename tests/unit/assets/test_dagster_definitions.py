@@ -46,7 +46,7 @@ def test_source_download_schedule_contracts():
 def test_expected_sensors_are_registered():
     sensor_names = {sensor.name for sensor in definitions.bundle.all_sensors}
 
-    assert "usaspending_refresh_sensor" in sensor_names
+    assert "usaspending_refresh_sensor" not in sensor_names
     assert "sbir_pipeline_after_download" in sensor_names
     assert "uspto_pipeline_after_download" in sensor_names
     assert "usaspending_pipeline_after_download" in sensor_names

@@ -23,7 +23,6 @@ LOG = logging.getLogger(__name__)
 HEAVY_ASSET_PREFIXES = (
     "sbir_analytics.assets.cet",
     "sbir_analytics.assets.fiscal_assets",
-    "sbir_analytics.assets.sbir_fiscal_impacts",
     "sbir_analytics.assets.modernbert",
     "sbir_analytics.assets.uspto.ai_extraction",
 )

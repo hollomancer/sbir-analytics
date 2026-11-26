@@ -241,20 +241,12 @@ impacts = calculator.calculate_impacts_from_sbir_awards(enriched_awards)
 
 ### With Dagster
 
-```python
-from dagster import asset
+The Dagster fiscal analysis lives in
+`packages/sbir-analytics/sbir_analytics/assets/fiscal_assets.py`. Run it by hand
+with the `fiscal_returns_mvp_job` or `fiscal_returns_full_job` job:
 
-@asset
-def sbir_fiscal_impacts(enriched_sbir_awards: pd.DataFrame) -> pd.DataFrame:
-    """Calculate fiscal impacts from SBIR awards."""
-    calculator = SBIRFiscalImpactCalculator()
-    return calculator.calculate_impacts_from_sbir_awards(enriched_sbir_awards)
-
-@asset
-def state_summary(sbir_fiscal_impacts: pd.DataFrame) -> pd.DataFrame:
-    """Summarize impacts by state."""
-    calculator = SBIRFiscalImpactCalculator()
-    return calculator.calculate_summary_by_state(sbir_fiscal_impacts)
+```bash
+uv run dagster job execute -m sbir_analytics.definitions_ml -j fiscal_returns_mvp_job
 ```
 
 ## Performance Considerations
