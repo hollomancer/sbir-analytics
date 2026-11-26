@@ -263,7 +263,7 @@ What already holds:
   into `sbir_etl.identity`, the NSF CET screen inverted out of the pipelines
   release, the opportunity scorer and NAICS text-inference registration moved
   behind exploratory composition points), so any new cross-tier import fails the
-  build outright (`specs/epistemic-tier-enforcement/`).
+  build outright (`specs/archive/completed-features/epistemic-tier-enforcement/`).
 - The Phase III census implements the evidence-tier mechanisms: frozen
   artifacts, SHA enforcement, a declared estimand, and a blocking asset check.
 - Production YAML mapping reads route through the configuration loader or the

@@ -132,7 +132,7 @@ when its evidence changes, so that hidden drift cannot preserve the same claim.
 
 ## Dependencies
 
-- `award-export-semantics` — MAINTENANCE
+- `award-export-semantics` — ARCHIVED, complete (`specs/archive/completed-features/award-export-semantics/`)
 - `award-export-source-pipeline` — MAINTENANCE
 - Durable access to all four exact source files — COMPLETE
 - Approved prospective validation design and result — COMPLETE

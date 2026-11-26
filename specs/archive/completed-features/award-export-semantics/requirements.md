@@ -1,9 +1,9 @@
 # Award Export Semantics — Requirements
 
-> **Lifecycle status:** Maintenance
+> **Lifecycle status:** Archived 2026-11-26 (complete). See `COMPLETION_RECORD.md`.
 > **Spec-file progress:** Complete
 > Anchors inventory question **D1** in
-> [docs/research-questions.md](../../docs/research-questions.md#d1-descriptive-tier-1).
+> [docs/research-questions.md](../../../../docs/research-questions.md#d1-descriptive-tier-1).
 
 **Target epistemic tier:** `primitives`
 

@@ -12,7 +12,7 @@ or design notes as current instructions. Before restarting old work, check the
 | [`completed-migrations/`](completed-migrations/) | Finished changes to the repository or development process |
 | [`superseded/`](superseded/) | Designs that were replaced or intentionally dropped |
 
-The other directories are old snapshots kept for context. Their paths, commands,
+Every archived spec sits in one of these categories. Old paths, commands,
 dependencies, and task lists may no longer be correct. Use the current guides in
 `docs/` when running the system.
 

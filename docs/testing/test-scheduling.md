@@ -4,7 +4,7 @@
 
 **Maintainer**: Conrad Hollomon
 
-**Last-Reviewed**: 2026-11-21
+**Last-Reviewed**: 2026-11-26
 
 **Status**: Active
 
@@ -23,7 +23,9 @@ Every pull request runs:
 - Four duration-balanced shards of `tests/unit/`, excluding tests marked `slow`.
 - Hermetic `tests/e2e/` cases, excluding external-API and real-data tests.
 - The full `tests/` tree on Python 3.11 with branch coverage and the 70% gate (`Full Tests`). It
-  includes `slow`, `tests/functional`, and golden tests. It runs in parallel with the unit shards.
+  includes `slow`, `tests/integration`, `tests/functional`, and golden tests. It runs in parallel
+  with the unit shards. There is no separate integration-test job: every test that
+  `-m "integration and not slow"` selects also runs here.
   Measured cost in November 2026: 3 minutes 13 seconds for the whole job on `main`; 2 minutes
   17 seconds locally on 4 cores; the `slow` set alone took 70 seconds locally.
 - A Docker build and entrypoint smoke test only when Docker build inputs change.

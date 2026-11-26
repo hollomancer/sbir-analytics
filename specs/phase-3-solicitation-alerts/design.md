@@ -142,7 +142,7 @@ validated_phase_ii_awards (existing) ----> |   prior_award_universe      |
    `pair_filter_s1` lives in `pairing.py` (pipelines tier, shared with the
    census); the contestable S2/S3 opportunity scorers were split into
    `opportunity_pairing.py` (exploratory) by the tier-allowlist burndown
-   (`specs/epistemic-tier-enforcement`):
+   (`specs/archive/completed-features/epistemic-tier-enforcement`):
 
    - `pairing.pair_filter_s1(prior, contracts)` — `contract.recipient_uei IN
      prior.uei_set` AND hierarchical agency match

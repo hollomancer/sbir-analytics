@@ -92,7 +92,7 @@ comparison to use the verified loader, so that its source contract is executable
 
 ## Dependencies
 
-- `award-export-semantics` — ACTIVE
+- `award-export-semantics` — ARCHIVED, complete (`specs/archive/completed-features/award-export-semantics/`)
 - Existing Phase II exact source reader — EXISTS
 - SBA annual-report structural-comparison study — EXISTS
 
