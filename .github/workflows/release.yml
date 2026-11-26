@@ -70,9 +70,8 @@ jobs:
             exit 1
           fi
 
-      # Re-run rather than trusting the tag push's own Version Policy job: this
-      # is the job that publishes, so it should not depend on a separate
-      # workflow having passed first.
+      # This is the only tag-time version check. The Version Policy workflow
+      # runs on pull requests and main, not on tag pushes.
       - name: Validate synchronized version metadata
         shell: bash
         env:

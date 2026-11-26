@@ -403,16 +403,15 @@ class SbirDuckDBExtractor:
         logger.info(f"Extracting records for agencies: {agencies}")
 
         table_identifier = self._table_identifier
-        agency_literals = ", ".join(
-            self.duckdb_client.escape_literal(agency) for agency in agencies
-        )
+        parameters = {f"agency_{i}": agency for i, agency in enumerate(agencies)}
+        placeholders = ", ".join(f"${name}" for name in parameters)
 
         query = f"""
         SELECT * FROM {table_identifier}
-        WHERE Agency IN ({agency_literals})
+        WHERE Agency IN ({placeholders})
         """  # nosec B608
 
-        df = self.duckdb_client.execute_query_df(query)
+        df = self.duckdb_client.execute_query_df(query, parameters)
 
         logger.info(f"Extracted {len(df)} records for {len(agencies)} agencies")
 
@@ -433,14 +432,15 @@ class SbirDuckDBExtractor:
         logger.info(f"Extracting records for phases: {phases}")
 
         table_identifier = self._table_identifier
-        phase_literals = ", ".join(self.duckdb_client.escape_literal(p) for p in phases)
+        parameters = {f"phase_{i}": phase for i, phase in enumerate(phases)}
+        placeholders = ", ".join(f"${name}" for name in parameters)
 
         query = f"""
         SELECT * FROM {table_identifier}
-        WHERE Phase IN ({phase_literals})
+        WHERE Phase IN ({placeholders})
         """  # nosec B608
 
-        df = self.duckdb_client.execute_query_df(query)
+        df = self.duckdb_client.execute_query_df(query, parameters)
 
         logger.info(f"Extracted {len(df)} records for {len(phases)} phases")
 

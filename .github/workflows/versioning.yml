@@ -1,10 +1,13 @@
 name: Version Policy
 
+# Checks that every version field matches on pull requests and on main.
+# Tag pushes are checked by release.yml, which runs
+# check_versioning.py --tag before it publishes.
+
 on:
   pull_request:
   push:
-    branches: [main, develop]
-    tags: ["*"]
+    branches: [main]
   workflow_dispatch:
 
 permissions:
@@ -20,11 +23,5 @@ jobs:
       - uses: actions/setup-python@v7
         with:
           python-version: "3.11"
-      - name: Validate project versions and release tag
-        shell: bash
-        run: |
-          args=()
-          if [[ "${GITHUB_REF_TYPE}" == "tag" ]]; then
-            args+=(--tag "${GITHUB_REF_NAME}")
-          fi
-          python scripts/ci/check_versioning.py "${args[@]}"
+      - name: Validate project versions
+        run: python scripts/ci/check_versioning.py
