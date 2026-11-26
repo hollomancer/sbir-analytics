@@ -224,3 +224,23 @@ class TestFederalFiscalYear:
         pd = pytest.importorskip("pandas")
         values = pd.to_datetime(pd.Series(["2023-09-30", None, "2023-10-01"]))
         assert federal_fiscal_year_series(values).tolist() == [2023, pd.NA, 2024]
+
+    def test_series_mixed_offset_timestamps_are_not_coerced_to_na(self):
+        """Regression: to_datetime(errors="coerce") nulls minority-offset Timestamps."""
+        pd = pytest.importorskip("pandas")
+        values = pd.Series(
+            [pd.Timestamp("2023-09-30T22:00-05:00"), pd.Timestamp("2023-10-01T01:00+05:00")]
+        )
+        assert federal_fiscal_year_series(values).tolist() == [2023, 2024]
+
+    def test_series_mixed_string_formats_are_not_coerced_to_na(self):
+        pd = pytest.importorskip("pandas")
+        values = pd.Series(["2023-09-30", "10/01/2023", "", None])
+        assert federal_fiscal_year_series(values).tolist() == [2023, 2024, pd.NA, pd.NA]
+
+    def test_series_utc_converted_column_uses_stored_zone(self):
+        """A Series already converted to UTC gives the UTC date, as documented."""
+        pd = pytest.importorskip("pandas")
+        values = pd.to_datetime(pd.Series(["2023-09-30T22:00-05:00"]), utc=True)
+        assert federal_fiscal_year_series(values).tolist() == [2024]
+        assert federal_fiscal_year(values.iloc[0]) == 2024

@@ -369,6 +369,8 @@ def normalize_prime_api_transactions(frame: pd.DataFrame) -> pd.DataFrame:
     if output["signed_obligation_amount"].isna().any():
         raise ValueError("USAspending API prime transactions contain missing obligations")
     raw_action_date = output["action_date"]
+    # action_date is stored in UTC, but fiscal_year uses the local date as written
+    # (see federal_fiscal_year). Near midnight on Sep 30 the two can show different days.
     output["action_date"] = pd.to_datetime(raw_action_date, errors="coerce", utc=True)
     if output["action_date"].isna().any():
         raise ValueError("USAspending API prime transactions contain missing action dates")
@@ -687,6 +689,8 @@ def build_defense_funding_summary(
         ),
         zero_transaction_count=("signed_obligation_amount", lambda values: int(values.eq(0).sum())),
         dod_award_count=("dod_award_generated_id", "nunique"),
+        # action_date is UTC; fiscal_year is the local date. For offset timestamps
+        # near the year boundary, a FY group's first/last date can show the next FY's day.
         first_observed_funding_date=("action_date", "min"),
         last_observed_funding_date=("action_date", "max"),
         recipient_match_methods=("recipient_match_method", _json_unique),

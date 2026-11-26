@@ -287,14 +287,25 @@ def federal_fiscal_year_series(values: pd.Series) -> pd.Series:
 
     Applies the same rule: local date as written, no UTC conversion. Returns a
     nullable ``Int64`` Series; missing or unparseable values become ``<NA>``.
-    A column whose values carry different UTC offsets falls back to the scalar
-    function, because pandas cannot hold mixed offsets in one datetime column.
+
+    The fast path parses the whole column with ``pandas.to_datetime``. If that
+    turns any non-missing value into ``NaT`` (for example, ``Timestamp`` objects
+    or strings with different UTC offsets, or mixed string formats), the result
+    comes from the scalar function applied to each value instead. Coercion
+    never turns a parseable value into ``<NA>``.
+
+    A tz-aware ``datetime64`` Series uses the zone it stores. A column already
+    converted to UTC gives the UTC date, not the date as originally written.
+    Callers that want the original local date must pass the original values,
+    before any UTC conversion.
     """
     if pd is None:  # pragma: no cover - pandas is a core dependency
         raise ImportError("federal_fiscal_year_series requires pandas")
     try:
         parsed = pd.to_datetime(values, errors="coerce")
     except (TypeError, ValueError):
+        parsed = None
+    if parsed is None or int(parsed.isna().sum()) > int(values.isna().sum()):
         return values.map(federal_fiscal_year).astype("Int64")
     year = parsed.dt.year.astype("Int64")
     return (year + (parsed.dt.month >= 10).astype("Int64")).astype("Int64")

@@ -266,6 +266,41 @@ def test_api_prime_fiscal_year_uses_local_date_not_utc() -> None:
     assert by_id == {"A": 2023, "B": 2024, "C": 2023}
 
 
+def test_api_prime_fiscal_year_keeps_mixed_offset_timestamps() -> None:
+    """Regression: mixed-offset Timestamp objects must not become a missing FY."""
+    row = {
+        "dod_award_generated_id": "CONT_AWD_1_9700",
+        "dod_award_id": "P1",
+        "nsf_organization_id": "uei:ABCDEFGHIJKL",
+        "recipient_match_method": "exact_uei",
+        "recipient_match_confidence": "verified_identifier",
+        "instrument_group": "prime_procurement",
+        "signed_obligation_amount": 50,
+        "source_system": "USAspending API",
+    }
+    transactions = normalize_prime_api_transactions(
+        pd.DataFrame(
+            [
+                {
+                    **row,
+                    "prime_transaction_id": "A",
+                    "action_date": pd.Timestamp("2023-09-30T22:00-05:00"),
+                },
+                {
+                    **row,
+                    "prime_transaction_id": "B",
+                    "action_date": pd.Timestamp("2023-10-01T01:00+05:00"),
+                },
+            ]
+        )
+    )
+
+    by_id = dict(
+        zip(transactions["prime_transaction_id"], transactions["fiscal_year"], strict=True)
+    )
+    assert by_id == {"A": 2023, "B": 2024}
+
+
 def _subaward_facts() -> pd.DataFrame:
     return pd.DataFrame(
         [
