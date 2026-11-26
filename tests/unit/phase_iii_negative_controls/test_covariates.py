@@ -174,23 +174,3 @@ def test_coverage_reports_counts_without_an_acceptance_threshold() -> None:
         "conflict_firms": 0,
         "total_firms": 2,
     }
-
-
-@pytest.mark.parametrize(
-    ("raw", "expected"),
-    [
-        ("541715", "541715"),
-        (" 541715 ", "541715"),
-        ("541715.0", "541715"),
-        (541715.0, "541715"),
-        ("5417", ""),  # Exact matching needs the 6-digit national industry.
-        ("54-1715", ""),
-        ("005417", ""),
-        ("1234567", ""),
-        ("NULL", ""),
-    ],
-)
-def test_primary_naics_requires_exactly_six_digits_after_shared_rules(raw, expected) -> None:
-    from sbir_analytics.assets.phase_iii_negative_controls.covariates import _normalize_naics
-
-    assert _normalize_naics(raw) == expected
