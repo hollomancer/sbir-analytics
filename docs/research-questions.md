@@ -593,7 +593,7 @@ statutory goal is Phase III commercialization.*
 
 - **Award-to-contract transition**
   Did this SBIR-funded research result in a federal contract?
-  *Deps: ER, ID · Refs: [L1], [L2] (NASEM DoD), [L12] (Link & Scott, ~50% commercialization probability), [L3], [L4], [L6] (NASEM program reviews) · Spec: [transition/overview.md](transition/overview.md), [../specs/archive/completed-features/transition_detection/](../specs/archive/completed-features/transition_detection/)*
+  *Deps: ER, ID · Refs: [L1], [L2] (NASEM DoD), [L12] (Link & Scott, ~50% commercialization probability), [L3], [L4], [L6] (NASEM program reviews) · Spec: [transition/overview.md](transition/overview.md), [../specs/archive/completed-features/transition_detection/](../specs/archive/completed-features/transition_detection/) · Study: [transition-scoring](../studies/transition-scoring/study.yaml)*
 
 - <a id="b2-sttr-spinout"></a>**STTR spinout vs. subcontract relationship**
   Of STTR awards, what share of small-business↔research-institution relationships
@@ -1228,7 +1228,7 @@ The relevant literature is Lerner [L10], Howell [L11], and Kortum & Lerner
   **Status:** Dated research note; no study contract. Older write-ups quote
   agency-specific rates; those figures are not inventory Status and are not
   approved for citation.
-  *Deps: ER, M&A signals · Spec: (PR #286 merged)*
+  *Deps: ER, M&A signals · Spec: (PR #286 merged), [../specs/sbir-ma-dated-signal-study/](../specs/sbir-ma-dated-signal-study/) · Study: [sbir-ma-dated-signal-study](../studies/sbir-ma-dated-signal-study/study.yaml)*
 
 - **Time to exit**
   What is the median time from first SBIR award to M&A exit?
@@ -1255,7 +1255,7 @@ The relevant literature is Lerner [L10], Howell [L11], and Kortum & Lerner
   (Bruker, Ligand, Thermo Fisher) versus defense primes versus financial
   sponsors? What fraction of acquirers are serial buyers with 3+ SBIR-firm
   targets?
-  *Deps: ER, M&A signals · Spec: [../specs/ma-discovery-integration/](../specs/ma-discovery-integration/)*
+  *Deps: ER, M&A signals · Spec: [../specs/ma-discovery-integration/](../specs/ma-discovery-integration/) · Study: [ma-discovery-recall](../studies/ma-discovery-recall/study.yaml)*
 
 - **Filers vs. non-filers**
   Do Form D filers and non-filers differ on transition, patent, and exit

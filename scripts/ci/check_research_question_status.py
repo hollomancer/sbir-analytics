@@ -52,13 +52,7 @@ REFUSAL_STATUS = re.compile(r"\bnot\s+(?:computable|estimable)\b", re.IGNORECASE
 # needs a non-blank reason, so an exemption cannot be added without saying why.
 DISCOVERABILITY_ALLOWLIST: dict[tuple[str, str], str] = {
     ("ma-discovery-recall", "A4"): "predates this check; no A4 bullet names the recall study",
-    ("ma-discovery-recall", "F2"): "predates this check; no F2 bullet names the recall study",
-    ("transition-scoring", "B2"): "predates this check; B2 describes the scorer without linking it",
     ("transition-scoring", "B3"): "predates this check; B3 describes the scorer without linking it",
-    (
-        "sbir-ma-dated-signal-study",
-        "F1",
-    ): "predates this check; no F1 bullet names the dated-signal study",
 }
 
 # Only the past-participle rank word counts. ``validates`` is the ordinary verb
