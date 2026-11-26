@@ -22,6 +22,7 @@ from loguru import logger
 
 from ..config.loader import get_config
 from ..config.yaml_io import read_yaml_mapping
+from ..utils.identifiers import normalize_naics
 
 
 EPISTEMIC_TIER = "exploratory"
@@ -142,9 +143,9 @@ class NAICSToBEAMapper:
         if self.crosswalk_path.exists():
             try:
                 self.crosswalk_df = pd.read_csv(self.crosswalk_path)
-                # Normalize NAICS codes (remove leading zeros, ensure string)
-                self.crosswalk_df["naics_code"] = (
-                    self.crosswalk_df["naics_code"].astype(str).str.zfill(6)
+                # Normalize NAICS codes with the shared rules (no padding)
+                self.crosswalk_df["naics_code"] = self.crosswalk_df["naics_code"].map(
+                    normalize_naics
                 )
                 # Ensure BEA sector codes are strings (pandas may parse short numeric
                 # values such as "54" as int64 without an explicit dtype override)
@@ -186,20 +187,6 @@ class NAICSToBEAMapper:
         self.min_confidence_threshold = naics_config.get("min_confidence_threshold", 0.50)
         self.crosswalk_version = naics_config.get("crosswalk_version", "2017")
 
-    def _normalize_naics(self, naics_code: str) -> str:
-        """Normalize NAICS code to 6-digit string with leading zeros.
-
-        Args:
-            naics_code: NAICS code of any length
-
-        Returns:
-            Normalized 6-digit NAICS code string
-        """
-        # Remove non-digit characters
-        digits_only = "".join(c for c in str(naics_code) if c.isdigit())
-        # Pad to 6 digits with leading zeros
-        return digits_only.zfill(6)
-
     def _map_direct(self, naics_code: str) -> list[NAICSToBEAResult] | None:
         """Map NAICS code directly from crosswalk.
 
@@ -235,10 +222,14 @@ class NAICSToBEAMapper:
         return None
 
     def _map_hierarchical(self, naics_code: str) -> list[NAICSToBEAResult] | None:
-        """Map NAICS code using hierarchical fallback (6→4→3→2 digit).
+        """Map NAICS code using hierarchical fallback (6→5→4→3→2 digit).
+
+        ``_map_direct`` already tried the exact code. Each shorter prefix is
+        tried as written ("5417") and then right-padded to 6 digits ("541700"),
+        so the crosswalk may store either form. Codes are never left-padded.
 
         Args:
-            naics_code: Normalized 6-digit NAICS code
+            naics_code: Normalized 2- to 6-digit NAICS code (not padded)
 
         Returns:
             List of mapping results or None if not found
@@ -246,12 +237,17 @@ class NAICSToBEAMapper:
         if not self.hierarchical_fallback or self.crosswalk_df is None or self.crosswalk_df.empty:
             return None
 
-        # Try progressively shorter codes: 4-digit, 3-digit, 2-digit
-        for level in [4, 3, 2]:
+        for level in [5, 4, 3, 2]:
+            if level > len(naics_code):
+                continue
             prefix = naics_code[:level]
-            prefix = prefix.ljust(6, "0")  # Pad to 6 digits on the right
-
-            matches = self.crosswalk_df[self.crosswalk_df["naics_code"] == prefix]
+            matches = self.crosswalk_df.iloc[0:0]
+            for candidate in dict.fromkeys([prefix, prefix.ljust(6, "0")]):
+                if candidate == naics_code:
+                    continue
+                matches = self.crosswalk_df[self.crosswalk_df["naics_code"] == candidate]
+                if not matches.empty:
+                    break
             if not matches.empty:
                 results = []
                 confidence_discount = 0.10 * (6 - level)  # Reduce confidence for shorter matches
@@ -289,7 +285,7 @@ class NAICSToBEAMapper:
             return None
 
         # Try exact match
-        mapping = mappings.get(naics_code) or mappings.get(naics_code.lstrip("0"))
+        mapping = mappings.get(naics_code)
         if mapping:
             results = []
             primary_sector = mapping.get("primary_sector", "")
@@ -371,8 +367,10 @@ class NAICSToBEAMapper:
         if not naics_code:
             return self._map_default("UNKNOWN")
 
-        # Normalize NAICS code
-        normalized = self._normalize_naics(naics_code)
+        # Normalize NAICS code (2-6 digits, never padded)
+        normalized = normalize_naics(naics_code)
+        if normalized is None:
+            return self._map_default("UNKNOWN")
 
         # Check cache first
         if normalized in self._mapping_cache:

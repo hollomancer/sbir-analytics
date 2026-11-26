@@ -135,3 +135,36 @@ def normalize_cage(v: Any) -> str | None:
         return None
     s = str(v)
     return s.upper() if len(s) == 5 else None
+
+
+_NAICS_AS_DECIMAL_TEXT = re.compile(r"^([0-9]+)\.0+$")
+_NAICS_CODE = re.compile(r"[1-9][0-9]{1,5}")
+
+
+def normalize_naics(v: Any) -> str | None:
+    """Return a 2- to 6-digit NAICS code string, or None.
+
+    - Surrounding whitespace is removed.
+    - A code read as a number may carry ".0" (``541712.0``). That float
+      artifact is repaired, for numbers and for text, so it becomes "541712".
+    - The result must be 2 to 6 ASCII digits. Letters, hyphens, other
+      punctuation, and a non-zero fractional part make the value malformed, so
+      it returns None. Digits are not pulled out of malformed text.
+    - The code is never padded. "5417" stays "5417". A caller that needs a
+      fixed width pads for its own lookup.
+    - No NAICS code starts with 0, so a leading zero (for example the padded
+      value "005417") returns None.
+    """
+    if _blank(v) or isinstance(v, bool):
+        return None
+    if isinstance(v, Integral):
+        text = str(int(v))
+    elif isinstance(v, float):
+        if not v.is_integer():
+            return None
+        text = str(int(v))
+    else:
+        text = str(v).strip()
+        if whole := _NAICS_AS_DECIMAL_TEXT.match(text):
+            text = whole.group(1)
+    return text if _NAICS_CODE.fullmatch(text) else None

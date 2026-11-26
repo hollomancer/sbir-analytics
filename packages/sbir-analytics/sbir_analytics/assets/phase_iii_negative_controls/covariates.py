@@ -9,7 +9,7 @@ from typing import Any
 
 import pandas as pd
 
-from sbir_etl.utils.identifiers import normalize_uei
+from sbir_etl.utils.identifiers import normalize_naics, normalize_uei
 
 from sbir_etl.identity.exact_awards import IdentityRecoveryError
 from .sam_eligibility import EligibilityStatus, require_reliable_sam_eligibility
@@ -29,7 +29,6 @@ SAM_COLUMNS = ("unique_entity_id", "primary_naics", "physical_address_state")
 CONTRACT_COLUMNS = ("vendor_uei", "action_date", "product_or_service_code", "metadata")
 
 _NULL_TEXT = frozenset({"", "<NA>", "NAN", "NAT", "NONE", "NULL", r"\N"})
-_NAICS_PATTERN = re.compile(r"^\d{6}$")
 _STATE_PATTERN = re.compile(r"^[A-Z]{2}$")
 _PSC_PATTERN = re.compile(r"^[A-Z0-9]{4}$")
 _BUSINESS_CATEGORY_PATTERN = re.compile(r"^[a-z0-9_]+$")
@@ -67,8 +66,11 @@ def _require_columns(frame: pd.DataFrame, required: Iterable[str], *, label: str
 
 
 def _normalize_naics(value: Any) -> str:
-    normalized = _text(value)
-    return normalized if _NAICS_PATTERN.fullmatch(normalized) else ""
+    # Matching is exact on the national-industry code, so this site keeps the
+    # 6-digit requirement on top of the shared NAICS rules. A shorter code is a
+    # coarser category and must not match a 6-digit code.
+    normalized = normalize_naics(_text(value))
+    return normalized if normalized is not None and len(normalized) == 6 else ""
 
 
 def _normalize_state(value: Any) -> str:

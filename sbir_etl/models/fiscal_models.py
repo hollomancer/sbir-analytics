@@ -6,6 +6,8 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field, field_serializer, field_validator
 
+from sbir_etl.utils.identifiers import normalize_naics
+
 
 class EconomicShock(BaseModel):
     """Economic shock representing aggregated SBIR spending by state, sector, and fiscal year."""
@@ -404,11 +406,10 @@ class NAICSMapping(BaseModel):
     @classmethod
     def validate_naics_code(cls, v: str) -> str:
         """Validate NAICS code format."""
-        # Remove any non-digit characters and validate length
-        digits_only = "".join(c for c in v if c.isdigit())
-        if len(digits_only) not in [2, 3, 4, 5, 6]:
+        normalized = normalize_naics(v)
+        if normalized is None:
             raise ValueError("NAICS code must be 2-6 digits")
-        return digits_only
+        return normalized
 
 
 class GeographicResolution(BaseModel):
