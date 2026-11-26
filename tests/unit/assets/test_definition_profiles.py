@@ -1,4 +1,4 @@
-"""Contracts for the primary and heavy Dagster definition profiles."""
+"""Contracts for the Dagster definition entry points."""
 
 from __future__ import annotations
 
@@ -45,25 +45,22 @@ if {module_name!r} == "sbir_analytics.definitions_ml":
     assert result.returncode == 0, result.stdout + result.stderr
 
 
-def test_heavy_profile_preserves_filtered_jobs_and_schedules(monkeypatch):
-    """The shared builder must retain the existing secondary-location contract."""
+def test_ml_entry_point_aliases_primary_definitions():
+    """The retired heavy location must re-export the primary defs, not build its own."""
 
-    monkeypatch.setenv("DAGSTER_LOAD_HEAVY_ASSETS", "false")
-    from sbir_analytics.definitions_factory import build_definitions
+    from sbir_analytics import definitions, definitions_ml
 
-    bundle = build_definitions("heavy")
+    assert definitions_ml.defs is definitions.defs
 
-    assert {job.name for job in bundle.job_definitions} == {
-        "cet_full_pipeline_job",
-        "fiscal_returns_full_job",
-        "fiscal_returns_mvp_job",
-        "modernbert_job",
-        "uspto_ai_extraction_job",
-        "uspto_download_job",
-        "uspto_validation_job",
+
+def test_unoperated_cet_schedules_are_not_registered():
+    """The CET jobs stay runnable by hand; their unowned daily schedules are gone."""
+
+    from sbir_analytics import definitions
+
+    schedule_names = {schedule.name for schedule in definitions.bundle.schedules}
+    assert not schedule_names & {
+        "daily_cet_full_pipeline",
+        "daily_cet_drift_detection",
+        "weekly_fiscal_returns",
     }
-    assert {(schedule.name, schedule.cron_schedule) for schedule in bundle.schedules} == {
-        ("daily_cet_full_pipeline", "0 3 * * *"),
-        ("weekly_fiscal_returns", "0 4 * * 1"),
-    }
-    assert os.environ["DAGSTER_LOAD_HEAVY_ASSETS"] == "false"

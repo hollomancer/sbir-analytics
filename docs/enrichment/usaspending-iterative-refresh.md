@@ -43,9 +43,10 @@ but do not copy this request loop.
    - `stale_usaspending_awards`: Identifies awards needing refresh
    - `usaspending_refresh_batch`: Runs `SourceRefreshRunner` for stale awards
 
-7. **Dagster Sensor** (`packages/sbir-analytics/sbir_analytics/assets/sensors/usaspending_refresh_sensor.py`)
-   - Triggers refresh job after bulk enrichment completes
-   - Checks for stale awards before triggering
+7. **Dagster Sensor** (`usaspending_pipeline_after_download` in
+   `packages/sbir-analytics/sbir_analytics/assets/sensors/source_download_chaining.py`)
+   - Triggers the refresh job after `usaspending_download_job` succeeds
+   - Defaults to STOPPED; see the server runbook's Pipeline chaining section
 
 ## Configuration
 
@@ -97,7 +98,7 @@ uv run refresh-enrichment --source usaspending --award-id AWD-1
 
 Refresh is also orchestrated by the `usaspending_iterative_enrichment_job` Dagster job
 (assets `usaspending_freshness_ledger` → `stale_usaspending_awards` →
-`usaspending_refresh_batch`), normally triggered by `usaspending_refresh_sensor`.
+`usaspending_refresh_batch`), normally triggered by `usaspending_pipeline_after_download`.
 For an ad-hoc Dagster run:
 
 ```bash

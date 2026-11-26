@@ -21,59 +21,18 @@ import json
 from pathlib import Path
 from typing import Any
 
+from dagster import (
+    AssetCheckResult,
+    AssetCheckSeverity,
+    Output,
+    asset,
+    asset_check,
+)
 from loguru import logger
 
 from sbir_etl.analysis.contracts import AnalysisKind
 from sbir_etl.analysis.registry import default_registry_path, load_registry
 from sbir_etl.reporting.tech_area_cohort import materialize_tech_area_cohort
-
-# ---------------------------------------------------------------------------
-# Dagster import shim (mirrors assets/cet/utils.py): keep the module importable
-# for unit tests in environments without Dagster installed.
-# ---------------------------------------------------------------------------
-try:
-    from dagster import (
-        AssetCheckResult,
-        AssetCheckSeverity,
-        Output,
-        asset,
-        asset_check,
-    )
-except Exception:  # pragma: no cover - exercised only without Dagster
-
-    def asset(*args: Any, **kwargs: Any) -> Any:  # type: ignore[no-redef]
-        def _wrap(fn: Any) -> Any:
-            return fn
-
-        return _wrap
-
-    def asset_check(*args: Any, **kwargs: Any) -> Any:  # type: ignore[no-redef]
-        def _wrap(fn: Any) -> Any:
-            return fn
-
-        return _wrap
-
-    class Output:  # type: ignore[no-redef]
-        def __init__(self, value: Any, metadata: dict | None = None) -> None:
-            self.value = value
-            self.metadata = metadata or {}
-
-    class AssetCheckSeverity:  # type: ignore[no-redef]
-        WARN = "WARN"
-        ERROR = "ERROR"
-
-    class AssetCheckResult:  # type: ignore[no-redef]
-        def __init__(
-            self,
-            passed: bool,
-            severity: Any = None,
-            description: str | None = None,
-            metadata: dict | None = None,
-        ) -> None:
-            self.passed = passed
-            self.severity = severity
-            self.description = description
-            self.metadata = metadata or {}
 
 
 def _load_tech_areas() -> tuple[str, ...]:

@@ -1,7 +1,7 @@
 """Shared utilities for Transition assets.
 
 This module provides:
-- Dagster import shims for testing environments
+- Dagster re-exports shared by the transition asset modules
 - Helper functions for file I/O and data processing
 - Environment variable utilities
 - Data preparation functions
@@ -10,8 +10,6 @@ This module provides:
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any
-from loguru import logger
 
 # Configuration and extractor imports (re-exported for use by other transition modules)
 from sbir_etl.config.loader import env_bool as _env_bool
@@ -31,78 +29,15 @@ except Exception:
     TransitionDetectionAnalyzer = None  # type: ignore[assignment,misc]
 
 
-# Import-safe shims for Dagster
-try:
-    from dagster import (
-        AssetCheckResult,
-        AssetCheckSeverity,
-        MetadataValue,
-        Output,
-        asset,
-        asset_check,
-    )
-    from dagster import AssetExecutionContext as _RealAssetExecutionContext
-
-    # Wrap the real AssetExecutionContext to accept no args for testing
-    class AssetExecutionContext:
-        def __init__(self, op_execution_context: Any = None) -> None:
-            if op_execution_context is None:
-                # For testing: create a minimal mock-like object
-                self.log = logger
-                self._is_shim = True
-            else:
-                # For real usage: use the real Dagster context
-                self._real_context = _RealAssetExecutionContext(op_execution_context)
-                self.log: Any = self._real_context.log  # type: ignore[assignment, no-redef]
-                self._is_shim = False
-
-except Exception:  # pragma: no cover
-    # Minimal shims so this module can be imported without Dagster installed
-    def asset(*args, **kwargs):  # type: ignore
-        def _wrap(fn):
-            return fn
-
-        return _wrap
-
-    class Output:  # type: ignore
-        def __init__(self, value: Any, metadata=None) -> None:
-            self.value = value
-            self.metadata = metadata or {}
-
-    class MetadataValue:  # type: ignore
-        @staticmethod
-        def json(v: Any) -> Any:
-            return v
-
-    class AssetExecutionContext:  # type: ignore
-        def __init__(self, op_execution_context: Any = None) -> None:
-            self.log = logger
-            if op_execution_context:
-                # Store if provided for compatibility
-                self._op_execution_context = op_execution_context
-
-    def asset_check(*args, **kwargs):  # type: ignore
-        def _wrap(fn):
-            return fn
-
-        return _wrap
-
-    class AssetCheckResult:  # type: ignore
-        def __init__(
-            self,
-            passed: bool,
-            severity=None,
-            description: str = "",
-            metadata: dict | None = None,
-        ) -> None:
-            self.passed = passed
-            self.severity = severity
-            self.description = description
-            self.metadata = metadata or {}
-
-    class AssetCheckSeverity:  # type: ignore
-        ERROR = "ERROR"
-        WARN = "WARN"
+from dagster import (
+    AssetCheckResult,
+    AssetCheckSeverity,
+    AssetExecutionContext,
+    MetadataValue,
+    Output,
+    asset,
+    asset_check,
+)
 
 
 # Import centralized file I/O utilities
