@@ -25,7 +25,7 @@ REPO = Path(__file__).resolve().parents[2]
 DATA = REPO / "data"
 
 sys.path.insert(0, str(REPO))
-from sbir_etl.utils.tech_census import (  # noqa: E402
+from sbir_etl.reporting.tech_census import (  # noqa: E402
     CompiledCensus,
     load_award_data_csv,
     load_census_config,

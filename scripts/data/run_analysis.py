@@ -31,7 +31,7 @@ SNAPSHOT_ROOT = REPO / "data" / "reports" / "analysis_snapshots"
 
 
 def _census_strategy(spec: AnalysisSpec) -> dict:
-    from sbir_etl.utils.tech_census import (
+    from sbir_etl.reporting.tech_census import (
         CompiledCensus,
         load_award_data_csv,
         load_census_config,

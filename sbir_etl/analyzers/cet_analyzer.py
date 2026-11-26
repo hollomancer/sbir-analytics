@@ -11,7 +11,7 @@ from typing import Any
 import pandas as pd
 
 from sbir_etl.models.quality import ChangesSummary, DataHygieneMetrics
-from sbir_etl.utils.reporting.analyzers.base_analyzer import AnalysisInsight, ModuleAnalyzer
+from sbir_etl.analyzers.base_analyzer import AnalysisInsight, ModuleAnalyzer
 
 
 class CetClassificationAnalyzer(ModuleAnalyzer):

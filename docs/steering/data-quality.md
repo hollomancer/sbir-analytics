@@ -13,7 +13,8 @@ validation contract. It does not, by itself, make a research interpretation vali
 ## Sources of truth
 
 - Threshold values live in `config/base.yaml` and subsystem configuration, not prose.
-- Reusable validators live in `sbir_etl/validators/` and `sbir_etl/quality/`.
+- Reusable dataset validators live in `sbir_etl/validators/`. Evidence and quality-contract code,
+  such as the study-manifest schema and rebuild classification, lives in `sbir_etl/quality/`.
 - Runtime metrics and alerts live in `sbir_etl/utils/monitoring/`.
 - Dagster asset checks own materialization gates and observed metadata.
 - Study validation and permitted claims live in `studies/<study-id>/study.yaml`.

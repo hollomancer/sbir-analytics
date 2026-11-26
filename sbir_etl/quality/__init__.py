@@ -3,13 +3,8 @@
 Epistemic tier: pipelines. Quality checks, baselines, and study-manifest
 handling are deterministic gates over declared inputs; they infer nothing.
 
-Submodules: uspto_validators, reproduction, study_manifest.
+Submodules: reproduction, study_manifest. Dataset validators live in
+``sbir_etl.validators``.
 """
 
-from .uspto_validators import USPTODataQualityValidator, USPTOValidationConfig
-
-
 EPISTEMIC_TIER = "pipelines"
-
-
-__all__ = ["USPTODataQualityValidator", "USPTOValidationConfig"]

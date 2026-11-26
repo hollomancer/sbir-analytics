@@ -172,8 +172,8 @@ Sequencing rationale in `requirements.md`. Effort tags: S (<half day), M (1–2 
   firms (e.g. microlab→magfusion, t j technologies→a123 systems, voltaix→air liquide).
   **assignee_id clusters are DEAD** (disambiguation already collapses variants: 0/293k
   sampled ids carry >1 name); **owner_name_change is a coded annotation**, not a name
-  pair — deferred. Core logic is in `sbir_etl/utils/firm_aliases.py` (pure, 22 unit tests
-  in `tests/unit/utils/test_firm_aliases.py`); driver `scripts/data/build_firm_alias_graph.py`.
+  pair — deferred. Core logic is in `scripts/data/firm_aliases.py` (pure, 22 unit tests
+  in `tests/unit/scripts/test_firm_aliases.py`); driver `scripts/data/build_firm_alias_graph.py`.
   Self-edge filter drops 219 suffix-only false edges (ACME→ACME CORP).
 - [x] **T16 (S–M, WS6b):** Alias-expanded re-runs of patent/trademark/USAspending
   matchers; alias matches require corroboration and carry alias_source provenance;

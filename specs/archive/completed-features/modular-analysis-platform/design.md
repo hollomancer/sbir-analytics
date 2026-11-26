@@ -4,7 +4,7 @@
 
 ## Current and proposed flow
 
-Census (`sbir_etl/utils/tech_census.py`) and transition cohort
+Census (`sbir_etl/reporting/tech_census.py`) and transition cohort
 (`sbir_etl/reporting/tech_area_cohort.py`) already exist as separate
 exploratory engines with YAML profiles. Dagster still hard-codes
 `TECH_AREAS` in `packages/sbir-analytics/sbir_analytics/assets/transition_report.py`.
@@ -39,6 +39,6 @@ HTTP is not part of this design (ADR-004). Weekly awards stay on
 Do not change census admission rules or transition Method A/B/C matching.
 Verify:
 
-- `tests/unit/utils/test_tech_census.py`
+- `tests/unit/reporting/test_tech_census.py`
 - `tests/unit/scripts/test_build_tech_area_cohort.py`
 - frozen Method A sizes in `specs/tech-area-transition-report/validation.md`

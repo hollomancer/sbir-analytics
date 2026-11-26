@@ -21,7 +21,7 @@ from sbir_etl.enrichers.chunked_enrichment import ChunkedEnricher
 from sbir_etl.enrichers.usaspending import enrich_sbir_with_usaspending
 from sbir_etl.utils.identifiers import DunsProfile, normalize_duns, normalize_uei
 from sbir_etl.utils.monitoring import performance_monitor
-from sbir_etl.utils.reporting.analyzers.sbir_analyzer import SbirEnrichmentAnalyzer
+from sbir_etl.analyzers.sbir_analyzer import SbirEnrichmentAnalyzer
 
 
 @dataclass(frozen=True)

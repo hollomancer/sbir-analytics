@@ -61,7 +61,7 @@ def test_census_strategy_writes_artifacts(tmp_path, monkeypatch) -> None:
             "rejection_counts": {},
         }
 
-    import sbir_etl.utils.tech_census as tech_census
+    import sbir_etl.reporting.tech_census as tech_census
 
     monkeypatch.setattr(tech_census, "run_census", _fake_run_census)
     monkeypatch.setattr(tech_census, "load_census_config", lambda profile_id: {"area_id": "dummy"})

@@ -51,7 +51,7 @@ REPO = Path(__file__).resolve().parents[2]
 DATA = REPO / "data"
 
 sys.path.insert(0, str(REPO))
-from sbir_etl.utils.firm_aliases import build_alias_index  # noqa: E402
+from scripts.data.firm_aliases import build_alias_index  # noqa: E402
 from sbir_etl.utils.text_normalization import normalize_name  # noqa: E402
 from sbir_etl.utils.transition_report_paths import (  # noqa: E402
     add_area_args,
@@ -80,8 +80,9 @@ def _norm(s: str) -> str:
 def csv_rows(zip_path: Path, delimiter: str = ","):
     z = zipfile.ZipFile(zip_path)
     with z.open(z.infolist()[0].filename) as f:
-        reader = csv.reader(io.TextIOWrapper(f, encoding="utf-8", errors="replace"),
-                            delimiter=delimiter)
+        reader = csv.reader(
+            io.TextIOWrapper(f, encoding="utf-8", errors="replace"), delimiter=delimiter
+        )
         header = next(reader)
         idx = {c: i for i, c in enumerate(header)}
         for row in reader:
@@ -91,8 +92,9 @@ def csv_rows(zip_path: Path, delimiter: str = ","):
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     add_area_args(parser)
-    parser.add_argument("--no-federal", action="store_true",
-                        help="Skip the USAspending alias check (offline only)")
+    parser.add_argument(
+        "--no-federal", action="store_true", help="Skip the USAspending alias check (offline only)"
+    )
     args = parser.parse_args(argv)
     paths = resolve_area_paths(args, argv)
 
@@ -118,8 +120,13 @@ def main(argv: list[str] | None = None) -> int:
         provenance[(e["firm_normalized"], e["alias_normalized"])] = e
         provenance[(e["alias_normalized"], e["firm_normalized"])] = e
 
-    liv = {r["normalized_name"]: r for r in csv.DictReader(open(liveness_csv, newline="", encoding="utf-8"))}
-    tm_own = {r["normalized_name"]: r for r in csv.DictReader(open(tm_csv, newline="", encoding="utf-8"))}
+    liv = {
+        r["normalized_name"]: r
+        for r in csv.DictReader(open(liveness_csv, newline="", encoding="utf-8"))
+    }
+    tm_own = {
+        r["normalized_name"]: r for r in csv.DictReader(open(tm_csv, newline="", encoding="utf-8"))
+    }
 
     def own_negative(f: str) -> bool:
         live, t = liv.get(f, {}), tm_own.get(f, {})
@@ -136,7 +143,9 @@ def main(argv: list[str] | None = None) -> int:
             if others:
                 firm_aliases[f] = others
     all_alias_names = set().union(*firm_aliases.values()) if firm_aliases else set()
-    print(f"Dark firms with ≥1 alias: {len(firm_aliases)};  distinct alias names: {len(all_alias_names)}")
+    print(
+        f"Dark firms with ≥1 alias: {len(firm_aliases)};  distinct alias names: {len(all_alias_names)}"
+    )
 
     # --- On-disk evidence for the alias names ---
     print("Scanning trademark owners for alias names...")
@@ -159,8 +168,9 @@ def main(argv: list[str] | None = None) -> int:
 
     print("Scanning patent assignees for alias names...")
     alias_has_patent: set[str] = set()
-    for idx, row in csv_rows(DATA / "raw/uspto/patentsview/g_assignee_disambiguated.tsv.zip",
-                             delimiter="\t"):
+    for idx, row in csv_rows(
+        DATA / "raw/uspto/patentsview/g_assignee_disambiguated.tsv.zip", delimiter="\t"
+    ):
         org = row[idx["disambig_assignee_organization"]]
         if org and _norm(org) in all_alias_names:
             alias_has_patent.add(_norm(org))
@@ -197,25 +207,37 @@ def main(argv: list[str] | None = None) -> int:
             if ch:
                 prov = provenance.get((f, a), {})
                 # shared_uei aliases only count with independent evidence (they have it here)
-                hit_aliases.append(f"{a} [{prov.get('relation','?')}:{'|'.join(ch)}]")
+                hit_aliases.append(f"{a} [{prov.get('relation', '?')}:{'|'.join(ch)}]")
                 channels.update(ch)
         if not hit_aliases:
             continue
         newly = own_negative(f)
         recovered += newly
-        out_rows.append({
-            "firm_normalized": f,
-            "company": liv[f]["company"],
-            "bucket": liv[f]["bucket"],
-            "alias_evidence": " ; ".join(hit_aliases),
-            "channels": "|".join(sorted(channels)),
-            "negative_under_own_name": newly,
-        })
+        out_rows.append(
+            {
+                "firm_normalized": f,
+                "company": liv[f]["company"],
+                "bucket": liv[f]["bucket"],
+                "alias_evidence": " ; ".join(hit_aliases),
+                "channels": "|".join(sorted(channels)),
+                "negative_under_own_name": newly,
+            }
+        )
 
     with open(out_csv, "w", newline="", encoding="utf-8") as fo:
-        w = csv.DictWriter(fo, fieldnames=list(out_rows[0].keys()) if out_rows else
-                           ["firm_normalized", "company", "bucket", "alias_evidence",
-                            "channels", "negative_under_own_name"])
+        w = csv.DictWriter(
+            fo,
+            fieldnames=list(out_rows[0].keys())
+            if out_rows
+            else [
+                "firm_normalized",
+                "company",
+                "bucket",
+                "alias_evidence",
+                "channels",
+                "negative_under_own_name",
+            ],
+        )
         w.writeheader()
         w.writerows(out_rows)
     print(f"\nWritten: {out_csv} ({len(out_rows)} firms with alias-borne evidence)")

@@ -75,7 +75,7 @@ each run and force re-classification if a mismatch is detected.
 Two code-level taxonomies are not yet reconciled to the canonical 21-area spine
 (documented in `docs/research-questions.md` Maintenance section):
 - 10-area set in transition-system code (`docs/transition/cet-integration.md`)
-- 19-area set in `sbir_etl/utils/reporting/analyzers/cet_analyzer.py`
+- 19-area set in `sbir_etl/analyzers/cet_analyzer.py`
 
 This spec uses only the canonical 21-area classifier. Do not use `cet_analyzer.py`
 as the classification source. Reconciling the divergent taxonomies is a separate
