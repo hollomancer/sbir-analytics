@@ -735,13 +735,17 @@ exclusions:
 
 ## Lookup UEI via SAM.gov API
 
-from sbir_etl.extractors.sam_api import SAMClient
+from sbir_etl.enrichers.sync_wrappers import SyncSAMGovClient
 
-sam = SAMClient()
-for idx, contract in contracts_df.iterrows():
-    if pd.isna(contract['contractor_uei']):
-        uei = sam.lookup_entity(contract['contractor_name'])
-        contracts_df.loc[idx, 'contractor_uei'] = uei
+with SyncSAMGovClient() as sam:
+    for idx, contract in contracts_df.iterrows():
+        if pd.isna(contract['contractor_uei']):
+            entities = sam.search_entities(
+                legal_business_name=contract['contractor_name'], limit=1
+            )
+            if entities:
+                uei = entities[0].get('entityRegistration', {}).get('ueiSAM')
+                contracts_df.loc[idx, 'contractor_uei'] = uei
 ```
 
 ### Issue 4: Acquisition/Rebranding Breaks Matches

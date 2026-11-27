@@ -29,7 +29,7 @@ Core deps: `sbir-etl`, `scikit-learn`, `tqdm`. Optional extras:
 
 | Import | Purpose |
 |--------|---------|
-| `sbir_ml.ml.models.cet_classifier` — `CETClassifier` | Per-CET TF-IDF → logistic-regression classifier (0–100 scores) |
+| `sbir_ml.ml.models.cet_classifier` — `ApplicabilityModel` | Per-CET TF-IDF → logistic-regression classifier (0–100 scores) |
 | `sbir_ml.ml.models.rule_engine` — `RuleEngine` | Post-ML rule layer (negative keywords, context boosts, agency priors) driven by `config/cet/classification.yaml` |
 | `sbir_ml.transition.detection.scoring` — `TransitionScorer` | Six-signal composite transition scoring |
 | `sbir_ml.transition.detection.detector` / `evidence` | Detection orchestration + evidence bundles |

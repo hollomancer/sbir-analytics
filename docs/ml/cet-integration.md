@@ -17,7 +17,7 @@ scores, and supporting evidence; a label is not a policy finding by itself.
 | --- | --- |
 | Taxonomy | `config/cet/taxonomy.yaml` |
 | Taxonomy loading | `sbir_ml.ml.config.taxonomy_loader` |
-| Award model and rules | `sbir_ml.ml.models.cet_classifier.CETClassifier` |
+| Award model and rules | `sbir_ml.ml.models.cet_classifier.ApplicabilityModel` |
 | Patent model | `sbir_ml.ml.models.patent_classifier` |
 | Dagster assets | `packages/sbir-analytics/sbir_analytics/assets/cet/` |
 | Thresholds and priors | `config/cet/classification.yaml` |

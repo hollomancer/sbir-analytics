@@ -41,6 +41,7 @@
 
 - [x] 4.2 Add a Dagster sensor that triggers the job nightly once bulk enrichment assets are healthy and injects the proper partitions.
   - Notes: Created `packages/sbir-analytics/sbir_analytics/assets/sensors/usaspending_refresh_sensor.py` with sensor that checks bulk enrichment status and stale awards.
+    PR #889 later removed this sensor because no workspace or operator used it.
 
 - [x] 4.3 Persist checkpoints (cursor, slice window, last success) to DuckDB/Parquet so interrupted runs resume without duplication.
   - Notes: Created `sbir_etl/utils/enrichment/checkpoints.py` with `CheckpointStore` for checkpoint persistence.

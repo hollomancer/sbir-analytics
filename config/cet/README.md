@@ -65,12 +65,13 @@ the accuracy or calibration of the missing trained production model.
 
 ## Usage
 
-Configuration files are loaded by the `TaxonomyLoader` in `src/ml/config/taxonomy_loader.py`.
+Configuration files are loaded by the `TaxonomyLoader` in
+`packages/sbir-ml/sbir_ml/ml/config/taxonomy_loader.py`.
 
 Example:
 
 ```python
-from sbir_etl.ml.config.taxonomy_loader import TaxonomyLoader
+from sbir_ml.ml.config.taxonomy_loader import TaxonomyLoader
 
 loader = TaxonomyLoader()
 taxonomy = loader.load_taxonomy()  # Loads taxonomy.yaml

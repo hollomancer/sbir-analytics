@@ -37,12 +37,10 @@ The SBIR ETL pipeline uses **loguru** for structured, consistent logging across 
 
 There is no Ruff or CI ban on `print()` or stdlib `logging`. Prefer the patterns above.
 
-**Prefer** `console.print()` for:
+**Prefer** `print()` to stdout (errors to stderr) in command-line entry points for:
 
 - User-facing CLI output
-- Progress bars and status updates
-- Formatted tables and panels (Rich console)
-- Interactive prompts and responses
+- Status updates
 - Final command results
 
 **Avoid** in library / Dagster paths:
@@ -76,33 +74,25 @@ logger.error("Database connection failed", extra={"uri": db_uri, "attempt": 3})
 
 ### Console (User-Facing Output)
 
-**Use `context.console.print()` in CLI commands when:**
+**Use `print()` in command-line entry points when:**
 
 - Showing results to users
 - Displaying progress and status
-- Formatting tables or panels
-- Providing interactive feedback
 
 ```python
-from rich.panel import Panel
+import sys
 
 # Good - User-facing output
-context.console.print("[green]✓[/green] Ingestion completed successfully")
-context.console.print(f"Processed {count:,} records in {duration}s")
-context.console.print(table)  # Rich Table
-context.console.print(Panel("Success!", border_style="green"))
+print(f"Processed {count:,} records in {duration}s")
+print(f"Error: {error}", file=sys.stderr)
 ```
 
 ### Decision Tree
 
 ```
 Is this for a user running a CLI command?
-├─ YES → Use context.console.print()
-└─ NO  → Is this internal application logic?
-          ├─ YES → Use logger
-          └─ NO  → Is this a standalone CLI utility script?
-                   ├─ YES → Use print(..., file=out)  # stdout
-                   └─ NO  → Use logger
+├─ YES → Use print()  # stdout; errors to stderr
+└─ NO  → Use logger
 ```
 
 ---
@@ -151,7 +141,7 @@ context_logger.info("Processing batch", extra={"batch": 1, "size": 100})
 For operations with a clear beginning and end:
 
 ```python
-from sbir_etl.utils import log_with_context
+from sbir_etl.utils.logging_config import log_with_context
 
 with log_with_context(stage="extraction", run_id="xyz789") as logger:
     logger.info("Extracting data from source")
@@ -245,59 +235,10 @@ logger.info(
 
 ## CLI Logging
 
-### CommandContext Integration
-
-The `CommandContext` automatically sets up structured logging:
-
-```python
-from sbir_etl.cli.context import CommandContext
-
-# Context includes logger with bound context
-context = CommandContext.create()
-
-# All operations include run_id, component="cli", environment
-context.logger.info("Starting command", extra={"command_name": "ingest"})
-```
-
-### CLI Command Pattern
-
-```python
-import typer
-from ..context import CommandContext
-
-@app.command()
-def my_command(ctx: typer.Context) -> None:
-    """Example CLI command with logging."""
-    context: CommandContext = ctx.obj
-
-    # Log internal operations
-    context.logger.info("Command started", extra={"command": "my_command"})
-
-    try:
-        # Do work
-        result = process_data()
-
-        # Log success
-        context.logger.info(
-            "Command completed successfully",
-            extra={"records_processed": result.count, "duration": result.duration}
-        )
-
-        # Show user-facing output
-        context.console.print(f"[green]✓[/green] Processed {result.count:,} records")
-
-    except Exception as e:
-        # Log error with context
-        context.logger.error(
-            "Command failed",
-            extra={"command": "my_command", "error": str(e)},
-            exception=e
-        )
-
-        # Show user-friendly error
-        context.console.print(f"[red]Error:[/red] {e}")
-        raise typer.Exit(code=1)
-```
+The repository has no shared CLI package and no `CommandContext` class.
+Command-line entry points, such as `sbir_etl/enrichers/refresh_cli.py`, use
+`argparse`. They write user-facing results with `print()` and diagnostics with
+`logger`. [Example 3](#example-3-cli-utility-script) shows the pattern.
 
 ---
 
@@ -406,7 +347,7 @@ def enriched_awards(context, raw_awards):
 
 ```python
 from sbir_etl.exceptions import EnrichmentError, APIError
-from sbir_etl.utils import log_with_context
+from sbir_etl.utils.logging_config import log_with_context
 
 def enrich_from_api(awards, api_client):
     """Enrich awards using external API."""
@@ -547,7 +488,7 @@ print(f"Processing {count} records")
 logger.info("Processing records", extra={"count": count})
 
 # NEW (CLI user output)
-context.console.print(f"Processing {count:,} records...")
+print(f"Processing {count:,} records...")
 ```
 
 ### Migrating from stdlib logging

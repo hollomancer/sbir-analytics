@@ -39,7 +39,7 @@ exists; otherwise only `base.yaml` is loaded.
 
 ```bash
 export SBIR_ETL__PIPELINE__ENVIRONMENT=test
-uv run python -c 'from sbir_etl.config import get_config; print(get_config().pipeline.environment)'
+uv run python -c 'from sbir_etl.config.loader import get_config; print(get_config().pipeline.environment)'
 ```
 
 ## Environment overrides
@@ -119,8 +119,8 @@ The root `PipelineConfig` currently exposes:
 | `cli` | Command-line defaults |
 
 Some specialized configuration lives in domain directories such as `config/cet/`,
-`config/fiscal/`, `config/transition/`, and `config/ml/`. Those files are loaded by their owning
-components rather than automatically merged into `PipelineConfig`.
+`config/fiscal/`, `config/transition/`, and `config/tech_census/`. Those files are loaded by
+their owning components rather than automatically merged into `PipelineConfig`.
 
 ## Docker Compose
 

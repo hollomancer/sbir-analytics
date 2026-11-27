@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import ast
 from collections import Counter
 from dataclasses import dataclass
 import re
@@ -61,6 +62,23 @@ LIVE_DOC_STALE_PATTERNS = (
 ARCHIVE_REFERENCE_PATTERNS = (
     re.compile(r"scripts/archive(?:/|\b)"),
     re.compile(r"scripts\.archive(?:\.|\b)"),
+)
+FIRST_PARTY_PACKAGE_DIRS = {
+    "sbir_etl": "sbir_etl",
+    "sbir_ml": "packages/sbir-ml/sbir_ml",
+    "sbir_analytics": "packages/sbir-analytics/sbir_analytics",
+}
+# Dated records keep the imports that were true when they were written.
+HISTORICAL_DOC_PREFIXES = (
+    "docs/archive/",
+    "specs/archive/",
+    "scripts/archive/",
+    "docs/decisions/",
+)
+_FIRST_PARTY_MODULE = r"(?:sbir_etl|sbir_ml|sbir_analytics)(?:\.\w+)*"
+DOC_IMPORT_RE = re.compile(
+    rf"\bfrom\s+(?P<module>{_FIRST_PARTY_MODULE})\s+import\s+\(?\s*(?P<names>\w+(?:\s*,\s*\w+)*)"
+    rf"|^\s*import\s+(?P<plain>{_FIRST_PARTY_MODULE})\b"
 )
 MARKDOWN_LINK_RE = re.compile(r"!?\[[^\]]+\]\(([^)]+)\)")
 MARKDOWN_REFERENCE_LINK_RE = re.compile(r"^\s*\[[^\]]+\]:\s*(\S+)")
@@ -329,6 +347,82 @@ def scan_missing_doc_links(paths: list[Path], *, root: Path = REPOSITORY_ROOT) -
     return violations
 
 
+def _is_import_checked_doc(relative: str) -> bool:
+    """Return whether a Markdown file is live documentation whose imports must resolve."""
+    if not relative.endswith(".md") or relative in EXCLUDED_HISTORICAL_DOCUMENTS:
+        return False
+    return not relative.startswith(HISTORICAL_DOC_PREFIXES) and relative not in {"CHANGELOG.md"}
+
+
+def _module_file(module: str, root: Path) -> Path | None:
+    """Map a first-party dotted module name to its source file or package directory."""
+    package, *parts = module.split(".")
+    base = root / FIRST_PARTY_PACKAGE_DIRS[package]
+    candidate = base.joinpath(*parts)
+    if (candidate / "__init__.py").is_file():
+        return candidate / "__init__.py"
+    if candidate.with_suffix(".py").is_file():
+        return candidate.with_suffix(".py")
+    if candidate.is_dir():
+        return candidate
+    return None
+
+
+def _module_names(path: Path, cache: dict[Path, set[str]]) -> set[str]:
+    """Collect names a module binds, imports, or lists as strings (``__all__``, lazy maps)."""
+    if path in cache:
+        return cache[path]
+    names: set[str] = set()
+    if path.is_file():
+        for node in ast.walk(ast.parse(path.read_text(encoding="utf-8"))):
+            if isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef | ast.ClassDef):
+                names.add(node.name)
+            elif isinstance(node, ast.Import | ast.ImportFrom):
+                names.update((alias.asname or alias.name).split(".")[0] for alias in node.names)
+            elif isinstance(node, ast.Name) and isinstance(node.ctx, ast.Store):
+                names.add(node.id)
+            elif isinstance(node, ast.Constant) and isinstance(node.value, str):
+                names.add(node.value)
+    cache[path] = names
+    return names
+
+
+def scan_doc_python_imports(paths: list[Path], *, root: Path = REPOSITORY_ROOT) -> list[Violation]:
+    """Find first-party imports in live Markdown that name a missing module or attribute.
+
+    Resolution is static: the module must exist on disk, and each imported name must be
+    bound in it, listed in it as a string, or be a submodule of it.
+    """
+    violations: list[Violation] = []
+    cache: dict[Path, set[str]] = {}
+    docs = [path for path in paths if _is_import_checked_doc(_relative_to_repository(path, root))]
+    for path in docs:
+        lines = _read_text_lines(path)
+        if lines is None:
+            continue
+        relative = _relative_to_repository(path, root)
+        for line_number, line in enumerate(lines, 1):
+            for match in DOC_IMPORT_RE.finditer(line):
+                module = match.group("module") or match.group("plain")
+                module_file = _module_file(module, root)
+                if module_file is None:
+                    violations.append(
+                        Violation(relative, line_number, f"missing module {module}", line)
+                    )
+                    continue
+                imported = match.group("names") if match.group("module") else ""
+                for name in (part.split()[0] for part in imported.split(",") if part.strip()):
+                    if name in _module_names(module_file, cache):
+                        continue
+                    is_package = module_file.name == "__init__.py" or module_file.is_dir()
+                    if is_package and _module_file(f"{module}.{name}", root):
+                        continue
+                    violations.append(
+                        Violation(relative, line_number, f"{module} has no name {name}", line)
+                    )
+    return violations
+
+
 def scan_spec_registry(*, root: Path = REPOSITORY_ROOT) -> list[Violation]:
     """Require every top-level feature spec to appear exactly once in the status registry."""
     specs_root = root / "specs"
@@ -553,6 +647,10 @@ def main() -> int:
         (
             "Missing local Markdown links were found in project documentation:",
             scan_missing_doc_links(paths),
+        ),
+        (
+            "First-party imports in live docs do not resolve:",
+            scan_doc_python_imports(paths),
         ),
         (
             "The specification status registry is incomplete:",
