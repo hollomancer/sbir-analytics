@@ -40,7 +40,6 @@ class EnrichmentRefreshConfig(Config):
     award_ids: list[str] | None = Field(
         default=None, description="Optional list of award IDs to refresh"
     )
-    force: bool = Field(default=False, description="Force refresh even if not stale")
     batch_size: int | None = Field(default=None, description="Override batch size from config")
 
 
@@ -169,20 +168,23 @@ def usaspending_refresh_batch(
     """Refresh USAspending enrichment for a batch of awards."""
 
     source = config.source or "usaspending"
-    store = FreshnessStore()
+    empty_stats = {
+        "total": 0,
+        "success": 0,
+        "failed": 0,
+        "unchanged": 0,
+        "skipped": 0,
+        "errors": [],
+    }
+    refresh_config = get_config().enrichment_refresh.usaspending
+    if not refresh_config.enabled:
+        context.log.warning("usaspending is disabled; skipping refresh")
+        return Output(value=empty_stats, metadata={"stale_count": 0, "reason": "disabled"})
     if stale_usaspending_awards.empty:
         context.log.info("No stale awards — skipping refresh")
-        return Output(
-            value={
-                "total": 0,
-                "success": 0,
-                "failed": 0,
-                "unchanged": 0,
-                "skipped": 0,
-                "errors": [],
-            },
-            metadata={"stale_count": 0, "reason": "no_stale_awards"},
-        )
+        return Output(value=empty_stats, metadata={"stale_count": 0, "reason": "no_stale_awards"})
+
+    store = FreshnessStore()
 
     requests = stale_awards_to_requests(stale_usaspending_awards)
     usable = [request for request in requests if has_identifier(request)]
@@ -191,7 +193,6 @@ def usaspending_refresh_batch(
         context.log.warning(
             f"Skipping {unusable} stale award(s) with no UEI/DUNS/CAGE/PIID to look up"
         )
-    refresh_config = get_config().enrichment_refresh.usaspending
     batch_size = config.batch_size or refresh_config.batch_size
     requests = usable[:batch_size]
 
@@ -228,23 +229,18 @@ def usaspending_refresh_batch(
 def stale_awards_threshold_check(
     stale_usaspending_awards: pd.DataFrame,
 ) -> AssetCheckResult:
-    """Check that stale awards count is within acceptable threshold."""
-    get_config()
-    # You could add a threshold to config if needed
+    """Fail when the stale-award count exceeds the configured threshold."""
+    threshold = get_config().enrichment_refresh.usaspending.stale_awards_threshold
     stale_count = len(stale_usaspending_awards)
 
-    # For now, just warn if more than 50% are stale
-    # This threshold could be configurable
-
-    # We'd need total awards count for percentage, but for now just check count
-    if stale_count > 1000:  # Arbitrary threshold
+    if stale_count > threshold:
         return AssetCheckResult(
             passed=False,
             severity=AssetCheckSeverity.ERROR,
             description=f"Too many stale awards: {stale_count}",
             metadata={
                 "stale_count": stale_count,
-                "threshold": 1000,
+                "threshold": threshold,
             },
         )
 
@@ -253,5 +249,6 @@ def stale_awards_threshold_check(
         description=f"Stale awards within threshold: {stale_count}",
         metadata={
             "stale_count": stale_count,
+            "threshold": threshold,
         },
     )

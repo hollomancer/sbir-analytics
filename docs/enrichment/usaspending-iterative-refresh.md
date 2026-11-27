@@ -55,23 +55,21 @@ Configuration is defined in `config/base.yaml` under `enrichment_refresh.usaspen
 ```yaml
 enrichment_refresh:
   usaspending:
-    cadence_days: 1  # Daily refresh
     sla_staleness_days: 1  # Max 24 hours old before considered stale
     batch_size: 100  # Awards per batch
-    max_concurrent_requests: 5
     rate_limit_per_minute: 120
-    enable_delta_detection: true
-    hash_algorithm: "sha256"
     retry_attempts: 3
     retry_backoff_seconds: 2.0
-    retry_backoff_multiplier: 2.0
     timeout_seconds: 30
-    connection_timeout_seconds: 10
     checkpoint_interval: 50
+    stale_awards_threshold: 1000  # stale_awards_threshold_check fails above this count
     state_file: "data/state/enrichment_refresh_state.json"
-    enable_metrics: true
     metrics_file: "reports/metrics/enrichment_freshness.json"
 ```
+
+`enabled` defaults to `true`. Set `enabled: false` (or
+`SBIR_ETL__ENRICHMENT_REFRESH__USASPENDING__ENABLED=false`) to make
+`usaspending_refresh_batch` skip the refresh and return zero counts.
 
 ## Workflow
 
@@ -150,7 +148,7 @@ Delta detection prevents unnecessary API calls and updates by comparing payload 
 
 This allows the system to:
 
-- Skip API calls for unchanged data (when `enable_delta_detection: true`)
+- Skip updates for unchanged data
 - Track which awards have actually changed
 - Reduce API load and processing time
 
@@ -223,7 +221,7 @@ Metrics are emitted to `reports/metrics/enrichment_freshness.json` after each re
 1. **Check API status**: USAspending API may be experiencing issues
    - Status page: <https://www.usaspending.gov/status>
 
-2. **Review rate limiting**: If hitting rate limits, reduce `max_concurrent_requests` or increase `rate_limit_per_minute` (if API allows)
+2. **Review rate limiting**: If hitting rate limits, reduce `rate_limit_per_minute`
 
 3. **Check network connectivity**: Verify outbound HTTP connections to `api.usaspending.gov`
 
@@ -239,11 +237,7 @@ Metrics are emitted to `reports/metrics/enrichment_freshness.json` after each re
 
 ### Delta Detection Not Working
 
-1. **Verify delta detection enabled**: Check `enable_delta_detection: true` in config
-
-2. **Check hash algorithm**: Ensure `hash_algorithm` matches what was used for existing records
-
-3. **Verify payload structure**: API response structure changes may affect hash computation
+1. **Verify payload structure**: API response structure changes may affect hash computation
 
 ### Resume Functionality Not Working
 

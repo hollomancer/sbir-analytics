@@ -231,70 +231,6 @@ class MetricsConfig(BaseModel):
     )
 
 
-class CLIConfig(BaseModel):
-    """Configuration for CLI interface settings."""
-
-    theme: str = Field(default="default", description="CLI theme (default, dark, light)")
-    progress_refresh_rate: float = Field(
-        default=0.1, ge=0.0, description="Progress bar refresh rate in seconds"
-    )
-    dashboard_refresh_rate: int = Field(
-        default=10, ge=1, description="Dashboard auto-refresh interval in seconds"
-    )
-    max_table_rows: int = Field(default=50, description="Maximum rows to display in tables")
-    truncate_long_text: bool = Field(default=True, description="Truncate long text in displays")
-    show_timestamps: bool = Field(default=True, description="Show timestamps in output")
-    api_timeout_seconds: int = Field(default=30, description="API request timeout")
-    max_concurrent_operations: int = Field(default=4, description="Maximum concurrent operations")
-    cache_metrics_seconds: int = Field(default=60, description="Metrics cache TTL in seconds")
-
-    @field_validator("theme")
-    @classmethod
-    def validate_theme(cls, value: str) -> str:
-        if value not in ["default", "dark", "light"]:
-            raise ValueError("Theme must be 'default', 'dark', or 'light'")
-        return value
-
-
-class CompanyCategorizationConfig(BaseModel):
-    """Configuration for company categorization system."""
-
-    product_leaning_pct: float = Field(
-        default=51.0,
-        ge=0.0,
-        le=100.0,
-        description="Product percentage threshold for Product-leaning classification",
-    )
-    service_leaning_pct: float = Field(
-        default=51.0,
-        ge=0.0,
-        le=100.0,
-        description="Service percentage threshold for Service-leaning classification",
-    )
-    psc_family_diversity_threshold: int = Field(
-        default=6, ge=1, description="PSC family count threshold for Mixed override"
-    )
-    low_max_awards: int = Field(default=2, ge=1, description="Maximum awards for Low confidence")
-    medium_max_awards: int = Field(default=5, ge=1, description="Maximum awards for Medium")
-    batch_size: int = Field(default=100, ge=1, description="Batch size for processing companies")
-    parallel_workers: int = Field(
-        default=4, ge=1, description="Number of parallel workers for processing"
-    )
-    usaspending_table_name: str = Field(
-        default="usaspending_awards", description="USAspending table name in DuckDB"
-    )
-    usaspending_timeout_seconds: int = Field(
-        default=30, ge=1, description="Query timeout in seconds"
-    )
-    usaspending_retry_attempts: int = Field(
-        default=3, ge=0, description="Number of retry attempts for failed queries"
-    )
-    include_contract_details: bool = Field(
-        default=True, description="Include individual contract details in output"
-    )
-    include_metadata: bool = Field(default=True, description="Include classification metadata")
-
-
 class PathsConfig(BaseModel):
     """File system paths configuration with environment variable expansion."""
 
@@ -373,8 +309,6 @@ class PathsConfig(BaseModel):
 
 
 __all__ = [
-    "CLIConfig",
-    "CompanyCategorizationConfig",
     "DataQualityConfig",
     "DuckDBConfig",
     "ExtractionConfig",

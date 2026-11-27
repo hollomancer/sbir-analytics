@@ -78,8 +78,3 @@ duckdb:
   memory_limit_gb: 2
   threads: 2
   enable_query_profiler: false
-
-# Disable heavy features for faster CI
-company_categorization:
-  batch_size: 50
-  parallel_workers: 2

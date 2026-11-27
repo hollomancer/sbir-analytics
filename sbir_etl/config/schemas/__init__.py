@@ -1,8 +1,6 @@
 """Modular configuration schemas for SBIR ETL."""
 
 from .data import (
-    CLIConfig,
-    CompanyCategorizationConfig,
     DataQualityConfig,
     DuckDBConfig,
     ExtractionConfig,
@@ -24,14 +22,11 @@ from .domain import (
     ModernBertConfig,
     OTConsortiumConfig,
     SensitivityConfig,
-    TaxParameterConfig,
 )
 from .pipeline import PipelineConfig, PipelineMetadata
 
 
 __all__ = [
-    "CLIConfig",
-    "CompanyCategorizationConfig",
     "DataQualityConfig",
     "DuckDBConfig",
     "EnrichmentConfig",
@@ -51,7 +46,6 @@ __all__ = [
     "SbirDuckDBConfig",
     "SbirValidationConfig",
     "SensitivityConfig",
-    "TaxParameterConfig",
     "TransformationConfig",
     "ValidationConfig",
 ]

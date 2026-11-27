@@ -191,34 +191,26 @@ enrichment_refresh:
   # Iterative refresh configuration for enrichment APIs
   # Phase 1: USAspending API only. Other APIs (SAM.gov, NIH RePORTER, PatentsView, etc.) will be evaluated in Phase 2+
   usaspending:
-    # Refresh cadence and SLA
-    cadence_days: 1  # Daily refresh
+    # Staleness SLA
     sla_staleness_days: 1  # Max 24 hours old before considered stale
 
     # Batch processing configuration
     batch_size: 100  # Awards per batch
-    max_concurrent_requests: 5  # Rate limit respect
     rate_limit_per_minute: 120  # Conservative default based on API documentation
-
-    # Delta detection
-    enable_delta_detection: true  # Skip unchanged records based on payload hash
-    hash_algorithm: "sha256"  # Algorithm for payload hashing
 
     # Retry configuration
     retry_attempts: 3
     retry_backoff_seconds: 2
-    retry_backoff_multiplier: 2.0  # Exponential backoff multiplier
 
     # Timeout configuration
     timeout_seconds: 30
-    connection_timeout_seconds: 10
 
     # State management
     checkpoint_interval: 50  # Save checkpoint every N records
+    stale_awards_threshold: 1000  # stale_awards_threshold_check fails above this count
     state_file: "data/state/enrichment_refresh_state.json"
 
     # Metrics
-    enable_metrics: true
     metrics_file: "reports/metrics/enrichment_freshness.json"
 
     # API response caching
@@ -230,21 +222,14 @@ enrichment_refresh:
   sec_edgar:
     # SEC EDGAR refresh settings (opt-in, disabled by default)
     enabled: false  # Opt-in via SBIR_ETL__ENRICHMENT_REFRESH__SEC_EDGAR__ENABLED=true
-    cadence_days: 7  # Weekly refresh (public filings don't change rapidly)
     sla_staleness_days: 30  # 30 days before considered stale
     batch_size: 50
-    max_concurrent_requests: 3
     rate_limit_per_minute: 600
-    enable_delta_detection: true
-    hash_algorithm: "sha256"
     retry_attempts: 3
     retry_backoff_seconds: 2
-    retry_backoff_multiplier: 2.0
     timeout_seconds: 30
-    connection_timeout_seconds: 10
     checkpoint_interval: 25
     state_file: "data/state/sec_edgar_refresh_state.json"
-    enable_metrics: true
     metrics_file: "reports/metrics/sec_edgar_freshness.json"
     cache:
       enabled: true
@@ -254,21 +239,14 @@ enrichment_refresh:
   nih_reporter:
     # Disabled until a hand run succeeds (issue #443). Adapter is wired; do not enable on the live host yet.
     enabled: false
-    cadence_days: 7
     sla_staleness_days: 7
     batch_size: 100
-    max_concurrent_requests: 2
     rate_limit_per_minute: 30
-    enable_delta_detection: true
-    hash_algorithm: "sha256"
     retry_attempts: 3
     retry_backoff_seconds: 2
-    retry_backoff_multiplier: 2.0
     timeout_seconds: 30
-    connection_timeout_seconds: 10
     checkpoint_interval: 50
     state_file: "data/state/nih_reporter_refresh_state.json"
-    enable_metrics: true
     metrics_file: "reports/metrics/nih_reporter_freshness.json"
     cache:
       enabled: true
@@ -381,32 +359,6 @@ transformation:
       "STTR": "STTR"
       "SBIR/STTR": "SBIR/STTR"
 
-# Company categorization configuration
-company_categorization:
-  # Classification thresholds
-  product_leaning_pct: 51.0 # 51% threshold for Product-leaning
-  service_leaning_pct: 51.0 # 51% threshold for Service-leaning
-  rd_leaning_pct: 51.0 # 51% threshold for R&D-leaning
-  psc_family_diversity_threshold: 6 # >6 PSC families → Mixed
-
-  # Confidence levels
-  low_max_awards: 2 # <=2 awards → Low confidence
-  medium_max_awards: 5 # 2-5 awards → Medium confidence
-  # >5 awards → High confidence
-
-  # Processing
-  batch_size: 100 # Companies per batch
-  parallel_workers: 4 # Parallel processing workers
-
-  # USAspending query settings
-  usaspending_table_name: "usaspending_awards"
-  usaspending_timeout_seconds: 30
-  usaspending_retry_attempts: 3
-
-  # Output options
-  include_contract_details: true
-  include_metadata: true
-
 logging:
   # Logging configuration
   level: "INFO"
@@ -488,38 +440,6 @@ fiscal_analysis:
     enable_weighted_allocation: true
     hierarchical_fallback: true  # 6→4→3→2 digit
 
-  # Tax calculation parameters
-  tax_parameters:
-    # Individual income tax parameters
-    individual_income_tax:
-      effective_rate: 0.22  # Average effective federal income tax rate
-      progressive_rates:
-        "10_percent": 0.10
-        "12_percent": 0.12
-        "22_percent": 0.22
-        "24_percent": 0.24
-        "32_percent": 0.32
-        "35_percent": 0.35
-        "37_percent": 0.37
-      standard_deduction: 13850  # 2023 standard deduction (single)
-
-    # Payroll tax parameters
-    payroll_tax:
-      social_security_rate: 0.062  # Employee portion
-      medicare_rate: 0.0145  # Employee portion
-      unemployment_rate: 0.006  # FUTA rate
-      wage_base_limit: 160200  # 2023 Social Security wage base
-
-    # Corporate income tax parameters
-    corporate_income_tax:
-      federal_rate: 0.21  # Federal corporate tax rate
-      effective_rate: 0.18  # Average effective rate accounting for deductions
-
-    # Excise tax parameters
-    excise_tax:
-      fuel_tax_rate: 0.184  # Federal gasoline tax per gallon
-      general_rate: 0.03  # General excise tax rate on goods
-
   # Sensitivity analysis parameters
   sensitivity_parameters:
     # Parameter sweep configuration
@@ -574,23 +494,6 @@ fiscal_analysis:
     include_audit_trail: true
     include_sensitivity_analysis: true
     output_directory: "reports/fiscal_returns"
-
-# CLI interface configuration
-cli:
-  # Display settings
-  theme: "default"  # "default", "dark", "light"
-  progress_refresh_rate: 0.1  # seconds
-  dashboard_refresh_rate: 10  # seconds
-
-  # Output settings
-  max_table_rows: 50
-  truncate_long_text: true
-  show_timestamps: true
-
-  # Performance settings
-  api_timeout_seconds: 30
-  max_concurrent_operations: 4
-  cache_metrics_seconds: 60
 
 # Embedding model configuration (ModernBERT-Embed)
 ml:
