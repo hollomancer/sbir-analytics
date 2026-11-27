@@ -22,10 +22,40 @@ from loguru import logger
 
 from ..config.loader import get_config
 from ..config.yaml_io import read_yaml_mapping
+from ..exceptions import ConfigurationError
 from ..utils.identifiers import normalize_naics
 
 
 EPISTEMIC_TIER = "exploratory"
+
+
+def _normalize_naics_keys(mapping: Any, where: str) -> dict[str, Any]:
+    """Return ``mapping`` with each key turned into a canonical NAICS string.
+
+    YAML reads an unquoted key such as ``541712`` as an integer, while lookups
+    use strings. Each key goes through ``normalize_naics``.
+
+    Raises:
+        ConfigurationError: ``mapping`` is not a mapping, a key is not a valid
+            NAICS code, or two keys give the same canonical code.
+    """
+    if mapping is None:
+        return {}
+    if not isinstance(mapping, dict):
+        raise ConfigurationError(f"{where} must be a mapping, got {type(mapping).__name__}")
+    normalized: dict[str, Any] = {}
+    original: dict[str, Any] = {}
+    for key, value in mapping.items():
+        code = normalize_naics(key)
+        if code is None:
+            raise ConfigurationError(f"{where} has a key that is not a NAICS code: {key!r}")
+        if code in normalized:
+            raise ConfigurationError(
+                f"{where} has keys {original[code]!r} and {key!r} that both normalize to {code!r}"
+            )
+        normalized[code] = value
+        original[code] = key
+    return normalized
 
 
 @dataclass
@@ -179,6 +209,22 @@ class NAICSToBEAMapper:
                     f"Failed to load fallback config from {self.fallback_config_path}: {e}"
                 )
                 self.fallback_config = {}
+            # Outside the try block: a bad or duplicate key is a config error, not a
+            # reason to fall back silently to the default sector.
+            self._normalize_fallback_keys()
+
+    def _normalize_fallback_keys(self) -> None:
+        """Turn every NAICS-keyed map in the fallback config into string keys."""
+        path = self.fallback_config_path
+        if "mappings" in self.fallback_config:
+            self.fallback_config["mappings"] = _normalize_naics_keys(
+                self.fallback_config["mappings"], f"{path}: mappings"
+            )
+        rules = self.fallback_config.get("fallback_rules")
+        if isinstance(rules, dict) and "category_defaults" in rules:
+            rules["category_defaults"] = _normalize_naics_keys(
+                rules["category_defaults"], f"{path}: fallback_rules.category_defaults"
+            )
 
     def _load_configuration(self) -> None:
         """Load mapper configuration from config."""
@@ -274,6 +320,11 @@ class NAICSToBEAMapper:
     def _map_fallback_config(self, naics_code: str) -> list[NAICSToBEAResult] | None:
         """Map NAICS code using fallback configuration.
 
+        Tries the exact code first. When hierarchical fallback is on, it then
+        tries each shorter prefix (5, 4, 3, 2 digits), so a 6-digit code can
+        reach a 4-digit entry such as "5415". The entry's own confidence is
+        used; shorter entries in the config already carry lower confidence.
+
         Args:
             naics_code: Normalized NAICS code
 
@@ -284,9 +335,12 @@ class NAICSToBEAMapper:
         if not mappings:
             return None
 
-        # Try exact match
-        mapping = mappings.get(naics_code)
-        if mapping:
+        candidates = [naics_code]
+        if self.hierarchical_fallback:
+            candidates += [naics_code[:level] for level in (5, 4, 3, 2) if level < len(naics_code)]
+        matched_key = next((key for key in candidates if mappings.get(key)), None)
+        if matched_key is not None:
+            mapping = mappings[matched_key]
             results = []
             primary_sector = mapping.get("primary_sector", "")
             allocation_weight = float(mapping.get("allocation_weight", 1.0))
@@ -296,36 +350,56 @@ class NAICSToBEAMapper:
                 NAICSToBEAResult(
                     naics_code=naics_code,
                     bea_sector_code=primary_sector,
-                    bea_sector_name="",
+                    bea_sector_name=self._summary_sector_name(primary_sector),
                     allocation_weight=allocation_weight,
                     confidence=confidence,
                     source="fallback_config",
                     crosswalk_version=self.crosswalk_version,
                     mapped_at=datetime.now(),
-                    metadata={},
+                    metadata={"fallback_config_key": matched_key},
                 )
             )
 
             # Check for secondary sectors (weighted allocations)
             secondary = mapping.get("secondary_sectors", [])
             for sec in secondary:
+                sector = sec.get("sector", "")
                 results.append(
                     NAICSToBEAResult(
                         naics_code=naics_code,
-                        bea_sector_code=sec.get("sector", ""),
-                        bea_sector_name="",
+                        bea_sector_code=sector,
+                        bea_sector_name=self._summary_sector_name(sector),
                         allocation_weight=float(sec.get("weight", 0.0)),
                         confidence=confidence,
                         source="fallback_config_weighted",
                         crosswalk_version=self.crosswalk_version,
                         mapped_at=datetime.now(),
-                        metadata={"weighted_allocation": True},
+                        metadata={
+                            "weighted_allocation": True,
+                            "fallback_config_key": matched_key,
+                        },
                     )
                 )
 
             return results if results else None
 
         return None
+
+    def _summary_sector_name(self, bea_sector_code: str) -> str:
+        """Name a fallback-config sector by its BEA Summary sector.
+
+        The fallback config holds codes such as "336411/US" but no names. This
+        uses the same summary lookup as ``sbir_fiscal_pipeline``:
+        ``map_naics_to_bea_summary`` then ``get_bea_code_description``. The name
+        is the Summary sector (for example "Manufacturing"), not the detail sector.
+        Returns "" when the code has no known Summary sector.
+        """
+        try:
+            summary = self.map_naics_to_bea_summary(bea_sector_code)
+        except ValueError:
+            return ""
+        description = self.get_bea_code_description(summary)
+        return "" if description.startswith("Unknown sector:") else description
 
     def _map_default(self, naics_code: str) -> list[NAICSToBEAResult]:
         """Map NAICS code using default sector.
