@@ -36,6 +36,16 @@ version.
   Dagster is a required dependency. The no-argument `AssetExecutionContext` wrappers
   re-exported from `assets.cet` and `assets.transition` are now Dagster's own
   class.
+- Removed config classes `CLIConfig`, `CompanyCategorizationConfig`, and
+  `TaxParameterConfig` from `sbir_etl.config.schemas`. Removed 7 unread fields
+  from `EnrichmentSourceConfig`: `cadence_days`, `max_concurrent_requests`,
+  `enable_delta_detection`, `hash_algorithm`, `retry_backoff_multiplier`,
+  `connection_timeout_seconds`, and `enable_metrics`. The matching YAML keys
+  under `cli`, `company_categorization`, `fiscal_analysis.tax_parameters`, and
+  `enrichment_refresh` are gone. No code read them. The fiscal tax code uses
+  NIPA rates, not the old 22% `tax_parameters` value.
+- `enrichment_refresh.usaspending.enabled: false` now stops the USAspending
+  iterative refresh. The run-config field `force` is removed.
 
 Operators: Dagster keeps schedule and sensor state in the `dagster_home`
 volume. If someone started one of the removed schedules or sensors from the
