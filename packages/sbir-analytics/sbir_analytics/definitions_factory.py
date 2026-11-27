@@ -29,6 +29,8 @@ from dagster._core.definitions.unresolved_asset_job_definition import (
 )
 from dagster._core.errors import DagsterInvalidSubsetError
 
+from sbir_etl.config.loader import env_bool
+
 from . import assets as assets_pkg
 
 
@@ -100,8 +102,7 @@ class DefinitionBundle:
 def schedule_status(env_var: str, *, default_running: bool) -> DefaultScheduleStatus:
     """Resolve a schedule's default status from an environment toggle."""
 
-    raw = os.getenv(env_var, "true" if default_running else "false").strip().lower()
-    enabled = raw in ("true", "1", "yes", "on")
+    enabled = env_bool(env_var, default_running)
     return DefaultScheduleStatus.RUNNING if enabled else DefaultScheduleStatus.STOPPED
 
 

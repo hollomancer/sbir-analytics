@@ -4,12 +4,13 @@ from __future__ import annotations
 
 import importlib
 import logging
-import os
 from collections.abc import Iterator, Sequence
 from functools import lru_cache
 from pathlib import Path
 from types import ModuleType
 from typing import TYPE_CHECKING
+
+from sbir_etl.config.loader import env_bool
 
 
 if TYPE_CHECKING:
@@ -63,8 +64,7 @@ def _iter_modules(
 def should_load_heavy_assets() -> bool:
     """Check if heavy assets should be loaded based on environment."""
     # Load heavy assets by default; operators can disable them for constrained hosts.
-    env_value = os.getenv("DAGSTER_LOAD_HEAVY_ASSETS", "true").lower()
-    return env_value in ("true", "1", "yes")
+    return env_bool("DAGSTER_LOAD_HEAVY_ASSETS", True)
 
 
 @lru_cache(maxsize=1)

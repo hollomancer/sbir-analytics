@@ -14,7 +14,7 @@ from datetime import UTC, datetime
 
 from dagster import OpExecutionContext, job, op
 
-from sbir_etl.config.loader import data_root, env_int
+from sbir_etl.config.loader import data_root, env_bool, env_int
 from sbir_etl.reporting.weekly.orchestrator import WeeklyAwardsReportBuilder
 
 EPISTEMIC_TIER = "exploratory"
@@ -36,8 +36,8 @@ def generate_weekly_awards_report_op(context: OpExecutionContext) -> dict:
 
     report = WeeklyAwardsReportBuilder(
         days=days,
-        skip_sbir_api=os.getenv("SKIP_SBIR_API", "").lower() in {"1", "true", "yes"},
-        timeout=int(os.getenv("REPORT_TIMEOUT", "720")),
+        skip_sbir_api=env_bool("SKIP_SBIR_API", False),
+        timeout=env_int("REPORT_TIMEOUT", 720),
         api_key=os.getenv("OPENAI_API_KEY", ""),
     ).run()
     output_path.write_text(report)

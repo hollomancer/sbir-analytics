@@ -24,6 +24,7 @@ from dagster import (
     asset_check,
 )
 
+from sbir_etl.config.loader import env_bool, env_int
 from sbir_etl.supply_chain.release_validation import validate_nsf_defense_lineage_release
 from sbir_etl.supply_chain.web_release import export_lineage
 from sbir_etl.utils.cloud_storage import get_data_root
@@ -36,8 +37,7 @@ _ENV_PREFIX = "SBIR_ETL__NSF_DEFENSE_LINEAGE__"
 
 
 def _bool_env(name: str, default: bool = False) -> bool:
-    value = os.getenv(f"{_ENV_PREFIX}{name}", "true" if default else "false")
-    return value.strip().lower() in {"1", "true", "yes", "on"}
+    return env_bool(f"{_ENV_PREFIX}{name}", default)
 
 
 def _paths_env(name: str) -> list[Path]:
@@ -103,7 +103,7 @@ def nsf_direct_award_release(context: AssetExecutionContext) -> Output[dict]:
         analysis_date=analysis_date,
         direct_sources=direct_sources,
         snapshot_root=get_data_root() / "raw" / "nsf" / "award_api",
-        max_workers=int(os.getenv(f"{_ENV_PREFIX}NSF_MAX_WORKERS", "8")),
+        max_workers=env_int(f"{_ENV_PREFIX}NSF_MAX_WORKERS", 8),
         allow_partial=False,
     )
     return Output(manifest, metadata=_metadata(manifest))
@@ -163,7 +163,7 @@ def nsf_defense_lineage_validation(
     report = validate_nsf_defense_lineage_release(
         _lineage_dir(),
         expected_analysis_date=_analysis_date(),
-        max_release_age_days=int(os.getenv(f"{_ENV_PREFIX}MAX_RELEASE_AGE_DAYS", "45")),
+        max_release_age_days=env_int(f"{_ENV_PREFIX}MAX_RELEASE_AGE_DAYS", 45),
     )
     path = _lineage_dir() / "nsf_defense_lineage_validation.json"
     write_text_atomic(path, json.dumps(report, indent=2, sort_keys=True) + "\n")
