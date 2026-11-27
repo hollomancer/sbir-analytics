@@ -2,6 +2,7 @@
 
 from datetime import date, datetime
 
+import pandas as pd
 import pytest
 
 
@@ -13,6 +14,8 @@ from sbir_etl.utils.date_utils import (
     federal_fiscal_year_series,
     format_date_iso,
     parse_date,
+    parse_iso_date_lenient,
+    parse_iso_date_strict,
 )
 
 
@@ -112,6 +115,133 @@ class TestParseDate:
         # NaT is isinstance(datetime), so it takes the datetime branch
         # and returns NaT.date() which is NaT — not None
         assert pd.isna(result)
+
+
+# Inputs that neither ISO parser may turn into a date.
+MALFORMED_ISO = [
+    "2024-13-01",  # month out of range
+    "2024-02-30",  # day out of range
+    "2023-02-29",  # not a leap year
+    "20240105",  # basic form; date.fromisoformat accepts it on 3.11+
+    "2024-W01-5",  # ISO week date; date.fromisoformat accepts it on 3.11+
+    "2024-01-05abc",  # trailing garbage
+    "2024-01-05 garbage",
+    "2024-1-5",
+    "01/05/2024",
+    "2024/01/05",
+    "Jan 5, 2024",
+    "\u0662\u0660\u0662\u0664-\u0660\u0661-\u0660\u0665",  # non-ASCII digits
+    "nan",
+    "",
+    "   ",
+]
+
+
+class TestParseIsoDateStrict:
+    """parse_iso_date_strict accepts YYYY-MM-DD and nothing else."""
+
+    def test_date_only(self):
+        assert parse_iso_date_strict("2024-01-05") == date(2024, 1, 5)
+        assert parse_iso_date_strict(" 2024-01-05 ") == date(2024, 1, 5)
+
+    def test_date_object(self):
+        assert parse_iso_date_strict(date(2024, 1, 5)) == date(2024, 1, 5)
+
+    @pytest.mark.parametrize(
+        "value",
+        [
+            "2024-01-05T00:00:00",
+            "2024-01-05 00:00:00",
+            "2024-01-05T10:30Z",
+            "2024-01-05T10:30+05:00",
+            datetime(2024, 1, 5, 10, 30),
+            pd.Timestamp("2024-01-05"),
+        ],
+    )
+    def test_rejects_time_part(self, value):
+        assert parse_iso_date_strict(value) is None
+
+    @pytest.mark.parametrize("value", [*MALFORMED_ISO, None, 20240105, 1.5, True])
+    def test_rejects_malformed(self, value):
+        assert parse_iso_date_strict(value) is None
+
+
+class TestParseIsoDateLenient:
+    """parse_iso_date_lenient also accepts a time part and an offset."""
+
+    @pytest.mark.parametrize(
+        "value",
+        [
+            "2024-01-05",
+            "2024-01-05T00:00:00",
+            "2024-01-05 00:00:00",
+            "2024-01-05T23:59",
+            "2024-01-05 23:59:59.123456",
+            "2024-01-05T10:30Z",
+            "2024-01-05T10:30:00Z",
+            "2024-01-05T10:30:00+00:00",
+            "2024-01-05T10:30:00-0500",
+            " 2024-01-05T10:30:00 ",
+        ],
+    )
+    def test_accepted_shapes(self, value):
+        assert parse_iso_date_lenient(value) == date(2024, 1, 5)
+
+    def test_t_and_space_agree(self):
+        assert parse_iso_date_lenient("2024-01-05T18:00:00") == parse_iso_date_lenient(
+            "2024-01-05 18:00:00"
+        )
+
+    @pytest.mark.parametrize(
+        ("value", "expected"),
+        [
+            # Local date as written; no UTC conversion (same rule as #883).
+            ("2024-01-05T22:00-05:00", date(2024, 1, 5)),  # 2024-01-06 in UTC
+            ("2024-01-06T01:00+09:00", date(2024, 1, 6)),  # 2024-01-05 in UTC
+            ("2023-09-30T22:00-05:00", date(2023, 9, 30)),
+        ],
+    )
+    def test_offset_keeps_local_date(self, value, expected):
+        assert parse_iso_date_lenient(value) == expected
+
+    def test_offset_rule_matches_federal_fiscal_year(self):
+        value = "2023-09-30T22:00-05:00"
+        parsed = parse_iso_date_lenient(value)
+        assert parsed is not None
+        assert federal_fiscal_year(parsed) == federal_fiscal_year(value) == 2023
+
+    def test_objects(self):
+        assert parse_iso_date_lenient(date(2024, 1, 5)) == date(2024, 1, 5)
+        assert parse_iso_date_lenient(datetime(2024, 1, 5, 23, 0)) == date(2024, 1, 5)
+        aware = pd.Timestamp("2024-01-05 22:00", tz="US/Eastern")
+        assert parse_iso_date_lenient(aware) == date(2024, 1, 5)
+        assert parse_iso_date_lenient(pd.NaT) is None
+
+    @pytest.mark.parametrize(
+        "value",
+        [
+            *MALFORMED_ISO,
+            "2024-01-05T25:00",  # hour out of range
+            "2024-01-05T10:60",
+            "2024-01-05T10",  # hour without minutes
+            "2024-01-05T1030",  # basic-form time
+            "2024-01-05t10:30",  # lowercase separator
+            "2024-01-05T10:30z",  # lowercase zone
+            "2024-01-05  10:30",  # two spaces
+            "2024-01-05T10:30+5",
+            "2024-01-05T10:30 UTC",
+            "2024-01-05T10:30:00abc",
+            None,
+            20240105,
+            True,
+        ],
+    )
+    def test_rejects_malformed(self, value):
+        assert parse_iso_date_lenient(value) is None
+
+    @pytest.mark.parametrize("value", ["2024-01-05", "2024-02-29", "1999-12-31"])
+    def test_agrees_with_strict_on_date_only(self, value):
+        assert parse_iso_date_lenient(value) == parse_iso_date_strict(value)
 
 
 class TestFormatDateIso:

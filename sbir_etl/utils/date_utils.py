@@ -50,6 +50,14 @@ ISO_DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 # Values that should be treated as None (all lowercase; compared via s.lower())
 NULL_VALUES = {"", "\\n", "nan", "nat", "none", "null"}
 
+# Extended ISO 8601 date, optionally followed by a time part ("T" or one space),
+# optional seconds and fraction, and an optional "Z" or numeric UTC offset.
+# Ranges (month 13, hour 25) are checked by ``datetime.fromisoformat`` after this.
+_ISO_DATETIME_RE = re.compile(
+    r"\d{4}-\d{2}-\d{2}"
+    r"(?:[T ]\d{2}:\d{2}(?::\d{2}(?:\.\d{1,6})?)?(?:Z|[+-]\d{2}:?\d{2})?)?"
+)
+
 
 def parse_date(
     value: Any,
@@ -226,6 +234,80 @@ def format_date_iso(value: date | datetime | None) -> str | None:
         return parsed.date().isoformat()
 
     return parsed.isoformat()
+
+
+def parse_iso_date_strict(value: Any) -> date | None:
+    """Parse an extended ISO 8601 calendar date, ``YYYY-MM-DD``, and nothing else.
+
+    Accepts a ``str`` (surrounding whitespace is ignored) or a ``date`` that is
+    not a ``datetime``. Returns ``None`` for every other input, including a time
+    part, the basic form ``20240105``, ISO week dates, impossible dates such as
+    ``2024-02-30``, and trailing text. Never raises and never guesses.
+
+    Examples:
+        >>> parse_iso_date_strict("2024-01-05")
+        datetime.date(2024, 1, 5)
+        >>> parse_iso_date_strict("2024-01-05T00:00:00") is None
+        True
+    """
+    if isinstance(value, datetime):
+        return None
+    if isinstance(value, date):
+        return value
+    if not isinstance(value, str):
+        return None
+    text = value.strip()
+    if not ISO_DATE_RE.fullmatch(text):
+        return None
+    try:
+        return date.fromisoformat(text)
+    except ValueError:
+        return None
+
+
+def parse_iso_date_lenient(value: Any) -> date | None:
+    """Parse an ISO 8601 date that may carry a time part, and return its calendar date.
+
+    Accepts ``YYYY-MM-DD``, optionally followed by ``T`` or one space and
+    ``HH:MM``, ``HH:MM:SS`` or ``HH:MM:SS.ffffff``, optionally followed by ``Z``
+    or a numeric offset (``+05:00``, ``-0500``). Also accepts a ``date`` or
+    ``datetime`` object, including ``pandas.Timestamp``.
+
+    Offset rule: the result is the local date as written. The value is not
+    converted to UTC first. ``2024-01-05T22:00-05:00`` is 2024-01-05, even
+    though the same instant is 2024-01-06 in UTC. This is the same rule that
+    :func:`federal_fiscal_year` uses.
+
+    Returns ``None`` for null-like values, malformed text, out-of-range fields
+    (``2024-13-01``, ``2024-01-05T25:00``), the basic form ``20240105``, ISO week
+    dates, and trailing text such as ``2024-01-05abc``. Never raises and never
+    guesses.
+
+    Examples:
+        >>> parse_iso_date_lenient("2024-01-05T00:00:00")
+        datetime.date(2024, 1, 5)
+        >>> parse_iso_date_lenient("2024-01-05T22:00-05:00")
+        datetime.date(2024, 1, 5)
+        >>> parse_iso_date_lenient("2024-01-05abc") is None
+        True
+    """
+    if isinstance(value, datetime):
+        # pandas.NaT is a datetime subclass whose fields are unusable.
+        if value != value:  # NaT is the only datetime that is not equal to itself
+            return None
+        return value.date()
+    if isinstance(value, date):
+        return value
+    if not isinstance(value, str):
+        return None
+    text = value.strip()
+    if not _ISO_DATETIME_RE.fullmatch(text):
+        return None
+    try:
+        # A tz-aware result keeps its local fields; ``.date()`` does not convert.
+        return datetime.fromisoformat(text).date()
+    except ValueError:
+        return None
 
 
 def _local_calendar_date(value: Any) -> date | None:
