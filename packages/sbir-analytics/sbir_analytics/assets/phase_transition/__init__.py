@@ -19,6 +19,9 @@ Pipeline:
    date. Ready for Kaplan-Meier.
 
 See ``README.md`` in this directory for threats to validity and method knobs.
+
+Epistemic tier: pipelines. This is the package default that ``sbir_analytics`` states
+for deterministic orchestration and materialization.
 """
 
 from __future__ import annotations
@@ -29,6 +32,8 @@ from .pairs import (
 )
 from .phase_ii import validated_phase_ii_awards
 from .phase_iii import validated_phase_iii_contracts
+
+EPISTEMIC_TIER = "pipelines"
 
 
 __all__ = [

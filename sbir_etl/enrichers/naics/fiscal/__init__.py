@@ -21,6 +21,9 @@ Public API:
 - FiscalNAICSEnricher: Main orchestrator class
 - enrich_sbir_awards_with_fiscal_naics: Convenience function
 - NAICSEnrichmentResult: Result data class
+
+Epistemic tier: pipelines. This is the package default that ``sbir_etl.enrichers``
+states for deterministic retrieval and enrichment clients.
 """
 
 from __future__ import annotations
@@ -31,6 +34,8 @@ import pandas as pd
 
 from .enricher import FiscalNAICSEnricher
 from .strategies import NAICSEnrichmentResult
+
+EPISTEMIC_TIER = "pipelines"
 
 
 if TYPE_CHECKING:

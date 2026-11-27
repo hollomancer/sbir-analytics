@@ -50,6 +50,60 @@ def test_nested_package_default_uses_nearest_ancestor(tmp_path):
     assert "exploratory module pkg.sub.deep" in violations[0].message
 
 
+def effective_tiers(root: Path) -> dict[str, str]:
+    index = guard.build_index(repository_root=root, package_roots={"pkg": Path("pkg")})
+    return {name: index.effective_tier(path) for name, path in index.files_by_module.items()}
+
+
+def test_root_declaration_does_not_cascade_into_undeclared_subpackage(tmp_path):
+    write(tmp_path, "pkg/__init__.py", declare("primitives"))
+    write(tmp_path, "pkg/direct.py")
+    write(tmp_path, "pkg/sub/__init__.py")
+    write(tmp_path, "pkg/sub/deep.py")
+    write(tmp_path, "pkg/sub/nested/__init__.py")
+    write(tmp_path, "pkg/sub/nested/leaf.py")
+    write(tmp_path, "pkg/space/loose.py")  # namespace directory, no __init__.py
+    assert effective_tiers(tmp_path) == {
+        "pkg": "primitives",
+        "pkg.direct": "primitives",  # a direct module takes its own package's tier
+        "pkg.sub": "exploratory",
+        "pkg.sub.deep": "exploratory",
+        "pkg.sub.nested": "exploratory",
+        "pkg.sub.nested.leaf": "exploratory",
+        "pkg.space.loose": "exploratory",
+    }
+
+
+def test_explicit_declarations_win_under_a_declared_root(tmp_path):
+    write(tmp_path, "pkg/__init__.py", declare("primitives"))
+    write(tmp_path, "pkg/direct.py", declare("exploratory"))
+    write(tmp_path, "pkg/sub/__init__.py", declare("pipelines"))
+    write(tmp_path, "pkg/sub/mod.py")
+    write(tmp_path, "pkg/sub/own.py", declare("evidence"))
+    write(tmp_path, "pkg/sub/nested/__init__.py")
+    write(tmp_path, "pkg/sub/nested/leaf.py", declare("pipelines"))
+    tiers = effective_tiers(tmp_path)
+    assert tiers["pkg.direct"] == "exploratory"
+    assert tiers["pkg.sub"] == "pipelines"
+    assert tiers["pkg.sub.mod"] == "pipelines"
+    assert tiers["pkg.sub.own"] == "evidence"
+    assert tiers["pkg.sub.nested"] == "exploratory"
+    assert tiers["pkg.sub.nested.leaf"] == "pipelines"
+
+
+def test_guard_reports_undeclared_subpackage_module_as_exploratory(tmp_path):
+    write(tmp_path, "pkg/__init__.py", declare("primitives"))
+    write(tmp_path, "pkg/direct.py", "import pkg.sub.deep\n")
+    write(tmp_path, "pkg/sub/__init__.py")
+    write(tmp_path, "pkg/sub/deep.py")
+    violations = scan(tmp_path)
+    assert len(violations) == 1
+    assert violations[0].path == "pkg/direct.py"
+    assert (
+        "primitives module may not import exploratory module pkg.sub.deep" in violations[0].message
+    )
+
+
 def test_policy_rows(tmp_path):
     write(tmp_path, "pkg/__init__.py")
     write(tmp_path, "pkg/prim.py", declare("primitives"))
@@ -64,7 +118,7 @@ def test_policy_rows(tmp_path):
 def test_relative_imports_are_resolved(tmp_path):
     write(tmp_path, "pkg/__init__.py", declare("pipelines"))
     write(tmp_path, "pkg/expl.py", declare("exploratory"))
-    write(tmp_path, "pkg/sub/__init__.py")
+    write(tmp_path, "pkg/sub/__init__.py", declare("pipelines"))
     write(tmp_path, "pkg/sub/mod.py", "from ..expl import thing\n")
     violations = scan(tmp_path)
     assert len(violations) == 1

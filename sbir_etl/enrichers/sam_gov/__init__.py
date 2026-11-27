@@ -16,12 +16,17 @@ Exported Classes:
 - SAMGovAPIClient: Async API client with rate limiting
 - SAMGovAPIError: API error (backward compatibility alias)
 - SAMGovRateLimitError: Rate limit error (backward compatibility alias)
+
+Epistemic tier: pipelines. This is the package default that ``sbir_etl.enrichers``
+states for deterministic retrieval and enrichment clients.
 """
 
 from __future__ import annotations
 
 # Client module
 from .client import SAMGovAPIClient, SAMGovAPIError, SAMGovRateLimitError
+
+EPISTEMIC_TIER = "pipelines"
 
 
 __all__ = [

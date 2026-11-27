@@ -5,6 +5,9 @@ This module provides:
 - Atomic file writes (temp file in the target directory, then os.replace)
 - Unified parquet/NDJSON reading
 - SHA-256 digests for source-provenance records
+
+Epistemic tier: pipelines. This is the package default that ``sbir_etl.utils`` states
+for deterministic shared helpers.
 """
 
 from __future__ import annotations
@@ -25,6 +28,8 @@ from loguru import logger
 
 # Import centralized path utilities
 from sbir_etl.utils.path_utils import ensure_parent_dir as _ensure_parent_dir
+
+EPISTEMIC_TIER = "pipelines"
 
 
 def _to_jsonable(x: Any) -> Any:

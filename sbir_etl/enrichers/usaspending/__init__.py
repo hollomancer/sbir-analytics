@@ -27,6 +27,9 @@ Exported Functions:
 - enrich_sbir_with_usaspending: Main enrichment function
 - parse_toc_table_dat_map: Parse table-to-dat file mapping from zip
 - extract_table_sample: Extract sample data from dump file
+
+Epistemic tier: pipelines. This is the package default that ``sbir_etl.enrichers``
+states for deterministic retrieval and enrichment clients.
 """
 
 from __future__ import annotations
@@ -40,6 +43,8 @@ from .enricher import enrich_sbir_with_usaspending
 
 # Index module
 from .index import extract_table_sample, parse_toc_table_dat_map
+
+EPISTEMIC_TIER = "pipelines"
 
 
 __all__ = [

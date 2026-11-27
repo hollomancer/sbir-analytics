@@ -2,6 +2,9 @@
 
 This module provides utilities for chunking DataFrames, iterables, and
 other data structures to enable memory-efficient processing.
+
+Epistemic tier: pipelines. This is the package default that ``sbir_etl.utils`` states
+for deterministic shared helpers.
 """
 
 from __future__ import annotations
@@ -11,6 +14,8 @@ from typing import Any
 
 import pandas as pd
 from loguru import logger
+
+EPISTEMIC_TIER = "pipelines"
 
 
 def chunk_dataframe(
