@@ -30,11 +30,22 @@ module.
 
 from __future__ import annotations
 
+import json
+
 import pandas as pd
 import pytest
 from dagster import Definitions
 
 pytestmark = [pytest.mark.fast, pytest.mark.unit]
+
+
+def test_job_description_does_not_advertise_a_km_ready_survival_frame() -> None:
+    from sbir_analytics.assets.jobs.phase_transition_job import phase_transition_latency_job
+
+    description = phase_transition_latency_job.description
+    assert "KM-ready survival" not in description
+    assert "signed completion-relative" in description
+    assert "not KM-ready" in description
 
 
 def _defs():
@@ -137,3 +148,12 @@ def test_job_wires_phase_ii_and_phase_iii_into_matched_pairs_and_survival(worksp
     assert pairs.iloc[0]["phase_iii_contract_id"] == "C_III_1"
     assert len(survival) == 1
     assert bool(survival.iloc[0]["event_observed"]) is True
+
+    from sbir_analytics.assets.phase_transition.pairs import DEFAULT_SURVIVAL_OUTPUT
+
+    checks = json.loads(
+        (workspace / DEFAULT_SURVIVAL_OUTPUT).with_suffix(".checks.json").read_text()
+    )
+    assert checks["nonnegative_time_origin"] is True
+    assert checks["km_ready"] is False
+    assert "independent censoring" in checks["estimator_warning"]

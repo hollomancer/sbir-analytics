@@ -17,9 +17,10 @@ phase_transition_latency_job = build_job_from_spec(
         name="phase_transition_latency_job",
         description=(
             "Compute Phase II -> Phase III transition latency: unified Phase II "
-            "awards, Phase III contracts, matched pairs, and KM-ready survival "
-            "frame. Assumes raw_contracts / enriched_sbir_awards are already "
-            "materialized."
+            "awards, Phase III contracts, matched pairs, and a signed "
+            "completion-relative follow-up frame that is not KM-ready without a "
+            "nonnegative origin or pre-completion stratum. Assumes "
+            "raw_contracts / enriched_sbir_awards are already materialized."
         ),
         asset_keys=(
             "validated_phase_ii_awards",

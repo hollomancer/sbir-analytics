@@ -46,3 +46,12 @@ A structured parent-award field is preferable to a character-count mandate,
 but it still requires validation, enforcement, multi-parent support, and
 missingness audits. The detector demonstrates a linkage-data gap; it does not
 prove that a field would be complete or produce perfect detection.
+
+FPDS itself also makes a cross-era character-count mandate invalid. The
+`Description of Requirement` field is required on awards and modifications,
+and newly entered text has been capped at 250 characters since June 28, 2019
+([FPDS Data Dictionary v1.5](https://www.fsd.gov/gsafsd_sp/en/fpds-help-data-dictionary-v1-5?id=kb_article_view&sys_kb_id=ddfe622ecf894350d1eaf2c42f851c3c)).
+Legacy pre-cap descriptions can persist on later modifications, so thresholds
+above 250 are not uniformly observable across the FY2016–2025 cohort. Shared
+benchmark output therefore reports only descriptive cut points within the
+current field limit and never labels them statutory or quality floors.

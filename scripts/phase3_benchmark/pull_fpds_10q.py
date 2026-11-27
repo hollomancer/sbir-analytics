@@ -41,7 +41,10 @@ class _PageRead:
 
 
 FIELD_NAMES: tuple[str, ...] = (
+    "modified",
     "PIID",
+    "modNumber",
+    "transactionNumber",
     "UEI",
     "vendorName",
     "descriptionOfContractRequirement",
@@ -56,12 +59,17 @@ FIELD_NAMES: tuple[str, ...] = (
     "extentCompeted",
     "contractingOfficeID",
     "contractingOfficeAgencyID",
+    "fundingRequestingAgencyID",
     "fundingRequestingOfficeID",
     "contractAwardUniqueKey",
 )
 REQUIRED_COMPLETENESS_FIELDS: tuple[str, ...] = (
+    "modified",
     "PIID",
+    "modNumber",
+    "transactionNumber",
     "agencyID",
+    "fundingRequestingAgencyID",
     "referenced_idv_piid",
     "UEI",
     "descriptionOfContractRequirement",
@@ -151,8 +159,21 @@ def parse_feed(page_xml: bytes | str, research_code: str) -> tuple[pd.DataFrame,
     return parsed.frame, parsed.total_results
 
 
-def build_query_url(research_code: str, start: int) -> str:
-    query = urllib.parse.quote(f"RESEARCH:{research_code.upper()}")
+def _query_text(research_code: str, query_terms: Sequence[str]) -> str:
+    normalized_terms = tuple(term.strip() for term in query_terms)
+    if any(not term for term in normalized_terms):
+        raise ValueError("query terms must not be empty")
+    return " ".join((f"RESEARCH:{research_code.upper()}", *normalized_terms))
+
+
+def build_query_url(
+    research_code: str,
+    start: int,
+    query_terms: Sequence[str] = (),
+) -> str:
+    """Build one FPDS query URL, preserving exact additional search clauses."""
+
+    query = urllib.parse.quote(_query_text(research_code, query_terms), safe="")
     return f"{FEED_URL}&q={query}&start={start}"
 
 
@@ -234,6 +255,7 @@ def pull_research_code(
     cache_dir: Path | None = None,
     source_vintage: str = "unknown",
     retrieved_at: str | None = None,
+    query_terms: Sequence[str] = (),
 ) -> tuple[pd.DataFrame, dict[str, object]]:
     """Retrieve bounded ATOM pages and return rows plus a provenance manifest."""
 
@@ -241,12 +263,14 @@ def pull_research_code(
         raise ValueError("pages must be at least 1")
 
     code = research_code.upper()
+    normalized_terms = tuple(term.strip() for term in query_terms)
+    query = _query_text(code, normalized_terms)
     run_at = retrieved_at or datetime.now(UTC).isoformat()
     frames: list[pd.DataFrame] = []
     digest = hashlib.sha256()
     total_results: int | None = None
     page_provenance: list[dict[str, object]] = []
-    url = build_query_url(code, 0)
+    url = build_query_url(code, 0, normalized_terms)
     termination_reason = "page_limit_reached"
 
     for page_number in range(pages):
@@ -285,13 +309,16 @@ def pull_research_code(
         default=run_at,
     )
     retrieval_complete = termination_reason in {"reported_total_reached", "feed_exhausted"}
+    parameters: dict[str, object] = {"research_code": code, "pages_requested": pages}
+    if normalized_terms:
+        parameters["query_terms"] = list(normalized_terms)
     manifest: dict[str, object] = {
-        "query": f"RESEARCH:{code}",
+        "query": query,
         "feed_url": FEED_URL,
         "source_vintage": source_vintage,
         "retrieved_at": retrieved,
         "run_at": run_at,
-        "parameters": {"research_code": code, "pages_requested": pages},
+        "parameters": parameters,
         "pages_retrieved": len(page_provenance),
         "reported_total_results": total_results,
         "row_count": len(rows),
@@ -327,6 +354,16 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--manifest", type=Path, required=True, help="run-manifest JSON path")
     parser.add_argument("--cache-dir", type=Path)
     parser.add_argument("--source-vintage", default="unknown")
+    parser.add_argument(
+        "--query-term",
+        action="append",
+        default=[],
+        metavar="CLAUSE",
+        help=(
+            "additional exact FPDS clause; repeat for terms such as "
+            'SIGNED_DATE:[2024/01/01,2024/12/31] or CONTRACT_TYPE:"AWARD"'
+        ),
+    )
     return parser
 
 
@@ -337,6 +374,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         pages=args.pages,
         cache_dir=args.cache_dir,
         source_vintage=args.source_vintage,
+        query_terms=args.query_term,
     )
     write_outputs(frame, manifest, output_path=args.output, manifest_path=args.manifest)
     return 0
