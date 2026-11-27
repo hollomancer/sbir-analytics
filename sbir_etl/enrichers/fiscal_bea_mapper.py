@@ -350,7 +350,7 @@ class NAICSToBEAMapper:
                 NAICSToBEAResult(
                     naics_code=naics_code,
                     bea_sector_code=primary_sector,
-                    bea_sector_name="",
+                    bea_sector_name=self._summary_sector_name(primary_sector),
                     allocation_weight=allocation_weight,
                     confidence=confidence,
                     source="fallback_config",
@@ -363,11 +363,12 @@ class NAICSToBEAMapper:
             # Check for secondary sectors (weighted allocations)
             secondary = mapping.get("secondary_sectors", [])
             for sec in secondary:
+                sector = sec.get("sector", "")
                 results.append(
                     NAICSToBEAResult(
                         naics_code=naics_code,
-                        bea_sector_code=sec.get("sector", ""),
-                        bea_sector_name="",
+                        bea_sector_code=sector,
+                        bea_sector_name=self._summary_sector_name(sector),
                         allocation_weight=float(sec.get("weight", 0.0)),
                         confidence=confidence,
                         source="fallback_config_weighted",
@@ -383,6 +384,22 @@ class NAICSToBEAMapper:
             return results if results else None
 
         return None
+
+    def _summary_sector_name(self, bea_sector_code: str) -> str:
+        """Name a fallback-config sector by its BEA Summary sector.
+
+        The fallback config holds codes such as "336411/US" but no names. This
+        uses the same summary lookup as ``sbir_fiscal_pipeline``:
+        ``map_naics_to_bea_summary`` then ``get_bea_code_description``. The name
+        is the Summary sector (for example "Manufacturing"), not the detail sector.
+        Returns "" when the code has no known Summary sector.
+        """
+        try:
+            summary = self.map_naics_to_bea_summary(bea_sector_code)
+        except ValueError:
+            return ""
+        description = self.get_bea_code_description(summary)
+        return "" if description.startswith("Unknown sector:") else description
 
     def _map_default(self, naics_code: str) -> list[NAICSToBEAResult]:
         """Map NAICS code using default sector.

@@ -464,6 +464,43 @@ class TestRealFallbackConfig:
         ]
         assert results[0].confidence == pytest.approx(0.30)
 
+    def test_sibling_code_without_prefix_entry_falls_to_default(self, real_yaml_mapper):
+        """336999 shares only the 336/33 prefixes with listed codes; neither is an entry."""
+        results = real_yaml_mapper.map_naics_to_bea("336999")
+
+        assert [(r.bea_sector_code, r.source) for r in results] == [
+            ("540000/US", "default_fallback")
+        ]
+        assert results[0].bea_sector_name == "R&D and related services"
+
+    @pytest.mark.parametrize(
+        ("code", "expected_names"),
+        [
+            ("336411", ["Manufacturing"]),
+            ("541712", ["Professional, scientific, and technical services"]),
+            ("541519", ["Professional, scientific, and technical services"]),
+            ("336419", ["Manufacturing"] * 4),
+        ],
+    )
+    def test_fallback_config_rows_carry_summary_sector_name(self, tmp_path, code, expected_names):
+        """Primary and secondary rows are named by their BEA Summary sector."""
+        mapper = NAICSToBEAMapper(tmp_path / "missing.csv", REAL_FALLBACK_YAML)
+
+        results = mapper.map_naics_to_bea(code)
+
+        assert {r.source for r in results} <= {"fallback_config", "fallback_config_weighted"}
+        assert [r.bea_sector_name for r in results] == expected_names
+
+    def test_fallback_config_sector_with_unknown_summary_has_empty_name(self, tmp_path):
+        """A sector code with no Summary entry gets no invented name."""
+        path = tmp_path / "fallback.yaml"
+        path.write_text("mappings:\n  541712:\n    primary_sector: 990000/US\n")
+        mapper = NAICSToBEAMapper(tmp_path / "missing.csv", path)
+
+        results = mapper.map_naics_to_bea("541712")
+
+        assert [(r.source, r.bea_sector_name) for r in results] == [("fallback_config", "")]
+
     def test_short_code_does_not_borrow_longer_fallback_entry(self, tmp_path):
         """336 must not match 3364; only shorter prefixes are tried."""
         mapper = NAICSToBEAMapper(tmp_path / "missing.csv", REAL_FALLBACK_YAML)

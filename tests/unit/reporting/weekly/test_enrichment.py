@@ -1,5 +1,6 @@
 """Hermetic tests for weekly report enrichment orchestration."""
 
+from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import Mock
 
@@ -531,3 +532,17 @@ def test_map_naics_to_bea_sectors_returns_empty_when_mapper_init_fails(monkeypat
 
     assert enrichment.map_naics_to_bea_sectors(["541715"]) == {}
     debug.assert_called_once_with("NAICSToBEAMapper init error: mapping config missing")
+
+
+def test_map_naics_to_bea_sectors_names_fallback_config_codes(monkeypatch):
+    """Codes in the fallback YAML get a sector name; an unlisted code keeps the default."""
+    monkeypatch.chdir(Path(__file__).resolve().parents[4])
+
+    result = enrichment.map_naics_to_bea_sectors(["336411", "541712", "541519", "611310"])
+
+    assert result == {
+        "336411": "Manufacturing",
+        "541712": "Professional, scientific, and technical services",
+        "541519": "Professional, scientific, and technical services",
+        "611310": "R&D and related services",
+    }
