@@ -613,3 +613,42 @@ class TestReloadConfig:
             reload_config()
             config2 = get_config(environment=None, config_dir=config_dir)
             assert config2.logging.level == "DEBUG"
+
+
+REPO_CONFIG_DIR = Path(__file__).resolve().parents[3] / "config"
+
+
+class TestRepositoryConfig:
+    """The checked-in YAML files load and validate after the unread keys were removed."""
+
+    @pytest.mark.parametrize("environment", ["development", "test", "production"])
+    def test_repository_config_validates(self, environment):
+        config = get_config(
+            environment=environment,
+            config_dir=REPO_CONFIG_DIR,
+            apply_env_overrides_flag=False,
+        )
+
+        assert isinstance(config, PipelineConfig)
+        PipelineConfig.model_validate(config.model_dump())
+        assert config.enrichment_refresh.usaspending.stale_awards_threshold == 1000
+
+    def test_removed_keys_are_absent_from_repository_yaml(self):
+        raw = load_config_from_files(
+            base_path=Path.cwd(), environment="test", config_dir=REPO_CONFIG_DIR
+        )
+
+        assert "cli" not in raw
+        assert "company_categorization" not in raw
+        assert "tax_parameters" not in raw["fiscal_analysis"]
+        removed = {
+            "cadence_days",
+            "max_concurrent_requests",
+            "enable_delta_detection",
+            "hash_algorithm",
+            "retry_backoff_multiplier",
+            "connection_timeout_seconds",
+            "enable_metrics",
+        }
+        for source, settings in raw["enrichment_refresh"].items():
+            assert removed.isdisjoint(settings), source

@@ -8,7 +8,6 @@ from sbir_etl import __version__
 from pydantic import ValidationError
 
 from sbir_etl.config.schemas import (
-    CLIConfig,
     DataQualityConfig,
     DuckDBConfig,
     EnrichmentConfig,
@@ -25,7 +24,6 @@ from sbir_etl.config.schemas import (
     SbirDuckDBConfig,
     SbirValidationConfig,
     SensitivityConfig,
-    TaxParameterConfig,
     TransformationConfig,
     ValidationConfig,
 )
@@ -198,32 +196,27 @@ class TestEnrichmentSourceConfig:
     """Tests for EnrichmentSourceConfig model."""
 
     @pytest.mark.parametrize(
-        "cadence,sla,batch,concurrent,delta,hash_algo",
+        "sla,batch,threshold",
         [
-            (1, 1, 100, 5, True, "sha256"),  # defaults
-            (7, 14, 500, 10, False, "sha256"),  # custom
+            (1, 100, 1000),  # defaults
+            (14, 500, 250),  # custom
         ],
         ids=["defaults", "custom"],
     )
-    def test_values(self, cadence, sla, batch, concurrent, delta, hash_algo):
+    def test_values(self, sla, batch, threshold):
         """Test EnrichmentSourceConfig with various values."""
-        if cadence == 1:  # defaults
+        if sla == 1:  # defaults
             config = EnrichmentSourceConfig()
         else:
             config = EnrichmentSourceConfig(
-                cadence_days=cadence,
                 sla_staleness_days=sla,
                 batch_size=batch,
-                max_concurrent_requests=concurrent,
-                enable_delta_detection=delta,
+                stale_awards_threshold=threshold,
             )
 
-        assert config.cadence_days == cadence
         assert config.sla_staleness_days == sla
         assert config.batch_size == batch
-        assert config.max_concurrent_requests == concurrent
-        assert config.enable_delta_detection == delta
-        assert config.hash_algorithm == hash_algo
+        assert config.stale_awards_threshold == threshold
 
     def test_batch_size_constraints(self):
         """Test batch_size has ge=1, le=1000 constraints."""
@@ -237,11 +230,11 @@ class TestEnrichmentSourceConfig:
         with pytest.raises(ValidationError):
             EnrichmentSourceConfig(batch_size=1001)
 
-    def test_cadence_days_constraints(self):
-        """Test cadence_days has ge=1 constraint."""
-        EnrichmentSourceConfig(cadence_days=1)
+    def test_stale_awards_threshold_constraints(self):
+        """Test stale_awards_threshold has ge=0 constraint."""
+        EnrichmentSourceConfig(stale_awards_threshold=0)
         with pytest.raises(ValidationError):
-            EnrichmentSourceConfig(cadence_days=0)
+            EnrichmentSourceConfig(stale_awards_threshold=-1)
 
 
 class TestEnrichmentRefreshConfig:
@@ -251,7 +244,7 @@ class TestEnrichmentRefreshConfig:
         """Test EnrichmentRefreshConfig has default usaspending config."""
         config = EnrichmentRefreshConfig()
         assert isinstance(config.usaspending, EnrichmentSourceConfig)
-        assert config.usaspending.cadence_days == 1
+        assert config.usaspending.sla_staleness_days == 1
 
 
 class TestExtractionConfig:
@@ -420,52 +413,6 @@ class TestDuckDBConfig:
         assert config.enable_query_profiler is True
 
 
-class TestTaxParameterConfig:
-    """Tests for TaxParameterConfig model."""
-
-    def test_default_individual_income_tax(self):
-        """Test TaxParameterConfig default individual income tax."""
-        config = TaxParameterConfig()
-        # NIPA-derived 2022 baseline (see nipa_rates.py:_BASELINE_RATES[2022]).
-        # Runtime fiscal calculations resolve the rate per analysis year via
-        # NIPARateProvider; this default is only used in audit-trail snapshots.
-        assert config.individual_income_tax["effective_rate"] == 0.194
-        assert config.individual_income_tax["progressive_rates"]["10_percent"] == 0.10
-
-    def test_default_payroll_tax(self):
-        """Test TaxParameterConfig default payroll tax."""
-        config = TaxParameterConfig()
-        assert config.payroll_tax["social_security_rate"] == 0.062
-        assert config.payroll_tax["medicare_rate"] == 0.0145
-
-    def test_default_corporate_income_tax(self):
-        """Test TaxParameterConfig default corporate income tax."""
-        config = TaxParameterConfig()
-        assert config.corporate_income_tax["federal_rate"] == 0.21
-
-    def test_tax_parameters_validator_accepts_valid_rates(self):
-        """Test tax parameters validator accepts valid rates."""
-        config = TaxParameterConfig(
-            payroll_tax={
-                "social_security_rate": 0.07,
-                "medicare_rate": 0.02,
-            }
-        )
-        assert config.payroll_tax["social_security_rate"] == 0.07
-
-    def test_tax_parameters_validator_rejects_negative_rates(self):
-        """Test tax parameters validator rejects negative rates."""
-        with pytest.raises(ValidationError) as exc_info:
-            TaxParameterConfig(payroll_tax={"social_security_rate": -0.01})
-        assert "must be between 0.0 and 1.0" in str(exc_info.value)
-
-    def test_tax_parameters_validator_rejects_rates_above_one(self):
-        """Test tax parameters validator rejects rates above 1.0."""
-        with pytest.raises(ValidationError) as exc_info:
-            TaxParameterConfig(corporate_income_tax={"federal_rate": 1.5})
-        assert "must be between 0.0 and 1.0" in str(exc_info.value)
-
-
 class TestSensitivityConfig:
     """Tests for SensitivityConfig model."""
 
@@ -501,47 +448,6 @@ class TestSensitivityConfig:
         assert "must be between 0.0 and 1.0" in str(exc_info.value)
 
 
-class TestCLIConfig:
-    """Tests for CLIConfig model."""
-
-    def test_default_values(self):
-        """Test CLIConfig default values."""
-        config = CLIConfig()
-        assert config.theme == "default"
-        assert config.progress_refresh_rate == 0.1
-        assert config.dashboard_refresh_rate == 10
-        assert config.max_table_rows == 50
-
-    def test_custom_values(self):
-        """Test CLIConfig with custom values."""
-        config = CLIConfig(
-            theme="dark",
-            progress_refresh_rate=0.5,
-            max_table_rows=100,
-        )
-        assert config.theme == "dark"
-        assert config.progress_refresh_rate == 0.5
-        assert config.max_table_rows == 100
-
-    def test_theme_validator_accepts_valid_themes(self):
-        """Test theme validator accepts valid themes."""
-        for theme in ["default", "dark", "light"]:
-            config = CLIConfig(theme=theme)
-            assert config.theme == theme
-
-    def test_theme_validator_rejects_invalid_theme(self):
-        """Test theme validator rejects invalid theme."""
-        with pytest.raises(ValidationError) as exc_info:
-            CLIConfig(theme="invalid")
-        assert "must be 'default', 'dark', or 'light'" in str(exc_info.value)
-
-    def test_refresh_rate_validator_rejects_negative(self):
-        """Test refresh rate validator rejects negative values."""
-        with pytest.raises(ValidationError) as exc_info:
-            CLIConfig(progress_refresh_rate=-0.1)
-        assert "Input should be greater than or equal to 0" in str(exc_info.value)
-
-
 class TestFiscalAnalysisConfig:
     """Tests for FiscalAnalysisConfig model."""
 
@@ -551,7 +457,6 @@ class TestFiscalAnalysisConfig:
         assert config.base_year == 2023
         assert config.inflation_source == "bea_gdp_deflator"
         assert config.naics_crosswalk_version == "2022"
-        assert isinstance(config.tax_parameters, TaxParameterConfig)
         assert isinstance(config.sensitivity_parameters, SensitivityConfig)
 
     def test_default_quality_thresholds(self):
@@ -706,7 +611,6 @@ class TestPipelineConfig:
         assert isinstance(config.metrics, MetricsConfig)
         assert isinstance(config.duckdb, DuckDBConfig)
         assert isinstance(config.fiscal_analysis, FiscalAnalysisConfig)
-        assert isinstance(config.cli, CLIConfig)
         assert isinstance(config.ma_discovery, MADiscoveryConfig)
         assert config.ma_discovery.search_backend == "none"
 

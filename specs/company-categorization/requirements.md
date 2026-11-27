@@ -28,9 +28,10 @@
 
 ## Glossary
 
-Feature-local terms only. Confidence bands for this classifier live in
-`config/base.yaml` (`company_categorization.low_max_awards` /
-`medium_max_awards`) — not in the steering glossary.
+Feature-local terms only. Confidence bands for this classifier are hard-coded in
+`aggregate_company_classification` (`sbir_etl/transformers/company_categorization.py`),
+not in config and not in the steering glossary. The unread
+`company_categorization` config block was removed (#878).
 
 - **PSC** — Product Service Code (numeric → products; alphabetic → services in
   federal usage; first character/digit is the PSC family).

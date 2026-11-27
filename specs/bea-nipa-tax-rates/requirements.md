@@ -141,6 +141,11 @@ literal sitting in a config default.
 > reads it, this changes no output, but it contradicts this requirement.
 > Removing the unread `tax_parameters` config, or aligning `base.yaml` to
 > `0.194`, is a follow-up.
+>
+> **Status (2026-11-27).** Superseded by #878. `fiscal_analysis.tax_parameters`
+> and `TaxParameterConfig` are deleted from `config/base.yaml` and
+> `sbir_etl/config/schemas/domain.py`. No config value sets an income-tax rate.
+> Runtime rates come only from `NIPARateProvider`.
 
 #### Acceptance Criteria
 

@@ -9,8 +9,6 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from ... import __version__
 from .data import (
-    CLIConfig,
-    CompanyCategorizationConfig,
     DataQualityConfig,
     DuckDBConfig,
     ExtractionConfig,
@@ -92,11 +90,6 @@ class PipelineConfig(BaseModel):
     metrics: MetricsConfig = Field(default_factory=MetricsConfig)
     duckdb: DuckDBConfig = Field(default_factory=DuckDBConfig)
     fiscal_analysis: FiscalAnalysisConfig = Field(default_factory=FiscalAnalysisConfig)
-    cli: CLIConfig = Field(default_factory=CLIConfig, description="CLI interface configuration")
-    company_categorization: CompanyCategorizationConfig = Field(
-        default_factory=CompanyCategorizationConfig,
-        description="Company categorization configuration",
-    )
     ml: MLConfig = Field(
         default_factory=MLConfig,
         description="Machine learning configuration (ModernBert, embeddings)",
@@ -117,8 +110,6 @@ class PipelineConfig(BaseModel):
 
 
 __all__ = [
-    "CLIConfig",
-    "CompanyCategorizationConfig",
     "DataQualityConfig",
     "DuckDBConfig",
     "EnrichmentConfig",

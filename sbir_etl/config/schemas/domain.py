@@ -92,40 +92,30 @@ class EnrichmentSourceConfig(BaseModel):
         description="Feature flag to enable/disable this source. "
         "Set to False to opt-out until legal/data-sharing reviews complete.",
     )
-    cadence_days: int = Field(default=1, ge=1, description="Number of days between refresh cycles")
     sla_staleness_days: int = Field(
         default=1, ge=1, description="Maximum age in days before considered stale"
     )
     batch_size: int = Field(default=100, ge=1, le=1000, description="Number of records per batch")
-    max_concurrent_requests: int = Field(
-        default=5, ge=1, le=20, description="Maximum concurrent API requests"
-    )
     rate_limit_per_minute: int = Field(
         default=120, ge=1, description="API rate limit (requests per minute)"
     )
-    enable_delta_detection: bool = Field(
-        default=True, description="Enable payload hash-based delta detection"
-    )
-    hash_algorithm: str = Field(default="sha256", description="Hash algorithm for payload hashing")
     retry_attempts: int = Field(default=3, ge=0, description="Number of retry attempts")
     retry_backoff_seconds: float = Field(
         default=2.0, ge=0.0, description="Initial retry backoff delay in seconds"
     )
-    retry_backoff_multiplier: float = Field(
-        default=2.0, ge=1.0, description="Exponential backoff multiplier"
-    )
     timeout_seconds: int = Field(default=30, ge=1, description="Request timeout in seconds")
-    connection_timeout_seconds: int = Field(
-        default=10, ge=1, description="Connection timeout in seconds"
-    )
     checkpoint_interval: int = Field(
         default=50, ge=1, description="Save checkpoint every N records"
+    )
+    stale_awards_threshold: int = Field(
+        default=1000,
+        ge=0,
+        description="Stale-award count above which the stale-awards asset check fails",
     )
     state_file: str = Field(
         default="data/state/enrichment_refresh_state.json",
         description="Path to state file",
     )
-    enable_metrics: bool = Field(default=True, description="Enable metrics collection")
     metrics_file: str = Field(
         default="reports/metrics/enrichment_freshness.json",
         description="Path to metrics output file",
@@ -173,10 +163,8 @@ class EnrichmentRefreshConfig(BaseModel):
     sec_edgar: EnrichmentSourceConfig = Field(
         default_factory=lambda: EnrichmentSourceConfig(
             enabled=False,
-            cadence_days=7,
             sla_staleness_days=30,
             batch_size=50,
-            max_concurrent_requests=3,
             rate_limit_per_minute=600,
         ),
         description="SEC EDGAR refresh settings (opt-in, disabled by default)",
@@ -184,10 +172,8 @@ class EnrichmentRefreshConfig(BaseModel):
     nih_reporter: EnrichmentSourceConfig = Field(
         default_factory=lambda: EnrichmentSourceConfig(
             enabled=False,
-            cadence_days=7,
             sla_staleness_days=7,
             batch_size=100,
-            max_concurrent_requests=2,
             rate_limit_per_minute=30,
         ),
         description="NIH RePORTER refresh settings (disabled; adapter is issue #443)",
@@ -197,69 +183,6 @@ class EnrichmentRefreshConfig(BaseModel):
 # ---------------------------------------------------------------------------
 # Fiscal analysis schemas
 # ---------------------------------------------------------------------------
-
-
-class TaxParameterConfig(BaseModel):
-    """Configuration for federal tax calculation parameters.
-
-    These defaults are a static snapshot of reference rates. Runtime
-    fiscal calculations resolve the actual ``individual_income_tax.effective_rate``
-    per analysis year via ``NIPARateProvider`` (BEA NIPA Tables 3.2/3.3/1.5) —
-    see ``sbir_etl/transformers/fiscal/nipa_rates.py``. Update the default below
-    when ``_BASELINE_RATES`` gains a newer reference year.
-    """
-
-    individual_income_tax: dict[str, Any] = Field(
-        default_factory=lambda: {
-            # NIPA-derived 2022 baseline (personal_current_taxes / compensation
-            # of employees). See nipa_rates.py:_BASELINE_RATES[2022].
-            "effective_rate": 0.194,
-            "progressive_rates": {
-                "10_percent": 0.10,
-                "12_percent": 0.12,
-                "22_percent": 0.22,
-                "24_percent": 0.24,
-                "32_percent": 0.32,
-                "35_percent": 0.35,
-                "37_percent": 0.37,
-            },
-            "standard_deduction": 13850,
-        }
-    )
-    payroll_tax: dict[str, Any] = Field(
-        default_factory=lambda: {
-            "social_security_rate": 0.062,
-            "medicare_rate": 0.0145,
-            "unemployment_rate": 0.006,
-            "wage_base_limit": 160200,
-        }
-    )
-    corporate_income_tax: dict[str, Any] = Field(
-        default_factory=lambda: {
-            "federal_rate": 0.21,
-            "effective_rate": 0.18,
-        }
-    )
-    excise_tax: dict[str, Any] = Field(
-        default_factory=lambda: {
-            "fuel_tax_rate": 0.184,
-            "general_rate": 0.03,
-        }
-    )
-
-    @field_validator("individual_income_tax", "payroll_tax", "corporate_income_tax", "excise_tax")
-    @classmethod
-    def validate_tax_parameters(cls, value: Mapping[str, Any]) -> dict[str, Any]:
-        if not isinstance(value, Mapping):
-            raise TypeError("Expected a mapping for tax parameters")
-        normalized: dict[str, Any] = dict(value)
-        for key, raw in normalized.items():
-            if "rate" in key and isinstance(raw, int | float):
-                rate = float(raw)
-                if not (0.0 <= rate <= 1.0):
-                    raise ValueError(f"Tax rate {key} must be between 0.0 and 1.0, got {rate}")
-                normalized[key] = rate
-        return normalized
 
 
 class SensitivityConfig(BaseModel):
@@ -325,9 +248,6 @@ class FiscalAnalysisConfig(BaseModel):
         default="2022", description="NAICS-to-BEA crosswalk version"
     )
     stateio_model_version: str = Field(default="v2.1", description="BEA I-O model version")
-    tax_parameters: TaxParameterConfig = Field(
-        default_factory=TaxParameterConfig, description="Federal tax calculation parameters"
-    )
     sensitivity_parameters: SensitivityConfig = Field(
         default_factory=SensitivityConfig,
         description="Sensitivity analysis and uncertainty quantification parameters",
@@ -553,5 +473,4 @@ __all__ = [
     "ModernBertTextConfig",
     "OTConsortiumConfig",
     "SensitivityConfig",
-    "TaxParameterConfig",
 ]
