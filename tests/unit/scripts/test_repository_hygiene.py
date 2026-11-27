@@ -283,3 +283,40 @@ def test_removed_src_guard_scans_automation_paths(tmp_path: Path):
 
     assert len(violations) == 1
     assert violations[0].message == "removed src source-root reference"
+
+
+def test_doc_imports_resolve_modules_names_and_lazy_exports(tmp_path: Path):
+    _write(tmp_path, "sbir_etl/__init__.py", "")
+    _write(tmp_path, "sbir_etl/config/__init__.py", "")
+    _write(tmp_path, "sbir_etl/config/loader.py", "def get_config():\n    pass\n")
+    _write(
+        tmp_path, "sbir_etl/models/__init__.py", '_LAZY = {"sbir_etl.models.award": ("Award",)}\n'
+    )
+    _write(tmp_path, "sbir_etl/models/award.py", "class Award:\n    pass\n")
+    doc = _write(
+        tmp_path,
+        "docs/example.md",
+        "from sbir_etl.config.loader import get_config\n"
+        "from sbir_etl.config.loader import load_config\n"
+        "from sbir_etl.models import Award, award\n"
+        "from sbir_etl.models.sbir_award import SbirAward\n"
+        "import sbir_etl.cli.context\n",
+    )
+
+    violations = hygiene.scan_doc_python_imports([doc], root=tmp_path)
+
+    assert [(v.line_number, v.message) for v in violations] == [
+        (2, "sbir_etl.config.loader has no name load_config"),
+        (4, "missing module sbir_etl.models.sbir_award"),
+        (5, "missing module sbir_etl.cli.context"),
+    ]
+
+
+def test_doc_imports_skip_historical_records(tmp_path: Path):
+    _write(tmp_path, "sbir_etl/__init__.py", "")
+    stale = "from sbir_etl.removed import Thing\n"
+    adr = _write(tmp_path, "docs/decisions/ADR-001.md", stale)
+    archive = _write(tmp_path, "docs/archive/old.md", stale)
+    changelog = _write(tmp_path, "CHANGELOG.md", stale)
+
+    assert hygiene.scan_doc_python_imports([adr, archive, changelog], root=tmp_path) == []

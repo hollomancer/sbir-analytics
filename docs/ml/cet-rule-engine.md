@@ -1,6 +1,6 @@
 # CET Rule Engine
 
-The CET classifier (`sbir_ml.ml.models.cet_classifier.CETClassifier`) produces a
+The CET classifier (`sbir_ml.ml.models.cet_classifier.ApplicabilityModel`) produces a
 0–100 score per CET area from a calibrated TF-IDF → logistic-regression pipeline.
 A **rule engine** (`sbir_ml.ml.models.rule_engine.RuleEngine`) then post-processes
 those scores using editable YAML rules, so analysts can tune classifications

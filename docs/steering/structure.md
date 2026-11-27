@@ -162,8 +162,8 @@ from typing import Any
 import pandas as pd
 from pydantic import BaseModel, Field
 
-from sbir_etl.config.loader import load_config
-from sbir_etl.models.sbir_award import SbirAward
+from sbir_etl.config.loader import get_config
+from sbir_etl.models.award import Award
 ```
 
 ## Related Documents
