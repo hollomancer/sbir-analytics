@@ -18,6 +18,7 @@ from unittest.mock import MagicMock, patch
 import pandas as pd
 import pytest
 
+from sbir_etl.exceptions import ConfigurationError
 from sbir_etl.enrichers.fiscal_bea_mapper import (
     BEAMappingStatistics,
     NAICSToBEAMapper,
@@ -394,6 +395,123 @@ class TestUnpaddedPrefixFallback:
         assert [(r.bea_sector_code, r.source) for r in results] == [
             ("540000/US", "hierarchical_2digit")
         ]
+
+
+# =============================================================================
+# Fallback config keys load as integers (issue #886)
+# =============================================================================
+
+REAL_FALLBACK_YAML = Path(__file__).resolve().parents[3] / "config/fiscal/naics_bea_mappings.yaml"
+
+
+@pytest.fixture
+def real_yaml_mapper(temp_crosswalk_csv: Path) -> NAICSToBEAMapper:
+    """Mapper with the small test crosswalk and the real fallback YAML."""
+    return NAICSToBEAMapper(temp_crosswalk_csv, REAL_FALLBACK_YAML)
+
+
+class TestRealFallbackConfig:
+    """Codes in config/fiscal/naics_bea_mappings.yaml reach the fallback-config step."""
+
+    def test_real_yaml_keys_are_canonical_strings(self, real_yaml_mapper):
+        mappings = real_yaml_mapper.fallback_config["mappings"]
+        assert "541712" in mappings
+        assert "5415" in mappings
+        assert all(isinstance(key, str) for key in mappings)
+        category_defaults = real_yaml_mapper.fallback_config["fallback_rules"]["category_defaults"]
+        assert all(isinstance(key, str) for key in category_defaults)
+
+    def test_code_only_in_fallback_config_maps_through_it(self, real_yaml_mapper):
+        crosswalk_codes = set(real_yaml_mapper.crosswalk_df["naics_code"])
+        assert "336411" not in crosswalk_codes
+
+        results = real_yaml_mapper.map_naics_to_bea("336411")
+
+        assert [(r.bea_sector_code, r.source) for r in results] == [
+            ("336411/US", "fallback_config")
+        ]
+        assert results[0].confidence == pytest.approx(0.95)
+
+    def test_without_crosswalk_yaml_code_maps_through_fallback_config(self, tmp_path):
+        mapper = NAICSToBEAMapper(tmp_path / "missing.csv", REAL_FALLBACK_YAML)
+
+        results = mapper.map_naics_to_bea("541712")
+
+        assert [(r.bea_sector_code, r.source) for r in results] == [
+            ("540000/US", "fallback_config")
+        ]
+        assert results[0].confidence == pytest.approx(0.90)
+
+    def test_6_digit_code_reaches_4_digit_fallback_entry(self, real_yaml_mapper):
+        """336419 is not listed, so it uses the weighted 3364 entry."""
+        results = real_yaml_mapper.map_naics_to_bea("336419")
+
+        assert [(r.bea_sector_code, r.allocation_weight, r.source) for r in results] == [
+            ("336411/US", 0.40, "fallback_config"),
+            ("336412/US", 0.30, "fallback_config_weighted"),
+            ("336413/US", 0.20, "fallback_config_weighted"),
+            ("336414/US", 0.10, "fallback_config_weighted"),
+        ]
+        assert all(r.confidence == pytest.approx(0.80) for r in results)
+        assert results[0].metadata["fallback_config_key"] == "3364"
+
+    def test_code_absent_from_both_falls_to_default(self, real_yaml_mapper):
+        """611310 is in neither the crosswalk nor the fallback config."""
+        results = real_yaml_mapper.map_naics_to_bea("611310")
+
+        assert [(r.bea_sector_code, r.source) for r in results] == [
+            ("540000/US", "default_fallback")
+        ]
+        assert results[0].confidence == pytest.approx(0.30)
+
+    def test_short_code_does_not_borrow_longer_fallback_entry(self, tmp_path):
+        """336 must not match 3364; only shorter prefixes are tried."""
+        mapper = NAICSToBEAMapper(tmp_path / "missing.csv", REAL_FALLBACK_YAML)
+
+        results = mapper.map_naics_to_bea("336")
+
+        assert [r.source for r in results] == ["default_fallback"]
+
+    def test_prefix_lookup_off_when_hierarchical_disabled(self, tmp_path):
+        mapper = NAICSToBEAMapper(tmp_path / "missing.csv", REAL_FALLBACK_YAML)
+        mapper.hierarchical_fallback = False
+
+        assert mapper._map_fallback_config("336419") is None
+        assert mapper._map_fallback_config("3364") is not None
+
+
+class TestFallbackConfigKeyValidation:
+    """Bad keys in the fallback YAML fail loudly instead of falling back."""
+
+    @staticmethod
+    def _write(tmp_path: Path, text: str) -> Path:
+        path = tmp_path / "fallback.yaml"
+        path.write_text(text, encoding="utf-8")
+        return path
+
+    def test_keys_that_collapse_to_one_code_raise(self, tmp_path):
+        path = self._write(
+            tmp_path,
+            "mappings:\n"
+            "  541712:\n    primary_sector: A/US\n"
+            '  "541712":\n    primary_sector: B/US\n',
+        )
+        with pytest.raises(ConfigurationError, match="both normalize to '541712'"):
+            NAICSToBEAMapper(tmp_path / "missing.csv", path)
+
+    @pytest.mark.parametrize("key", ['"54-17"', "abc", '"005417"', "1234567"])
+    def test_key_that_is_not_a_naics_code_raises(self, tmp_path, key):
+        path = self._write(tmp_path, f"mappings:\n  {key}:\n    primary_sector: A/US\n")
+        with pytest.raises(ConfigurationError, match="not a NAICS code"):
+            NAICSToBEAMapper(tmp_path / "missing.csv", path)
+
+    def test_bad_category_defaults_key_raises(self, tmp_path):
+        path = self._write(
+            tmp_path,
+            "mappings: {}\nfallback_rules:\n  category_defaults:\n    51: A/US\n    '51': B/US\n",
+        )
+        with pytest.raises(ConfigurationError, match="category_defaults"):
+            NAICSToBEAMapper(tmp_path / "missing.csv", path)
 
 
 # =============================================================================
