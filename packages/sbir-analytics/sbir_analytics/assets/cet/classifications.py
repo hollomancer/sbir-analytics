@@ -21,6 +21,7 @@ from sbir_ml.ml.config.taxonomy_loader import TaxonomyLoader
 from .utils import (
     AssetCheckResult,
     AssetCheckSeverity,
+    AssetKey,
     Output,
     asset,
     asset_check,
@@ -38,7 +39,7 @@ except Exception:
 
 
 @asset_check(
-    asset="enriched_cet_award_classifications",
+    asset=AssetKey(["ml", "enriched_cet_award_classifications"]),
     description="Award classification quality thresholds (high confidence, evidence coverage) from checks JSON",
 )
 def cet_award_classifications_quality_check(context) -> AssetCheckResult:
