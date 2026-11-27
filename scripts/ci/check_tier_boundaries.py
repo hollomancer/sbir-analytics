@@ -8,9 +8,11 @@ docs/steering/epistemic-tiers.md. Spec (archived):
 specs/archive/completed-features/epistemic-tier-enforcement/.
 
 Resolution is static and per-file: a module's own top-level constant wins,
-otherwise the nearest ancestor package ``__init__.py`` declaration within the
-same package root, otherwise ``exploratory``. Declaring is voluntary; only the
-consequences of declared tiers are enforced.
+otherwise the declaration in the ``__init__.py`` of the package that directly
+contains the module, otherwise ``exploratory``. A package declaration does not
+cascade into subpackages; each subpackage declares its own tier or is
+exploratory. Declaring is voluntary; only the consequences of declared tiers
+are enforced.
 """
 
 from __future__ import annotations
@@ -88,7 +90,11 @@ class ModuleIndex:
             if not (isinstance(target, ast.Name) and target.id == "EPISTEMIC_TIER"):
                 continue
             value = node.value
-            if isinstance(value, ast.Constant) and value.value in VALID_TIERS:
+            if (
+                isinstance(value, ast.Constant)
+                and isinstance(value.value, str)
+                and value.value in VALID_TIERS
+            ):
                 tier = value.value
             else:
                 relative = path.relative_to(self.repository_root).as_posix()
@@ -104,26 +110,20 @@ class ModuleIndex:
         return tier
 
     def effective_tier(self, path: Path) -> str:
-        """Own constant, else nearest ancestor package default, else exploratory."""
+        """Own constant, else own package's default for a plain module, else exploratory.
+
+        A package ``__init__.py`` declaration covers only the modules directly
+        in that package directory. It does not cascade into subpackages: an
+        undeclared subpackage, and every module under it, is exploratory.
+        """
 
         if path in self._effective:
             return self._effective[path]
         tier = self.declared_tier(path)
-        if tier is None:
-            dotted = self.modules_by_file[path]
-            parts = dotted.split(".")
-            # A module file inherits from its package chain; an __init__.py is
-            # the package, so its chain starts one level up.
-            ancestors = parts[:-1]
-            for depth in range(len(ancestors), 0, -1):
-                ancestor = ".".join(ancestors[:depth])
-                ancestor_path = self.files_by_module.get(ancestor)
-                if ancestor_path is None:
-                    continue
-                declared = self.declared_tier(ancestor_path)
-                if declared is not None:
-                    tier = declared
-                    break
+        if tier is None and path.name != "__init__.py":
+            package_path = self.files_by_module.get(self.modules_by_file[path].rpartition(".")[0])
+            if package_path is not None and package_path.name == "__init__.py":
+                tier = self.declared_tier(package_path)
         if tier is None:
             tier = DEFAULT_TIER
         self._effective[path] = tier

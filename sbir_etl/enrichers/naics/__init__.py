@@ -31,6 +31,9 @@ Exported Classes:
 
 Exported Functions:
 - enrich_sbir_awards_with_fiscal_naics: Main fiscal enrichment function
+
+Epistemic tier: pipelines. This is the package default that ``sbir_etl.enrichers``
+states for deterministic retrieval and enrichment clients.
 """
 
 from __future__ import annotations
@@ -40,6 +43,8 @@ from .core import NAICSEnricher, NAICSEnricherConfig
 
 # Fiscal module (full-featured fiscal enrichment)
 from .fiscal import FiscalNAICSEnricher, NAICSEnrichmentResult, enrich_sbir_awards_with_fiscal_naics
+
+EPISTEMIC_TIER = "pipelines"
 
 
 __all__ = [

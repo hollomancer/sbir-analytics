@@ -2,6 +2,9 @@
 
 Provides caching of API responses as parquet files with TTL-based expiration,
 metadata tracking, and cache management (clear, stats).
+
+Epistemic tier: pipelines. This is the package default that ``sbir_etl.utils`` states
+for deterministic shared helpers.
 """
 
 import hashlib
@@ -12,6 +15,8 @@ from typing import Any
 
 import pandas as pd
 from loguru import logger
+
+EPISTEMIC_TIER = "pipelines"
 
 
 class APICache:

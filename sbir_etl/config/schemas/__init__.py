@@ -1,4 +1,9 @@
-"""Modular configuration schemas for SBIR ETL."""
+"""Modular configuration schemas for SBIR ETL.
+
+Epistemic tier: primitives. The parent ``sbir_etl.config`` package routes all
+configuration access through its loader and these schemas, and CLAUDE.md lists
+``sbir_etl/config/`` as primitives.
+"""
 
 from .data import (
     CLIConfig,
@@ -27,6 +32,8 @@ from .domain import (
     TaxParameterConfig,
 )
 from .pipeline import PipelineConfig, PipelineMetadata
+
+EPISTEMIC_TIER = "primitives"
 
 
 __all__ = [

@@ -1,4 +1,8 @@
-"""DuckDB client utilities for data processing."""
+"""DuckDB client utilities for data processing.
+
+Epistemic tier: pipelines. This is the package default that ``sbir_etl.utils`` states
+for deterministic shared helpers.
+"""
 
 from __future__ import annotations
 
@@ -13,6 +17,8 @@ import pandas as pd
 from sbir_etl.config.loader import get_config
 from sbir_etl.exceptions import DependencyError, FileSystemError
 from sbir_etl.utils.logging_config import log_with_context
+
+EPISTEMIC_TIER = "pipelines"
 
 
 try:

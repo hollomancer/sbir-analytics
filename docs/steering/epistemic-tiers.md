@@ -264,6 +264,10 @@ What already holds:
   release, the opportunity scorer and NAICS text-inference registration moved
   behind exploratory composition points), so any new cross-tier import fails the
   build outright (`specs/archive/completed-features/epistemic-tier-enforcement/`).
+  A module's own `EPISTEMIC_TIER` constant sets its tier. Without one, the
+  module takes the declaration in the `__init__.py` of its own package. A
+  package declaration does not cascade into subpackages. An undeclared
+  subpackage, and each undeclared module in it, is `exploratory`.
 - The Phase III census implements the evidence-tier mechanisms: frozen
   artifacts, SHA enforcement, a declared estimand, and a blocking asset check.
 - Production YAML mapping reads route through the configuration loader or the

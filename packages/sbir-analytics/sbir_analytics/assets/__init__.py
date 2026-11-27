@@ -1,4 +1,8 @@
-"""Helpers for discovering SBIR ETL asset modules and Dagster registrations."""
+"""Helpers for discovering SBIR ETL asset modules and Dagster registrations.
+
+Epistemic tier: pipelines. This is the package default that ``sbir_analytics`` states
+for deterministic orchestration and materialization.
+"""
 
 from __future__ import annotations
 
@@ -11,6 +15,8 @@ from types import ModuleType
 from typing import TYPE_CHECKING
 
 from sbir_etl.config.loader import env_bool
+
+EPISTEMIC_TIER = "pipelines"
 
 
 if TYPE_CHECKING:

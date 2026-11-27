@@ -28,11 +28,16 @@ Exported Assets:
 - AI: raw_uspto_ai_extract, uspto_ai_deduplicate, raw_uspto_ai_human_sample_extraction,
   raw_uspto_ai_predictions, validated_uspto_ai_cache_stats, raw_uspto_ai_human_sample,
   enriched_uspto_ai_patent_join
+
+Epistemic tier: pipelines. This is the package default that ``sbir_analytics`` states
+for deterministic orchestration and materialization.
 """
 
 from __future__ import annotations
 
 from .. import should_load_heavy_assets
+
+EPISTEMIC_TIER = "pipelines"
 
 
 # AI Extraction module

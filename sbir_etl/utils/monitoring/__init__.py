@@ -1,6 +1,9 @@
 """Performance monitoring package.
 
 This package provides tools for tracking execution time and memory usage.
+
+Epistemic tier: pipelines. This is the package default that ``sbir_etl.utils`` states
+for deterministic shared helpers.
 """
 
 from .core import (
@@ -11,6 +14,8 @@ from .core import (
     time_block,
     time_function,
 )
+
+EPISTEMIC_TIER = "pipelines"
 
 
 __all__ = [

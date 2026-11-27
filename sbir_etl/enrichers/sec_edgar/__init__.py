@@ -11,12 +11,17 @@ Module Structure:
 Exported Classes:
 - EdgarAPIClient: Async API client with rate limiting (10 req/s per SEC fair-access policy)
 - enrich_companies_with_edgar: Main enrichment function for SBIR company DataFrames
+
+Epistemic tier: pipelines. This is the package default that ``sbir_etl.enrichers``
+states for deterministic retrieval and enrichment clients.
 """
 
 from __future__ import annotations
 
 from .client import EdgarAPIClient
 from .enricher import enrich_companies_with_edgar
+
+EPISTEMIC_TIER = "pipelines"
 
 __all__ = [
     "EdgarAPIClient",
