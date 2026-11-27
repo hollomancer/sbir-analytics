@@ -21,6 +21,7 @@ from sbir_etl.models.cet_models import CETArea
 from .utils import (
     AssetCheckResult,
     AssetCheckSeverity,
+    AssetKey,
     Output,
     asset,
     asset_check,
@@ -77,7 +78,7 @@ def taxonomy_to_dataframe(cet_areas: Iterable[CETArea]) -> pd.DataFrame:
 
 
 @asset_check(
-    asset="raw_cet_taxonomy",
+    asset=AssetKey(["ml", "raw_cet_taxonomy"]),
     description="CET taxonomy completeness and schema validity based on companion checks JSON",
 )
 def cet_taxonomy_completeness_check(context) -> AssetCheckResult:

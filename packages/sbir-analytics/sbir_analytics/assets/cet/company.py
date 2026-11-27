@@ -15,6 +15,7 @@ from sbir_etl.utils.identifiers import normalize_uei
 from .utils import (
     AssetCheckResult,
     AssetCheckSeverity,
+    AssetKey,
     Output,
     asset,
     asset_check,
@@ -84,7 +85,7 @@ def _attach_company_uei(df_cls: pd.DataFrame, df_awards: pd.DataFrame) -> pd.Dat
 
 
 @asset_check(
-    asset="transformed_cet_company_profiles",
+    asset=AssetKey(["ml", "transformed_cet_company_profiles"]),
     description="Company CET profiles successfully generated (basic sanity from checks JSON)",
 )
 def cet_company_profiles_check(context) -> AssetCheckResult:
