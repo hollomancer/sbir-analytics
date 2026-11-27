@@ -43,6 +43,7 @@ from pathlib import Path
 import pandas as pd
 
 from sbir_etl.utils.data.file_io import write_text_atomic
+from sbir_etl.utils.date_utils import federal_fiscal_year_series
 
 _API_BASE = "https://api.usaspending.gov/api/v2"
 _USER_AGENT = "SBIR-Analytics/1.0"
@@ -93,10 +94,10 @@ def build_commercialization_from_usaspending(
 
     if "start_date" in df.columns:
         df["start_date"] = pd.to_datetime(df["start_date"], errors="coerce")
-        df["_fy"] = df["start_date"].dt.year + (df["start_date"].dt.month >= 10).astype(int)
+        df["_fy"] = federal_fiscal_year_series(df["start_date"]).astype("float64")
     elif "action_date" in df.columns:
         df["action_date"] = pd.to_datetime(df["action_date"], errors="coerce")
-        df["_fy"] = df["action_date"].dt.year + (df["action_date"].dt.month >= 10).astype(int)
+        df["_fy"] = federal_fiscal_year_series(df["action_date"]).astype("float64")
     else:
         raise ValueError("Transaction data must contain 'start_date' or 'action_date' column")
 

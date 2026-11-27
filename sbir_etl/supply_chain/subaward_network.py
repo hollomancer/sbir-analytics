@@ -14,6 +14,7 @@ from typing import Any, cast
 
 import pandas as pd
 
+from sbir_etl.utils.date_utils import federal_fiscal_year_series
 from sbir_etl.utils.text_normalization import normalize_name
 
 
@@ -605,10 +606,7 @@ def aggregate_supplier_prime_edges(facts: pd.DataFrame) -> pd.DataFrame:
     working["identifier_verified"] = working["evidence_grade"].eq(
         EvidenceGrade.VERIFIED_IDENTIFIER.value
     )
-    action_dates = pd.to_datetime(working["subaward_action_date"], errors="coerce")
-    working["observed_fiscal_year"] = action_dates.dt.year + action_dates.dt.month.ge(10).astype(
-        "Int64"
-    )
+    working["observed_fiscal_year"] = federal_fiscal_year_series(working["subaward_action_date"])
     edges = (
         working.groupby(
             ["sbir_organization_id", "prime_organization_id"],

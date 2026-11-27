@@ -17,6 +17,7 @@ import pandas as pd
 
 from sbir_etl.utils.text_normalization import normalize_name
 from sbir_etl.utils.data.file_io import file_sha256
+from sbir_etl.utils.date_utils import federal_fiscal_year_series
 from sbir_etl.utils.identifiers import DunsProfile, normalize_duns, normalize_uei
 
 DEFENSE_FUNDING_SCHEMA_VERSION = "NSF-DEFENSE-FUNDING-2026Q3"
@@ -89,13 +90,6 @@ def _json_unique(values: pd.Series) -> str:
         if text and not text.startswith("["):
             items.add(text)
     return json.dumps(sorted(items), separators=(",", ":"))
-
-
-def _fiscal_year(value: object) -> int | None:
-    timestamp = pd.to_datetime(str(value), errors="coerce", utc=True)
-    if pd.isna(timestamp):
-        return None
-    return int(timestamp.year + (timestamp.month >= 10))
 
 
 def build_nsf_identity_registry(
@@ -374,10 +368,13 @@ def normalize_prime_api_transactions(frame: pd.DataFrame) -> pd.DataFrame:
     )
     if output["signed_obligation_amount"].isna().any():
         raise ValueError("USAspending API prime transactions contain missing obligations")
-    output["action_date"] = pd.to_datetime(output["action_date"], errors="coerce", utc=True)
+    raw_action_date = output["action_date"]
+    # action_date is stored in UTC, but fiscal_year uses the local date as written
+    # (see federal_fiscal_year). Near midnight on Sep 30 the two can show different days.
+    output["action_date"] = pd.to_datetime(raw_action_date, errors="coerce", utc=True)
     if output["action_date"].isna().any():
         raise ValueError("USAspending API prime transactions contain missing action dates")
-    output["fiscal_year"] = output["action_date"].map(_fiscal_year).astype("Int64")
+    output["fiscal_year"] = federal_fiscal_year_series(raw_action_date)
     output["funding_mode"] = "prime"
     output["is_deobligation"] = output["signed_obligation_amount"].lt(0)
     output["is_zero_obligation"] = output["signed_obligation_amount"].eq(0)
@@ -457,10 +454,11 @@ def normalize_prime_archive_transactions(
     )
     if working["signed_obligation_amount"].isna().any():
         raise ValueError("matched archive prime transactions contain missing obligations")
-    working["action_date"] = pd.to_datetime(working["action_date"], errors="coerce", utc=True)
+    raw_action_date = working["action_date"]
+    working["action_date"] = pd.to_datetime(raw_action_date, errors="coerce", utc=True)
     if working["action_date"].isna().any():
         raise ValueError("matched archive prime transactions contain missing action dates")
-    working["fiscal_year"] = working["action_date"].map(_fiscal_year).astype("Int64")
+    working["fiscal_year"] = federal_fiscal_year_series(raw_action_date)
     working["funding_mode"] = "prime"
     working["is_deobligation"] = working["signed_obligation_amount"].lt(0)
     working["is_zero_obligation"] = working["signed_obligation_amount"].eq(0)
@@ -613,7 +611,7 @@ def normalize_subaward_transactions(facts: pd.DataFrame) -> pd.DataFrame:
     output["action_date"] = pd.to_datetime(facts["subaward_action_date"], errors="coerce", utc=True)
     if output["action_date"].isna().any():
         raise ValueError("matched subaward transactions contain missing action dates")
-    output["fiscal_year"] = output["action_date"].map(_fiscal_year).astype("Int64")
+    output["fiscal_year"] = federal_fiscal_year_series(facts["subaward_action_date"])
     output["prime_recipient_name"] = _first(facts, ("prime_name",))
     output["prime_recipient_uei"] = _first(facts, ("prime_uei",)).map(_uei)
     output["prime_parent_name"] = _first(facts, ("prime_parent_name",))
@@ -691,6 +689,8 @@ def build_defense_funding_summary(
         ),
         zero_transaction_count=("signed_obligation_amount", lambda values: int(values.eq(0).sum())),
         dod_award_count=("dod_award_generated_id", "nunique"),
+        # action_date is UTC; fiscal_year is the local date. For offset timestamps
+        # near the year boundary, a FY group's first/last date can show the next FY's day.
         first_observed_funding_date=("action_date", "min"),
         last_observed_funding_date=("action_date", "max"),
         recipient_match_methods=("recipient_match_method", _json_unique),

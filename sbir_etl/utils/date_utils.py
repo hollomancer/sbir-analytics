@@ -226,3 +226,96 @@ def format_date_iso(value: date | datetime | None) -> str | None:
         return parsed.date().isoformat()
 
     return parsed.isoformat()
+
+
+def _local_calendar_date(value: Any) -> date | None:
+    """Return the calendar date of ``value`` as written, without any timezone conversion."""
+    if value is None:
+        return None
+    if pd is not None:
+        try:
+            if pd.isna(value):
+                return None
+        except (TypeError, ValueError):
+            pass
+    # datetime and pandas.Timestamp are date subclasses; their year and month
+    # fields are already the local wall-clock values.
+    if isinstance(value, date):
+        return value
+    text = value.strip() if isinstance(value, str) else str(value).strip()
+    if not text or text.lower() in NULL_VALUES:
+        return None
+    # Fast path for ISO 8601 text, including offsets and "Z"; keeps the local fields.
+    try:
+        return datetime.fromisoformat(text)
+    except ValueError:
+        pass
+    if pd is not None:
+        parsed = pd.to_datetime(text, errors="coerce")
+        return None if pd.isna(parsed) else parsed
+    return None
+
+
+def federal_fiscal_year(value: Any) -> int | None:
+    """Return the US federal fiscal year of a date-like value.
+
+    Rule: the federal fiscal year is the calendar year, plus one when the month
+    is October or later. FY2024 runs from 2023-10-01 through 2024-09-30.
+
+    A timestamp with a UTC offset uses its local date as written. The value is
+    not converted to UTC first. ``2023-09-30T22:00-05:00`` is September 30, so
+    it is FY2023, even though the same instant is October 1 in UTC.
+
+    Accepts ``date``, ``datetime``, ``pandas.Timestamp``, ISO strings, and other
+    strings that ``pandas.to_datetime`` can parse. Returns ``None`` for
+    ``None``, ``NaT``, ``NaN``, null-like strings, and values that do not parse.
+
+    Examples:
+        >>> federal_fiscal_year("2023-09-30")
+        2023
+        >>> federal_fiscal_year("2023-10-01")
+        2024
+        >>> federal_fiscal_year("2023-09-30T22:00-05:00")
+        2023
+    """
+    local_date = _local_calendar_date(value)
+    if local_date is None:
+        return None
+    return int(local_date.year + (local_date.month >= 10))
+
+
+def federal_fiscal_year_series(values: pd.Series) -> pd.Series:
+    """Apply :func:`federal_fiscal_year` to each value of a pandas Series.
+
+    Applies the same rule: local date as written, no UTC conversion. Returns a
+    nullable ``Int64`` Series with the input's index; missing or unparseable
+    values become ``<NA>``.
+
+    A ``datetime64`` column is read directly from its fields. Any other column
+    goes through the scalar function once per distinct value, and results are
+    mapped back by position. Values are told apart by ``(type, str(value))``, not by
+    equality: two ``Timestamp`` objects for the same instant in different zones
+    compare equal but can fall in different fiscal years. A non-datetime column
+    is never passed to a vectorized ``pandas.to_datetime``, so its coercion
+    rules do not apply. Integers are read as written (``20231001`` is 2023-10-01), never as
+    epoch nanoseconds.
+
+    A tz-aware ``datetime64`` Series uses the zone it stores. A column already
+    converted to UTC gives the UTC date, not the date as originally written.
+    Callers that want the original local date must pass the original values,
+    before any UTC conversion.
+    """
+    if pd is None:  # pragma: no cover - pandas is a core dependency
+        raise ImportError("federal_fiscal_year_series requires pandas")
+    if pd.api.types.is_datetime64_any_dtype(values.dtype):
+        # Already datetimes: no parsing or coercion, so the fields are exact.
+        year = values.dt.year.astype("Int64")
+        return (year + (values.dt.month >= 10).astype("Int64")).astype("Int64")
+    memo: dict[tuple[type, str], int | None] = {}
+    years: list[int | None] = []
+    for value in values.to_numpy(dtype=object):
+        key = (type(value), str(value))
+        if key not in memo:
+            memo[key] = federal_fiscal_year(value)
+        years.append(memo[key])
+    return pd.Series(pd.array(years, dtype="Int64"), index=values.index, name=values.name)
