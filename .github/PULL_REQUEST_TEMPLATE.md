@@ -38,3 +38,12 @@ Please describe the tests that you ran to verify your changes. Provide instructi
 - [ ] My changes generate no new warnings
 - [ ] I have added tests that prove my fix is effective or that my feature works
 - [ ] New and existing unit tests pass locally with my changes
+
+## Capacity and Provenance
+
+See [CONTRIBUTING.md](../CONTRIBUTING.md#capacity-and-data-provenance).
+
+- [ ] I contribute in my personal capacity, or my employer permits this contribution
+- [ ] This is not work from official government duties, and I used no government time, equipment, or accounts
+- [ ] This change uses public information only
+- [ ] I have disclosed any SBIR/STTR awardee, applicant, or agency-vendor affiliation above, or I have none

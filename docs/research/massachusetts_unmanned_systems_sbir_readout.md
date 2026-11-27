@@ -12,6 +12,10 @@ removed software-only and incidental matches.
 > evidence-tier support or an externally cited result. The 238-award reviewed
 > total cannot be regenerated until the original award-level review decisions
 > are reconstructed as a retained, auditable ledger.
+>
+> **Not a selection tool.** This readout names firms from public award records.
+> It is not a rating, a ranking, or an endorsement. Do not use it to select
+> firms for awards, visits, meetings, or other official attention.
 
 - **Data source:** SBIR.gov bulk `award_data.csv` local snapshot
 - **Source timestamp:** 2026-04-01T00:00:06.904233+00:00

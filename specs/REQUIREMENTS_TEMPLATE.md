@@ -5,6 +5,11 @@ Before writing: read specs/status.md (lifecycle), docs/development/spec-workflow
 (shapes), docs/steering/epistemic-tiers.md (contracts), and CLAUDE.md (conventions).
 Design and tasks shapes live in the workflow guide — there are no separate DESIGN/TASKS
 template files.
+
+Personas: "Answers for" and each user story name hypothetical readers. They are not
+requirements from an agency, an office, or a person. An agency name in a spec title
+identifies a public source under study, not a sponsor. See
+docs/public/capacity-and-provenance.md.
 -->
 
 > **Lifecycle status:** [see `specs/status.md` — Active | Maintenance | Gated backlog |
